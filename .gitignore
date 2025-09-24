@@ -1,0 +1,15 @@
+__pycache__/
+.idea/
+.vscode/
+
+**/*.idea
+**/*.vscode/**
+**/*.ipynb_checkpoints/**
+**/*__pycache__/**
+*.ipynb
+*.wav
+*.json
+
+data/
+output/
+
