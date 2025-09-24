@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import Field
 
-from constants import MIN_PITCH, MAX_PITCH
+from constants import MAX_PITCH, MIN_PITCH
 from instructions.instruction import Instruction
 
 

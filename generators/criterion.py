@@ -6,7 +6,7 @@ from scipy.signal import get_window
 from sklearn.metrics import root_mean_squared_error
 
 from config import Config
-from constants import MIN_FREQUENCY, MAX_FREQUENCY
+from constants import MAX_FREQUENCY, MIN_FREQUENCY
 from reconstructor.state import ReconstructionState
 
 

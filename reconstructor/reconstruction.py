@@ -1,7 +1,7 @@
 import base64
 import json
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -72,7 +72,9 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, audio: np.ndarray, instructions: Dict[str, List[Instruction]], total_error: float) -> "Reconstruction":
+    def from_results(
+        cls, audio: np.ndarray, instructions: Dict[str, List[Instruction]], total_error: float
+    ) -> "Reconstruction":
         audio_bytes = base64.b64encode(audio.tobytes()).decode("utf-8")
 
         return cls(
@@ -80,7 +82,7 @@ class Reconstruction(BaseModel):
             audio_shape=audio.shape,
             audio_dtype=str(audio.dtype),
             instructions=instructions,
-            total_error=total_error
+            total_error=total_error,
         )
 
     @property
@@ -109,10 +111,7 @@ class Reconstruction(BaseModel):
     def save_npz(self, filepath: Path) -> None:
         np.savez_compressed(filepath.with_suffix(".npz"), audio=self.audio)
 
-        metadata = {
-            "instructions": self._serialize_instructions(self.instructions),
-            "total_error": self.total_error
-        }
+        metadata = {"instructions": self._serialize_instructions(self.instructions), "total_error": self.total_error}
 
         with open(filepath.with_suffix(".json"), "w") as f:
             json.dump(metadata, f, indent=2)
@@ -127,7 +126,5 @@ class Reconstruction(BaseModel):
         reconstructed_instructions = cls._deserialize_instructions(metadata["instructions"])
 
         return cls.from_results(
-            audio=audio_data,
-            instructions=reconstructed_instructions,
-            total_error=metadata["total_error"]
+            audio=audio_data, instructions=reconstructed_instructions, total_error=metadata["total_error"]
         )

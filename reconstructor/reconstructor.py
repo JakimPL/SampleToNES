@@ -16,7 +16,7 @@ GENERATORS = {
     "triangle": TriangleGenerator,
     "noise": NoiseGenerator,
     "square1": SquareGenerator,
-    "square2": SquareGenerator
+    "square2": SquareGenerator,
 }
 
 
@@ -67,7 +67,9 @@ class Reconstructor:
     def update_phases(self) -> None:
         self.current_phases = {name: generator.phase for name, generator in self.generators.items()}
 
-    def find_best_fragment_approximation(self, state: ReconstructionState) -> Tuple[np.ndarray, Dict[str, Instruction], float]:
+    def find_best_fragment_approximation(
+        self, state: ReconstructionState
+    ) -> Tuple[np.ndarray, Dict[str, Instruction], float]:
         fragment = state.fragments[state.fragment_id]
         audio = fragment.copy()
         approximation = np.zeros_like(fragment)
@@ -79,9 +81,7 @@ class Reconstructor:
         for name, generator in self.generators.items():
             phase = initial_phase[name]
             partial_approximation, instruction, error = generator.find_best_fragment_approximation(
-                audio,
-                self.state,
-                initial_phase=phase
+                audio, self.state, initial_phase=phase
             )
 
             instructions[name] = instruction

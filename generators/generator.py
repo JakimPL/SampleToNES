@@ -36,10 +36,7 @@ class Generator:
         raise NotImplementedError("Subclasses must implement this method")
 
     def find_best_instruction(
-            self,
-            audio: np.ndarray,
-            state: ReconstructionState,
-            initial_phase: Optional[float] = None
+        self, audio: np.ndarray, state: ReconstructionState, initial_phase: Optional[float] = None
     ) -> Tuple[Instruction, float]:
         instructions = []
         errors = []
@@ -55,10 +52,7 @@ class Generator:
         return instruction, error
 
     def find_best_fragment_approximation(
-            self,
-            audio: np.ndarray,
-            state: ReconstructionState,
-            initial_phase: Optional[float] = None
+        self, audio: np.ndarray, state: ReconstructionState, initial_phase: Optional[float] = None
     ) -> Tuple[np.ndarray, Instruction, float]:
         instruction, error = self.find_best_instruction(audio, state, initial_phase=initial_phase)
         approximation = self(instruction, initial_phase=initial_phase)

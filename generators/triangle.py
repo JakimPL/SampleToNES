@@ -29,9 +29,11 @@ class TriangleGenerator(Generator):
         ]
 
         for pitch in self.frequency_table:
-            triangle_instructions.append(TriangleInstruction(
-                on=True,
-                pitch=pitch,
-            ))
+            triangle_instructions.append(
+                TriangleInstruction(
+                    on=True,
+                    pitch=pitch,
+                )
+            )
 
         return triangle_instructions

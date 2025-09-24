@@ -7,7 +7,7 @@ from IPython.display import Audio, display
 from scipy.io import wavfile
 
 from config import Config
-from constants import SAMPLE_RATE, QUANTIZATION_LEVELS
+from constants import QUANTIZATION_LEVELS, SAMPLE_RATE
 
 
 def play_audio(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:

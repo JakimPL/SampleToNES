@@ -27,23 +27,13 @@ class SquareGenerator(Generator):
         return output * MIXER_SQUARE
 
     def get_possible_instructions(self) -> List[SquareInstruction]:
-        square_instructions = [
-            SquareInstruction(
-                on=False,
-                pitch=None,
-                volume=0,
-                duty_cycle=0
-            )
-        ]
+        square_instructions = [SquareInstruction(on=False, pitch=None, volume=0, duty_cycle=0)]
 
         for pitch in self.frequency_table:
             for volume in VOLUME_RANGE:
                 for duty_cycle in range(len(DUTY_CYCLES)):
-                    square_instructions.append(SquareInstruction(
-                        on=True,
-                        pitch=pitch,
-                        volume=volume,
-                        duty_cycle=duty_cycle
-                    ))
+                    square_instructions.append(
+                        SquareInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=duty_cycle)
+                    )
 
         return square_instructions

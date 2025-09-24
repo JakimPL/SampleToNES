@@ -9,6 +9,7 @@ __pycache__/
 *.ipynb
 *.wav
 *.json
+*.txt
 
 data/
 output/

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from constants import MIN_RATE, MAX_RATE
+from constants import MAX_RATE, MIN_RATE
 
 
 class Config(BaseModel):

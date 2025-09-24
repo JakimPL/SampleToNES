@@ -2,13 +2,11 @@ from typing import List, Optional
 
 import numpy as np
 
-from constants import MAX_VOLUME, VOLUME_RANGE, APU_CLOCK
+from constants import APU_CLOCK, MAX_VOLUME, VOLUME_RANGE
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 
-NOISE_PERIODS = [
-    4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
-]
+NOISE_PERIODS = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
 
 MIXER_NOISE = 0.5804935370152762
 
@@ -71,11 +69,13 @@ class NoiseGenerator(Generator):
                 continue
             for mode in [False]:
                 for period in range(len(NOISE_PERIODS)):
-                    noise_instructions.append(NoiseInstruction(
-                        on=True,
-                        period=period,
-                        volume=volume,
-                        mode=mode,
-                    ))
+                    noise_instructions.append(
+                        NoiseInstruction(
+                            on=True,
+                            period=period,
+                            volume=volume,
+                            mode=mode,
+                        )
+                    )
 
         return noise_instructions

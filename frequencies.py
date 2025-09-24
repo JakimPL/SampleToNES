@@ -5,10 +5,10 @@ from timer import Timer
 
 
 def get_frequency_table(
-        a4_frequency: float = A4_FREQUENCY,
-        a4_pitch: int = A4_PITCH,
-        min_pitch: int = MIN_PITCH,
-        max_pitch: int = MAX_PITCH,
+    a4_frequency: float = A4_FREQUENCY,
+    a4_pitch: int = A4_PITCH,
+    min_pitch: int = MIN_PITCH,
+    max_pitch: int = MAX_PITCH,
 ) -> Dict[int, float]:
     timer = Timer()
     frequencies = {}
