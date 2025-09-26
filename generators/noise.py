@@ -24,10 +24,17 @@ class NoiseGenerator(Generator):
         apu_period = NOISE_PERIODS[noise_instruction.period]
         lfsr_clock_hz = APU_CLOCK / float(apu_period)
         clocks_per_sample = lfsr_clock_hz / float(self.config.sample_rate)
-        lfsr = int(initial_phase) if initial_phase is not None else 1
+        if (
+            self.previous_instruction
+            and self.previous_instruction.on
+            and self.previous_instruction.period != noise_instruction.period
+        ):
+            lfsr = 1
+        else:
+            lfsr = int(initial_phase) if initial_phase is not None else 1
 
         clk_acc = 0.0
-        vol_scale = float(noise_instruction.volume) / float(MAX_VOLUME)
+        vol_scale = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
 
         for i in range(self.frames):
             clk_acc += clocks_per_sample
@@ -38,7 +45,7 @@ class NoiseGenerator(Generator):
             if (lfsr & 1) == 0:
                 sample_val = vol_scale
             else:
-                sample_val = 0.0
+                sample_val = -vol_scale
 
             output[i] = sample_val
 

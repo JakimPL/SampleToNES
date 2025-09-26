@@ -22,6 +22,8 @@ class Generator:
             max_pitch=config.max_pitch,
         )
 
+        self.previous_instruction: Optional[Instruction] = None
+
     def __call__(self, instruction: Instruction, initial_phase: Optional[float] = None) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -49,6 +51,7 @@ class Generator:
         index = np.argmin(errors)
         instruction = instructions[index]
         error = errors[index]
+        self.previous_instruction = instruction
         return instruction, error
 
     def find_best_fragment_approximation(

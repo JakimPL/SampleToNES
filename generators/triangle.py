@@ -6,17 +6,22 @@ from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 
 MIXER_TRIANGLE = 1.0
+TRIANGLE_OFFSET = 0.5
 
 
 class TriangleGenerator(Generator):
     def __call__(self, triangle_instruction: TriangleInstruction, initial_phase: Optional[float] = None) -> np.ndarray:
         output = np.zeros(self.frames, dtype=np.float32)
+
         if not triangle_instruction.on or triangle_instruction.pitch is None:
             return output
 
+        if initial_phase is None or (self.previous_instruction is not None and not self.previous_instruction.on):
+            self.timer.phase = 0.0
+
         self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
         output = self.timer(self.frames, initial_phase=initial_phase)
-        output = 1.0 - np.round(np.abs(((output + 0.25) % 1.0) - 0.5) * 30.0) / 15.0
+        output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
 
         return output * MIXER_TRIANGLE
 
