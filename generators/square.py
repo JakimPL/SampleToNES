@@ -17,7 +17,7 @@ class SquareGenerator(Generator):
         initial_phase: Optional[float] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
-        output = np.zeros(self.frames, dtype=np.float32)
+        output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not square_instruction.on or square_instruction.pitch is None:
             return output
@@ -34,7 +34,7 @@ class SquareGenerator(Generator):
         self.timer.frequency = self.get_frequency(square_instruction.pitch)
         duty_cycle = DUTY_CYCLES[square_instruction.duty_cycle]
 
-        output = self.timer(self.frames, initial_phase=initial_phase)
+        output = self.timer(self.frame_length, initial_phase=initial_phase)
         output = np.where(output < duty_cycle, 1.0, -1.0)
         output *= square_instruction.volume / MAX_VOLUME
 

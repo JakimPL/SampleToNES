@@ -24,7 +24,7 @@ class NoiseGenerator(Generator):
         initial_phase: Optional[int] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
-        output = np.zeros(self.frames, dtype=np.float32)
+        output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not noise_instruction.on or noise_instruction.period is None:
             return output
@@ -46,7 +46,7 @@ class NoiseGenerator(Generator):
             self.clock = 0.0 if initial_clock is None else initial_clock
 
         previous_bits = [lfsr & 1]
-        for i in range(self.frames):
+        for i in range(self.frame_length):
             if previous_bits:
                 sample_value = 2.0 * np.mean(previous_bits) - 1.0
                 sample_val = sample_value * vol_scale

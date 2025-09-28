@@ -75,7 +75,7 @@ def load_audio(path: Union[str, Path], target_sample_rate=SAMPLE_RATE, quantize:
 
 
 def get_audio_fragments(audio: np.ndarray, config: Config) -> Tuple[np.ndarray, int]:
-    samples = len(audio) // config.frames
-    length = samples * config.frames
+    samples = len(audio) // config.frame_length
+    length = samples * config.frame_length
     audio = audio[:length]
-    return audio.reshape(-1, config.frames), length
+    return audio.reshape(-1, config.frame_length), length

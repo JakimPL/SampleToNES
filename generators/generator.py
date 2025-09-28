@@ -83,5 +83,5 @@ class Generator:
         return approximation, instruction, error
 
     @property
-    def frames(self) -> int:
-        return self.config.frames
+    def frame_length(self) -> int:
+        return self.config.frame_length

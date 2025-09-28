@@ -15,5 +15,5 @@ class Config(BaseModel):
         frozen = True
 
     @property
-    def frames(self) -> int:
+    def frame_length(self) -> int:
         return round(self.sample_rate / self.change_rate)

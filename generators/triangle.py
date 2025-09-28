@@ -16,7 +16,7 @@ class TriangleGenerator(Generator):
         initial_phase: Optional[float] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
-        output = np.zeros(self.frames, dtype=np.float32)
+        output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not triangle_instruction.on or triangle_instruction.pitch is None:
             return output
@@ -25,7 +25,7 @@ class TriangleGenerator(Generator):
             self.timer.phase = 0.0
 
         self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
-        output = self.timer(self.frames, initial_phase=initial_phase)
+        output = self.timer(self.frame_length, initial_phase=initial_phase)
         output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
 
         return output * MIXER_TRIANGLE

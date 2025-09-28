@@ -61,9 +61,6 @@ class Reconstructor:
         for generator in self.generators.values():
             generator.criterion.set_fragment_length(length)
 
-    def get_phases(self) -> Dict[str, float]:
-        return {name: phase for name, phase in self.state.current_phases.items()}
-
     def single_pass(self, fragments: np.ndarray) -> None:
         for name, generator in self.generators.items():
             generator.reset()
