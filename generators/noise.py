@@ -2,6 +2,7 @@ from typing import List, Optional
 
 import numpy as np
 
+from config import Config
 from constants import APU_CLOCK, MAX_VOLUME, VOLUME_RANGE
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
@@ -12,10 +13,17 @@ MIXER_NOISE = 0.5804935370152762
 
 
 class NoiseGenerator(Generator):
-    def __init__(self, config):
-        super().__init__(config)
+    def __init__(self, name: str, config: Config) -> None:
+        super().__init__(name, config)
+        self.timer.phase = 1
+        self.clock = 0.0
 
-    def __call__(self, noise_instruction: NoiseInstruction, initial_phase: Optional[int] = None) -> np.ndarray:
+    def __call__(
+        self,
+        noise_instruction: NoiseInstruction,
+        initial_phase: Optional[int] = None,
+        initial_clock: Optional[float] = None,
+    ) -> np.ndarray:
         output = np.zeros(self.frames, dtype=np.float32)
 
         if not noise_instruction.on or noise_instruction.period is None:
@@ -23,33 +31,37 @@ class NoiseGenerator(Generator):
 
         apu_period = NOISE_PERIODS[noise_instruction.period]
         lfsr_clock_hz = APU_CLOCK / float(apu_period)
-        clocks_per_sample = lfsr_clock_hz / float(self.config.sample_rate)
+        clocks_per_sample = 2.0 * lfsr_clock_hz / float(self.config.sample_rate)
+        vol_scale = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+
         if (
             self.previous_instruction
             and self.previous_instruction.on
             and self.previous_instruction.period != noise_instruction.period
         ):
             lfsr = 1
+            self.clock = 0.0
         else:
             lfsr = int(initial_phase) if initial_phase is not None else 1
+            self.clock = 0.0 if initial_clock is None else initial_clock
 
-        clk_acc = 0.0
-        vol_scale = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
-
+        previous_bits = [lfsr & 1]
         for i in range(self.frames):
-            clk_acc += clocks_per_sample
-            while clk_acc >= 1.0:
-                clk_acc -= 1.0
-                lfsr = self._clock_lfsr(lfsr, noise_instruction.mode)
-
-            if (lfsr & 1) == 0:
-                sample_val = vol_scale
+            if previous_bits:
+                sample_value = 2.0 * np.mean(previous_bits) - 1.0
+                sample_val = sample_value * vol_scale
+                output[i] = sample_val
+                previous_bits = []
             else:
-                sample_val = -vol_scale
+                output[i] = vol_scale if lfsr & 1 else -vol_scale
 
-            output[i] = sample_val
+            self.clock += clocks_per_sample
+            while self.clock >= 1.0:
+                self.clock -= 1.0
+                lfsr = self._clock_lfsr(lfsr, noise_instruction.mode)
+                previous_bits.append(lfsr & 1)
 
-        self.timer.phase = int(lfsr)
+        self.timer.phase = lfsr
 
         return output * MIXER_NOISE
 

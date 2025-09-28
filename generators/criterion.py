@@ -1,3 +1,4 @@
+from os import name
 from typing import List, Optional, Union
 
 import numpy as np
@@ -11,14 +12,17 @@ from reconstructor.state import ReconstructionState
 
 
 class Loss:
-    def __init__(self, config: Config, alpha: float = 0.8, min_fft_size: int = 2048):
-        self.config = config
-        self.alpha = alpha
+    def __init__(self, generator_name: str, config: Config, alpha: float = 0.95, min_fft_size: int = 2048):
+        self.generator_name: str = generator_name
+        self.config: Config = config
+        self.alpha: float = alpha
         self.fragment_length: Optional[int] = None
         self.fft_size: Optional[int] = None
-        self.min_fft_size = min_fft_size
+        self.min_fft_size: int = min_fft_size
 
-    def __call__(self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState) -> float:
+    def __call__(
+        self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState, generator_name: str
+    ) -> float:
         if self.fft_size is None or self.fragment_length is None:
             raise ValueError("Fragment length and FFT size must be set before calling the loss function.")
 
@@ -33,7 +37,7 @@ class Loss:
 
     def spectral_loss(self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState) -> float:
         fragment_padded = self.pad(audio, state.fragments, state.fragment_id)
-        approx_padded = self.pad(approximation, state.approximations, state.fragment_id)
+        approx_padded = self.pad(approximation, state.approximations[self.generator_name], state.fragment_id)
 
         window = get_window("hann", len(fragment_padded))
         fragment_windowed = fragment_padded * window

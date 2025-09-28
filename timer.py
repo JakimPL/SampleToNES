@@ -16,7 +16,11 @@ class Timer:
         self.cycles_per_sample = APU_CLOCK / sample_rate
         self.reset_phase = reset_phase
 
-    def __call__(self, frames: Union[int, np.ndarray], initial_phase: Optional[int] = None) -> np.ndarray:
+    def __call__(
+        self,
+        frames: Union[int, np.ndarray],
+        initial_phase: Optional[Union[float, int]] = None,
+    ) -> np.ndarray:
         if isinstance(frames, int):
             frames = np.zeros(frames, dtype=np.float32)
         elif not isinstance(frames, np.ndarray):

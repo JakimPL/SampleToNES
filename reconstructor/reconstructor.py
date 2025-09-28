@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -28,31 +28,20 @@ class Reconstructor:
             generators = list(GENERATORS.keys())
 
         self.config = config
-        self.current_phases = {name: 0.0 for name in GENERATORS}
-        self.generators = {name: GENERATORS[name](config) for name in generators}
+        self.generators = {name: GENERATORS[name](name, config) for name in generators}
         self.state: Optional[ReconstructionState] = None
 
-    def __call__(self, audio: np.ndarray) -> Reconstruction:
+    def __call__(self, audio: np.ndarray, mode: Literal["single-pass", "multi-pass"] = "multi-pass") -> Reconstruction:
         fragments, _ = get_audio_fragments(audio, config=self.config)
         self.set_generators_fragment_length(fragments.shape[1])
-        self.current_phases = {name: 0.0 for name in self.generators}
         self.state = self.create_initial_state(fragments)
 
-        for fragment_id in tqdm(range(len(fragments))):
-            self.state.fragment_id = fragment_id
-            partial_approximations, partial_reconstruction, partial_instructions, error = (
-                self.find_best_fragment_approximation(self.state)
-            )
-
-            self.state.approximations.append(partial_reconstruction)
-            for name, instruction in partial_instructions.items():
-                self.state.instructions[name].append(instruction)
-
-            self.state.total_error += error
-            self.update_phases()
-
-            for name, partial_approximation in partial_approximations.items():
-                self.state.partial_approximations[name].append(partial_approximation)
+        if mode == "single-pass":
+            self.single_pass(fragments)
+        elif mode == "multi-pass":
+            self.multi_pass(fragments)
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
 
         return Reconstruction.from_results(self.state)
 
@@ -61,8 +50,10 @@ class Reconstructor:
             fragment_id=0,
             fragments=fragments,
             instructions={name: [] for name in self.generators},
-            approximations=[],
+            approximations={name: [] for name in self.generators},
             partial_approximations={name: [] for name in self.generators},
+            current_phases={name: 0.0 for name in self.generators},
+            current_clocks={name: self.generators[name].clock for name in self.generators},
             total_error=0.0,
         )
 
@@ -71,36 +62,41 @@ class Reconstructor:
             generator.criterion.set_fragment_length(length)
 
     def get_phases(self) -> Dict[str, float]:
-        return {name: phase for name, phase in self.current_phases.items()}
+        return {name: phase for name, phase in self.state.current_phases.items()}
 
-    def update_phases(self) -> None:
-        self.current_phases = {name: generator.phase for name, generator in self.generators.items()}
-
-    def find_best_fragment_approximation(
-        self, state: ReconstructionState
-    ) -> Tuple[Dict[str, np.ndarray], np.ndarray, Dict[str, Instruction], float]:
-        fragment = state.fragments[state.fragment_id]
-        audio = fragment.copy()
-        approximation = np.zeros_like(fragment)
-
-        initial_phase = self.get_phases()
-        instructions = {}
-        total_error = 0.0
-        partial_approximations = {}
-
+    def single_pass(self, fragments: np.ndarray) -> None:
         for name, generator in self.generators.items():
-            phase = initial_phase[name]
-            partial_approximation, instruction, error = generator.find_best_fragment_approximation(
-                audio, self.state, initial_phase=phase
-            )
+            generator.reset()
+            for fragment_id in tqdm(range(len(fragments))):
+                self.find_best_fragment(name, fragments, fragment_id)
 
-            instructions[name] = instruction
-            initial_phase[name] = generator.phase
+    def multi_pass(self, fragments: np.ndarray) -> None:
+        audio = np.concatenate(fragments)
+        for name, generator in tqdm(self.generators.items()):
+            generator.reset()
+            self.state.approximations = []
+            for fragment_id in range(len(fragments)):
+                self.find_best_fragment(name, fragments, fragment_id)
 
-            approximation += partial_approximation
-            audio -= partial_approximation
-            total_error += error
+            audio -= np.concatenate(self.state.approximations)
+            fragments, _ = get_audio_fragments(audio, config=self.config)
 
-            partial_approximations[name] = partial_approximation
+    def update_state(self, name: str, approximation, instruction, error) -> None:
+        generator = self.generators[name]
+        self.state.approximations[name].append(approximation)
+        self.state.instructions[name].append(instruction)
+        self.state.total_error += error
+        self.state.current_phases[name] = generator.phase
+        self.state.current_clocks[name] = generator.clock
 
-        return partial_approximations, approximation, instructions, total_error
+    def find_best_fragment(self, name: str, fragments, fragment_id):
+        generator = self.generators[name]
+        self.state.fragment_id = fragment_id
+        fragment = fragments[fragment_id].copy()
+        phase = self.state.current_phases[name]
+        clock = self.state.current_clocks[name]
+        approximation, instruction, error = generator.find_best_fragment_approximation(
+            fragment, self.state, initial_phase=phase, initial_clock=clock
+        )
+
+        self.update_state(name, approximation, instruction, error)

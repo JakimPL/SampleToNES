@@ -96,10 +96,8 @@ class Reconstruction(BaseModel):
 
     @classmethod
     def from_results(cls, state: ReconstructionState) -> "Reconstruction":
-        audio = np.concatenate(state.approximations)
-        approximations = {
-            name: np.concatenate(state.partial_approximations[name]) for name in state.partial_approximations
-        }
+        audio = np.sum(np.array(list(state.approximations.values())), axis=0)
+        approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
 
         audio_bytes = base64.b64encode(audio.tobytes()).decode("utf-8")
 

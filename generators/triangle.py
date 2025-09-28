@@ -10,7 +10,12 @@ TRIANGLE_OFFSET = 0.5
 
 
 class TriangleGenerator(Generator):
-    def __call__(self, triangle_instruction: TriangleInstruction, initial_phase: Optional[float] = None) -> np.ndarray:
+    def __call__(
+        self,
+        triangle_instruction: TriangleInstruction,
+        initial_phase: Optional[float] = None,
+        initial_clock: Optional[float] = None,
+    ) -> np.ndarray:
         output = np.zeros(self.frames, dtype=np.float32)
 
         if not triangle_instruction.on or triangle_instruction.pitch is None:

@@ -11,7 +11,12 @@ MIXER_SQUARE = 0.8836662749706228
 
 
 class SquareGenerator(Generator):
-    def __call__(self, square_instruction: SquareInstruction, initial_phase: Optional[float] = None) -> np.ndarray:
+    def __call__(
+        self,
+        square_instruction: SquareInstruction,
+        initial_phase: Optional[float] = None,
+        initial_clock: Optional[float] = None,
+    ) -> np.ndarray:
         output = np.zeros(self.frames, dtype=np.float32)
 
         if not square_instruction.on or square_instruction.pitch is None:
