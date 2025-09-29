@@ -37,6 +37,7 @@ class Generator:
     def reset(self) -> None:
         self.previous_instruction = None
         self.timer.phase = 0.0
+        self.timer.clock = 0.0
 
     @property
     def phase(self) -> float:
@@ -59,7 +60,7 @@ class Generator:
         errors = []
         for instruction in self.get_possible_instructions():
             approximation = self(instruction, initial_phase=initial_phase, initial_clock=initial_clock)
-            error = self.criterion(audio, approximation, state, self.name)
+            error = self.criterion(audio, approximation, state)
             instructions.append(instruction)
             errors.append(error)
 

@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import List, Literal, Optional
 
 import numpy as np
 from tqdm.auto import tqdm
@@ -64,21 +64,27 @@ class Reconstructor:
     def single_pass(self, fragments: np.ndarray) -> None:
         for name, generator in self.generators.items():
             generator.reset()
-            for fragment_id in tqdm(range(len(fragments))):
-                self.find_best_fragment(name, fragments, fragment_id)
+
+        for fragment_id in tqdm(range(len(fragments))):
+            self.state.fragment_id = fragment_id
+            fragment = fragments[fragment_id].copy()
+            for name, generator in self.generators.items():
+                self.find_best_fragment(name, fragment)
+                fragment -= self.state.approximations[name][-1]
 
     def multi_pass(self, fragments: np.ndarray) -> None:
         audio = np.concatenate(fragments)
         for name, generator in tqdm(self.generators.items()):
             generator.reset()
-            self.state.approximations = []
             for fragment_id in range(len(fragments)):
-                self.find_best_fragment(name, fragments, fragment_id)
+                self.state.fragment_id = fragment_id
+                fragment = fragments[fragment_id].copy()
+                self.find_best_fragment(name, fragment)
 
-            audio -= np.concatenate(self.state.approximations)
+            audio -= np.concatenate(self.state.approximations[name])
             fragments, _ = get_audio_fragments(audio, config=self.config)
 
-    def update_state(self, name: str, approximation, instruction, error) -> None:
+    def update_state(self, name: str, approximation: np.ndarray, instruction: Instruction, error: float) -> None:
         generator = self.generators[name]
         self.state.approximations[name].append(approximation)
         self.state.instructions[name].append(instruction)
@@ -86,14 +92,12 @@ class Reconstructor:
         self.state.current_phases[name] = generator.phase
         self.state.current_clocks[name] = generator.clock
 
-    def find_best_fragment(self, name: str, fragments, fragment_id):
+    def find_best_fragment(self, name: str, audio: np.ndarray) -> None:
         generator = self.generators[name]
-        self.state.fragment_id = fragment_id
-        fragment = fragments[fragment_id].copy()
         phase = self.state.current_phases[name]
         clock = self.state.current_clocks[name]
         approximation, instruction, error = generator.find_best_fragment_approximation(
-            fragment, self.state, initial_phase=phase, initial_clock=clock
+            audio, self.state, initial_phase=phase, initial_clock=clock
         )
 
         self.update_state(name, approximation, instruction, error)
