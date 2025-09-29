@@ -24,7 +24,7 @@ class TriangleGenerator(Generator):
         if initial_phase is None or (self.previous_instruction is not None and not self.previous_instruction.on):
             self.timer.phase = 0.0
 
-        self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
+        self.timer.frequency = self.get_frequency(triangle_instruction.pitch) / 2.0
         output = self.timer(self.frame_length, initial_phase=initial_phase)
         output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
 

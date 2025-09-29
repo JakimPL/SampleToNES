@@ -28,7 +28,7 @@ def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
     return audio, sample_rate
 
 
-def write_wav_file(path: Union[str, Path], audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
+def write_audio(path: Union[str, Path], audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
     audio = np.clip(audio, -1.0, 1.0)
     wavfile.write(path, sample_rate, audio)
 

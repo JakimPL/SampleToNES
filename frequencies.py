@@ -1,7 +1,19 @@
 from typing import Dict
 
+import numpy as np
+
 from constants import A4_FREQUENCY, A4_PITCH, MAX_PITCH, MIN_PITCH
 from timer import Timer
+
+
+def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> float:
+    return a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
+
+
+def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> int:
+    if frequency <= 0:
+        return 0
+    return round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
 
 
 def get_frequency_table(
@@ -13,7 +25,7 @@ def get_frequency_table(
     timer = Timer()
     frequencies = {}
     for note in range(min_pitch, max_pitch + 1):
-        frequency = a4_frequency * (2 ** ((note - a4_pitch) / 12))
+        frequency = pitch_to_frequency(note, a4_frequency, a4_pitch)
         timer.frequency = frequency
         frequencies[note] = timer.frequency
 

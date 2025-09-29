@@ -43,6 +43,12 @@ class Timer:
         return max(0, min(timer, 0x7FF))
 
     @staticmethod
+    def timer_to_frequency(timer: int) -> float:
+        if timer <= 0:
+            return 0.0
+        return APU_CLOCK / (16 * (timer + 1))
+
+    @staticmethod
     def get_timer_ticks(timer: int) -> int:
         return (timer + 1) * 16 if timer > 0 else 0
 
