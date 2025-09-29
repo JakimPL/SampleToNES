@@ -1,11 +1,19 @@
 import base64
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from pydantic import BaseModel, Field
 
+from config import Config
+from exporters.exporter import FeatureKey
+from exporters.noise import NoiseExporter
+from exporters.square import SquareExporter
+from exporters.triangle import TriangleExporter
+from generators.noise import NoiseGenerator
+from generators.square import SquareGenerator
+from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.square import SquareInstruction
@@ -20,6 +28,7 @@ class Reconstruction(BaseModel):
     approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
     instructions: Dict[str, List[Instruction]] = Field(..., description="Instructions per generator")
     total_error: float = Field(..., description="Total reconstruction error")
+    config: Config = Field(..., description="Configuration used for reconstruction")
 
     class Config:
         arbitrary_types_allowed = True
@@ -32,6 +41,16 @@ class Reconstruction(BaseModel):
             "SquareInstruction": SquareInstruction,
             "NoiseInstruction": NoiseInstruction,
         }
+
+    @staticmethod
+    def _get_generator_exporter_classes(instruction: Instruction) -> Tuple[type, type]:
+        class_map = {
+            TriangleInstruction: (TriangleGenerator, TriangleExporter),
+            SquareInstruction: (SquareGenerator, SquareExporter),
+            NoiseInstruction: (NoiseGenerator, NoiseExporter),
+        }
+
+        return class_map[type(instruction)]
 
     @staticmethod
     def _serialize_instructions(instructions: Dict[str, List[Instruction]]) -> Dict[str, List[Any]]:
@@ -95,7 +114,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState) -> "Reconstruction":
+    def from_results(cls, state: ReconstructionState, config: Config) -> "Reconstruction":
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         audio = np.sum(np.array(list(approximations.values())), axis=0)
 
@@ -108,6 +127,7 @@ class Reconstruction(BaseModel):
             approximations=approximations,
             instructions=state.instructions,
             total_error=state.total_error,
+            config=config,
         )
 
     @property
@@ -181,3 +201,16 @@ class Reconstruction(BaseModel):
             instructions=reconstructed_instructions,
             total_error=metadata["total_error"],
         )
+
+    def export_instructions(self, as_string: bool = True) -> Dict[str, Dict[FeatureKey, str]]:
+        features = {}
+        for name, instructions in self.instructions.items():
+            if not instructions:
+                continue
+
+            generator_class, exporter_class = self._get_generator_exporter_classes(instructions[0])
+            generator = generator_class(name, self.config)
+            exporter = exporter_class(generator)
+            features[name] = exporter(instructions, as_string=as_string)
+
+        return features

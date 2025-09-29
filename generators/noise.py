@@ -3,13 +3,9 @@ from typing import List, Optional
 import numpy as np
 
 from config import Config
-from constants import APU_CLOCK, MAX_VOLUME, VOLUME_RANGE
+from constants import APU_CLOCK, MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS, VOLUME_RANGE
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
-
-NOISE_PERIODS = [4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068]
-
-MIXER_NOISE = 0.5804935370152762
 
 
 class NoiseGenerator(Generator):
@@ -24,6 +20,7 @@ class NoiseGenerator(Generator):
         initial_phase: Optional[int] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
+        self.validate_initials(initial_phase, initial_clock)
         output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not noise_instruction.on or noise_instruction.period is None:
@@ -86,7 +83,7 @@ class NoiseGenerator(Generator):
         for volume in VOLUME_RANGE:
             if volume == 0:
                 continue
-            for mode in [False]:
+            for mode in [False, True]:
                 for period in range(len(NOISE_PERIODS)):
                     noise_instructions.append(
                         NoiseInstruction(
@@ -98,3 +95,12 @@ class NoiseGenerator(Generator):
                     )
 
         return noise_instructions
+
+    def validate_initials(self, initial_phase: Optional[int], initial_clock: Optional[float]) -> None:
+        if initial_phase is not None:
+            if not isinstance(initial_phase, int) or (initial_phase < 1 or initial_phase > 0x7FFF):
+                raise ValueError("Initial phase for NoiseGenerator must be between 1 and 0x7FFF")
+
+        if initial_clock is not None:
+            if not isinstance(initial_clock, float) or (initial_clock < 0.0 or initial_clock > 1.0):
+                raise ValueError("Initial clock for NoiseGenerator must be between 0.0 and 1.0")

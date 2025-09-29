@@ -1,11 +1,11 @@
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 import numpy as np
 from tqdm.auto import tqdm
 
 from audioio import get_audio_fragments
 from config import Config
-from generators.noise import NoiseGenerator
+from generators.noise import Generator, NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
@@ -27,8 +27,8 @@ class Reconstructor:
         else:
             generators = list(GENERATORS.keys())
 
-        self.config = config
-        self.generators = {name: GENERATORS[name](name, config) for name in generators}
+        self.config: Config = config
+        self.generators: Dict[str, Generator] = {name: GENERATORS[name](name, config) for name in generators}
         self.state: Optional[ReconstructionState] = None
 
     def __call__(self, audio: np.ndarray, mode: Literal["single-pass", "multi-pass"] = "multi-pass") -> Reconstruction:
@@ -43,7 +43,7 @@ class Reconstructor:
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
-        return Reconstruction.from_results(self.state)
+        return Reconstruction.from_results(self.state, self.config)
 
     def create_initial_state(self, fragments: np.ndarray) -> ReconstructionState:
         return ReconstructionState(

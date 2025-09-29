@@ -21,13 +21,15 @@ class Loss:
     def __call__(
         self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState, parts: int = 1
     ) -> float:
-        if self.fft_size is None or self.fragment_length is None:
-            raise ValueError("Fragment length and FFT size must be set before calling the loss function.")
-
+        self.validate_parameters()
         spectral_loss = self.spectral_loss(audio, approximation, state, parts=parts)
         temporal_loss = root_mean_squared_error(audio, approximation)
 
         return self.combine_losses(spectral_loss, temporal_loss)
+
+    def validate_parameters(self) -> None:
+        if self.fft_size is None or self.fragment_length is None:
+            raise ValueError("Fragment length and FFT size must be set before calling the loss function.")
 
     def set_fragment_length(self, length: int) -> None:
         min_fft_size = self.config.min_fft_size
@@ -68,6 +70,7 @@ class Loss:
         self, audio: np.ndarray, data: Union[np.ndarray, List[np.ndarray]], fragment_id: int, parts: int = 1
     ) -> np.ndarray:
         current_length = len(audio)
+        self.validate_parameters()
         assert (
             current_length == self.fragment_length * parts
         ), f"Audio length {current_length} does not match expected {self.fragment_length * parts}"

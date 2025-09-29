@@ -2,11 +2,9 @@ from typing import List, Optional
 
 import numpy as np
 
+from constants import MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
-
-MIXER_TRIANGLE = 1.0
-TRIANGLE_OFFSET = 0.5
 
 
 class TriangleGenerator(Generator):
@@ -16,6 +14,7 @@ class TriangleGenerator(Generator):
         initial_phase: Optional[float] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
+        self.validate_initials(initial_phase, initial_clock)
         output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not triangle_instruction.on or triangle_instruction.pitch is None:
@@ -47,3 +46,11 @@ class TriangleGenerator(Generator):
             )
 
         return triangle_instructions
+
+    def validate_initials(self, initial_phase: Optional[int], initial_clock: Optional[float]) -> None:
+        if initial_phase is not None:
+            if not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0):
+                raise ValueError("Initial phase for TriangleGenerator must be between 0.0 and 1.0")
+
+        if initial_clock is not None:
+            raise ValueError("Initial clock for TriangleGenerator must be None")

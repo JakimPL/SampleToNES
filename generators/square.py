@@ -2,12 +2,9 @@ from typing import List, Optional
 
 import numpy as np
 
-from constants import MAX_VOLUME, VOLUME_RANGE
+from constants import DUTY_CYCLES, MAX_VOLUME, MIXER_SQUARE, VOLUME_RANGE
 from generators.generator import Generator
 from instructions.square import SquareInstruction
-
-DUTY_CYCLES = [0.125, 0.25, 0.5, 0.75]
-MIXER_SQUARE = 0.8836662749706228
 
 
 class SquareGenerator(Generator):
@@ -17,6 +14,7 @@ class SquareGenerator(Generator):
         initial_phase: Optional[float] = None,
         initial_clock: Optional[float] = None,
     ) -> np.ndarray:
+        self.validate_initials(initial_phase, initial_clock)
         output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not square_instruction.on or square_instruction.pitch is None:
@@ -51,3 +49,11 @@ class SquareGenerator(Generator):
                     )
 
         return square_instructions
+
+    def validate_initials(self, initial_phase: Optional[int], initial_clock: Optional[float]) -> None:
+        if initial_phase is not None:
+            if not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0):
+                raise ValueError("Initial phase for SquareGenerator must be between 0.0 and 1.0")
+
+        if initial_clock is not None:
+            raise ValueError("Initial clock for SquareGenerator must be None")
