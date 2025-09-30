@@ -8,9 +8,6 @@ from instructions.noise import NoiseInstruction
 
 
 class NoiseExporter(Exporter):
-    def get_period(self, instruction: NoiseInstruction) -> int:
-        return MAX_PERIOD - instruction.period
-
     def extract_data(self, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
 
@@ -25,23 +22,27 @@ class NoiseExporter(Exporter):
         for instruction in instructions:
             if instruction.on and instruction.period is not None:
                 if initial_period is None:
-                    initial_period = self.get_period(instruction)
+                    initial_period = instruction.period
                     period = initial_period
-                    periods.append(period)
 
-                period = self.get_period(instruction)
+                period = instruction.period
                 volume = instruction.volume
                 duty_cycle = instruction.mode
+            else:
+                volume = 0
 
             periods.append(period)
             volumes.append(volume)
             duty_cycles.append(duty_cycle)
 
+        if volume > 0:
+            volumes.append(0)
+
         return initial_period, periods, volumes, duty_cycles
 
     def get_features(self, instructions: List[NoiseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
-        arpeggio = np.diff(np.array(periods)) % 16
+        arpeggio = (np.array(periods) - initial_period) % 16
 
         return {
             "initial_pitch": initial_period,

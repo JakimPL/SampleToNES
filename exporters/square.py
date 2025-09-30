@@ -30,10 +30,15 @@ class SquareExporter(Exporter):
                 timer_value = self.pitch_to_timer(instruction.pitch)
                 volume = instruction.volume
                 duty_cycle = instruction.duty_cycle
+            else:
+                volume = 0
 
             pitches.append(timer_value)
             volumes.append(volume)
             duty_cycles.append(duty_cycle)
+
+        if volume > 0:
+            volumes.append(0)
 
         return initial_pitch, pitches, volumes, duty_cycles
 

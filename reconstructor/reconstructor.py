@@ -52,7 +52,7 @@ class Reconstructor:
             instructions={name: [] for name in self.generators},
             approximations={name: [] for name in self.generators},
             partial_approximations={name: [] for name in self.generators},
-            current_phases={name: 0.0 for name in self.generators},
+            current_phases={name: self.generators[name].phase for name in self.generators},
             current_clocks={name: self.generators[name].clock for name in self.generators},
             total_error=0.0,
         )

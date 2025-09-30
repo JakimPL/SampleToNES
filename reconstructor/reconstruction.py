@@ -1,19 +1,16 @@
 import base64
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 from pydantic import BaseModel, Field
 
 from config import Config
-from exporters.exporter import FeatureKey
+from exporters.exporter import FeatureKey, FeatureValue
 from exporters.noise import NoiseExporter
 from exporters.square import SquareExporter
 from exporters.triangle import TriangleExporter
-from generators.noise import NoiseGenerator
-from generators.square import SquareGenerator
-from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.square import SquareInstruction
@@ -43,11 +40,11 @@ class Reconstruction(BaseModel):
         }
 
     @staticmethod
-    def _get_generator_exporter_classes(instruction: Instruction) -> Tuple[type, type]:
+    def _get_generator_exporter_classes(instruction: Instruction) -> Dict[type, type]:
         class_map = {
-            TriangleInstruction: (TriangleGenerator, TriangleExporter),
-            SquareInstruction: (SquareGenerator, SquareExporter),
-            NoiseInstruction: (NoiseGenerator, NoiseExporter),
+            TriangleInstruction: TriangleExporter,
+            SquareInstruction: SquareExporter,
+            NoiseInstruction: NoiseExporter,
         }
 
         return class_map[type(instruction)]
@@ -202,15 +199,14 @@ class Reconstruction(BaseModel):
             total_error=metadata["total_error"],
         )
 
-    def export_instructions(self, as_string: bool = True) -> Dict[str, Dict[FeatureKey, str]]:
+    def export_instructions(self, as_string: bool = True) -> Dict[str, Dict[FeatureKey, Union[str, FeatureValue]]]:
         features = {}
         for name, instructions in self.instructions.items():
             if not instructions:
                 continue
 
-            generator_class, exporter_class = self._get_generator_exporter_classes(instructions[0])
-            generator = generator_class(name, self.config)
-            exporter = exporter_class(generator)
+            exporter_class = self._get_generator_exporter_classes(instructions[0])
+            exporter = exporter_class()
             features[name] = exporter(instructions, as_string=as_string)
 
         return features

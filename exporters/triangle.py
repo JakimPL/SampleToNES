@@ -8,21 +8,18 @@ from instructions.triangle import TriangleInstruction
 
 
 class TriangleExporter(Exporter):
-    def get_volume(self, instruction: TriangleInstruction) -> int:
-        return MAX_VOLUME if instruction.on else 0
-
     def extract_data(self, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
         initial_pitch = None
         initial_timer = None
 
         timer_value = 0
+        volume = 0
 
         pitches = []
         volumes = []
 
         for instruction in instructions:
-            volume = self.get_volume(instruction)
-            if instruction.pitch is not None:
+            if instruction.on and instruction.pitch is not None:
                 if initial_timer is None:
                     initial_pitch = instruction.pitch
                     initial_timer = self.pitch_to_timer(initial_pitch)
@@ -30,9 +27,15 @@ class TriangleExporter(Exporter):
                     pitches.append(timer_value)
 
                 timer_value = self.pitch_to_timer(instruction.pitch)
+                volume = MAX_VOLUME
+            else:
+                volume = 0
 
             pitches.append(timer_value)
             volumes.append(volume)
+
+        if volume > 0:
+            volumes.append(0)
 
         return initial_pitch, pitches, volumes
 

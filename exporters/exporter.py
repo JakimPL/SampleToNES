@@ -2,6 +2,7 @@ from typing import Dict, List, Literal, Union
 
 import numpy as np
 
+from frequencies import pitch_to_frequency
 from generators.generator import Generator
 from instructions.instruction import Instruction
 from timer import Timer
@@ -11,10 +12,9 @@ FeatureValue = Union[int, np.ndarray]
 
 
 class Exporter:
-    def __init__(self, generator: Generator):
-        self.generator = generator
-
-    def __call__(self, instructions: List[Instruction], as_string: bool = True) -> Dict[FeatureKey, str]:
+    def __call__(
+        self, instructions: List[Instruction], as_string: bool = True
+    ) -> Dict[FeatureKey, Union[str, FeatureValue]]:
         features = self.get_features(instructions)
         if as_string:
             return {
@@ -28,5 +28,5 @@ class Exporter:
         raise NotImplementedError("Subclasses must implement this method")
 
     def pitch_to_timer(self, pitch: int) -> int:
-        frequency = self.generator.frequency_table[pitch]
+        frequency = pitch_to_frequency(pitch)
         return Timer.frequency_to_timer(frequency)
