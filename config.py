@@ -10,8 +10,10 @@ class Config(BaseModel):
     a4_pitch: int = Field(..., ge=0, le=127)
     min_pitch: int = Field(..., ge=0, le=127)
     max_pitch: int = Field(..., ge=0, le=127)
-    loss_alpha: float = Field(..., ge=0.0, le=1.0)
     min_fft_size: int = Field(..., ge=256)
+    spectral_loss_weight: float = Field(..., ge=0.0, le=1.0)
+    temporal_loss_weight: float = Field(..., ge=0.0, le=1.0)
+    continuity_loss_weight: float = Field(..., ge=0.0, le=1.0)
 
     class Config:
         frozen = True

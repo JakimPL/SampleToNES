@@ -30,3 +30,7 @@ def get_frequency_table(
         frequencies[note] = timer.frequency
 
     return frequencies
+
+
+MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)
+MAX_AVAILABLE_FREQUENCY = pitch_to_frequency(MAX_PITCH)

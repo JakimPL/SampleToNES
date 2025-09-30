@@ -60,7 +60,7 @@ class Generator:
         errors = []
         for instruction in self.get_possible_instructions():
             approximation = self(instruction, initial_phase=initial_phase, initial_clock=initial_clock)
-            error = self.criterion(audio, approximation, state)
+            error = self.criterion(audio, approximation, state, instruction, self.previous_instruction)
             instructions.append(instruction)
             errors.append(error)
 

@@ -1,5 +1,4 @@
-from os import name
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import scipy.fft
@@ -8,6 +7,7 @@ from sklearn.metrics import root_mean_squared_error
 
 from config import Config
 from constants import MAX_FREQUENCY, MIN_FREQUENCY
+from instructions.instruction import Instruction
 from reconstructor.state import ReconstructionState
 
 
@@ -18,14 +18,26 @@ class Loss:
         self.fragment_length: Optional[int] = None
         self.fft_size: Optional[int] = None
 
+        alpha, beta, gamma = self.get_loss_weights()
+        self.alpha: float = alpha
+        self.beta: float = beta
+        self.gamma: float = gamma
+
     def __call__(
-        self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState, parts: int = 1
+        self,
+        audio: np.ndarray,
+        approximation: np.ndarray,
+        state: ReconstructionState,
+        instruction: Instruction,
+        previous_instruction: Optional[Instruction] = None,
+        parts: int = 1,
     ) -> float:
         self.validate_parameters()
         spectral_loss = self.spectral_loss(audio, approximation, state, parts=parts)
         temporal_loss = root_mean_squared_error(audio, approximation)
+        continuity_loss = self.continuity_loss(instruction, previous_instruction)
 
-        return self.combine_losses(spectral_loss, temporal_loss)
+        return self.combine_losses(spectral_loss, temporal_loss, continuity_loss)
 
     def validate_parameters(self) -> None:
         if self.fft_size is None or self.fragment_length is None:
@@ -35,6 +47,9 @@ class Loss:
         min_fft_size = self.config.min_fft_size
         self.fragment_length = length
         self.fft_size = max(min_fft_size, 1 << (length - 1).bit_length())
+
+    def continuity_loss(self, instruction: Instruction, previous_instruction: Optional[Instruction]) -> float:
+        return 0.0 if previous_instruction is None else instruction.distance(previous_instruction)
 
     def spectral_loss(
         self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState, parts: int = 1
@@ -115,7 +130,16 @@ class Loss:
         a_weight = numerator / denominator
         return a_weight / np.max(a_weight)
 
-    def combine_losses(self, spectral_loss: float, temporal_loss: float) -> float:
+    def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:
         # print(f"Spectral Loss: {spectral_loss}, Temporal Loss: {temporal_loss}")
-        alpha = self.config.loss_alpha
-        return alpha * spectral_loss + (1 - alpha) * temporal_loss
+        return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
+
+    def get_loss_weights(self) -> Tuple[float, float, float]:
+        alpha = self.config.spectral_loss_weight
+        beta = self.config.temporal_loss_weight
+        gamma = self.config.continuity_loss_weight
+        total = alpha + beta + gamma
+        if total == 0:
+            raise ValueError("At least one of the loss weights must be greater than zero.")
+
+        return alpha / total, beta / total, gamma / total
