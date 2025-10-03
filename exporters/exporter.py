@@ -5,7 +5,7 @@ import numpy as np
 from frequencies import pitch_to_frequency
 from generators.generator import Generator
 from instructions.instruction import Instruction
-from timer import Timer
+from timers.phase import PhaseTimer
 
 FeatureKey = Literal["initial_pitch", "volume", "arpeggio", "pitch", "hi_pitch", "duty_cycle"]
 FeatureValue = Union[int, np.ndarray]
@@ -29,4 +29,4 @@ class Exporter:
 
     def pitch_to_timer(self, pitch: int) -> int:
         frequency = pitch_to_frequency(pitch)
-        return Timer.frequency_to_timer(frequency)
+        return PhaseTimer.frequency_to_timer(frequency)

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -7,41 +7,48 @@ from frequencies import get_frequency_table
 from generators.criterion import Loss
 from instructions.instruction import Instruction
 from reconstructor.state import ReconstructionState
-from timer import Timer
+from timers.timer import Timer
 
 
 class Generator:
     def __init__(self, name: str, config: Config) -> None:
         self.config: Config = config
         self.criterion: Loss = Loss(name, config)
-        self.timer: Timer = Timer(sample_rate=config.sample_rate)
-        self.frequency_table: Dict[int, float] = get_frequency_table(
-            a4_frequency=config.a4_frequency,
-            a4_pitch=config.a4_pitch,
-            min_pitch=config.min_pitch,
-            max_pitch=config.max_pitch,
-        )
+        self.frequency_table: Dict[int, float] = get_frequency_table(config)
 
         self.name: str = name
         self.clock: Optional[float] = None
         self.previous_instruction: Optional[Instruction] = None
+        self.timer: Timer
 
     def __call__(
         self,
         instruction: Instruction,
-        initial_phase: Optional[Union[float, int]] = None,
-        initial_clock: Optional[float] = None,
+        initials: Optional[Tuple[Any, ...]] = None,
+        length: Optional[int] = None,
+        direction: bool = True,
+        save: bool = False,
     ) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:
         self.previous_instruction = None
-        self.timer.phase = 0.0
-        self.timer.clock = 0.0
+        self.timer.reset()
+
+    def validate(self, *initials: Any) -> None:
+        self.timer.validate(*initials)
 
     @property
-    def phase(self) -> float:
-        return self.timer.phase
+    def initials(self) -> Tuple[Any, ...]:
+        return self.timer.initials
+
+    @property
+    def phase(self) -> Union[float, int]:
+        return self.timer.get()
+
+    @phase.setter
+    def phase(self, value: Union[float, int]) -> None:
+        self.timer.set(value)
 
     def get_frequency(self, pitch: int) -> Optional[float]:
         return self.frequency_table.get(pitch, None)

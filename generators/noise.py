@@ -1,74 +1,60 @@
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
 from config import Config
-from constants import APU_CLOCK, MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS, VOLUME_RANGE
+from constants import APU_CLOCK, MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
+from timers.lfsr import LFSRTimer
 
 
 class NoiseGenerator(Generator):
     def __init__(self, name: str, config: Config) -> None:
         super().__init__(name, config)
-        self.timer.phase = 1
-        self.clock = 0.0
+        self.timer = LFSRTimer(sample_rate=config.sample_rate, reset_phase=config.reset_phase)
 
     def __call__(
         self,
         noise_instruction: NoiseInstruction,
-        initial_phase: Optional[int] = None,
-        initial_clock: Optional[float] = None,
+        initials: Optional[Tuple[Any, ...]] = None,
+        length: Optional[int] = None,
+        direction: bool = True,
+        save: bool = False,
     ) -> np.ndarray:
-        self.validate_initials(initial_phase, initial_clock)
+        initial_lfsr, initial_clock = initials if initials is not None else (None, None)
+        self.validate(initial_lfsr, initial_clock)
         output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not noise_instruction.on or noise_instruction.period is None:
             return output
-
-        apu_period = NOISE_PERIODS[noise_instruction.period]
-        lfsr_clock_hz = APU_CLOCK / float(apu_period)
-        clocks_per_sample = 2.0 * lfsr_clock_hz / float(self.config.sample_rate)
-        vol_scale = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
 
         if (
             self.previous_instruction
             and self.previous_instruction.on
             and self.previous_instruction.period != noise_instruction.period
         ):
-            lfsr = 1
-            self.clock = 0.0
+            self.timer.reset()
+            initial_lfsr = None
+            initial_clock = None
+
+        self.timer.mode = noise_instruction.mode
+        self.timer.period = noise_instruction.period
+        volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+
+        output = volume * self.timer(
+            self.frame_length if length is None else length,
+            direction=direction,
+            initial_lfsr=initial_lfsr,
+            initial_clock=initial_clock,
+        )
+
+        if not save:
+            self.timer.set(initials)
         else:
-            lfsr = int(initial_phase) if initial_phase is not None else 1
-            self.clock = 0.0 if initial_clock is None else initial_clock
-
-        previous_bits = [lfsr & 1]
-        for i in range(self.frame_length):
-            if previous_bits:
-                sample_value = 2.0 * np.mean(previous_bits) - 1.0
-                sample_val = sample_value * vol_scale
-                output[i] = sample_val
-                previous_bits = []
-            else:
-                output[i] = vol_scale if lfsr & 1 else -vol_scale
-
-            self.clock += clocks_per_sample
-            while self.clock >= 1.0:
-                self.clock -= 1.0
-                lfsr = self._clock_lfsr(lfsr, noise_instruction.mode)
-                previous_bits.append(lfsr & 1)
-
-        self.timer.phase = lfsr
+            self.previous_instruction = noise_instruction
 
         return output * MIXER_NOISE
-
-    def _clock_lfsr(self, lfsr: int, short_mode: bool) -> int:
-        bit0 = lfsr & 1
-        bitX = (lfsr >> (6 if short_mode else 1)) & 1
-        feedback = bit0 ^ bitX
-        lfsr = (lfsr >> 1) | (feedback << 14)
-        lfsr &= 0x7FFF
-        return lfsr
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
         noise_instructions = [
@@ -80,11 +66,9 @@ class NoiseGenerator(Generator):
             )
         ]
 
-        for volume in VOLUME_RANGE:
-            if volume == 0:
-                continue
-            for mode in [False, True]:
-                for period in range(len(NOISE_PERIODS)):
+        for period in range(len(NOISE_PERIODS)):
+            for volume in range(1, MAX_VOLUME + 1):
+                for mode in [False, True]:
                     noise_instructions.append(
                         NoiseInstruction(
                             on=True,
@@ -95,12 +79,3 @@ class NoiseGenerator(Generator):
                     )
 
         return noise_instructions
-
-    def validate_initials(self, initial_phase: Optional[int], initial_clock: Optional[float]) -> None:
-        if initial_phase is not None:
-            if not isinstance(initial_phase, int) or (initial_phase < 1 or initial_phase > 0x7FFF):
-                raise ValueError("Initial phase for NoiseGenerator must be between 1 and 0x7FFF")
-
-        if initial_clock is not None:
-            if not isinstance(initial_clock, float) or (initial_clock < 0.0 or initial_clock > 1.0):
-                raise ValueError("Initial clock for NoiseGenerator must be between 0.0 and 1.0")

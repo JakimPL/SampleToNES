@@ -9,10 +9,11 @@ from config import Config
 from constants import MAX_FREQUENCY, MIN_FREQUENCY
 from instructions.instruction import Instruction
 from reconstructor.state import ReconstructionState
+from utils import next_power_of_two
 
 
 class Loss:
-    def __init__(self, generator_name: str, config: Config):
+    def __init__(self, generator_name: str, config: Config) -> None:
         self.generator_name: str = generator_name
         self.config: Config = config
         self.fragment_length: Optional[int] = None
@@ -46,16 +47,25 @@ class Loss:
     def set_fragment_length(self, length: int) -> None:
         min_fft_size = self.config.min_fft_size
         self.fragment_length = length
-        self.fft_size = max(min_fft_size, 1 << (length - 1).bit_length())
+        self.fft_size = max(min_fft_size, next_power_of_two(length))
 
     def continuity_loss(self, instruction: Instruction, previous_instruction: Optional[Instruction]) -> float:
         return 0.0 if previous_instruction is None else instruction.distance(previous_instruction)
 
     def spectral_loss(
-        self, audio: np.ndarray, approximation: np.ndarray, state: ReconstructionState, parts: int = 1
+        self,
+        audio: np.ndarray,
+        approximation: np.ndarray,
+        state: ReconstructionState,
+        parts: int = 1,
     ) -> float:
         fragment_padded = self.pad(audio, state.fragments, state.fragment_id, parts)
-        approx_padded = self.pad(approximation, state.approximations[self.generator_name], state.fragment_id, parts)
+        approx_padded = self.pad(
+            approximation,
+            state.approximations[self.generator_name],
+            state.fragment_id,
+            parts,
+        )
 
         window = get_window("hann", len(fragment_padded))
         fragment_windowed = fragment_padded * window
@@ -82,7 +92,11 @@ class Loss:
         return np.average(squared_errors, weights=weights)
 
     def pad(
-        self, audio: np.ndarray, data: Union[np.ndarray, List[np.ndarray]], fragment_id: int, parts: int = 1
+        self,
+        audio: np.ndarray,
+        data: Union[np.ndarray, List[np.ndarray]],
+        fragment_id: int,
+        parts: int = 1,
     ) -> np.ndarray:
         current_length = len(audio)
         self.validate_parameters()

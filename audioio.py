@@ -63,11 +63,20 @@ def quantize_audio(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.n
     return audio
 
 
-def load_audio(path: Union[str, Path], target_sample_rate=SAMPLE_RATE, quantize: bool = True) -> np.ndarray:
+def load_audio(
+    path: Union[str, Path],
+    target_sample_rate: int = SAMPLE_RATE,
+    normalize: bool = True,
+    quantize: bool = True,
+) -> np.ndarray:
     audio, sample_rate = read_wav_file(path)
     audio = stereo_to_mono(audio)
-    audio = normalize_audio(audio)
+
+    if normalize:
+        audio = normalize_audio(audio)
+
     audio = resample(audio, original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
+
     if quantize:
         audio = quantize_audio(audio, levels=QUANTIZATION_LEVELS)
 

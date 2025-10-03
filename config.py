@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
 
-from constants import MAX_RATE, MIN_RATE
+from constants import MAX_RATE, MIN_RATE, RESET_PHASE
 
 
 class Config(BaseModel):
-    change_rate: float = Field(..., ge=MIN_RATE, le=MAX_RATE)
+    change_rate: int = Field(..., ge=MIN_RATE, le=MAX_RATE)
     sample_rate: int = Field(..., ge=1)
     a4_frequency: float = Field(..., gt=20.0, lt=20000.0)
     a4_pitch: int = Field(..., ge=0, le=127)
@@ -14,6 +14,7 @@ class Config(BaseModel):
     spectral_loss_weight: float = Field(..., ge=0.0, le=1.0)
     temporal_loss_weight: float = Field(..., ge=0.0, le=1.0)
     continuity_loss_weight: float = Field(..., ge=0.0, le=1.0)
+    reset_phase: bool = Field(default=RESET_PHASE)
 
     class Config:
         frozen = True

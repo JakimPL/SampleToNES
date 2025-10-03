@@ -1,31 +1,47 @@
-from typing import List, Optional
+from typing import Any, List, Optional, Tuple
 
 import numpy as np
 
+from config import Config
 from constants import MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
+from timers.phase import PhaseTimer
 
 
 class TriangleGenerator(Generator):
+    def __init__(self, name: str, config: Config) -> None:
+        super().__init__(name, config)
+        self.timer = PhaseTimer(sample_rate=config.sample_rate, phase_increment=0.5)
+
     def __call__(
         self,
         triangle_instruction: TriangleInstruction,
-        initial_phase: Optional[float] = None,
-        initial_clock: Optional[float] = None,
+        initials: Optional[Tuple[Any, ...]] = None,
+        length: Optional[int] = None,
+        direction: bool = True,
+        save: bool = False,
     ) -> np.ndarray:
-        self.validate_initials(initial_phase, initial_clock)
+        (initial_phase,) = initials if initials is not None else (None,)
+        self.validate(initial_phase)
         output = np.zeros(self.frame_length, dtype=np.float32)
 
         if not triangle_instruction.on or triangle_instruction.pitch is None:
             return output
 
         if initial_phase is None or (self.previous_instruction is not None and not self.previous_instruction.on):
-            self.timer.phase = 0.0
+            self.timer.reset()
+            initial_phase = None
 
-        self.timer.frequency = self.get_frequency(triangle_instruction.pitch) / 2.0
-        output = self.timer(self.frame_length, initial_phase=initial_phase)
+        frame_length = self.frame_length if length is None else length
+        self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
+        output = self.timer(frame_length, direction=direction, initial_phase=initial_phase)
         output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
+
+        if not save:
+            self.timer.set(initials)
+        else:
+            self.previous_instruction = triangle_instruction
 
         return output * MIXER_TRIANGLE
 
@@ -46,11 +62,3 @@ class TriangleGenerator(Generator):
             )
 
         return triangle_instructions
-
-    def validate_initials(self, initial_phase: Optional[int], initial_clock: Optional[float]) -> None:
-        if initial_phase is not None:
-            if not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0):
-                raise ValueError("Initial phase for TriangleGenerator must be between 0.0 and 1.0")
-
-        if initial_clock is not None:
-            raise ValueError("Initial clock for TriangleGenerator must be None")
