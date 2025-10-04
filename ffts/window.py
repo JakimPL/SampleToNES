@@ -16,6 +16,8 @@ class Window:
 
     def __post_init__(self):
         size = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY)) if self.custom_size is None else self.custom_size
+        assert size >= self.frame_length, "Window size must be at least as large as frame length"
+
         left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
         object.__setattr__(self, "size", size)
         object.__setattr__(self, "left_offset", left_offset)

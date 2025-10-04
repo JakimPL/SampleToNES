@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from pydantic import BaseModel
@@ -11,8 +11,7 @@ class ReconstructionState(BaseModel):
     fragments: np.ndarray
     instructions: Dict[str, List[Instruction]]
     approximations: Dict[str, List[np.ndarray]] = {}
-    current_phases: Dict[str, Union[float, int]] = {}
-    current_clocks: Dict[str, Optional[float]] = ({},)
+    current_initials: Dict[str, Tuple[Optional[Any], ...]] = {}
     total_error: float = 0.0
 
     class Config:

@@ -81,7 +81,7 @@ class FFTLibraryGeneratorData(BaseModel):
         return self.log_arffts.values()
 
     @field_serializer("log_arffts")
-    def serialize_arrays(self, log_arffts: Dict[Instruction, np.ndarray], _info) -> Dict[Tuple, Dict[str, Any]]:
+    def serialize_arrays(self, log_arffts: Dict[Instruction, np.ndarray], _info) -> Dict[str, Dict[str, Any]]:
         encoded = {}
         for instruction, array in log_arffts.items():
             key = dump(instruction.model_dump())
@@ -219,7 +219,7 @@ class FFTLibrary(BaseModel):
         return str(path)
 
     @field_serializer("data")
-    def serialize_data(self, data: Dict[FFTLibraryKey, FFTLibraryData], _info):
+    def serialize_data(self, data: Dict[FFTLibraryKey, FFTLibraryData], _info) -> Dict[str, Any]:
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     class Config:

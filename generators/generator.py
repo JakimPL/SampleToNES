@@ -4,8 +4,8 @@ import numpy as np
 
 from config import Config
 from frequencies import get_frequency_table
-from generators.criterion import Loss
 from instructions.instruction import Instruction
+from reconstructor.criterion import Criterion
 from reconstructor.state import ReconstructionState
 from timers.timer import Timer
 
@@ -13,7 +13,6 @@ from timers.timer import Timer
 class Generator:
     def __init__(self, name: str, config: Config) -> None:
         self.config: Config = config
-        self.criterion: Loss = Loss(name, config)
         self.frequency_table: Dict[int, float] = get_frequency_table(config)
 
         self.name: str = name
@@ -52,14 +51,14 @@ class Generator:
         self,
         audio: np.ndarray,
         state: ReconstructionState,
-        initial_phase: Optional[float] = None,
-        initial_clock: Optional[float] = None,
+        criterion: Criterion,
+        initials: Optional[Tuple[Any, ...]] = None,
     ) -> Tuple[Instruction, float]:
         instructions = []
         errors = []
         for instruction in self.get_possible_instructions():
-            approximation = self(instruction, initial_phase=initial_phase, initial_clock=initial_clock)
-            error = self.criterion(audio, approximation, state, instruction, self.previous_instruction)
+            approximation = self(instruction, initials=initials)
+            error = criterion(audio, approximation, state, instruction, self.previous_instruction)
             instructions.append(instruction)
             errors.append(error)
 
@@ -72,14 +71,11 @@ class Generator:
         self,
         audio: np.ndarray,
         state: ReconstructionState,
-        initial_phase: Optional[float] = None,
-        initial_clock: Optional[float] = None,
+        criterion: Criterion,
+        initials: Optional[Tuple[Any, ...]] = None,
     ) -> Tuple[np.ndarray, Instruction, float]:
-        instruction, error = self.find_best_instruction(
-            audio, state, initial_phase=initial_phase, initial_clock=initial_clock
-        )
-        approximation = self(instruction, initial_phase=initial_phase, initial_clock=initial_clock)
-        self.previous_instruction = instruction
+        instruction, error = self.find_best_instruction(audio, state, criterion, initials=initials)
+        approximation = self(instruction, initials=initials, save=True)
         return approximation, instruction, error
 
     @property

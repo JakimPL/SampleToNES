@@ -9,6 +9,7 @@ from generators.noise import Generator, NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
+from reconstructor.criterion import Criterion
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 
@@ -30,16 +31,18 @@ class Reconstructor:
         self.config: Config = config
         self.generators: Dict[str, Generator] = {name: GENERATORS[name](name, config) for name in generators}
         self.state: Optional[ReconstructionState] = None
+        self.criterion: Criterion = Criterion(config)
 
-    def __call__(self, audio: np.ndarray, mode: Literal["single-pass", "multi-pass"] = "multi-pass") -> Reconstruction:
+    def __call__(
+        self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
+    ) -> Reconstruction:
         fragments, _ = get_audio_fragments(audio, config=self.config)
-        self.set_generators_fragment_length(fragments.shape[1])
         self.state = self.create_initial_state(fragments)
 
-        if mode == "single-pass":
-            self.single_pass(fragments)
-        elif mode == "multi-pass":
-            self.multi_pass(fragments)
+        if mode == "frame-wise":
+            self.frame_wise(fragments)
+        elif mode == "generator-wise":
+            self.generator_wise(fragments)
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
@@ -52,16 +55,11 @@ class Reconstructor:
             instructions={name: [] for name in self.generators},
             approximations={name: [] for name in self.generators},
             partial_approximations={name: [] for name in self.generators},
-            current_phases={name: self.generators[name].phase for name in self.generators},
-            current_clocks={name: self.generators[name].clock for name in self.generators},
+            current_initials={name: generator.initials for name, generator in self.generators.items()},
             total_error=0.0,
         )
 
-    def set_generators_fragment_length(self, length: int) -> None:
-        for generator in self.generators.values():
-            generator.criterion.set_fragment_length(length)
-
-    def single_pass(self, fragments: np.ndarray) -> None:
+    def frame_wise(self, fragments: np.ndarray) -> None:
         for name, generator in self.generators.items():
             generator.reset()
 
@@ -72,7 +70,7 @@ class Reconstructor:
                 self.find_best_fragment(name, fragment)
                 fragment -= self.state.approximations[name][-1]
 
-    def multi_pass(self, fragments: np.ndarray) -> None:
+    def generator_wise(self, fragments: np.ndarray) -> None:
         audio = np.concatenate(fragments)
         for name, generator in tqdm(self.generators.items()):
             generator.reset()
@@ -89,15 +87,13 @@ class Reconstructor:
         self.state.approximations[name].append(approximation)
         self.state.instructions[name].append(instruction)
         self.state.total_error += error
-        self.state.current_phases[name] = generator.phase
-        self.state.current_clocks[name] = generator.clock
+        self.state.current_initials[name] = generator.initials
 
     def find_best_fragment(self, name: str, audio: np.ndarray) -> None:
         generator = self.generators[name]
-        phase = self.state.current_phases[name]
-        clock = self.state.current_clocks[name]
+        initials = self.state.current_initials[name]
         approximation, instruction, error = generator.find_best_fragment_approximation(
-            audio, self.state, initial_phase=phase, initial_clock=clock
+            audio, self.state, self.criterion, initials=initials
         )
 
         self.update_state(name, approximation, instruction, error)
