@@ -3,7 +3,6 @@ from typing import Dict, List, Literal, Union
 import numpy as np
 
 from frequencies import pitch_to_frequency
-from generators.generator import Generator
 from instructions.instruction import Instruction
 from timers.phase import PhaseTimer
 

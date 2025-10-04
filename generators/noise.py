@@ -24,7 +24,8 @@ class NoiseGenerator(Generator):
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)
-        output = np.zeros(self.frame_length, dtype=np.float32)
+        frame_length = self.frame_length if length is None else length
+        output = np.zeros(frame_length, dtype=np.float32)
 
         if not noise_instruction.on or noise_instruction.period is None:
             return output
@@ -43,7 +44,7 @@ class NoiseGenerator(Generator):
         volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
 
         output = volume * self.timer(
-            self.frame_length if length is None else length,
+            frame_length,
             direction=direction,
             initial_lfsr=initial_lfsr,
             initial_clock=initial_clock,

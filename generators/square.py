@@ -11,7 +11,7 @@ from timers.phase import PhaseTimer
 class SquareGenerator(Generator):
     def __init__(self, name: str, config) -> None:
         super().__init__(name, config)
-        self.timer = PhaseTimer(sample_rate=config.sample_rate, phase_increment=0.5)
+        self.timer = PhaseTimer(sample_rate=config.sample_rate, phase_increment=1.0)
 
     def __call__(
         self,
@@ -23,7 +23,8 @@ class SquareGenerator(Generator):
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
-        output = np.zeros(self.frame_length, dtype=np.float32)
+        frame_length = self.frame_length if length is None else length
+        output = np.zeros(frame_length, dtype=np.float32)
 
         if not square_instruction.on or square_instruction.pitch is None:
             return output
@@ -41,7 +42,6 @@ class SquareGenerator(Generator):
         self.timer.frequency = self.get_frequency(square_instruction.pitch)
         duty_cycle = DUTY_CYCLES[square_instruction.duty_cycle]
 
-        frame_length = self.frame_length if length is None else length
         output = self.timer(frame_length, direction=direction, initial_phase=initial_phase)
         output = np.where(output < duty_cycle, 1.0, -1.0)
         output *= square_instruction.volume / MAX_VOLUME

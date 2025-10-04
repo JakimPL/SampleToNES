@@ -42,14 +42,6 @@ class Generator:
     def initials(self) -> Tuple[Any, ...]:
         return self.timer.initials
 
-    @property
-    def phase(self) -> Union[float, int]:
-        return self.timer.get()
-
-    @phase.setter
-    def phase(self, value: Union[float, int]) -> None:
-        self.timer.set(value)
-
     def get_frequency(self, pitch: int) -> Optional[float]:
         return self.frequency_table.get(pitch, None)
 

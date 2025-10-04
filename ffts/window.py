@@ -1,0 +1,76 @@
+from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
+
+from config import Config
+from constants import MIN_FREQUENCY
+from utils import pad
+
+
+@dataclass(frozen=True)
+class Window:
+    config: Config
+    on: bool = True
+    custom_size: Optional[int] = None
+
+    def __post_init__(self):
+        size = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY)) if self.custom_size is None else self.custom_size
+        left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
+        object.__setattr__(self, "size", size)
+        object.__setattr__(self, "left_offset", left_offset)
+
+        envelope = self.create_window() if self.on else np.ones(size)
+        object.__setattr__(self, "envelope", envelope)
+
+    def create_window(self) -> np.ndarray:
+        frame_length = self.frame_length
+
+        if frame_length < 0 or frame_length > self.size:
+            raise ValueError("Frame length must be in [0, total_length]")
+
+        if frame_length == self.size:
+            return np.ones(self.size, dtype=float)
+
+        alpha = 1.0 - (frame_length / float(self.size))
+        if alpha <= 0.0:
+            return np.ones(self.size, dtype=float)
+
+        tapered_total = self.size - frame_length
+        left_taper_length = tapered_total // 2
+        right_taper_length = tapered_total - left_taper_length
+
+        window = np.zeros(self.size, dtype=float)
+
+        if left_taper_length > 0:
+            idx_left = np.arange(left_taper_length)
+            window[idx_left] = 0.5 * (1.0 + np.cos(np.pi * (1.0 - (idx_left + 1) / float(left_taper_length))))
+
+        center_start = left_taper_length
+        center_end = center_start + frame_length
+        window[center_start:center_end] = 1.0
+
+        if right_taper_length > 0:
+            idx_right = np.arange(right_taper_length)
+            window[center_end + idx_right] = 0.5 * (1.0 + np.cos(np.pi * ((idx_right + 1) / float(right_taper_length))))
+
+        return window
+
+    def get_windowed_frame(self, audio: np.ndarray, frame_id: int, apply_window: bool = True) -> np.ndarray:
+        offset = self.frame_length * frame_id
+        left = self.left_offset + offset
+        right = left + self.size
+        fragment = pad(audio, left, right)
+
+        if apply_window:
+            fragment *= self.envelope
+
+        return fragment
+
+    @property
+    def frame_length(self) -> int:
+        return self.config.frame_length
+
+    @property
+    def sample_rate(self) -> int:
+        return self.config.sample_rate

@@ -46,6 +46,7 @@ class LFSRTimer(Timer):
 
         self.lfsr: int = 1
         self.clock: float = 0.0
+        self.previous_bits: List[int] = [1]
 
         self.sample_rate: int = sample_rate
         self.reset_phase: bool = reset_phase
@@ -65,28 +66,28 @@ class LFSRTimer(Timer):
         if initial_clock is not None:
             self.clock = initial_clock
 
-        previous_bits = [self.lfsr & 1]
+        self.previous_bits = [self.lfsr & 1]
         lfsr_direction = LFSRDirection.create(self, length, direction)
         for i in lfsr_direction.frame_range:
-            frame[i] = self.step(lfsr_direction, previous_bits)
+            frame[i] = self.step(lfsr_direction)
 
         return frame
 
-    def step(self, lfsr_direction: LFSRDirection, previous_bits: List[int]) -> float:
-        if previous_bits:
-            value = 2.0 * np.mean(previous_bits) - 1.0
-            previous_bits = []
+    def step(self, lfsr_direction: LFSRDirection) -> float:
+        if self.previous_bits:
+            value = 2.0 * np.mean(self.previous_bits) - 1.0
+            self.previous_bits = []
         else:
-            value = self.lfsr & 1
+            value = 2.0 * (self.lfsr & 1) - 1.0
 
         self.clock += lfsr_direction.delta
 
         while lfsr_direction.comparison(self.clock):
             self.clock += lfsr_direction.adjustment
             self.lfsr = lfsr_direction.function(self.lfsr, self.mode)
-            previous_bits.append(self.lfsr & 1)
+            self.previous_bits.append(self.lfsr & 1)
 
-        return float(value)
+        return value
 
     @property
     def initials(self) -> Tuple[Any, ...]:

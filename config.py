@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field
 
-from constants import MAX_RATE, MIN_RATE, RESET_PHASE
+from constants import MAX_CHANGE_RATE, MIN_CHANGE_RATE, RESET_PHASE
 
 
 class Config(BaseModel):
-    change_rate: int = Field(..., ge=MIN_RATE, le=MAX_RATE)
+    change_rate: int = Field(..., ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
     sample_rate: int = Field(..., ge=1)
     a4_frequency: float = Field(..., gt=20.0, lt=20000.0)
     a4_pitch: int = Field(..., ge=0, le=127)

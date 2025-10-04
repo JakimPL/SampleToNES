@@ -24,7 +24,8 @@ class TriangleGenerator(Generator):
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
-        output = np.zeros(self.frame_length, dtype=np.float32)
+        frame_length = self.frame_length if length is None else length
+        output = np.zeros(frame_length, dtype=np.float32)
 
         if not triangle_instruction.on or triangle_instruction.pitch is None:
             return output
@@ -33,7 +34,6 @@ class TriangleGenerator(Generator):
             self.timer.reset()
             initial_phase = None
 
-        frame_length = self.frame_length if length is None else length
         self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
         output = self.timer(frame_length, direction=direction, initial_phase=initial_phase)
         output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5

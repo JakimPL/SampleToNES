@@ -2,7 +2,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from constants import MAX_PERIOD
 from exporters.exporter import Exporter, FeatureKey, FeatureValue
 from instructions.noise import NoiseInstruction
 
