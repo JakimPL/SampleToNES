@@ -1,3 +1,6 @@
+import json
+from typing import Any, Dict
+
 import numpy as np
 
 
@@ -20,3 +23,15 @@ def pad(audio: np.ndarray, left: int, right: int) -> np.ndarray:
         output[insert_left:insert_right] = audio[valid_left:valid_right]
 
     return output
+
+
+def dump(dictionary: Dict[str, Any]) -> str:
+    return json.dumps(dictionary, separators=(",", ":"))
+
+
+def first_key_for_value(dictionary: dict, target: Any) -> Any:
+    for key, value in dictionary.items():
+        if value == target:
+            return key
+
+    return None

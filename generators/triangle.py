@@ -62,3 +62,7 @@ class TriangleGenerator(Generator):
             )
 
         return triangle_instructions
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return TriangleInstruction

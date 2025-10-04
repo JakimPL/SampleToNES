@@ -64,3 +64,7 @@ class SquareGenerator(Generator):
                     )
 
         return square_instructions
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return SquareInstruction

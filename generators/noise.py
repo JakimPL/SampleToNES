@@ -80,3 +80,7 @@ class NoiseGenerator(Generator):
                     )
 
         return noise_instructions
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return NoiseInstruction

@@ -85,3 +85,7 @@ class Generator:
     @property
     def frame_length(self) -> int:
         return self.config.frame_length
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        raise NotImplementedError("Subclasses must implement this method")

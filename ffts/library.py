@@ -1,12 +1,13 @@
+import base64
 import hashlib
 import json
 from pathlib import Path
-from typing import Dict, Literal, Tuple
+from typing import Any, Dict, Literal, Tuple, Union
 
-import h5py
+import msgpack
 import numpy as np
 from flask import json
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 from tqdm.auto import tqdm
 
 from config import Config as Config
@@ -18,6 +19,7 @@ from generators.noise import NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
+from utils import dump
 
 GENERATORS = {
     "SquareGenerator": SquareGenerator,
@@ -44,7 +46,7 @@ class FFTLibraryKey(BaseModel):
             "min_pitch": config.min_pitch,
             "max_pitch": config.max_pitch,
         }
-        json_string = json.dumps(config_fields, separators=(",", ":"))
+        json_string = dump(config_fields)
         config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()
         return cls(
             sample_rate=config.sample_rate,
@@ -52,6 +54,11 @@ class FFTLibraryKey(BaseModel):
             window_size=window.size,
             config_hash=config_hash,
         )
+
+    @classmethod
+    def deserialize(cls, string: str) -> "FFTLibraryKey":
+        dictionary = json.loads(string)
+        return cls(**dictionary)
 
     class Config:
         frozen = True
@@ -73,6 +80,36 @@ class FFTLibraryGeneratorData(BaseModel):
     def values(self):
         return self.log_arffts.values()
 
+    @field_serializer("log_arffts")
+    def serialize_arrays(self, log_arffts: Dict[Instruction, np.ndarray], _info) -> Dict[Tuple, Dict[str, Any]]:
+        encoded = {}
+        for instruction, array in log_arffts.items():
+            key = dump(instruction.model_dump())
+            encoded[key] = {
+                "shape": array.shape,
+                "dtype": str(array.dtype),
+                "data": base64.b64encode(array.tobytes()).decode("ascii"),
+            }
+
+        return encoded
+
+    @classmethod
+    def deserialize(cls, dictionary: Dict[str, Any]) -> "FFTLibraryGeneratorData":
+        generator_name = dictionary["generator_name"]
+        raw_log_arffts = dictionary["log_arffts"]
+        log_arffts = {}
+        for instruction_string, array_dictionary in raw_log_arffts.items():
+            instruction_dictionary = json.loads(instruction_string)
+            instruction_class = GENERATORS[generator_name].get_instruction_type()
+            instruction = instruction_class(**instruction_dictionary)
+            array_shape = array_dictionary["shape"]
+            array_dtype = array_dictionary["dtype"]
+            array_data = base64.b64decode(array_dictionary["data"])
+            array = np.frombuffer(array_data, dtype=array_dtype).reshape(array_shape)
+            log_arffts[instruction] = array
+
+        return cls(generator_name=generator_name, log_arffts=log_arffts)
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -92,6 +129,16 @@ class FFTLibraryData(BaseModel):
     def values(self):
         return self.data.values()
 
+    @classmethod
+    def deserialize(cls, dictionary: Dict[str, Any]) -> "FFTLibraryData":
+        data = dictionary["data"]
+        return cls(
+            data={
+                generator_type: FFTLibraryGeneratorData.deserialize(generator_data)
+                for generator_type, generator_data in data.items()
+            }
+        )
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -101,7 +148,7 @@ class FFTLibrary(BaseModel):
     data: Dict[FFTLibraryKey, FFTLibraryData] = Field(..., default_factory=dict, description="FFT library data")
 
     def __post_init__(self):
-        pass
+        self.load()
 
     def __getitem__(self, key: FFTLibraryKey) -> FFTLibraryData:
         return self.data[key]
@@ -151,20 +198,29 @@ class FFTLibrary(BaseModel):
         return instructions, data
 
     def save(self):
+        dump = self.model_dump()
+        binary = msgpack.packb(dump)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        with h5py.File(self.path, "w") as f:
-            for key, library_data in self.data.items():
-                group_name = f"{key.sample_rate}_{key.frame_length}_{key.window_size}_{key.config_hash}"
-                group = f.create_group(group_name)
-                for generator_type, generator_data in library_data.items():
-                    gen_group = group.create_group(generator_type)
-                    instructions = np.array([str(instr) for instr in generator_data.keys()], dtype="S")
-                    arffts = np.array(list(generator_data.values()))
-                    gen_group.create_dataset("instructions", data=instructions)
-                    gen_group.create_dataset("log_arffts", data=arffts)
+        with open(self.path, "wb") as file:
+            file.write(binary)
 
     def load(self):
-        pass
+        with open(self.path, "rb") as file:
+            binary = file.read()
+
+        dump = msgpack.unpackb(binary)
+        self.path = Path(dump["path"])
+        self.data = {
+            FFTLibraryKey.deserialize(key): FFTLibraryData.deserialize(data) for key, data in dump["data"].items()
+        }
+
+    @field_serializer("path")
+    def serialize_path(self, path: Path, _info):
+        return str(path)
+
+    @field_serializer("data")
+    def serialize_data(self, data: Dict[FFTLibraryKey, FFTLibraryData], _info):
+        return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     class Config:
         arbitrary_types_allowed = True
