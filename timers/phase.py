@@ -1,38 +1,9 @@
-from dataclasses import dataclass
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 
 from constants import APU_CLOCK, RESET_PHASE
 from timers.timer import Timer
-
-
-@dataclass(frozen=True)
-class PhaseDirection:
-    direction: bool
-    frame_range: range
-    delta: float
-    comparison: Callable[[float], bool]
-    adjustment: float
-
-    @classmethod
-    def create(cls, phase_timer: "PhaseTimer", frame_length: int, direction: bool) -> "PhaseDirection":
-        frame_range = range(frame_length) if direction else range(frame_length - 1, -1, -1)
-        base_delta = phase_timer.phase_increment / phase_timer._timer_ticks * phase_timer.cycles_per_sample
-        delta = base_delta if direction else -base_delta
-        phase_threshold = 1.0 if direction else 0.0
-        phase_adjustment = -1.0 if direction else 1.0
-        phase_comparison = (
-            (lambda phase: phase >= phase_threshold) if direction else (lambda phase: phase < phase_threshold)
-        )
-
-        return cls(
-            direction=direction,
-            frame_range=frame_range,
-            delta=delta,
-            comparison=phase_comparison,
-            adjustment=phase_adjustment,
-        )
 
 
 class PhaseTimer(Timer):
@@ -64,19 +35,17 @@ class PhaseTimer(Timer):
         if initial_phase is not None:
             self.phase = initial_phase
 
-        phase_direction = PhaseDirection.create(self, length, direction)
-        for i in phase_direction.frame_range:
-            frame[i] = self.step(phase_direction)
+        if self._timer_ticks <= 0:
+            return frame.fill(self.phase)
 
-        return frame
+        indices = np.arange(len(frame)) + 1
+        delta = self.phase_increment / self._timer_ticks * self.cycles_per_sample
+        direction = 1.0 if direction else -1.0
+        lower = np.ceil(1.0 + abs(delta * indices[-1]))
+        frame = np.fmod(lower + indices * delta * direction + self.phase, 1.0)
+        self.phase = float(frame[-1])
 
-    def step(self, phase_direction: PhaseDirection) -> float:
-        if self._timer_ticks > 0:
-            self.phase += phase_direction.delta
-            if phase_direction.comparison(self.phase):
-                self.phase += phase_direction.adjustment
-
-        return self.phase
+        return frame[::-1] if direction < 0 else frame
 
     @property
     def initials(self) -> Tuple[Any, ...]:

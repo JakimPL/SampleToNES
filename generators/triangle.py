@@ -27,12 +27,8 @@ class TriangleGenerator(Generator):
         frame_length = self.frame_length if length is None else length
         output = np.zeros(frame_length, dtype=np.float32)
 
-        if not triangle_instruction.on or triangle_instruction.pitch is None:
+        if not triangle_instruction.on:
             return output
-
-        if initial_phase is None or (self.previous_instruction is not None and not self.previous_instruction.on):
-            self.timer.reset()
-            initial_phase = None
 
         self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
         output = self.timer(frame_length, direction=direction, initial_phase=initial_phase)

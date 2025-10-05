@@ -13,11 +13,11 @@ class Timer:
 
     def prepare_frame(self, length: Union[int, np.ndarray]) -> np.ndarray:
         if isinstance(length, int):
-            frames = np.zeros(length, dtype=np.float32)
+            frame = np.zeros(length, dtype=np.float32)
         elif not isinstance(length, np.ndarray):
             raise TypeError("'length' must be an int or a numpy array")
 
-        return frames
+        return frame
 
     def reset(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")

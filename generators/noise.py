@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple
 import numpy as np
 
 from config import Config
-from constants import APU_CLOCK, MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
+from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
@@ -27,17 +27,8 @@ class NoiseGenerator(Generator):
         frame_length = self.frame_length if length is None else length
         output = np.zeros(frame_length, dtype=np.float32)
 
-        if not noise_instruction.on or noise_instruction.period is None:
+        if not noise_instruction.on:
             return output
-
-        if (
-            self.previous_instruction
-            and self.previous_instruction.on
-            and self.previous_instruction.period != noise_instruction.period
-        ):
-            self.timer.reset()
-            initial_lfsr = None
-            initial_clock = None
 
         self.timer.mode = noise_instruction.mode
         self.timer.period = noise_instruction.period

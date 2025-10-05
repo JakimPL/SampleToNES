@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -7,40 +6,8 @@ from constants import APU_CLOCK, NOISE_PERIODS, RESET_PHASE
 from timers.timer import Timer
 
 
-@dataclass(frozen=True)
-class LFSRDirection:
-    direction: bool
-    frame_range: range
-    delta: float
-    comparison: Callable[[float], bool]
-    adjustment: float
-    function: Callable
-
-    @classmethod
-    def create(cls, lfsr_timer: "LFSRTimer", frame_length: int, direction: bool) -> "LFSRDirection":
-        frame_range = range(frame_length) if direction else range(frame_length - 1, -1, -1)
-        delta = lfsr_timer.clocks_per_sample if direction else -lfsr_timer.clocks_per_sample
-        lfsr_function = lfsr_timer.forward if direction else lfsr_timer.backward
-        clock_adjustment = -1.0 if direction else 1.0
-        clock_threshold = 1.0 if direction else 0.0
-        clock_comparison = (
-            (lambda clock: clock >= clock_threshold) if direction else (lambda clock: clock < clock_threshold)
-        )
-
-        return cls(
-            direction=direction,
-            frame_range=frame_range,
-            delta=delta,
-            function=lfsr_function,
-            comparison=clock_comparison,
-            adjustment=clock_adjustment,
-        )
-
-
 class LFSRTimer(Timer):
     def __init__(self, sample_rate: int, reset_phase: bool = RESET_PHASE) -> None:
-        self._period: int = 0
-        self._clock_rate: float = 0.0
         self._clocks_per_sample: float = 0.0
         self.mode: bool = False
 
@@ -66,28 +33,33 @@ class LFSRTimer(Timer):
         if initial_clock is not None:
             self.clock = initial_clock
 
-        self.previous_bits = [self.lfsr & 1]
-        lfsr_direction = LFSRDirection.create(self, length, direction)
-        for i in lfsr_direction.frame_range:
-            frame[i] = self.step(lfsr_direction)
+        if self._clocks_per_sample <= 0:
+            frame.fill(2.0 * (self.lfsr & 1) - 1.0)
+            return frame
 
-        return frame
+        function = self.forward if direction else self.backward
+        indices = np.arange(len(frame) + 1)
+        direction = 1.0 if direction else -1.0
+        delta = self._clocks_per_sample * direction
+        clock = indices * delta + self.clock
+        changes = np.diff(np.floor(clock)).astype(int)
 
-    def step(self, lfsr_direction: LFSRDirection) -> float:
-        if self.previous_bits:
-            value = 2.0 * np.mean(self.previous_bits) - 1.0
-            self.previous_bits = []
-        else:
-            value = 2.0 * (self.lfsr & 1) - 1.0
+        for i in range(len(frame)):
+            count = abs(changes[i])
+            if count == 0:
+                frame[i] = self.lfsr & 1
+            elif count == 1:
+                frame[i] = function() & 1
+            else:
+                bit_sum = 0
+                for _ in range(count):
+                    bit_sum += function() & 1
 
-        self.clock += lfsr_direction.delta
+                frame[i] = bit_sum / count
 
-        while lfsr_direction.comparison(self.clock):
-            self.clock += lfsr_direction.adjustment
-            self.lfsr = lfsr_direction.function(self.lfsr, self.mode)
-            self.previous_bits.append(self.lfsr & 1)
-
-        return value
+        self.clock = float(clock[-1] % 1.0)
+        frame = 2.0 * frame - 1.0
+        return frame[::-1] if direction < 0 else frame
 
     @property
     def initials(self) -> Tuple[Any, ...]:
@@ -99,28 +71,29 @@ class LFSRTimer(Timer):
 
     @period.setter
     def period(self, value: int) -> None:
+        self._period = value
         apu_period = NOISE_PERIODS[value]
         lfsr_clock_hz = APU_CLOCK / float(apu_period)
-        self.clocks_per_sample = 2.0 * lfsr_clock_hz / float(self.sample_rate)
+        self._clocks_per_sample = 2.0 * lfsr_clock_hz / float(self.sample_rate)
         if self.reset_phase:
             self.reset()
 
-    def forward(self, lfsr: int, short_mode: bool) -> int:
-        bit0 = lfsr & 1
-        bitX = (lfsr >> (6 if short_mode else 1)) & 1
+    def forward(self) -> int:
+        bit0 = self.lfsr & 1
+        bitX = (self.lfsr >> (6 if self.mode else 1)) & 1
         feedback = bit0 ^ bitX
-        lfsr = (lfsr >> 1) | (feedback << 14)
-        lfsr &= 0x7FFF
-        return lfsr
+        self.lfsr = (self.lfsr >> 1) | (feedback << 14)
+        self.lfsr &= 0x7FFF
+        return self.lfsr
 
-    def backward(self, lfsr: int, short_mode: bool) -> int:
-        msb = (lfsr >> 14) & 1
-        partial = (lfsr & 0x3FFF) << 1
-        bitX = (partial >> (6 if short_mode else 1)) & 1
+    def backward(self) -> int:
+        msb = (self.lfsr >> 14) & 1
+        partial = (self.lfsr & 0x3FFF) << 1
+        bitX = (partial >> (6 if self.mode else 1)) & 1
         bit0 = msb ^ bitX
-        lfsr = partial | bit0
-        lfsr &= 0x7FFF
-        return lfsr
+        self.lfsr = partial | bit0
+        self.lfsr &= 0x7FFF
+        return self.lfsr
 
     def reset(self) -> None:
         self.lfsr = 1
