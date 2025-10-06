@@ -4,14 +4,15 @@ import numpy as np
 
 from config import Config
 from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
+from ffts.window import Window
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
 
 
 class NoiseGenerator(Generator):
-    def __init__(self, name: str, config: Config) -> None:
-        super().__init__(name, config)
+    def __init__(self, config: Config, name: str = "noise") -> None:
+        super().__init__(config, name)
         self.timer = LFSRTimer(
             sample_rate=config.sample_rate, change_rate=config.change_rate, reset_phase=config.reset_phase
         )
@@ -20,13 +21,12 @@ class NoiseGenerator(Generator):
         self,
         noise_instruction: NoiseInstruction,
         initials: Optional[Tuple[Any, ...]] = None,
-        length: Optional[int] = None,
-        direction: bool = True,
         save: bool = False,
+        window: Optional[Window] = None,
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)
-        frame_length = self.frame_length if length is None else length
+        frame_length = self.frame_length if window is None else window.size
         output = np.zeros(frame_length, dtype=np.float32)
 
         if not noise_instruction.on:
@@ -35,13 +35,10 @@ class NoiseGenerator(Generator):
         self.timer.mode = noise_instruction.mode
         self.timer.period = noise_instruction.period
         volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+        output = volume * self.timer(window=window, initials=initials)
 
-        output = volume * self.timer(
-            frame_length,
-            direction=direction,
-            initial_lfsr=initial_lfsr,
-            initial_clock=initial_clock,
-        )
+        if window is not None:
+            output *= window.envelope
 
         if not save:
             self.timer.set(initials)

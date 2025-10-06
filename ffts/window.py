@@ -25,6 +25,11 @@ class Window:
         envelope = self.create_window() if self.on else np.ones(size)
         object.__setattr__(self, "envelope", envelope)
 
+        backward_frames = -(left_offset // self.config.frame_length)
+        forward_frames = -(-(size + left_offset) // self.config.frame_length)
+        object.__setattr__(self, "backward_frames", backward_frames)
+        object.__setattr__(self, "forward_frames", forward_frames)
+
     def create_window(self) -> np.ndarray:
         frame_length = self.frame_length
 
@@ -68,6 +73,13 @@ class Window:
             fragment *= self.envelope
 
         return fragment
+
+    def get_frame_from_window(self, audio: np.ndarray) -> np.ndarray:
+        assert len(audio) == self.size, f"Audio length {len(audio)} must match window size {self.size}."
+
+        left = -self.left_offset
+        right = left + self.frame_length
+        return audio[left:right]
 
     @property
     def frame_length(self) -> int:

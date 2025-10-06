@@ -18,7 +18,7 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
 
 
 def get_frequency_table(config: Config) -> Dict[int, float]:
-    timer = PhaseTimer(config.sample_rate)
+    timer = PhaseTimer(sample_rate=config.sample_rate, change_rate=config.change_rate)
     frequencies = {}
     for note in range(config.min_pitch, config.max_pitch + 1):
         frequency = pitch_to_frequency(note, config.a4_frequency, config.a4_pitch)

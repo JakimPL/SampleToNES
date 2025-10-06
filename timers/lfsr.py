@@ -4,6 +4,7 @@ from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 
 from constants import APU_CLOCK, MAX_LFSR, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
+from ffts.window import Window
 from timers.timer import Timer
 
 
@@ -19,11 +20,11 @@ class LFSRTTables:
 class LFSRTimer(Timer):
     def __init__(self, sample_rate: int, change_rate: int, reset_phase: bool = RESET_PHASE) -> None:
         self._clocks_per_sample: float = 0.0
+
         self.mode: bool = False
 
         self.lfsr: int = 1
         self.clock: float = 0.0
-        self.previous_bits: List[int] = [1]
 
         self.reset_phase: bool = reset_phase
         self.sample_rate: int = sample_rate
@@ -34,12 +35,12 @@ class LFSRTimer(Timer):
 
     def __call__(
         self,
-        length: Union[int, np.ndarray],
-        direction: bool = True,
-        initial_lfsr: Optional[int] = None,
-        initial_clock: Optional[float] = None,
+        window: Optional[Window] = None,
+        initials: Optional[Tuple[Any, ...]] = None,
     ) -> np.ndarray:
-        frame = self.prepare_frame(length)
+        initial_lfsr, initial_clock = initials if initials is not None else (None, None)
+        self.validate(initial_lfsr, initial_clock)
+        frame = self.prepare_frame(window)
 
         if initial_lfsr is not None:
             self.lfsr = initial_lfsr
@@ -51,12 +52,18 @@ class LFSRTimer(Timer):
             frame.fill(2.0 * (self.lfsr & 1) - 1.0)
             return frame
 
+        if window is None:
+            return self.generate_frame()
+        else:
+            return self.generate_window(window)
+
+    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
         cumsum_table = self.lfsr_tables.forward_cumsums if direction else self.lfsr_tables.backward_cumsums
-        indices = np.arange(len(frame) + 1)
+        indices = np.arange(self.frame_length + 1)
         direction = 1.0 if direction else -1.0
         delta = self._clocks_per_sample * direction
         clock = indices * delta + self.clock
-        changes = np.diff(np.floor(clock)).astype(int)
+        changes = np.abs(np.diff(np.floor(clock)).astype(int))
         changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
         differences = np.zeros_like(changes, dtype=np.float32)
 
@@ -75,8 +82,11 @@ class LFSRTimer(Timer):
         differences[mask] = means
 
         frame = 2.0 * np.cumsum(np.concatenate([[0], differences]))[1:] - 1.0
-        self.lfsr = int(self.lfsr_tables.forward[index + changes_cumsum[-1]])
-        self.clock = float(clock[-1] % 1.0)
+
+        if save:
+            self.lfsr = int(self.lfsr_tables.forward[index + changes_cumsum[-1]])
+            self.clock = float(clock[-1] % 1.0)
+
         return frame if direction > 0 else frame[::-1]
 
     @property

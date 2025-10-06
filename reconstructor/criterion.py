@@ -1,22 +1,20 @@
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
-import scipy.fft
-from scipy.signal import get_window
 from sklearn.metrics import root_mean_squared_error
 
 from config import Config
+from ffts.fft import calculate_log_arfft, calculate_weights
 from ffts.window import Window
 from instructions.instruction import Instruction
 from reconstructor.state import ReconstructionState
-from utils import next_power_of_two
 
 
 class Criterion:
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, window: Window) -> None:
         self.config: Config = config
         self.fragment_length: Optional[int] = None
-        self.window: Window = Window(config)
+        self.window: Window = window
 
         alpha, beta, gamma = self.get_loss_weights()
         self.alpha: float = alpha
@@ -31,8 +29,10 @@ class Criterion:
         instruction: Instruction,
         previous_instruction: Optional[Instruction] = None,
     ) -> float:
-        spectral_loss = self.spectral_loss(audio, approximation, state)
-        temporal_loss = self.temporal_loss(audio, approximation)
+        audio_frame = self.window.get_frame_from_window(audio)
+        frame = self.window.get_frame_from_window(approximation)
+        spectral_loss = self.spectral_loss(audio, approximation, state.fragment_id)
+        temporal_loss = self.temporal_loss(audio_frame, frame)
         continuity_loss = self.continuity_loss(instruction, previous_instruction)
 
         return self.combine_losses(spectral_loss, temporal_loss, continuity_loss)
@@ -47,9 +47,13 @@ class Criterion:
         self,
         audio: np.ndarray,
         approximation: np.ndarray,
-        state: ReconstructionState,
+        fragment_id: int,
     ) -> float:
-        return 0.0
+        fragment_windowed = self.window.get_windowed_frame(audio, fragment_id)
+        fragment_spectrum = calculate_log_arfft(fragment_windowed)
+        approximation_spectrum = calculate_log_arfft(approximation)
+        weights = calculate_weights(len(fragment_windowed), self.config.sample_rate)
+        return np.average(np.square(fragment_spectrum - approximation_spectrum), weights=weights)
 
     def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:
         # print(f"Spectral Loss: {spectral_loss}, Temporal Loss: {temporal_loss}")

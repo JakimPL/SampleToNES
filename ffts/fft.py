@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Optional
 
 import numpy as np
@@ -27,6 +28,7 @@ def a_weighting(frequencies: np.ndarray) -> np.ndarray:
     return a_weight / np.max(a_weight)
 
 
+@lru_cache(maxsize=128)
 def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
     frequencies = scipy.fft.rfftfreq(fragment_length, 1 / sample_rate)[1:]
     density_weights = 1.0 / frequencies

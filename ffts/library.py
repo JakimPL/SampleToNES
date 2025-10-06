@@ -158,7 +158,7 @@ class FFTLibrary(BaseModel):
         if not overwrite and key in self.data:
             return key
 
-        generators = {name: GENERATORS[name](name, config) for name in GENERATORS}
+        generators = {name: GENERATORS[name](config, name) for name in GENERATORS}
         log_arffts = {}
         for generator in tqdm(generators.values(), desc="Generating FFT library"):
             if generator.name in log_arffts:

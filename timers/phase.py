@@ -3,6 +3,7 @@ from typing import Any, Optional, Tuple, Union
 import numpy as np
 
 from constants import APU_CLOCK, RESET_PHASE
+from ffts.window import Window
 from timers.timer import Timer
 
 
@@ -10,27 +11,32 @@ class PhaseTimer(Timer):
     def __init__(
         self,
         sample_rate: int,
+        change_rate: int,
         reset_phase: bool = RESET_PHASE,
         phase_increment: float = 1.0,
     ) -> None:
+        self._cycles_per_sample: float = APU_CLOCK / sample_rate
         self._frequency: float = 0.0
         self._timer: int = 0
         self._timer_ticks: int = 0
 
         self.phase: float = 0.0
-        self.cycles_per_sample: float = APU_CLOCK / sample_rate
 
         self.sample_rate: int = sample_rate
         self.reset_phase: bool = reset_phase
+        self.change_rate: int = change_rate
+        self.frame_length: int = round(self.sample_rate / self.change_rate)
+
         self.phase_increment: float = phase_increment
 
     def __call__(
         self,
-        length: Union[int, np.ndarray],
-        direction: bool = True,
-        initial_phase: Optional[Union[float, int]] = None,
+        window: Optional[Window] = None,
+        initials: Optional[Tuple[Any, ...]] = None,
     ) -> np.ndarray:
-        frame = self.prepare_frame(length)
+        (initial_phase,) = initials if initials is not None else (None,)
+        self.validate(initial_phase)
+        frame = self.prepare_frame(window)
 
         if initial_phase is not None:
             self.phase = initial_phase
@@ -38,14 +44,22 @@ class PhaseTimer(Timer):
         if self._timer_ticks <= 0:
             return frame.fill(self.phase)
 
-        indices = np.arange(len(frame)) + 1
-        delta = self.phase_increment / self._timer_ticks * self.cycles_per_sample
+        if window is None:
+            return self.generate_frame()
+        else:
+            return self.generate_window(window)
+
+    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
+        indices = np.arange(self.frame_length) + 1
+        delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
         direction = 1.0 if direction else -1.0
         lower = np.ceil(1.0 + abs(delta * indices[-1]))
         frame = np.fmod(lower + indices * delta * direction + self.phase, 1.0)
-        self.phase = float(frame[-1])
 
-        return frame[::-1] if direction < 0 else frame
+        if save:
+            self.phase = float(frame[-1])
+
+        return frame if direction > 0 else frame[::-1]
 
     @property
     def initials(self) -> Tuple[Any, ...]:

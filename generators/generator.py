@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from config import Config
+from ffts.window import Window
 from frequencies import get_frequency_table
 from instructions.instruction import Instruction
 from reconstructor.criterion import Criterion
@@ -11,7 +12,7 @@ from timers.timer import Timer
 
 
 class Generator:
-    def __init__(self, name: str, config: Config) -> None:
+    def __init__(self, config: Config, name: str) -> None:
         self.config: Config = config
         self.frequency_table: Dict[int, float] = get_frequency_table(config)
 
@@ -24,9 +25,8 @@ class Generator:
         self,
         instruction: Instruction,
         initials: Optional[Tuple[Any, ...]] = None,
-        length: Optional[int] = None,
-        direction: bool = True,
         save: bool = False,
+        window: Optional[Window] = None,
     ) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -57,7 +57,7 @@ class Generator:
         instructions = []
         errors = []
         for instruction in self.get_possible_instructions():
-            approximation = self(instruction, initials=initials)
+            approximation = self(instruction, initials=initials, save=False, window=criterion.window)
             error = criterion(audio, approximation, state, instruction, self.previous_instruction)
             instructions.append(instruction)
             errors.append(error)
@@ -75,7 +75,7 @@ class Generator:
         initials: Optional[Tuple[Any, ...]] = None,
     ) -> Tuple[np.ndarray, Instruction, float]:
         instruction, error = self.find_best_instruction(audio, state, criterion, initials=initials)
-        approximation = self(instruction, initials=initials, save=True)
+        approximation = self(instruction, initials=initials, save=True, window=criterion.window)
         return approximation, instruction, error
 
     @property

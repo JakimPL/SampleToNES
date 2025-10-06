@@ -5,6 +5,7 @@ from tqdm.auto import tqdm
 
 from audioio import get_audio_fragments
 from config import Config
+from ffts.window import Window
 from generators.noise import Generator, NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
@@ -29,20 +30,21 @@ class Reconstructor:
             generators = list(GENERATORS.keys())
 
         self.config: Config = config
-        self.generators: Dict[str, Generator] = {name: GENERATORS[name](name, config) for name in generators}
+        self.generators: Dict[str, Generator] = {name: GENERATORS[name](config, name) for name in generators}
         self.state: Optional[ReconstructionState] = None
-        self.criterion: Criterion = Criterion(config)
+
+        self.window: Window = Window(config)
+        self.criterion: Criterion = Criterion(config, self.window)
 
     def __call__(
         self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
     ) -> Reconstruction:
-        fragments, _ = get_audio_fragments(audio, config=self.config)
-        self.state = self.create_initial_state(fragments)
+        self.state = self.create_initial_state(audio)
 
         if mode == "frame-wise":
-            self.frame_wise(fragments)
+            self.frame_wise(audio)
         elif mode == "generator-wise":
-            self.generator_wise(fragments)
+            self.generator_wise(audio)
         else:
             raise ValueError(f"Unknown mode: {mode}")
 
@@ -59,28 +61,28 @@ class Reconstructor:
             total_error=0.0,
         )
 
-    def frame_wise(self, fragments: np.ndarray) -> None:
+    def frame_wise(self, audio: np.ndarray) -> None:
+        count = audio.shape[0] // self.config.frame_length
         for name, generator in self.generators.items():
             generator.reset()
 
-        for fragment_id in tqdm(range(len(fragments))):
+        for fragment_id in tqdm(range(count)):
             self.state.fragment_id = fragment_id
-            fragment = fragments[fragment_id].copy()
+            fragment = self.window.get_windowed_frame(audio, fragment_id)
             for name, generator in self.generators.items():
                 self.find_best_fragment(name, fragment)
                 fragment -= self.state.approximations[name][-1]
 
-    def generator_wise(self, fragments: np.ndarray) -> None:
-        audio = np.concatenate(fragments)
+    def generator_wise(self, audio: np.ndarray) -> None:
+        count = audio.shape[0] // self.config.frame_length
         for name, generator in tqdm(self.generators.items()):
             generator.reset()
-            for fragment_id in range(len(fragments)):
+            for fragment_id in range(count):
                 self.state.fragment_id = fragment_id
-                fragment = fragments[fragment_id].copy()
+                fragment = self.window.get_windowed_frame(audio, fragment_id)
                 self.find_best_fragment(name, fragment)
 
             audio -= np.concatenate(self.state.approximations[name])
-            fragments, _ = get_audio_fragments(audio, config=self.config)
 
     def update_state(self, name: str, approximation: np.ndarray, instruction: Instruction, error: float) -> None:
         generator = self.generators[name]
