@@ -1,13 +1,23 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 
-from constants import APU_CLOCK, NOISE_PERIODS, RESET_PHASE
+from constants import APU_CLOCK, MAX_LFSR, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
 from timers.timer import Timer
 
 
+@dataclass(frozen=True)
+class LFSRTTables:
+    lfsr_to_index: np.ndarray
+    forward: np.ndarray
+    backward: np.ndarray
+    forward_cumsums: np.ndarray
+    backward_cumsums: np.ndarray
+
+
 class LFSRTimer(Timer):
-    def __init__(self, sample_rate: int, reset_phase: bool = RESET_PHASE) -> None:
+    def __init__(self, sample_rate: int, change_rate: int, reset_phase: bool = RESET_PHASE) -> None:
         self._clocks_per_sample: float = 0.0
         self.mode: bool = False
 
@@ -15,8 +25,12 @@ class LFSRTimer(Timer):
         self.clock: float = 0.0
         self.previous_bits: List[int] = [1]
 
-        self.sample_rate: int = sample_rate
         self.reset_phase: bool = reset_phase
+        self.sample_rate: int = sample_rate
+        self.change_rate: int = change_rate
+        self.frame_length: int = round(self.sample_rate / self.change_rate)
+
+        self.lfsr_tables: LFSRTTables = self.precalculate_lfsr_tables()
 
     def __call__(
         self,
@@ -37,29 +51,33 @@ class LFSRTimer(Timer):
             frame.fill(2.0 * (self.lfsr & 1) - 1.0)
             return frame
 
-        function = self.forward if direction else self.backward
+        cumsum_table = self.lfsr_tables.forward_cumsums if direction else self.lfsr_tables.backward_cumsums
         indices = np.arange(len(frame) + 1)
         direction = 1.0 if direction else -1.0
         delta = self._clocks_per_sample * direction
         clock = indices * delta + self.clock
         changes = np.diff(np.floor(clock)).astype(int)
+        changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
+        differences = np.zeros_like(changes, dtype=np.float32)
 
-        for i in range(len(frame)):
-            count = abs(changes[i])
-            if count == 0:
-                frame[i] = self.lfsr & 1
-            elif count == 1:
-                frame[i] = function() & 1
-            else:
-                bit_sum = 0
-                for _ in range(count):
-                    bit_sum += function() & 1
+        index = self.lfsr_tables.lfsr_to_index[self.lfsr]
+        start_indices = changes_cumsum + index
+        end_indices = np.roll(start_indices, -1)
+        pairs = np.stack([start_indices, end_indices]).T[:-1]
+        mask = pairs[:, 0] > pairs[:, 1]
+        pairs[mask, 1] += MAX_LFSR
 
-                frame[i] = bit_sum / count
+        mask = pairs[:, 1] > pairs[:, 0]
+        nonzero_pairs = pairs[mask]
+        lengths = nonzero_pairs[:, 1] - nonzero_pairs[:, 0]
+        sums = cumsum_table[nonzero_pairs[:, 1]] - cumsum_table[nonzero_pairs[:, 0]]
+        means = sums / lengths
+        differences[mask] = means
 
+        frame = 2.0 * np.cumsum(np.concatenate([[0], differences]))[1:] - 1.0
+        self.lfsr = int(self.lfsr_tables.forward[index + changes_cumsum[-1]])
         self.clock = float(clock[-1] % 1.0)
-        frame = 2.0 * frame - 1.0
-        return frame[::-1] if direction < 0 else frame
+        return frame if direction > 0 else frame[::-1]
 
     @property
     def initials(self) -> Tuple[Any, ...]:
@@ -72,28 +90,31 @@ class LFSRTimer(Timer):
     @period.setter
     def period(self, value: int) -> None:
         self._period = value
-        apu_period = NOISE_PERIODS[value]
-        lfsr_clock_hz = APU_CLOCK / float(apu_period)
-        self._clocks_per_sample = 2.0 * lfsr_clock_hz / float(self.sample_rate)
+        self._clocks_per_sample = self.calculate_clocks_per_sample(value)
         if self.reset_phase:
             self.reset()
 
-    def forward(self) -> int:
-        bit0 = self.lfsr & 1
-        bitX = (self.lfsr >> (6 if self.mode else 1)) & 1
-        feedback = bit0 ^ bitX
-        self.lfsr = (self.lfsr >> 1) | (feedback << 14)
-        self.lfsr &= 0x7FFF
-        return self.lfsr
+    def calculate_clocks_per_sample(self, period: int) -> float:
+        apu_period = NOISE_PERIODS[period]
+        lfsr_clock_hz = APU_CLOCK / float(apu_period)
+        return 2.0 * lfsr_clock_hz / float(self.sample_rate)
 
-    def backward(self) -> int:
-        msb = (self.lfsr >> 14) & 1
-        partial = (self.lfsr & 0x3FFF) << 1
+    def forward(self, lfsr: int) -> int:
+        bit0 = lfsr & 1
+        bitX = (lfsr >> (6 if self.mode else 1)) & 1
+        feedback = bit0 ^ bitX
+        lfsr = (lfsr >> 1) | (feedback << 14)
+        lfsr &= MAX_LFSR
+        return lfsr
+
+    def backward(self, lfsr: int) -> int:
+        msb = (lfsr >> 14) & 1
+        partial = (lfsr & 0x3FFF) << 1
         bitX = (partial >> (6 if self.mode else 1)) & 1
         bit0 = msb ^ bitX
-        self.lfsr = partial | bit0
-        self.lfsr &= 0x7FFF
-        return self.lfsr
+        lfsr = partial | bit0
+        lfsr &= MAX_LFSR
+        return lfsr
 
     def reset(self) -> None:
         self.lfsr = 1
@@ -121,3 +142,30 @@ class LFSRTimer(Timer):
         assert isinstance(clock, float) and (0.0 <= clock < 1.0), "Clock value must be between 0.0 and 1.0"
         self.lfsr = lfsr
         self.clock = clock
+
+    def precalculate_lfsr_tables(self) -> LFSRTTables:
+        clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
+        repeats = int(np.ceil(clocks_per_sample * self.frame_length / MAX_LFSR)) * 2 + 1
+
+        forward_lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
+        lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int16)
+
+        lfsr = 1
+        for i in range(MAX_LFSR - 1):
+            lfsr_to_index[lfsr] = i
+            forward_lfsr = self.forward(lfsr)
+            forward_lfsrs[i + 1] = forward_lfsr
+            lfsr = forward_lfsr
+
+        forward_lfsrs = np.tile(forward_lfsrs, repeats)
+        backward_lfsrs = np.roll(np.flip(forward_lfsrs), 1)
+        forward_lfsrs_cumsums = np.concatenate([[0], np.cumsum(forward_lfsrs, dtype=np.int64)]) & 1
+        backward_lfsrs_cumsums = np.concatenate([[0], np.cumsum(backward_lfsrs, dtype=np.int64)]) & 1
+
+        return LFSRTTables(
+            forward=forward_lfsrs,
+            backward=backward_lfsrs,
+            lfsr_to_index=lfsr_to_index,
+            forward_cumsums=forward_lfsrs_cumsums,
+            backward_cumsums=backward_lfsrs_cumsums,
+        )

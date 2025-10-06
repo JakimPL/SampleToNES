@@ -12,7 +12,9 @@ from timers.lfsr import LFSRTimer
 class NoiseGenerator(Generator):
     def __init__(self, name: str, config: Config) -> None:
         super().__init__(name, config)
-        self.timer = LFSRTimer(sample_rate=config.sample_rate, reset_phase=config.reset_phase)
+        self.timer = LFSRTimer(
+            sample_rate=config.sample_rate, change_rate=config.change_rate, reset_phase=config.reset_phase
+        )
 
     def __call__(
         self,
