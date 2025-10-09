@@ -7,7 +7,6 @@ from ffts.window import Window
 from frequencies import get_frequency_table
 from instructions.instruction import Instruction
 from reconstructor.criterion import Criterion
-from reconstructor.state import ReconstructionState
 from timers.timer import Timer
 
 
@@ -50,7 +49,6 @@ class Generator:
     def find_best_instruction(
         self,
         audio: np.ndarray,
-        state: ReconstructionState,
         criterion: Criterion,
         initials: Optional[Tuple[Any, ...]] = None,
     ) -> Tuple[Instruction, float]:
@@ -58,7 +56,7 @@ class Generator:
         errors = []
         for instruction in self.get_possible_instructions():
             approximation = self(instruction, initials=initials, save=False, window=criterion.window)
-            error = criterion(audio, approximation, state, instruction, self.previous_instruction)
+            error = criterion(audio, approximation, instruction, self.previous_instruction)
             instructions.append(instruction)
             errors.append(error)
 
@@ -70,11 +68,10 @@ class Generator:
     def find_best_fragment_approximation(
         self,
         audio: np.ndarray,
-        state: ReconstructionState,
         criterion: Criterion,
         initials: Optional[Tuple[Any, ...]] = None,
     ) -> Tuple[np.ndarray, Instruction, float]:
-        instruction, error = self.find_best_instruction(audio, state, criterion, initials=initials)
+        instruction, error = self.find_best_instruction(audio, criterion, initials=initials)
         approximation = self(instruction, initials=initials, save=True, window=criterion.window)
         approximation = criterion.window.get_frame_from_window(approximation)
         return approximation, instruction, error

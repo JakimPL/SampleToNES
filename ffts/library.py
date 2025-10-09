@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Literal, Tuple, Union
+from typing import Any, Dict, Literal, Tuple
 
 import msgpack
 import numpy as np
@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, field_serializer
 from tqdm.auto import tqdm
 
 from config import Config as Config
-from constants import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from constants import LIBRARY_PATH, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from ffts.fft import calculate_fft
 from ffts.window import Window
 from generators.generator import Generator
@@ -144,11 +144,8 @@ class FFTLibraryData(BaseModel):
 
 
 class FFTLibrary(BaseModel):
-    path: Path = Field(..., description="Path to the FFT library file")
+    path: str = Field(LIBRARY_PATH, description="Path to the FFT library file")
     data: Dict[FFTLibraryKey, FFTLibraryData] = Field(..., default_factory=dict, description="FFT library data")
-
-    def __post_init__(self):
-        self.load()
 
     def __getitem__(self, key: FFTLibraryKey) -> FFTLibraryData:
         return self.data[key]
@@ -164,14 +161,14 @@ class FFTLibrary(BaseModel):
             if generator.name in log_arffts:
                 continue
 
-            generator_data = self.calculate_generator_data(key, generator, window, duration)
+            generator_data = self._calculate_generator_data(key, generator, window, duration)
             log_arffts[generator.name] = generator_data
 
         self.data[key] = FFTLibraryData(data=log_arffts)
         self.save()
         return key
 
-    def calculate_generator_data(
+    def _calculate_generator_data(
         self, key: FFTLibraryKey, generator: Generator, window: Window, duration: float
     ) -> FFTLibraryGeneratorData:
         generator_data = {}
@@ -192,19 +189,19 @@ class FFTLibrary(BaseModel):
 
         return FFTLibraryGeneratorData(generator_name=generator.name, log_arffts=generator_data)
 
-    def flatten(self, key: FFTLibraryKey) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
+    def _flatten(self, key: FFTLibraryKey) -> Tuple[Dict[str, np.ndarray], Dict[str, np.ndarray]]:
         instructions = {generator_type: list(values.keys()) for generator_type, values in self[key].items()}
         data = {generator_type: np.array(list(values.values())) for generator_type, values in self[key].items()}
         return instructions, data
 
-    def save(self):
+    def _save(self):
         dump = self.model_dump()
         binary = msgpack.packb(dump)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with open(self.path, "wb") as file:
             file.write(binary)
 
-    def load(self):
+    def _load(self):
         with open(self.path, "rb") as file:
             binary = file.read()
 
@@ -221,6 +218,12 @@ class FFTLibrary(BaseModel):
     @field_serializer("data")
     def serialize_data(self, data: Dict[FFTLibraryKey, FFTLibraryData], _info) -> Dict[str, Any]:
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
+
+    @classmethod
+    def load(cls, path: Path) -> "FFTLibrary":
+        library = cls(path=path)
+        library._load()
+        return library
 
     class Config:
         arbitrary_types_allowed = True

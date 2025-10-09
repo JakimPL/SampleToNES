@@ -7,7 +7,6 @@ from config import Config
 from ffts.fft import calculate_log_arfft, calculate_weights
 from ffts.window import Window
 from instructions.instruction import Instruction
-from reconstructor.state import ReconstructionState
 
 
 class Criterion:
@@ -21,17 +20,19 @@ class Criterion:
         self.beta: float = beta
         self.gamma: float = gamma
 
+        # self.library: FFTLibrary = FFTLibrary.load(self.config.library_path)
+        # self.library.update(config, window)
+
     def __call__(
         self,
         audio: np.ndarray,
         approximation: np.ndarray,
-        state: ReconstructionState,
         instruction: Instruction,
         previous_instruction: Optional[Instruction] = None,
     ) -> float:
         audio_frame = self.window.get_frame_from_window(audio)
         frame = self.window.get_frame_from_window(approximation)
-        spectral_loss = self.spectral_loss(audio, approximation, state.fragment_id)
+        spectral_loss = self.spectral_loss(audio, approximation)
         temporal_loss = self.temporal_loss(audio_frame, frame)
         continuity_loss = self.continuity_loss(instruction, previous_instruction)
 
@@ -47,7 +48,6 @@ class Criterion:
         self,
         audio: np.ndarray,
         approximation: np.ndarray,
-        fragment_id: int,
     ) -> float:
         fragment_spectrum = calculate_log_arfft(audio)
         approximation_spectrum = calculate_log_arfft(approximation)

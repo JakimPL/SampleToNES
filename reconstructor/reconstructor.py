@@ -98,7 +98,7 @@ class Reconstructor:
         generator = self.generators[name]
         initials = self.state.current_initials[name]
         approximation, instruction, error = generator.find_best_fragment_approximation(
-            audio, self.state, self.criterion, initials=initials
+            audio, self.criterion, initials=initials
         )
 
         self.update_state(name, approximation, instruction, error)
