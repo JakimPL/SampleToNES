@@ -3,7 +3,6 @@ from typing import Dict, List, Literal, Optional
 import numpy as np
 from tqdm.auto import tqdm
 
-from audioio import get_audio_fragments
 from config import Config
 from ffts.window import Window
 from generators.noise import Generator, NoiseGenerator
@@ -40,6 +39,8 @@ class Reconstructor:
         self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
     ) -> Reconstruction:
         self.state = self.create_initial_state(audio)
+        length = (audio.shape[0] // self.config.frame_length) * self.config.frame_length
+        audio = audio[:length].copy()
 
         if mode == "frame-wise":
             self.frame_wise(audio)
@@ -69,9 +70,11 @@ class Reconstructor:
         for fragment_id in tqdm(range(count)):
             self.state.fragment_id = fragment_id
             fragment = self.window.get_windowed_frame(audio, fragment_id)
+            start = fragment_id * self.config.frame_length
+            end = start + self.config.frame_length
             for name, generator in self.generators.items():
                 self.find_best_fragment(name, fragment)
-                fragment -= self.state.approximations[name][-1]
+                audio[start:end] -= self.state.approximations[name][-1]
 
     def generator_wise(self, audio: np.ndarray) -> None:
         count = audio.shape[0] // self.config.frame_length

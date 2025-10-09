@@ -49,10 +49,9 @@ class Criterion:
         approximation: np.ndarray,
         fragment_id: int,
     ) -> float:
-        fragment_windowed = self.window.get_windowed_frame(audio, fragment_id)
-        fragment_spectrum = calculate_log_arfft(fragment_windowed)
+        fragment_spectrum = calculate_log_arfft(audio)
         approximation_spectrum = calculate_log_arfft(approximation)
-        weights = calculate_weights(len(fragment_windowed), self.config.sample_rate)
+        weights = calculate_weights(self.window.size, self.config.sample_rate)
         return np.average(np.square(fragment_spectrum - approximation_spectrum), weights=weights)
 
     def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:

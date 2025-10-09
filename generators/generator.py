@@ -76,6 +76,7 @@ class Generator:
     ) -> Tuple[np.ndarray, Instruction, float]:
         instruction, error = self.find_best_instruction(audio, state, criterion, initials=initials)
         approximation = self(instruction, initials=initials, save=True, window=criterion.window)
+        approximation = criterion.window.get_frame_from_window(approximation)
         return approximation, instruction, error
 
     @property

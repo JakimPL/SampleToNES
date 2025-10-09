@@ -28,8 +28,10 @@ class Timer:
             backward_frames.append(self.generate_frame(False, save=False))
 
         forward_frames = []
+        save = True
         for _ in range(window.forward_frames):
-            forward_frames.append(self.generate_frame(True, save=True))
+            forward_frames.append(self.generate_frame(True, save=save))
+            save = False
 
         frame = np.concatenate([np.concatenate(backward_frames[::-1]), np.concatenate(forward_frames)])
         start = self.frame_length * window.backward_frames + window.left_offset

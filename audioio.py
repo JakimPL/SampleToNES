@@ -81,10 +81,3 @@ def load_audio(
         audio = quantize_audio(audio, levels=QUANTIZATION_LEVELS)
 
     return audio
-
-
-def get_audio_fragments(audio: np.ndarray, config: Config) -> Tuple[np.ndarray, int]:
-    samples = len(audio) // config.frame_length
-    length = samples * config.frame_length
-    audio = audio[:length]
-    return audio.reshape(-1, config.frame_length), length

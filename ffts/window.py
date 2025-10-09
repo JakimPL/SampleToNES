@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -64,6 +64,11 @@ class Window:
         return window
 
     def get_windowed_frame(self, audio: np.ndarray, frame_id: int, apply_window: bool = True) -> np.ndarray:
+        return self.get_windowed_frame_with_bounds(audio, frame_id, apply_window=apply_window)[0]
+
+    def get_windowed_frame_with_bounds(
+        self, audio: np.ndarray, frame_id: int, apply_window: bool = True
+    ) -> Tuple[np.ndarray, int, int]:
         offset = self.frame_length * frame_id
         left = self.left_offset + offset
         right = left + self.size
@@ -72,14 +77,14 @@ class Window:
         if apply_window:
             fragment *= self.envelope
 
-        return fragment
+        return fragment, max(left, 0), min(right, audio.shape[0])
 
-    def get_frame_from_window(self, audio: np.ndarray) -> np.ndarray:
+    def get_frame_from_window(self, audio: np.ndarray, copy: bool = True) -> np.ndarray:
         assert len(audio) == self.size, f"Audio length {len(audio)} must match window size {self.size}."
 
         left = -self.left_offset
         right = left + self.frame_length
-        return audio[left:right]
+        return audio[left:right].copy() if copy else audio[left:right]
 
     @property
     def frame_length(self) -> int:
