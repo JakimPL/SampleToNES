@@ -25,15 +25,13 @@ class Criterion:
 
     def __call__(
         self,
-        audio: np.ndarray,
-        approximation: np.ndarray,
+        fragment_feature: np.ndarray,
+        approximation_feature: np.ndarray,
         instruction: Instruction,
         previous_instruction: Optional[Instruction] = None,
     ) -> float:
-        audio_frame = self.window.get_frame_from_window(audio)
-        frame = self.window.get_frame_from_window(approximation)
-        spectral_loss = self.spectral_loss(audio, approximation)
-        temporal_loss = self.temporal_loss(audio_frame, frame)
+        temporal_loss = 0.0
+        spectral_loss = self.spectral_loss(fragment_feature, approximation_feature)
         continuity_loss = self.continuity_loss(instruction, previous_instruction)
 
         return self.combine_losses(spectral_loss, temporal_loss, continuity_loss)
@@ -46,16 +44,12 @@ class Criterion:
 
     def spectral_loss(
         self,
-        audio: np.ndarray,
-        approximation: np.ndarray,
+        fragment_feature: np.ndarray,
+        approximation_feature: np.ndarray,
     ) -> float:
-        fragment_spectrum = calculate_log_arfft(audio)
-        approximation_spectrum = calculate_log_arfft(approximation)
-        weights = calculate_weights(self.window.size, self.config.sample_rate)
-        return np.average(np.square(fragment_spectrum - approximation_spectrum), weights=weights)
+        return np.average(np.square(fragment_feature - approximation_feature), weights=self.window.weights)
 
     def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:
-        # print(f"Spectral Loss: {spectral_loss}, Temporal Loss: {temporal_loss}")
         return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
 
     def get_loss_weights(self) -> Tuple[float, float, float]:

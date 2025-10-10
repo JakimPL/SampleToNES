@@ -5,6 +5,7 @@ import numpy as np
 
 from config import Config
 from constants import MIN_FREQUENCY
+from ffts.fft import calculate_weights
 from utils import pad
 
 
@@ -29,6 +30,9 @@ class Window:
         forward_frames = -(-(size + left_offset) // self.config.frame_length)
         object.__setattr__(self, "backward_frames", backward_frames)
         object.__setattr__(self, "forward_frames", forward_frames)
+
+        weights = calculate_weights(size, self.config.sample_rate)
+        object.__setattr__(self, "weights", weights)
 
     def create_window(self) -> np.ndarray:
         frame_length = self.frame_length

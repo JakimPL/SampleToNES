@@ -4,8 +4,10 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from config import Config
+from ffts.fft import calculate_log_arfft, log_arfft_difference
 from ffts.window import Window
-from generators.noise import Generator, NoiseGenerator
+from generators.generator import Generator
+from generators.noise import NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
@@ -38,7 +40,7 @@ class Reconstructor:
     def __call__(
         self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
     ) -> Reconstruction:
-        self.state = self.create_initial_state(audio)
+        self.state = ReconstructionState.create(self.generators)
         length = (audio.shape[0] // self.config.frame_length) * self.config.frame_length
         audio = audio[:length].copy()
 
@@ -51,30 +53,22 @@ class Reconstructor:
 
         return Reconstruction.from_results(self.state, self.config)
 
-    def create_initial_state(self, fragments: np.ndarray) -> ReconstructionState:
-        return ReconstructionState(
-            fragment_id=0,
-            fragments=fragments,
-            instructions={name: [] for name in self.generators},
-            approximations={name: [] for name in self.generators},
-            partial_approximations={name: [] for name in self.generators},
-            current_initials={name: generator.initials for name, generator in self.generators.items()},
-            total_error=0.0,
-        )
+    def get_spectral_features(self, audio: np.ndarray) -> np.ndarray:
+        count = audio.shape[0] // self.config.frame_length
+        fragments = [self.window.get_windowed_frame(audio, fragment_id) for fragment_id in range(count)]
+        features = np.array([calculate_log_arfft(fragment) for fragment in fragments])
+        return features
 
     def frame_wise(self, audio: np.ndarray) -> None:
-        count = audio.shape[0] // self.config.frame_length
+        features = self.get_spectral_features(audio)
+
         for name, generator in self.generators.items():
             generator.reset()
 
-        for fragment_id in tqdm(range(count)):
-            self.state.fragment_id = fragment_id
-            fragment = self.window.get_windowed_frame(audio, fragment_id)
-            start = fragment_id * self.config.frame_length
-            end = start + self.config.frame_length
+        for fragment_id, feature in enumerate(tqdm(features)):
             for name, generator in self.generators.items():
-                self.find_best_fragment(name, fragment)
-                audio[start:end] -= self.state.approximations[name][-1]
+                self.find_best_fragment(name, feature)
+                features[fragment_id] = log_arfft_difference(self.state.features[name][-1], feature)
 
     def generator_wise(self, audio: np.ndarray) -> None:
         count = audio.shape[0] // self.config.frame_length
@@ -87,18 +81,21 @@ class Reconstructor:
 
             audio -= np.concatenate(self.state.approximations[name])
 
-    def update_state(self, name: str, approximation: np.ndarray, instruction: Instruction, error: float) -> None:
+    def update_state(
+        self, name: str, approximation: np.ndarray, instruction: Instruction, feature: np.ndarray, error: float
+    ) -> None:
         generator = self.generators[name]
         self.state.approximations[name].append(approximation)
         self.state.instructions[name].append(instruction)
-        self.state.total_error += error
+        self.state.features[name].append(feature)
         self.state.current_initials[name] = generator.initials
+        self.state.total_error += error
 
-    def find_best_fragment(self, name: str, audio: np.ndarray) -> None:
+    def find_best_fragment(self, name: str, feature: np.ndarray) -> None:
         generator = self.generators[name]
         initials = self.state.current_initials[name]
-        approximation, instruction, error = generator.find_best_fragment_approximation(
-            audio, self.criterion, initials=initials
+        approximation, instruction, feature, error = generator.find_best_fragment_approximation(
+            feature, self.criterion, initials=initials
         )
 
-        self.update_state(name, approximation, instruction, error)
+        self.update_state(name, approximation, instruction, feature, error)

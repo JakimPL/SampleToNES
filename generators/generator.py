@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 
 from config import Config
+from ffts.fft import calculate_log_arfft
 from ffts.window import Window
 from frequencies import get_frequency_table
 from instructions.instruction import Instruction
@@ -48,33 +49,38 @@ class Generator:
 
     def find_best_instruction(
         self,
-        audio: np.ndarray,
+        fragment_feature: np.ndarray,
         criterion: Criterion,
         initials: Optional[Tuple[Any, ...]] = None,
-    ) -> Tuple[Instruction, float]:
+    ) -> Tuple[np.ndarray, Instruction, float]:
         instructions = []
         errors = []
+        features = []
         for instruction in self.get_possible_instructions():
             approximation = self(instruction, initials=initials, save=False, window=criterion.window)
-            error = criterion(audio, approximation, instruction, self.previous_instruction)
+            approximation_feature = calculate_log_arfft(approximation, criterion.window.size)
+            error = criterion(fragment_feature, approximation_feature, instruction, self.previous_instruction)
+            features.append(approximation_feature)
             instructions.append(instruction)
             errors.append(error)
 
         index = np.argmin(errors)
+        feature = features[index]
         instruction = instructions[index]
         error = errors[index]
-        return instruction, error
+        return feature, instruction, error
 
     def find_best_fragment_approximation(
         self,
-        audio: np.ndarray,
+        fragment_feature: np.ndarray,
         criterion: Criterion,
         initials: Optional[Tuple[Any, ...]] = None,
-    ) -> Tuple[np.ndarray, Instruction, float]:
-        instruction, error = self.find_best_instruction(audio, criterion, initials=initials)
-        approximation = self(instruction, initials=initials, save=True, window=criterion.window)
-        approximation = criterion.window.get_frame_from_window(approximation)
-        return approximation, instruction, error
+    ) -> Tuple[np.ndarray, Instruction, np.ndarray, float]:
+        feature, instruction, error = self.find_best_instruction(fragment_feature, criterion, initials=initials)
+        approximation = self(instruction, initials=initials, save=True)
+        plt.plot(approximation)
+        plt.show()
+        return approximation, instruction, feature, error
 
     @property
     def frame_length(self) -> int:
