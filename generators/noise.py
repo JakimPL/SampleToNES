@@ -45,7 +45,7 @@ class NoiseGenerator(Generator):
         else:
             self.previous_instruction = noise_instruction
 
-        return output * MIXER_NOISE
+        return output * MIXER_NOISE * self.config.mixer
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
         noise_instructions = [

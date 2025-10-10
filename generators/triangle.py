@@ -46,7 +46,7 @@ class TriangleGenerator(Generator):
         else:
             self.previous_instruction = triangle_instruction
 
-        return output * MIXER_TRIANGLE
+        return output * MIXER_TRIANGLE * self.config.mixer
 
     def get_possible_instructions(self) -> List[TriangleInstruction]:
         triangle_instructions = [

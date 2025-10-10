@@ -56,7 +56,7 @@ class SquareGenerator(Generator):
         else:
             self.previous_instruction = square_instruction
 
-        return output * MIXER_SQUARE
+        return output * MIXER_SQUARE * self.config.mixer
 
     def get_possible_instructions(self) -> List[SquareInstruction]:
         square_instructions = [SquareInstruction(on=False, pitch=None, volume=0, duty_cycle=0)]

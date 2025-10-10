@@ -45,6 +45,7 @@ class FFTLibraryKey(BaseModel):
             "a4_pitch": config.a4_pitch,
             "min_pitch": config.min_pitch,
             "max_pitch": config.max_pitch,
+            "mixer": config.mixer,
         }
         json_string = dump(config_fields)
         config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()
