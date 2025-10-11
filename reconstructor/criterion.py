@@ -4,9 +4,9 @@ import numpy as np
 from sklearn.metrics import root_mean_squared_error
 
 from config import Config
-from ffts.fft import calculate_log_arfft, calculate_weights
 from ffts.window import Window
 from instructions.instruction import Instruction
+from reconstructor.fragment import Fragment
 
 
 class Criterion:
@@ -25,15 +25,14 @@ class Criterion:
 
     def __call__(
         self,
-        fragment_feature: np.ndarray,
-        approximation_feature: np.ndarray,
+        fragment: Fragment,
+        approximation: Fragment,
         instruction: Instruction,
         previous_instruction: Optional[Instruction] = None,
     ) -> float:
-        temporal_loss = 0.0
-        spectral_loss = self.spectral_loss(fragment_feature, approximation_feature)
+        temporal_loss = self.temporal_loss(fragment.audio, approximation.audio)
+        spectral_loss = self.spectral_loss(fragment.feature, approximation.feature)
         continuity_loss = self.continuity_loss(instruction, previous_instruction)
-
         return self.combine_losses(spectral_loss, temporal_loss, continuity_loss)
 
     def temporal_loss(self, audio: np.ndarray, approximation: np.ndarray) -> float:

@@ -1,7 +1,7 @@
 import base64
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Dict, List, Literal, Self, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
@@ -16,6 +16,7 @@ from instructions.noise import NoiseInstruction
 from instructions.square import SquareInstruction
 from instructions.triangle import TriangleInstruction
 from reconstructor.state import ReconstructionState
+from utils import deserialize_array, serialize_array
 
 INSTRUCTION_CLASS_MAP = {
     "Instruction": Instruction,
@@ -35,7 +36,7 @@ class Reconstruction(BaseModel):
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
     instructions: Dict[str, List[Instruction]] = Field(..., description="Instructions per generator")
-    total_error: float = Field(..., description="Total reconstruction error")
+    errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Config = Field(..., description="Configuration used for reconstruction")
 
     @staticmethod
@@ -47,20 +48,6 @@ class Reconstruction(BaseModel):
     @staticmethod
     def _get_exporter_class(instruction: Instruction) -> Dict[type, type]:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
-
-    @staticmethod
-    def _serialize_array(array: np.ndarray) -> Dict[str, Any]:
-        return {
-            "data": base64.b64encode(array.tobytes()).decode("utf-8"),
-            "shape": array.shape,
-            "dtype": str(array.dtype),
-        }
-
-    @staticmethod
-    def _deserialize_array(data: Dict[str, Any]) -> np.ndarray:
-        array_data = base64.b64decode(data["data"].encode("utf-8"))
-        array = np.frombuffer(array_data, dtype=data["dtype"])
-        return array.reshape(data["shape"])
 
     @classmethod
     def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[Instruction]]:
@@ -81,7 +68,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Config) -> "Reconstruction":
+    def from_results(cls, state: ReconstructionState, config: Config) -> Self:
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 
@@ -89,7 +76,7 @@ class Reconstruction(BaseModel):
             approximation=approximation,
             approximations=approximations,
             instructions=state.instructions,
-            total_error=state.total_error,
+            errors=state.errors,
             config=config,
         )
 
@@ -105,12 +92,12 @@ class Reconstruction(BaseModel):
             json.dump(data, f, indent=2)
 
     @classmethod
-    def load(cls, filepath: Path) -> "Reconstruction":
+    def load(cls, filepath: Path) -> Self:
         with open(filepath, "r") as f:
             data = json.load(f)
 
-        data["approximation"] = cls._deserialize_array(data["approximation"])
-        data["approximations"] = {name: cls._deserialize_array(array) for name, array in data["approximations"].items()}
+        data["approximation"] = deserialize_array(data["approximation"])
+        data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
         data["instructions"] = cls._parse_instructions(data["instructions"])
         data["config"] = Config(**data["config"])
 
@@ -130,11 +117,11 @@ class Reconstruction(BaseModel):
 
     @field_serializer("approximation")
     def _serialize_approximation(self, approximation: np.ndarray, _info) -> Dict[str, Any]:
-        return self._serialize_array(approximation)
+        return serialize_array(approximation)
 
     @field_serializer("approximations")
     def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> Dict[str, Any]:
-        return {name: self._serialize_array(array) for name, array in approximations.items()}
+        return {name: serialize_array(array) for name, array in approximations.items()}
 
     @field_serializer("instructions")
     def _serialize_instructions(self, instructions: Dict[str, List[Instruction]], _info) -> Dict[str, Dict[str, Any]]:

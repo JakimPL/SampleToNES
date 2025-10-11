@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Literal, Tuple
+from typing import Any, Dict, Literal, Self, Tuple
 
 import msgpack
 import numpy as np
@@ -19,7 +19,7 @@ from generators.noise import NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
-from utils import dump
+from utils import deserialize_array, dump, serialize_array
 
 GENERATORS = {
     "SquareGenerator": SquareGenerator,
@@ -37,7 +37,7 @@ class FFTLibraryKey(BaseModel):
     config_hash: str = Field(..., description="Hash of the configuration")
 
     @classmethod
-    def create(cls, config: Config, window: Window) -> "FFTLibraryKey":
+    def create(cls, config: Config, window: Window) -> Self:
         config_fields = {
             "change_rate": config.change_rate,
             "sample_rate": config.sample_rate,
@@ -57,7 +57,7 @@ class FFTLibraryKey(BaseModel):
         )
 
     @classmethod
-    def deserialize(cls, string: str) -> "FFTLibraryKey":
+    def deserialize(cls, string: str) -> Self:
         dictionary = json.loads(string)
         return cls(**dictionary)
 
@@ -86,16 +86,12 @@ class FFTLibraryGeneratorData(BaseModel):
         encoded = {}
         for instruction, array in log_arffts.items():
             key = dump(instruction.model_dump())
-            encoded[key] = {
-                "shape": array.shape,
-                "dtype": str(array.dtype),
-                "data": base64.b64encode(array.tobytes()).decode("ascii"),
-            }
+            encoded[key] = serialize_array(array)
 
         return encoded
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> "FFTLibraryGeneratorData":
+    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
         generator_name = dictionary["generator_name"]
         raw_log_arffts = dictionary["log_arffts"]
         log_arffts = {}
@@ -103,10 +99,7 @@ class FFTLibraryGeneratorData(BaseModel):
             instruction_dictionary = json.loads(instruction_string)
             instruction_class = GENERATORS[generator_name].get_instruction_type()
             instruction = instruction_class(**instruction_dictionary)
-            array_shape = array_dictionary["shape"]
-            array_dtype = array_dictionary["dtype"]
-            array_data = base64.b64decode(array_dictionary["data"])
-            array = np.frombuffer(array_data, dtype=array_dtype).reshape(array_shape)
+            array = deserialize_array(array_dictionary)
             log_arffts[instruction] = array
 
         return cls(generator_name=generator_name, log_arffts=log_arffts)
@@ -131,7 +124,7 @@ class FFTLibraryData(BaseModel):
         return self.data.values()
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> "FFTLibraryData":
+    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
         data = dictionary["data"]
         return cls(
             data={
@@ -221,7 +214,7 @@ class FFTLibrary(BaseModel):
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     @classmethod
-    def load(cls, path: Path) -> "FFTLibrary":
+    def load(cls, path: Path) -> Self:
         library = cls(path=path)
         library._load()
         return library

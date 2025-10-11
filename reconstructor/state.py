@@ -1,27 +1,53 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Self, Tuple
 
 import numpy as np
 from pydantic import BaseModel
 
 from instructions.instruction import Instruction
+from reconstructor.approximation import FragmentApproximation
+from reconstructor.fragment import Fragment
+
+
+class FragmentReconstructionState(BaseModel):
+    fragment: Fragment
+    instruction: Instruction
+    error: float
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ReconstructionState(BaseModel):
-    instructions: Dict[str, List[Instruction]]
+    generator_names: List[str] = []
+    instructions: Dict[str, List[Instruction]] = {}
     approximations: Dict[str, List[np.ndarray]] = {}
-    features: Dict[str, List[np.ndarray]] = {}
-    current_initials: Dict[str, Optional[Tuple[Any, ...]]] = {}
-    total_error: float = 0.0
+    initials: Dict[str, Optional[Tuple[Any, ...]]] = {}
+    errors: Dict[str, List[float]] = {}
 
     @classmethod
-    def create(cls, generator_names: List[str]) -> "ReconstructionState":
+    def create(cls, generator_names: List[str]) -> Self:
         return cls(
+            generator_names=generator_names,
             instructions={name: [] for name in generator_names},
             approximations={name: [] for name in generator_names},
-            features={name: [] for name in generator_names},
-            current_initials={name: None for name in generator_names},
-            total_error=0.0,
+            initials={name: None for name in generator_names},
+            errors={name: [] for name in generator_names},
         )
+
+    def append(self, fragment_approximation: FragmentApproximation) -> None:
+        name = fragment_approximation.generator_name
+        self.instructions[name].append(fragment_approximation.instruction)
+        self.approximations[name].append(fragment_approximation.fragment.audio)
+        self.initials[name] = fragment_approximation.terminals
+        self.errors[name].append(fragment_approximation.error)
+
+    @property
+    def generator_names(self) -> List[str]:
+        return self.generator_names
+
+    @property
+    def total_error(self) -> float:
+        return sum(sum(errors) for errors in self.errors.values())
 
     class Config:
         arbitrary_types_allowed = True

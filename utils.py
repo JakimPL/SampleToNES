@@ -1,3 +1,4 @@
+import base64
 import json
 from typing import Any, Dict
 
@@ -35,3 +36,17 @@ def first_key_for_value(dictionary: dict, target: Any) -> Any:
             return key
 
     return None
+
+
+def serialize_array(array: np.ndarray) -> Dict[str, Any]:
+    return {
+        "data": base64.b64encode(array.tobytes()).decode("utf-8"),
+        "shape": array.shape,
+        "dtype": str(array.dtype),
+    }
+
+
+def deserialize_array(data: Dict[str, Any]) -> np.ndarray:
+    array_data = base64.b64decode(data["data"].encode("utf-8"))
+    array = np.frombuffer(array_data, dtype=data["dtype"])
+    return array.reshape(data["shape"])
