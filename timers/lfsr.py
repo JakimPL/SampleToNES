@@ -76,11 +76,8 @@ class LFSRTimer(Timer):
 
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
-        lengths = nonzero_pairs[:, 1] - nonzero_pairs[:, 0]
-        sums = cumsum_table[nonzero_pairs[:, 1]] - cumsum_table[nonzero_pairs[:, 0]]
-        means = sums / lengths
-        differences[mask] = means
-
+        means = np.array([np.mean(cumsum_table[pair[0] : pair[1]]) for pair in nonzero_pairs])
+        differences[mask] = np.diff(np.concatenate([[0], means]))
         frame = 2.0 * np.cumsum(np.concatenate([[0], differences]))[1:] - 1.0
 
         if save:

@@ -60,15 +60,17 @@ class Reconstructor:
         for name, generator in self.generators.items():
             generator.reset()
 
-        for fragment_id, feature in enumerate(tqdm(fragments)):
+        for fragment_id in tqdm(range(len(fragments))):
             for name, generator in self.generators.items():
-                fragment_approximation = self.find_best_fragment(name, feature)
+                fragment = fragments[fragment_id]
+                fragment_approximation = self.find_best_fragment(name, fragment)
                 fragments[fragment_id] -= fragment_approximation.fragment
 
     def generator_wise(self, fragments: FragmentedAudio) -> None:
         for name, generator in tqdm(self.generators.items()):
             generator.reset()
-            for fragment_id, fragment in enumerate(fragments):
+            for fragment_id in tqdm(range(len(fragments))):
+                fragment = fragments[fragment_id]
                 fragment_approximation = self.find_best_fragment(name, fragment)
                 fragments[fragment_id] -= fragment_approximation.fragment
 

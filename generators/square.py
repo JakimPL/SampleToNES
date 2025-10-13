@@ -34,13 +34,6 @@ class SquareGenerator(Generator):
         if not square_instruction.on or square_instruction.pitch is None:
             return output
 
-        if self.previous_instruction is not None and (
-            (self.previous_instruction.on and self.previous_instruction.pitch != square_instruction.pitch)
-            or (not self.previous_instruction.on)
-        ):
-            self.timer.reset()
-            initial_phase = None
-
         self.timer.frequency = self.get_frequency(square_instruction.pitch)
         duty_cycle = DUTY_CYCLES[square_instruction.duty_cycle]
 
