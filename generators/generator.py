@@ -39,7 +39,7 @@ class Generator:
 
     def generate_sample(self, instruction: Instruction, window: Window) -> Tuple[np.ndarray, int]:
         if not instruction.on:
-            return np.zeros(self.window.size * 3, dtype=np.float32), 0
+            return np.zeros(window.size * 3, dtype=np.float32), 0
 
         self.set_timer(instruction)
         output, offset = self.timer.generate_sample(window)

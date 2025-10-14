@@ -20,14 +20,20 @@ from generators.triangle import TriangleGenerator
 from generators.types import GeneratorClassName, Initials
 from instructions.instruction import Instruction
 from library.fragment import Fragment
-from timers.timer import Timer
-from utils import dump
+from utils import deserialize_array, dump, serialize_array
 
 GENERATORS = {
     "SquareGenerator": SquareGenerator,
     "TriangleGenerator": TriangleGenerator,
     "NoiseGenerator": NoiseGenerator,
 }
+
+
+def load_instruction(data: Dict[str, Any]) -> Instruction:
+    instruction_dictionary = json.loads(data["instruction"])
+    instruction_class = GENERATORS[data["generator_class"]].get_instruction_type()
+    instruction = instruction_class(**instruction_dictionary)
+    return instruction
 
 
 class LibraryKey(BaseModel):
@@ -102,6 +108,33 @@ class LibraryFragment(BaseModel):
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(audio=audio, feature=self.feature, windowed_audio=windowed_audio)
 
+    @field_serializer("instruction")
+    def serialize_instruction(self, instruction: Instruction, _info) -> str:
+        return dump(instruction.model_dump())
+
+    @field_serializer("sample")
+    def serialize_sample(self, sample: np.ndarray, _info) -> Dict[str, Any]:
+        return serialize_array(sample)
+
+    @field_serializer("feature")
+    def serialize_feature(self, feature: np.ndarray, _info) -> Dict[str, Any]:
+        return serialize_array(feature)
+
+    @classmethod
+    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+        instruction = load_instruction(dictionary)
+
+        sample = deserialize_array(dictionary["sample"])
+        feature = deserialize_array(dictionary["feature"])
+        return cls(
+            generator_class=dictionary["generator_class"],
+            instruction=instruction,
+            sample=sample,
+            feature=feature,
+            frequency=dictionary["frequency"],
+            offset=dictionary["offset"],
+        )
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -109,8 +142,24 @@ class LibraryFragment(BaseModel):
 class LibraryData(BaseModel):
     data: Dict[Instruction, LibraryFragment]
 
+    def __post_init__(self):
+        squares = self.filter("SquareGenerator")
+        triangles = self.filter("TriangleGenerator")
+        noises = self.filter("NoiseGenerator")
+
+        object.__setattr__(self, "squares", squares)
+        object.__setattr__(self, "triangles", triangles)
+        object.__setattr__(self, "noises", noises)
+
     def __getitem__(self, key: Instruction) -> LibraryFragment:
         return self.data[key]
+
+    def filter(self, generator_class: GeneratorClassName) -> Dict[Instruction, LibraryFragment]:
+        return {
+            instruction: fragment
+            for instruction, fragment in self.data.items()
+            if fragment.generator_class == generator_class
+        }
 
     def keys(self):
         return self.data.keys()
@@ -120,6 +169,27 @@ class LibraryData(BaseModel):
 
     def values(self):
         return self.data.values()
+
+    @field_serializer("data")
+    def serialize_data(self, data: Dict[Instruction, LibraryFragment], _info) -> Dict[str, Any]:
+        return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
+
+    @classmethod
+    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+        data = {}
+        for key, value in dictionary["data"].items():
+
+            instruction = load_instruction(
+                {
+                    "instruction": key,
+                    "generator_class": value["generator_class"],
+                }
+            )
+
+            fragment = LibraryFragment.deserialize(value)
+            data[instruction] = fragment
+
+        return cls(data=data)
 
     class Config:
         arbitrary_types_allowed = True
@@ -132,29 +202,39 @@ class Library(BaseModel):
     def __getitem__(self, key: LibraryKey) -> LibraryData:
         return self.data[key]
 
-    def update(self, config: Config, window: Window, duration: float = 3.0, overwrite: bool = False) -> LibraryKey:
+    def update(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
         key = LibraryKey.create(config, window)
         if not overwrite and key in self.data:
             return key
 
         generators = {name: GENERATORS[name](config, name) for name in GENERATORS}
-        log_arffts = {}
+        data = {}
         for generator in tqdm(generators.values(), desc="Generating FFT library"):
-            if generator.name in log_arffts:
-                continue
+            for instruction in tqdm(
+                generator.get_possible_instructions(), desc=f"Processing {generator.name}", leave=False
+            ):
+                fragment = LibraryFragment.create(generator, instruction, window)
+                data[instruction] = fragment
 
-            generator_data = self._calculate_generator_data(key, generator, window, duration)
-            log_arffts[generator.name] = generator_data
-
-        self.data[key] = LibraryData(data=log_arffts)
-        self.save()
+        self.data[key] = LibraryData(data=data)
+        self._save()
         return key
+
+    def keys(self):
+        return self.data.keys()
+
+    def items(self):
+        return self.data.items()
+
+    def values(self):
+        return self.data.values()
 
     def _save(self):
         dump = self.model_dump()
         binary = msgpack.packb(dump)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.path, "wb") as file:
+        path = Path(self.path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as file:
             file.write(binary)
 
     def _load(self):
@@ -163,7 +243,7 @@ class Library(BaseModel):
 
         dump = msgpack.unpackb(binary)
         self.path = Path(dump["path"])
-        self.data = {}
+        self.data = {LibraryKey.deserialize(key): LibraryData.deserialize(data) for key, data in dump["data"].items()}
 
     @field_serializer("path")
     def serialize_path(self, path: Path, _info):
