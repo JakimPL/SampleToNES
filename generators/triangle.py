@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Tuple
 
 import numpy as np
 
@@ -26,28 +26,26 @@ class TriangleGenerator(Generator):
         triangle_instruction: TriangleInstruction,
         initials: Initials = None,
         save: bool = False,
-        window: Optional[Window] = None,
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
-        output = np.zeros(self.frame_length if window is None else window.size, dtype=np.float32)
 
         if not triangle_instruction.on:
-            return output
+            return np.zeros(self.frame_length, dtype=np.float32)
 
-        self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
-        output = self.timer(initials=initials, window=window)
-        output = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
-
-        if window is not None:
-            output *= window.envelope
-
-        if not save:
-            self.timer.set(initials)
-        else:
-            self.previous_instruction = triangle_instruction
+        output = self.generate(triangle_instruction, initials=initials)
+        self.save_state(save, triangle_instruction, initials)
 
         return output * MIXER_TRIANGLE * self.config.mixer
+
+    def set_timer(self, triangle_instruction: TriangleInstruction) -> None:
+        if triangle_instruction.on:
+            self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
+        else:
+            self.timer.frequency = 0.0
+
+    def apply(self, output: np.ndarray, triangle_instruction: TriangleInstruction) -> np.ndarray:
+        return 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
 
     def get_possible_instructions(self) -> List[TriangleInstruction]:
         triangle_instructions = [

@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from constants import APU_CLOCK, MAX_LFSR, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
-from ffts.window import Window
+from constants import APU_CLOCK, MAX_LFSR, MAX_LFSR_SHORT, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
 from generators.types import Initials
 from timers.timer import Timer
 
@@ -12,36 +11,34 @@ from timers.timer import Timer
 @dataclass(frozen=True)
 class LFSRTTables:
     lfsr_to_index: np.ndarray
-    forward: np.ndarray
-    backward: np.ndarray
-    forward_cumsums: np.ndarray
-    backward_cumsums: np.ndarray
+    lfsrs: Dict[bool, np.ndarray]
+    cumsums: Dict[bool, np.ndarray]
 
 
 class LFSRTimer(Timer):
     def __init__(self, sample_rate: int, change_rate: int, reset_phase: bool = RESET_PHASE) -> None:
+        super().__init__(sample_rate, change_rate, reset_phase)
+
         self._clocks_per_sample: float = 0.0
+        self._real_frequency: float = 0.0
+        self._period: float = 0.0
 
         self.mode: bool = False
 
         self.lfsr: int = 1
         self.clock: float = 0.0
 
-        self.reset_phase: bool = reset_phase
-        self.sample_rate: int = sample_rate
-        self.change_rate: int = change_rate
-        self.frame_length: int = round(self.sample_rate / self.change_rate)
-
-        self.lfsr_tables: LFSRTTables = self.precalculate_lfsr_tables()
+        self.lfsr_tables: Dict[bool, LFSRTTables] = {
+            True: self.precalculate_lfsr_tables(True),
+            False: self.precalculate_lfsr_tables(False),
+        }
 
     def __call__(
         self,
-        window: Optional[Window] = None,
         initials: Initials = None,
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)
-        frame = self.prepare_frame(window)
 
         if initial_lfsr is not None:
             self.lfsr = initial_lfsr
@@ -50,16 +47,25 @@ class LFSRTimer(Timer):
             self.clock = initial_clock
 
         if self._clocks_per_sample <= 0:
+            frame = self.prepare_frame(None)
             frame.fill(2.0 * (self.lfsr & 1) - 1.0)
             return frame
 
-        if window is None:
-            return self.generate_frame()
-        else:
-            return self.generate_window(window)
+        return self.generate_frame()
+
+    def calculate_offset(self, initials: Initials = None) -> int:
+        lfsr, clock = initials if initials is not None else (1, 0.0)
+        lfsr_to_index = self.lfsr_tables[self.mode].lfsr_to_index
+        end_index = int(lfsr_to_index[lfsr])
+        if end_index == -1:
+            raise ValueError(f"Invalid LFSR value: {lfsr}")
+
+        return int(np.ceil(end_index / self._clocks_per_sample - clock))
 
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
-        cumsum_table = self.lfsr_tables.forward_cumsums if direction else self.lfsr_tables.backward_cumsums
+        lfsrs = self.lfsr_tables[self.mode].lfsrs[direction]
+        cumsum_table = self.lfsr_tables[self.mode].cumsums[direction]
+
         indices = np.arange(self.frame_length + 1)
         direction = 1.0 if direction else -1.0
         delta = self._clocks_per_sample * direction
@@ -68,21 +74,21 @@ class LFSRTimer(Timer):
         changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
         differences = np.zeros_like(changes, dtype=np.float32)
 
-        index = self.lfsr_tables.lfsr_to_index[self.lfsr]
+        index = self.lfsr_tables[self.mode].lfsr_to_index[self.lfsr]
         start_indices = changes_cumsum + index
         end_indices = np.roll(start_indices, -1)
         pairs = np.stack([start_indices, end_indices]).T[:-1]
         mask = pairs[:, 0] > pairs[:, 1]
-        pairs[mask, 1] += MAX_LFSR
+        pairs[mask, 1] += self.lfsr_period
 
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
         means = np.array([np.mean(cumsum_table[pair[0] : pair[1]]) for pair in nonzero_pairs])
         differences[mask] = np.diff(np.concatenate([[0], means]))
-        frame = 2.0 * np.cumsum(np.concatenate([[0], differences]))[1:] - 1.0
+        frame = 2.0 * np.cumsum(differences) - 1.0
 
         if save:
-            self.lfsr = int(self.lfsr_tables.forward[index + changes_cumsum[-1]])
+            self.lfsr = int(lfsrs[index + changes_cumsum[-1]])
             self.clock = float(clock[-1] % 1.0)
 
         return frame if direction > 0 else frame[::-1]
@@ -99,6 +105,10 @@ class LFSRTimer(Timer):
     def period(self, value: int) -> None:
         self._period = value
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
+
+        self._period = (93.0 if self.mode else 32767.0) / self._clocks_per_sample
+        self._real_frequency = self.sample_rate / self._period
+
         if self.reset_phase:
             self.reset()
 
@@ -151,17 +161,22 @@ class LFSRTimer(Timer):
         self.lfsr = lfsr
         self.clock = clock
 
-    def precalculate_lfsr_tables(self) -> LFSRTTables:
+    def precalculate_lfsr_tables(self, mode: bool) -> LFSRTTables:
+        self.mode = mode
         clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
-        repeats = int(np.ceil(clocks_per_sample * self.frame_length / MAX_LFSR)) * 2 + 1
+        repeats = int(np.ceil(clocks_per_sample * self.frame_length / self.lfsr_period)) * 2 + 1
 
         forward_lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
         lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int16)
 
         lfsr = 1
-        for i in range(MAX_LFSR - 1):
-            lfsr_to_index[lfsr] = i
+        for i in range(MAX_LFSR):
+            lfsr_to_index[lfsr] = lfsr_to_index[lfsr] if lfsr_to_index[lfsr] != -1 else i
+
             forward_lfsr = self.forward(lfsr)
+            if i == MAX_LFSR - 1:
+                break
+
             forward_lfsrs[i + 1] = forward_lfsr
             lfsr = forward_lfsr
 
@@ -171,9 +186,11 @@ class LFSRTimer(Timer):
         backward_lfsrs_cumsums = np.concatenate([[0], np.cumsum(backward_lfsrs, dtype=np.int64)]) & 1
 
         return LFSRTTables(
-            forward=forward_lfsrs,
-            backward=backward_lfsrs,
             lfsr_to_index=lfsr_to_index,
-            forward_cumsums=forward_lfsrs_cumsums,
-            backward_cumsums=backward_lfsrs_cumsums,
+            lfsrs={True: forward_lfsrs, False: backward_lfsrs},
+            cumsums={True: forward_lfsrs_cumsums, False: backward_lfsrs_cumsums},
         )
+
+    @property
+    def lfsr_period(self) -> int:
+        return MAX_LFSR_SHORT if self.mode else MAX_LFSR

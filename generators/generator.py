@@ -31,8 +31,19 @@ class Generator:
     ) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
+    def generate(self, instruction: Instruction, initials: Initials = None) -> np.ndarray:
+        self.set_timer(instruction)
+        output = self.timer(initials=initials)
+        output = self.apply(output, instruction)
+        return output
+
     def generate_sample(self, instruction: Instruction, window: Window) -> Tuple[np.ndarray, int]:
-        raise NotImplementedError("Subclasses must implement this method")
+        if not instruction.on:
+            return np.zeros(self.window.size * 3, dtype=np.float32), 0
+
+        self.set_timer(instruction)
+        output, offset = self.timer.generate_sample(window)
+        return self.apply(output, instruction), offset
 
     def generate_frames(
         self, instruction: Instruction, frames: Union[int, float] = 3.0, initials: Initials = None
@@ -52,7 +63,16 @@ class Generator:
         self.timer.set(previous_initials)
         return np.concatenate(output)[:samples]
 
+    def save_state(self, save: bool, instruction: Instruction, initials: Initials) -> None:
+        if not save:
+            self.timer.set(initials)
+        else:
+            self.previous_instruction = instruction
+
     def set_timer(self, instruction: Instruction) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def apply(self, output: np.ndarray, instruction: Instruction) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:

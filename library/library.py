@@ -91,7 +91,7 @@ class LibraryFragment(BaseModel):
             instruction=instruction,
             sample=sample,
             feature=feature,
-            frequency=generator.get_frequency(instruction.pitch) if instruction.on else 0,
+            frequency=generator.timer.real_frequency,
             offset=offset,
         )
 

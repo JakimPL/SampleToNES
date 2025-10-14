@@ -23,30 +23,29 @@ class NoiseGenerator(Generator):
         noise_instruction: NoiseInstruction,
         initials: Initials = None,
         save: bool = False,
-        window: Optional[Window] = None,
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)
-        frame_length = self.frame_length if window is None else window.size
-        output = np.zeros(frame_length, dtype=np.float32)
 
         if not noise_instruction.on:
-            return output
+            return np.zeros(self.frame_length, dtype=np.float32)
 
-        self.timer.mode = noise_instruction.mode
-        self.timer.period = noise_instruction.period
-        volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
-        output = volume * self.timer(window=window, initials=initials)
-
-        if window is not None:
-            output *= window.envelope
-
-        if not save:
-            self.timer.set(initials)
-        else:
-            self.previous_instruction = noise_instruction
+        output = self.generate(noise_instruction, initials=initials)
+        self.save_state(save, noise_instruction, initials)
 
         return output * MIXER_NOISE * self.config.mixer
+
+    def set_timer(self, noise_instruction: NoiseInstruction) -> None:
+        if noise_instruction.on:
+            self.timer.mode = noise_instruction.mode
+            self.timer.period = noise_instruction.period
+        else:
+            self.timer.mode = False
+            self.timer.period = 0
+
+    def apply(self, output: np.ndarray, noise_instruction: NoiseInstruction) -> np.ndarray:
+        volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+        return volume * output
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
         noise_instructions = [

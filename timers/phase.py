@@ -16,18 +16,13 @@ class PhaseTimer(Timer):
         reset_phase: bool = RESET_PHASE,
         phase_increment: float = 1.0,
     ) -> None:
+        super().__init__(sample_rate, change_rate, reset_phase)
         self._cycles_per_sample: float = APU_CLOCK / sample_rate
         self._frequency: float = 0.0
-        self._real_frequency: float = 0.0
         self._timer: int = 0
         self._timer_ticks: int = 0
 
         self.phase: float = 0.0
-
-        self.sample_rate: int = sample_rate
-        self.reset_phase: bool = reset_phase
-        self.change_rate: int = change_rate
-        self.frame_length: int = round(self.sample_rate / self.change_rate)
 
         self.phase_increment: float = phase_increment
 
@@ -37,13 +32,14 @@ class PhaseTimer(Timer):
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
-        frame = self.prepare_frame(None)
 
         if initial_phase is not None:
             self.phase = initial_phase
 
         if self._timer_ticks <= 0:
-            return frame.fill(self.phase)
+            frame = self.prepare_frame(None)
+            frame.fill(self.phase)
+            return frame
 
         return self.generate_frame()
 
@@ -62,12 +58,6 @@ class PhaseTimer(Timer):
             self.phase = float(frame[-1])
 
         return frame if direction > 0 else frame[::-1]
-
-    def generate_sample(self, window: Window) -> Tuple[np.ndarray, int]:
-        base_length = int(np.ceil(max(self.sample_rate / self._real_frequency, window.size)))
-        backward_frames = -(-(base_length) // self.frame_length)
-        forward_frames = -((-2 * base_length) // self.frame_length)
-        return super().generate_sample(backward_frames, forward_frames)
 
     @property
     def initials(self) -> Tuple[Any, ...]:

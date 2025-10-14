@@ -33,14 +33,8 @@ class SquareGenerator(Generator):
         if not square_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 
-        self.set_timer(square_instruction)
-        output = self.timer(initials=initials)
-        output = self.apply_square(output, square_instruction)
-
-        if not save:
-            self.timer.set(initials)
-        else:
-            self.previous_instruction = square_instruction
+        output = self.generate(square_instruction, initials=initials)
+        self.save_state(save, square_instruction, initials)
 
         return output * MIXER_SQUARE * self.config.mixer
 
@@ -50,19 +44,11 @@ class SquareGenerator(Generator):
         else:
             self.timer.frequency = 0.0
 
-    def apply_square(self, output: np.ndarray, square_instruction: SquareInstruction) -> np.ndarray:
+    def apply(self, output: np.ndarray, square_instruction: SquareInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[square_instruction.duty_cycle]
         output = np.where(output < duty_cycle, 1.0, -1.0)
         output *= square_instruction.volume / MAX_VOLUME
         return output
-
-    def generate_sample(self, square_instruction: SquareInstruction, window: Window) -> Tuple[np.ndarray, int]:
-        if not square_instruction.on:
-            return np.zeros(self.window.size * 3, dtype=np.float32)
-
-        self.timer.frequency = self.get_frequency(square_instruction.pitch)
-        output, offset = self.timer.generate_sample(window)
-        return self.apply_square(output, square_instruction), offset
 
     def get_possible_instructions(self) -> List[SquareInstruction]:
         square_instructions = [SquareInstruction(on=False, pitch=None, volume=0, duty_cycle=0)]
