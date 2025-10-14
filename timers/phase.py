@@ -1,9 +1,10 @@
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple
 
 import numpy as np
 
 from constants import APU_CLOCK, RESET_PHASE
 from ffts.window import Window
+from generators.types import Initials
 from timers.timer import Timer
 
 
@@ -17,6 +18,7 @@ class PhaseTimer(Timer):
     ) -> None:
         self._cycles_per_sample: float = APU_CLOCK / sample_rate
         self._frequency: float = 0.0
+        self._real_frequency: float = 0.0
         self._timer: int = 0
         self._timer_ticks: int = 0
 
@@ -31,12 +33,11 @@ class PhaseTimer(Timer):
 
     def __call__(
         self,
-        window: Optional[Window] = None,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
-        frame = self.prepare_frame(window)
+        frame = self.prepare_frame(None)
 
         if initial_phase is not None:
             self.phase = initial_phase
@@ -44,10 +45,11 @@ class PhaseTimer(Timer):
         if self._timer_ticks <= 0:
             return frame.fill(self.phase)
 
-        if window is None:
-            return self.generate_frame()
-        else:
-            return self.generate_window(window)
+        return self.generate_frame()
+
+    def calculate_offset(self, initials: Initials = None) -> int:
+        phase = initials[0] if initials is not None else 0.0
+        return round(self.sample_rate / self._real_frequency * phase)
 
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
         indices = np.arange(self.frame_length) + 1
@@ -60,6 +62,12 @@ class PhaseTimer(Timer):
             self.phase = float(frame[-1])
 
         return frame if direction > 0 else frame[::-1]
+
+    def generate_sample(self, window: Window) -> Tuple[np.ndarray, int]:
+        base_length = int(np.ceil(max(self.sample_rate / self._real_frequency, window.size)))
+        backward_frames = -(-(base_length) // self.frame_length)
+        forward_frames = -((-2 * base_length) // self.frame_length)
+        return super().generate_sample(backward_frames, forward_frames)
 
     @property
     def initials(self) -> Tuple[Any, ...]:
@@ -90,12 +98,19 @@ class PhaseTimer(Timer):
     def frequency(self) -> float:
         return self._frequency
 
+    @property
+    def base_length(self) -> int:
+        return self._base_length
+
     @frequency.setter
     def frequency(self, value: float) -> None:
         self._frequency = value
         self._timer = self.frequency_to_timer(value)
         self._timer_ticks = self.get_timer_ticks(self._timer)
         self.round_frequency_by_timer()
+
+        self._real_frequency = self.frequency * self.phase_increment
+
         if self.reset_phase:
             self.reset()
 

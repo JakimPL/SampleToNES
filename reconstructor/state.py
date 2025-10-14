@@ -1,11 +1,12 @@
-from typing import Any, Dict, List, Optional, Self, Tuple
+from typing import Dict, List, Self
 
 import numpy as np
 from pydantic import BaseModel
 
+from generators.types import Initials
 from instructions.instruction import Instruction
+from library.fragment import Fragment
 from reconstructor.approximation import FragmentApproximation
-from reconstructor.fragment import Fragment
 
 
 class FragmentReconstructionState(BaseModel):
@@ -21,7 +22,7 @@ class ReconstructionState(BaseModel):
     generator_names: List[str] = []
     instructions: Dict[str, List[Instruction]] = {}
     approximations: Dict[str, List[np.ndarray]] = {}
-    initials: Dict[str, Optional[Tuple[Any, ...]]] = {}
+    initials: Dict[str, Initials] = {}
     errors: Dict[str, List[float]] = {}
 
     @classmethod

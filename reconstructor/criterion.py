@@ -6,7 +6,7 @@ from sklearn.metrics import root_mean_squared_error
 from config import Config
 from ffts.window import Window
 from instructions.instruction import Instruction
-from reconstructor.fragment import Fragment
+from library.fragment import Fragment
 
 
 class Criterion:
@@ -19,9 +19,6 @@ class Criterion:
         self.alpha: float = alpha
         self.beta: float = beta
         self.gamma: float = gamma
-
-        # self.library: FFTLibrary = FFTLibrary.load(self.config.library_path)
-        # self.library.update(config, window)
 
     def __call__(
         self,

@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Tuple
+from typing import List, Optional
 
 import numpy as np
 
@@ -6,6 +6,7 @@ from config import Config
 from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from ffts.window import Window
 from generators.generator import Generator
+from generators.types import Initials
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
 
@@ -20,7 +21,7 @@ class NoiseGenerator(Generator):
     def __call__(
         self,
         noise_instruction: NoiseInstruction,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
         save: bool = False,
         window: Optional[Window] = None,
     ) -> np.ndarray:
@@ -74,3 +75,7 @@ class NoiseGenerator(Generator):
     @staticmethod
     def get_instruction_type() -> type:
         return NoiseInstruction
+
+    @classmethod
+    def class_name(cls) -> str:
+        return cls.__name__

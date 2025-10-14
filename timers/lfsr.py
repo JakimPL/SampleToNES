@@ -5,6 +5,7 @@ import numpy as np
 
 from constants import APU_CLOCK, MAX_LFSR, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
 from ffts.window import Window
+from generators.types import Initials
 from timers.timer import Timer
 
 
@@ -36,7 +37,7 @@ class LFSRTimer(Timer):
     def __call__(
         self,
         window: Optional[Window] = None,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)

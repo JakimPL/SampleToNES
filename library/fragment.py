@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 
 from ffts.fft import calculate_log_arfft, log_arfft_difference
 from ffts.window import Window
+from generators.types import GeneratorClassName, Initials
+from instructions.instruction import Instruction
+from timers.timer import Timer
 
 
 class Fragment(BaseModel):
@@ -15,6 +18,7 @@ class Fragment(BaseModel):
     @classmethod
     def create(cls, windowed_audio: np.ndarray, window: Window) -> Self:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
+
         feature = calculate_log_arfft(windowed_audio, window.size)
         return cls(
             audio=window.get_frame_from_window(windowed_audio),
@@ -25,6 +29,7 @@ class Fragment(BaseModel):
     def __sub__(self, other: Self) -> Self:
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted.")
+
         audio = self.audio - other.audio
         windowed_audio = self.windowed_audio - other.windowed_audio
         feature = log_arfft_difference(self.feature, other.feature)
@@ -44,7 +49,8 @@ class FragmentedAudio(BaseModel):
         audio = audio[:length].copy()
         count = length // window.frame_length
         fragments = [
-            Fragment.create(window.get_windowed_frame(audio, fragment_id), window) for fragment_id in range(count)
+            Fragment.create(window.get_windowed_frame(audio, fragment_id * window.frame_length), window)
+            for fragment_id in range(count)
         ]
 
         return cls(audio=audio, fragments=fragments)

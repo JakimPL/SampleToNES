@@ -1,14 +1,15 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 from config import Config
 from ffts.window import Window
 from frequencies import get_frequency_table
+from generators.types import Initials
 from instructions.instruction import Instruction
+from library.fragment import Fragment
 from reconstructor.approximation import FragmentApproximation
 from reconstructor.criterion import Criterion
-from reconstructor.fragment import Fragment
 from timers.timer import Timer
 
 
@@ -25,10 +26,33 @@ class Generator:
     def __call__(
         self,
         instruction: Instruction,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
         save: bool = False,
-        window: Optional[Window] = None,
     ) -> np.ndarray:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def generate_sample(self, instruction: Instruction, window: Window) -> Tuple[np.ndarray, int]:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def generate_frames(
+        self, instruction: Instruction, frames: Union[int, float] = 3.0, initials: Initials = None
+    ) -> np.ndarray:
+        previous_initials = self.timer.get()
+
+        self.timer.set(initials)
+        if isinstance(frames, float):
+            frames = round(frames * self.config.sample_rate / self.config.frame_length)
+
+        samples = round(frames * self.config.sample_rate)
+        output = []
+        for _ in range(frames):
+            frame = self(instruction, save=True)
+            output.append(frame)
+
+        self.timer.set(previous_initials)
+        return np.concatenate(output)[:samples]
+
+    def set_timer(self, instruction: Instruction) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:
@@ -52,7 +76,7 @@ class Generator:
         self,
         fragment: Fragment,
         criterion: Criterion,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
     ) -> Tuple[Instruction, float]:
         instructions = []
         errors = []
@@ -72,7 +96,7 @@ class Generator:
         self,
         fragment: Fragment,
         criterion: Criterion,
-        initials: Optional[Tuple[Any, ...]] = None,
+        initials: Initials = None,
     ) -> FragmentApproximation:
         instruction, error = self.find_best_instruction(fragment, criterion, initials=initials)
         approximation = self(instruction, initials=initials, save=True, window=criterion.window)
@@ -89,6 +113,10 @@ class Generator:
     @property
     def frame_length(self) -> int:
         return self.config.frame_length
+
+    @classmethod
+    def class_name(cls) -> str:
+        return NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
     def get_instruction_type() -> type:

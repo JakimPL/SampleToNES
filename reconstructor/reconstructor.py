@@ -10,9 +10,9 @@ from generators.generator import Generator
 from generators.noise import NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
+from library.fragment import Fragment, FragmentedAudio
 from reconstructor.approximation import FragmentApproximation
 from reconstructor.criterion import Criterion
-from reconstructor.fragment import Fragment, FragmentedAudio
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 
