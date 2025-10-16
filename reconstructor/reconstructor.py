@@ -1,47 +1,45 @@
-from typing import Dict, List, Literal, Optional
+from typing import Dict, Literal, Optional
 
 import numpy as np
 from tqdm.auto import tqdm
 
 from config import Config
-from ffts.fft import calculate_log_arfft, log_arfft_difference
 from ffts.window import Window
-from generators.generator import Generator
-from generators.noise import NoiseGenerator
-from generators.square import SquareGenerator
-from generators.triangle import TriangleGenerator
+from generators.types import GeneratorClassName
 from library.fragment import Fragment, FragmentedAudio
+from library.library import Library, LibraryKey
 from reconstructor.approximation import FragmentApproximation
 from reconstructor.criterion import Criterion
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 
-GENERATORS = {
-    "triangle": TriangleGenerator,
-    "noise": NoiseGenerator,
-    "square1": SquareGenerator,
-    "square2": SquareGenerator,
+GENERATOR_CLASSES = {
+    "triangle": "TriangleGenerator",
+    "noise": "NoiseGenerator",
+    "square1": "SquareGenerator",
+    "square2": "SquareGenerator",
 }
 
 
 class Reconstructor:
-    def __init__(self, config: Config, generators: Optional[List[str]] = None) -> None:
-        if generators:
-            assert all(generator in GENERATORS for generator in generators), "Unknown generator specified."
-        else:
-            generators = list(GENERATORS.keys())
-
+    def __init__(self, config: Config, generator_names: Optional[Dict[str, GeneratorClassName]] = None) -> None:
         self.config: Config = config
-        self.generators: Dict[str, Generator] = {name: GENERATORS[name](config, name) for name in generators}
+
+        self.generator_names: Dict[str, GeneratorClassName] = (
+            generator_names if generator_names is not None else GENERATOR_CLASSES.copy()
+        )
         self.state: Optional[ReconstructionState] = None
 
         self.window: Window = Window(config)
         self.criterion: Criterion = Criterion(config, self.window)
+        self.key = LibraryKey.create(config, self.window)
+
+        self.library: Library = Library.load()
 
     def __call__(
         self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
     ) -> Reconstruction:
-        self.state = ReconstructionState.create(list(self.generators))
+        self.state = ReconstructionState.create(list(self.generator_names.keys()))
         fragments = self.get_fragments(audio)
 
         if mode == "frame-wise":

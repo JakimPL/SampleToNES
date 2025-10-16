@@ -6,7 +6,6 @@ import numpy as np
 from IPython.display import Audio, display
 from scipy.io import wavfile
 
-from config import Config
 from constants import QUANTIZATION_LEVELS, SAMPLE_RATE
 
 

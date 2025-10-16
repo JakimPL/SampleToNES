@@ -3,7 +3,6 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from constants import APU_CLOCK, RESET_PHASE
-from ffts.window import Window
 from generators.types import Initials
 from timers.timer import Timer
 

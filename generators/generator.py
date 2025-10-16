@@ -7,9 +7,6 @@ from ffts.window import Window
 from frequencies import get_frequency_table
 from generators.types import Initials
 from instructions.instruction import Instruction
-from library.fragment import Fragment
-from reconstructor.approximation import FragmentApproximation
-from reconstructor.criterion import Criterion
 from timers.timer import Timer
 
 
@@ -91,44 +88,6 @@ class Generator:
 
     def get_possible_instructions(self) -> List[Instruction]:
         raise NotImplementedError("Subclasses must implement this method")
-
-    def find_best_instruction(
-        self,
-        fragment: Fragment,
-        criterion: Criterion,
-        initials: Initials = None,
-    ) -> Tuple[Instruction, float]:
-        instructions = []
-        errors = []
-        for instruction in self.get_possible_instructions():
-            approximation = self(instruction, initials=initials, save=False, window=criterion.window)
-            approximation = Fragment.create(approximation, criterion.window)
-            error = criterion(fragment, approximation, instruction, self.previous_instruction)
-            instructions.append(instruction)
-            errors.append(error)
-
-        index = np.argmin(errors)
-        instruction = instructions[index]
-        error = errors[index]
-        return instruction, error
-
-    def find_best_fragment_approximation(
-        self,
-        fragment: Fragment,
-        criterion: Criterion,
-        initials: Initials = None,
-    ) -> FragmentApproximation:
-        instruction, error = self.find_best_instruction(fragment, criterion, initials=initials)
-        approximation = self(instruction, initials=initials, save=True, window=criterion.window)
-        fragment = Fragment.create(approximation, criterion.window)
-        return FragmentApproximation(
-            generator_name=self.name,
-            fragment=fragment,
-            instruction=instruction,
-            initials=initials,
-            terminals=self.initials,
-            error=error,
-        )
 
     @property
     def frame_length(self) -> int:

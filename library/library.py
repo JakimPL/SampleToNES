@@ -254,7 +254,7 @@ class Library(BaseModel):
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     @classmethod
-    def load(cls, path: Path) -> Self:
+    def load(cls, path: Path = LIBRARY_PATH) -> Self:
         library = cls(path=path)
         library._load()
         return library

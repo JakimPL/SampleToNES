@@ -1,10 +1,9 @@
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
 from config import Config
 from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
-from ffts.window import Window
 from generators.generator import Generator
 from generators.types import Initials
 from instructions.noise import NoiseInstruction

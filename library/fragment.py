@@ -5,9 +5,6 @@ from pydantic import BaseModel, Field
 
 from ffts.fft import calculate_log_arfft, log_arfft_difference
 from ffts.window import Window
-from generators.types import GeneratorClassName, Initials
-from instructions.instruction import Instruction
-from timers.timer import Timer
 
 
 class Fragment(BaseModel):
