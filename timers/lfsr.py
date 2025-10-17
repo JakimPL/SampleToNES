@@ -58,7 +58,7 @@ class LFSRTimer(Timer):
         lfsr_to_index = self.lfsr_tables[self.mode].lfsr_to_index
         end_index = int(lfsr_to_index[lfsr])
         if end_index == -1:
-            raise ValueError(f"Invalid LFSR value: {lfsr}")
+            end_index = 0
 
         return int(np.ceil(end_index / self._clocks_per_sample - clock))
 

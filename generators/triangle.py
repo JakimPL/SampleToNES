@@ -35,7 +35,7 @@ class TriangleGenerator(Generator):
         output = self.generate(triangle_instruction, initials=initials)
         self.save_state(save, triangle_instruction, initials)
 
-        return output * MIXER_TRIANGLE * self.config.mixer
+        return output * MIXER_TRIANGLE
 
     def set_timer(self, triangle_instruction: TriangleInstruction) -> None:
         if triangle_instruction.on:

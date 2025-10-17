@@ -1,10 +1,12 @@
-from typing import Self
+from typing import Optional, Self
 
 import numpy as np
 from pydantic import BaseModel, Field
 
-from ffts.fft import calculate_log_arfft, log_arfft_difference
+from ffts.fft import calculate_log_arfft, log_arfft_multiply, log_arfft_subtract
 from ffts.window import Window
+
+FAST_LOG_ARFFT = True
 
 
 class Fragment(BaseModel):
@@ -13,10 +15,11 @@ class Fragment(BaseModel):
     windowed_audio: np.ndarray = Field(..., description="Original windowed audio data")
 
     @classmethod
-    def create(cls, windowed_audio: np.ndarray, window: Window) -> Self:
+    def create(cls, windowed_audio: np.ndarray, window: Optional[Window] = None) -> Self:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
 
-        feature = calculate_log_arfft(windowed_audio, window.size)
+        size = window.size if window is not None else None
+        feature = calculate_log_arfft(windowed_audio, size)
         return cls(
             audio=window.get_frame_from_window(windowed_audio),
             feature=feature,
@@ -27,9 +30,19 @@ class Fragment(BaseModel):
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted.")
 
-        audio = self.audio - other.audio
         windowed_audio = self.windowed_audio - other.windowed_audio
-        feature = log_arfft_difference(self.feature, other.feature)
+        audio = self.audio - other.audio
+        if FAST_LOG_ARFFT:
+            feature = log_arfft_subtract(self.feature, other.feature)
+        else:
+            feature = calculate_log_arfft(windowed_audio)
+
+        return Fragment(audio=audio, feature=feature, windowed_audio=windowed_audio)
+
+    def __mul__(self, scalar: float) -> Self:
+        audio = self.audio * scalar
+        windowed_audio = self.windowed_audio * scalar
+        feature = log_arfft_multiply(self.feature, scalar)
         return Fragment(audio=audio, feature=feature, windowed_audio=windowed_audio)
 
     class Config:

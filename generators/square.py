@@ -35,7 +35,7 @@ class SquareGenerator(Generator):
         output = self.generate(square_instruction, initials=initials)
         self.save_state(save, square_instruction, initials)
 
-        return output * MIXER_SQUARE * self.config.mixer
+        return output * MIXER_SQUARE
 
     def set_timer(self, square_instruction: SquareInstruction) -> None:
         if square_instruction.on:

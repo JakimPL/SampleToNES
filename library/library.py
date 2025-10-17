@@ -1,12 +1,13 @@
 import hashlib
 import json
+from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, Self
+from typing import Any, Collection, Dict, Self, Union
 
 import msgpack
 import numpy as np
 from flask import json
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, Field, computed_field, field_serializer
 from tqdm.auto import tqdm
 
 from config import Config as Config
@@ -17,7 +18,7 @@ from generators.generator import Generator
 from generators.noise import NoiseGenerator
 from generators.square import SquareGenerator
 from generators.triangle import TriangleGenerator
-from generators.types import GeneratorClassName, Initials
+from generators.types import GeneratorClassName, GeneratorClassNameValues, Initials
 from instructions.instruction import Instruction
 from library.fragment import Fragment
 from utils import deserialize_array, dump, serialize_array
@@ -142,24 +143,36 @@ class LibraryFragment(BaseModel):
 class LibraryData(BaseModel):
     data: Dict[Instruction, LibraryFragment]
 
-    def __post_init__(self):
-        squares = self.filter("SquareGenerator")
-        triangles = self.filter("TriangleGenerator")
-        noises = self.filter("NoiseGenerator")
+    @cached_property
+    def subdata(self) -> Dict[GeneratorClassName, Dict[Instruction, LibraryFragment]]:
+        subdata = {}
+        for generator_class_name in GeneratorClassNameValues:
+            subdata[generator_class_name] = {
+                instruction: fragment
+                for instruction, fragment in self.data.items()
+                if fragment.generator_class == generator_class_name
+            }
 
-        object.__setattr__(self, "squares", squares)
-        object.__setattr__(self, "triangles", triangles)
-        object.__setattr__(self, "noises", noises)
+        return subdata
 
     def __getitem__(self, key: Instruction) -> LibraryFragment:
         return self.data[key]
 
-    def filter(self, generator_class: GeneratorClassName) -> Dict[Instruction, LibraryFragment]:
-        return {
-            instruction: fragment
-            for instruction, fragment in self.data.items()
-            if fragment.generator_class == generator_class
-        }
+    def filter(
+        self, generator_classes: Union[GeneratorClassName, Collection[GeneratorClassName]]
+    ) -> Dict[Instruction, LibraryFragment]:
+        if not generator_classes:
+            return {}
+
+        if isinstance(generator_classes, str):
+            return self.subdata.get(generator_classes, {})
+        elif isinstance(generator_classes, Collection):
+            result = {}
+            for generator_class in generator_classes:
+                result |= self.subdata[generator_class]
+            return result
+
+        raise ValueError("Incorrect type of generator class provided")
 
     def keys(self):
         return self.data.keys()
@@ -200,6 +213,13 @@ class Library(BaseModel):
     data: Dict[LibraryKey, LibraryData] = Field(..., default_factory=dict, description="FFT library data")
 
     def __getitem__(self, key: LibraryKey) -> LibraryData:
+        return self.data[key]
+
+    def get(self, config: Config, window: Window) -> LibraryData:
+        key = LibraryKey.create(config, window)
+        if key not in self.data:
+            self.update(config, window)
+
         return self.data[key]
 
     def update(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
@@ -256,7 +276,9 @@ class Library(BaseModel):
     @classmethod
     def load(cls, path: Path = LIBRARY_PATH) -> Self:
         library = cls(path=path)
-        library._load()
+        if Path(path).exists():
+            library._load()
+
         return library
 
     class Config:

@@ -1,8 +1,14 @@
 from functools import lru_cache
-from typing import Optional
+from typing import Callable, Optional
 
 import numpy as np
 import scipy.fft
+
+
+def log_arfft_operation(
+    larfft1: np.ndarray, larfft2: np.ndarray, operation: Callable[[np.ndarray, np.ndarray], np.ndarray]
+) -> np.ndarray:
+    return np.log1p(np.abs(operation(np.expm1(larfft1), np.expm1(larfft2))))
 
 
 def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
@@ -14,8 +20,12 @@ def calculate_log_arfft(audio: np.ndarray, fft_size: Optional[int] = None) -> np
     return np.log1p(np.abs(calculate_fft(audio, fft_size)))
 
 
-def log_arfft_difference(larfft1: np.ndarray, larfft2: np.ndarray) -> np.ndarray:
-    return np.log1p(np.abs(np.expm1(larfft1) - np.expm1(larfft2)))
+def log_arfft_subtract(larfft1: np.ndarray, larfft2: np.ndarray) -> np.ndarray:
+    return log_arfft_operation(larfft1, larfft2, np.subtract)
+
+
+def log_arfft_multiply(larfft: np.ndarray, scalar: float) -> np.ndarray:
+    return np.log1p(np.abs(np.expm1(larfft) * scalar))
 
 
 def a_weighting(frequencies: np.ndarray) -> np.ndarray:

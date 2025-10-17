@@ -32,7 +32,7 @@ class NoiseGenerator(Generator):
         output = self.generate(noise_instruction, initials=initials)
         self.save_state(save, noise_instruction, initials)
 
-        return output * MIXER_NOISE * self.config.mixer
+        return output * MIXER_NOISE
 
     def set_timer(self, noise_instruction: NoiseInstruction) -> None:
         if noise_instruction.on:
