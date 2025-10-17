@@ -8,11 +8,11 @@ from pydantic import BaseModel, Field, field_serializer
 from config import Config
 from exporters.exporter import FeatureKey, FeatureValue
 from exporters.noise import NoiseExporter
-from exporters.square import SquareExporter
+from exporters.pulse import PulseExporter
 from exporters.triangle import TriangleExporter
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
-from instructions.square import SquareInstruction
+from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
 from reconstructor.state import ReconstructionState
 from utils import deserialize_array, serialize_array
@@ -20,13 +20,13 @@ from utils import deserialize_array, serialize_array
 INSTRUCTION_CLASS_MAP = {
     "Instruction": Instruction,
     "TriangleInstruction": TriangleInstruction,
-    "SquareInstruction": SquareInstruction,
+    "PulseInstruction": PulseInstruction,
     "NoiseInstruction": NoiseInstruction,
 }
 
 INSTRUCTION_TO_EXPORTER_MAP = {
     TriangleInstruction: TriangleExporter,
-    SquareInstruction: SquareExporter,
+    PulseInstruction: PulseExporter,
     NoiseInstruction: NoiseExporter,
 }
 
@@ -40,7 +40,7 @@ class Reconstruction(BaseModel):
 
     @staticmethod
     def _get_instruction_class(
-        name: Literal["Instruction", "TriangleInstruction", "SquareInstruction", "NoiseInstruction"] = None,
+        name: Literal["Instruction", "TriangleInstruction", "PulseInstruction", "NoiseInstruction"] = None,
     ) -> Dict[str, type]:
         return INSTRUCTION_CLASS_MAP[name]
 

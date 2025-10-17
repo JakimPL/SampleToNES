@@ -7,10 +7,10 @@ from config import Config
 from ffts.window import Window
 from generators.generator import Generator
 from generators.noise import NoiseGenerator
-from generators.square import SquareGenerator
+from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator
 from instructions.noise import NoiseInstruction
-from instructions.square import SquareInstruction
+from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
 from library.fragment import Fragment, FragmentedAudio
 from library.library import Library, LibraryData
@@ -22,13 +22,13 @@ from reconstructor.state import ReconstructionState
 GENERATOR_CLASSES = {
     "triangle": TriangleGenerator,
     "noise": NoiseGenerator,
-    "square1": SquareGenerator,
-    "square2": SquareGenerator,
+    "pulse1": PulseGenerator,
+    "pulse2": PulseGenerator,
 }
 
 INSTRUCTION_TO_GENERATOR_MAP = {
     TriangleInstruction: TriangleGenerator,
-    SquareInstruction: SquareGenerator,
+    PulseInstruction: PulseGenerator,
     NoiseInstruction: NoiseGenerator,
 }
 

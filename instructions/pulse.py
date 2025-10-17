@@ -12,12 +12,12 @@ from constants import (
 from instructions.instruction import Instruction
 
 
-class SquareInstruction(Instruction):
+class PulseInstruction(Instruction):
     pitch: Optional[int] = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
     volume: int = Field(..., ge=0, le=MAX_VOLUME, description="Volume (0-15)")
     duty_cycle: int = Field(..., ge=0, le=MAX_DUTY_CYCLE, description="Duty cycle (e.g. 12, 25, 50, 75)")
 
-    def distance(self, other: "SquareInstruction") -> float:
+    def distance(self, other: "PulseInstruction") -> float:
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0
 

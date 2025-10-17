@@ -3,11 +3,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from exporters.exporter import Exporter, FeatureKey, FeatureValue
-from instructions.square import SquareInstruction
+from instructions.pulse import PulseInstruction
 
 
-class SquareExporter(Exporter):
-    def extract_data(self, instructions: List[SquareInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
+class PulseExporter(Exporter):
+    def extract_data(self, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
         initial_timer = None
 
@@ -42,7 +42,7 @@ class SquareExporter(Exporter):
 
         return initial_pitch, pitches, volumes, duty_cycles
 
-    def get_features(self, instructions: List[SquareInstruction]) -> Dict[FeatureKey, FeatureValue]:
+    def get_features(self, instructions: List[PulseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
         hi_pitches = np.diff(np.array(pitches)) // 16
         pitches = np.diff(np.array(pitches)) % 16

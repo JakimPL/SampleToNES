@@ -16,7 +16,7 @@ from ffts.fft import calculate_fft
 from ffts.window import Window
 from generators.generator import Generator
 from generators.noise import NoiseGenerator
-from generators.square import SquareGenerator
+from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator
 from generators.types import GeneratorClassName, GeneratorClassNameValues, Initials
 from instructions.instruction import Instruction
@@ -24,7 +24,7 @@ from library.fragment import Fragment
 from utils import deserialize_array, dump, serialize_array
 
 GENERATORS = {
-    "SquareGenerator": SquareGenerator,
+    "PulseGenerator": PulseGenerator,
     "TriangleGenerator": TriangleGenerator,
     "NoiseGenerator": NoiseGenerator,
 }
