@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 
 from constants import APU_CLOCK, MAX_LFSR, MAX_LFSR_SHORT, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
-from generators.types import Initials
 from timers.timer import Timer
+from typehints.general import Initials
 
 
 @dataclass(frozen=True)
@@ -67,8 +67,8 @@ class LFSRTimer(Timer):
         cumsum_table = self.lfsr_tables[self.mode].cumsums[direction]
 
         indices = np.arange(self.frame_length + 1)
-        direction = 1.0 if direction else -1.0
-        delta = self._clocks_per_sample * direction
+        sign = 1.0 if direction else -1.0
+        delta = self._clocks_per_sample * sign
         clock = indices * delta + self.clock
         changes = np.abs(np.diff(np.floor(clock)).astype(int))
         changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
@@ -93,7 +93,7 @@ class LFSRTimer(Timer):
             self.lfsr = int(lfsrs[index + changes_cumsum[-1]])
             self.clock = float(clock[-1] % 1.0)
 
-        return frame if direction > 0 else frame[::-1]
+        return frame if direction else frame[::-1]
 
     @property
     def initials(self) -> Tuple[Any, ...]:

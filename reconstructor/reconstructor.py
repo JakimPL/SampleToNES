@@ -1,4 +1,4 @@
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, Generic, List, Optional, Tuple
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
@@ -11,8 +11,6 @@ from generators.generator import Generator
 from generators.noise import NoiseGenerator
 from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator
-from generators.types import GeneratorClassName
-from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
@@ -22,21 +20,24 @@ from reconstructor.approximation import FragmentApproximation
 from reconstructor.criterion import Criterion
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
+from typehints.general import GeneratorClassName
+from typehints.generators import GeneratorType
+from typehints.instructions import InstructionType
 
-GENERATOR_CLASSES = {
+GENERATOR_CLASSES: Dict[GeneratorClassName, type] = {
     "triangle": TriangleGenerator,
     "noise": NoiseGenerator,
     "pulse1": PulseGenerator,
     "pulse2": PulseGenerator,
 }
 
-INSTRUCTION_TO_GENERATOR_MAP = {
+INSTRUCTION_TO_GENERATOR_MAP: Dict[type, type] = {
     TriangleInstruction: TriangleGenerator,
     PulseInstruction: PulseGenerator,
     NoiseInstruction: NoiseGenerator,
 }
 
-MIXER_LEVELS = {
+MIXER_LEVELS: Dict[GeneratorClassName, float] = {
     "PulseGenerator": MIXER_PULSE,
     "NoiseGenerator": MIXER_NOISE,
     "TriangleGenerator": MIXER_TRIANGLE,
@@ -45,10 +46,10 @@ MIXER_LEVELS = {
 FIND_BEST_PHASE = True
 
 
-class Reconstructor:
-    def __init__(self, config: Config, generator_names: List[str] = None) -> None:
+class Reconstructor(Generic[InstructionType]):
+    def __init__(self, config: Config, generator_names: Optional[List[str]] = None) -> None:
         self.config: Config = config
-        self.state: Optional[ReconstructionState] = None
+        self.state: ReconstructionState = ReconstructionState.create([])
 
         default_generators = list(GENERATOR_CLASSES.keys())
         generator_names = generator_names or default_generators
@@ -72,7 +73,7 @@ class Reconstructor:
         self.reconstruct(fragments)
         return Reconstruction.from_results(self.state, self.config)
 
-    def get_approximation(self, instruction: Instruction, generator: Generator) -> Fragment:
+    def get_approximation(self, instruction: InstructionType, generator: GeneratorType) -> Fragment:
         library_fragment = self.library[instruction]
         fragment = library_fragment.get(generator, self.window, generator.initials)
         return fragment * self.config.mixer
@@ -84,20 +85,20 @@ class Reconstructor:
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         return FragmentedAudio.create(audio, self.window)
 
-    def get_remaining_generators(self) -> Dict[str, Generator]:
+    def get_remaining_generators(self) -> Dict[str, GeneratorType]:
         return {name: generator for name, generator in self.generators.items()}
 
     def get_remaining_generator_classes(
-        self, remaining_generators: Optional[Dict[str, Generator]] = None
-    ) -> Dict[GeneratorClassName, Generator]:
+        self, remaining_generators: Optional[Dict[str, GeneratorType]] = None
+    ) -> Dict[GeneratorClassName, GeneratorType]:
         remaining_generators = remaining_generators or self.get_remaining_generators()
         return {generator.class_name(): generator for generator in reversed(remaining_generators.values())}
 
     def get_generator_by_instruction(
         self,
-        instruction: Instruction,
-        remaining_generator_classes: Optional[Dict[GeneratorClassName, Generator]] = None,
-    ) -> Generator:
+        instruction: InstructionType,
+        remaining_generator_classes: Optional[Dict[GeneratorClassName, GeneratorType]] = None,
+    ) -> GeneratorType:
         remaining_generator_classes = remaining_generator_classes or self.get_remaining_generator_classes()
         generator_class = INSTRUCTION_TO_GENERATOR_MAP[type(instruction)].__name__
         return remaining_generator_classes[generator_class]
@@ -123,7 +124,7 @@ class Reconstructor:
 
                     del remaining_generators[fragment_approximation.generator_name]
 
-    def find_best_phase(self, fragment: Fragment, instruction: Instruction) -> Fragment:
+    def find_best_phase(self, fragment: Fragment, instruction: InstructionType) -> Fragment:
         library_fragment = self.library[instruction]
         start = library_fragment.offset
         length = library_fragment.sample.shape[0] // 3
@@ -132,12 +133,12 @@ class Reconstructor:
         windows = sliding_window_view(array, self.config.frame_length)
         remainder = fragment.audio - windows
         rmse = np.sqrt((remainder**2).mean(axis=1))
-        best_shift = np.argmin(rmse)
+        best_shift = int(np.argmin(rmse))
         return library_fragment.get_fragment(best_shift, self.window)
 
     def find_best_instruction(
-        self, fragment: Fragment, remaining_generator_classes: Optional[Dict[GeneratorClassName, Generator]] = None
-    ) -> Tuple[Instruction, float]:
+        self, fragment: Fragment, remaining_generator_classes: Optional[Dict[GeneratorClassName, GeneratorType]] = None
+    ) -> Tuple[InstructionType, float]:
         remaining_generator_classes = remaining_generator_classes or self.get_remaining_generator_classes()
         valid_instructions = list(self.library.filter(remaining_generator_classes))
         errors = []
@@ -153,7 +154,7 @@ class Reconstructor:
         return instruction, error
 
     def find_best_approximation(
-        self, fragment: Fragment, remaining_generator_classes: Optional[Dict[str, Generator]] = None
+        self, fragment: Fragment, remaining_generator_classes: Optional[Dict[str, GeneratorType]] = None
     ) -> Tuple[Fragment, FragmentApproximation]:
         if remaining_generator_classes is None:
             remaining_generator_classes = self.generators

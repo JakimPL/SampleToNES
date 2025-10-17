@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Self, Union
+from typing import Any, Dict, Generic, List, Literal, Self, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
@@ -10,46 +10,47 @@ from exporters.exporter import FeatureKey, FeatureValue
 from exporters.noise import NoiseExporter
 from exporters.pulse import PulseExporter
 from exporters.triangle import TriangleExporter
-from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
 from reconstructor.state import ReconstructionState
+from typehints.exporters import ExporterClass
+from typehints.general import InstructionClassName
+from typehints.instructions import InstructionClass, InstructionType
 from utils import deserialize_array, serialize_array
 
-INSTRUCTION_CLASS_MAP = {
-    "Instruction": Instruction,
+INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
     "TriangleInstruction": TriangleInstruction,
     "PulseInstruction": PulseInstruction,
     "NoiseInstruction": NoiseInstruction,
 }
 
-INSTRUCTION_TO_EXPORTER_MAP = {
+INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
     TriangleInstruction: TriangleExporter,
     PulseInstruction: PulseExporter,
     NoiseInstruction: NoiseExporter,
 }
 
 
-class Reconstruction(BaseModel):
+class Reconstruction(BaseModel, Generic[InstructionType]):
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[str, List[Instruction]] = Field(..., description="Instructions per generator")
+    instructions: Dict[str, List[InstructionType]] = Field(..., description="Instructions per generator")
     errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Config = Field(..., description="Configuration used for reconstruction")
 
     @staticmethod
     def _get_instruction_class(
-        name: Literal["Instruction", "TriangleInstruction", "PulseInstruction", "NoiseInstruction"] = None,
-    ) -> Dict[str, type]:
+        name: Literal["Instruction", "TriangleInstruction", "PulseInstruction", "NoiseInstruction"],
+    ) -> type:
         return INSTRUCTION_CLASS_MAP[name]
 
     @staticmethod
-    def _get_exporter_class(instruction: Instruction) -> Dict[type, type]:
+    def _get_exporter_class(instruction: InstructionType) -> type:
         return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
 
     @classmethod
-    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[Instruction]]:
+    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[InstructionType]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
             instruction_class = cls._get_instruction_class(instructions_data["type"])
@@ -82,13 +83,17 @@ class Reconstruction(BaseModel):
     def get_generator_approximation(self, generator_name: str) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([]))
 
-    def get_generator_instructions(self, generator_name: str) -> List[Instruction]:
+    def get_generator_instructions(self, generator_name: str) -> List[InstructionType]:
         return self.instructions.get(generator_name, [])
 
     def save(self, filepath: Path) -> None:
         data = self.model_dump()
         with open(filepath, "w") as f:
             json.dump(data, f, indent=2)
+
+    @property
+    def total_error(self) -> float:
+        return sum(sum(errors) for errors in self.errors.values())
 
     @classmethod
     def load(cls, filepath: Path) -> Self:
@@ -123,7 +128,9 @@ class Reconstruction(BaseModel):
         return {name: serialize_array(array) for name, array in approximations.items()}
 
     @field_serializer("instructions")
-    def _serialize_instructions(self, instructions: Dict[str, List[Instruction]], _info) -> Dict[str, Dict[str, Any]]:
+    def _serialize_instructions(
+        self, instructions: Dict[str, List[InstructionType]], _info
+    ) -> Dict[str, Dict[str, Any]]:
         return {
             name: {
                 "instructions": [instruction.model_dump() for instruction in instructions],

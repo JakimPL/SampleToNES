@@ -43,12 +43,9 @@ class Criterion:
         fragment_feature: np.ndarray,
         approximation_feature: np.ndarray,
     ) -> float:
-        return np.average(np.square(fragment_feature - approximation_feature), weights=self.window.weights)
+        return float(np.average(np.square(fragment_feature - approximation_feature), weights=self.window.weights))
 
     def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:
-        # print(
-        #     f"Spectral Loss: {spectral_loss:.6f}, Temporal Loss: {temporal_loss:.6f}, Continuity Loss: {continuity_loss:.6f}"
-        # )
         return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
 
     def get_loss_weights(self) -> Tuple[float, float, float]:

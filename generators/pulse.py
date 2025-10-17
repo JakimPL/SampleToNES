@@ -1,13 +1,13 @@
-from typing import List
+from typing import List, cast
 
 import numpy as np
 
 from config import Config
 from constants import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from generators.generator import Generator
-from generators.types import Initials
 from instructions.pulse import PulseInstruction
 from timers.phase import PhaseTimer
+from typehints.general import GeneratorClassName, Initials
 
 
 class PulseGenerator(Generator):
@@ -66,5 +66,5 @@ class PulseGenerator(Generator):
         return PulseInstruction
 
     @classmethod
-    def class_name(cls) -> str:
-        return cls.__name__
+    def class_name(cls) -> GeneratorClassName:
+        return cast(GeneratorClassName, cls.__name__)

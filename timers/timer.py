@@ -4,7 +4,7 @@ import numpy as np
 
 from constants import RESET_PHASE
 from ffts.window import Window
-from generators.types import Initials
+from typehints.general import Initials
 
 
 class Timer:
@@ -53,13 +53,13 @@ class Timer:
         offset = backward_frames * self.frame_length
 
         self.set(initials)
-        backward_frames = [self.generate_frame(False, save=True) for _ in range(backward_frames)]
+        frames = [self.generate_frame(False, save=True) for _ in range(backward_frames)][::-1]
 
         self.set(initials)
-        forward_frames = [self.generate_frame(True, save=True) for _ in range(forward_frames)]
+        frames.extend([self.generate_frame(True, save=True) for _ in range(forward_frames)])
 
         self.set(previous_initials)
-        sample = np.concatenate([np.concatenate(backward_frames[::-1]), np.concatenate(forward_frames)])
+        sample = np.concatenate(frames)
         return sample, offset
 
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:

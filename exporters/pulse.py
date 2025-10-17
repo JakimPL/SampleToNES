@@ -2,8 +2,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from exporters.exporter import Exporter, FeatureKey, FeatureValue
+from constants import MIN_PITCH
+from exporters.exporter import Exporter
 from instructions.pulse import PulseInstruction
+from typehints.general import FeatureKey, FeatureValue
 
 
 class PulseExporter(Exporter):
@@ -20,7 +22,7 @@ class PulseExporter(Exporter):
         duty_cycles = []
 
         for instruction in instructions:
-            if instruction.on and instruction.pitch is not None:
+            if instruction.on:
                 if initial_timer is None:
                     initial_pitch = instruction.pitch
                     initial_timer = self.pitch_to_timer(initial_pitch)
@@ -40,17 +42,15 @@ class PulseExporter(Exporter):
         if volume > 0:
             volumes.append(0)
 
-        return initial_pitch, pitches, volumes, duty_cycles
+        return initial_pitch or MIN_PITCH, pitches, volumes, duty_cycles
 
     def get_features(self, instructions: List[PulseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
-        hi_pitches = np.diff(np.array(pitches)) // 16
-        pitches = np.diff(np.array(pitches)) % 16
 
         return {
             "initial_pitch": initial_pitch,
             "volume": np.array(volumes, dtype=np.int8),
-            "pitch": np.array(pitches, dtype=np.int8),
-            "hi_pitch": np.array(hi_pitches, dtype=np.int8),
+            "pitch": np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
+            "hi_pitch": np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
             "duty_cycle": np.array(duty_cycles, dtype=np.int8),
         }

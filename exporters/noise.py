@@ -2,8 +2,9 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from exporters.exporter import Exporter, FeatureKey, FeatureValue
+from exporters.exporter import Exporter
 from instructions.noise import NoiseInstruction
+from typehints.general import FeatureKey, FeatureValue
 
 
 class NoiseExporter(Exporter):
@@ -19,7 +20,7 @@ class NoiseExporter(Exporter):
         duty_cycles = []
 
         for instruction in instructions:
-            if instruction.on and instruction.period is not None:
+            if instruction.on:
                 if initial_period is None:
                     initial_period = instruction.period
                     period = initial_period
@@ -37,7 +38,7 @@ class NoiseExporter(Exporter):
         if volume > 0:
             volumes.append(0)
 
-        return initial_period, periods, volumes, duty_cycles
+        return initial_period or 0, periods, volumes, duty_cycles
 
     def get_features(self, instructions: List[NoiseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)

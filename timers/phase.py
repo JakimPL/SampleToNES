@@ -3,8 +3,8 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from constants import APU_CLOCK, RESET_PHASE
-from generators.types import Initials
 from timers.timer import Timer
+from typehints.general import Initials
 
 
 class PhaseTimer(Timer):
@@ -49,9 +49,9 @@ class PhaseTimer(Timer):
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
         indices = np.arange(self.frame_length) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
-        direction = 1.0 if direction else -1.0
+        sign = 1.0 if direction else -1.0
         lower = np.ceil(1.0 + abs(delta * indices[-1]))
-        frame = np.fmod(lower + indices * delta * direction + self.phase, 1.0)
+        frame = np.fmod(lower + indices * delta * sign + self.phase, 1.0)
 
         if save:
             self.phase = float(frame[-1])
@@ -115,6 +115,6 @@ class PhaseTimer(Timer):
             self.reset()
             return
 
-        value = value[0]
-        assert isinstance(value, float) and (0.0 <= value < 1.0), "Phase value must be between 0.0 and 1.0"
-        self.phase = value
+        phase = value[0]
+        assert isinstance(phase, float) and (0.0 <= phase < 1.0), "Phase value must be between 0.0 and 1.0"
+        self.phase = phase

@@ -1,4 +1,4 @@
-from typing import Iterator, Optional, Self
+from typing import Iterator, Self
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -15,12 +15,9 @@ class Fragment(BaseModel):
     windowed_audio: np.ndarray = Field(..., description="Original windowed audio data")
 
     @classmethod
-    def create(cls, windowed_audio: np.ndarray, window: Optional[Window] = None) -> "Fragment":
-        if window is not None:
-            assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
-
-        size = window.size if window is not None else None
-        feature = calculate_log_arfft(windowed_audio, size)
+    def create(cls, windowed_audio: np.ndarray, window: Window) -> "Fragment":
+        assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
+        feature = calculate_log_arfft(windowed_audio, window.size)
         return cls(
             audio=window.get_frame_from_window(windowed_audio),
             feature=feature,

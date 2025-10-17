@@ -6,8 +6,7 @@ from typing import Any, Collection, Dict, Self, Union
 
 import msgpack
 import numpy as np
-from flask import json
-from pydantic import BaseModel, Field, computed_field, field_serializer
+from pydantic import BaseModel, Field, field_serializer
 from tqdm.auto import tqdm
 
 from config import Config as Config
@@ -18,12 +17,13 @@ from generators.generator import Generator
 from generators.noise import NoiseGenerator
 from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator
-from generators.types import GeneratorClassName, GeneratorClassNameValues, Initials
 from instructions.instruction import Instruction
 from library.fragment import Fragment
+from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
+from typehints.generators import GeneratorClass
 from utils import deserialize_array, dump, serialize_array
 
-GENERATORS = {
+GENERATORS: Dict[GeneratorClassName, GeneratorClass] = {
     "PulseGenerator": PulseGenerator,
     "TriangleGenerator": TriangleGenerator,
     "NoiseGenerator": NoiseGenerator,
@@ -127,7 +127,7 @@ class LibraryFragment(BaseModel):
 
     @classmethod
     def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
-        instruction = load_instruction(dictionary)
+        instruction: Instruction = load_instruction(dictionary)
 
         sample = deserialize_array(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
@@ -171,7 +171,7 @@ class LibraryData(BaseModel):
         if isinstance(generator_classes, str):
             return self.subdata.get(generator_classes, {})
         elif isinstance(generator_classes, Collection):
-            result = {}
+            result: Dict[Instruction, LibraryFragment] = {}
             for generator_class in generator_classes:
                 result |= self.subdata[generator_class]
             return result
@@ -196,14 +196,14 @@ class LibraryData(BaseModel):
         data = {}
         for key, value in dictionary["data"].items():
 
-            instruction = load_instruction(
+            instruction: Instruction = load_instruction(
                 {
                     "instruction": key,
                     "generator_class": value["generator_class"],
                 }
             )
 
-            fragment = LibraryFragment.deserialize(value)
+            fragment: LibraryFragment = LibraryFragment.deserialize(value)
             data[instruction] = fragment
 
         return cls(data=data)
@@ -269,16 +269,12 @@ class Library(BaseModel):
         self.path = Path(dump["path"])
         self.data = {LibraryKey.deserialize(key): LibraryData.deserialize(data) for key, data in dump["data"].items()}
 
-    @field_serializer("path")
-    def serialize_path(self, path: Path, _info):
-        return str(path)
-
     @field_serializer("data")
     def serialize_data(self, data: Dict[LibraryKey, LibraryData], _info) -> Dict[str, Any]:
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     @classmethod
-    def load(cls, path: Path = LIBRARY_PATH) -> Self:
+    def load(cls, path: str = LIBRARY_PATH) -> Self:
         library = cls(path=path)
         if Path(path).exists():
             library._load()

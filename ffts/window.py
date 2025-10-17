@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import numpy as np
@@ -14,6 +14,13 @@ class Window:
     config: Config
     on: bool = True
     custom_size: Optional[int] = None
+
+    size: int = field(init=False)
+    left_offset: int = field(init=False)
+    envelope: np.ndarray = field(init=False)
+    backward_frames: int = field(init=False)
+    forward_frames: int = field(init=False)
+    weights: np.ndarray = field(init=False)
 
     def __post_init__(self):
         lower_bound = int(np.ceil(2.0 * self.config.sample_rate / MIN_FREQUENCY))

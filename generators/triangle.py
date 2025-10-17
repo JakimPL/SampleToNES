@@ -1,13 +1,13 @@
-from typing import List
+from typing import List, cast
 
 import numpy as np
 
 from config import Config
 from constants import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
-from generators.types import Initials
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer
+from typehints.general import GeneratorClassName, Initials
 
 
 class TriangleGenerator(Generator):
@@ -70,5 +70,5 @@ class TriangleGenerator(Generator):
         return TriangleInstruction
 
     @classmethod
-    def class_name(cls) -> str:
-        return cls.__name__
+    def class_name(cls) -> GeneratorClassName:
+        return cast(GeneratorClassName, cls.__name__)

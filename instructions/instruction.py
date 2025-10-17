@@ -9,6 +9,5 @@ class Instruction(BaseModel):
     class Config:
         frozen = True
 
-    @staticmethod
     def distance(self, other: Self) -> float:
         raise NotImplementedError("Subclasses must implement distance method")

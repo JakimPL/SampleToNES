@@ -1,13 +1,13 @@
-from typing import List
+from typing import List, cast
 
 import numpy as np
 
 from config import Config
 from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from generators.generator import Generator
-from generators.types import Initials
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
+from typehints.general import GeneratorClassName, Initials
 
 
 class NoiseGenerator(Generator):
@@ -75,5 +75,5 @@ class NoiseGenerator(Generator):
         return NoiseInstruction
 
     @classmethod
-    def class_name(cls) -> str:
-        return cls.__name__
+    def class_name(cls) -> GeneratorClassName:
+        return cast(GeneratorClassName, cls.__name__)

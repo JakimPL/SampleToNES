@@ -1,12 +1,13 @@
-from typing import Dict, List, Self
+from typing import Dict, Generic, List, Self
 
 import numpy as np
 from pydantic import BaseModel
 
-from generators.types import Initials
 from instructions.instruction import Instruction
 from library.fragment import Fragment
 from reconstructor.approximation import FragmentApproximation
+from typehints.general import Initials
+from typehints.instructions import InstructionType
 
 
 class FragmentReconstructionState(BaseModel):
@@ -18,9 +19,9 @@ class FragmentReconstructionState(BaseModel):
         arbitrary_types_allowed = True
 
 
-class ReconstructionState(BaseModel):
+class ReconstructionState(BaseModel, Generic[InstructionType]):
     generator_names: List[str] = []
-    instructions: Dict[str, List[Instruction]] = {}
+    instructions: Dict[str, List[InstructionType]] = {}
     approximations: Dict[str, List[np.ndarray]] = {}
     initials: Dict[str, Initials] = {}
     errors: Dict[str, List[float]] = {}
@@ -41,10 +42,6 @@ class ReconstructionState(BaseModel):
         self.approximations[name].append(fragment_approximation.fragment.audio)
         self.initials[name] = fragment_approximation.terminals
         self.errors[name].append(fragment_approximation.error)
-
-    @property
-    def generator_names(self) -> List[str]:
-        return self.generator_names
 
     @property
     def total_error(self) -> float:

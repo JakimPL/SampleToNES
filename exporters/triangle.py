@@ -2,9 +2,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from constants import MAX_VOLUME
-from exporters.exporter import Exporter, FeatureKey, FeatureValue
+from constants import MAX_VOLUME, MIN_PITCH
+from exporters.exporter import Exporter
 from instructions.triangle import TriangleInstruction
+from typehints.general import FeatureKey, FeatureValue
 
 
 class TriangleExporter(Exporter):
@@ -19,7 +20,7 @@ class TriangleExporter(Exporter):
         volumes = []
 
         for instruction in instructions:
-            if instruction.on and instruction.pitch is not None:
+            if instruction.on:
                 if initial_timer is None:
                     initial_pitch = instruction.pitch
                     initial_timer = self.pitch_to_timer(initial_pitch)
@@ -37,16 +38,14 @@ class TriangleExporter(Exporter):
         if volume > 0:
             volumes.append(0)
 
-        return initial_pitch, pitches, volumes
+        return initial_pitch or MIN_PITCH, pitches, volumes
 
     def get_features(self, instructions: List[TriangleInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_pitch, pitches, volumes = self.extract_data(instructions)
-        hi_pitches = np.diff(np.array(pitches)) // 16
-        pitches = np.diff(np.array(pitches)) % 16
 
         return {
             "initial_pitch": initial_pitch,
             "volume": np.array(volumes, dtype=np.int8),
-            "pitch": np.array(pitches, dtype=np.int8),
-            "hi_pitch": np.array(hi_pitches, dtype=np.int8),
+            "pitch": np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
+            "hi_pitch": np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
         }
