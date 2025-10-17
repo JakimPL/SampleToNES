@@ -16,7 +16,8 @@ class Fragment(BaseModel):
 
     @classmethod
     def create(cls, windowed_audio: np.ndarray, window: Optional[Window] = None) -> "Fragment":
-        assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
+        if window is not None:
+            assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
 
         size = window.size if window is not None else None
         feature = calculate_log_arfft(windowed_audio, size)

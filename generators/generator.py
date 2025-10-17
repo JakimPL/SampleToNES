@@ -34,6 +34,14 @@ class Generator:
         output = self.apply(output, instruction)
         return output
 
+    def generate_window(self, instruction: Instruction, window: Window, initials: Initials = None) -> np.ndarray:
+        if not instruction.on:
+            return np.zeros(window.size, dtype=np.float32)
+
+        self.set_timer(instruction)
+        output = self.timer.generate_window(window, initials)
+        return self.apply(output, instruction)
+
     def generate_sample(self, instruction: Instruction, window: Window) -> Tuple[np.ndarray, int]:
         if not instruction.on:
             return np.zeros(window.size * 3, dtype=np.float32), 0

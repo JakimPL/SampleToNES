@@ -75,6 +75,7 @@ class LFSRTimer(Timer):
         differences = np.zeros_like(changes, dtype=np.float32)
 
         index = self.lfsr_tables[self.mode].lfsr_to_index[self.lfsr]
+        index = index if index != -1 else 0
         start_indices = changes_cumsum + index
         end_indices = np.roll(start_indices, -1)
         pairs = np.stack([start_indices, end_indices]).T[:-1]
@@ -84,6 +85,7 @@ class LFSRTimer(Timer):
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
         means = np.array([np.mean(cumsum_table[pair[0] : pair[1]]) for pair in nonzero_pairs])
+
         differences[mask] = np.diff(np.concatenate([[0], means]))
         frame = 2.0 * np.cumsum(differences) - 1.0
 

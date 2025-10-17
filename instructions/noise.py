@@ -32,7 +32,7 @@ class NoiseInstruction(Instruction):
         if period_differences == 0:
             return abs(volume1_normalized - volume2_normalized) * 0.5
 
-        volume_factor = (volume1_normalized + volume2_normalized) / 2
+        volume_factor = (volume1_normalized + volume2_normalized) * 0.5
         period_distance = period_differences * volume_factor
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - period_differences)
 

@@ -115,13 +115,13 @@ class Reconstructor:
                     }
 
                     fragment = fragments[fragment_id]
-                    fragment_approximation = self.find_best_approximation(fragment, remaining_generator_classes)
+                    approximation, fragment_approximation = self.find_best_approximation(
+                        fragment, remaining_generator_classes
+                    )
                     self.update_state(fragment_approximation)
-                    fragments[fragment_id] -= fragment_approximation.fragment
-                    del remaining_generators[fragment_approximation.generator_name]
+                    fragments[fragment_id] -= approximation
 
-    def generator_wise(self, fragments: FragmentedAudio) -> None:
-        raise NotImplementedError("Generator-wise reconstruction is not implemented yet.")
+                    del remaining_generators[fragment_approximation.generator_name]
 
     def find_best_phase(self, fragment: Fragment, instruction: Instruction) -> Fragment:
         library_fragment = self.library[instruction]
@@ -154,7 +154,7 @@ class Reconstructor:
 
     def find_best_approximation(
         self, fragment: Fragment, remaining_generator_classes: Optional[Dict[str, Generator]] = None
-    ) -> FragmentApproximation:
+    ) -> Tuple[Fragment, FragmentApproximation]:
         if remaining_generator_classes is None:
             remaining_generator_classes = self.generators
 
@@ -167,11 +167,14 @@ class Reconstructor:
 
         approximation *= self.config.mixer
         initials = generator.initials
+
+        windowed_audio = generator.generate_window(instruction, self.window, initials)
+        real_approximation = Fragment.create(windowed_audio, self.window) * self.config.mixer
         generator(instruction, initials, save=True)
 
-        return FragmentApproximation(
+        return approximation, FragmentApproximation(
             generator_name=generator.name,
-            fragment=approximation,
+            fragment=real_approximation,
             instruction=instruction,
             initials=initials,
             terminals=generator.initials,

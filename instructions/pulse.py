@@ -39,7 +39,7 @@ class PulseInstruction(Instruction):
         if pitch_difference == 0:
             return abs(volume1_normalized - volume2_normalized) * 0.5
 
-        volume_factor = (volume1_normalized + volume2_normalized) / 2
+        volume_factor = (volume1_normalized + volume2_normalized) * 0.5
         pitch_distance = pitch_difference * volume_factor
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - pitch_difference)
 
