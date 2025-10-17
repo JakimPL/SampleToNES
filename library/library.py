@@ -102,12 +102,16 @@ class LibraryFragment(BaseModel):
             offset=offset,
         )
 
-    def get(self, generator: Generator, window: Window, initials: Initials = None) -> Fragment:
-        generator.set_timer(self.instruction)
-        offset = generator.timer.calculate_offset(initials) + self.offset
+    def get_fragment(self, shift: int, window: Window) -> Fragment:
+        offset = self.offset + shift
         windowed_audio = window.get_windowed_frame(self.sample, offset)
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(audio=audio, feature=self.feature, windowed_audio=windowed_audio)
+
+    def get(self, generator: Generator, window: Window, initials: Initials = None) -> Fragment:
+        generator.set_timer(self.instruction)
+        shift = generator.timer.calculate_offset(initials)
+        return self.get_fragment(shift, window)
 
     @field_serializer("instruction")
     def serialize_instruction(self, instruction: Instruction, _info) -> str:

@@ -9,8 +9,12 @@ from scipy.io import wavfile
 from constants import QUANTIZATION_LEVELS, SAMPLE_RATE
 
 
+def clip_audio(audio: np.ndarray) -> np.ndarray:
+    return np.clip(audio, -1.0, 1.0)
+
+
 def play_audio(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
-    audio = np.clip(audio, -1.0, 1.0)
+    audio = clip_audio(audio)
     display(Audio(data=audio, rate=sample_rate))
 
 
@@ -28,7 +32,7 @@ def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
 
 
 def write_audio(path: Union[str, Path], audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
-    audio = np.clip(audio, -1.0, 1.0)
+    audio = clip_audio(audio)
     wavfile.write(path, sample_rate, audio)
 
 
@@ -58,7 +62,6 @@ def normalize_audio(audio: np.ndarray) -> np.ndarray:
 def quantize_audio(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray:
     n = levels // 2
     audio = np.round(audio * (n - 1)) / (n - 1)
-    audio = np.clip(audio, -1.0, 1.0)
     return audio
 
 

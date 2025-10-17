@@ -3,10 +3,11 @@ from typing import Optional, Self
 import numpy as np
 from pydantic import BaseModel, Field
 
+from audioio import clip_audio
 from ffts.fft import calculate_log_arfft, log_arfft_multiply, log_arfft_subtract
 from ffts.window import Window
 
-FAST_LOG_ARFFT = True
+FAST_LOG_ARFFT = False
 
 
 class Fragment(BaseModel):
@@ -32,6 +33,7 @@ class Fragment(BaseModel):
 
         windowed_audio = self.windowed_audio - other.windowed_audio
         audio = self.audio - other.audio
+
         if FAST_LOG_ARFFT:
             feature = log_arfft_subtract(self.feature, other.feature)
         else:

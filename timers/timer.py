@@ -56,7 +56,7 @@ class Timer:
         sample = np.concatenate([np.concatenate(backward_frames[::-1]), np.concatenate(forward_frames)])
         return sample, offset
 
-    def generate_frame(self) -> np.ndarray:
+    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:
