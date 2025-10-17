@@ -32,7 +32,7 @@ class NoiseGenerator(Generator):
         output = self.generate(noise_instruction, initials=initials)
         self.save_state(save, noise_instruction, initials)
 
-        return output * MIXER_NOISE
+        return output
 
     def set_timer(self, noise_instruction: NoiseInstruction) -> None:
         if noise_instruction.on:
@@ -44,13 +44,13 @@ class NoiseGenerator(Generator):
 
     def apply(self, output: np.ndarray, noise_instruction: NoiseInstruction) -> np.ndarray:
         volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
-        return volume * output
+        return volume * output * MIXER_NOISE
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
         noise_instructions = [
             NoiseInstruction(
                 on=False,
-                period=None,
+                period=0,
                 volume=0,
                 mode=False,
             )

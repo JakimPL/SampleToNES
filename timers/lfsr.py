@@ -98,7 +98,7 @@ class LFSRTimer(Timer):
         return self.lfsr, self.clock
 
     @property
-    def period(self) -> int:
+    def period(self) -> float:
         return self._period
 
     @period.setter

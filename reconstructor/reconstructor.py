@@ -5,6 +5,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
 from config import Config
+from constants import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
 from ffts.window import Window
 from generators.generator import Generator
 from generators.noise import NoiseGenerator
@@ -35,6 +36,12 @@ INSTRUCTION_TO_GENERATOR_MAP = {
     NoiseInstruction: NoiseGenerator,
 }
 
+MIXER_LEVELS = {
+    "PulseGenerator": MIXER_PULSE,
+    "NoiseGenerator": MIXER_NOISE,
+    "TriangleGenerator": MIXER_TRIANGLE,
+}
+
 FIND_BEST_PHASE = True
 
 
@@ -54,20 +61,15 @@ class Reconstructor:
 
         self.library: LibraryData = self.load_library()
 
-    def __call__(
-        self, audio: np.ndarray, mode: Literal["frame-wise", "generator-wise"] = "frame-wise"
-    ) -> Reconstruction:
+    def __call__(self, audio: np.ndarray) -> Reconstruction:
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))
-        fragments = self.get_fragments(audio)
+        coefficient = np.max(np.abs(audio)) / sum(
+            MIXER_LEVELS[generator.class_name()] for generator in self.generators.values()
+        )
 
-        if mode == "frame-wise":
-            self.frame_wise(fragments)
-        elif mode == "generator-wise":
-            self.generator_wise(fragments)
-        else:
-            raise ValueError(f"Unknown mode: {mode}")
-
+        fragments = self.get_fragments(audio / coefficient)
+        self.reconstruct(fragments)
         return Reconstruction.from_results(self.state, self.config)
 
     def get_approximation(self, instruction: Instruction, generator: Generator) -> Fragment:
@@ -100,7 +102,7 @@ class Reconstructor:
         generator_class = INSTRUCTION_TO_GENERATOR_MAP[type(instruction)].__name__
         return remaining_generator_classes[generator_class]
 
-    def frame_wise(self, fragments: FragmentedAudio) -> None:
+    def reconstruct(self, fragments: FragmentedAudio) -> None:
         for fragment_id in tqdm(range(len(fragments))):
             remaining_generators = self.get_remaining_generators()
             while remaining_generators:

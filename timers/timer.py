@@ -20,7 +20,7 @@ class Timer:
         self.change_rate: int = change_rate
         self.frame_length: int = round(self.sample_rate / self.change_rate)
 
-    def __call__(self, window: Optional[Window] = None, **kwargs) -> np.ndarray:
+    def __call__(self, initials: Initials = None) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     @property

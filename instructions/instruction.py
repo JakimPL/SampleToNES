@@ -1,3 +1,5 @@
+from typing import Self
+
 from pydantic import BaseModel
 
 
@@ -8,5 +10,5 @@ class Instruction(BaseModel):
         frozen = True
 
     @staticmethod
-    def distance(instruction1: "Instruction", instruction2: "Instruction") -> float:
+    def distance(self, other: Self) -> float:
         raise NotImplementedError("Subclasses must implement distance method")

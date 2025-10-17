@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from config import Config
-from constants import DUTY_CYCLES, MAX_VOLUME, MIXER_PULSE
+from constants import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from generators.generator import Generator
 from generators.types import Initials
 from instructions.pulse import PulseInstruction
@@ -35,7 +35,7 @@ class PulseGenerator(Generator):
         output = self.generate(pulse_instruction, initials=initials)
         self.save_state(save, pulse_instruction, initials)
 
-        return output * MIXER_PULSE
+        return output
 
     def set_timer(self, pulse_instruction: PulseInstruction) -> None:
         if pulse_instruction.on:
@@ -47,10 +47,10 @@ class PulseGenerator(Generator):
         duty_cycle = DUTY_CYCLES[pulse_instruction.duty_cycle]
         output = np.where(output < duty_cycle, 1.0, -1.0)
         output *= pulse_instruction.volume / MAX_VOLUME
-        return output
+        return output * MIXER_PULSE
 
     def get_possible_instructions(self) -> List[PulseInstruction]:
-        pulse_instructions = [PulseInstruction(on=False, pitch=None, volume=0, duty_cycle=0)]
+        pulse_instructions = [PulseInstruction(on=False, pitch=MIN_PITCH, volume=0, duty_cycle=0)]
 
         for pitch in self.frequency_table:
             for volume in range(1, MAX_VOLUME + 1):

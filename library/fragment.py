@@ -1,9 +1,8 @@
-from typing import Optional, Self
+from typing import Iterator, Optional, Self
 
 import numpy as np
 from pydantic import BaseModel, Field
 
-from audioio import clip_audio
 from ffts.fft import calculate_log_arfft, log_arfft_multiply, log_arfft_subtract
 from ffts.window import Window
 
@@ -16,7 +15,7 @@ class Fragment(BaseModel):
     windowed_audio: np.ndarray = Field(..., description="Original windowed audio data")
 
     @classmethod
-    def create(cls, windowed_audio: np.ndarray, window: Optional[Window] = None) -> Self:
+    def create(cls, windowed_audio: np.ndarray, window: Optional[Window] = None) -> "Fragment":
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
 
         size = window.size if window is not None else None
@@ -27,7 +26,7 @@ class Fragment(BaseModel):
             windowed_audio=windowed_audio,
         )
 
-    def __sub__(self, other: Self) -> Self:
+    def __sub__(self, other: Self) -> "Fragment":
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted.")
 
@@ -41,7 +40,7 @@ class Fragment(BaseModel):
 
         return Fragment(audio=audio, feature=feature, windowed_audio=windowed_audio)
 
-    def __mul__(self, scalar: float) -> Self:
+    def __mul__(self, scalar: float) -> "Fragment":
         audio = self.audio * scalar
         windowed_audio = self.windowed_audio * scalar
         feature = log_arfft_multiply(self.feature, scalar)
@@ -56,7 +55,7 @@ class FragmentedAudio(BaseModel):
     fragments: list[Fragment] = Field(..., description="List of audio fragments")
 
     @classmethod
-    def create(cls, audio: np.ndarray, window: Window) -> Self:
+    def create(cls, audio: np.ndarray, window: Window) -> "FragmentedAudio":
         length = (audio.shape[0] // window.frame_length) * window.frame_length
         audio = audio[:length].copy()
         count = length // window.frame_length
@@ -76,7 +75,7 @@ class FragmentedAudio(BaseModel):
     def __len__(self) -> int:
         return len(self.fragments)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Fragment]:
         return iter(self.fragments)
 
     class Config:

@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from config import Config
-from constants import MIXER_TRIANGLE, TRIANGLE_OFFSET
+from constants import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from generators.types import Initials
 from instructions.triangle import TriangleInstruction
@@ -35,7 +35,7 @@ class TriangleGenerator(Generator):
         output = self.generate(triangle_instruction, initials=initials)
         self.save_state(save, triangle_instruction, initials)
 
-        return output * MIXER_TRIANGLE
+        return output
 
     def set_timer(self, triangle_instruction: TriangleInstruction) -> None:
         if triangle_instruction.on:
@@ -44,13 +44,14 @@ class TriangleGenerator(Generator):
             self.timer.frequency = 0.0
 
     def apply(self, output: np.ndarray, triangle_instruction: TriangleInstruction) -> np.ndarray:
-        return 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
+        triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
+        return triangle * MIXER_TRIANGLE
 
     def get_possible_instructions(self) -> List[TriangleInstruction]:
         triangle_instructions = [
             TriangleInstruction(
                 on=False,
-                pitch=None,
+                pitch=MIN_PITCH,
             )
         ]
 

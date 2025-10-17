@@ -87,10 +87,6 @@ class PhaseTimer(Timer):
     def frequency(self) -> float:
         return self._frequency
 
-    @property
-    def base_length(self) -> int:
-        return self._base_length
-
     @frequency.setter
     def frequency(self, value: float) -> None:
         self._frequency = value

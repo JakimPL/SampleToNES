@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Self
 
 from pydantic import Field
 
@@ -7,9 +7,9 @@ from instructions.instruction import Instruction
 
 
 class TriangleInstruction(Instruction):
-    pitch: Optional[int] = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
+    pitch: int = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
 
-    def distance(self, other: "TriangleInstruction") -> float:
+    def distance(self, other: Self) -> float:
         both_silent = not self.on and not other.on
         one_silent = (not self.on) != (not other.on)
 

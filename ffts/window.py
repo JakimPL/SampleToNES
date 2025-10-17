@@ -41,17 +41,17 @@ class Window:
             raise ValueError("Frame length must be in [0, total_length]")
 
         if frame_length == self.size:
-            return np.ones(self.size, dtype=float)
+            return np.ones(self.size, dtype=np.float32)
 
         alpha = 1.0 - (frame_length / float(self.size))
         if alpha <= 0.0:
-            return np.ones(self.size, dtype=float)
+            return np.ones(self.size, dtype=np.float32)
 
         tapered_total = self.size - frame_length
         left_taper_length = tapered_total // 2
         right_taper_length = tapered_total - left_taper_length
 
-        window = np.zeros(self.size, dtype=float)
+        window = np.zeros(self.size, dtype=np.float32)
 
         if left_taper_length > 0:
             idx_left = np.arange(left_taper_length)
