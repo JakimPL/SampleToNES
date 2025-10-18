@@ -1,7 +1,6 @@
 import base64
 import json
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
 import numpy as np
@@ -64,10 +63,10 @@ def parallelize(
         return []
 
     if max_workers is None:
-        max_workers = cpu_count()
+        max_workers = 6
 
     results = []
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_index = {executor.submit(function, i, item, *args, **kwargs): i for i, item in enumerate(collection)}
         for future in as_completed(future_to_index):
             index = future_to_index[future]

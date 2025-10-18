@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Self, Union, cast
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
 
-from config import Config
+from config import Config as Configuration
 from exporters.exporter import FeatureKey, FeatureValue
 from exporters.noise import NoiseExporter
 from exporters.pulse import PulseExporter
@@ -37,7 +37,7 @@ class Reconstruction(BaseModel):
     approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
     instructions: Dict[str, List[InstructionUnion]] = Field(..., description="Instructions per generator")
     errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
-    config: Config = Field(..., description="Configuration used for reconstruction")
+    config: Configuration = Field(..., description="Configuration used for reconstruction")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -67,7 +67,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Config) -> Self:
+    def from_results(cls, state: ReconstructionState, config: Configuration) -> Self:
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 
@@ -102,7 +102,7 @@ class Reconstruction(BaseModel):
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
         data["instructions"] = cls._parse_instructions(data["instructions"])
-        data["config"] = Config(**data["config"])
+        data["config"] = Configuration(**data["config"])
 
         return cls(**data)
 
@@ -140,7 +140,7 @@ class Reconstruction(BaseModel):
         }
 
     @field_serializer("config")
-    def _serialize_config(self, config: Config, _info) -> Dict[str, Any]:
+    def _serialize_config(self, config: Configuration, _info) -> Dict[str, Any]:
         return config.model_dump()
 
     class Config:

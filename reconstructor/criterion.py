@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
 import numpy as np
@@ -9,16 +10,20 @@ from instructions.instruction import Instruction
 from library.fragment import Fragment
 
 
+@dataclass(frozen=True)
 class Criterion:
-    def __init__(self, config: Config, window: Window) -> None:
-        self.config: Config = config
-        self.fragment_length: Optional[int] = None
-        self.window: Window = window
+    config: Config
+    window: Window
 
+    alpha: float = field(init=False)
+    beta: float = field(init=False)
+    gamma: float = field(init=False)
+
+    def __post_init__(self):
         alpha, beta, gamma = self.get_loss_weights()
-        self.alpha: float = alpha
-        self.beta: float = beta
-        self.gamma: float = gamma
+        object.__setattr__(self, "alpha", alpha)
+        object.__setattr__(self, "beta", beta)
+        object.__setattr__(self, "gamma", gamma)
 
     def __call__(
         self,
