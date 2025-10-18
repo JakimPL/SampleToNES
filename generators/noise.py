@@ -10,7 +10,7 @@ from timers.lfsr import LFSRTimer
 from typehints.general import GeneratorClassName, Initials
 
 
-class NoiseGenerator(Generator):
+class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
     def __init__(self, config: Config, name: str = "noise") -> None:
         super().__init__(config, name)
         self.timer = LFSRTimer(

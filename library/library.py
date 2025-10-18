@@ -2,7 +2,7 @@ import hashlib
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, Self, Union
+from typing import Any, Collection, Dict, Self, Union, cast
 
 import msgpack
 import numpy as np
@@ -20,7 +20,8 @@ from generators.triangle import TriangleGenerator
 from instructions.instruction import Instruction
 from library.fragment import Fragment
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
-from typehints.generators import GeneratorClass
+from typehints.generators import GeneratorClass, GeneratorUnion
+from typehints.instructions import InstructionUnion
 from utils import deserialize_array, dump, serialize_array
 
 GENERATORS: Dict[GeneratorClassName, GeneratorClass] = {
@@ -30,7 +31,7 @@ GENERATORS: Dict[GeneratorClassName, GeneratorClass] = {
 }
 
 
-def load_instruction(data: Dict[str, Any]) -> Instruction:
+def load_instruction(data: Dict[str, Any]) -> InstructionUnion:
     instruction_dictionary = json.loads(data["instruction"])
     instruction_class = GENERATORS[data["generator_class"]].get_instruction_type()
     instruction = instruction_class(**instruction_dictionary)
@@ -71,14 +72,14 @@ class LibraryKey(BaseModel):
 
 class LibraryFragment(BaseModel):
     generator_class: GeneratorClassName
-    instruction: Instruction
+    instruction: InstructionUnion
     sample: np.ndarray
     feature: np.ndarray
     frequency: float
     offset: int
 
     @classmethod
-    def create(cls, generator: Generator, instruction: Instruction, window: Window) -> Self:
+    def create(cls, generator: GeneratorUnion, instruction: InstructionUnion, window: Window) -> Self:
         sample, offset = generator.generate_sample(instruction, window=window)
         audio = generator.generate_frames(instruction)
         frames_count = audio.shape[0] // generator.frame_length
@@ -127,7 +128,7 @@ class LibraryFragment(BaseModel):
 
     @classmethod
     def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
-        instruction: Instruction = load_instruction(dictionary)
+        instruction: InstructionUnion = load_instruction(dictionary)
 
         sample = deserialize_array(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
@@ -145,35 +146,37 @@ class LibraryFragment(BaseModel):
 
 
 class LibraryData(BaseModel):
-    data: Dict[Instruction, LibraryFragment]
+    data: Dict[InstructionUnion, LibraryFragment]
 
     @cached_property
-    def subdata(self) -> Dict[GeneratorClassName, Dict[Instruction, LibraryFragment]]:
+    def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
         subdata = {}
         for generator_class_name in GeneratorClassNameValues:
-            subdata[generator_class_name] = {
+            generator_class_literal = cast(GeneratorClassName, generator_class_name)
+            subdata[generator_class_literal] = {
                 instruction: fragment
                 for instruction, fragment in self.data.items()
-                if fragment.generator_class == generator_class_name
+                if fragment.generator_class == generator_class_literal
             }
 
         return subdata
 
-    def __getitem__(self, key: Instruction) -> LibraryFragment:
+    def __getitem__(self, key: InstructionUnion) -> LibraryFragment:
         return self.data[key]
 
     def filter(
         self, generator_classes: Union[GeneratorClassName, Collection[GeneratorClassName]]
-    ) -> Dict[Instruction, LibraryFragment]:
+    ) -> Dict[InstructionUnion, LibraryFragment]:
         if not generator_classes:
             return {}
 
         if isinstance(generator_classes, str):
             return self.subdata.get(generator_classes, {})
         elif isinstance(generator_classes, Collection):
-            result: Dict[Instruction, LibraryFragment] = {}
+            result: Dict[InstructionUnion, LibraryFragment] = {}
             for generator_class in generator_classes:
-                result |= self.subdata[generator_class]
+                generator_class_literal = cast(GeneratorClassName, generator_class)
+                result |= self.subdata[generator_class_literal]
             return result
 
         raise ValueError("Incorrect type of generator class provided")
@@ -188,7 +191,7 @@ class LibraryData(BaseModel):
         return self.data.values()
 
     @field_serializer("data")
-    def serialize_data(self, data: Dict[Instruction, LibraryFragment], _info) -> Dict[str, Any]:
+    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> Dict[str, Any]:
         return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
 
     @classmethod
@@ -196,7 +199,7 @@ class LibraryData(BaseModel):
         data = {}
         for key, value in dictionary["data"].items():
 
-            instruction: Instruction = load_instruction(
+            instruction: InstructionUnion = load_instruction(
                 {
                     "instruction": key,
                     "generator_class": value["generator_class"],

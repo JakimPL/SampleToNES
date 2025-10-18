@@ -7,21 +7,21 @@ from instructions.instruction import Instruction
 from library.fragment import Fragment
 from reconstructor.approximation import FragmentApproximation
 from typehints.general import Initials
-from typehints.instructions import InstructionType
+from typehints.instructions import InstructionUnion
 
 
 class FragmentReconstructionState(BaseModel):
     fragment: Fragment
-    instruction: Instruction
+    instruction: InstructionUnion
     error: float
 
     class Config:
         arbitrary_types_allowed = True
 
 
-class ReconstructionState(BaseModel, Generic[InstructionType]):
+class ReconstructionState(BaseModel):
     generator_names: List[str] = []
-    instructions: Dict[str, List[InstructionType]] = {}
+    instructions: Dict[str, List[InstructionUnion]] = {}
     approximations: Dict[str, List[np.ndarray]] = {}
     initials: Dict[str, Initials] = {}
     errors: Dict[str, List[float]] = {}

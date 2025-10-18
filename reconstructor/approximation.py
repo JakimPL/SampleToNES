@@ -1,16 +1,14 @@
-from typing import Generic
-
 from pydantic import BaseModel
 
 from library.fragment import Fragment
 from typehints.general import Initials
-from typehints.instructions import InstructionType
+from typehints.instructions import InstructionUnion
 
 
-class FragmentApproximation(BaseModel, Generic[InstructionType]):
+class FragmentApproximation(BaseModel):
     generator_name: str
     fragment: Fragment
-    instruction: InstructionType
+    instruction: InstructionUnion
     initials: Initials
     terminals: Initials
     error: float

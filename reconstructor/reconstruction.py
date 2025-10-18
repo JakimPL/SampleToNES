@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Generic, List, Literal, Self, Union
+from typing import Any, Dict, List, Self, Union, cast
 
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
@@ -16,7 +16,7 @@ from instructions.triangle import TriangleInstruction
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import InstructionClassName
-from typehints.instructions import InstructionClass, InstructionType
+from typehints.instructions import InstructionClass, InstructionUnion
 from utils import deserialize_array, serialize_array
 
 INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
@@ -32,25 +32,24 @@ INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
 }
 
 
-class Reconstruction(BaseModel, Generic[InstructionType]):
+class Reconstruction(BaseModel):
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[str, List[InstructionType]] = Field(..., description="Instructions per generator")
+    instructions: Dict[str, List[InstructionUnion]] = Field(..., description="Instructions per generator")
     errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Config = Field(..., description="Configuration used for reconstruction")
 
     @staticmethod
-    def _get_instruction_class(
-        name: Literal["Instruction", "TriangleInstruction", "PulseInstruction", "NoiseInstruction"],
-    ) -> type:
+    def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
         return INSTRUCTION_CLASS_MAP[name]
 
     @staticmethod
-    def _get_exporter_class(instruction: InstructionType) -> type:
-        return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
+    def _get_exporter_class(instruction: InstructionUnion) -> ExporterClass:
+        instruction_type = cast(InstructionClass, type(instruction))
+        return INSTRUCTION_TO_EXPORTER_MAP[instruction_type]
 
     @classmethod
-    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[InstructionType]]:
+    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[InstructionUnion]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
             instruction_class = cls._get_instruction_class(instructions_data["type"])
@@ -83,7 +82,7 @@ class Reconstruction(BaseModel, Generic[InstructionType]):
     def get_generator_approximation(self, generator_name: str) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([]))
 
-    def get_generator_instructions(self, generator_name: str) -> List[InstructionType]:
+    def get_generator_instructions(self, generator_name: str) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
     def save(self, filepath: Path) -> None:
@@ -129,7 +128,7 @@ class Reconstruction(BaseModel, Generic[InstructionType]):
 
     @field_serializer("instructions")
     def _serialize_instructions(
-        self, instructions: Dict[str, List[InstructionType]], _info
+        self, instructions: Dict[str, List[InstructionUnion]], _info
     ) -> Dict[str, Dict[str, Any]]:
         return {
             name: {

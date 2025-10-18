@@ -10,7 +10,7 @@ from timers.phase import PhaseTimer
 from typehints.general import GeneratorClassName, Initials
 
 
-class PulseGenerator(Generator):
+class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
     def __init__(self, config: Config, name: str = "pulse") -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
