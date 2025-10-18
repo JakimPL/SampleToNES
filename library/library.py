@@ -259,17 +259,18 @@ class Library(BaseModel):
     def _save(self):
         dump = self.model_dump()
         binary = msgpack.packb(dump)
-        path = Path(self.path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb") as file:
+        path_object = Path(self.path)
+        path_object.parent.mkdir(parents=True, exist_ok=True)
+        with open(path_object, "wb") as file:
             file.write(binary)
 
     def _load(self):
-        with open(self.path, "rb") as file:
+        path_object = Path(self.path)
+        with open(path_object, "rb") as file:
             binary = file.read()
 
         dump = msgpack.unpackb(binary)
-        self.path = Path(dump["path"])
+        self.path = dump["path"]
         self.data = {LibraryKey.deserialize(key): LibraryData.deserialize(data) for key, data in dump["data"].items()}
 
     @field_serializer("data")

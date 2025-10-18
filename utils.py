@@ -1,8 +1,13 @@
 import base64
 import json
-from typing import Any, Dict
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
+from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
 
 import numpy as np
+
+T = TypeVar("T")
+R = TypeVar("R")
 
 
 def next_power_of_two(length: int) -> int:
@@ -50,3 +55,27 @@ def deserialize_array(data: Dict[str, Any]) -> np.ndarray:
     array_data = base64.b64decode(data["data"].encode("utf-8"))
     array = np.frombuffer(array_data, dtype=data["dtype"])
     return array.reshape(data["shape"])
+
+
+def parallelize(
+    collection: List[T], function: Callable[..., R], *args, max_workers: Optional[int] = None, **kwargs
+) -> List[Tuple[int, R]]:
+    if not collection:
+        return []
+
+    if max_workers is None:
+        max_workers = cpu_count()
+
+    results = []
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        future_to_index = {executor.submit(function, i, item, *args, **kwargs): i for i, item in enumerate(collection)}
+        for future in as_completed(future_to_index):
+            index = future_to_index[future]
+            try:
+                result = future.result()
+                results.append((index, result))
+            except Exception as exception:
+                print(f"Task {index} generated an exception: {exception}")
+                raise
+
+    return results

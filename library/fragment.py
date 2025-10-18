@@ -3,10 +3,9 @@ from typing import Iterator, Self
 import numpy as np
 from pydantic import BaseModel, Field
 
+from constants import FAST_LOG_ARFFT
 from ffts.fft import calculate_log_arfft, log_arfft_multiply, log_arfft_subtract
 from ffts.window import Window
-
-FAST_LOG_ARFFT = False
 
 
 class Fragment(BaseModel):
