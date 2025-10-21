@@ -9,6 +9,7 @@ from constants import (
     MAX_CHANGE_RATE,
     MAX_PITCH,
     MAX_SAMPLE_RATE,
+    MAX_WORKERS,
     MIN_CHANGE_RATE,
     MIN_PITCH,
     MIN_SAMPLE_RATE,
@@ -33,6 +34,7 @@ class Config(BaseModel):
     continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0, le=1.0)
     reset_phase: bool = Field(default=RESET_PHASE)
     library_path: str = Field(default=LIBRARY_PATH)
+    max_workers: int = Field(default=1, ge=1)
 
     class Config:
         frozen = True

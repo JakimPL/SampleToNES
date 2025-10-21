@@ -80,4 +80,4 @@ LIBRARY_PATH = "library.fft"
 
 FIND_BEST_PHASE = True
 FAST_LOG_ARFFT = False
-MAX_WORKERS: Optional[int] = None
+MAX_WORKERS = 6

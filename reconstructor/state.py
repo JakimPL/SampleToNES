@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from instructions.instruction import Instruction
 from library.fragment import Fragment
-from reconstructor.approximation import FragmentApproximation
+from reconstructor.approximation import ApproximationData
 from typehints.general import Initials
 from typehints.instructions import InstructionUnion
 
@@ -36,11 +36,9 @@ class ReconstructionState(BaseModel):
             errors={name: [] for name in generator_names},
         )
 
-    def append(self, fragment_approximation: FragmentApproximation) -> None:
+    def append(self, fragment_approximation: ApproximationData) -> None:
         name = fragment_approximation.generator_name
         self.instructions[name].append(fragment_approximation.instruction)
-        self.approximations[name].append(fragment_approximation.fragment.audio)
-        self.initials[name] = fragment_approximation.terminals
         self.errors[name].append(fragment_approximation.error)
 
     @property

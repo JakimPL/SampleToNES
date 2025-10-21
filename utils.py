@@ -1,12 +1,13 @@
 import base64
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union
 
 import numpy as np
 
 T = TypeVar("T")
 R = TypeVar("R")
+ExecutorType = Union[Type[ThreadPoolExecutor], Type[ProcessPoolExecutor]]
 
 
 def next_power_of_two(length: int) -> int:
@@ -57,7 +58,12 @@ def deserialize_array(data: Dict[str, Any]) -> np.ndarray:
 
 
 def parallelize(
-    collection: List[T], function: Callable[..., R], *args, max_workers: Optional[int] = None, **kwargs
+    collection: List[T],
+    function: Callable[..., R],
+    *args,
+    executor: ExecutorType = ProcessPoolExecutor,
+    max_workers: Optional[int] = None,
+    **kwargs,
 ) -> List[Tuple[int, R]]:
     if not collection:
         return []
@@ -66,8 +72,8 @@ def parallelize(
         max_workers = 6
 
     results = []
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_index = {executor.submit(function, i, item, *args, **kwargs): i for i, item in enumerate(collection)}
+    with executor(max_workers=max_workers) as executor:
+        future_to_index = {executor.submit(function, item, *args, **kwargs): i for i, item in enumerate(collection)}
         for future in as_completed(future_to_index):
             index = future_to_index[future]
             try:

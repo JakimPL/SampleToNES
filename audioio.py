@@ -1,12 +1,18 @@
 from pathlib import Path
 from typing import Tuple, Union
 
-import librosa
 import numpy as np
 from IPython.display import Audio, display
 from scipy.io import wavfile
 
 from constants import QUANTIZATION_LEVELS, SAMPLE_RATE
+
+try:
+    import librosa
+
+    LIBROSA_AVAILABLE = True
+except ImportError:
+    LIBROSA_AVAILABLE = False
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
@@ -47,8 +53,20 @@ def resample(audio: np.ndarray, original_sample_rate: int, target_sample_rate: i
     if original_sample_rate == target_sample_rate:
         return audio
 
-    audio = librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
-    return audio
+    if LIBROSA_AVAILABLE:
+        audio = librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
+        return audio
+
+    ratio = target_sample_rate / original_sample_rate
+
+    original_length = len(audio)
+    new_length = int(original_length * ratio)
+
+    original_indices = np.arange(original_length)
+    new_indices = np.linspace(0, original_length - 1, new_length)
+    resampled_audio = np.interp(new_indices, original_indices, audio)
+
+    return resampled_audio.astype(np.float32)
 
 
 def normalize_audio(audio: np.ndarray) -> np.ndarray:

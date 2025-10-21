@@ -13,17 +13,12 @@ from exporters.triangle import TriangleExporter
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
+from reconstructor.maps import INSTRUCTION_CLASS_MAP
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import InstructionClassName
 from typehints.instructions import InstructionClass, InstructionUnion
 from utils import deserialize_array, serialize_array
-
-INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
-    "TriangleInstruction": TriangleInstruction,
-    "PulseInstruction": PulseInstruction,
-    "NoiseInstruction": NoiseInstruction,
-}
 
 INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
     TriangleInstruction: TriangleExporter,

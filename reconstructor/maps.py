@@ -7,11 +7,9 @@ from generators.triangle import TriangleGenerator
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from typehints.general import GeneratorClassName
+from typehints.general import GeneratorClassName, InstructionClassName
 from typehints.generators import GeneratorClass, GeneratorUnion
 from typehints.instructions import InstructionClass, InstructionUnion
-
-FIND_BEST_PHASE = True
 
 GENERATOR_CLASSES: Dict[str, GeneratorClass] = {
     "triangle": TriangleGenerator,
@@ -19,6 +17,14 @@ GENERATOR_CLASSES: Dict[str, GeneratorClass] = {
     "pulse1": PulseGenerator,
     "pulse2": PulseGenerator,
 }
+
+
+INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
+    "TriangleInstruction": TriangleInstruction,
+    "PulseInstruction": PulseInstruction,
+    "NoiseInstruction": NoiseInstruction,
+}
+
 
 INSTRUCTION_TO_GENERATOR_MAP: Dict[InstructionClass, GeneratorClass] = {
     TriangleInstruction: TriangleGenerator,

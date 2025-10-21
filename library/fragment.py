@@ -1,4 +1,4 @@
-from typing import Iterator, Self
+from typing import Iterator, List, Self
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -74,6 +74,10 @@ class FragmentedAudio(BaseModel):
 
     def __iter__(self) -> Iterator[Fragment]:
         return iter(self.fragments)
+
+    @property
+    def fragments_ids(self) -> List[int]:
+        return list(range(len(self.fragments)))
 
     class Config:
         arbitrary_types_allowed = True
