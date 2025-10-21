@@ -5,6 +5,8 @@ from constants import (
     A4_PITCH,
     CHANGE_RATE,
     CONTINUITY_LOSS_WEIGHT,
+    FAST_LOG_ARFFT,
+    FIND_BEST_PHASE,
     LIBRARY_PATH,
     MAX_CHANGE_RATE,
     MAX_PITCH,
@@ -34,7 +36,9 @@ class Config(BaseModel):
     continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0, le=1.0)
     reset_phase: bool = Field(default=RESET_PHASE)
     library_path: str = Field(default=LIBRARY_PATH)
-    max_workers: int = Field(default=1, ge=1)
+    max_workers: int = Field(default=MAX_WORKERS, ge=1)
+    find_best_phase: bool = Field(default=FIND_BEST_PHASE)
+    fast_log_arfft: bool = Field(default=FAST_LOG_ARFFT)
 
     class Config:
         frozen = True

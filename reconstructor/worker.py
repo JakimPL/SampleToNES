@@ -6,7 +6,6 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
 from config import Config
-from constants import FIND_BEST_PHASE
 from ffts.window import Window
 from library.fragment import Fragment, FragmentedAudio
 from library.library import LibraryData
@@ -86,7 +85,7 @@ class ReconstructorWorker:
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         best_shift = int(np.argmin(rmse))
-        return library_fragment.get_fragment(best_shift, self.window)
+        return library_fragment.get_fragment(best_shift, self.window, self.config.fast_log_arfft)
 
     def find_best_approximation(
         self,
@@ -96,7 +95,7 @@ class ReconstructorWorker:
         instruction, error = self.find_best_instruction(fragment, remaining_generator_classes)
         generator = get_generator_by_instruction(instruction, remaining_generator_classes)
 
-        if FIND_BEST_PHASE:
+        if self.config.find_best_phase:
             approximation = self.find_best_phase(fragment, instruction)
         else:
             approximation = self.get_approximation(instruction, generator)
@@ -110,5 +109,10 @@ class ReconstructorWorker:
 
     def get_approximation(self, instruction: InstructionUnion, generator: Any) -> Fragment:
         library_fragment = self.library_data[instruction]
-        fragment = library_fragment.get(generator, self.window, generator.initials)
+        fragment = library_fragment.get(
+            generator,
+            self.window,
+            self.config.fast_log_arfft,
+            generator.initials,
+        )
         return fragment * self.config.mixer

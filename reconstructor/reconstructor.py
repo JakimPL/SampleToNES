@@ -60,7 +60,7 @@ class Reconstructor:
         return Reconstruction.from_results(self.state, self.config)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
-        return FragmentedAudio.create(audio, self.window)
+        return FragmentedAudio.create(audio, self.window, self.config.fast_log_arfft)
 
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids
@@ -110,7 +110,7 @@ class Reconstructor:
         generator = self.generators[fragment_approximation.generator_name]
         instruction = fragment_approximation.instruction
         initials = generator.initials
-        approximation = generator(instruction, initials=initials, save=True)
+        approximation = generator(instruction, initials=initials, save=True) * self.config.mixer
         self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:
