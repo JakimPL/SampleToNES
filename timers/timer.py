@@ -47,7 +47,7 @@ class Timer:
         return sample[start:end] * window.envelope
 
     def generate_frames(
-        self, backward_frames: int, forward_frames: int, initials: Initials = None
+        self, backward_frames: int, forward_frames: int, initials: Initials = None, save: bool = False
     ) -> Tuple[np.ndarray, int]:
         previous_initials = self.get()
         offset = backward_frames * self.frame_length
@@ -56,7 +56,12 @@ class Timer:
         frames = [self.generate_frame(False, save=True) for _ in range(backward_frames)][::-1]
 
         self.set(initials)
-        frames.extend([self.generate_frame(True, save=True) for _ in range(forward_frames)])
+        for i in range(forward_frames):
+            frame = self.generate_frame(True, save=True)
+            if i == 0 and save:
+                previous_initials = self.get()
+
+            frames.append(frame)
 
         self.set(previous_initials)
         sample = np.concatenate(frames)

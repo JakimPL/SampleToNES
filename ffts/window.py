@@ -6,7 +6,7 @@ import numpy as np
 from config import Config
 from constants import MIN_FREQUENCY
 from ffts.fft import calculate_weights
-from utils import pad
+from utils.common import pad
 
 
 @dataclass(frozen=True)

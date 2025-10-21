@@ -1,12 +1,10 @@
-from typing import Dict, Generic, List, Self
+from typing import Dict, List, Self
 
 import numpy as np
 from pydantic import BaseModel
 
-from instructions.instruction import Instruction
 from library.fragment import Fragment
 from reconstructor.approximation import ApproximationData
-from typehints.general import Initials
 from typehints.instructions import InstructionUnion
 
 
@@ -23,7 +21,6 @@ class ReconstructionState(BaseModel):
     generator_names: List[str] = []
     instructions: Dict[str, List[InstructionUnion]] = {}
     approximations: Dict[str, List[np.ndarray]] = {}
-    initials: Dict[str, Initials] = {}
     errors: Dict[str, List[float]] = {}
 
     @classmethod
@@ -32,13 +29,13 @@ class ReconstructionState(BaseModel):
             generator_names=generator_names,
             instructions={name: [] for name in generator_names},
             approximations={name: [] for name in generator_names},
-            initials={name: None for name in generator_names},
             errors={name: [] for name in generator_names},
         )
 
-    def append(self, fragment_approximation: ApproximationData) -> None:
+    def append(self, fragment_approximation: ApproximationData, approximation: np.ndarray) -> None:
         name = fragment_approximation.generator_name
         self.instructions[name].append(fragment_approximation.instruction)
+        self.approximations[name].append(approximation)
         self.errors[name].append(fragment_approximation.error)
 
     @property

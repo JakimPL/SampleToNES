@@ -22,7 +22,7 @@ from library.fragment import Fragment
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
 from typehints.generators import GeneratorClass, GeneratorUnion
 from typehints.instructions import InstructionUnion
-from utils import deserialize_array, dump, serialize_array
+from utils.common import deserialize_array, dump, serialize_array
 
 GENERATORS: Dict[GeneratorClassName, GeneratorClass] = {
     "PulseGenerator": PulseGenerator,

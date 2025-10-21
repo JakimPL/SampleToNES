@@ -1,10 +1,11 @@
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from config import Config
 from ffts.window import Window
-from library.fragment import FragmentedAudio
+from library.fragment import Fragment, FragmentedAudio
 from library.library import Library, LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS
@@ -12,7 +13,25 @@ from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.generators import GeneratorUnion
-from utils import parallelize
+from utils.parallel import parallelize
+
+
+def reconstruct(
+    fragments_ids: List[int],
+    fragmented_audio: FragmentedAudio,
+    config: Config,
+    window: Window,
+    generators: Dict[str, GeneratorUnion],
+    library_data: LibraryData,
+) -> Dict[int, ApproximationData]:
+    worker = ReconstructorWorker(
+        config=config,
+        window=window,
+        generators=generators,
+        library_data=library_data,
+    )
+
+    return worker(fragmented_audio, fragments_ids)
 
 
 class Reconstructor:
@@ -46,18 +65,28 @@ class Reconstructor:
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids
         if self.config.max_workers > 1:
+            results = parallelize(
+                reconstruct,
+                fragments_ids,
+                max_workers=self.config.max_workers,
+                fragmented_audio=fragmented_audio,
+                config=self.config,
+                window=self.window,
+                generators=self.generators,
+                library_data=self.library_data,
+            )
 
-            def function(fragments_ids: List[int]) -> Dict[int, Any]:
-                worker = ReconstructorWorker(
-                    config=self.config,
-                    window=self.window,
-                    generators=self.generators,
-                    library_data=self.library_data,
-                )
+            results = dict(
+                sorted(
+                    (
+                        (fragment_id, fragment_approximation)
+                        for partial_results in results
+                        for fragment_id, fragment_approximation in partial_results.items()
+                    ),
+                    key=lambda fragment: fragment[0],
+                ),
+            )
 
-                return worker(fragmented_audio, fragments_ids)
-
-            results = parallelize(function, fragments_ids, max_workers=self.config.max_workers)
         else:
             worker = ReconstructorWorker(
                 config=self.config,
@@ -65,11 +94,12 @@ class Reconstructor:
                 generators=self.generators,
                 library_data=self.library_data,
             )
+
             results = worker(fragmented_audio, fragments_ids, show_progress=True)
 
-        sorted_results = dict(sorted(results.items()))
-        for fragment_approximation in sorted_results.values():
-            self.update_state(fragment_approximation)
+        for fragment_approximations in results.values():
+            for fragment_approximation in fragment_approximations.values():
+                self.update_state(fragment_approximation)
 
     def load_library(self) -> LibraryData:
         library = Library.load()
@@ -77,7 +107,11 @@ class Reconstructor:
         return LibraryData(data=library_data.filter({generator.class_name() for generator in self.generators.values()}))
 
     def update_state(self, fragment_approximation: ApproximationData) -> None:
-        self.state.append(fragment_approximation)
+        generator = self.generators[fragment_approximation.generator_name]
+        instruction = fragment_approximation.instruction
+        initials = generator.initials
+        approximation = generator(instruction, initials=initials, save=True)
+        self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:
         for generator in self.generators.values():

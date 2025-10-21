@@ -18,7 +18,7 @@ from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import InstructionClassName
 from typehints.instructions import InstructionClass, InstructionUnion
-from utils import deserialize_array, serialize_array
+from utils.common import deserialize_array, serialize_array
 
 INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
     TriangleInstruction: TriangleExporter,

@@ -27,8 +27,8 @@ class ReconstructorWorker:
     criterion: Criterion = field(init=False)
 
     def __call__(
-        self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool
-    ) -> Dict[int, Any]:
+        self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool = False
+    ) -> Dict[int, Dict[str, ApproximationData]]:
         return {
             fragment_id: self.reconstruct(fragmented_audio[fragment_id])
             for fragment_id in tqdm(fragment_ids, disable=not show_progress)
