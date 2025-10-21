@@ -4,11 +4,16 @@ from typing import Callable, Optional
 import numpy as np
 import scipy.fft
 
+from ffts.transformations import DEFAULT_TRANSFORMATION, Transformations
+
 
 def log_arfft_operation(
-    larfft1: np.ndarray, larfft2: np.ndarray, operation: Callable[[np.ndarray, np.ndarray], np.ndarray]
+    larfft1: np.ndarray,
+    larfft2: np.ndarray,
+    binary_operation: Callable[[np.ndarray, np.ndarray], np.ndarray],
+    transformations: Transformations = DEFAULT_TRANSFORMATION,
 ) -> np.ndarray:
-    return np.log1p(np.abs(operation(np.expm1(larfft1), np.expm1(larfft2))))
+    return transformations.binary(larfft1, larfft2, binary_operation)
 
 
 def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
@@ -16,16 +21,25 @@ def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarr
     return scipy.fft.rfft(audio, fft_size)[1:]
 
 
-def calculate_log_arfft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
-    return np.log1p(np.abs(calculate_fft(audio, fft_size)))
+def calculate_log_arfft(
+    audio: np.ndarray,
+    fft_size: Optional[int] = None,
+    transformations: Transformations = DEFAULT_TRANSFORMATION,
+) -> np.ndarray:
+    afft = np.abs(calculate_fft(audio, fft_size))
+    return transformations.inverse(afft)
 
 
-def log_arfft_subtract(larfft1: np.ndarray, larfft2: np.ndarray) -> np.ndarray:
-    return log_arfft_operation(larfft1, larfft2, np.subtract)
+def log_arfft_subtract(
+    larfft1: np.ndarray, larfft2: np.ndarray, transformations: Transformations = DEFAULT_TRANSFORMATION
+) -> np.ndarray:
+    return transformations.binary(larfft1, larfft2, np.subtract)
 
 
-def log_arfft_multiply(larfft: np.ndarray, scalar: float) -> np.ndarray:
-    return np.log1p(np.abs(np.expm1(larfft) * scalar))
+def log_arfft_multiply(
+    larfft: np.ndarray, scalar: float, transformations: Transformations = DEFAULT_TRANSFORMATION
+) -> np.ndarray:
+    return transformations.multiply(larfft, scalar, np.abs)
 
 
 def a_weighting(frequencies: np.ndarray) -> np.ndarray:
