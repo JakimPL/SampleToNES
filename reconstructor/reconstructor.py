@@ -1,11 +1,10 @@
 from typing import Dict, List, Optional
 
 import numpy as np
-from tqdm.auto import tqdm
 
 from config import Config
 from ffts.window import Window
-from library.fragment import Fragment, FragmentedAudio
+from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS

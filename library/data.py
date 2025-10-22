@@ -13,7 +13,6 @@ from ffts.window import Window
 from generators.generator import Generator
 from instructions.instruction import Instruction
 from library.fragment import Fragment
-from library.key import LibraryKey
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
 from typehints.generators import GeneratorUnion

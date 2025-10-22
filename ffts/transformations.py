@@ -1,4 +1,4 @@
-from typing import Callable, NamedTuple, Optional, Tuple
+from typing import Callable, NamedTuple
 
 import numpy as np
 
@@ -32,4 +32,4 @@ class Transformations(NamedTuple):
 
 IDENTITY_TRANSFORMATION = Transformations(lambda x: x, lambda x: x)
 EXPONENTIAL_TRANSFORMATION = Transformations(np.expm1, np.log1p)
-DEFAULT_TRANSFORMATION = IDENTITY_TRANSFORMATION
+DEFAULT_TRANSFORMATION = EXPONENTIAL_TRANSFORMATION
