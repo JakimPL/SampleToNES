@@ -73,7 +73,7 @@ MIXER_NOISE = 0.1733941733941734
 
 # Paths
 
-LIBRARY_PATH = "library.fft"
+LIBRARY_DIRECTORY = "data/library"
 
 
 # Calculation methods

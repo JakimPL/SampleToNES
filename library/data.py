@@ -1,7 +1,9 @@
 import json
 from functools import cached_property
+from pathlib import Path
 from typing import Any, Collection, Dict, List, Self, Union, cast
 
+import msgpack
 import numpy as np
 from pydantic import BaseModel, field_serializer
 
@@ -11,6 +13,7 @@ from ffts.window import Window
 from generators.generator import Generator
 from instructions.instruction import Instruction
 from library.fragment import Fragment
+from library.key import LibraryKey
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
 from typehints.generators import GeneratorUnion
@@ -145,9 +148,26 @@ class LibraryData(BaseModel):
     def values(self):
         return self.data.values()
 
+    def save(self, path: Union[str, Path]) -> None:
+        dump = self.model_dump()
+        binary = msgpack.packb(dump)
+        path_object = Path(path)
+        path_object.parent.mkdir(parents=True, exist_ok=True)
+        with open(path_object, "wb") as file:
+            file.write(binary)
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> Self:
+        path_object = Path(path)
+        with open(path_object, "rb") as file:
+            binary = file.read()
+
+        data = msgpack.unpackb(binary)
+        return LibraryData.deserialize(data)
+
     @field_serializer("data")
     def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> Dict[str, Any]:
-        return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
+        return {dump(instruction.model_dump()): fragment.model_dump() for instruction, fragment in data.items()}
 
     @classmethod
     def deserialize(cls, dictionary: Dict[str, Any]) -> Self:

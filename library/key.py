@@ -25,7 +25,7 @@ class LibraryKey(BaseModel):
             "a4_pitch": config.a4_pitch,
         }
         json_string = dump(config_fields)
-        config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()
+        config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()[:32]
         return cls(
             sample_rate=config.sample_rate,
             frame_length=window.frame_length,
@@ -33,10 +33,9 @@ class LibraryKey(BaseModel):
             config_hash=config_hash,
         )
 
-    @classmethod
-    def deserialize(cls, string: str) -> Self:
-        dictionary = json.loads(string)
-        return cls(**dictionary)
+    @property
+    def filename(self) -> str:
+        return f"sr_{self.sample_rate}_fl_{self.frame_length}_ws_{self.window_size}_ch_{self.config_hash}.dat"
 
     class Config:
         frozen = True

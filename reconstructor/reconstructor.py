@@ -35,7 +35,12 @@ def reconstruct(
 
 
 class Reconstructor:
-    def __init__(self, config: Config, generator_names: Optional[List[str]] = None) -> None:
+    def __init__(
+        self,
+        config: Config,
+        generator_names: Optional[List[str]] = None,
+        library: Optional[Library] = None,
+    ) -> None:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
 
@@ -46,7 +51,7 @@ class Reconstructor:
         }
 
         self.window: Window = Window(config)
-        self.library_data: LibraryData = self.load_library()
+        self.library_data: LibraryData = self.load_library(library)
 
     def __call__(self, audio: np.ndarray) -> Reconstruction:
         self.reset_generators()
@@ -101,8 +106,8 @@ class Reconstructor:
             for fragment_approximation in fragment_approximations.values():
                 self.update_state(fragment_approximation)
 
-    def load_library(self) -> LibraryData:
-        library = Library.load()
+    def load_library(self, library: Optional[Library] = None) -> LibraryData:
+        library = library or Library(directory=self.config.library_directory)
         library_data = library.get(self.config, self.window)
         return LibraryData(data=library_data.filter({generator.class_name() for generator in self.generators.values()}))
 

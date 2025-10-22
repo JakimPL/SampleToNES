@@ -6,7 +6,7 @@ import msgpack
 from pydantic import BaseModel, Field, field_serializer
 
 from config import Config as Config
-from constants import LIBRARY_PATH
+from constants import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
 from library.key import LibraryKey
@@ -29,7 +29,7 @@ def generate_library_data(
 
 
 class Library(BaseModel):
-    path: str = Field(LIBRARY_PATH, description="Path to the FFT library file")
+    directory: str = Field(LIBRARY_DIRECTORY, description="Path to the FFT library directory")
     data: Dict[LibraryKey, LibraryData] = Field(..., default_factory=dict, description="FFT library data")
 
     def __getitem__(self, key: LibraryKey) -> LibraryData:
@@ -38,7 +38,10 @@ class Library(BaseModel):
     def get(self, config: Config, window: Window) -> LibraryData:
         key = LibraryKey.create(config, window)
         if key not in self.data:
-            self.update(config, window)
+            if self.get_path(key).exists():
+                self.load_data(key)
+            else:
+                self.update(config, window)
 
         return self.data[key]
 
@@ -71,8 +74,7 @@ class Library(BaseModel):
             worker = LibraryWorker(config=config, window=window, generators=generators)
             library_data = worker(instructions, instructions_ids, show_progress=True)
 
-        self.data[key] = library_data
-        self._save()
+        self.save_data(key, library_data)
         return key
 
     def keys(self):
@@ -84,34 +86,19 @@ class Library(BaseModel):
     def values(self):
         return self.data.values()
 
-    def _save(self):
-        dump = self.model_dump()
-        binary = msgpack.packb(dump)
-        path_object = Path(self.path)
-        path_object.parent.mkdir(parents=True, exist_ok=True)
-        with open(path_object, "wb") as file:
-            file.write(binary)
+    def get_path(self, key: LibraryKey) -> Path:
+        return Path(self.directory) / key.filename
 
-    def _load(self):
-        path_object = Path(self.path)
-        with open(path_object, "rb") as file:
-            binary = file.read()
+    def save_data(self, key: LibraryKey, library_data: LibraryData) -> None:
+        path = self.get_path(key)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.data[key] = library_data
+        library_data.save(path)
 
-        dump = msgpack.unpackb(binary)
-        self.path = dump["path"]
-        self.data = {LibraryKey.deserialize(key): LibraryData.deserialize(data) for key, data in dump["data"].items()}
-
-    @field_serializer("data")
-    def serialize_data(self, data: Dict[LibraryKey, LibraryData], _info) -> Dict[str, Any]:
-        return {dump(k.model_dump()): v.model_dump() for k, v in data.items()}
-
-    @classmethod
-    def load(cls, path: str = LIBRARY_PATH) -> Self:
-        library = cls(path=path)
-        if Path(path).exists():
-            library._load()
-
-        return library
+    def load_data(self, key: LibraryKey) -> None:
+        path = self.get_path(key)
+        library_data = LibraryData.load(path)
+        self.data[key] = library_data
 
     class Config:
         arbitrary_types_allowed = True

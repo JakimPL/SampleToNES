@@ -7,7 +7,7 @@ from constants import (
     CONTINUITY_LOSS_WEIGHT,
     FAST_LOG_ARFFT,
     FIND_BEST_PHASE,
-    LIBRARY_PATH,
+    LIBRARY_DIRECTORY,
     MAX_CHANGE_RATE,
     MAX_PITCH,
     MAX_SAMPLE_RATE,
@@ -35,7 +35,7 @@ class Config(BaseModel):
     temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0, le=1.0)
     continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0, le=1.0)
     reset_phase: bool = Field(default=RESET_PHASE)
-    library_path: str = Field(default=LIBRARY_PATH)
+    library_directory: str = Field(default=LIBRARY_DIRECTORY)
     max_workers: int = Field(default=MAX_WORKERS, ge=1)
     find_best_phase: bool = Field(default=FIND_BEST_PHASE)
     fast_log_arfft: bool = Field(default=FAST_LOG_ARFFT)
