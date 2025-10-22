@@ -19,6 +19,13 @@ GENERATOR_CLASSES: Dict[str, GeneratorClass] = {
 }
 
 
+GENERATOR_CLASS_MAP: Dict[GeneratorClassName, GeneratorClass] = {
+    "PulseGenerator": PulseGenerator,
+    "TriangleGenerator": TriangleGenerator,
+    "NoiseGenerator": NoiseGenerator,
+}
+
+
 INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
     "TriangleInstruction": TriangleInstruction,
     "PulseInstruction": PulseInstruction,

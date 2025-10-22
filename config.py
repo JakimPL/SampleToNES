@@ -30,7 +30,7 @@ class Config(BaseModel):
     a4_pitch: int = Field(default=A4_PITCH, ge=1, le=127)
     min_pitch: int = Field(default=MIN_PITCH, ge=1, le=127)
     max_pitch: int = Field(default=MAX_PITCH, ge=1, le=127)
-    mixer: float = Field(default=MIXER, ge=0.0, le=2.0)
+    mixer: float = Field(default=MIXER, ge=0.0, le=100.0)
     spectral_loss_weight: float = Field(default=SPECTRAL_LOSS_WEIGHT, ge=0.0, le=1.0)
     temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0, le=1.0)
     continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0, le=1.0)
