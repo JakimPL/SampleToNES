@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 
 from pydantic import BaseModel, Field
 
-from config import Config as Config
+from configs.config import Config as Config
 from constants import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
@@ -56,11 +56,11 @@ class Library(BaseModel):
         ]
 
         instructions_ids = list(range(len(instructions)))
-        if config.max_workers > 1:
+        if config.general.max_workers > 1:
             library_data = parallelize(
                 generate_library_data,
                 instructions_ids,
-                max_workers=config.max_workers,
+                max_workers=config.general.max_workers,
                 instructions=instructions,
                 config=config,
                 window=window,

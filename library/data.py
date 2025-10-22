@@ -7,7 +7,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel, field_serializer
 
-from config import Config as Config
+from configs.calculation import CalculationConfig
 from ffts.fft import calculate_fft
 from ffts.window import Window
 from generators.generator import Generator
@@ -60,16 +60,23 @@ class LibraryFragment(BaseModel):
             offset=offset,
         )
 
-    def get_fragment(self, shift: int, window: Window, fast_log_arfft: bool) -> Fragment:
+    def get_fragment(self, shift: int, window: Window, calculation_config: CalculationConfig) -> Fragment:
         offset = self.offset + shift
         windowed_audio = window.get_windowed_frame(self.sample, offset)
         audio = window.get_frame_from_window(windowed_audio)
-        return Fragment(audio=audio, feature=self.feature, windowed_audio=windowed_audio, fast_log_arfft=fast_log_arfft)
+        return Fragment(
+            audio=audio,
+            feature=self.feature,
+            windowed_audio=windowed_audio,
+            calculation_config=calculation_config,
+        )
 
-    def get(self, generator: Generator, window: Window, fast_log_arfft: bool, initials: Initials = None) -> Fragment:
+    def get(
+        self, generator: Generator, window: Window, calculation_config: CalculationConfig, initials: Initials = None
+    ) -> Fragment:
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
-        return self.get_fragment(shift, window, fast_log_arfft)
+        return self.get_fragment(shift, window, calculation_config)
 
     @field_serializer("instruction")
     def serialize_instruction(self, instruction: Instruction, _info) -> str:

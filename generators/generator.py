@@ -2,7 +2,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 
 import numpy as np
 
-from config import Config
+from configs.config import Config
 from ffts.window import Window
 from typehints.general import GeneratorClassName, Initials
 from typehints.instructions import InstructionType
@@ -58,9 +58,9 @@ class Generator(Generic[InstructionType, TimerType]):
 
         self.timer.set(initials)
         if isinstance(frames, float):
-            frames = round(frames * self.config.sample_rate / self.config.frame_length)
+            frames = round(frames * self.config.general.sample_rate / self.config.general.frame_length)
 
-        samples = round(frames * self.config.sample_rate)
+        samples = round(frames * self.config.general.sample_rate)
         output = []
         for _ in range(frames):
             frame = self(instruction, save=True)
@@ -100,7 +100,7 @@ class Generator(Generic[InstructionType, TimerType]):
 
     @property
     def frame_length(self) -> int:
-        return self.config.frame_length
+        return self.config.general.frame_length
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:

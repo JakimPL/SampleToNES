@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Tuple
 
 from tqdm.auto import tqdm
 
-from config import Config
+from configs.config import Config
 from ffts.window import Window
 from instructions.instruction import Instruction
 from library.data import LibraryFragment

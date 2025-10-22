@@ -1,9 +1,12 @@
-from typing import Callable, NamedTuple
+from typing import Dict, NamedTuple
 
 import numpy as np
 
-UnaryTransformation = Callable[[np.ndarray], np.ndarray]
-BinaryTransformation = Callable[[np.ndarray, np.ndarray], np.ndarray]
+from typehints.general import (
+    BinaryTransformation,
+    TransformationName,
+    UnaryTransformation,
+)
 
 
 class Transformations(NamedTuple):
@@ -32,4 +35,7 @@ class Transformations(NamedTuple):
 
 IDENTITY_TRANSFORMATION = Transformations(lambda x: x, lambda x: x)
 EXPONENTIAL_TRANSFORMATION = Transformations(np.expm1, np.log1p)
-DEFAULT_TRANSFORMATION = EXPONENTIAL_TRANSFORMATION
+TRANSFORMATIONS: Dict[TransformationName, Transformations] = {
+    "id": IDENTITY_TRANSFORMATION,
+    "exp": EXPONENTIAL_TRANSFORMATION,
+}

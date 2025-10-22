@@ -78,6 +78,7 @@ LIBRARY_DIRECTORY = "data/library"
 
 # Calculation methods
 
+DEFAULT_TRANSFORMATION_NAME = "exp"
 FIND_BEST_PHASE = True
 FAST_LOG_ARFFT = False
 MAX_WORKERS = 6

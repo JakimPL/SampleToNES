@@ -2,7 +2,7 @@ from typing import List, cast
 
 import numpy as np
 
-from config import Config
+from configs.config import Config
 from constants import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
@@ -14,9 +14,9 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
     def __init__(self, config: Config, name: str = "triangle") -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
-            sample_rate=config.sample_rate,
-            change_rate=config.change_rate,
-            reset_phase=config.reset_phase,
+            sample_rate=config.general.sample_rate,
+            change_rate=config.general.change_rate,
+            reset_phase=config.generation.reset_phase,
             phase_increment=0.5,
         )
 

@@ -1,4 +1,4 @@
-from typing import Any, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Literal, Optional, Tuple, Union
 
 import numpy as np
 
@@ -12,3 +12,7 @@ GeneratorClassName = Literal["PulseGenerator", "TriangleGenerator", "NoiseGenera
 
 FeatureKey = Literal["initial_pitch", "volume", "arpeggio", "pitch", "hi_pitch", "duty_cycle"]
 FeatureValue = Union[int, np.ndarray]
+
+UnaryTransformation = Callable[[np.ndarray], np.ndarray]
+BinaryTransformation = Callable[[np.ndarray, np.ndarray], np.ndarray]
+TransformationName = Literal["exp", "id"]

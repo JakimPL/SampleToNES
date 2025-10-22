@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from config import Config
+from configs.config import Config
 from ffts.window import Window
 from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
@@ -64,15 +64,15 @@ class Reconstructor:
         return Reconstruction.from_results(self.state, self.config)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
-        return FragmentedAudio.create(audio, self.window, self.config.fast_log_arfft)
+        return FragmentedAudio.create(self.config.calculation, audio, self.window)
 
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids
-        if self.config.max_workers > 1:
+        if self.config.general.max_workers > 1:
             results = parallelize(
                 reconstruct,
                 fragments_ids,
-                max_workers=self.config.max_workers,
+                max_workers=self.config.general.max_workers,
                 fragmented_audio=fragmented_audio,
                 config=self.config,
                 window=self.window,
@@ -106,7 +106,7 @@ class Reconstructor:
                 self.update_state(fragment_approximation)
 
     def load_library(self, library: Optional[Library] = None) -> LibraryData:
-        library = library or Library(directory=self.config.library_directory)
+        library = library or Library(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
         return LibraryData(data=library_data.filter({generator.class_name() for generator in self.generators.values()}))
 
@@ -114,7 +114,7 @@ class Reconstructor:
         generator = self.generators[fragment_approximation.generator_name]
         instruction = fragment_approximation.instruction
         initials = generator.initials
-        approximation = generator(instruction, initials=initials, save=True) * self.config.mixer
+        approximation = generator(instruction, initials=initials, save=True) * self.config.general.mixer
         self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:

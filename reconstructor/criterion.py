@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import numpy as np
 from sklearn.metrics import root_mean_squared_error
 
-from config import Config
+from configs.config import Config
 from ffts.window import Window
 from instructions.instruction import Instruction
 from library.fragment import Fragment
@@ -54,9 +54,9 @@ class Criterion:
         return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
 
     def get_loss_weights(self) -> Tuple[float, float, float]:
-        alpha = self.config.spectral_loss_weight
-        beta = self.config.temporal_loss_weight
-        gamma = self.config.continuity_loss_weight
+        alpha = self.config.generation.spectral_loss_weight
+        beta = self.config.generation.temporal_loss_weight
+        gamma = self.config.generation.continuity_loss_weight
         weights = alpha, beta, gamma
 
         assert all(

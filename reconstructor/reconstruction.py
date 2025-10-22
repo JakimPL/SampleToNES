@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Self, Union, cast
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
 
-from config import Config as Configuration
+from configs.config import Config as Configuration
 from exporters.exporter import FeatureKey, FeatureValue
 from exporters.noise import NoiseExporter
 from exporters.pulse import PulseExporter

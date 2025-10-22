@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from config import Config
+from configs.config import Config
 from constants import MIN_FREQUENCY
 from ffts.fft import calculate_weights
 from utils.common import pad
@@ -23,8 +23,8 @@ class Window:
     weights: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        lower_bound = int(np.ceil(2.0 * self.config.sample_rate / MIN_FREQUENCY))
-        size = max(self.config.frame_length, self.custom_size if self.custom_size is not None else lower_bound)
+        lower_bound = int(np.ceil(2.0 * self.config.general.sample_rate / MIN_FREQUENCY))
+        size = max(self.config.general.frame_length, self.custom_size if self.custom_size is not None else lower_bound)
 
         left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
         object.__setattr__(self, "size", size)
@@ -33,12 +33,12 @@ class Window:
         envelope = self.create_window() if self.on else np.ones(size)
         object.__setattr__(self, "envelope", envelope)
 
-        backward_frames = -(left_offset // self.config.frame_length)
-        forward_frames = -(-(size + left_offset) // self.config.frame_length)
+        backward_frames = -(left_offset // self.config.general.frame_length)
+        forward_frames = -(-(size + left_offset) // self.config.general.frame_length)
         object.__setattr__(self, "backward_frames", backward_frames)
         object.__setattr__(self, "forward_frames", forward_frames)
 
-        weights = calculate_weights(size, self.config.sample_rate)
+        weights = calculate_weights(size, self.config.general.sample_rate)
         object.__setattr__(self, "weights", weights)
 
     def create_window(self) -> np.ndarray:
@@ -98,8 +98,8 @@ class Window:
 
     @property
     def frame_length(self) -> int:
-        return self.config.frame_length
+        return self.config.general.frame_length
 
     @property
     def sample_rate(self) -> int:
-        return self.config.sample_rate
+        return self.config.general.sample_rate
