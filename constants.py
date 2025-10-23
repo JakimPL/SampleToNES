@@ -1,5 +1,3 @@
-from typing import Optional
-
 # Global constants
 
 SAMPLE_RATE = 44100
@@ -78,7 +76,7 @@ LIBRARY_DIRECTORY = "data/library"
 
 # Calculation methods
 
-DEFAULT_TRANSFORMATION_NAME = "exp"
+TRANSFORMATION_GAMMA = 0.0
 FIND_BEST_PHASE = True
-FAST_LOG_ARFFT = False
+FAST_DIFFERENCE = False
 MAX_WORKERS = 6

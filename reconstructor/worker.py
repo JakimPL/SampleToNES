@@ -80,18 +80,18 @@ class ReconstructorWorker:
         end = start + length
 
         array = library_fragment.sample[start:end] * self.config.general.mixer
-        windows = sliding_window_view(array, self.config.general.frame_length)
+        windows = sliding_window_view(array, self.config.library.frame_length)
         remainder = fragment.audio - windows
 
         rmse = np.sqrt((remainder**2).mean(axis=1))
         best_shift = int(np.argmin(rmse))
-        return library_fragment.get_fragment(best_shift, self.window, self.config.calculation)
+        return library_fragment.get_fragment(best_shift, self.config, self.window)
 
     def find_best_approximation(
         self,
         fragment: Fragment,
         remaining_generator_classes: Dict[GeneratorClassName, Any],
-    ) -> Tuple[Fragment, ApproximationData]:
+    ) -> ApproximationData:
         instruction, error = self.find_best_instruction(fragment, remaining_generator_classes)
         generator = get_generator_by_instruction(instruction, remaining_generator_classes)
 
@@ -111,8 +111,8 @@ class ReconstructorWorker:
         library_fragment = self.library_data[instruction]
         fragment = library_fragment.get(
             generator,
+            self.config,
             self.window,
-            self.config.calculation,
             generator.initials,
         )
         return fragment * self.config.general.mixer

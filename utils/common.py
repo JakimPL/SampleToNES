@@ -5,6 +5,14 @@ from typing import Any, Dict
 import numpy as np
 
 
+def zero(x: np.ndarray) -> np.ndarray:
+    return np.zeros_like(x)
+
+
+def identity(x: np.ndarray) -> np.ndarray:
+    return x
+
+
 def next_power_of_two(length: int) -> int:
     return 1 << (length - 1).bit_length()
 

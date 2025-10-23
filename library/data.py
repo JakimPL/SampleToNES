@@ -7,7 +7,7 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel, field_serializer
 
-from configs.calculation import CalculationConfig
+from configs.config import Config as Configuration
 from ffts.fft import calculate_fft
 from ffts.window import Window
 from generators.generator import Generator
@@ -22,7 +22,7 @@ from utils.common import deserialize_array, dump, serialize_array
 
 def load_instruction(data: Dict[str, Any]) -> InstructionUnion:
     instruction_dictionary = json.loads(data["instruction"])
-    instruction_class = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
+    instruction_class: GeneratorUnion = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
     instruction = instruction_class(**instruction_dictionary)
     return instruction
 
@@ -60,7 +60,7 @@ class LibraryFragment(BaseModel):
             offset=offset,
         )
 
-    def get_fragment(self, shift: int, window: Window, calculation_config: CalculationConfig) -> Fragment:
+    def get_fragment(self, shift: int, config: Configuration, window: Window) -> Fragment:
         offset = self.offset + shift
         windowed_audio = window.get_windowed_frame(self.sample, offset)
         audio = window.get_frame_from_window(windowed_audio)
@@ -68,15 +68,13 @@ class LibraryFragment(BaseModel):
             audio=audio,
             feature=self.feature,
             windowed_audio=windowed_audio,
-            calculation_config=calculation_config,
+            config=config,
         )
 
-    def get(
-        self, generator: Generator, window: Window, calculation_config: CalculationConfig, initials: Initials = None
-    ) -> Fragment:
+    def get(self, generator: Generator, config: Config, window: Window, initials: Initials = None) -> Fragment:
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
-        return self.get_fragment(shift, window, calculation_config)
+        return self.get_fragment(shift, config, window)
 
     @field_serializer("instruction")
     def serialize_instruction(self, instruction: Instruction, _info) -> str:

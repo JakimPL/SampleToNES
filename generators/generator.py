@@ -58,9 +58,9 @@ class Generator(Generic[InstructionType, TimerType]):
 
         self.timer.set(initials)
         if isinstance(frames, float):
-            frames = round(frames * self.config.general.sample_rate / self.config.general.frame_length)
+            frames = round(frames * self.config.library.sample_rate / self.config.library.frame_length)
 
-        samples = round(frames * self.config.general.sample_rate)
+        samples = round(frames * self.config.library.sample_rate)
         output = []
         for _ in range(frames):
             frame = self(instruction, save=True)
@@ -100,7 +100,7 @@ class Generator(Generic[InstructionType, TimerType]):
 
     @property
     def frame_length(self) -> int:
-        return self.config.general.frame_length
+        return self.config.library.frame_length
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:

@@ -33,8 +33,11 @@ class Library(BaseModel):
     def __getitem__(self, key: LibraryKey) -> LibraryData:
         return self.data[key]
 
+    def create_key(self, config: Config, window: Window) -> LibraryKey:
+        return LibraryKey.create(config.library, window)
+
     def get(self, config: Config, window: Window) -> LibraryData:
-        key = LibraryKey.create(config, window)
+        key = self.create_key(config, window)
         if key not in self.data:
             if self.get_path(key).exists():
                 self.load_data(key)
@@ -44,7 +47,7 @@ class Library(BaseModel):
         return self.data[key]
 
     def update(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
-        key = LibraryKey.create(config, window)
+        key = self.create_key(config, window)
         if not overwrite and key in self.data:
             return key
 

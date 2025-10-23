@@ -24,6 +24,7 @@ class Exporter(Generic[InstructionType]):
     def get_features(self, instructions: List[InstructionType]) -> Dict[FeatureKey, FeatureValue]:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def pitch_to_timer(self, pitch: int) -> int:
+    @staticmethod
+    def pitch_to_timer(pitch: int) -> int:
         frequency = pitch_to_frequency(pitch)
         return PhaseTimer.frequency_to_timer(frequency)

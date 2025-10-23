@@ -64,7 +64,7 @@ class Reconstructor:
         return Reconstruction.from_results(self.state, self.config)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
-        return FragmentedAudio.create(self.config.calculation, audio, self.window)
+        return FragmentedAudio.create(audio, self.config, self.window)
 
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids

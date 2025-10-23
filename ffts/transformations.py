@@ -1,12 +1,11 @@
-from typing import Dict, NamedTuple
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 import numpy as np
+from scipy.special import gamma, gammaincc
 
-from typehints.general import (
-    BinaryTransformation,
-    TransformationName,
-    UnaryTransformation,
-)
+from typehints.general import BinaryTransformation, UnaryTransformation
+from utils.common import identity, zero
 
 
 class Transformations(NamedTuple):
@@ -33,9 +32,54 @@ class Transformations(NamedTuple):
         return self.inverse(callable(self.operation(audio) * scalar))
 
 
-IDENTITY_TRANSFORMATION = Transformations(lambda x: x, lambda x: x)
-EXPONENTIAL_TRANSFORMATION = Transformations(np.expm1, np.log1p)
-TRANSFORMATIONS: Dict[TransformationName, Transformations] = {
-    "id": IDENTITY_TRANSFORMATION,
-    "exp": EXPONENTIAL_TRANSFORMATION,
-}
+@dataclass(frozen=True)
+class LinearExponentialMorpher:
+    gamma: float
+
+    p: float = field(init=False)
+    a: float = field(init=False)
+    transformations: Transformations = field(init=False)
+
+    def __post_init__(self):
+        if not isinstance(self.gamma, float):
+            raise TypeError(f"The gamma parameter must be a float, got {type(self.gamma)}")
+
+        if not 0.0 <= self.gamma <= 1.0:
+            raise ValueError(f"The gamma parameter must be in the range [0, 1], got {self.gamma}")
+
+        if self.gamma == 0.0:
+            p = 0.0
+            interpolation = identity
+            derivative = zero
+            inverse = identity
+
+        elif self.gamma == 1.0:
+            p = float("inf")
+            interpolation = np.expm1
+            derivative = np.exp
+            inverse = np.log1p
+
+        else:
+            p = self.gamma / (1.0 - self.gamma)
+            a = p + 2.0
+
+            def interpolation(x: np.ndarray) -> np.ndarray:
+                return np.exp(x) * gammaincc(a, x) - 1.0
+
+            def derivative(x: np.ndarray) -> np.ndarray:
+                return np.exp(x) * gammaincc(a, x) - (x ** (a - 1)) / gamma(a)
+
+            def inverse(y: np.ndarray) -> np.ndarray:
+                y = np.asarray(y, dtype=float)
+                x = np.log1p(y)
+
+                for _ in range(6):
+                    fx = interpolation(x) - y
+                    fpx = derivative(x)
+                    x -= fx / fpx
+
+                return x
+
+        object.__setattr__(self, "p", p)
+        object.__setattr__(self, "a", p + 2.0 if np.isfinite(p) else float("inf"))
+        object.__setattr__(self, "transformations", Transformations(interpolation, inverse))

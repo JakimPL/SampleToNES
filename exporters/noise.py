@@ -23,7 +23,6 @@ class NoiseExporter(Exporter):
             if instruction.on:
                 if initial_period is None:
                     initial_period = instruction.period
-                    period = initial_period
 
                 period = instruction.period
                 volume = instruction.volume

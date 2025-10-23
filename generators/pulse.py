@@ -14,8 +14,8 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
     def __init__(self, config: Config, name: str = "pulse") -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
-            sample_rate=config.general.sample_rate,
-            change_rate=config.general.change_rate,
+            sample_rate=config.library.sample_rate,
+            change_rate=config.library.change_rate,
             reset_phase=config.generation.reset_phase,
             phase_increment=1.0,
         )

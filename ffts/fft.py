@@ -1,17 +1,21 @@
 from functools import lru_cache
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
-import scipy.fft
 from pydantic import BaseModel, Field
+from scipy.fft import rfft, rfftfreq
 
-from ffts.transformations import TRANSFORMATIONS, Transformations
-from typehints.general import TransformationName
+from ffts.transformations import LinearExponentialMorpher, Transformations
+from typehints.general import (
+    BinaryTransformation,
+    MultaryTransformation,
+    UnaryTransformation,
+)
 
 
 def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
     fft_size = audio.shape[0] if fft_size is None else fft_size
-    return scipy.fft.rfft(audio, fft_size)[1:]
+    return rfft(audio, fft_size)[1:]
 
 
 def a_weighting(frequencies: np.ndarray) -> np.ndarray:
@@ -26,45 +30,64 @@ def a_weighting(frequencies: np.ndarray) -> np.ndarray:
 
 @lru_cache(maxsize=128)
 def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
-    frequencies = scipy.fft.rfftfreq(fragment_length, 1 / sample_rate)[1:]
+    frequencies = rfftfreq(fragment_length, 1 / sample_rate)[1:]
     density_weights = 1.0 / frequencies
     perceptual_weights = a_weighting(frequencies)
     return density_weights * perceptual_weights
 
 
 class FFTTransformer(BaseModel):
-    transformations: Transformations = Field(..., description="Transformations to be applied")
+    transformations: Transformations = Field(..., description="FFT feature transformations")
+    base_operation: UnaryTransformation = Field(
+        default=np.abs,
+        description="Base operation for FFT calculations. Default is the absolute value, change with caution",
+    )
 
     @classmethod
-    def from_name(cls, name: TransformationName) -> "Transformations":
-        return cls(transformations=TRANSFORMATIONS[name])
+    def from_gamma(cls, gamma: float) -> "FFTTransformer":
+        morpher = LinearExponentialMorpher(gamma)
+        return cls(transformations=morpher.transformations)
 
-    def log_arfft_operation(
+    def compose(self, callable: MultaryTransformation) -> MultaryTransformation:
+        def composition(*args: np.ndarray) -> np.ndarray:
+            return self.base_operation(callable(**args))
+
+        return composition
+
+    def operation(
         self,
-        larfft1: np.ndarray,
-        larfft2: np.ndarray,
-        binary_operation: Callable[[np.ndarray, np.ndarray], np.ndarray],
+        fft1: np.ndarray,
+        fft2: np.ndarray,
+        callable: BinaryTransformation,
     ) -> np.ndarray:
-        return self.transformations.binary(larfft1, larfft2, binary_operation)
+        binary_operation = self.compose(callable)
+        return self.transformations.binary(fft1, fft2, binary_operation)
 
-    def calculate_log_arfft(
+    def calculate(
         self,
         audio: np.ndarray,
         fft_size: Optional[int] = None,
     ) -> np.ndarray:
-        afft = np.abs(calculate_fft(audio, fft_size))
-        return self.transformations.inverse(afft)
+        fft = self.base_operation(calculate_fft(audio, fft_size))
+        return self.transformations.inverse(fft)
 
-    def log_arfft_subtract(
+    def add(
         self,
-        larfft1: np.ndarray,
-        larfft2: np.ndarray,
+        fft1: np.ndarray,
+        fft2: np.ndarray,
     ) -> np.ndarray:
-        return self.transformations.binary(larfft1, larfft2, np.subtract)
+        return self.operation(fft1, fft2, np.add)
 
-    def log_arfft_multiply(
+    def subtract(
         self,
-        larfft: np.ndarray,
+        fft1: np.ndarray,
+        fft2: np.ndarray,
+    ) -> np.ndarray:
+        return self.operation(fft1, fft2, np.subtract)
+
+    def multiply(
+        self,
+        fft: np.ndarray,
         scalar: float,
     ) -> np.ndarray:
-        return self.transformations.multiply(larfft, scalar, np.abs)
+        return self.transformations.multiply(fft, scalar, self.base_operation)

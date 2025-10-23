@@ -15,4 +15,4 @@ FeatureValue = Union[int, np.ndarray]
 
 UnaryTransformation = Callable[[np.ndarray], np.ndarray]
 BinaryTransformation = Callable[[np.ndarray, np.ndarray], np.ndarray]
-TransformationName = Literal["exp", "id"]
+MultaryTransformation = Callable[..., np.ndarray]

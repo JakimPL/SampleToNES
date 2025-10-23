@@ -4,6 +4,7 @@ from typing import Self
 from pydantic import BaseModel, Field
 
 from configs.config import Config as Config
+from configs.library import LibraryConfig
 from constants import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from ffts.window import Window
 from utils.common import dump
@@ -16,18 +17,12 @@ class LibraryKey(BaseModel):
     config_hash: str = Field(..., description="Hash of the configuration")
 
     @classmethod
-    def create(cls, config: Config, window: Window) -> Self:
-        config_fields = {
-            "change_rate": config.general.change_rate,
-            "sample_rate": config.general.sample_rate,
-            "a4_frequency": config.general.a4_frequency,
-            "a4_pitch": config.general.a4_pitch,
-            "transformation": config.general.max_workers,
-        }
+    def create(cls, config: LibraryConfig, window: Window) -> Self:
+        config_fields = config.model_dump()
         json_string = dump(config_fields)
         config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()[:32]
         return cls(
-            sample_rate=config.general.sample_rate,
+            sample_rate=config.sample_rate,
             frame_length=window.frame_length,
             window_size=window.size,
             config_hash=config_hash,
