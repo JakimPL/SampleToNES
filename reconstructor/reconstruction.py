@@ -34,6 +34,7 @@ class Reconstruction(BaseModel):
     errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Configuration = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
+    audio_filepath: Path = Field(..., description="Path to the original audio file")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -63,7 +64,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Configuration, coefficient: float) -> Self:
+    def from_results(cls, state: ReconstructionState, config: Configuration, coefficient: float, path: Path) -> Self:
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 
@@ -74,6 +75,7 @@ class Reconstruction(BaseModel):
             errors=state.errors,
             config=config,
             coefficient=coefficient,
+            audio_filepath=path,
         )
 
     def get_generator_approximation(self, generator_name: str) -> np.ndarray:
@@ -101,6 +103,7 @@ class Reconstruction(BaseModel):
         data["instructions"] = cls._parse_instructions(data["instructions"])
         data["config"] = Configuration(**data["config"])
         data["coefficient"] = float(data["coefficient"])
+        data["audio_filepath"] = Path(data["audio_filepath"])
 
         return cls(**data)
 
@@ -140,6 +143,10 @@ class Reconstruction(BaseModel):
     @field_serializer("config")
     def _serialize_config(self, config: Configuration, _info) -> Dict[str, Any]:
         return config.model_dump()
+
+    @field_serializer("audio_filepath")
+    def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
+        return str(audio_filepath)
 
     class Config:
         arbitrary_types_allowed = True

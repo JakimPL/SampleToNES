@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -12,6 +13,7 @@ from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.generators import GeneratorUnion
+from utils.audioio import load_audio
 from utils.parallel import parallelize
 
 
@@ -52,13 +54,22 @@ class Reconstructor:
         self.window: Window = Window(config)
         self.library_data: LibraryData = self.load_library(library)
 
-    def __call__(self, audio: np.ndarray) -> Reconstruction:
+    def __call__(self, path: Path) -> Reconstruction:
+        audio = self.load_audio(path)
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))
         coefficient = self.get_coefficient(audio)
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
-        return Reconstruction.from_results(self.state, self.config, coefficient)
+        return Reconstruction.from_results(self.state, self.config, coefficient, path)
+
+    def load_audio(self, path: Path) -> np.ndarray:
+        return load_audio(
+            path,
+            target_sample_rate=self.config.library.sample_rate,
+            normalize=self.config.general.normalize,
+            quantize=self.config.general.quantize,
+        )
 
     def get_coefficient(self, audio: np.ndarray) -> float:
         return np.max(np.abs(audio)) / sum(
