@@ -55,13 +55,15 @@ class Reconstructor:
     def __call__(self, audio: np.ndarray) -> Reconstruction:
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))
-        coefficient = np.max(np.abs(audio)) / sum(
-            MIXER_LEVELS[generator.class_name()] for generator in self.generators.values()
-        )
-
+        coefficient = self.get_coefficient(audio)
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
-        return Reconstruction.from_results(self.state, self.config)
+        return Reconstruction.from_results(self.state, self.config, coefficient)
+
+    def get_coefficient(self, audio: np.ndarray) -> float:
+        return np.max(np.abs(audio)) / sum(
+            MIXER_LEVELS[generator.class_name()] for generator in self.generators.values()
+        )
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         return FragmentedAudio.create(audio, self.config, self.window)

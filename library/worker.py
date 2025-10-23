@@ -5,7 +5,6 @@ from tqdm.auto import tqdm
 
 from configs.config import Config
 from ffts.fft import FFTTransformer
-from ffts.transformations import Transformations
 from ffts.window import Window
 from instructions.instruction import Instruction
 from library.data import LibraryFragment

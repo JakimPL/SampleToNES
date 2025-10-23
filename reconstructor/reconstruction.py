@@ -33,6 +33,7 @@ class Reconstruction(BaseModel):
     instructions: Dict[str, List[InstructionUnion]] = Field(..., description="Instructions per generator")
     errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Configuration = Field(..., description="Configuration used for reconstruction")
+    coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -62,7 +63,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Configuration) -> Self:
+    def from_results(cls, state: ReconstructionState, config: Configuration, coefficient: float) -> Self:
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 
@@ -72,6 +73,7 @@ class Reconstruction(BaseModel):
             instructions=state.instructions,
             errors=state.errors,
             config=config,
+            coefficient=coefficient,
         )
 
     def get_generator_approximation(self, generator_name: str) -> np.ndarray:
@@ -98,6 +100,7 @@ class Reconstruction(BaseModel):
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
         data["instructions"] = cls._parse_instructions(data["instructions"])
         data["config"] = Configuration(**data["config"])
+        data["coefficient"] = float(data["coefficient"])
 
         return cls(**data)
 
