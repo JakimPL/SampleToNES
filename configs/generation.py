@@ -15,4 +15,5 @@ class GenerationConfig(BaseModel):
     reset_phase: bool = Field(default=RESET_PHASE)
 
     class Config:
+        extra = "forbid"
         frozen = True

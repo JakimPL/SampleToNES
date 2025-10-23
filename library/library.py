@@ -46,6 +46,9 @@ class Library(BaseModel):
 
         return self.data[key]
 
+    def purge(self) -> None:
+        self.data.clear()
+
     def update(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
         key = self.create_key(config, window)
         if not overwrite and key in self.data:

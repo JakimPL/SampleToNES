@@ -17,5 +17,6 @@ class Config(BaseModel):
     )
 
     class Config:
-        frozen = True
         arbitrary_types_allowed = True
+        extra = "forbid"
+        frozen = True

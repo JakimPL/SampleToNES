@@ -25,4 +25,5 @@ class LibraryConfig(BaseModel):
         return round(self.sample_rate / self.change_rate)
 
     class Config:
+        extra = "forbid"
         frozen = True

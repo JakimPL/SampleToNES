@@ -7,6 +7,8 @@ from scipy.special import gamma, gammaincc
 from typehints.general import BinaryTransformation, UnaryTransformation
 from utils.common import identity, zero
 
+ITERATIONS = 6
+
 
 class Transformations(NamedTuple):
     operation: UnaryTransformation
@@ -73,7 +75,7 @@ class LinearExponentialMorpher:
                 y = np.asarray(y, dtype=float)
                 x = np.log1p(y)
 
-                for _ in range(6):
+                for _ in range(ITERATIONS):
                     fx = interpolation(x) - y
                     fpx = derivative(x)
                     x -= fx / fpx

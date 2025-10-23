@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import BaseModel, field_serializer
 
 from configs.config import Config as Configuration
-from ffts.fft import calculate_fft
+from ffts.fft import FFTTransformer, calculate_fft
 from ffts.window import Window
 from generators.generator import Generator
 from instructions.instruction import Instruction
@@ -22,7 +22,7 @@ from utils.common import deserialize_array, dump, serialize_array
 
 def load_instruction(data: Dict[str, Any]) -> InstructionUnion:
     instruction_dictionary = json.loads(data["instruction"])
-    instruction_class: GeneratorUnion = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
+    instruction_class = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
     instruction = instruction_class(**instruction_dictionary)
     return instruction
 
@@ -36,21 +36,23 @@ class LibraryFragment(BaseModel):
     offset: int
 
     @classmethod
-    def create(cls, generator: GeneratorUnion, instruction: InstructionUnion, window: Window) -> Self:
+    def create(
+        cls, generator: GeneratorUnion, instruction: InstructionUnion, window: Window, transformer: FFTTransformer
+    ) -> Self:
         sample, offset = generator.generate_sample(instruction, window=window)
         audio = generator.generate_frames(instruction)
         frames_count = audio.shape[0] // generator.frame_length
         start_id = int(np.ceil(0.5 * window.size / generator.frame_length))
         end_id = frames_count - start_id
-        feature = np.log1p(
-            np.mean(
-                [
-                    np.abs(calculate_fft(window.get_windowed_frame(audio, frame_id * generator.frame_length)))
-                    for frame_id in range(start_id, end_id)
-                ],
-                axis=0,
-            )
-        )
+
+        features = []
+        for frame_id in range(start_id, end_id):
+            windowed_audio = window.get_windowed_frame(audio, frame_id * generator.frame_length)
+            transformed_windowed_audio = transformer.calculate(windowed_audio)
+            features.append(transformed_windowed_audio)
+
+        feature = transformer.inverse(np.mean(features, axis=0))
+
         return cls(
             generator_class=generator.class_name(),
             instruction=instruction,

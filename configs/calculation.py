@@ -8,4 +8,5 @@ class CalculationConfig(BaseModel):
     fast_difference: bool = Field(default=FAST_DIFFERENCE)
 
     class Config:
+        extra = "forbid"
         frozen = True

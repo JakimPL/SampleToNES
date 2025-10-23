@@ -46,7 +46,8 @@ class FFTTransformer(BaseModel):
     @classmethod
     def from_gamma(cls, gamma: float) -> "FFTTransformer":
         morpher = LinearExponentialMorpher(gamma)
-        return cls(transformations=morpher.transformations)
+        transformations = morpher.transformations
+        return cls(transformations=transformations)
 
     def compose(self, callable: MultaryTransformation) -> MultaryTransformation:
         def composition(*args: np.ndarray) -> np.ndarray:
@@ -54,7 +55,16 @@ class FFTTransformer(BaseModel):
 
         return composition
 
-    def operation(
+    def base(self, fft: np.ndarray) -> np.ndarray:
+        return self.base_operation(fft)
+
+    def operation(self, fft: np.ndarray) -> np.ndarray:
+        return self.transformations.operation(fft)
+
+    def inverse(self, fft: np.ndarray) -> np.ndarray:
+        return self.transformations.inverse(fft)
+
+    def binary(
         self,
         fft1: np.ndarray,
         fft2: np.ndarray,
@@ -76,14 +86,14 @@ class FFTTransformer(BaseModel):
         fft1: np.ndarray,
         fft2: np.ndarray,
     ) -> np.ndarray:
-        return self.operation(fft1, fft2, np.add)
+        return self.binary(fft1, fft2, np.add)
 
     def subtract(
         self,
         fft1: np.ndarray,
         fft2: np.ndarray,
     ) -> np.ndarray:
-        return self.operation(fft1, fft2, np.subtract)
+        return self.binary(fft1, fft2, np.subtract)
 
     def multiply(
         self,

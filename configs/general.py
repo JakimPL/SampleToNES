@@ -11,4 +11,5 @@ class GeneralConfig(BaseModel):
     max_workers: int = Field(default=MAX_WORKERS, ge=1)
 
     class Config:
+        extra = "forbid"
         frozen = True
