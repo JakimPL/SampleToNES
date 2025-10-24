@@ -12,6 +12,7 @@ from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
+from typehints.general import GeneratorName
 from typehints.generators import GeneratorUnion
 from utils.audioio import load_audio
 from utils.parallel import parallelize
@@ -39,7 +40,7 @@ class Reconstructor:
     def __init__(
         self,
         config: Config,
-        generator_names: Optional[List[str]] = None,
+        generator_names: Optional[List[GeneratorName]] = None,
         library: Optional[Library] = None,
     ) -> None:
         self.config: Config = config

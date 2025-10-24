@@ -73,7 +73,7 @@ class LibraryFragment(BaseModel):
             config=config,
         )
 
-    def get(self, generator: Generator, config: Config, window: Window, initials: Initials = None) -> Fragment:
+    def get(self, generator: Generator, config: Configuration, window: Window, initials: Initials = None) -> Fragment:
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
         return self.get_fragment(shift, config, window)
