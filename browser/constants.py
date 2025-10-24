@@ -57,7 +57,6 @@ SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
 
 # Button labels
 BUTTON_SELECT_LIBRARY_DIR = "Select library directory"
-BUTTON_APPLY_CONFIG = "Apply configuration"
 BUTTON_SELECT_AUDIO_FILE = "Select audio file"
 BUTTON_START_RECONSTRUCTION = "Start reconstruction"
 BUTTON_PLAY_ORIGINAL = "Play original"

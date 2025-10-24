@@ -1,14 +1,13 @@
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from browser.config import ConfigManager
 from browser.constants import *
 from configs.config import Config
-from configs.general import GeneralConfig
-from configs.library import LibraryConfig
 from constants import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
@@ -25,14 +24,13 @@ from utils.audioio import load_audio, play_audio, write_audio
 
 class GUI:
     def __init__(self):
-        self.config: Optional[Config] = None
         self.current_reconstruction: Optional[Reconstruction] = None
         self.original_audio: Optional[np.ndarray] = None
         self.reconstructor_generators: List[GeneratorName] = GENERATOR_NAMES.copy()
         self.selected_generators = {generator_name: True for generator_name in GENERATOR_NAMES}
         self.audio_path: Optional[Path] = None
         self.reconstruction_path: Optional[Path] = None
-        self.library_directory: Optional[str] = LIBRARY_DIRECTORY
+        self.config_manager = ConfigManager()
         self.setup_gui()
 
     def setup_gui(self):
@@ -41,6 +39,10 @@ class GUI:
         self.create_main_window()
         dpg.create_viewport(title=WINDOW_TITLE, width=MAIN_WINDOW_WIDTH, height=MAIN_WINDOW_HEIGHT)
         dpg.setup_dearpygui()
+
+        self.config_manager.register_callbacks()
+        self.config_manager.initialize_config()
+
         dpg.show_viewport()
 
     def create_main_window(self):
@@ -96,9 +98,6 @@ class GUI:
                         min_value=MIN_CHANGE_RATE,
                         max_value=MAX_CHANGE_RATE,
                     )
-
-                    dpg.add_separator()
-                    dpg.add_button(label=BUTTON_APPLY_CONFIG, callback=self.apply_config)
 
                 with dpg.child_window():
                     dpg.add_text("Configuration preview")
@@ -229,8 +228,8 @@ class GUI:
         try:
             with open(file_path, "r") as f:
                 config_data = json.load(f)
-            self.config = Config(**config_data)
-            dpg.set_value("config_preview", LOADED_PREFIX.format(Path(file_path).name))
+            if self.config_manager.load_config_from_file(config_data):
+                dpg.set_value("config_preview", LOADED_PREFIX.format(Path(file_path).name))
         except Exception as exception:
             dpg.set_value("config_preview", ERROR_PREFIX.format(f"loading config: {exception}"))
 
@@ -254,42 +253,24 @@ class GUI:
     def select_library_directory(self, sender, app_data):
         directory_path = list(app_data["selections"].values())[0]
         try:
-            self.library_directory = directory_path
+            self.config_manager.set_library_directory(directory_path)
             dpg.set_value("library_directory_display", CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
         except Exception as exception:
             dpg.set_value("library_directory_display", ERROR_PREFIX.format(str(exception)))
 
-    def apply_config(self):
-        config_data = {
-            "general": {
-                "normalize": dpg.get_value("normalize"),
-                "quantize": dpg.get_value("quantize"),
-                "max_workers": dpg.get_value("max_workers"),
-                "library_directory": self.library_directory or LIBRARY_DIRECTORY,
-            },
-            "library": {
-                "sample_rate": dpg.get_value("sample_rate"),
-                "change_rate": dpg.get_value("change_rate"),
-            },
-        }
-
-        try:
-            self.config = Config(
-                general=GeneralConfig(**config_data["general"]),
-                library=LibraryConfig(**config_data["library"]),
-            )
-            dpg.set_value("config_preview", MSG_CONFIG_APPLIED)
-        except Exception as exception:
-            dpg.set_value("config_preview", ERROR_PREFIX.format(f"applying config: {exception}"))
-
     def start_reconstruction(self):
-        if not self.config or self.original_audio is None or not self.audio_path:
-            dpg.set_value("reconstruction_info", MSG_SELECT_AUDIO_AND_CONFIG)
+        if self.original_audio is None or not self.audio_path:
+            dpg.set_value("reconstruction_info", "Please select an audio file first")
+            return
+
+        config = self.config_manager.get_config()
+        if not config:
+            dpg.set_value("reconstruction_info", "Configuration error - please check settings")
             return
 
         try:
             generator_names: List[GeneratorName] = [name for name in GENERATOR_NAMES if dpg.get_value(f"gen_{name}")]
-            reconstructor = Reconstructor(self.config, generator_names)
+            reconstructor = Reconstructor(config, generator_names)
             self.current_reconstruction = reconstructor(self.audio_path)
 
             self.update_waveform_display()
