@@ -6,9 +6,13 @@ import dearpygui.dearpygui as dpg
 
 from browser.constants import *
 from constants import LIBRARY_DIRECTORY
+from instructions.noise import NoiseInstruction
+from instructions.pulse import PulseInstruction
+from instructions.triangle import TriangleInstruction
 from library.data import LibraryData
 from library.key import LibraryKey
 from library.library import Library
+from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
 from typehints.general import LIBRARY_GENERATOR_NAMES, GeneratorClassName
 
 
@@ -34,12 +38,13 @@ class LibraryPanel:
             dpg.add_text(MSG_LIBRARY_NOT_EXISTS, tag="library_status")
 
             dpg.add_separator()
-            dpg.add_button(
-                label=BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag="generate_library_button"
-            )
-            dpg.add_button(
-                label=BUTTON_REFRESH_LIBRARIES, callback=self._on_refresh_clicked, tag="refresh_libraries_button"
-            )
+            with dpg.group(tag="library_controls_group"):
+                dpg.add_button(
+                    label=BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag="generate_library_button"
+                )
+                dpg.add_button(
+                    label=BUTTON_REFRESH_LIBRARIES, callback=self._on_refresh_clicked, tag="refresh_libraries_button"
+                )
             dpg.add_progress_bar(tag="library_progress", default_value=0.0, show=False)
 
             dpg.add_separator()
@@ -83,7 +88,7 @@ class LibraryPanel:
             return
 
         self.is_generating = True
-        dpg.configure_item("library_panel", enabled=False)
+        dpg.configure_item("library_controls_group", enabled=False)
         dpg.set_value("library_status", MSG_GENERATING_LIBRARY)
         dpg.configure_item("library_progress", show=True)
         dpg.set_value("library_progress", 0.0)
@@ -111,7 +116,7 @@ class LibraryPanel:
 
         finally:
             self.is_generating = False
-            dpg.configure_item("library_panel", enabled=True)
+            dpg.configure_item("library_controls_group", enabled=True)
             dpg.configure_item("library_progress", show=False)
 
     def _refresh_libraries(self):
@@ -274,19 +279,12 @@ class LibraryPanel:
                     dpg.delete_item(child)
 
             library_data = self.loaded_libraries[display_name]
-
-            generator_class_map: Dict[str, GeneratorClassName] = {
-                "pulse": "PulseGenerator",
-                "triangle": "TriangleGenerator",
-                "noise": "NoiseGenerator",
-            }
-
-            generator_class_name = generator_class_map.get(generator_name)
+            generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
             if generator_class_name:
-                generator_data = library_data.filter(generator_class_name)
-                dpg.add_text(f"Loaded {len(generator_data)} {generator_name} instructions", parent=generator_tag)
-                for i, (instruction, fragment) in enumerate(list(generator_data.items())[:5]):
-                    dpg.add_text(f"  Instruction {i+1}: freq={fragment.frequency:.1f}Hz", parent=generator_tag)
+                grouped_instructions = self._parse_instructions_by_generator(library_data, generator_class_name)
+                self._display_instruction_groups(
+                    display_name, generator_name, generator_class_name, grouped_instructions
+                )
             else:
                 dpg.add_text(f"Unknown generator: {generator_name}", parent=generator_tag)
 
@@ -313,3 +311,68 @@ class LibraryPanel:
         if dpg.does_item_exist(library_tag):
             dpg.set_value(library_tag, True)
             self.expanded_states[display_name] = True
+
+    def _parse_instructions_by_generator(
+        self, library_data: LibraryData, generator_class_name: GeneratorClassName
+    ) -> Dict[str, list]:
+        generator_data = library_data.filter(generator_class_name)
+
+        if not generator_data:
+            return {}
+
+        grouped_instructions = {}
+
+        for instruction, fragment in generator_data.items():
+            if not instruction.on:
+                continue
+
+            if isinstance(instruction, (PulseInstruction, TriangleInstruction)):
+                grouping_key = f"Pitch {instruction.pitch}"
+            elif isinstance(instruction, NoiseInstruction):
+                grouping_key = f"Period {instruction.period}"
+            else:
+                grouping_key = "Other"
+
+            if grouping_key not in grouped_instructions:
+                grouped_instructions[grouping_key] = []
+
+            grouped_instructions[grouping_key].append((instruction, fragment))
+
+        for group_key in grouped_instructions:
+            grouped_instructions[group_key].sort(key=lambda x: x[0].name)
+
+        return grouped_instructions
+
+    def _display_instruction_groups(
+        self,
+        display_name: str,
+        generator_name: str,
+        generator_class_name: GeneratorClassName,
+        grouped_instructions: Dict[str, list],
+    ):
+        generator_tag = f"{generator_name}_{display_name}"
+
+        if not grouped_instructions:
+            dpg.add_text("No valid instructions found", parent=generator_tag)
+            return
+
+        for group_key, instructions in sorted(grouped_instructions.items()):
+            group_tag = f"{group_key}_{generator_name}_{display_name}"
+            with dpg.tree_node(label=f"{group_key} ({len(instructions)} items)", parent=generator_tag, tag=group_tag):
+                for instruction, fragment in instructions:
+                    dpg.add_selectable(
+                        label=instruction.name,
+                        callback=self._on_instruction_selected,
+                        user_data=(generator_class_name, instruction),
+                        parent=group_tag,
+                    )
+
+    def _on_instruction_selected(self, sender, app_data, user_data):
+        generator_class_name, instruction = user_data
+        self._show_instruction_details(generator_class_name, instruction)
+
+    def _show_instruction_details(self, generator_class_name: GeneratorClassName, instruction):
+        print(f"Selected {generator_class_name} instruction: {instruction.name}")
+        print(f"Instruction details: {instruction.model_dump()}")
+        # TODO: This will interface with the main panel to show instruction specifics
+        # instead of the current configuration preview

@@ -4,10 +4,16 @@ from pydantic import Field
 
 from constants import MAX_PITCH, MIN_PITCH, PITCH_RANGE
 from instructions.instruction import Instruction
+from utils.frequencies import pitch_to_name
 
 
 class TriangleInstruction(Instruction):
     pitch: int = Field(..., ge=MIN_PITCH, le=MAX_PITCH, description="MIDI pitch (0-120)")
+
+    @property
+    def name(self) -> str:
+        pitch = pitch_to_name(self.pitch)
+        return f"T {pitch}"
 
     def distance(self, other: Self) -> float:
         both_silent = not self.on and not other.on

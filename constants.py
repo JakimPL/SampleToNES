@@ -18,6 +18,7 @@ MAX_FREQUENCY = APU_CLOCK / 0x10
 
 A4_FREQUENCY = 440.0
 A4_PITCH = 69
+NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
 
 MIN_VOLUME = 1
 MAX_VOLUME = 15

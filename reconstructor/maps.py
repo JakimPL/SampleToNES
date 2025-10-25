@@ -7,9 +7,15 @@ from generators.triangle import TriangleGenerator
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from typehints.general import GeneratorClassName, GeneratorName, InstructionClassName
+from typehints.general import GeneratorClassName, GeneratorName, InstructionClassName, LibraryGeneratorName
 from typehints.generators import GeneratorClass, GeneratorUnion
 from typehints.instructions import InstructionClass, InstructionUnion
+
+LIBRARY_GENERATOR_CLASS_MAP: Dict[LibraryGeneratorName, GeneratorClassName] = {
+    "pulse": "PulseGenerator",
+    "triangle": "TriangleGenerator",
+    "noise": "NoiseGenerator",
+}
 
 GENERATOR_CLASSES: Dict[GeneratorName, GeneratorClass] = {
     "pulse1": PulseGenerator,

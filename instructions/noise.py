@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from constants import MAX_PERIOD, MAX_VOLUME
+from constants import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
 from instructions.instruction import Instruction
 
 
@@ -8,6 +8,13 @@ class NoiseInstruction(Instruction):
     period: int = Field(..., ge=0, le=15, description="0-15, indexes into noise period table")
     volume: int = Field(..., ge=0, le=MAX_VOLUME, description="Volume (0-15)")
     mode: bool = Field(..., description="False = normal (15-bit), True = short mode (93-step)")
+
+    @property
+    def name(self) -> str:
+        period = f"p{NOISE_PERIODS[self.period]}"
+        volume = f"v{self.volume:X}"
+        short = "s" if self.mode else "l"
+        return f"N {period} {volume} {short}"
 
     def distance(self, other: "NoiseInstruction") -> float:
         volume1 = self.volume if self.on else 0
