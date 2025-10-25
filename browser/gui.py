@@ -5,10 +5,9 @@ from typing import Any, Dict, List, Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from browser.config import ConfigManager
+from browser.config.manager import ConfigManager
+from browser.config.panel import ConfigPanelGUI
 from browser.constants import *
-from browser.library import LibraryPanel
-from configs.config import Config
 from constants import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
@@ -19,12 +18,12 @@ from constants import (
 )
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
-from typehints.general import GENERATOR_NAMES, GeneratorClassName, GeneratorName
+from typehints.general import GENERATOR_NAMES, GeneratorName
 from utils.audioio import load_audio, play_audio, write_audio
 
 
 class GUI:
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_reconstruction: Optional[Reconstruction] = None
         self.original_audio: Optional[np.ndarray] = None
         self.reconstructor_generators: List[GeneratorName] = GENERATOR_NAMES.copy()
@@ -32,23 +31,19 @@ class GUI:
         self.audio_path: Optional[Path] = None
         self.reconstruction_path: Optional[Path] = None
         self.config_manager = ConfigManager()
-        self.library_panel = LibraryPanel(self.config_manager)
+        self.config_panel = ConfigPanelGUI(self.config_manager)
         self.setup_gui()
 
-    def setup_gui(self):
+    def setup_gui(self) -> None:
         dpg.create_context()
 
         self.create_main_window()
         dpg.create_viewport(title=WINDOW_TITLE, width=MAIN_WINDOW_WIDTH, height=MAIN_WINDOW_HEIGHT)
         dpg.setup_dearpygui()
 
-        self.config_manager.register_callbacks()
-        self.config_manager.add_config_change_callback(self.library_panel.update_status)
-        self.config_manager.initialize_config()
-
         dpg.show_viewport()
 
-    def create_main_window(self):
+    def create_main_window(self) -> None:
         with dpg.window(label=WINDOW_TITLE, tag="main_window"):
             with dpg.menu_bar():
                 with dpg.menu(label=MENU_FILE):
@@ -65,54 +60,15 @@ class GUI:
 
         dpg.set_primary_window("main_window", True)
 
-    def create_config_tab(self):
+    def create_config_tab(self) -> None:
         with dpg.tab(label=TAB_CONFIGURATION):
             with dpg.group(horizontal=True):
                 with dpg.group(tag="left_config_panel"):
-                    with dpg.child_window(width=CONFIG_PANEL_WIDTH, height=CONFIG_PANEL_HEIGHT):
-                        dpg.add_text(SECTION_GENERAL_SETTINGS)
-                        dpg.add_separator()
+                    self.config_panel.create_panel("left_config_panel")
 
-                        dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag="normalize")
-                        dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag="quantize")
-                        dpg.add_input_int(
-                            label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag="max_workers", min_value=MIN_WORKERS
-                        )
+                self.config_panel.create_preview_panel("config_tab")
 
-                        dpg.add_separator()
-                        dpg.add_text(SECTION_LIBRARY_DIRECTORY)
-                        dpg.add_button(label=BUTTON_SELECT_LIBRARY_DIR, callback=self.select_library_directory_dialog)
-                        dpg.add_text(
-                            DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag="library_directory_display"
-                        )
-
-                        dpg.add_separator()
-                        dpg.add_text(SECTION_LIBRARY_SETTINGS)
-                        dpg.add_separator()
-
-                        dpg.add_input_int(
-                            label=INPUT_SAMPLE_RATE,
-                            default_value=SAMPLE_RATE,
-                            tag="sample_rate",
-                            min_value=MIN_SAMPLE_RATE,
-                            max_value=MAX_SAMPLE_RATE,
-                        )
-                        dpg.add_input_int(
-                            label=INPUT_CHANGE_RATE,
-                            default_value=CHANGE_RATE,
-                            tag="change_rate",
-                            min_value=MIN_CHANGE_RATE,
-                            max_value=MAX_CHANGE_RATE,
-                        )
-
-                    self.library_panel.create_panel("left_config_panel")
-
-                with dpg.child_window():
-                    dpg.add_text("Configuration preview")
-                    dpg.add_separator()
-                    dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag="config_preview")
-
-    def create_reconstruction_tab(self):
+    def create_reconstruction_tab(self) -> None:
         with dpg.tab(label=TAB_RECONSTRUCTION):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=RECONSTRUCTION_PANEL_WIDTH, height=RECONSTRUCTION_PANEL_HEIGHT):
@@ -152,7 +108,7 @@ class GUI:
                     dpg.add_separator()
                     dpg.add_text("Reconstruction info", tag="reconstruction_info")
 
-    def create_browser_tab(self):
+    def create_browser_tab(self) -> None:
         with dpg.tab(label=TAB_BROWSER):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=BROWSER_PANEL_WIDTH, height=BROWSER_PANEL_HEIGHT):
@@ -178,7 +134,7 @@ class GUI:
                         readonly=True,
                     )
 
-    def load_config_dialog(self):
+    def load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=DIALOG_LOAD_CONFIG,
             width=FILE_DIALOG_WIDTH,
@@ -188,7 +144,7 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_JSON)
 
-    def load_audio_dialog(self):
+    def load_audio_dialog(self) -> None:
         with dpg.file_dialog(
             label=DIALOG_LOAD_AUDIO,
             width=FILE_DIALOG_WIDTH,
@@ -198,7 +154,7 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_WAV)
 
-    def load_reconstruction_dialog(self):
+    def load_reconstruction_dialog(self) -> None:
         with dpg.file_dialog(
             label=DIALOG_LOAD_RECONSTRUCTION,
             width=FILE_DIALOG_WIDTH,
@@ -208,7 +164,7 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_JSON)
 
-    def select_library_directory_dialog(self):
+    def select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
             label=DIALOG_SELECT_LIBRARY_DIR,
             width=FILE_DIALOG_WIDTH,
@@ -218,7 +174,7 @@ class GUI:
         ):
             pass
 
-    def export_wav_dialog(self):
+    def export_wav_dialog(self) -> None:
         if not self.current_reconstruction:
             return
 
@@ -231,17 +187,17 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_WAV)
 
-    def load_config(self, sender, app_data):
+    def load_config(self, sender: Any, app_data: Dict[str, Any]) -> None:
         file_path = list(app_data["selections"].values())[0]
         try:
             with open(file_path, "r") as f:
                 config_data = json.load(f)
-            if self.config_manager.load_config_from_file(config_data):
+            if self.config_panel.load_config_from_data(config_data):
                 dpg.set_value("config_preview", LOADED_PREFIX.format(Path(file_path).name))
         except Exception as exception:
             dpg.set_value("config_preview", ERROR_PREFIX.format(f"loading config: {exception}"))
 
-    def load_audio(self, sender, app_data):
+    def load_audio(self, sender: Any, app_data: Dict[str, Any]) -> None:
         file_path = list(app_data["selections"].values())[0]
         try:
             self.audio_path = Path(file_path)
@@ -250,7 +206,7 @@ class GUI:
         except Exception as exception:
             dpg.set_value("selected_audio_file", ERROR_PREFIX.format(str(exception)))
 
-    def load_reconstruction(self, sender, app_data):
+    def load_reconstruction(self, sender: Any, app_data: Dict[str, Any]) -> None:
         file_path = list(app_data["selections"].values())[0]
         try:
             self.current_reconstruction = Reconstruction.load(file_path)
@@ -258,15 +214,19 @@ class GUI:
         except Exception as exception:
             dpg.set_value("reconstruction_details", ERROR_PREFIX.format(f"loading reconstruction: {exception}"))
 
-    def select_library_directory(self, sender, app_data):
+    def select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
         directory_path = list(app_data["selections"].values())[0]
         try:
             self.config_manager.set_library_directory(directory_path)
+            gui_values = {}
+            for tag in self.config_manager.config_params.keys():
+                gui_values[tag] = dpg.get_value(tag)
+            self.config_manager.update_config_from_gui_values(gui_values)
             dpg.set_value("library_directory_display", CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
         except Exception as exception:
             dpg.set_value("library_directory_display", ERROR_PREFIX.format(str(exception)))
 
-    def start_reconstruction(self):
+    def start_reconstruction(self) -> None:
         if self.original_audio is None or not self.audio_path:
             dpg.set_value("reconstruction_info", "Please select an audio file first")
             return
@@ -292,7 +252,7 @@ class GUI:
         except Exception as exception:
             dpg.set_value("reconstruction_info", ERROR_PREFIX.format(f"during reconstruction: {exception}"))
 
-    def update_waveform_display(self):
+    def update_waveform_display(self) -> None:
         if not self.current_reconstruction:
             return
 
@@ -312,15 +272,15 @@ class GUI:
                 x_data, self.current_reconstruction.approximation.tolist(), label=PLOT_RECONSTRUCTION, parent=y_axis
             )
 
-    def play_original(self):
+    def play_original(self) -> None:
         if self.original_audio is not None:
             play_audio(self.original_audio)
 
-    def play_reconstruction(self):
+    def play_reconstruction(self) -> None:
         if self.current_reconstruction:
             play_audio(self.current_reconstruction.approximation)
 
-    def export_wav(self, sender, app_data):
+    def export_wav(self, sender: Any, app_data: Dict[str, Any]) -> None:
         if not self.current_reconstruction:
             return
 
@@ -330,18 +290,18 @@ class GUI:
         except Exception as exception:
             print(ERROR_PREFIX.format(f"exporting WAV: {exception}"))
 
-    def refresh_reconstruction_list(self):
+    def refresh_reconstruction_list(self) -> None:
         pass
         # TODO: implement
         # dpg.configure_item("reconstruction_list", items=reconstructions)
 
-    def load_selected_reconstruction(self):
+    def load_selected_reconstruction(self) -> None:
         pass
         # TODO: implement
         # selected = dpg.get_value("reconstruction_list")
         # if selected:
         #     dpg.set_value("reconstruction_details", f"Loaded: {selected}")
 
-    def run(self):
+    def run(self) -> None:
         dpg.start_dearpygui()
         dpg.destroy_context()

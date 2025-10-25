@@ -1,7 +1,9 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from configs.config import Config
 from constants import LIBRARY_DIRECTORY, NOISE_PERIODS
+from ffts.window import Window
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
@@ -18,12 +20,12 @@ from utils.frequencies import pitch_to_name
 
 
 class LibraryManager:
-    def __init__(self, library_directory: str = LIBRARY_DIRECTORY):
+    def __init__(self, library_directory: str = LIBRARY_DIRECTORY) -> None:
         self.library = Library(directory=library_directory)
         self.library_files: Dict[str, str] = {}
         self.current_library_key: Optional[LibraryKey] = None
 
-    def set_library_directory(self, directory: str):
+    def set_library_directory(self, directory: str) -> None:
         self.library.directory = directory
 
     def gather_available_libraries(self) -> Dict[str, str]:
@@ -105,11 +107,11 @@ class LibraryManager:
     def library_exists_for_key(self, key: LibraryKey) -> bool:
         return self.library.exists(key)
 
-    def generate_library(self, config, window, overwrite: bool = False) -> LibraryKey:
+    def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
         self.library.directory = config.general.library_directory
         return self.library.update(config, window, overwrite=overwrite)
 
-    def clear_all_libraries(self):
+    def clear_all_libraries(self) -> None:
         self.library.purge()
         self.library_files.clear()
         self.current_library_key = None
