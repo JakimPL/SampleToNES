@@ -57,8 +57,6 @@ class ConfigPanelGUI:
             )
 
         self._register_callbacks()
-        self.config_manager.add_config_change_callback(self._update_config_preview)
-        self.config_manager.initialize_config_with_defaults()
 
     def create_preview_panel(self, parent_tag: str) -> None:
         with dpg.child_window(parent=parent_tag):
@@ -79,20 +77,6 @@ class ConfigPanelGUI:
         for tag in self.config_manager.config_params.keys():
             gui_values[tag] = dpg.get_value(tag)
         return gui_values
-
-    def _update_config_preview(self) -> None:
-        preview_data = self.config_manager.get_config_preview_data()
-        if preview_data:
-            preview_lines = [
-                "Configuration updated:",
-                f"• Sample rate: {preview_data['sample_rate']} Hz",
-                f"• Change rate: {preview_data['change_rate']} fps",
-                f"• Max workers: {preview_data['max_workers']}",
-                f"• Normalize: {'Yes' if preview_data['normalize'] else 'No'}",
-                f"• Quantize: {'Yes' if preview_data['quantize'] else 'No'}",
-                f"• Library: {preview_data['library_directory']}",
-            ]
-            dpg.set_value("config_preview", "\n".join(preview_lines))
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(

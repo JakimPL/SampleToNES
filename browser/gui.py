@@ -8,14 +8,7 @@ import numpy as np
 from browser.config.manager import ConfigManager
 from browser.config.panel import ConfigPanelGUI
 from browser.constants import *
-from constants import (
-    CHANGE_RATE,
-    LIBRARY_DIRECTORY,
-    MAX_WORKERS,
-    NORMALIZE,
-    QUANTIZE,
-    SAMPLE_RATE,
-)
+from browser.library.panel import LibraryPanelGUI
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
 from typehints.general import GENERATOR_NAMES, GeneratorName
@@ -32,6 +25,8 @@ class GUI:
         self.reconstruction_path: Optional[Path] = None
         self.config_manager = ConfigManager()
         self.config_panel = ConfigPanelGUI(self.config_manager)
+        self.library_panel = LibraryPanelGUI(self.config_manager)
+
         self.setup_gui()
 
     def setup_gui(self) -> None:
@@ -63,10 +58,17 @@ class GUI:
     def create_config_tab(self) -> None:
         with dpg.tab(label=TAB_CONFIGURATION):
             with dpg.group(horizontal=True):
-                with dpg.group(tag="left_config_panel"):
-                    self.config_panel.create_panel("left_config_panel")
+                with dpg.group(tag="left_panels_group"):
+                    with dpg.group(tag="config_panel_group"):
+                        self.config_panel.create_panel("config_panel_group")
+
+                    with dpg.group(tag="library_panel_group"):
+                        self.library_panel.create_panel("library_panel_group")
 
                 self.config_panel.create_preview_panel("config_tab")
+
+        self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.initialize_config_with_defaults()
 
     def create_reconstruction_tab(self) -> None:
         with dpg.tab(label=TAB_RECONSTRUCTION):
@@ -194,7 +196,7 @@ class GUI:
                 config_data = json.load(f)
             if self.config_panel.load_config_from_data(config_data):
                 dpg.set_value("config_preview", LOADED_PREFIX.format(Path(file_path).name))
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("config_preview", ERROR_PREFIX.format(f"loading config: {exception}"))
 
     def load_audio(self, sender: Any, app_data: Dict[str, Any]) -> None:
@@ -203,7 +205,7 @@ class GUI:
             self.audio_path = Path(file_path)
             self.original_audio = load_audio(self.audio_path)
             dpg.set_value("selected_audio_file", self.audio_path.name)
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("selected_audio_file", ERROR_PREFIX.format(str(exception)))
 
     def load_reconstruction(self, sender: Any, app_data: Dict[str, Any]) -> None:
@@ -211,7 +213,7 @@ class GUI:
         try:
             self.current_reconstruction = Reconstruction.load(file_path)
             dpg.set_value("reconstruction_details", LOADED_PREFIX.format(Path(file_path).name))
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("reconstruction_details", ERROR_PREFIX.format(f"loading reconstruction: {exception}"))
 
     def select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
@@ -223,7 +225,7 @@ class GUI:
                 gui_values[tag] = dpg.get_value(tag)
             self.config_manager.update_config_from_gui_values(gui_values)
             dpg.set_value("library_directory_display", CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("library_directory_display", ERROR_PREFIX.format(str(exception)))
 
     def start_reconstruction(self) -> None:
@@ -249,7 +251,7 @@ class GUI:
                 MSG_RECONSTRUCTION_COMPLETE.format(self.current_reconstruction.total_error),
             )
 
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("reconstruction_info", ERROR_PREFIX.format(f"during reconstruction: {exception}"))
 
     def update_waveform_display(self) -> None:
@@ -287,7 +289,7 @@ class GUI:
         file_path = list(app_data["selections"].values())[0]
         try:
             write_audio(Path(file_path), self.current_reconstruction.approximation)
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             print(ERROR_PREFIX.format(f"exporting WAV: {exception}"))
 
     def refresh_reconstruction_list(self) -> None:

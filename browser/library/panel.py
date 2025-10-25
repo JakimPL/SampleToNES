@@ -145,15 +145,9 @@ class LibraryPanelGUI:
             self._create_generator_nodes(display_name)
 
     def _update_library_highlighting(self, new_library: str) -> None:
-        if self.current_highlighted_library:
-            old_tag = f"lib_{self.current_highlighted_library}"
-            if dpg.does_item_exist(old_tag):
-                dpg.configure_item(old_tag, highlight_color=(0, 0, 0, 0))
-
+        # TODO: Implement proper highlighting when DearPyGui supports it
+        # For now, just track the current library without visual highlighting
         self.current_highlighted_library = new_library
-        new_tag = f"lib_{new_library}"
-        if dpg.does_item_exist(new_tag):
-            dpg.configure_item(new_tag, highlight_color=(100, 150, 255, 100))
 
     def _generate_library(self) -> None:
         if self.is_generating:
@@ -184,7 +178,7 @@ class LibraryPanelGUI:
             dpg.set_value("library_progress", 1.0)
             self.update_status()
 
-        except Exception as exception:
+        except Exception as exception:  # TODO: to narrow
             dpg.set_value("library_status", ERROR_PREFIX.format(f"generating library: {exception}"))
 
         finally:

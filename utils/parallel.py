@@ -31,7 +31,7 @@ def parallelize(
             try:
                 result = future.result()
                 results.append(result)
-            except Exception as exception:
+            except Exception as exception:  # TODO: to narrow
                 print(f"Task {index} generated an exception: {exception}")
                 raise
 
