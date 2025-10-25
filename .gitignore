@@ -3,6 +3,7 @@ __pycache__/
 .mypy_cache/
 .idea/
 .vscode/
+.github/
 
 **/*.idea
 **/*.vscode/**

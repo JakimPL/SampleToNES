@@ -25,7 +25,9 @@ class GUI:
         self.reconstruction_path: Optional[Path] = None
         self.config_manager = ConfigManager()
         self.config_panel = ConfigPanelGUI(self.config_manager)
-        self.library_panel = LibraryPanelGUI(self.config_manager)
+        self.library_panel = LibraryPanelGUI(
+            self.config_manager, on_config_gui_update=self.config_panel.apply_library_config
+        )
 
         self.setup_gui()
 
@@ -58,7 +60,7 @@ class GUI:
     def create_config_tab(self) -> None:
         with dpg.tab(label=TAB_CONFIGURATION):
             with dpg.group(horizontal=True):
-                with dpg.group(tag=TAG_LEFT_PANELS_GROUP):
+                with dpg.child_window(width=LIBRARY_PANEL_WIDTH, height=-1):
                     with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
                         self.config_panel.create_panel(TAG_CONFIG_PANEL_GROUP)
 
@@ -69,6 +71,7 @@ class GUI:
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.initialize_config_with_defaults()
+        self.library_panel.initialize_libraries()
 
     def create_reconstruction_tab(self) -> None:
         with dpg.tab(label=TAB_RECONSTRUCTION):

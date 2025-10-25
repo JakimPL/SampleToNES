@@ -7,16 +7,25 @@ from browser.config.manager import ConfigManager
 from browser.constants import *
 from browser.library.manager import LibraryManager
 from configs.config import Config
+from instructions.noise import NoiseInstruction
+from instructions.pulse import PulseInstruction
+from instructions.triangle import TriangleInstruction
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
 from typehints.general import LibraryGeneratorName
 
 
 class LibraryPanelGUI:
-    def __init__(self, config_manager: ConfigManager, on_instruction_selected: Optional[Callable] = None) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        on_instruction_selected: Optional[Callable] = None,
+        on_config_gui_update: Optional[Callable] = None,
+    ) -> None:
         self.config_manager = config_manager
         self.library_manager = LibraryManager()
         self.on_instruction_selected = on_instruction_selected
+        self.on_config_gui_update = on_config_gui_update
 
         self.is_generating = False
         self.generation_thread = None
@@ -28,14 +37,24 @@ class LibraryPanelGUI:
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
-            with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP, horizontal=True) as controls_group:
+            with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP) as controls_group:
                 dpg.add_button(
                     label=BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag=TAG_GENERATE_LIBRARY_BUTTON
                 )
+                dpg.add_button(label=BUTTON_REFRESH_LIBRARIES, callback=self._refresh_libraries)
+                dpg.add_progress_bar(tag=TAG_LIBRARY_PROGRESS, show=False)
 
             dpg.add_separator()
             with dpg.tree_node(label=MSG_AVAILABLE_LIBRARIES, tag=TAG_LIBRARIES_TREE, default_open=True):
                 pass
+
+        return library_panel_group
+
+    def initialize_libraries(self) -> None:
+        self._refresh_libraries()
+        key = self.config_manager.key
+        if key is not None:
+            self._sync_with_config_key(key)
 
     def update_status(self) -> None:
         config = self.config_manager.get_config()
@@ -58,18 +77,15 @@ class LibraryPanelGUI:
 
         dpg.configure_item(TAG_GENERATE_LIBRARY_BUTTON, enabled=not self.is_generating)
 
-        self._refresh_libraries()
-        self._sync_with_config_key(key)
-
     def _refresh_libraries(self) -> None:
         self.library_manager.gather_available_libraries()
         self._rebuild_tree()
+        key = self.config_manager.key
+        if key is not None:
+            self._sync_with_config_key(key)
 
     def _rebuild_tree(self) -> None:
-        children = dpg.get_item_children(TAG_LIBRARIES_TREE, slot=DEFAULT_SLOT_VALUE)
-        if children:
-            for child in children:
-                dpg.delete_item(child)
+        self._clear_children(TAG_LIBRARIES_TREE)
 
         libraries = self.library_manager.get_available_libraries()
         for display_name in sorted(libraries.keys()):
@@ -112,12 +128,13 @@ class LibraryPanelGUI:
             return
 
         generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
-        for group_key, instructions in sorted(grouped_instructions.items()):
+        for group_key, instructions in grouped_instructions.items():
             group_tag = TEMPLATE_GROUP_TAG.format(group_key, generator_name, display_name)
             with dpg.tree_node(
                 label=TEMPLATE_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
             ):
-                for instruction, fragment in instructions:
+                for instruction, _ in instructions:
+                    print(instruction)
                     dpg.add_selectable(
                         label=instruction.name,
                         callback=self._on_instruction_selected_internal,
@@ -137,19 +154,22 @@ class LibraryPanelGUI:
 
         if apply_config:
             library_key = self.library_manager.get_library_key_for_config_update(display_name)
-            if library_key:
-                self.config_manager.apply_library_config(library_key)
+            if library_key and self.on_config_gui_update:
+                self.on_config_gui_update(library_key)
 
         self._update_library_highlighting(display_name)
 
     def _refresh_single_library_display(self, display_name: str) -> None:
         library_tag = TEMPLATE_LIBRARY_TAG.format(display_name)
         if dpg.does_item_exist(library_tag):
-            children = dpg.get_item_children(library_tag, slot=DEFAULT_SLOT_VALUE)
-            if children:
-                for child in children:
-                    dpg.delete_item(child)
+            self._clear_children(library_tag)
             self._create_generator_nodes(display_name)
+
+    def _clear_children(self, parent_tag: str) -> None:
+        children = dpg.get_item_children(parent_tag, slot=DEFAULT_SLOT_VALUE)
+        if children:
+            for child in children:
+                dpg.delete_item(child)
 
     def _update_library_highlighting(self, new_library: str) -> None:
         # TODO: Implement proper highlighting when DearPyGui supports it
@@ -204,6 +224,7 @@ class LibraryPanelGUI:
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
         if self.library_manager.load_library(display_name):
             self._refresh_single_library_display(display_name)
+            self._set_current_library(display_name, load_if_needed=False, apply_config=True)
 
     def _on_instruction_selected_internal(self, sender: Any, app_data: Any, user_data: Tuple[Any, Any]) -> None:
         if self.on_instruction_selected:

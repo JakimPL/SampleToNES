@@ -181,7 +181,4 @@ class LibraryManager:
 
             grouped_instructions[grouping_key].append((instruction, fragment))
 
-        for group_key in grouped_instructions:
-            grouped_instructions[group_key].sort(key=lambda x: x[0].name)
-
         return grouped_instructions
