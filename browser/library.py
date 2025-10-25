@@ -81,12 +81,12 @@ class LibraryPanel:
 
             dpg.set_value("library_status", MSG_LIBRARY_GENERATED)
             dpg.set_value("library_progress", 1.0)
+            self.update_status()
 
-        except Exception as e:
-            dpg.set_value("library_status", ERROR_PREFIX.format(f"generating library: {e}"))
+        except Exception as exception:
+            dpg.set_value("library_status", ERROR_PREFIX.format(f"generating library: {exception}"))
 
         finally:
             self.is_generating = False
             dpg.configure_item("generate_library_button", enabled=True)
             dpg.configure_item("library_progress", show=False)
-            self.update_status()

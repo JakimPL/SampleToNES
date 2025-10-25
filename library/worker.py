@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Tuple
 
 from tqdm.auto import tqdm
 
-from configs.config import Config
+from configs.library import LibraryConfig
 from ffts.fft import FFTTransformer
 from ffts.window import Window
 from instructions.instruction import Instruction
@@ -15,7 +15,7 @@ from typehints.instructions import InstructionUnion
 
 @dataclass(frozen=True)
 class LibraryWorker:
-    config: Config
+    config: LibraryConfig
     window: Window
     generators: Dict[str, Any]
 
@@ -26,7 +26,7 @@ class LibraryWorker:
         show_progress: bool = False,
     ) -> LibraryData:
 
-        transformer = FFTTransformer.from_gamma(self.config.library.transformation_gamma)
+        transformer = FFTTransformer.from_gamma(self.config.transformation_gamma)
         data: Dict[InstructionUnion, LibraryFragment] = {}
         for idx in tqdm(instructions_ids, disable=not show_progress):
             generator_class_name, instruction = instructions[idx]
@@ -34,4 +34,4 @@ class LibraryWorker:
             fragment = LibraryFragment.create(generator, instruction, self.window, transformer=transformer)
             data[instruction] = fragment
 
-        return LibraryData(data=data)
+        return LibraryData(config=self.config, data=data)

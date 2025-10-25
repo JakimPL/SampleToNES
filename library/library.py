@@ -4,7 +4,8 @@ from typing import Any, Dict, List, Tuple
 
 from pydantic import BaseModel, Field
 
-from configs.config import Config as Config
+from configs.config import Config as Configuration
+from configs.library import LibraryConfig
 from constants import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
@@ -18,7 +19,7 @@ from utils.parallel import parallelize
 def generate_library_data(
     instructions_ids: List[int],
     instructions: Tuple[GeneratorClassName, Instruction],
-    config: Config,
+    config: LibraryConfig,
     window: Window,
     generators: Dict[str, Any],
 ) -> Dict[int, LibraryData]:
@@ -33,10 +34,10 @@ class Library(BaseModel):
     def __getitem__(self, key: LibraryKey) -> LibraryData:
         return self.data[key]
 
-    def create_key(self, config: Config, window: Window) -> LibraryKey:
+    def create_key(self, config: Configuration, window: Window) -> LibraryKey:
         return LibraryKey.create(config.library, window)
 
-    def get(self, config: Config, window: Window) -> LibraryData:
+    def get(self, config: Configuration, window: Window) -> LibraryData:
         key = self.create_key(config, window)
         if key not in self.data:
             if self.exists(key):
@@ -52,7 +53,7 @@ class Library(BaseModel):
     def purge(self) -> None:
         self.data.clear()
 
-    def update(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
+    def update(self, config: Configuration, window: Window, overwrite: bool = False) -> LibraryKey:
         key = self.create_key(config, window)
         if not overwrite and key in self.data:
             return key
@@ -71,14 +72,14 @@ class Library(BaseModel):
                 instructions_ids,
                 max_workers=config.general.max_workers,
                 instructions=instructions,
-                config=config,
+                config=config.library,
                 window=window,
                 generators=generators,
             )
 
             library_data = LibraryData.merge(library_data)
         else:
-            worker = LibraryWorker(config=config, window=window, generators=generators)
+            worker = LibraryWorker(config=config.library, window=window, generators=generators)
             library_data = worker(instructions, instructions_ids, show_progress=True)
 
         self.save_data(key, library_data)

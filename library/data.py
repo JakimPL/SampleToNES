@@ -1,14 +1,15 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, List, Self, Union, cast
+from typing import Any, Collection, Dict, List, Optional, Self, Union, cast
 
 import msgpack
 import numpy as np
 from pydantic import BaseModel, field_serializer
 
 from configs.config import Config as Configuration
-from ffts.fft import FFTTransformer, calculate_fft
+from configs.library import LibraryConfig
+from ffts.fft import FFTTransformer
 from ffts.window import Window
 from generators.generator import Generator
 from instructions.instruction import Instruction
@@ -110,6 +111,7 @@ class LibraryFragment(BaseModel):
 
 
 class LibraryData(BaseModel):
+    config: LibraryConfig
     data: Dict[InstructionUnion, LibraryFragment]
 
     @cached_property
@@ -163,7 +165,7 @@ class LibraryData(BaseModel):
             file.write(binary)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> Self:
+    def load(cls, path: Union[str, Path]) -> "LibraryData":
         path_object = Path(path)
         with open(path_object, "rb") as file:
             binary = file.read()
@@ -177,9 +179,10 @@ class LibraryData(BaseModel):
 
     @classmethod
     def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+        config = LibraryConfig(**dictionary["config"])
+
         data = {}
         for key, value in dictionary["data"].items():
-
             instruction: InstructionUnion = load_instruction(
                 {
                     "instruction": key,
@@ -190,15 +193,22 @@ class LibraryData(BaseModel):
             fragment: LibraryFragment = LibraryFragment.deserialize(value)
             data[instruction] = fragment
 
-        return cls(data=data)
+        return cls(config=config, data=data)
 
     @classmethod
     def merge(cls, library_data_list: List[Self]) -> Self:
+        if not library_data_list:
+            raise ValueError("Cannot merge an empty list of LibraryData")
+
+        config: LibraryConfig = library_data_list[0].config
         merged_data: Dict[InstructionUnion, LibraryFragment] = {}
         for library_data in library_data_list:
+            assert config == library_data.config
             merged_data.update(library_data.data)
+            if config is None:
+                config = library_data.config
 
-        return cls(data=merged_data)
+        return cls(config=config, data=merged_data)
 
     class Config:
         arbitrary_types_allowed = True
