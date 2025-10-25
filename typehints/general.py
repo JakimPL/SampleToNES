@@ -4,6 +4,9 @@ import numpy as np
 
 Initials = Optional[Tuple[Any, ...]]
 
+LibraryGeneratorName = Literal["pulse", "triangle", "noise"]
+LIBRARY_GENERATOR_NAMES: List[LibraryGeneratorName] = ["pulse", "triangle", "noise"]
+
 GeneratorName = Literal["pulse1", "pulse2", "triangle", "noise"]
 GENERATOR_NAMES: List[GeneratorName] = ["pulse1", "pulse2", "triangle", "noise"]
 
