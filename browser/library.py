@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from browser.constants import *
-from constants import LIBRARY_DIRECTORY
+from constants import LIBRARY_DIRECTORY, NOISE_PERIODS
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
@@ -13,7 +13,12 @@ from library.data import LibraryData
 from library.key import LibraryKey
 from library.library import Library
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
-from typehints.general import LIBRARY_GENERATOR_NAMES, GeneratorClassName
+from typehints.general import (
+    LIBRARY_GENERATOR_NAMES,
+    GeneratorClassName,
+    LibraryGeneratorName,
+)
+from utils.frequencies import pitch_to_name
 
 
 class LibraryPanel:
@@ -24,7 +29,6 @@ class LibraryPanel:
         self.generation_thread = None
 
         self.library_files: Dict[str, str] = {}
-        self.loaded_libraries: Dict[str, LibraryData] = {}
         self.expanded_states: Dict[str, bool] = {}
         self.current_library: Optional[str] = None
 
@@ -146,17 +150,19 @@ class LibraryPanel:
 
         for display_name in sorted(self.library_files.keys()):
             with dpg.tree_node(label=display_name, tag=f"lib_{display_name}", parent="libraries_tree"):
-                for generator_name in LIBRARY_GENERATOR_NAMES:
-                    with dpg.tree_node(label=generator_name.capitalize(), tag=f"{generator_name}_{display_name}"):
-                        dpg.add_text("Generator data will load when expanded")
+                if self._is_library_loaded(display_name):
+                    for generator_name in LIBRARY_GENERATOR_NAMES:
+                        with dpg.tree_node(label=generator_name.capitalize(), tag=f"{generator_name}_{display_name}"):
+                            pass
 
         if current_library_still_exists:
             self._restore_current_library_state()
 
         removed_libraries = set(old_library_files.keys()) - set(self.library_files.keys())
         for removed_library in removed_libraries:
-            if removed_library in self.loaded_libraries:
-                del self.loaded_libraries[removed_library]
+            key = self._get_library_key_from_display_name(removed_library)
+            if key and key in self.library.data:
+                del self.library.data[key]
 
         self._check_tree_expansions()
 
@@ -166,7 +172,7 @@ class LibraryPanel:
             for child in children:
                 dpg.delete_item(child)
         self.library_files.clear()
-        self.loaded_libraries.clear()
+        self.library.purge()
         self.current_library = None
 
     def _restore_current_library_state(self):
@@ -240,19 +246,21 @@ class LibraryPanel:
         self._set_current_library(display_name, apply_config=True)
 
     def _set_current_library(self, display_name: str, apply_config: bool = False):
-        if display_name not in self.loaded_libraries:
+        print(f"Setting current library to: {display_name}")
+        if not self._is_library_loaded(display_name):
+            print(f"Loading library data for: {display_name}")
             full_file_name = self.library_files[display_name]
             library_key = self._create_key_from_file_name(full_file_name)
-            library_path = Path(self.config_manager.config.general.library_directory) / f"{full_file_name}.dat"
 
-            library_data = LibraryData.load(library_path)
-            self.loaded_libraries[display_name] = library_data
+            self.library.load_data(library_key)
+            print(f"Library {display_name} loaded successfully")
+
+            self._add_generator_nodes_and_populate_data(display_name)
 
             if apply_config:
                 self.config_manager.apply_library_config(library_key)
-                print(f"Loaded library {display_name} and applied its configuration")
-            else:
-                print(f"Loaded library {display_name}")
+        else:
+            print(f"Library {display_name} already loaded")
 
         if self.current_library:
             old_tag = f"lib_{self.current_library}"
@@ -264,39 +272,83 @@ class LibraryPanel:
         if dpg.does_item_exist(new_tag):
             dpg.configure_item(new_tag, highlight_color=(100, 150, 255, 100))
 
-    def _load_generator_data(self, display_name: str, generator_name: str):
-        if display_name not in self.loaded_libraries:
+    def _get_library_key_from_display_name(self, display_name: str) -> Optional[LibraryKey]:
+        if display_name not in self.library_files:
+            return None
+        full_file_name = self.library_files[display_name]
+        return self._create_key_from_file_name(full_file_name)
+
+    def _is_library_loaded(self, display_name: str) -> bool:
+        key = self._get_library_key_from_display_name(display_name)
+        return key is not None and key in self.library.data
+
+    def _get_loaded_library_data(self, display_name: str) -> Optional[LibraryData]:
+        key = self._get_library_key_from_display_name(display_name)
+        return self.library.data.get(key) if key else None
+
+    def _add_generator_nodes_and_populate_data(self, display_name: str):
+        library_tag = f"lib_{display_name}"
+        if not dpg.does_item_exist(library_tag):
+            return
+
+        for generator_name in LIBRARY_GENERATOR_NAMES:
+            generator_tag = f"{generator_name}_{display_name}"
+            if not dpg.does_item_exist(generator_tag):
+                with dpg.tree_node(label=generator_name.capitalize(), tag=generator_tag, parent=library_tag):
+                    pass
+            self._load_generator_data(display_name, generator_name)
+
+    def _populate_all_generator_data_for_library(self, display_name: str):
+        for generator_name in LIBRARY_GENERATOR_NAMES:
+            self._load_generator_data(display_name, generator_name)
+
+    def _load_generator_data(self, display_name: str, generator_name: LibraryGeneratorName):
+        if not self._is_library_loaded(display_name):
             print(f"Library {display_name} not loaded yet")
+            return
+
+        generator_tag = f"{generator_name}_{display_name}"
+        if not dpg.does_item_exist(generator_tag):
+            return
+
+        children = dpg.get_item_children(generator_tag, slot=1)
+        if children and len(children) > 1:
+            print(f"Generator data {generator_name} for library {display_name} already loaded")
             return
 
         print(f"Loading {generator_name} data from library {display_name}")
 
-        generator_tag = f"{generator_name}_{display_name}"
-        if dpg.does_item_exist(generator_tag):
-            children = dpg.get_item_children(generator_tag, slot=1)
-            if children:
-                for child in children:
-                    dpg.delete_item(child)
+        if children:
+            for child in children:
+                dpg.delete_item(child)
 
-            library_data = self.loaded_libraries[display_name]
-            generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
-            if generator_class_name:
-                grouped_instructions = self._parse_instructions_by_generator(library_data, generator_class_name)
-                self._display_instruction_groups(
-                    display_name, generator_name, generator_class_name, grouped_instructions
-                )
-            else:
-                dpg.add_text(f"Unknown generator: {generator_name}", parent=generator_tag)
+        library_data = self._get_loaded_library_data(display_name)
+        if not library_data:
+            return
+
+        generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
+        if generator_class_name:
+            grouped_instructions = self._parse_instructions_by_generator(library_data, generator_class_name)
+            self._display_instruction_groups(display_name, generator_name, generator_class_name, grouped_instructions)
+        else:
+            dpg.add_text(f"Unknown generator: {generator_name}", parent=generator_tag)
 
     def _sync_with_config_key(self, config_key: LibraryKey):
         if not config_key:
+            print("No config key to sync with")
             return
 
         matching_display_name = self._get_display_name_from_key(config_key)
+        print(f"Syncing with config key, looking for library: {matching_display_name}")
+        print(f"Available libraries: {list(self.library_files.keys())}")
 
         if matching_display_name in self.library_files:
+            print(f"Found matching library: {matching_display_name}")
             self._collapse_other_libraries(matching_display_name)
             self._expand_library_tree_node(matching_display_name)
+            self._set_current_library(matching_display_name, apply_config=False)
+        else:
+            print(f"No matching library found for: {matching_display_name}")
 
     def _collapse_other_libraries(self, except_library: str):
         for display_name in self.library_files.keys():
@@ -327,9 +379,9 @@ class LibraryPanel:
                 continue
 
             if isinstance(instruction, (PulseInstruction, TriangleInstruction)):
-                grouping_key = f"Pitch {instruction.pitch}"
+                grouping_key = pitch_to_name(instruction.pitch)
             elif isinstance(instruction, NoiseInstruction):
-                grouping_key = f"Period {instruction.period}"
+                grouping_key = f"p{NOISE_PERIODS[instruction.period]}"
             else:
                 grouping_key = "Other"
 
@@ -374,5 +426,3 @@ class LibraryPanel:
     def _show_instruction_details(self, generator_class_name: GeneratorClassName, instruction):
         print(f"Selected {generator_class_name} instruction: {instruction.name}")
         print(f"Instruction details: {instruction.model_dump()}")
-        # TODO: This will interface with the main panel to show instruction specifics
-        # instead of the current configuration preview

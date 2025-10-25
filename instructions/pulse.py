@@ -20,7 +20,7 @@ class PulseInstruction(Instruction):
     @property
     def name(self) -> str:
         pitch = pitch_to_name(self.pitch)
-        volume = f"v{self.volume:x}"
+        volume = f"v{self.volume:X}"
         duty = f"D{DUTY_CYCLES[self.duty_cycle]*100:.0f}"
         return f"P {pitch} {volume} {duty}"
 
