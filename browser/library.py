@@ -1,13 +1,11 @@
 import threading
 from pathlib import Path
-from typing import Dict, Optional, Set, cast
+from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
 from browser.constants import *
-from configs.config import Config
 from constants import LIBRARY_DIRECTORY
-from ffts.window import Window
 from library.data import LibraryData
 from library.key import LibraryKey
 from library.library import Library
@@ -61,18 +59,16 @@ class LibraryPanel:
         self.library.directory = config.general.library_directory
         if self.library.exists(key):
             library_name = self._get_display_name_from_key(key)
-            dpg.set_value("library_status", f"Library {library_name} exists")
-            if self.current_library and self.current_library == library_name:
-                dpg.set_value("generate_library_button", BUTTON_REGENERATE_LIBRARY)
-            else:
-                dpg.set_value("generate_library_button", BUTTON_GENERATE_LIBRARY)
+            dpg.set_value("library_status", f"Library {library_name} exists.")
+            dpg.set_item_label("generate_library_button", BUTTON_REGENERATE_LIBRARY)
         else:
             dpg.set_value("library_status", MSG_LIBRARY_NOT_EXISTS)
-            dpg.set_value("generate_library_button", BUTTON_GENERATE_LIBRARY)
+            dpg.set_item_label("generate_library_button", BUTTON_GENERATE_LIBRARY)
 
         dpg.configure_item("generate_library_button", enabled=not self.is_generating)
         self._refresh_libraries()
         self._check_tree_expansions()
+        self._sync_with_config_key(key)
 
     def _on_refresh_clicked(self):
         self._refresh_libraries()
@@ -87,8 +83,7 @@ class LibraryPanel:
             return
 
         self.is_generating = True
-        dpg.configure_item("generate_library_button", enabled=False)
-        dpg.configure_item("refresh_libraries_button", enabled=False)
+        dpg.configure_item("library_panel", enabled=False)
         dpg.set_value("library_status", MSG_GENERATING_LIBRARY)
         dpg.configure_item("library_progress", show=True)
         dpg.set_value("library_progress", 0.0)
@@ -116,27 +111,33 @@ class LibraryPanel:
 
         finally:
             self.is_generating = False
-            dpg.configure_item("generate_library_button", enabled=True)
-            dpg.configure_item("refresh_libraries_button", enabled=True)
+            dpg.configure_item("library_panel", enabled=True)
             dpg.configure_item("library_progress", show=False)
 
     def _refresh_libraries(self):
+        library_directory = Path(self.config_manager.config.general.library_directory)
+        if not library_directory.exists():
+            self._clear_libraries_tree()
+            return
+
+        new_library_files = {}
+        for file_path in library_directory.iterdir():
+            if file_path.is_file() and file_path.suffix == ".dat" and self._is_library_file(file_path.stem):
+                display_name = self._get_display_name(file_path.stem)
+                new_library_files[display_name] = file_path.stem
+
+        if new_library_files == self.library_files:
+            return
+
+        old_library_files = self.library_files.copy()
+        self.library_files = new_library_files
+
+        current_library_still_exists = self.current_library and self.current_library in self.library_files
+
         children = dpg.get_item_children("libraries_tree", slot=1)
         if children:
             for child in children:
                 dpg.delete_item(child)
-
-        self.library_files.clear()
-        self.loaded_libraries.clear()
-
-        library_directory = Path(self.config_manager.config.general.library_directory)
-        if not library_directory.exists():
-            return
-
-        for file_path in library_directory.iterdir():
-            if file_path.is_file() and file_path.suffix == ".dat" and self._is_library_file(file_path.stem):
-                display_name = self._get_display_name(file_path.stem)
-                self.library_files[display_name] = file_path.stem
 
         for display_name in sorted(self.library_files.keys()):
             with dpg.tree_node(label=display_name, tag=f"lib_{display_name}", parent="libraries_tree"):
@@ -144,7 +145,30 @@ class LibraryPanel:
                     with dpg.tree_node(label=generator_name.capitalize(), tag=f"{generator_name}_{display_name}"):
                         dpg.add_text("Generator data will load when expanded")
 
+        if current_library_still_exists:
+            self._restore_current_library_state()
+
+        removed_libraries = set(old_library_files.keys()) - set(self.library_files.keys())
+        for removed_library in removed_libraries:
+            if removed_library in self.loaded_libraries:
+                del self.loaded_libraries[removed_library]
+
         self._check_tree_expansions()
+
+    def _clear_libraries_tree(self):
+        children = dpg.get_item_children("libraries_tree", slot=1)
+        if children:
+            for child in children:
+                dpg.delete_item(child)
+        self.library_files.clear()
+        self.loaded_libraries.clear()
+        self.current_library = None
+
+    def _restore_current_library_state(self):
+        if self.current_library:
+            library_tag = f"lib_{self.current_library}"
+            if dpg.does_item_exist(library_tag):
+                dpg.configure_item(library_tag, highlight_color=(100, 150, 255, 100))
 
     def _is_library_file(self, file_name: str) -> bool:
         file_parts = file_name.split("_")
@@ -180,13 +204,6 @@ class LibraryPanel:
         key = self._create_key_from_file_name(file_name)
         return self._get_display_name_from_key(key)
 
-    def _apply_config_from_key(self, library_key: LibraryKey):
-        old_config = self.config_manager.config
-        new_library_config = old_config.library.model_copy(update={"sample_rate": library_key.sample_rate})
-        new_config = old_config.model_copy(update={"library": new_library_config})
-        self.config_manager.config = new_config
-        self.config_manager._update_config()
-
     def _check_tree_expansions(self):
         for display_name in self.library_files.keys():
             library_tag = f"lib_{display_name}"
@@ -215,22 +232,23 @@ class LibraryPanel:
                         self.expanded_states[generator_key] = False
 
     def _load_library(self, display_name: str):
-        if display_name in self.loaded_libraries:
-            print(f"Library {display_name} already loaded")
-            self._set_current_library(display_name)
-            return
+        self._set_current_library(display_name, apply_config=True)
 
-        full_file_name = self.library_files[display_name]
-        library_key = self._create_key_from_file_name(full_file_name)
-        library_path = Path(self.config_manager.config.general.library_directory) / f"{full_file_name}.dat"
+    def _set_current_library(self, display_name: str, apply_config: bool = False):
+        if display_name not in self.loaded_libraries:
+            full_file_name = self.library_files[display_name]
+            library_key = self._create_key_from_file_name(full_file_name)
+            library_path = Path(self.config_manager.config.general.library_directory) / f"{full_file_name}.dat"
 
-        library_data = LibraryData.load(library_path)
-        self.loaded_libraries[display_name] = library_data
-        self._apply_config_from_key(library_key)
-        self._set_current_library(display_name)
-        print(f"Loaded library {display_name}")
+            library_data = LibraryData.load(library_path)
+            self.loaded_libraries[display_name] = library_data
 
-    def _set_current_library(self, display_name: str):
+            if apply_config:
+                self.config_manager.apply_library_config(library_key)
+                print(f"Loaded library {display_name} and applied its configuration")
+            else:
+                print(f"Loaded library {display_name}")
+
         if self.current_library:
             old_tag = f"lib_{self.current_library}"
             if dpg.does_item_exist(old_tag):
@@ -271,3 +289,27 @@ class LibraryPanel:
                     dpg.add_text(f"  Instruction {i+1}: freq={fragment.frequency:.1f}Hz", parent=generator_tag)
             else:
                 dpg.add_text(f"Unknown generator: {generator_name}", parent=generator_tag)
+
+    def _sync_with_config_key(self, config_key: LibraryKey):
+        if not config_key:
+            return
+
+        matching_display_name = self._get_display_name_from_key(config_key)
+
+        if matching_display_name in self.library_files:
+            self._collapse_other_libraries(matching_display_name)
+            self._expand_library_tree_node(matching_display_name)
+
+    def _collapse_other_libraries(self, except_library: str):
+        for display_name in self.library_files.keys():
+            if display_name != except_library:
+                library_tag = f"lib_{display_name}"
+                if dpg.does_item_exist(library_tag):
+                    dpg.set_value(library_tag, False)
+                    self.expanded_states[display_name] = False
+
+    def _expand_library_tree_node(self, display_name: str):
+        library_tag = f"lib_{display_name}"
+        if dpg.does_item_exist(library_tag):
+            dpg.set_value(library_tag, True)
+            self.expanded_states[display_name] = True

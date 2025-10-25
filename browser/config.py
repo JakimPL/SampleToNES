@@ -108,6 +108,32 @@ class ConfigManager:
             except Exception:
                 pass
 
+    def apply_library_config(self, library_key: LibraryKey):
+        try:
+            old_config = self.config
+            if not old_config:
+                return False
+
+            sample_rate = library_key.sample_rate
+            change_rate = round(sample_rate / library_key.frame_length)
+
+            dpg.set_value("sample_rate", sample_rate)
+            dpg.set_value("change_rate", change_rate)
+
+            new_library_config = old_config.library.model_copy(
+                update={"sample_rate": sample_rate, "change_rate": change_rate}
+            )
+            new_config = old_config.model_copy(update={"library": new_library_config})
+
+            self.config = new_config
+            self.window = Window(self.config.library)
+            self._update_config_preview()
+
+            return True
+        except Exception as exception:
+            dpg.set_value("config_preview", ERROR_PREFIX.format(f"applying library config: {exception}"))
+            return False
+
     def load_config_from_file(self, config_data: Dict[str, Any]):
         try:
             self.config = Config(**config_data)
