@@ -6,7 +6,8 @@ MAIN_WINDOW_HEIGHT = 800
 
 # Layout dimensions
 CONFIG_PANEL_WIDTH = 300
-CONFIG_PANEL_HEIGHT = 500
+CONFIG_PANEL_HEIGHT = 280
+LIBRARY_PANEL_HEIGHT = 200
 RECONSTRUCTION_PANEL_WIDTH = 300
 RECONSTRUCTION_PANEL_HEIGHT = 600
 BROWSER_PANEL_WIDTH = 300
@@ -48,6 +49,7 @@ TAB_BROWSER = "Browse results"
 SECTION_GENERAL_SETTINGS = "General settings"
 SECTION_LIBRARY_DIRECTORY = "Library directory"
 SECTION_LIBRARY_SETTINGS = "Library settings"
+SECTION_LIBRARY_PANEL = "Library"
 SECTION_AUDIO_INPUT = "Audio input"
 SECTION_GENERATOR_SELECTION = "Generator selection"
 SECTION_WAVEFORM_DISPLAY = "Waveform display"
@@ -57,6 +59,7 @@ SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
 
 # Button labels
 BUTTON_SELECT_LIBRARY_DIR = "Select library directory"
+BUTTON_GENERATE_LIBRARY = "Generate library"
 BUTTON_SELECT_AUDIO_FILE = "Select audio file"
 BUTTON_START_RECONSTRUCTION = "Start reconstruction"
 BUTTON_PLAY_ORIGINAL = "Play original"
@@ -99,6 +102,10 @@ MSG_SELECT_RECONSTRUCTION = "Select a reconstruction to view details"
 MSG_CONFIG_APPLIED = "Configuration applied successfully"
 MSG_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
 MSG_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first"
+MSG_LIBRARY_EXISTS = "Library exists"
+MSG_LIBRARY_NOT_EXISTS = "Library does not exist"
+MSG_GENERATING_LIBRARY = "Generating library..."
+MSG_LIBRARY_GENERATED = "Library generated successfully"
 
 # File extensions
 EXT_JSON = "*.json"

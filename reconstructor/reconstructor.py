@@ -52,7 +52,7 @@ class Reconstructor:
             name: GENERATOR_CLASSES[name](config, name) for name in generator_names
         }
 
-        self.window: Window = Window(config)
+        self.window: Window = Window(config.library)
         self.library_data: LibraryData = self.load_library(library)
 
     def __call__(self, path: Path) -> Reconstruction:

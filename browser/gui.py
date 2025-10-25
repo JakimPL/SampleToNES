@@ -7,6 +7,7 @@ import numpy as np
 
 from browser.config import ConfigManager
 from browser.constants import *
+from browser.library import LibraryPanel
 from configs.config import Config
 from constants import (
     CHANGE_RATE,
@@ -31,6 +32,7 @@ class GUI:
         self.audio_path: Optional[Path] = None
         self.reconstruction_path: Optional[Path] = None
         self.config_manager = ConfigManager()
+        self.library_panel = LibraryPanel(self.config_manager)
         self.setup_gui()
 
     def setup_gui(self):
@@ -41,6 +43,7 @@ class GUI:
         dpg.setup_dearpygui()
 
         self.config_manager.register_callbacks()
+        self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.initialize_config()
 
         dpg.show_viewport()
@@ -65,39 +68,44 @@ class GUI:
     def create_config_tab(self):
         with dpg.tab(label=TAB_CONFIGURATION):
             with dpg.group(horizontal=True):
-                with dpg.child_window(width=CONFIG_PANEL_WIDTH, height=CONFIG_PANEL_HEIGHT):
-                    dpg.add_text(SECTION_GENERAL_SETTINGS)
-                    dpg.add_separator()
+                with dpg.group(tag="left_config_panel"):
+                    with dpg.child_window(width=CONFIG_PANEL_WIDTH, height=CONFIG_PANEL_HEIGHT):
+                        dpg.add_text(SECTION_GENERAL_SETTINGS)
+                        dpg.add_separator()
 
-                    dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag="normalize")
-                    dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag="quantize")
-                    dpg.add_input_int(
-                        label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag="max_workers", min_value=MIN_WORKERS
-                    )
+                        dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag="normalize")
+                        dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag="quantize")
+                        dpg.add_input_int(
+                            label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag="max_workers", min_value=MIN_WORKERS
+                        )
 
-                    dpg.add_separator()
-                    dpg.add_text(SECTION_LIBRARY_DIRECTORY)
-                    dpg.add_button(label=BUTTON_SELECT_LIBRARY_DIR, callback=self.select_library_directory_dialog)
-                    dpg.add_text(DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag="library_directory_display")
+                        dpg.add_separator()
+                        dpg.add_text(SECTION_LIBRARY_DIRECTORY)
+                        dpg.add_button(label=BUTTON_SELECT_LIBRARY_DIR, callback=self.select_library_directory_dialog)
+                        dpg.add_text(
+                            DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag="library_directory_display"
+                        )
 
-                    dpg.add_separator()
-                    dpg.add_text(SECTION_LIBRARY_SETTINGS)
-                    dpg.add_separator()
+                        dpg.add_separator()
+                        dpg.add_text(SECTION_LIBRARY_SETTINGS)
+                        dpg.add_separator()
 
-                    dpg.add_input_int(
-                        label=INPUT_SAMPLE_RATE,
-                        default_value=SAMPLE_RATE,
-                        tag="sample_rate",
-                        min_value=MIN_SAMPLE_RATE,
-                        max_value=MAX_SAMPLE_RATE,
-                    )
-                    dpg.add_input_int(
-                        label=INPUT_CHANGE_RATE,
-                        default_value=CHANGE_RATE,
-                        tag="change_rate",
-                        min_value=MIN_CHANGE_RATE,
-                        max_value=MAX_CHANGE_RATE,
-                    )
+                        dpg.add_input_int(
+                            label=INPUT_SAMPLE_RATE,
+                            default_value=SAMPLE_RATE,
+                            tag="sample_rate",
+                            min_value=MIN_SAMPLE_RATE,
+                            max_value=MAX_SAMPLE_RATE,
+                        )
+                        dpg.add_input_int(
+                            label=INPUT_CHANGE_RATE,
+                            default_value=CHANGE_RATE,
+                            tag="change_rate",
+                            min_value=MIN_CHANGE_RATE,
+                            max_value=MAX_CHANGE_RATE,
+                        )
+
+                    self.library_panel.create_panel("left_config_panel")
 
                 with dpg.child_window():
                     dpg.add_text("Configuration preview")

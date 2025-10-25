@@ -15,12 +15,16 @@ from constants import (
     QUANTIZE,
     SAMPLE_RATE,
 )
+from ffts.window import Window
+from library.key import LibraryKey
 
 
 class ConfigManager:
     def __init__(self):
         self.config: Optional[Config] = None
+        self.window: Optional[Window] = None
         self.library_directory: str = LIBRARY_DIRECTORY
+        self.config_change_callbacks = []
         self.config_params = {
             # General config parameters
             "normalize": {"section": "general", "default": NORMALIZE},
@@ -45,7 +49,9 @@ class ConfigManager:
                 general=GeneralConfig(**config_data["general"]),
                 library=LibraryConfig(**config_data["library"]),
             )
+            self.window = Window(self.config.library)
             self._update_config_preview()
+            self._notify_config_change()
         except Exception as exception:
             dpg.set_value("config_preview", ERROR_PREFIX.format(f"updating config: {exception}"))
 
@@ -79,13 +85,33 @@ class ConfigManager:
     def get_config(self) -> Optional[Config]:
         return self.config
 
+    def get_window(self) -> Optional[Window]:
+        return self.window
+
+    @property
+    def key(self) -> Optional[LibraryKey]:
+        if self.config and self.window:
+            return LibraryKey.create(self.config.library, self.window)
+        return None
+
     def set_library_directory(self, directory_path: str):
         self.library_directory = directory_path
         self._update_config()
 
+    def add_config_change_callback(self, callback):
+        self.config_change_callbacks.append(callback)
+
+    def _notify_config_change(self):
+        for callback in self.config_change_callbacks:
+            try:
+                callback()
+            except Exception:
+                pass
+
     def load_config_from_file(self, config_data: Dict[str, Any]):
         try:
             self.config = Config(**config_data)
+            self.window = Window(self.config.library)
             for tag, info in self.config_params.items():
                 section = info["section"]
                 if section in config_data and tag in config_data[section]:
@@ -95,6 +121,7 @@ class ConfigManager:
                 self.library_directory = config_data["general"]["library_directory"]
 
             self._update_config_preview()
+            self._notify_config_change()
             return True
         except Exception as exception:
             dpg.set_value("config_preview", ERROR_PREFIX.format(f"loading config: {exception}"))

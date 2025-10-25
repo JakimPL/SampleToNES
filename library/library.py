@@ -39,12 +39,15 @@ class Library(BaseModel):
     def get(self, config: Config, window: Window) -> LibraryData:
         key = self.create_key(config, window)
         if key not in self.data:
-            if self.get_path(key).exists():
+            if self.exists(key):
                 self.load_data(key)
             else:
                 self.update(config, window)
 
         return self.data[key]
+
+    def exists(self, key: LibraryKey) -> bool:
+        return self.get_path(key).exists()
 
     def purge(self) -> None:
         self.data.clear()
