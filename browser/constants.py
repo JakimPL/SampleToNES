@@ -21,10 +21,6 @@ FILE_DIALOG_HEIGHT = 400
 WAVEFORM_PLOT_HEIGHT = 200
 
 # Input validation ranges
-MIN_SAMPLE_RATE = 8000
-MAX_SAMPLE_RATE = 192000
-MIN_CHANGE_RATE = 1
-MAX_CHANGE_RATE = 1000
 MIN_WORKERS = 1
 
 # Multiline text heights
@@ -108,6 +104,16 @@ MSG_LIBRARY_EXISTS = "Library exists"
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist"
 MSG_GENERATING_LIBRARY = "Generating library..."
 MSG_LIBRARY_GENERATED = "Library generated successfully"
+MSG_LIBRARY_NOT_LOADED = "Library is not loaded"
+MSG_LIBRARY_LOADING = "Library is loading..."
+MSG_CONFIGURATION_NOT_READY = "Configuration not ready"
+MSG_CONFIGURATION_PREVIEW = "Configuration preview"
+MSG_LIBRARIES = "Libraries"
+MSG_AVAILABLE_LIBRARIES = "Available Libraries"
+MSG_LIBRARY_NOT_EXISTS = "Library {} does not exist."
+MSG_NO_VALID_INSTRUCTIONS = "No valid instructions found"
+MSG_WINDOW_NOT_AVAILABLE = "Window not available"
+MSG_ERROR_GENERATING_LIBRARY = "generating library"
 
 # File extensions
 EXT_JSON = "*.json"
@@ -118,3 +124,76 @@ DEFAULT_LIBRARY_DIR_DISPLAY = "Default: {}"
 CUSTOM_LIBRARY_DIR_DISPLAY = "Custom: {}"
 ERROR_PREFIX = "Error: {}"
 LOADED_PREFIX = "Loaded: {}"
+
+# Template strings
+TEMPLATE_LIBRARY_EXISTS = "Library {} exists."
+TEMPLATE_LIBRARY_TAG = "lib_{}"
+TEMPLATE_GENERATOR_TAG = "generator_{}_{}"
+TEMPLATE_GROUP_TAG = "{}_{}_{}"
+TEMPLATE_GROUP_LABEL = "{} ({} item(s))"
+
+# GUI element tags
+TAG_LIBRARY_PANEL = "library_panel"
+TAG_LIBRARY_STATUS = "library_status"
+TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
+TAG_GENERATE_LIBRARY_BUTTON = "generate_library_button"
+TAG_LIBRARY_PROGRESS = "library_progress"
+TAG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
+TAG_CONFIG_PREVIEW = "config_preview"
+TAG_NORMALIZE = "normalize"
+TAG_QUANTIZE = "quantize"
+TAG_MAX_WORKERS = "max_workers"
+TAG_SAMPLE_RATE = "sample_rate"
+TAG_CHANGE_RATE = "change_rate"
+TAG_LIBRARIES_TREE = "libraries_tree"
+
+# Indices and offsets
+INDEX_FIRST_SELECTION = 0
+DEFAULT_SLOT_VALUE = 1
+DEFAULT_FLOAT_VALUE = 0.0
+PROGRESS_COMPLETE_VALUE = 1.0
+
+# Dictionary keys
+KEY_SELECTIONS = "selections"
+
+# Main GUI tags
+TAG_MAIN_WINDOW = "main_window"
+TAG_LEFT_PANELS_GROUP = "left_panels_group"
+TAG_CONFIG_PANEL_GROUP = "config_panel_group"
+TAG_LIBRARY_PANEL_GROUP = "library_panel_group"
+TAG_CONFIG_TAB = "config_tab"
+TAG_SELECTED_AUDIO_FILE = "selected_audio_file"
+TAG_RECONSTRUCTION_PROGRESS = "reconstruction_progress"
+TAG_GEN_TRIANGLE = "gen_triangle"
+TAG_GEN_PULSE1 = "gen_pulse1"
+TAG_GEN_PULSE2 = "gen_pulse2"
+TAG_GEN_NOISE = "gen_noise"
+TAG_WAVEFORM_PLOT = "waveform_plot"
+TAG_X_AXIS = "x_axis"
+TAG_Y_AXIS = "y_axis"
+TAG_RECONSTRUCTION_INFO = "reconstruction_info"
+TAG_RECONSTRUCTION_LIST = "reconstruction_list"
+TAG_RECONSTRUCTION_DETAILS = "reconstruction_details"
+TAG_FAMITRACKER_EXPORT = "famitracker_export"
+
+# Messages
+MSG_RECONSTRUCTION_INFO = "Reconstruction info"
+MSG_SELECT_AUDIO_FIRST = "Please select an audio file first"
+MSG_CONFIG_ERROR = "Configuration error - please check settings"
+
+# Template strings
+TEMPLATE_RECONSTRUCTION_GEN_TAG = "gen_{}"
+
+# File dialog settings
+FILE_COUNT_SINGLE = 1
+
+# Plot settings
+PLOT_WIDTH_FULL = -1
+PLOT_CHILDREN_SLOT = 2
+
+# Boolean values
+CHECKBOX_DEFAULT_ENABLED = True
+PRIMARY_WINDOW_ENABLED = True
+
+# Empty label
+LABEL_EMPTY = ""

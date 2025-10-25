@@ -8,7 +8,11 @@ from browser.constants import *
 from constants import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
+    MAX_CHANGE_RATE,
+    MAX_SAMPLE_RATE,
     MAX_WORKERS,
+    MIN_CHANGE_RATE,
+    MIN_SAMPLE_RATE,
     NORMALIZE,
     QUANTIZE,
     SAMPLE_RATE,
@@ -26,16 +30,16 @@ class ConfigPanelGUI:
             dpg.add_text(SECTION_GENERAL_SETTINGS)
             dpg.add_separator()
 
-            dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag="normalize")
-            dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag="quantize")
+            dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_NORMALIZE)
+            dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_QUANTIZE)
             dpg.add_input_int(
-                label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag="max_workers", min_value=MIN_WORKERS
+                label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag=TAG_MAX_WORKERS, min_value=MIN_WORKERS
             )
 
             dpg.add_separator()
             dpg.add_text(SECTION_LIBRARY_DIRECTORY)
             dpg.add_button(label=BUTTON_SELECT_LIBRARY_DIR, callback=self._select_library_directory_dialog)
-            dpg.add_text(DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag="library_directory_display")
+            dpg.add_text(DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
 
             dpg.add_separator()
             dpg.add_text(SECTION_LIBRARY_SETTINGS)
@@ -44,14 +48,14 @@ class ConfigPanelGUI:
             dpg.add_input_int(
                 label=INPUT_SAMPLE_RATE,
                 default_value=SAMPLE_RATE,
-                tag="sample_rate",
+                tag=TAG_SAMPLE_RATE,
                 min_value=MIN_SAMPLE_RATE,
                 max_value=MAX_SAMPLE_RATE,
             )
             dpg.add_input_int(
                 label=INPUT_CHANGE_RATE,
                 default_value=CHANGE_RATE,
-                tag="change_rate",
+                tag=TAG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
             )
@@ -60,9 +64,9 @@ class ConfigPanelGUI:
 
     def create_preview_panel(self, parent_tag: str) -> None:
         with dpg.child_window(parent=parent_tag):
-            dpg.add_text("Configuration preview")
+            dpg.add_text(MSG_CONFIGURATION_PREVIEW)
             dpg.add_separator()
-            dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag="config_preview")
+            dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag=TAG_CONFIG_PREVIEW)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_params.keys():
@@ -89,11 +93,11 @@ class ConfigPanelGUI:
             pass
 
     def _select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
-        directory_path = list(app_data["selections"].values())[0]
+        directory_path = list(app_data[KEY_SELECTIONS].values())[INDEX_FIRST_SELECTION]
         self.config_manager.set_library_directory(directory_path)
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value("library_directory_display", CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
+        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
 
         if self.on_library_directory_changed:
             self.on_library_directory_changed()
