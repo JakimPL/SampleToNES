@@ -5,14 +5,17 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.constants import *
+from browser.elements.waveform import Waveform
 from browser.library.manager import LibraryManager
 from configs.config import Config
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
+from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
 from typehints.general import LibraryGeneratorName
+from typehints.instructions import InstructionUnion
 
 
 class LibraryPanelGUI:
@@ -30,6 +33,7 @@ class LibraryPanelGUI:
         self.is_generating = False
         self.generation_thread = None
         self.current_highlighted_library: Optional[str] = None
+        self.waveform_display: Optional[Waveform] = None
 
     def create_panel(self):
         with dpg.group(tag=TAG_LIBRARY_PANEL) as library_panel_group:
@@ -67,11 +71,9 @@ class LibraryPanelGUI:
 
         library_name = self.library_manager._get_display_name_from_key(key)
         if self.library_manager.library_exists_for_key(key):
-            # Library exists
             dpg.set_value(TAG_LIBRARY_STATUS, TEMPLATE_LIBRARY_EXISTS.format(library_name))
             dpg.set_item_label(TAG_GENERATE_LIBRARY_BUTTON, BUTTON_REGENERATE_LIBRARY)
         else:
-            # Library doesn't exist
             dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_NOT_EXISTS.format(library_name))
             dpg.set_item_label(TAG_GENERATE_LIBRARY_BUTTON, BUTTON_GENERATE_LIBRARY)
 
@@ -134,7 +136,6 @@ class LibraryPanelGUI:
                 label=TEMPLATE_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
             ):
                 for instruction, _ in instructions:
-                    print(instruction)
                     dpg.add_selectable(
                         label=instruction.name,
                         callback=self._on_instruction_selected_internal,
@@ -166,14 +167,12 @@ class LibraryPanelGUI:
             self._create_generator_nodes(display_name)
 
     def _clear_children(self, parent_tag: str) -> None:
-        children = dpg.get_item_children(parent_tag, slot=DEFAULT_SLOT_VALUE)
-        if children:
-            for child in children:
-                dpg.delete_item(child)
+        children = dpg.get_item_children(parent_tag, slot=DEFAULT_SLOT_VALUE) or []
+        for child in children:
+            dpg.delete_item(child)
 
     def _update_library_highlighting(self, new_library: str) -> None:
         # TODO: Implement proper highlighting when DearPyGui supports it
-        # For now, just track the current library without visual highlighting
         self.current_highlighted_library = new_library
 
     def _generate_library(self) -> None:
@@ -227,6 +226,33 @@ class LibraryPanelGUI:
             self._set_current_library(display_name, load_if_needed=False, apply_config=True)
 
     def _on_instruction_selected_internal(self, sender: Any, app_data: Any, user_data: Tuple[Any, Any]) -> None:
+        generator_class_name, instruction = user_data
+
+        self._display_instruction_waveform(generator_class_name, instruction)
+
         if self.on_instruction_selected:
-            generator_class_name, instruction = user_data
             self.on_instruction_selected(generator_class_name, instruction)
+
+    def _display_instruction_waveform(self, generator_class_name: str, instruction: InstructionUnion) -> None:
+        fragment = self._get_fragment_for_instruction(instruction)
+        if fragment and self.waveform_display:
+            self.waveform_display.load_library_fragment(fragment)
+
+    def _get_fragment_for_instruction(self, instruction: InstructionUnion) -> Optional[LibraryFragment]:
+        for display_name in self.library_manager.get_available_libraries().keys():
+            if self.library_manager.is_library_loaded(display_name):
+                library_data = self.library_manager.get_library_data(display_name)
+                if library_data and instruction in library_data.data:
+                    return library_data.data[instruction]
+        return None
+
+    def create_waveform_display(self, parent_tag: str) -> Waveform:
+        waveform_tag = f"{parent_tag}_waveform"
+        self.waveform_display = Waveform(
+            tag=waveform_tag,
+            width=-1,
+            height=WAVEFORM_DEFAULT_HEIGHT,
+            parent=parent_tag,
+            label="Library Fragment Waveform",
+        )
+        return self.waveform_display

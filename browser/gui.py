@@ -38,6 +38,8 @@ class GUI:
         dpg.create_viewport(title=WINDOW_TITLE, width=MAIN_WINDOW_WIDTH, height=MAIN_WINDOW_HEIGHT)
         dpg.setup_dearpygui()
 
+        self.library_panel.create_waveform_display(TAG_CONFIG_TAB)
+
         dpg.show_viewport()
 
     def create_main_window(self) -> None:
@@ -67,7 +69,9 @@ class GUI:
                     with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
                         self.library_panel.create_panel()
 
-                self.config_panel.create_preview_panel(TAG_CONFIG_TAB)
+                with dpg.child_window(tag=TAG_CONFIG_TAB):
+                    dpg.add_text("Library Fragment Display")
+                    dpg.add_separator()
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.initialize_config_with_defaults()
@@ -201,8 +205,7 @@ class GUI:
         file_path = list(app_data[KEY_SELECTIONS].values())[INDEX_FIRST_SELECTION]
         with open(file_path, "r") as f:
             config_data = json.load(f)
-        if self.config_panel.load_config_from_data(config_data):
-            dpg.set_value(TAG_CONFIG_PREVIEW, LOADED_PREFIX.format(Path(file_path).name))
+        self.config_panel.load_config_from_data(config_data)
 
     def load_audio(self, sender: Any, app_data: Dict[str, Any]) -> None:
         file_path = list(app_data[KEY_SELECTIONS].values())[INDEX_FIRST_SELECTION]
