@@ -8,6 +8,7 @@ import numpy as np
 from browser.config.manager import ConfigManager
 from browser.config.panel import ConfigPanelGUI
 from browser.constants import *
+from browser.instruction.panel import InstructionPanelGUI
 from browser.library.panel import LibraryPanelGUI
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
@@ -25,8 +26,11 @@ class GUI:
         self.reconstruction_path: Optional[Path] = None
         self.config_manager = ConfigManager()
         self.config_panel = ConfigPanelGUI(self.config_manager)
+        self.instruction_panel: Optional[InstructionPanelGUI] = None
         self.library_panel = LibraryPanelGUI(
-            self.config_manager, on_config_gui_update=self.config_panel.apply_library_config
+            self.config_manager,
+            on_instruction_selected=self._on_instruction_selected,
+            on_config_gui_update=self.config_panel.apply_library_config,
         )
 
         self.setup_gui()
@@ -38,7 +42,7 @@ class GUI:
         dpg.create_viewport(title=WINDOW_TITLE, width=MAIN_WINDOW_WIDTH, height=MAIN_WINDOW_HEIGHT)
         dpg.setup_dearpygui()
 
-        self.library_panel.create_waveform_display(TAG_CONFIG_TAB)
+        pass
 
         dpg.show_viewport()
 
@@ -70,8 +74,8 @@ class GUI:
                         self.library_panel.create_panel()
 
                 with dpg.child_window(tag=TAG_CONFIG_TAB):
-                    dpg.add_text("Library Fragment Display")
-                    dpg.add_separator()
+                    self.instruction_panel = InstructionPanelGUI(TAG_CONFIG_TAB)
+                    self.instruction_panel.create_panel()
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.initialize_config_with_defaults()
@@ -293,6 +297,10 @@ class GUI:
 
     def load_selected_reconstruction(self) -> None:
         pass
+
+    def _on_instruction_selected(self, generator_class_name: str, instruction, fragment) -> None:
+        if self.instruction_panel:
+            self.instruction_panel.display_instruction(generator_class_name, instruction, fragment)
 
     def run(self) -> None:
         dpg.start_dearpygui()

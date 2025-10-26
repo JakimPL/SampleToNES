@@ -5,12 +5,8 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.constants import *
-from browser.elements.waveform import Waveform
 from browser.library.manager import LibraryManager
 from configs.config import Config
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
 from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
@@ -33,7 +29,6 @@ class LibraryPanelGUI:
         self.is_generating = False
         self.generation_thread = None
         self.current_highlighted_library: Optional[str] = None
-        self.waveform_display: Optional[Waveform] = None
 
     def create_panel(self):
         with dpg.group(tag=TAG_LIBRARY_PANEL) as library_panel_group:
@@ -228,15 +223,10 @@ class LibraryPanelGUI:
     def _on_instruction_selected_internal(self, sender: Any, app_data: Any, user_data: Tuple[Any, Any]) -> None:
         generator_class_name, instruction = user_data
 
-        self._display_instruction_waveform(generator_class_name, instruction)
+        fragment = self._get_fragment_for_instruction(instruction)
 
         if self.on_instruction_selected:
-            self.on_instruction_selected(generator_class_name, instruction)
-
-    def _display_instruction_waveform(self, generator_class_name: str, instruction: InstructionUnion) -> None:
-        fragment = self._get_fragment_for_instruction(instruction)
-        if fragment and self.waveform_display:
-            self.waveform_display.load_library_fragment(fragment)
+            self.on_instruction_selected(generator_class_name, instruction, fragment)
 
     def _get_fragment_for_instruction(self, instruction: InstructionUnion) -> Optional[LibraryFragment]:
         for display_name in self.library_manager.get_available_libraries().keys():
@@ -245,14 +235,3 @@ class LibraryPanelGUI:
                 if library_data and instruction in library_data.data:
                     return library_data.data[instruction]
         return None
-
-    def create_waveform_display(self, parent_tag: str) -> Waveform:
-        waveform_tag = f"{parent_tag}_waveform"
-        self.waveform_display = Waveform(
-            tag=waveform_tag,
-            width=-1,
-            height=WAVEFORM_DEFAULT_HEIGHT,
-            parent=parent_tag,
-            label="Library Fragment Waveform",
-        )
-        return self.waveform_display

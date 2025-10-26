@@ -241,3 +241,24 @@ PRIMARY_WINDOW_ENABLED = True
 
 # Empty label
 LABEL_EMPTY = ""
+
+# Audio player constants
+PLAYER_PANEL_HEIGHT = 60
+BUTTON_PLAY = "Play"
+BUTTON_PAUSE = "Pause"
+BUTTON_STOP = "Stop"
+MSG_NO_AUDIO_LOADED = "No audio loaded"
+MSG_AUDIO_PLAYBACK_ERROR = "Audio playback error"
+DIALOG_NO_AUDIO_TITLE = "No Audio"
+DIALOG_PLAYBACK_ERROR_TITLE = "Playback Error"
+
+# Instruction panel constants
+MSG_INSTRUCTION_DETAILS = "Instruction Details"
+MSG_NO_INSTRUCTION_SELECTED = "No instruction selected"
+LABEL_INSTRUCTION_WAVEFORM = "Instruction Waveform"
+
+# Waveform layer colors
+WAVEFORM_DEFAULT_COLOR = (255, 255, 255, 255)
+WAVEFORM_LAYER_SAMPLE_COLOR = (100, 200, 255, 255)
+WAVEFORM_LAYER_FEATURE_COLOR = (255, 150, 100, 255)
+WAVEFORM_LAYER_RECONSTRUCTION_COLOR = (100, 255, 100, 255)

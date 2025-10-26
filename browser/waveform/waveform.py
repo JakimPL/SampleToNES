@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -6,7 +5,6 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
-    BUTTON_PLAY_AUDIO,
     BUTTON_RESET_ALL,
     BUTTON_RESET_X,
     BUTTON_RESET_Y,
@@ -14,21 +12,21 @@ from browser.constants import (
     WAVEFORM_AXIS_SLOT,
     WAVEFORM_DEFAULT_Y_MAX,
     WAVEFORM_DEFAULT_Y_MIN,
-    WAVEFORM_FEATURE_COLOR,
     WAVEFORM_FEATURE_NAME_FORMAT,
     WAVEFORM_FEATURE_SCALE,
     WAVEFORM_FREQUENCY_FORMAT,
     WAVEFORM_FREQUENCY_PREFIX,
     WAVEFORM_GENERATOR_PREFIX,
     WAVEFORM_HOVER_PREFIX,
+    WAVEFORM_LAYER_FEATURE_COLOR,
+    WAVEFORM_LAYER_RECONSTRUCTION_COLOR,
+    WAVEFORM_LAYER_SAMPLE_COLOR,
     WAVEFORM_NO_FRAGMENT_MSG,
     WAVEFORM_OFFSET_PREFIX,
     WAVEFORM_PARAMETERS_HEADER,
     WAVEFORM_POSITION_FORMAT,
-    WAVEFORM_RECONSTRUCTION_COLOR,
     WAVEFORM_RECONSTRUCTION_LAYER_NAME,
     WAVEFORM_RECONSTRUCTION_THICKNESS,
-    WAVEFORM_SAMPLE_COLOR,
     WAVEFORM_SAMPLE_LAYER_NAME,
     WAVEFORM_SAMPLE_LENGTH_PREFIX,
     WAVEFORM_SAMPLE_THICKNESS,
@@ -36,18 +34,9 @@ from browser.constants import (
     WAVEFORM_VALUE_FORMAT,
     WAVEFORM_ZOOM_FACTOR,
 )
+from browser.waveform.layer import WaveformLayer
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
-from utils.audioio import play_audio
-
-
-@dataclass
-class WaveformLayer:
-    name: str
-    data: np.ndarray
-    color: Tuple[int, int, int, int] = (255, 255, 255, 255)
-    visible: bool = True
-    line_thickness: float = 1.0
 
 
 class Waveform:
@@ -96,7 +85,6 @@ class Waveform:
                 dpg.add_button(label=BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
                 dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
                 dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
-                dpg.add_button(label=BUTTON_PLAY_AUDIO, callback=self._play_current_audio, small=True)
 
             with dpg.group(tag=f"{self.controls_tag}_layers", horizontal=True):
                 pass
@@ -128,7 +116,7 @@ class Waveform:
         visible: bool = True,
         line_thickness: float = 1.0,
     ) -> None:
-        layer = WaveformLayer(name, data, color, visible, line_thickness)
+        layer = WaveformLayer(name=name, data=data, color=color, visible=visible, line_thickness=line_thickness)
         self.layers[name] = layer
         self._update_display()
 
@@ -139,7 +127,14 @@ class Waveform:
 
     def set_layer_visibility(self, name: str, visible: bool) -> None:
         if name in self.layers:
-            self.layers[name].visible = visible
+            old_layer = self.layers[name]
+            self.layers[name] = WaveformLayer(
+                name=old_layer.name,
+                data=old_layer.data,
+                color=old_layer.color,
+                visible=visible,
+                line_thickness=old_layer.line_thickness,
+            )
             self._update_display()
 
     def clear_layers(self) -> None:
@@ -153,7 +148,7 @@ class Waveform:
         self.add_layer(
             WAVEFORM_SAMPLE_LAYER_NAME,
             fragment.sample,
-            color=WAVEFORM_SAMPLE_COLOR,
+            color=WAVEFORM_LAYER_SAMPLE_COLOR,
             line_thickness=WAVEFORM_SAMPLE_THICKNESS,
         )
 
@@ -162,7 +157,7 @@ class Waveform:
             self.add_layer(
                 WAVEFORM_FEATURE_NAME_FORMAT.format(fragment.frequency),
                 feature_scaled,
-                color=WAVEFORM_FEATURE_COLOR,
+                color=WAVEFORM_LAYER_FEATURE_COLOR,
                 visible=False,
             )
 
@@ -178,7 +173,7 @@ class Waveform:
             self.add_layer(
                 WAVEFORM_RECONSTRUCTION_LAYER_NAME,
                 reconstruction,
-                color=WAVEFORM_RECONSTRUCTION_COLOR,
+                color=WAVEFORM_LAYER_RECONSTRUCTION_COLOR,
                 line_thickness=WAVEFORM_RECONSTRUCTION_THICKNESS,
             )
 
@@ -271,10 +266,6 @@ class Waveform:
     def _reset_all_axes(self) -> None:
         self._reset_x_axis()
         self._reset_y_axis()
-
-    def _play_current_audio(self) -> None:
-        if self.current_library_fragment:
-            play_audio(self.current_library_fragment.sample)
 
     def _plot_callback(self, sender: str, app_data: Any) -> None:
         pass
