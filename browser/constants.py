@@ -262,3 +262,43 @@ WAVEFORM_DEFAULT_COLOR = (255, 255, 255, 255)
 WAVEFORM_LAYER_SAMPLE_COLOR = (100, 200, 255, 255)
 WAVEFORM_LAYER_FEATURE_COLOR = (255, 150, 100, 255)
 WAVEFORM_LAYER_RECONSTRUCTION_COLOR = (100, 255, 100, 255)
+
+# Waveform component suffixes
+WAVEFORM_PLOT_SUFFIX = "_plot"
+WAVEFORM_X_AXIS_SUFFIX = "_x_axis"
+WAVEFORM_Y_AXIS_SUFFIX = "_y_axis"
+WAVEFORM_LEGEND_SUFFIX = "_legend"
+WAVEFORM_CONTROLS_SUFFIX = "_controls"
+WAVEFORM_INFO_SUFFIX = "_info"
+WAVEFORM_LAYERS_SUFFIX = "_layers"
+
+# Waveform default dimensions
+WAVEFORM_DEFAULT_WIDTH = -1
+WAVEFORM_DEFAULT_DISPLAY_HEIGHT = 300
+
+# Boolean text values
+BOOL_YES_TEXT = "Yes"
+BOOL_NO_TEXT = "No"
+
+# Default axis range
+WAVEFORM_DEFAULT_X_MIN = 0.0
+WAVEFORM_DEFAULT_X_MAX = 1.0
+
+# Format precision
+WAVEFORM_FLOAT_PRECISION = 4
+
+# Audio player component suffixes
+PLAYER_PLAY_SUFFIX = "_play"
+PLAYER_PAUSE_SUFFIX = "_pause"
+PLAYER_STOP_SUFFIX = "_stop"
+PLAYER_POSITION_SUFFIX = "_position"
+PLAYER_NO_AUDIO_POPUP_SUFFIX = "_no_audio_popup"
+PLAYER_ERROR_POPUP_SUFFIX = "_error_popup"
+
+# Audio player default width
+PLAYER_PANEL_DEFAULT_WIDTH = -1
+
+# Audio player text constants
+PLAYER_POSITION_PREFIX = "Position: "
+PLAYER_SAMPLES_SUFFIX = " samples"
+BUTTON_OK = "OK"

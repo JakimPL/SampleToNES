@@ -3,12 +3,22 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from browser.constants import (
+    BUTTON_OK,
     BUTTON_PAUSE,
     BUTTON_PLAY,
     BUTTON_STOP,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_NO_AUDIO_LOADED,
+    PLAYER_ERROR_POPUP_SUFFIX,
+    PLAYER_NO_AUDIO_POPUP_SUFFIX,
+    PLAYER_PANEL_DEFAULT_WIDTH,
     PLAYER_PANEL_HEIGHT,
+    PLAYER_PAUSE_SUFFIX,
+    PLAYER_PLAY_SUFFIX,
+    PLAYER_POSITION_PREFIX,
+    PLAYER_POSITION_SUFFIX,
+    PLAYER_SAMPLES_SUFFIX,
+    PLAYER_STOP_SUFFIX,
 )
 from browser.player.data import AudioData
 from constants import SAMPLE_RATE
@@ -23,10 +33,10 @@ class AudioPlayerPanel:
         self.parent = parent
         self.on_position_changed = on_position_changed
 
-        self.play_button_tag = f"{tag}_play"
-        self.pause_button_tag = f"{tag}_pause"
-        self.stop_button_tag = f"{tag}_stop"
-        self.position_text_tag = f"{tag}_position"
+        self.play_button_tag = f"{tag}{PLAYER_PLAY_SUFFIX}"
+        self.pause_button_tag = f"{tag}{PLAYER_PAUSE_SUFFIX}"
+        self.stop_button_tag = f"{tag}{PLAYER_STOP_SUFFIX}"
+        self.position_text_tag = f"{tag}{PLAYER_POSITION_SUFFIX}"
 
         self.audio_data: AudioData = AudioData.empty(SAMPLE_RATE)
         self.is_playing = False
@@ -34,7 +44,12 @@ class AudioPlayerPanel:
         self._create_panel()
 
     def _create_panel(self) -> None:
-        kwargs = {"tag": self.tag, "height": PLAYER_PANEL_HEIGHT, "width": -1, "no_scrollbar": True}
+        kwargs = {
+            "tag": self.tag,
+            "height": PLAYER_PANEL_HEIGHT,
+            "width": PLAYER_PANEL_DEFAULT_WIDTH,
+            "no_scrollbar": True,
+        }
         if self.parent:
             kwargs["parent"] = self.parent
 
@@ -96,15 +111,17 @@ class AudioPlayerPanel:
         if not self.audio_data.is_loaded():
             dpg.set_value(self.position_text_tag, MSG_NO_AUDIO_LOADED)
         else:
-            position_text = f"Position: {self.audio_data.current_position}/{self.audio_data.duration_samples} samples"
+            position_text = f"{PLAYER_POSITION_PREFIX}{self.audio_data.current_position}/{self.audio_data.samples}{PLAYER_SAMPLES_SUFFIX}"
             dpg.set_value(self.position_text_tag, position_text)
 
     def _show_no_audio_dialog(self) -> None:
-        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}_no_audio_popup"):
+        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{PLAYER_NO_AUDIO_POPUP_SUFFIX}"):
             dpg.add_text(MSG_NO_AUDIO_LOADED)
-            dpg.add_button(label="OK", callback=lambda: dpg.delete_item(f"{self.tag}_no_audio_popup"))
+            dpg.add_button(
+                label=BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{PLAYER_NO_AUDIO_POPUP_SUFFIX}")
+            )
 
     def _show_playback_error_dialog(self, error_message: str) -> None:
-        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}_error_popup"):
+        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{PLAYER_ERROR_POPUP_SUFFIX}"):
             dpg.add_text(f"{MSG_AUDIO_PLAYBACK_ERROR}: {error_message}")
-            dpg.add_button(label="OK", callback=lambda: dpg.delete_item(f"{self.tag}_error_popup"))
+            dpg.add_button(label=BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{PLAYER_ERROR_POPUP_SUFFIX}"))

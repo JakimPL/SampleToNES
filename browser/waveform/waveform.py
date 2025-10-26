@@ -5,25 +5,37 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
+    BOOL_NO_TEXT,
+    BOOL_YES_TEXT,
     BUTTON_RESET_ALL,
     BUTTON_RESET_X,
     BUTTON_RESET_Y,
     WAVEFORM_AMPLITUDE_LABEL,
     WAVEFORM_AXIS_SLOT,
+    WAVEFORM_CONTROLS_SUFFIX,
+    WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
+    WAVEFORM_DEFAULT_WIDTH,
+    WAVEFORM_DEFAULT_X_MAX,
+    WAVEFORM_DEFAULT_X_MIN,
     WAVEFORM_DEFAULT_Y_MAX,
     WAVEFORM_DEFAULT_Y_MIN,
     WAVEFORM_FEATURE_NAME_FORMAT,
     WAVEFORM_FEATURE_SCALE,
+    WAVEFORM_FLOAT_PRECISION,
     WAVEFORM_FREQUENCY_FORMAT,
     WAVEFORM_FREQUENCY_PREFIX,
     WAVEFORM_GENERATOR_PREFIX,
     WAVEFORM_HOVER_PREFIX,
+    WAVEFORM_INFO_SUFFIX,
     WAVEFORM_LAYER_FEATURE_COLOR,
     WAVEFORM_LAYER_RECONSTRUCTION_COLOR,
     WAVEFORM_LAYER_SAMPLE_COLOR,
+    WAVEFORM_LAYERS_SUFFIX,
+    WAVEFORM_LEGEND_SUFFIX,
     WAVEFORM_NO_FRAGMENT_MSG,
     WAVEFORM_OFFSET_PREFIX,
     WAVEFORM_PARAMETERS_HEADER,
+    WAVEFORM_PLOT_SUFFIX,
     WAVEFORM_POSITION_FORMAT,
     WAVEFORM_RECONSTRUCTION_LAYER_NAME,
     WAVEFORM_RECONSTRUCTION_THICKNESS,
@@ -32,6 +44,8 @@ from browser.constants import (
     WAVEFORM_SAMPLE_THICKNESS,
     WAVEFORM_TIME_LABEL,
     WAVEFORM_VALUE_FORMAT,
+    WAVEFORM_X_AXIS_SUFFIX,
+    WAVEFORM_Y_AXIS_SUFFIX,
     WAVEFORM_ZOOM_FACTOR,
 )
 from browser.waveform.layer import WaveformLayer
@@ -43,8 +57,8 @@ class Waveform:
     def __init__(
         self,
         tag: str,
-        width: int = -1,
-        height: int = 300,
+        width: int = WAVEFORM_DEFAULT_WIDTH,
+        height: int = WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
         parent: Optional[str] = None,
         label: str = "Waveform Display",
     ):
@@ -54,18 +68,18 @@ class Waveform:
         self.parent = parent
         self.label = label
 
-        self.plot_tag = f"{tag}_plot"
-        self.x_axis_tag = f"{tag}_x_axis"
-        self.y_axis_tag = f"{tag}_y_axis"
-        self.legend_tag = f"{tag}_legend"
-        self.controls_tag = f"{tag}_controls"
-        self.info_tag = f"{tag}_info"
+        self.plot_tag = f"{tag}{WAVEFORM_PLOT_SUFFIX}"
+        self.x_axis_tag = f"{tag}{WAVEFORM_X_AXIS_SUFFIX}"
+        self.y_axis_tag = f"{tag}{WAVEFORM_Y_AXIS_SUFFIX}"
+        self.legend_tag = f"{tag}{WAVEFORM_LEGEND_SUFFIX}"
+        self.controls_tag = f"{tag}{WAVEFORM_CONTROLS_SUFFIX}"
+        self.info_tag = f"{tag}{WAVEFORM_INFO_SUFFIX}"
 
         self.layers: Dict[str, WaveformLayer] = {}
         self.current_library_fragment: Optional[LibraryFragment] = None
 
-        self.x_min: float = 0.0
-        self.x_max: float = 1.0
+        self.x_min: float = WAVEFORM_DEFAULT_X_MIN
+        self.x_max: float = WAVEFORM_DEFAULT_X_MAX
         self.y_min: float = WAVEFORM_DEFAULT_Y_MIN
         self.y_max: float = WAVEFORM_DEFAULT_Y_MAX
         self.default_y_range = (WAVEFORM_DEFAULT_Y_MIN, WAVEFORM_DEFAULT_Y_MAX)
@@ -86,7 +100,7 @@ class Waveform:
                 dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
                 dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
-            with dpg.group(tag=f"{self.controls_tag}_layers", horizontal=True):
+            with dpg.group(tag=f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}", horizontal=True):
                 pass
 
             dpg.add_text(WAVEFORM_NO_FRAGMENT_MSG, tag=self.info_tag)
@@ -164,7 +178,7 @@ class Waveform:
         self._update_info_display()
         self._update_layer_controls()
 
-        self.x_min = 0.0
+        self.x_min = WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
         self._update_axes_limits()
 
@@ -196,7 +210,7 @@ class Waveform:
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
     def _update_layer_controls(self) -> None:
-        layers_control_tag = f"{self.controls_tag}_layers"
+        layers_control_tag = f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}"
 
         children = dpg.get_item_children(layers_control_tag, slot=WAVEFORM_AXIS_SLOT) or []
         for child in children:
@@ -241,9 +255,9 @@ class Waveform:
 
     def _format_parameter_value(self, value: Any) -> str:
         if isinstance(value, float):
-            return f"{value:.4f}"
+            return f"{value:.{WAVEFORM_FLOAT_PRECISION}f}"
         elif isinstance(value, bool):
-            return "Yes" if value else "No"
+            return BOOL_YES_TEXT if value else BOOL_NO_TEXT
         elif isinstance(value, (list, tuple)):
             return f"[{', '.join(str(v) for v in value)}]"
         else:
@@ -252,11 +266,11 @@ class Waveform:
     def _reset_x_axis(self) -> None:
         if self.layers:
             max_length = max(len(layer.data) for layer in self.layers.values())
-            self.x_min = 0.0
+            self.x_min = WAVEFORM_DEFAULT_X_MIN
             self.x_max = float(max_length)
         else:
-            self.x_min = 0.0
-            self.x_max = 1.0
+            self.x_min = WAVEFORM_DEFAULT_X_MIN
+            self.x_max = WAVEFORM_DEFAULT_X_MAX
         self._update_axes_limits()
 
     def _reset_y_axis(self) -> None:
@@ -289,9 +303,9 @@ class Waveform:
                 y_offset = (center_y - self.y_min) / y_range
 
                 self.x_min = center_x - new_x_range * x_offset
-                self.x_max = center_x + new_x_range * (1.0 - x_offset)
+                self.x_max = center_x + new_x_range * (1 - x_offset)
                 self.y_min = center_y - new_y_range * y_offset
-                self.y_max = center_y + new_y_range * (1.0 - y_offset)
+                self.y_max = center_y + new_y_range * (1 - y_offset)
 
                 self._update_axes_limits()
 
