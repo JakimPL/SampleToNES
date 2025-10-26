@@ -66,7 +66,7 @@ class AudioPlayerPanel:
                 dpg.add_button(
                     label=LBL_PLAYER_BUTTON_STOP, tag=self.stop_button_tag, callback=self._stop_audio, enabled=False
                 )
-                dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
+            dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data

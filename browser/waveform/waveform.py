@@ -5,13 +5,10 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
-    CLR_WAVEFORM_LAYER_FEATURE,
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
     DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
     DIM_WAVEFORM_DEFAULT_WIDTH,
-    FMT_WAVEFORM_FEATURE_NAME,
-    FMT_WAVEFORM_POSITION,
     FMT_WAVEFORM_VALUE,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
     LBL_WAVEFORM_BUTTON_RESET_ALL,
@@ -21,10 +18,8 @@ from browser.constants import (
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
     MSG_WAVEFORM_NO_FRAGMENT,
-    PFX_WAVEFORM_HOVER,
     SUF_WAVEFORM_CONTROLS,
     SUF_WAVEFORM_INFO,
-    SUF_WAVEFORM_LAYERS,
     SUF_WAVEFORM_LEGEND,
     SUF_WAVEFORM_PLOT,
     SUF_WAVEFORM_X_AXIS,
@@ -34,7 +29,6 @@ from browser.constants import (
     VAL_WAVEFORM_DEFAULT_X_MIN,
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
-    VAL_WAVEFORM_FEATURE_SCALE,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
@@ -79,6 +73,7 @@ class Waveform:
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
 
         self._create_display()
+        self._update_axes_limits()
 
     def _create_display(self) -> None:
         if self.parent:
@@ -94,9 +89,6 @@ class Waveform:
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
-        with dpg.group(tag=f"{self.controls_tag}{SUF_WAVEFORM_LAYERS}", horizontal=True):
-            pass
-
         dpg.add_text(MSG_WAVEFORM_NO_FRAGMENT, tag=self.info_tag)
 
         with dpg.plot(
@@ -104,8 +96,9 @@ class Waveform:
             height=self.height,
             width=self.width,
             tag=self.plot_tag,
-            callback=self._plot_callback,
             anti_aliased=True,
+            callback=self._plot_callback,
+            no_inputs=False,
         ):
             dpg.add_plot_legend(tag=self.legend_tag)
             dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
@@ -114,7 +107,6 @@ class Waveform:
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
-            dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
 
     def add_layer(
         self,
@@ -133,18 +125,6 @@ class Waveform:
             del self.layers[name]
             self._update_display()
 
-    def set_layer_visibility(self, name: str, visible: bool) -> None:
-        if name in self.layers:
-            old_layer = self.layers[name]
-            self.layers[name] = WaveformLayer(
-                name=old_layer.name,
-                data=old_layer.data,
-                color=old_layer.color,
-                visible=visible,
-                line_thickness=old_layer.line_thickness,
-            )
-            self._update_display()
-
     def clear_layers(self) -> None:
         self.layers.clear()
         self._update_display()
@@ -160,17 +140,7 @@ class Waveform:
             line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
         )
 
-        if len(fragment.feature) > 0:
-            feature_scaled = fragment.feature * VAL_WAVEFORM_FEATURE_SCALE
-            self.add_layer(
-                FMT_WAVEFORM_FEATURE_NAME.format(fragment.frequency),
-                feature_scaled,
-                color=CLR_WAVEFORM_LAYER_FEATURE,
-                visible=False,
-            )
-
         self._update_info_display()
-        self._update_layer_controls()
 
         self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
@@ -212,23 +182,6 @@ class Waveform:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
-    def _update_layer_controls(self) -> None:
-        layers_control_tag = f"{self.controls_tag}{SUF_WAVEFORM_LAYERS}"
-
-        children = dpg.get_item_children(layers_control_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)
-
-        for layer_name, layer in self.layers.items():
-            button_tag = f"{layers_control_tag}_{layer_name.replace(' ', '_')}"
-            dpg.add_checkbox(
-                label=layer_name,
-                default_value=layer.visible,
-                callback=lambda sender, app_data, user_data=layer_name: self.set_layer_visibility(user_data, app_data),
-                parent=layers_control_tag,
-                tag=button_tag,
-            )
-
     def _update_info_display(self) -> None:
         if not dpg.does_item_exist(self.info_tag):
             return
@@ -262,6 +215,9 @@ class Waveform:
 
     def _mouse_wheel_callback(self, sender: str, app_data: float) -> None:
         if dpg.is_item_hovered(self.plot_tag):
+            if not self.current_library_fragment:
+                return
+
             plot_mouse_pos = dpg.get_plot_mouse_pos()
             if plot_mouse_pos[0] and plot_mouse_pos[1]:
                 zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
@@ -278,15 +234,32 @@ class Waveform:
                 x_offset = (center_x - self.x_min) / x_range
                 y_offset = (center_y - self.y_min) / y_range
 
-                self.x_min = center_x - new_x_range * x_offset
-                self.x_max = center_x + new_x_range * (1 - x_offset)
-                self.y_min = center_y - new_y_range * y_offset
-                self.y_max = center_y + new_y_range * (1 - y_offset)
+                new_x_min = center_x - new_x_range * x_offset
+                new_x_max = center_x + new_x_range * (1 - x_offset)
+                new_y_min = center_y - new_y_range * y_offset
+                new_y_max = center_y + new_y_range * (1 - y_offset)
 
-                self._update_axes_limits()
+                sample_length = float(len(self.current_library_fragment.sample))
+
+                if (
+                    new_y_max - new_y_min <= 2.0
+                    and new_y_min >= -1.0
+                    and new_y_max <= 1.0
+                    and new_x_min >= 0.0
+                    and new_x_max <= sample_length
+                ):
+
+                    self.x_min = new_x_min
+                    self.x_max = new_x_max
+                    self.y_min = new_y_min
+                    self.y_max = new_y_max
+                    self._update_axes_limits()
 
     def _mouse_drag_callback(self, sender: str, app_data: Tuple[float, float]) -> None:
         if dpg.is_item_hovered(self.plot_tag) and dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+            if not self.current_library_fragment:
+                return
+
             if not self.is_dragging:
                 self.is_dragging = True
                 mouse_pos = dpg.get_plot_mouse_pos()
@@ -298,48 +271,24 @@ class Waveform:
                 dx = float(current_pos[0]) - self.last_mouse_pos[0]
                 dy = float(current_pos[1]) - self.last_mouse_pos[1]
 
-                self.x_min -= dx
-                self.x_max -= dx
-                self.y_min -= dy
-                self.y_max -= dy
+                new_x_min = self.x_min - dx
+                new_x_max = self.x_max - dx
+                new_y_min = self.y_min - dy
+                new_y_max = self.y_max - dy
 
-                self._update_axes_limits()
+                sample_length = float(len(self.current_library_fragment.sample))
+
+                if new_y_min >= -1.0 and new_y_max <= 1.0 and new_x_min >= 0.0 and new_x_max <= sample_length:
+
+                    self.x_min = new_x_min
+                    self.x_max = new_x_max
+                    self.y_min = new_y_min
+                    self.y_max = new_y_max
+                    self._update_axes_limits()
+
                 self.last_mouse_pos = [float(current_pos[0]), float(current_pos[1])]
         else:
             self.is_dragging = False
-
-    def _mouse_move_callback(self, sender: str, app_data: Tuple[float, float]) -> None:
-        if dpg.is_item_hovered(self.plot_tag):
-            mouse_pos = dpg.get_plot_mouse_pos()
-            if mouse_pos[0] and mouse_pos[1]:
-                hover_info = FMT_WAVEFORM_POSITION.format(mouse_pos[0], mouse_pos[1])
-
-                closest_info = self._get_closest_point_info(mouse_pos[0], mouse_pos[1])
-                if closest_info:
-                    hover_info += f" | {closest_info}"
-
-                dpg.set_value(self.info_tag, f"{PFX_WAVEFORM_HOVER}{hover_info}")
-
-    def _get_closest_point_info(self, x: float, y: float) -> Optional[str]:
-        closest_layer = None
-        closest_distance = float("inf")
-        closest_index = 0
-        closest_value = 0.0
-
-        sample_x = int(round(x))
-
-        for layer_name, layer in self.layers.items():
-            if layer.visible and 0 <= sample_x < len(layer.data):
-                sample_value = layer.data[sample_x]
-                distance = abs(sample_value - y)
-
-                if distance < closest_distance:
-                    closest_distance = distance
-                    closest_layer = layer_name
-                    closest_index = sample_x
-                    closest_value = sample_value
-
-        return FMT_WAVEFORM_VALUE.format(closest_layer, closest_index, closest_value) if closest_layer else None
 
     def set_view_bounds(self, x_min: float, x_max: float, y_min: float, y_max: float) -> None:
         self.x_min = x_min
