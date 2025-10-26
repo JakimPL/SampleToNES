@@ -32,19 +32,19 @@ class LibraryPanelGUI:
 
     def create_panel(self):
         with dpg.group(tag=TAG_LIBRARY_PANEL) as library_panel_group:
-            dpg.add_text(MSG_LIBRARIES)
+            dpg.add_text(LBL_LIBRARY_LIBRARIES)
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
             with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP) as controls_group:
                 dpg.add_button(
-                    label=BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag=TAG_GENERATE_LIBRARY_BUTTON
+                    label=LBL_BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag=TAG_LIBRARY_BUTTON_GENERATE
                 )
-                dpg.add_button(label=BUTTON_REFRESH_LIBRARIES, callback=self._refresh_libraries)
+                dpg.add_button(label=LBL_BUTTON_REFRESH_LIBRARIES, callback=self._refresh_libraries)
                 dpg.add_progress_bar(tag=TAG_LIBRARY_PROGRESS, show=False)
 
             dpg.add_separator()
-            with dpg.tree_node(label=MSG_AVAILABLE_LIBRARIES, tag=TAG_LIBRARIES_TREE, default_open=True):
+            with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
                 pass
 
         return library_panel_group
@@ -60,19 +60,19 @@ class LibraryPanelGUI:
         key = self.config_manager.key
 
         if not config or not key:
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_CONFIGURATION_NOT_READY)
-            dpg.configure_item(TAG_GENERATE_LIBRARY_BUTTON, enabled=False)
+            dpg.set_value(TAG_LIBRARY_STATUS, MSG_CONFIG_NOT_READY)
+            dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=False)
             return
 
         library_name = self.library_manager._get_display_name_from_key(key)
         if self.library_manager.library_exists_for_key(key):
-            dpg.set_value(TAG_LIBRARY_STATUS, TEMPLATE_LIBRARY_EXISTS.format(library_name))
-            dpg.set_item_label(TAG_GENERATE_LIBRARY_BUTTON, BUTTON_REGENERATE_LIBRARY)
+            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
+            dpg.set_item_label(TAG_LIBRARY_BUTTON_GENERATE, LBL_BUTTON_REGENERATE_LIBRARY)
         else:
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_NOT_EXISTS.format(library_name))
-            dpg.set_item_label(TAG_GENERATE_LIBRARY_BUTTON, BUTTON_GENERATE_LIBRARY)
+            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_NOT_EXISTS.format(library_name))
+            dpg.set_item_label(TAG_LIBRARY_BUTTON_GENERATE, LBL_BUTTON_GENERATE_LIBRARY)
 
-        dpg.configure_item(TAG_GENERATE_LIBRARY_BUTTON, enabled=not self.is_generating)
+        dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not self.is_generating)
 
     def _refresh_libraries(self) -> None:
         self.library_manager.gather_available_libraries()
@@ -82,20 +82,20 @@ class LibraryPanelGUI:
             self._sync_with_config_key(key)
 
     def _rebuild_tree(self) -> None:
-        self._clear_children(TAG_LIBRARIES_TREE)
+        self._clear_children(TAG_LIBRARY_TREE)
 
         libraries = self.library_manager.get_available_libraries()
         for display_name in sorted(libraries.keys()):
             self._create_library_node(display_name)
 
     def _create_library_node(self, display_name: str) -> None:
-        library_tag = TEMPLATE_LIBRARY_TAG.format(display_name)
+        library_tag = TPL_LIBRARY_TAG.format(display_name)
         is_current = self._is_current_library(display_name)
 
         if is_current and not self.library_manager.is_library_loaded(display_name):
             self.library_manager.load_library(display_name)
 
-        with dpg.tree_node(label=display_name, tag=library_tag, parent=TAG_LIBRARIES_TREE, default_open=is_current):
+        with dpg.tree_node(label=display_name, tag=library_tag, parent=TAG_LIBRARY_TREE, default_open=is_current):
             if self.library_manager.is_library_loaded(display_name):
                 self._create_generator_nodes(display_name)
             else:
@@ -110,25 +110,25 @@ class LibraryPanelGUI:
         from typehints.general import LIBRARY_GENERATOR_NAMES
 
         for generator_name in LIBRARY_GENERATOR_NAMES:
-            generator_tag = TEMPLATE_GENERATOR_TAG.format(generator_name, display_name)
+            generator_tag = TPL_GENERATOR_TAG.format(generator_name, display_name)
             with dpg.tree_node(
-                label=generator_name.capitalize(), tag=generator_tag, parent=TEMPLATE_LIBRARY_TAG.format(display_name)
+                label=generator_name.capitalize(), tag=generator_tag, parent=TPL_LIBRARY_TAG.format(display_name)
             ):
                 self._populate_generator_instructions(display_name, generator_name)
 
     def _populate_generator_instructions(self, display_name: str, generator_name: LibraryGeneratorName) -> None:
-        generator_tag = TEMPLATE_GENERATOR_TAG.format(generator_name, display_name)
+        generator_tag = TPL_GENERATOR_TAG.format(generator_name, display_name)
         grouped_instructions = self.library_manager.get_library_instructions_by_generator(display_name, generator_name)
 
         if not grouped_instructions:
-            dpg.add_text(MSG_NO_VALID_INSTRUCTIONS, parent=generator_tag)
+            dpg.add_text(MSG_LIBRARY_NO_VALID_INSTRUCTIONS, parent=generator_tag)
             return
 
         generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
         for group_key, instructions in grouped_instructions.items():
-            group_tag = TEMPLATE_GROUP_TAG.format(group_key, generator_name, display_name)
+            group_tag = TPL_GROUP_TAG.format(group_key, generator_name, display_name)
             with dpg.tree_node(
-                label=TEMPLATE_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
+                label=TPL_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
             ):
                 for instruction, _ in instructions:
                     dpg.add_selectable(
@@ -156,13 +156,13 @@ class LibraryPanelGUI:
         self._update_library_highlighting(display_name)
 
     def _refresh_single_library_display(self, display_name: str) -> None:
-        library_tag = TEMPLATE_LIBRARY_TAG.format(display_name)
+        library_tag = TPL_LIBRARY_TAG.format(display_name)
         if dpg.does_item_exist(library_tag):
             self._clear_children(library_tag)
             self._create_generator_nodes(display_name)
 
     def _clear_children(self, parent_tag: str) -> None:
-        children = dpg.get_item_children(parent_tag, slot=DEFAULT_SLOT_VALUE) or []
+        children = dpg.get_item_children(parent_tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []
         for child in children:
             dpg.delete_item(child)
 
@@ -180,9 +180,9 @@ class LibraryPanelGUI:
 
         self.is_generating = True
         dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
-        dpg.set_value(TAG_LIBRARY_STATUS, MSG_GENERATING_LIBRARY)
+        dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATING)
         dpg.configure_item(TAG_LIBRARY_PROGRESS, show=True)
-        dpg.set_value(TAG_LIBRARY_PROGRESS, DEFAULT_FLOAT_VALUE)
+        dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
 
         self.generation_thread = threading.Thread(target=self._generate_library_worker, args=(config,), daemon=True)
         self.generation_thread.start()
@@ -191,16 +191,16 @@ class LibraryPanelGUI:
         try:
             window = self.config_manager.get_window()
             if not window:
-                raise ValueError(MSG_WINDOW_NOT_AVAILABLE)
+                raise ValueError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
 
             self.library_manager.generate_library(config, window, overwrite=True)
 
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATED)
-            dpg.set_value(TAG_LIBRARY_PROGRESS, PROGRESS_COMPLETE_VALUE)
+            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATED_SUCCESSFULLY)
+            dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
             self.update_status()
 
         except Exception as exception:  # TODO: to narrow
-            dpg.set_value(TAG_LIBRARY_STATUS, ERROR_PREFIX.format(f"{MSG_ERROR_GENERATING_LIBRARY}: {exception}"))
+            dpg.set_value(TAG_LIBRARY_STATUS, PFX_GLOBAL_ERROR.format(f"{MSG_LIBRARY_ERROR_GENERATING}: {exception}"))
 
         finally:
             self.is_generating = False

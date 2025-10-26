@@ -1,220 +1,216 @@
 # GUI Constants
 
 # Window dimensions
-MAIN_WINDOW_WIDTH = 1200
-MAIN_WINDOW_HEIGHT = 800
+DIM_WINDOW_MAIN_WIDTH = 1200
+DIM_WINDOW_MAIN_HEIGHT = 800
 
 # Layout dimensions
-CONFIG_PANEL_WIDTH = 300
-CONFIG_PANEL_HEIGHT = 280
-LIBRARY_PANEL_WIDTH = 300
-LIBRARY_PANEL_HEIGHT = 400
-RECONSTRUCTION_PANEL_WIDTH = 300
-RECONSTRUCTION_PANEL_HEIGHT = 600
-BROWSER_PANEL_WIDTH = 300
-BROWSER_PANEL_HEIGHT = 600
+DIM_PANEL_CONFIG_WIDTH = 300
+DIM_PANEL_CONFIG_HEIGHT = 280
+DIM_PANEL_LIBRARY_WIDTH = 300
+DIM_PANEL_LIBRARY_HEIGHT = 400
+DIM_PANEL_RECONSTRUCTION_WIDTH = 300
+DIM_PANEL_RECONSTRUCTION_HEIGHT = 600
+DIM_PANEL_BROWSER_WIDTH = 300
+DIM_PANEL_BROWSER_HEIGHT = 600
 
 # File dialog dimensions
-FILE_DIALOG_WIDTH = 600
-FILE_DIALOG_HEIGHT = 400
+DIM_DIALOG_FILE_WIDTH = 600
+DIM_DIALOG_FILE_HEIGHT = 400
 
 # Plot dimensions
-WAVEFORM_PLOT_HEIGHT = 200
+DIM_WAVEFORM_PLOT_HEIGHT = 200
 
 # Input validation ranges
-MIN_WORKERS = 1
+RNG_CONFIG_MIN_WORKERS = 1
 
 # Multiline text heights
-FAMITRACKER_EXPORT_HEIGHT = 200
+DIM_FAMITRACKER_EXPORT_HEIGHT = 200
 
 # GUI Labels
-WINDOW_TITLE = "SampleToNES Converter"
+TITLE_WINDOW_MAIN = "SampleToNES Converter"
 
 # Menu labels
-MENU_FILE = "File"
-MENU_LOAD_CONFIG = "Load configuration"
-MENU_LOAD_AUDIO = "Load audio"
-MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
-MENU_EXIT = "Exit"
+LBL_MENU_FILE = "File"
+LBL_MENU_LOAD_CONFIG = "Load configuration"
+LBL_MENU_LOAD_AUDIO = "Load audio"
+LBL_MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
+LBL_MENU_EXIT = "Exit"
 
 # Tab labels
-TAB_CONFIGURATION = "Configuration"
-TAB_RECONSTRUCTION = "Reconstruction"
-TAB_BROWSER = "Browse results"
+LBL_TAB_CONFIGURATION = "Configuration"
+LBL_TAB_RECONSTRUCTION = "Reconstruction"
+LBL_TAB_BROWSER = "Browse results"
 
 # Section headers
-SECTION_GENERAL_SETTINGS = "General settings"
-SECTION_LIBRARY_DIRECTORY = "Library directory"
-SECTION_LIBRARY_SETTINGS = "Library settings"
-SECTION_LIBRARY_PANEL = "Library"
-SECTION_AUDIO_INPUT = "Audio input"
-SECTION_GENERATOR_SELECTION = "Generator selection"
-SECTION_WAVEFORM_DISPLAY = "Waveform display"
-SECTION_SAVED_RECONSTRUCTIONS = "Saved reconstructions"
-SECTION_RECONSTRUCTION_DETAILS = "Reconstruction details"
-SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
+LBL_SECTION_GENERAL_SETTINGS = "General settings"
+LBL_SECTION_LIBRARY_DIRECTORY = "Library directory"
+LBL_SECTION_LIBRARY_SETTINGS = "Library settings"
+LBL_SECTION_LIBRARY_PANEL = "Library"
+LBL_SECTION_AUDIO_INPUT = "Audio input"
+LBL_SECTION_GENERATOR_SELECTION = "Generator selection"
+LBL_SECTION_WAVEFORM_DISPLAY = "Waveform display"
+LBL_SECTION_SAVED_RECONSTRUCTIONS = "Saved reconstructions"
+LBL_SECTION_RECONSTRUCTION_DETAILS = "Reconstruction details"
+LBL_SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
 
 # Button labels
-BUTTON_SELECT_LIBRARY_DIR = "Select library directory"
-BUTTON_GENERATE_LIBRARY = "Generate library"
-BUTTON_REGENERATE_LIBRARY = "Regenerate library"
-BUTTON_REFRESH_LIBRARIES = "Refresh libraries"
-BUTTON_SELECT_AUDIO_FILE = "Select audio file"
-BUTTON_START_RECONSTRUCTION = "Start reconstruction"
-BUTTON_PLAY_ORIGINAL = "Play original"
-BUTTON_PLAY_RECONSTRUCTION = "Play reconstruction"
-BUTTON_EXPORT_WAV = "Export WAV"
-BUTTON_REFRESH_LIST = "Refresh list"
+LBL_BUTTON_SELECT_LIBRARY_DIR = "Select library directory"
+LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
+LBL_BUTTON_REGENERATE_LIBRARY = "Regenerate library"
+LBL_BUTTON_REFRESH_LIBRARIES = "Refresh libraries"
+LBL_BUTTON_SELECT_AUDIO_FILE = "Select audio file"
+LBL_BUTTON_START_RECONSTRUCTION = "Start reconstruction"
+LBL_BUTTON_PLAY_ORIGINAL = "Play original"
+LBL_BUTTON_PLAY_RECONSTRUCTION = "Play reconstruction"
+LBL_BUTTON_EXPORT_WAV = "Export WAV"
+LBL_BUTTON_REFRESH_LIST = "Refresh list"
 
 # Checkbox labels
-CHECKBOX_NORMALIZE_AUDIO = "Normalize audio"
-CHECKBOX_QUANTIZE_AUDIO = "Quantize audio"
-CHECKBOX_TRIANGLE = "Triangle"
-CHECKBOX_PULSE_1 = "Pulse 1"
-CHECKBOX_PULSE_2 = "Pulse 2"
-CHECKBOX_NOISE = "Noise"
+LBL_CHECKBOX_NORMALIZE_AUDIO = "Normalize audio"
+LBL_CHECKBOX_QUANTIZE_AUDIO = "Quantize audio"
+LBL_CHECKBOX_TRIANGLE = "Triangle"
+LBL_CHECKBOX_PULSE_1 = "Pulse 1"
+LBL_CHECKBOX_PULSE_2 = "Pulse 2"
+LBL_CHECKBOX_NOISE = "Noise"
 
 # Input field labels
-INPUT_MAX_WORKERS = "Max workers"
-INPUT_SAMPLE_RATE = "Sample rate"
-INPUT_CHANGE_RATE = "Change rate"
+LBL_INPUT_MAX_WORKERS = "Max workers"
+LBL_INPUT_SAMPLE_RATE = "Sample rate"
+LBL_INPUT_CHANGE_RATE = "Change rate"
 
 # Dialog titles
-DIALOG_LOAD_CONFIG = "Load configuration"
-DIALOG_LOAD_AUDIO = "Load audio"
-DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
-DIALOG_SELECT_LIBRARY_DIR = "Select library directory"
-DIALOG_EXPORT_WAV = "Export WAV"
+TITLE_DIALOG_LOAD_CONFIG = "Load configuration"
+TITLE_DIALOG_LOAD_AUDIO = "Load audio"
+TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
+TITLE_DIALOG_SELECT_LIBRARY_DIR = "Select library directory"
+TITLE_DIALOG_EXPORT_WAV = "Export WAV"
 
 # Plot labels
-PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
-PLOT_TIME_SAMPLES = "Time (samples)"
-PLOT_AMPLITUDE = "Amplitude"
-PLOT_ORIGINAL = "Original"
-PLOT_RECONSTRUCTION = "Reconstruction"
+LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
+LBL_PLOT_TIME_SAMPLES = "Time (samples)"
+LBL_PLOT_AMPLITUDE = "Amplitude"
+LBL_PLOT_ORIGINAL = "Original"
+LBL_PLOT_RECONSTRUCTION = "Reconstruction"
 
 # Status messages
 MSG_CONFIG_PREVIEW_DEFAULT = "Load or modify configuration to see preview"
-MSG_NO_FILE_SELECTED = "No file selected"
-MSG_NO_DIR_SELECTED = "No directory selected"
-MSG_SELECT_RECONSTRUCTION = "Select a reconstruction to view details"
-MSG_CONFIG_APPLIED = "Configuration applied successfully"
-MSG_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
-MSG_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first"
+MSG_GLOBAL_NO_FILE_SELECTED = "No file selected"
+MSG_GLOBAL_NO_DIR_SELECTED = "No directory selected"
+MSG_RECONSTRUCTION_SELECT_TO_VIEW = "Select a reconstruction to view details"
+MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully"
+TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
+MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first"
 MSG_LIBRARY_EXISTS = "Library exists"
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist"
-MSG_GENERATING_LIBRARY = "Generating library..."
-MSG_LIBRARY_GENERATED = "Library generated successfully"
+MSG_LIBRARY_GENERATING = "Generating library..."
+MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully"
 MSG_LIBRARY_NOT_LOADED = "Library is not loaded"
 MSG_LIBRARY_LOADING = "Library is loading..."
-MSG_CONFIGURATION_NOT_READY = "Configuration not ready"
-MSG_CONFIGURATION_PREVIEW = "Configuration preview"
-MSG_LIBRARIES = "Libraries"
-MSG_AVAILABLE_LIBRARIES = "Libraries"
-MSG_LIBRARY_NOT_EXISTS = "Library {} does not exist."
-MSG_NO_VALID_INSTRUCTIONS = "No valid instructions found"
-MSG_WINDOW_NOT_AVAILABLE = "Window not available"
-MSG_ERROR_GENERATING_LIBRARY = "generating library"
+MSG_CONFIG_NOT_READY = "Configuration not ready"
+MSG_CONFIG_PREVIEW = "Configuration preview"
+LBL_LIBRARY_LIBRARIES = "Libraries"
+LBL_LIBRARY_AVAILABLE_LIBRARIES = "Libraries"
+TPL_LIBRARY_NOT_EXISTS = "Library {} does not exist."
+MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found"
+MSG_GLOBAL_WINDOW_NOT_AVAILABLE = "Window not available"
+MSG_LIBRARY_ERROR_GENERATING = "generating library"
 
 # File extensions
-EXT_JSON = "*.json"
-EXT_WAV = "*.wav"
+EXT_DIALOG_JSON = "*.json"
+EXT_DIALOG_WAV = "*.wav"
 
 # Default display values
-DEFAULT_LIBRARY_DIR_DISPLAY = "Default: {}"
-CUSTOM_LIBRARY_DIR_DISPLAY = "Custom: {}"
-ERROR_PREFIX = "Error: {}"
-LOADED_PREFIX = "Loaded: {}"
+TPL_LIBRARY_DEFAULT_DIR_DISPLAY = "Default: {}"
+TPL_LIBRARY_CUSTOM_DIR_DISPLAY = "Custom: {}"
+PFX_GLOBAL_ERROR = "Error: {}"
+PFX_GLOBAL_LOADED = "Loaded: {}"
 
 # Template strings
-TEMPLATE_LIBRARY_EXISTS = "Library {} exists."
-TEMPLATE_LIBRARY_TAG = "lib_{}"
-TEMPLATE_GENERATOR_TAG = "generator_{}_{}"
-TEMPLATE_GROUP_TAG = "{}_{}_{}"
-TEMPLATE_GROUP_LABEL = "{} ({} item(s))"
+TPL_LIBRARY_EXISTS = "Library {} exists."
+TPL_LIBRARY_TAG = "lib_{}"
+TPL_GENERATOR_TAG = "generator_{}_{}"
+TPL_GROUP_TAG = "{}_{}_{}"
+TPL_GROUP_LABEL = "{} ({} item(s))"
 
 # GUI element tags
 TAG_LIBRARY_PANEL = "library_panel"
 TAG_LIBRARY_STATUS = "library_status"
 TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
-TAG_GENERATE_LIBRARY_BUTTON = "generate_library_button"
+TAG_LIBRARY_BUTTON_GENERATE = "generate_library_button"
 TAG_LIBRARY_PROGRESS = "library_progress"
 TAG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
 TAG_CONFIG_PREVIEW = "config_preview"
-TAG_NORMALIZE = "normalize"
-TAG_QUANTIZE = "quantize"
-TAG_MAX_WORKERS = "max_workers"
-TAG_SAMPLE_RATE = "sample_rate"
-TAG_CHANGE_RATE = "change_rate"
-TAG_LIBRARIES_TREE = "libraries_tree"
+TAG_CONFIG_NORMALIZE = "normalize"
+TAG_CONFIG_QUANTIZE = "quantize"
+TAG_CONFIG_MAX_WORKERS = "max_workers"
+TAG_CONFIG_SAMPLE_RATE = "sample_rate"
+TAG_CONFIG_CHANGE_RATE = "change_rate"
+TAG_LIBRARY_TREE = "libraries_tree"
 
 # Indices and offsets
-INDEX_FIRST_SELECTION = 0
-DEFAULT_SLOT_VALUE = 1
-DEFAULT_FLOAT_VALUE = 0.0
-PROGRESS_COMPLETE_VALUE = 1.0
+IDX_DIALOG_FIRST_SELECTION = 0
+VAL_GLOBAL_DEFAULT_SLOT = 1
+VAL_GLOBAL_DEFAULT_FLOAT = 0.0
+VAL_GLOBAL_PROGRESS_COMPLETE = 1.0
 
 # Dictionary keys
-KEY_SELECTIONS = "selections"
+KEY_DIALOG_SELECTIONS = "selections"
 
 # Main GUI tags
-TAG_MAIN_WINDOW = "main_window"
-TAG_LEFT_PANELS_GROUP = "left_panels_group"
+TAG_WINDOW_MAIN = "main_window"
+TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
 TAG_CONFIG_PANEL_GROUP = "config_panel_group"
 TAG_LIBRARY_PANEL_GROUP = "library_panel_group"
 TAG_CONFIG_TAB = "config_tab"
-TAG_SELECTED_AUDIO_FILE = "selected_audio_file"
+TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE = "selected_audio_file"
 TAG_RECONSTRUCTION_PROGRESS = "reconstruction_progress"
-TAG_GEN_TRIANGLE = "gen_triangle"
-TAG_GEN_PULSE1 = "gen_pulse1"
-TAG_GEN_PULSE2 = "gen_pulse2"
-TAG_GEN_NOISE = "gen_noise"
 TAG_WAVEFORM_PLOT = "waveform_plot"
-TAG_X_AXIS = "x_axis"
-TAG_Y_AXIS = "y_axis"
+TAG_PLOT_X_AXIS = "x_axis"
+TAG_PLOT_Y_AXIS = "y_axis"
 TAG_RECONSTRUCTION_INFO = "reconstruction_info"
-TAG_RECONSTRUCTION_LIST = "reconstruction_list"
-TAG_RECONSTRUCTION_DETAILS = "reconstruction_details"
-TAG_FAMITRACKER_EXPORT = "famitracker_export"
+TAG_BROWSER_RECONSTRUCTION_LIST = "reconstruction_list"
+TAG_BROWSER_RECONSTRUCTION_DETAILS = "reconstruction_details"
+TAG_BROWSER_FAMITRACKER_EXPORT = "famitracker_export"
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"
-MSG_SELECT_AUDIO_FIRST = "Please select an audio file first"
+MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST = "Please select an audio file first"
 MSG_CONFIG_ERROR = "Configuration error - please check settings"
 
 # Template strings
-TEMPLATE_RECONSTRUCTION_GEN_TAG = "gen_{}"
+TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
 
 # File dialog settings
-FILE_COUNT_SINGLE = 1
+VAL_DIALOG_FILE_COUNT_SINGLE = 1
 
 # Plot settings
-PLOT_WIDTH_FULL = -1
-PLOT_CHILDREN_SLOT = 2
+VAL_PLOT_WIDTH_FULL = -1
+VAL_PLOT_CHILDREN_SLOT = 2
 
 # Waveform display settings
-WAVEFORM_DEFAULT_HEIGHT = 300
-WAVEFORM_SAMPLE_COLOR = (100, 200, 255, 255)
-WAVEFORM_FEATURE_COLOR = (255, 150, 100, 255)
-WAVEFORM_RECONSTRUCTION_COLOR = (100, 255, 100, 255)
-WAVEFORM_FEATURE_SCALE = 0.5
-WAVEFORM_SAMPLE_THICKNESS = 1.5
-WAVEFORM_RECONSTRUCTION_THICKNESS = 1.2
-WAVEFORM_ZOOM_FACTOR = 1.1
-WAVEFORM_DEFAULT_Y_MIN = -1.0
-WAVEFORM_DEFAULT_Y_MAX = 1.0
-WAVEFORM_AXIS_SLOT = 1
+DIM_WAVEFORM_DEFAULT_HEIGHT = 300
+CLR_WAVEFORM_LAYER_SAMPLE = (100, 200, 255, 255)
+CLR_WAVEFORM_LAYER_FEATURE = (255, 150, 100, 255)
+CLR_WAVEFORM_LAYER_RECONSTRUCTION = (100, 255, 100, 255)
+VAL_WAVEFORM_FEATURE_SCALE = 0.5
+VAL_WAVEFORM_SAMPLE_THICKNESS = 1.5
+VAL_WAVEFORM_RECONSTRUCTION_THICKNESS = 1.2
+VAL_WAVEFORM_ZOOM_FACTOR = 1.1
+VAL_WAVEFORM_DEFAULT_Y_MIN = -1.0
+VAL_WAVEFORM_DEFAULT_Y_MAX = 1.0
+VAL_WAVEFORM_AXIS_SLOT = 1
 
 # Waveform labels and messages
-WAVEFORM_TIME_LABEL = "Time (samples)"
-WAVEFORM_AMPLITUDE_LABEL = "Amplitude"
-WAVEFORM_NO_FRAGMENT_MSG = "No fragment loaded. Select an instruction from the library tree to display its waveform."
-WAVEFORM_HOVER_PREFIX = "Hover: "
-WAVEFORM_SAMPLE_LAYER_NAME = "Sample"
-WAVEFORM_RECONSTRUCTION_LAYER_NAME = "Reconstruction"
-WAVEFORM_POSITION_FORMAT = "Position: ({:.2f}, {:.4f})"
-WAVEFORM_VALUE_FORMAT = "{}[{}] = {:.4f}"
-WAVEFORM_FREQUENCY_FORMAT = "{:.2f} Hz"
+LBL_WAVEFORM_TIME_LABEL = "Time (samples)"
+LBL_WAVEFORM_AMPLITUDE_LABEL = "Amplitude"
+MSG_WAVEFORM_NO_FRAGMENT = "No fragment loaded. Select an instruction from the library tree to display its waveform."
+PFX_WAVEFORM_HOVER = "Hover: "
+LBL_WAVEFORM_SAMPLE_LAYER_NAME = "Sample"
+LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME = "Reconstruction"
+FMT_WAVEFORM_POSITION = "Position: ({:.2f}, {:.4f})"
+FMT_WAVEFORM_VALUE = "{}[{}] = {:.4f}"
+FMT_WAVEFORM_FREQUENCY = "{:.2f} Hz"
 
 # Button labels for waveform
 BUTTON_RESET_X = "Reset X"
@@ -223,7 +219,7 @@ BUTTON_RESET_ALL = "Reset All"
 BUTTON_PLAY_AUDIO = "Play Audio"
 
 # Waveform info format strings
-WAVEFORM_FEATURE_NAME_FORMAT = "Feature (freq: {:.1f}Hz)"
+FMT_WAVEFORM_FEATURE_NAME = "Feature (freq: {:.1f}Hz)"
 
 # Numeric constants for waveform
 WAVEFORM_FREQUENCY_DECIMALS = 2
@@ -231,11 +227,11 @@ WAVEFORM_VALUE_DECIMALS = 4
 WAVEFORM_POSITION_DECIMALS = 2
 
 # Boolean values
-CHECKBOX_DEFAULT_ENABLED = True
-PRIMARY_WINDOW_ENABLED = True
+FLAG_CHECKBOX_DEFAULT_ENABLED = True
+FLAG_WINDOW_PRIMARY_ENABLED = True
 
 # Empty label
-LABEL_EMPTY = ""
+LBL_GLOBAL_EMPTY = ""
 
 # Audio player constants
 PLAYER_PANEL_HEIGHT = 60
@@ -250,34 +246,32 @@ DIALOG_PLAYBACK_ERROR_TITLE = "Playback Error"
 # Instruction panel constants
 MSG_INSTRUCTION_DETAILS = "Instruction Details"
 MSG_NO_INSTRUCTION_SELECTED = "No instruction selected"
-LABEL_INSTRUCTION_WAVEFORM = "Instruction Waveform"
+LBL_INSTRUCTION_WAVEFORM = "Instruction Waveform"
 
 # Waveform layer colors
-WAVEFORM_DEFAULT_COLOR = (255, 255, 255, 255)
-WAVEFORM_LAYER_SAMPLE_COLOR = (100, 200, 255, 255)
-WAVEFORM_LAYER_FEATURE_COLOR = (255, 150, 100, 255)
-WAVEFORM_LAYER_RECONSTRUCTION_COLOR = (100, 255, 100, 255)
+CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
+# layer colors also defined above (keep for compatibility)
 
 # Waveform component suffixes
-WAVEFORM_PLOT_SUFFIX = "_plot"
-WAVEFORM_X_AXIS_SUFFIX = "_x_axis"
-WAVEFORM_Y_AXIS_SUFFIX = "_y_axis"
-WAVEFORM_LEGEND_SUFFIX = "_legend"
-WAVEFORM_CONTROLS_SUFFIX = "_controls"
-WAVEFORM_INFO_SUFFIX = "_info"
-WAVEFORM_LAYERS_SUFFIX = "_layers"
+SUF_WAVEFORM_PLOT = "_plot"
+SUF_WAVEFORM_X_AXIS = "_x_axis"
+SUF_WAVEFORM_Y_AXIS = "_y_axis"
+SUF_WAVEFORM_LEGEND = "_legend"
+SUF_WAVEFORM_CONTROLS = "_controls"
+SUF_WAVEFORM_INFO = "_info"
+SUF_WAVEFORM_LAYERS = "_layers"
 
 # Waveform default dimensions
-WAVEFORM_DEFAULT_WIDTH = -1
-WAVEFORM_DEFAULT_DISPLAY_HEIGHT = 300
+DIM_WAVEFORM_DEFAULT_WIDTH = -1
+DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT = 300
 
 # Boolean text values
 BOOL_YES_TEXT = "Yes"
 BOOL_NO_TEXT = "No"
 
 # Default axis range
-WAVEFORM_DEFAULT_X_MIN = 0.0
-WAVEFORM_DEFAULT_X_MAX = 1.0
+VAL_WAVEFORM_DEFAULT_X_MIN = 0.0
+VAL_WAVEFORM_DEFAULT_X_MAX = 1.0
 
 # Format precision
 WAVEFORM_FLOAT_PRECISION = 4

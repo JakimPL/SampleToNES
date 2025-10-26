@@ -8,36 +8,36 @@ from browser.constants import (
     BUTTON_RESET_ALL,
     BUTTON_RESET_X,
     BUTTON_RESET_Y,
-    WAVEFORM_AMPLITUDE_LABEL,
-    WAVEFORM_AXIS_SLOT,
-    WAVEFORM_CONTROLS_SUFFIX,
-    WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
-    WAVEFORM_DEFAULT_WIDTH,
-    WAVEFORM_DEFAULT_X_MAX,
-    WAVEFORM_DEFAULT_X_MIN,
-    WAVEFORM_DEFAULT_Y_MAX,
-    WAVEFORM_DEFAULT_Y_MIN,
-    WAVEFORM_FEATURE_NAME_FORMAT,
-    WAVEFORM_FEATURE_SCALE,
-    WAVEFORM_HOVER_PREFIX,
-    WAVEFORM_INFO_SUFFIX,
-    WAVEFORM_LAYER_FEATURE_COLOR,
-    WAVEFORM_LAYER_RECONSTRUCTION_COLOR,
-    WAVEFORM_LAYER_SAMPLE_COLOR,
-    WAVEFORM_LAYERS_SUFFIX,
-    WAVEFORM_LEGEND_SUFFIX,
-    WAVEFORM_NO_FRAGMENT_MSG,
-    WAVEFORM_PLOT_SUFFIX,
-    WAVEFORM_POSITION_FORMAT,
-    WAVEFORM_RECONSTRUCTION_LAYER_NAME,
-    WAVEFORM_RECONSTRUCTION_THICKNESS,
-    WAVEFORM_SAMPLE_LAYER_NAME,
-    WAVEFORM_SAMPLE_THICKNESS,
-    WAVEFORM_TIME_LABEL,
-    WAVEFORM_VALUE_FORMAT,
-    WAVEFORM_X_AXIS_SUFFIX,
-    WAVEFORM_Y_AXIS_SUFFIX,
-    WAVEFORM_ZOOM_FACTOR,
+    CLR_WAVEFORM_LAYER_FEATURE,
+    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
+    CLR_WAVEFORM_LAYER_SAMPLE,
+    DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
+    DIM_WAVEFORM_DEFAULT_WIDTH,
+    FMT_WAVEFORM_FEATURE_NAME,
+    FMT_WAVEFORM_POSITION,
+    FMT_WAVEFORM_VALUE,
+    LBL_WAVEFORM_AMPLITUDE_LABEL,
+    LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME,
+    LBL_WAVEFORM_SAMPLE_LAYER_NAME,
+    LBL_WAVEFORM_TIME_LABEL,
+    MSG_WAVEFORM_NO_FRAGMENT,
+    PFX_WAVEFORM_HOVER,
+    SUF_WAVEFORM_CONTROLS,
+    SUF_WAVEFORM_INFO,
+    SUF_WAVEFORM_LAYERS,
+    SUF_WAVEFORM_LEGEND,
+    SUF_WAVEFORM_PLOT,
+    SUF_WAVEFORM_X_AXIS,
+    SUF_WAVEFORM_Y_AXIS,
+    VAL_WAVEFORM_AXIS_SLOT,
+    VAL_WAVEFORM_DEFAULT_X_MAX,
+    VAL_WAVEFORM_DEFAULT_X_MIN,
+    VAL_WAVEFORM_DEFAULT_Y_MAX,
+    VAL_WAVEFORM_DEFAULT_Y_MIN,
+    VAL_WAVEFORM_FEATURE_SCALE,
+    VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+    VAL_WAVEFORM_SAMPLE_THICKNESS,
+    VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from browser.waveform.layer import WaveformLayer
 from library.data import LibraryFragment
@@ -47,8 +47,8 @@ class Waveform:
     def __init__(
         self,
         tag: str,
-        width: int = WAVEFORM_DEFAULT_WIDTH,
-        height: int = WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
+        width: int = DIM_WAVEFORM_DEFAULT_WIDTH,
+        height: int = DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
         parent: Optional[str] = None,
         label: str = "Waveform Display",
     ):
@@ -58,25 +58,25 @@ class Waveform:
         self.parent = parent
         self.label = label
 
-        self.plot_tag = f"{tag}{WAVEFORM_PLOT_SUFFIX}"
-        self.x_axis_tag = f"{tag}{WAVEFORM_X_AXIS_SUFFIX}"
-        self.y_axis_tag = f"{tag}{WAVEFORM_Y_AXIS_SUFFIX}"
-        self.legend_tag = f"{tag}{WAVEFORM_LEGEND_SUFFIX}"
-        self.controls_tag = f"{tag}{WAVEFORM_CONTROLS_SUFFIX}"
-        self.info_tag = f"{tag}{WAVEFORM_INFO_SUFFIX}"
+        self.plot_tag = f"{tag}{SUF_WAVEFORM_PLOT}"
+        self.x_axis_tag = f"{tag}{SUF_WAVEFORM_X_AXIS}"
+        self.y_axis_tag = f"{tag}{SUF_WAVEFORM_Y_AXIS}"
+        self.legend_tag = f"{tag}{SUF_WAVEFORM_LEGEND}"
+        self.controls_tag = f"{tag}{SUF_WAVEFORM_CONTROLS}"
+        self.info_tag = f"{tag}{SUF_WAVEFORM_INFO}"
 
         self.layers: Dict[str, WaveformLayer] = {}
         self.current_library_fragment: Optional[LibraryFragment] = None
 
-        self.x_min: float = WAVEFORM_DEFAULT_X_MIN
-        self.x_max: float = WAVEFORM_DEFAULT_X_MAX
-        self.y_min: float = WAVEFORM_DEFAULT_Y_MIN
-        self.y_max: float = WAVEFORM_DEFAULT_Y_MAX
-        self.default_y_range = (WAVEFORM_DEFAULT_Y_MIN, WAVEFORM_DEFAULT_Y_MAX)
+        self.x_min: float = VAL_WAVEFORM_DEFAULT_X_MIN
+        self.x_max: float = VAL_WAVEFORM_DEFAULT_X_MAX
+        self.y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN
+        self.y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX
+        self.default_y_range = (VAL_WAVEFORM_DEFAULT_Y_MIN, VAL_WAVEFORM_DEFAULT_Y_MAX)
 
         self.is_dragging = False
         self.last_mouse_pos: Optional[List[float]] = None
-        self.zoom_factor = WAVEFORM_ZOOM_FACTOR
+        self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
 
         self._create_display()
 
@@ -94,10 +94,10 @@ class Waveform:
             dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
             dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
-        with dpg.group(tag=f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}", horizontal=True):
+        with dpg.group(tag=f"{self.controls_tag}{SUF_WAVEFORM_LAYERS}", horizontal=True):
             pass
 
-        dpg.add_text(WAVEFORM_NO_FRAGMENT_MSG, tag=self.info_tag)
+        dpg.add_text(MSG_WAVEFORM_NO_FRAGMENT, tag=self.info_tag)
 
         with dpg.plot(
             label=self.label,
@@ -108,8 +108,8 @@ class Waveform:
             anti_aliased=True,
         ):
             dpg.add_plot_legend(tag=self.legend_tag)
-            dpg.add_plot_axis(dpg.mvXAxis, label=WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
+            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
+            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
 
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
@@ -154,42 +154,42 @@ class Waveform:
         self.clear_layers()
 
         self.add_layer(
-            WAVEFORM_SAMPLE_LAYER_NAME,
+            LBL_WAVEFORM_SAMPLE_LAYER_NAME,
             fragment.sample,
-            color=WAVEFORM_LAYER_SAMPLE_COLOR,
-            line_thickness=WAVEFORM_SAMPLE_THICKNESS,
+            color=CLR_WAVEFORM_LAYER_SAMPLE,
+            line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
         )
 
         if len(fragment.feature) > 0:
-            feature_scaled = fragment.feature * WAVEFORM_FEATURE_SCALE
+            feature_scaled = fragment.feature * VAL_WAVEFORM_FEATURE_SCALE
             self.add_layer(
-                WAVEFORM_FEATURE_NAME_FORMAT.format(fragment.frequency),
+                FMT_WAVEFORM_FEATURE_NAME.format(fragment.frequency),
                 feature_scaled,
-                color=WAVEFORM_LAYER_FEATURE_COLOR,
+                color=CLR_WAVEFORM_LAYER_FEATURE,
                 visible=False,
             )
 
         self._update_info_display()
         self._update_layer_controls()
 
-        self.x_min = WAVEFORM_DEFAULT_X_MIN
+        self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
         self._update_axes_limits()
 
     def add_reconstruction_comparison(self, reconstruction: np.ndarray) -> None:
         if len(reconstruction) > 0:
             self.add_layer(
-                WAVEFORM_RECONSTRUCTION_LAYER_NAME,
+                LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME,
                 reconstruction,
-                color=WAVEFORM_LAYER_RECONSTRUCTION_COLOR,
-                line_thickness=WAVEFORM_RECONSTRUCTION_THICKNESS,
+                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
+                line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
             )
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        children = dpg.get_item_children(self.y_axis_tag, slot=WAVEFORM_AXIS_SLOT) or []
+        children = dpg.get_item_children(self.y_axis_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
         for child in children:
             dpg.delete_item(child)
 
@@ -213,9 +213,9 @@ class Waveform:
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
     def _update_layer_controls(self) -> None:
-        layers_control_tag = f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}"
+        layers_control_tag = f"{self.controls_tag}{SUF_WAVEFORM_LAYERS}"
 
-        children = dpg.get_item_children(layers_control_tag, slot=WAVEFORM_AXIS_SLOT) or []
+        children = dpg.get_item_children(layers_control_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
         for child in children:
             dpg.delete_item(child)
 
@@ -234,7 +234,7 @@ class Waveform:
             return
 
         if not self.current_library_fragment:
-            dpg.set_value(self.info_tag, WAVEFORM_NO_FRAGMENT_MSG)
+            dpg.set_value(self.info_tag, MSG_WAVEFORM_NO_FRAGMENT)
             return
 
         dpg.set_value(self.info_tag, "")
@@ -242,11 +242,11 @@ class Waveform:
     def _reset_x_axis(self) -> None:
         if self.layers:
             max_length = max(len(layer.data) for layer in self.layers.values())
-            self.x_min = WAVEFORM_DEFAULT_X_MIN
+            self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
             self.x_max = float(max_length)
         else:
-            self.x_min = WAVEFORM_DEFAULT_X_MIN
-            self.x_max = WAVEFORM_DEFAULT_X_MAX
+            self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
+            self.x_max = VAL_WAVEFORM_DEFAULT_X_MAX
         self._update_axes_limits()
 
     def _reset_y_axis(self) -> None:
@@ -312,13 +312,13 @@ class Waveform:
         if dpg.is_item_hovered(self.plot_tag):
             mouse_pos = dpg.get_plot_mouse_pos()
             if mouse_pos[0] and mouse_pos[1]:
-                hover_info = WAVEFORM_POSITION_FORMAT.format(mouse_pos[0], mouse_pos[1])
+                hover_info = FMT_WAVEFORM_POSITION.format(mouse_pos[0], mouse_pos[1])
 
                 closest_info = self._get_closest_point_info(mouse_pos[0], mouse_pos[1])
                 if closest_info:
                     hover_info += f" | {closest_info}"
 
-                dpg.set_value(self.info_tag, f"{WAVEFORM_HOVER_PREFIX}{hover_info}")
+                dpg.set_value(self.info_tag, f"{PFX_WAVEFORM_HOVER}{hover_info}")
 
     def _get_closest_point_info(self, x: float, y: float) -> Optional[str]:
         closest_layer = None
@@ -339,7 +339,7 @@ class Waveform:
                     closest_index = sample_x
                     closest_value = sample_value
 
-        return WAVEFORM_VALUE_FORMAT.format(closest_layer, closest_index, closest_value) if closest_layer else None
+        return FMT_WAVEFORM_VALUE.format(closest_layer, closest_index, closest_value) if closest_layer else None
 
     def set_view_bounds(self, x_min: float, x_max: float, y_min: float, y_max: float) -> None:
         self.x_min = x_min

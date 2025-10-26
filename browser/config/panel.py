@@ -26,36 +26,39 @@ class ConfigPanelGUI:
         self.on_library_directory_changed = on_library_directory_changed
 
     def create_panel(self, parent_tag: str) -> None:
-        with dpg.child_window(width=CONFIG_PANEL_WIDTH, height=CONFIG_PANEL_HEIGHT, parent=parent_tag):
-            dpg.add_text(SECTION_GENERAL_SETTINGS)
+        with dpg.child_window(width=DIM_PANEL_CONFIG_WIDTH, height=DIM_PANEL_CONFIG_HEIGHT, parent=parent_tag):
+            dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
             dpg.add_separator()
 
-            dpg.add_checkbox(label=CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_NORMALIZE)
-            dpg.add_checkbox(label=CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_QUANTIZE)
+            dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
+            dpg.add_checkbox(label=LBL_CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_CONFIG_QUANTIZE)
             dpg.add_input_int(
-                label=INPUT_MAX_WORKERS, default_value=MAX_WORKERS, tag=TAG_MAX_WORKERS, min_value=MIN_WORKERS
+                label=LBL_INPUT_MAX_WORKERS,
+                default_value=MAX_WORKERS,
+                tag=TAG_CONFIG_MAX_WORKERS,
+                min_value=RNG_CONFIG_MIN_WORKERS,
             )
 
             dpg.add_separator()
-            dpg.add_text(SECTION_LIBRARY_DIRECTORY)
-            dpg.add_button(label=BUTTON_SELECT_LIBRARY_DIR, callback=self._select_library_directory_dialog)
-            dpg.add_text(DEFAULT_LIBRARY_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
+            dpg.add_text(LBL_SECTION_LIBRARY_DIRECTORY)
+            dpg.add_button(label=LBL_BUTTON_SELECT_LIBRARY_DIR, callback=self._select_library_directory_dialog)
+            dpg.add_text(TPL_LIBRARY_DEFAULT_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
 
             dpg.add_separator()
-            dpg.add_text(SECTION_LIBRARY_SETTINGS)
+            dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
             dpg.add_separator()
 
             dpg.add_input_int(
-                label=INPUT_SAMPLE_RATE,
+                label=LBL_INPUT_SAMPLE_RATE,
                 default_value=SAMPLE_RATE,
-                tag=TAG_SAMPLE_RATE,
+                tag=TAG_CONFIG_SAMPLE_RATE,
                 min_value=MIN_SAMPLE_RATE,
                 max_value=MAX_SAMPLE_RATE,
             )
             dpg.add_input_int(
-                label=INPUT_CHANGE_RATE,
+                label=LBL_INPUT_CHANGE_RATE,
                 default_value=CHANGE_RATE,
-                tag=TAG_CHANGE_RATE,
+                tag=TAG_CONFIG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
             )
@@ -64,7 +67,7 @@ class ConfigPanelGUI:
 
     def create_preview_panel(self, parent_tag: str) -> None:
         with dpg.child_window(parent=parent_tag):
-            dpg.add_text(MSG_CONFIGURATION_PREVIEW)
+            dpg.add_text(MSG_CONFIG_PREVIEW)
             dpg.add_separator()
             dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag=TAG_CONFIG_PREVIEW)
 
@@ -84,20 +87,20 @@ class ConfigPanelGUI:
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=DIALOG_SELECT_LIBRARY_DIR,
-            width=FILE_DIALOG_WIDTH,
-            height=FILE_DIALOG_HEIGHT,
+            label=TITLE_DIALOG_SELECT_LIBRARY_DIR,
+            width=DIM_DIALOG_FILE_WIDTH,
+            height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._select_library_directory,
             directory_selector=True,
         ):
             pass
 
     def _select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
-        directory_path = list(app_data[KEY_SELECTIONS].values())[INDEX_FIRST_SELECTION]
+        directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
         self.config_manager.set_library_directory(directory_path)
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, CUSTOM_LIBRARY_DIR_DISPLAY.format(Path(directory_path).name))
+        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, TPL_LIBRARY_CUSTOM_DIR_DISPLAY.format(Path(directory_path).name))
 
         if self.on_library_directory_changed:
             self.on_library_directory_changed()

@@ -3,9 +3,9 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from browser.constants import (
-    LABEL_INSTRUCTION_WAVEFORM,
-    PLOT_WIDTH_FULL,
-    WAVEFORM_DEFAULT_HEIGHT,
+    DIM_WAVEFORM_DEFAULT_HEIGHT,
+    LBL_INSTRUCTION_WAVEFORM,
+    VAL_PLOT_WIDTH_FULL,
 )
 from browser.instruction.details import InstructionDetailsPanel
 from browser.player.data import AudioData
@@ -34,10 +34,10 @@ class InstructionPanelGUI:
         waveform_tag = f"{self.parent_tag}_waveform"
         self.waveform_display = Waveform(
             tag=waveform_tag,
-            width=PLOT_WIDTH_FULL,
-            height=WAVEFORM_DEFAULT_HEIGHT,
+            width=VAL_PLOT_WIDTH_FULL,
+            height=DIM_WAVEFORM_DEFAULT_HEIGHT,
             parent=self.parent_tag,
-            label=LABEL_INSTRUCTION_WAVEFORM,
+            label=LBL_INSTRUCTION_WAVEFORM,
         )
 
     def _create_instruction_details(self) -> None:

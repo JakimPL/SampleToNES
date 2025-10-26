@@ -1,6 +1,13 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from browser.constants import (
+    TAG_CONFIG_CHANGE_RATE,
+    TAG_CONFIG_MAX_WORKERS,
+    TAG_CONFIG_NORMALIZE,
+    TAG_CONFIG_QUANTIZE,
+    TAG_CONFIG_SAMPLE_RATE,
+)
 from configs.config import Config
 from configs.general import GeneralConfig
 from configs.library import LibraryConfig
@@ -23,11 +30,11 @@ class ConfigManager:
         self.library_directory: str = LIBRARY_DIRECTORY
         self.config_change_callbacks: List[Callable] = []
         self.config_params = {
-            "normalize": {"section": "general", "default": NORMALIZE},
-            "quantize": {"section": "general", "default": QUANTIZE},
-            "max_workers": {"section": "general", "default": MAX_WORKERS},
-            "sample_rate": {"section": "library", "default": SAMPLE_RATE},
-            "change_rate": {"section": "library", "default": CHANGE_RATE},
+            TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
+            TAG_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
+            TAG_CONFIG_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
+            TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": SAMPLE_RATE},
+            TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": CHANGE_RATE},
         }
 
     def update_config_from_gui_values(self, gui_values: Dict[str, Any]) -> None:
@@ -104,7 +111,7 @@ class ConfigManager:
         self.config = new_config
         self.window = Window(self.config.library)
 
-        return {"sample_rate": sample_rate, "change_rate": change_rate}
+        return {TAG_CONFIG_SAMPLE_RATE: sample_rate, TAG_CONFIG_CHANGE_RATE: change_rate}
 
     def load_config_from_data(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
         self.config = Config(**config_data)
