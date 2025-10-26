@@ -5,9 +5,6 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
-    BUTTON_RESET_ALL,
-    BUTTON_RESET_X,
-    BUTTON_RESET_Y,
     CLR_WAVEFORM_LAYER_FEATURE,
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
@@ -17,6 +14,9 @@ from browser.constants import (
     FMT_WAVEFORM_POSITION,
     FMT_WAVEFORM_VALUE,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
+    LBL_WAVEFORM_BUTTON_RESET_ALL,
+    LBL_WAVEFORM_BUTTON_RESET_X,
+    LBL_WAVEFORM_BUTTON_RESET_Y,
     LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME,
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
@@ -90,9 +90,9 @@ class Waveform:
 
     def _create_waveform_content(self) -> None:
         with dpg.group(tag=self.controls_tag, horizontal=True):
-            dpg.add_button(label=BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
-            dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
-            dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
+            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
+            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
+            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
         with dpg.group(tag=f"{self.controls_tag}{SUF_WAVEFORM_LAYERS}", horizontal=True):
             pass

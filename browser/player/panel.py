@@ -3,23 +3,23 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from browser.constants import (
-    BUTTON_OK,
-    BUTTON_PAUSE,
-    BUTTON_PLAY,
-    BUTTON_STOP,
-    MSG_AUDIO_PLAYBACK_ERROR,
-    MSG_NO_AUDIO_LOADED,
-    PLAYER_CONTROLS_GROUP_SUFFIX,
-    PLAYER_ERROR_POPUP_SUFFIX,
-    PLAYER_NO_AUDIO_POPUP_SUFFIX,
-    PLAYER_PANEL_DEFAULT_WIDTH,
-    PLAYER_PANEL_HEIGHT,
-    PLAYER_PAUSE_SUFFIX,
-    PLAYER_PLAY_SUFFIX,
-    PLAYER_POSITION_PREFIX,
-    PLAYER_POSITION_SUFFIX,
-    PLAYER_SAMPLES_SUFFIX,
-    PLAYER_STOP_SUFFIX,
+    DIM_PLAYER_PANEL_DEFAULT_WIDTH,
+    DIM_PLAYER_PANEL_HEIGHT,
+    LBL_BUTTON_OK,
+    LBL_PLAYER_BUTTON_PAUSE,
+    LBL_PLAYER_BUTTON_PLAY,
+    LBL_PLAYER_BUTTON_STOP,
+    MSG_PLAYER_AUDIO_PLAYBACK_ERROR,
+    MSG_PLAYER_NO_AUDIO_LOADED,
+    PFX_PLAYER_POSITION,
+    SUF_PLAYER_CONTROLS_GROUP,
+    SUF_PLAYER_ERROR_POPUP,
+    SUF_PLAYER_NO_AUDIO_POPUP,
+    SUF_PLAYER_PAUSE,
+    SUF_PLAYER_PLAY,
+    SUF_PLAYER_POSITION,
+    SUF_PLAYER_SAMPLES,
+    SUF_PLAYER_STOP,
 )
 from browser.player.data import AudioData
 from constants import SAMPLE_RATE
@@ -34,10 +34,10 @@ class AudioPlayerPanel:
         self.parent = parent
         self.on_position_changed = on_position_changed
 
-        self.play_button_tag = f"{tag}{PLAYER_PLAY_SUFFIX}"
-        self.pause_button_tag = f"{tag}{PLAYER_PAUSE_SUFFIX}"
-        self.stop_button_tag = f"{tag}{PLAYER_STOP_SUFFIX}"
-        self.position_text_tag = f"{tag}{PLAYER_POSITION_SUFFIX}"
+        self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
+        self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
+        self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
+        self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
 
         self.audio_data: AudioData = AudioData.empty(SAMPLE_RATE)
         self.is_playing = False
@@ -47,20 +47,26 @@ class AudioPlayerPanel:
     def _create_panel(self) -> None:
         kwargs = {
             "tag": self.tag,
-            "height": PLAYER_PANEL_HEIGHT,
-            "width": PLAYER_PANEL_DEFAULT_WIDTH,
+            "height": DIM_PLAYER_PANEL_HEIGHT,
+            "width": DIM_PLAYER_PANEL_DEFAULT_WIDTH,
             "no_scrollbar": True,
         }
         if self.parent:
             kwargs["parent"] = self.parent
 
         with dpg.child_window(**kwargs):
-            controls_group_tag = f"{self.tag}{PLAYER_CONTROLS_GROUP_SUFFIX}"
-            with dpg.group(horizontal=True, tag=controls_group_tag, enabled=False):
-                dpg.add_button(label=BUTTON_PLAY, tag=self.play_button_tag, callback=self._play_audio, enabled=False)
-                dpg.add_button(label=BUTTON_PAUSE, tag=self.pause_button_tag, callback=self._pause_audio, enabled=False)
-                dpg.add_button(label=BUTTON_STOP, tag=self.stop_button_tag, callback=self._stop_audio, enabled=False)
-                dpg.add_text(MSG_NO_AUDIO_LOADED, tag=self.position_text_tag)
+            controls_group_tag = f"{self.tag}{SUF_PLAYER_CONTROLS_GROUP}"
+            with dpg.group(tag=controls_group_tag, horizontal=True):
+                dpg.add_button(
+                    label=LBL_PLAYER_BUTTON_PLAY, tag=self.play_button_tag, callback=self._play_audio, enabled=False
+                )
+                dpg.add_button(
+                    label=LBL_PLAYER_BUTTON_PAUSE, tag=self.pause_button_tag, callback=self._pause_audio, enabled=False
+                )
+                dpg.add_button(
+                    label=LBL_PLAYER_BUTTON_STOP, tag=self.stop_button_tag, callback=self._stop_audio, enabled=False
+                )
+                dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
@@ -106,7 +112,7 @@ class AudioPlayerPanel:
     def _update_controls(self) -> None:
         has_audio = self.audio_data.is_loaded()
 
-        controls_group_tag = f"{self.tag}{PLAYER_CONTROLS_GROUP_SUFFIX}"
+        controls_group_tag = f"{self.tag}{SUF_PLAYER_CONTROLS_GROUP}"
         dpg.configure_item(controls_group_tag, enabled=has_audio)
 
         if has_audio:
@@ -115,20 +121,22 @@ class AudioPlayerPanel:
             dpg.configure_item(self.stop_button_tag, enabled=True)
 
     def _update_position_display(self) -> None:
-        if not self.audio_data.is_loaded():
-            dpg.set_value(self.position_text_tag, MSG_NO_AUDIO_LOADED)
+        if not self.audio_data:
+            dpg.set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
-            position_text = f"{PLAYER_POSITION_PREFIX}{self.audio_data.current_position}/{self.audio_data.samples}{PLAYER_SAMPLES_SUFFIX}"
+            position_text = (
+                f"{PFX_PLAYER_POSITION}{self.audio_data.current_position}/{self.audio_data.samples}{SUF_PLAYER_SAMPLES}"
+            )
             dpg.set_value(self.position_text_tag, position_text)
 
     def _show_no_audio_dialog(self) -> None:
-        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{PLAYER_NO_AUDIO_POPUP_SUFFIX}"):
-            dpg.add_text(MSG_NO_AUDIO_LOADED)
+        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{SUF_PLAYER_NO_AUDIO_POPUP}"):
+            dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED)
             dpg.add_button(
-                label=BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{PLAYER_NO_AUDIO_POPUP_SUFFIX}")
+                label=LBL_BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{SUF_PLAYER_NO_AUDIO_POPUP}")
             )
 
     def _show_playback_error_dialog(self, error_message: str) -> None:
-        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{PLAYER_ERROR_POPUP_SUFFIX}"):
-            dpg.add_text(f"{MSG_AUDIO_PLAYBACK_ERROR}: {error_message}")
-            dpg.add_button(label=BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{PLAYER_ERROR_POPUP_SUFFIX}"))
+        with dpg.popup(dpg.last_item(), modal=True, tag=f"{self.tag}{SUF_PLAYER_ERROR_POPUP}"):
+            dpg.add_text(MSG_PLAYER_AUDIO_PLAYBACK_ERROR)
+            dpg.add_button(label=LBL_BUTTON_OK, callback=lambda: dpg.delete_item(f"{self.tag}{SUF_PLAYER_ERROR_POPUP}"))

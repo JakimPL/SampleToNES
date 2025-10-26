@@ -3,21 +3,21 @@ from typing import Optional, Union
 import dearpygui.dearpygui as dpg
 
 from browser.constants import (
-    BOOL_NO_TEXT,
-    BOOL_YES_TEXT,
-    INSTRUCTION_FLOAT_PRECISION,
-    INSTRUCTION_FREQUENCY_FORMAT,
-    INSTRUCTION_FREQUENCY_PREFIX,
-    INSTRUCTION_GENERATOR_PREFIX,
-    INSTRUCTION_NAME_PREFIX,
-    INSTRUCTION_NO_FREQUENCY,
-    INSTRUCTION_OFFSET_PREFIX,
-    INSTRUCTION_PARAMETER_INDENT,
-    INSTRUCTION_PARAMETERS_HEADER,
-    INSTRUCTION_SAMPLE_LENGTH_PREFIX,
-    INSTRUCTION_SAMPLE_LENGTH_SUFFIX,
+    FMT_INSTRUCTION_FREQUENCY,
+    LBL_GLOBAL_NO,
+    LBL_GLOBAL_YES,
+    LBL_INSTRUCTION_PARAMETERS_HEADER,
     MSG_INSTRUCTION_DETAILS,
-    MSG_NO_INSTRUCTION_SELECTED,
+    MSG_INSTRUCTION_NO_FREQUENCY,
+    MSG_INSTRUCTION_NO_SELECTION,
+    PFX_INSTRUCTION_FREQUENCY,
+    PFX_INSTRUCTION_GENERATOR,
+    PFX_INSTRUCTION_NAME,
+    PFX_INSTRUCTION_OFFSET,
+    PFX_INSTRUCTION_PARAMETER_INDENT,
+    PFX_INSTRUCTION_SAMPLE_LENGTH,
+    SUF_INSTRUCTION_SAMPLE_LENGTH,
+    VAL_INSTRUCTION_FLOAT_PRECISION,
 )
 from browser.instruction.data import InstructionPanelData
 from library.data import LibraryFragment
@@ -41,13 +41,13 @@ class InstructionDetailsLogic:
 
     def get_display_text(self) -> str:
         if not self.current_data:
-            return MSG_NO_INSTRUCTION_SELECTED
+            return MSG_INSTRUCTION_NO_SELECTION
 
         if not self.current_data.fragment:
             lines = [
-                f"{INSTRUCTION_GENERATOR_PREFIX}{self.current_data.generator_class_name}",
-                f"{INSTRUCTION_NAME_PREFIX}{self.current_data.instruction.name}",
-                f"{INSTRUCTION_FREQUENCY_PREFIX}{INSTRUCTION_NO_FREQUENCY}",
+                f"{PFX_INSTRUCTION_GENERATOR}{self.current_data.generator_class_name}",
+                f"{PFX_INSTRUCTION_NAME}{self.current_data.instruction.name}",
+                f"{PFX_INSTRUCTION_FREQUENCY}{MSG_INSTRUCTION_NO_FREQUENCY}",
             ]
             return "\n".join(lines)
 
@@ -55,25 +55,25 @@ class InstructionDetailsLogic:
         instruction = self.current_data.instruction
 
         lines = [
-            f"{INSTRUCTION_GENERATOR_PREFIX}{fragment.generator_class.capitalize()}",
-            f"{INSTRUCTION_FREQUENCY_PREFIX}{INSTRUCTION_FREQUENCY_FORMAT.format(fragment.frequency)}",
-            f"{INSTRUCTION_SAMPLE_LENGTH_PREFIX}{len(fragment.sample)}{INSTRUCTION_SAMPLE_LENGTH_SUFFIX}",
-            f"{INSTRUCTION_OFFSET_PREFIX}{fragment.offset}",
+            f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class.capitalize()}",
+            f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
+            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{len(fragment.sample)}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+            f"{PFX_INSTRUCTION_OFFSET}{fragment.offset}",
             "",
-            INSTRUCTION_PARAMETERS_HEADER,
+            LBL_INSTRUCTION_PARAMETERS_HEADER,
         ]
 
         for field_name, field_value in instruction.model_dump().items():
             formatted_value = self._format_parameter_value(field_value)
-            lines.append(f"{INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
+            lines.append(f"{PFX_INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
 
         return "\n".join(lines)
 
     def _format_parameter_value(self, value: Union[float, bool, list, tuple, str, int]) -> str:
         if isinstance(value, float):
-            return f"{value:.{INSTRUCTION_FLOAT_PRECISION}f}"
+            return f"{value:.{VAL_INSTRUCTION_FLOAT_PRECISION}f}"
         elif isinstance(value, bool):
-            return BOOL_YES_TEXT if value else BOOL_NO_TEXT
+            return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO
         elif isinstance(value, (list, tuple)):
             return f"[{', '.join(str(v) for v in value)}]"
         else:
@@ -91,12 +91,12 @@ class InstructionDetailsPanel:
             with dpg.group(tag=self.tag, parent=parent):
                 dpg.add_text(MSG_INSTRUCTION_DETAILS)
                 dpg.add_separator()
-                dpg.add_text(MSG_NO_INSTRUCTION_SELECTED, tag=self.info_tag)
+                dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=self.info_tag)
         else:
             with dpg.group(tag=self.tag):
                 dpg.add_text(MSG_INSTRUCTION_DETAILS)
                 dpg.add_separator()
-                dpg.add_text(MSG_NO_INSTRUCTION_SELECTED, tag=self.info_tag)
+                dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=self.info_tag)
 
     def display_instruction(
         self, generator_class_name: str, instruction: InstructionUnion, fragment: Optional[LibraryFragment] = None
