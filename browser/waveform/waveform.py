@@ -5,8 +5,6 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
-    BOOL_NO_TEXT,
-    BOOL_YES_TEXT,
     BUTTON_RESET_ALL,
     BUTTON_RESET_X,
     BUTTON_RESET_Y,
@@ -21,10 +19,6 @@ from browser.constants import (
     WAVEFORM_DEFAULT_Y_MIN,
     WAVEFORM_FEATURE_NAME_FORMAT,
     WAVEFORM_FEATURE_SCALE,
-    WAVEFORM_FLOAT_PRECISION,
-    WAVEFORM_FREQUENCY_FORMAT,
-    WAVEFORM_FREQUENCY_PREFIX,
-    WAVEFORM_GENERATOR_PREFIX,
     WAVEFORM_HOVER_PREFIX,
     WAVEFORM_INFO_SUFFIX,
     WAVEFORM_LAYER_FEATURE_COLOR,
@@ -33,14 +27,11 @@ from browser.constants import (
     WAVEFORM_LAYERS_SUFFIX,
     WAVEFORM_LEGEND_SUFFIX,
     WAVEFORM_NO_FRAGMENT_MSG,
-    WAVEFORM_OFFSET_PREFIX,
-    WAVEFORM_PARAMETERS_HEADER,
     WAVEFORM_PLOT_SUFFIX,
     WAVEFORM_POSITION_FORMAT,
     WAVEFORM_RECONSTRUCTION_LAYER_NAME,
     WAVEFORM_RECONSTRUCTION_THICKNESS,
     WAVEFORM_SAMPLE_LAYER_NAME,
-    WAVEFORM_SAMPLE_LENGTH_PREFIX,
     WAVEFORM_SAMPLE_THICKNESS,
     WAVEFORM_TIME_LABEL,
     WAVEFORM_VALUE_FORMAT,
@@ -50,7 +41,6 @@ from browser.constants import (
 )
 from browser.waveform.layer import WaveformLayer
 from library.data import LibraryFragment
-from typehints.instructions import InstructionUnion
 
 
 class Waveform:
@@ -92,35 +82,39 @@ class Waveform:
 
     def _create_display(self) -> None:
         if self.parent:
-            dpg.group(tag=self.tag, parent=self.parent)
+            with dpg.group(tag=self.tag, parent=self.parent):
+                self._create_waveform_content()
         else:
-            dpg.group(tag=self.tag)
-            with dpg.group(tag=self.controls_tag, horizontal=True):
-                dpg.add_button(label=BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
-                dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
-                dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
+            with dpg.group(tag=self.tag):
+                self._create_waveform_content()
 
-            with dpg.group(tag=f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}", horizontal=True):
-                pass
+    def _create_waveform_content(self) -> None:
+        with dpg.group(tag=self.controls_tag, horizontal=True):
+            dpg.add_button(label=BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
+            dpg.add_button(label=BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
+            dpg.add_button(label=BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
-            dpg.add_text(WAVEFORM_NO_FRAGMENT_MSG, tag=self.info_tag)
+        with dpg.group(tag=f"{self.controls_tag}{WAVEFORM_LAYERS_SUFFIX}", horizontal=True):
+            pass
 
-            with dpg.plot(
-                label=self.label,
-                height=self.height,
-                width=self.width,
-                tag=self.plot_tag,
-                callback=self._plot_callback,
-                anti_aliased=True,
-            ):
-                dpg.add_plot_legend(tag=self.legend_tag)
-                dpg.add_plot_axis(dpg.mvXAxis, label=WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
-                dpg.add_plot_axis(dpg.mvYAxis, label=WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
+        dpg.add_text(WAVEFORM_NO_FRAGMENT_MSG, tag=self.info_tag)
 
-            with dpg.handler_registry():
-                dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
-                dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
-                dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
+        with dpg.plot(
+            label=self.label,
+            height=self.height,
+            width=self.width,
+            tag=self.plot_tag,
+            callback=self._plot_callback,
+            anti_aliased=True,
+        ):
+            dpg.add_plot_legend(tag=self.legend_tag)
+            dpg.add_plot_axis(dpg.mvXAxis, label=WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
+            dpg.add_plot_axis(dpg.mvYAxis, label=WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
+
+        with dpg.handler_registry():
+            dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
+            dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
+            dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
 
     def add_layer(
         self,
@@ -192,6 +186,9 @@ class Waveform:
             )
 
     def _update_display(self) -> None:
+        if not dpg.does_item_exist(self.y_axis_tag):
+            return
+
         children = dpg.get_item_children(self.y_axis_tag, slot=WAVEFORM_AXIS_SLOT) or []
         for child in children:
             dpg.delete_item(child)
@@ -201,7 +198,13 @@ class Waveform:
                 x_data = [float(i) for i in range(len(layer.data))]
                 y_data = layer.data.tolist()
 
-                dpg.add_line_series(x_data, y_data, label=layer.name, parent=self.y_axis_tag, color=layer.color)
+                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+                dpg.add_line_series(x_data, y_data, label=layer.name, parent=self.y_axis_tag, tag=series_tag)
+
+                with dpg.theme() as series_theme:
+                    with dpg.theme_component(dpg.mvLineSeries):
+                        dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
+                dpg.bind_item_theme(series_tag, series_theme)
 
         self._update_axes_limits()
 
@@ -227,41 +230,14 @@ class Waveform:
             )
 
     def _update_info_display(self) -> None:
+        if not dpg.does_item_exist(self.info_tag):
+            return
+
         if not self.current_library_fragment:
             dpg.set_value(self.info_tag, WAVEFORM_NO_FRAGMENT_MSG)
             return
 
-        fragment = self.current_library_fragment
-        info_text = self._format_instruction_info(fragment.instruction, fragment)
-        dpg.set_value(self.info_tag, info_text)
-
-    def _format_instruction_info(self, instruction: InstructionUnion, fragment: LibraryFragment) -> str:
-        info_lines = [
-            f"{WAVEFORM_GENERATOR_PREFIX}{fragment.generator_class.capitalize()}",
-            f"{WAVEFORM_FREQUENCY_PREFIX}{WAVEFORM_FREQUENCY_FORMAT.format(fragment.frequency)}",
-            f"{WAVEFORM_SAMPLE_LENGTH_PREFIX}{len(fragment.sample)} samples",
-            f"{WAVEFORM_OFFSET_PREFIX}{fragment.offset}",
-            "",
-            WAVEFORM_PARAMETERS_HEADER,
-        ]
-
-        for field_name, field_value in instruction.model_dump().items():
-            if field_name == "name":
-                continue
-            formatted_value = self._format_parameter_value(field_value)
-            info_lines.append(f"  {field_name}: {formatted_value}")
-
-        return "\n".join(info_lines)
-
-    def _format_parameter_value(self, value: Any) -> str:
-        if isinstance(value, float):
-            return f"{value:.{WAVEFORM_FLOAT_PRECISION}f}"
-        elif isinstance(value, bool):
-            return BOOL_YES_TEXT if value else BOOL_NO_TEXT
-        elif isinstance(value, (list, tuple)):
-            return f"[{', '.join(str(v) for v in value)}]"
-        else:
-            return str(value)
+        dpg.set_value(self.info_tag, "")
 
     def _reset_x_axis(self) -> None:
         if self.layers:
@@ -342,13 +318,7 @@ class Waveform:
                 if closest_info:
                     hover_info += f" | {closest_info}"
 
-                if self.current_library_fragment:
-                    original_info = self._format_instruction_info(
-                        self.current_library_fragment.instruction, self.current_library_fragment
-                    )
-                    dpg.set_value(self.info_tag, f"{original_info}\n\n{WAVEFORM_HOVER_PREFIX}{hover_info}")
-                else:
-                    dpg.set_value(self.info_tag, f"{WAVEFORM_HOVER_PREFIX}{hover_info}")
+                dpg.set_value(self.info_tag, f"{WAVEFORM_HOVER_PREFIX}{hover_info}")
 
     def _get_closest_point_info(self, x: float, y: float) -> Optional[str]:
         closest_layer = None

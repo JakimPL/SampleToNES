@@ -14,12 +14,44 @@ try:
 except ImportError:
     LIBROSA_AVAILABLE = False
 
+try:
+    import sounddevice as sd
+
+    SOUNDDEVICE_AVAILABLE = True
+except ImportError:
+    SOUNDDEVICE_AVAILABLE = False
+
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
     return np.clip(audio, -1.0, 1.0)
 
 
 def play_audio(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
+    if not SOUNDDEVICE_AVAILABLE:
+        raise ImportError("sounddevice is not available. Install it with: pip install sounddevice")
+
+    audio = clip_audio(audio)
+
+    if audio.ndim > 1:
+        audio = stereo_to_mono(audio)
+
+    try:
+        sd.play(audio, samplerate=sample_rate)
+    except Exception as exception:
+        raise RuntimeError(f"Failed to play audio: {exception}") from exception
+
+
+def stop_audio() -> None:
+    if SOUNDDEVICE_AVAILABLE:
+        sd.stop()
+
+
+def wait_for_audio() -> None:
+    if SOUNDDEVICE_AVAILABLE:
+        sd.wait()
+
+
+def play_audio_in_notebook(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
     audio = clip_audio(audio)
     display(Audio(data=audio, rate=sample_rate))
 

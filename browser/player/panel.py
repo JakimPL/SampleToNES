@@ -9,6 +9,7 @@ from browser.constants import (
     BUTTON_STOP,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_NO_AUDIO_LOADED,
+    PLAYER_CONTROLS_GROUP_SUFFIX,
     PLAYER_ERROR_POPUP_SUFFIX,
     PLAYER_NO_AUDIO_POPUP_SUFFIX,
     PLAYER_PANEL_DEFAULT_WIDTH,
@@ -54,7 +55,8 @@ class AudioPlayerPanel:
             kwargs["parent"] = self.parent
 
         with dpg.child_window(**kwargs):
-            with dpg.group(horizontal=True):
+            controls_group_tag = f"{self.tag}{PLAYER_CONTROLS_GROUP_SUFFIX}"
+            with dpg.group(horizontal=True, tag=controls_group_tag, enabled=False):
                 dpg.add_button(label=BUTTON_PLAY, tag=self.play_button_tag, callback=self._play_audio, enabled=False)
                 dpg.add_button(label=BUTTON_PAUSE, tag=self.pause_button_tag, callback=self._pause_audio, enabled=False)
                 dpg.add_button(label=BUTTON_STOP, tag=self.stop_button_tag, callback=self._stop_audio, enabled=False)
@@ -103,9 +105,14 @@ class AudioPlayerPanel:
 
     def _update_controls(self) -> None:
         has_audio = self.audio_data.is_loaded()
-        dpg.configure_item(self.play_button_tag, enabled=has_audio and not self.is_playing)
-        dpg.configure_item(self.pause_button_tag, enabled=has_audio and self.is_playing)
-        dpg.configure_item(self.stop_button_tag, enabled=has_audio)
+
+        controls_group_tag = f"{self.tag}{PLAYER_CONTROLS_GROUP_SUFFIX}"
+        dpg.configure_item(controls_group_tag, enabled=has_audio)
+
+        if has_audio:
+            dpg.configure_item(self.play_button_tag, enabled=not self.is_playing)
+            dpg.configure_item(self.pause_button_tag, enabled=self.is_playing)
+            dpg.configure_item(self.stop_button_tag, enabled=True)
 
     def _update_position_display(self) -> None:
         if not self.audio_data.is_loaded():
