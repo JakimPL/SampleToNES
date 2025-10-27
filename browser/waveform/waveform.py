@@ -9,7 +9,6 @@ from browser.constants import (
     CLR_WAVEFORM_LAYER_SAMPLE,
     DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
     DIM_WAVEFORM_DEFAULT_WIDTH,
-    FMT_WAVEFORM_VALUE,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
     LBL_WAVEFORM_BUTTON_RESET_ALL,
     LBL_WAVEFORM_BUTTON_RESET_X,
@@ -69,11 +68,17 @@ class Waveform:
         self.default_y_range = (VAL_WAVEFORM_DEFAULT_Y_MIN, VAL_WAVEFORM_DEFAULT_Y_MAX)
 
         self.is_dragging = False
-        self.last_mouse_pos: Optional[List[float]] = None
+        self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
 
         self._create_display()
         self._update_axes_limits()
+
+    @property
+    def sample_length(self) -> float:
+        if self.current_library_fragment:
+            return float(len(self.current_library_fragment.sample))
+        return VAL_WAVEFORM_DEFAULT_X_MAX
 
     def _create_display(self) -> None:
         if self.parent:
@@ -99,6 +104,7 @@ class Waveform:
             anti_aliased=True,
             callback=self._plot_callback,
             no_inputs=False,
+            pan_button=-1,
         ):
             dpg.add_plot_legend(tag=self.legend_tag)
             dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
@@ -107,6 +113,7 @@ class Waveform:
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
+            dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
 
     def add_layer(
         self,
@@ -219,75 +226,78 @@ class Waveform:
                 return
 
             plot_mouse_pos = dpg.get_plot_mouse_pos()
-            if plot_mouse_pos[0] and plot_mouse_pos[1]:
-                zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
+            if plot_mouse_pos[0]:
+                shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
 
-                center_x = plot_mouse_pos[0]
-                center_y = plot_mouse_pos[1]
+                if shift_held:
+                    zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
+                    center_y = plot_mouse_pos[1] if plot_mouse_pos[1] else 0.0
 
-                x_range = self.x_max - self.x_min
-                y_range = self.y_max - self.y_min
+                    y_range = self.y_max - self.y_min
+                    new_y_range = y_range / zoom_amount
+                    y_offset = (center_y - self.y_min) / y_range if y_range > 0 else 0.5
 
-                new_x_range = x_range / zoom_amount
-                new_y_range = y_range / zoom_amount
+                    new_y_min = center_y - new_y_range * y_offset
+                    new_y_max = center_y + new_y_range * (1 - y_offset)
 
-                x_offset = (center_x - self.x_min) / x_range
-                y_offset = (center_y - self.y_min) / y_range
+                    if new_y_min >= -1.0 and new_y_max <= 1.0:
+                        self.y_min = new_y_min
+                        self.y_max = new_y_max
+                        self._update_axes_limits()
+                else:
+                    zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
 
-                new_x_min = center_x - new_x_range * x_offset
-                new_x_max = center_x + new_x_range * (1 - x_offset)
-                new_y_min = center_y - new_y_range * y_offset
-                new_y_max = center_y + new_y_range * (1 - y_offset)
+                    center_x = plot_mouse_pos[0]
+                    x_range = self.x_max - self.x_min
+                    new_x_range = x_range / zoom_amount
+                    x_offset = (center_x - self.x_min) / x_range
 
-                sample_length = float(len(self.current_library_fragment.sample))
+                    new_x_min = center_x - new_x_range * x_offset
+                    new_x_max = center_x + new_x_range * (1 - x_offset)
 
-                if (
-                    new_y_max - new_y_min <= 2.0
-                    and new_y_min >= -1.0
-                    and new_y_max <= 1.0
-                    and new_x_min >= 0.0
-                    and new_x_max <= sample_length
-                ):
+                    if new_x_min >= 0.0 and new_x_max <= self.sample_length:
+                        self.x_min = new_x_min
+                        self.x_max = new_x_max
+                        self._update_axes_limits()
 
-                    self.x_min = new_x_min
-                    self.x_max = new_x_max
-                    self.y_min = new_y_min
-                    self.y_max = new_y_max
-                    self._update_axes_limits()
+    def _mouse_drag_callback(self, sender: str, app_data: List[Union[int, float]]) -> None:
+        if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+            return
 
-    def _mouse_drag_callback(self, sender: str, app_data: Tuple[float, float]) -> None:
-        if dpg.is_item_hovered(self.plot_tag) and dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
-            if not self.current_library_fragment:
-                return
+        if not self.current_library_fragment:
+            return
 
-            if not self.is_dragging:
-                self.is_dragging = True
-                mouse_pos = dpg.get_plot_mouse_pos()
-                self.last_mouse_pos = [float(mouse_pos[0]), float(mouse_pos[1])] if mouse_pos[0] else None
-                return
+        x_position = app_data[1]
+        y_position = app_data[2]
 
-            current_pos = dpg.get_plot_mouse_pos()
-            if current_pos[0] and current_pos[1] and self.last_mouse_pos:
-                dx = float(current_pos[0]) - self.last_mouse_pos[0]
-                dy = float(current_pos[1]) - self.last_mouse_pos[1]
+        if not self.is_dragging:
+            self.is_dragging = True
+            self.last_mouse_position = x_position, y_position
+            return
 
-                new_x_min = self.x_min - dx
-                new_x_max = self.x_max - dx
-                new_y_min = self.y_min - dy
-                new_y_max = self.y_max - dy
+        dx_screen = x_position - self.last_mouse_position[0]
+        dy_screen = y_position - self.last_mouse_position[1]
 
-                sample_length = float(len(self.current_library_fragment.sample))
+        plot_bounds = dpg.get_item_rect_size(self.plot_tag)
+        if plot_bounds:
+            x_range = self.x_max - self.x_min
+            y_range = self.y_max - self.y_min
 
-                if new_y_min >= -1.0 and new_y_max <= 1.0 and new_x_min >= 0.0 and new_x_max <= sample_length:
+            dx_plot = -(dx_screen / plot_bounds[0]) * x_range
+            dy_plot = (dy_screen / plot_bounds[1]) * y_range
 
-                    self.x_min = new_x_min
-                    self.x_max = new_x_max
-                    self.y_min = new_y_min
-                    self.y_max = new_y_max
-                    self._update_axes_limits()
+            new_x_min = self.x_min + dx_plot
+            new_x_max = self.x_max + dx_plot
+            new_y_min = self.y_min + dy_plot
+            new_y_max = self.y_max + dy_plot
 
-                self.last_mouse_pos = [float(current_pos[0]), float(current_pos[1])]
-        else:
+            if new_y_min >= -1.0 and new_y_max <= 1.0 and new_x_min >= 0.0 and new_x_max <= self.sample_length:
+                self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
+
+            self.last_mouse_position = x_position, y_position
+
+    def _mouse_release_callback(self, sender: str, app_data: int) -> None:
+        if app_data == dpg.mvMouseButton_Left:
             self.is_dragging = False
 
     def set_view_bounds(self, x_min: float, x_max: float, y_min: float, y_max: float) -> None:
