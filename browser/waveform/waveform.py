@@ -220,45 +220,63 @@ class Waveform:
     def _plot_callback(self, sender: str, app_data: Any) -> None:
         pass
 
+    def _clamp_zoom_bounds(
+        self, new_min: float, new_max: float, bound_min: float, bound_max: float
+    ) -> Tuple[float, float]:
+        new_range = new_max - new_min
+        max_range = bound_max - bound_min
+
+        if new_range > max_range:
+            return bound_min, bound_max
+
+        clamped_min = max(bound_min, new_min)
+        clamped_max = min(bound_max, new_max)
+
+        if clamped_max - clamped_min < new_range:
+            if new_min < bound_min:
+                clamped_max = min(bound_max, clamped_min + new_range)
+            elif new_max > bound_max:
+                clamped_min = max(bound_min, clamped_max - new_range)
+
+        return clamped_min, clamped_max
+
     def _mouse_wheel_callback(self, sender: str, app_data: float) -> None:
-        if dpg.is_item_hovered(self.plot_tag):
-            if not self.current_library_fragment:
-                return
+        if not dpg.is_item_hovered(self.plot_tag) or not self.current_library_fragment:
+            return
 
-            plot_mouse_pos = dpg.get_plot_mouse_pos()
-            if plot_mouse_pos[0]:
-                shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
+        plot_mouse_pos = dpg.get_plot_mouse_pos()
+        if not plot_mouse_pos:
+            return
 
-                if shift_held:
-                    zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
-                    center_y = plot_mouse_pos[1] if plot_mouse_pos[1] else 0.0
+        zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
+        shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
 
-                    y_range = self.y_max - self.y_min
-                    new_y_range = y_range / zoom_amount
-                    y_offset = (center_y - self.y_min) / y_range if y_range > 0 else 0.5
+        if shift_held:
+            self.y_min, self.y_max = self._zoom_axis(zoom_amount, plot_mouse_pos[1], self.y_min, self.y_max, -1.0, 1.0)
+        else:
+            self.x_min, self.x_max = self._zoom_axis(
+                zoom_amount, plot_mouse_pos[0], self.x_min, self.x_max, 0.0, self.sample_length
+            )
 
-                    new_y_min = center_y - new_y_range * y_offset
-                    new_y_max = center_y + new_y_range * (1 - y_offset)
+        self._update_axes_limits()
 
-                    if new_y_min >= -1.0 and new_y_max <= 1.0:
-                        self.y_min = new_y_min
-                        self.y_max = new_y_max
-                        self._update_axes_limits()
-                else:
-                    zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
+    def _zoom_axis(
+        self,
+        zoom_amount: float,
+        center: float,
+        current_min: float,
+        current_max: float,
+        bound_min: float,
+        bound_max: float,
+    ) -> Tuple[float, float]:
+        current_range = current_max - current_min
+        new_range = current_range / zoom_amount
+        offset = (center - current_min) / current_range if current_range > 0 else 0.5
 
-                    center_x = plot_mouse_pos[0]
-                    x_range = self.x_max - self.x_min
-                    new_x_range = x_range / zoom_amount
-                    x_offset = (center_x - self.x_min) / x_range
+        new_min = center - new_range * offset
+        new_max = center + new_range * (1 - offset)
 
-                    new_x_min = center_x - new_x_range * x_offset
-                    new_x_max = center_x + new_x_range * (1 - x_offset)
-
-                    if new_x_min >= 0.0 and new_x_max <= self.sample_length:
-                        self.x_min = new_x_min
-                        self.x_max = new_x_max
-                        self._update_axes_limits()
+        return self._clamp_zoom_bounds(new_min, new_max, bound_min, bound_max)
 
     def _mouse_drag_callback(self, sender: str, app_data: List[Union[int, float]]) -> None:
         if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
@@ -286,14 +304,15 @@ class Waveform:
             dx_plot = -(dx_screen / plot_bounds[0]) * x_range
             dy_plot = (dy_screen / plot_bounds[1]) * y_range
 
+            dx_plot = np.clip(dx_plot, -self.x_min, self.sample_length - self.x_max)
+            dy_plot = np.clip(dy_plot, -1.0 - self.y_min, 1.0 - self.y_max)
+
             new_x_min = self.x_min + dx_plot
             new_x_max = self.x_max + dx_plot
             new_y_min = self.y_min + dy_plot
             new_y_max = self.y_max + dy_plot
 
-            if new_y_min >= -1.0 and new_y_max <= 1.0 and new_x_min >= 0.0 and new_x_max <= self.sample_length:
-                self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
-
+            self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
             self.last_mouse_position = x_position, y_position
 
     def _mouse_release_callback(self, sender: str, app_data: int) -> None:
