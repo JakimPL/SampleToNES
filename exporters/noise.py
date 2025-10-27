@@ -26,7 +26,7 @@ class NoiseExporter(Exporter):
 
                 period = instruction.period
                 volume = instruction.volume
-                duty_cycle = instruction.mode
+                duty_cycle = instruction.short
             else:
                 volume = 0
 

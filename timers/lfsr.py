@@ -3,7 +3,14 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from constants import APU_CLOCK, MAX_LFSR, MAX_LFSR_SHORT, MAX_PERIOD, NOISE_PERIODS, RESET_PHASE
+from constants import (
+    APU_CLOCK,
+    MAX_LFSR,
+    MAX_LFSR_SHORT,
+    MAX_PERIOD,
+    NOISE_PERIODS,
+    RESET_PHASE,
+)
 from timers.timer import Timer
 from typehints.general import Initials
 
@@ -23,7 +30,7 @@ class LFSRTimer(Timer):
         self._real_frequency: float = 0.0
         self._period: float = 0.0
 
-        self.mode: bool = False
+        self.short: bool = False
 
         self.lfsr: int = 1
         self.clock: float = 0.0
@@ -55,7 +62,7 @@ class LFSRTimer(Timer):
 
     def calculate_offset(self, initials: Initials = None) -> int:
         lfsr, clock = initials if initials is not None else (1, 0.0)
-        lfsr_to_index = self.lfsr_tables[self.mode].lfsr_to_index
+        lfsr_to_index = self.lfsr_tables[self.short].lfsr_to_index
         end_index = int(lfsr_to_index[lfsr])
         if end_index == -1:
             end_index = 0
@@ -63,8 +70,8 @@ class LFSRTimer(Timer):
         return int(np.ceil(end_index / self._clocks_per_sample - clock))
 
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
-        lfsrs = self.lfsr_tables[self.mode].lfsrs[direction]
-        cumsum_table = self.lfsr_tables[self.mode].cumsums[direction]
+        lfsrs = self.lfsr_tables[self.short].lfsrs[direction]
+        cumsum_table = self.lfsr_tables[self.short].cumsums[direction]
 
         indices = np.arange(self.frame_length + 1)
         sign = 1.0 if direction else -1.0
@@ -74,7 +81,7 @@ class LFSRTimer(Timer):
         changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
         differences = np.zeros_like(changes, dtype=np.float32)
 
-        index = self.lfsr_tables[self.mode].lfsr_to_index[self.lfsr]
+        index = self.lfsr_tables[self.short].lfsr_to_index[self.lfsr]
         index = index if index != -1 else 0
         start_indices = changes_cumsum + index
         end_indices = np.roll(start_indices, -1)
@@ -108,7 +115,7 @@ class LFSRTimer(Timer):
         self._period = value
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
 
-        self._period = (93.0 if self.mode else 32767.0) / self._clocks_per_sample
+        self._period = (93.0 if self.short else 32767.0) / self._clocks_per_sample
         self._real_frequency = self.sample_rate / self._period
 
         if self.reset_phase:
@@ -121,7 +128,7 @@ class LFSRTimer(Timer):
 
     def forward(self, lfsr: int) -> int:
         bit0 = lfsr & 1
-        bitX = (lfsr >> (6 if self.mode else 1)) & 1
+        bitX = (lfsr >> (6 if self.short else 1)) & 1
         feedback = bit0 ^ bitX
         lfsr = (lfsr >> 1) | (feedback << 14)
         lfsr &= MAX_LFSR
@@ -130,7 +137,7 @@ class LFSRTimer(Timer):
     def backward(self, lfsr: int) -> int:
         msb = (lfsr >> 14) & 1
         partial = (lfsr & 0x3FFF) << 1
-        bitX = (partial >> (6 if self.mode else 1)) & 1
+        bitX = (partial >> (6 if self.short else 1)) & 1
         bit0 = msb ^ bitX
         lfsr = partial | bit0
         lfsr &= MAX_LFSR
@@ -163,8 +170,8 @@ class LFSRTimer(Timer):
         self.lfsr = lfsr
         self.clock = clock
 
-    def precalculate_lfsr_tables(self, mode: bool) -> LFSRTTables:
-        self.mode = mode
+    def precalculate_lfsr_tables(self, short: bool) -> LFSRTTables:
+        self.short = short
         clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
         repeats = int(np.ceil(clocks_per_sample * self.frame_length / self.lfsr_period)) * 2 + 1
 
@@ -195,4 +202,4 @@ class LFSRTimer(Timer):
 
     @property
     def lfsr_period(self) -> int:
-        return MAX_LFSR_SHORT if self.mode else MAX_LFSR
+        return MAX_LFSR_SHORT if self.short else MAX_LFSR

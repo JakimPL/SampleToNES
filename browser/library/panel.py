@@ -131,7 +131,6 @@ class LibraryPanelGUI:
                 label=TPL_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
             ):
                 for instruction, _ in instructions:
-                    print(instruction)
                     dpg.add_selectable(
                         label=instruction.name,
                         callback=self._on_instruction_selected_internal,

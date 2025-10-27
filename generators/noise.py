@@ -38,10 +38,10 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
     def set_timer(self, noise_instruction: NoiseInstruction) -> None:
         if noise_instruction.on:
-            self.timer.mode = noise_instruction.mode
+            self.timer.short = noise_instruction.short
             self.timer.period = noise_instruction.period
         else:
-            self.timer.mode = False
+            self.timer.short = False
             self.timer.period = 0
 
     def apply(self, output: np.ndarray, noise_instruction: NoiseInstruction) -> np.ndarray:
@@ -54,19 +54,19 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
                 on=False,
                 period=0,
                 volume=0,
-                mode=False,
+                short=False,
             )
         ]
 
         for period in range(len(NOISE_PERIODS)):
             for volume in range(1, MAX_VOLUME + 1):
-                for mode in [False, True]:
+                for short in [False, True]:
                     noise_instructions.append(
                         NoiseInstruction(
                             on=True,
                             period=period,
                             volume=volume,
-                            mode=mode,
+                            short=short,
                         )
                     )
 

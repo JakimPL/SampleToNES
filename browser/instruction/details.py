@@ -55,7 +55,7 @@ class InstructionDetailsLogic:
         instruction = self.current_data.instruction
 
         lines = [
-            f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class.capitalize()}",
+            f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class}",
             f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
             f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{len(fragment.sample)}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
             f"{PFX_INSTRUCTION_OFFSET}{fragment.offset}",

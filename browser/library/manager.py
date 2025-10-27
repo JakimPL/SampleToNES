@@ -91,7 +91,6 @@ class LibraryManager:
         result = {}
         for generator_name in LIBRARY_GENERATOR_NAMES:
             instructions = self.get_library_instructions_by_generator(display_name, generator_name)
-            print(instructions)
             if instructions:
                 result[generator_name] = instructions
         return result
@@ -168,7 +167,6 @@ class LibraryManager:
         instructions: Dict[str, List[Tuple[Instruction, LibraryFragment]]] = {}
         sorted_generator_data = dict(sorted(generator_data.items(), key=lambda item: item[0]))
         for instruction, fragment in sorted_generator_data.items():
-            print(instruction)
             if not instruction.on:
                 continue
 

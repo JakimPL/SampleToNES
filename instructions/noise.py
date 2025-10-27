@@ -7,22 +7,22 @@ from instructions.instruction import Instruction
 class NoiseInstruction(Instruction):
     period: int = Field(..., ge=0, le=15, description="0-15, indexes into noise period table")
     volume: int = Field(..., ge=0, le=MAX_VOLUME, description="Volume (0-15)")
-    mode: bool = Field(..., description="False = normal (15-bit), True = short mode (93-step)")
+    short: bool = Field(..., description="False = normal (15-bit), True = short mode (93-step)")
 
     @property
     def name(self) -> str:
         period = f"p{NOISE_PERIODS[self.period]}"
         volume = f"v{self.volume:X}"
-        short = "s" if self.mode else "l"
+        short = "s" if self.short else "l"
         return f"N {period} {volume} {short}"
 
     def __lt__(self, other: "NoiseInstruction") -> bool:
         if not isinstance(other, NoiseInstruction):
             return TypeError("Cannot compare NoiseInstruction with different type")
-        return (NOISE_PERIODS[self.period], -self.volume, self.mode) < (
+        return (NOISE_PERIODS[self.period], -self.volume, self.short) < (
             NOISE_PERIODS[other.period],
             -other.volume,
-            other.mode,
+            other.short,
         )
 
     def distance(self, other: "NoiseInstruction") -> float:
