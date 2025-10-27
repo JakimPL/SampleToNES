@@ -131,6 +131,7 @@ class LibraryPanelGUI:
                 label=TPL_GROUP_LABEL.format(group_key, len(instructions)), parent=generator_tag, tag=group_tag
             ):
                 for instruction, _ in instructions:
+                    print(instruction)
                     dpg.add_selectable(
                         label=instruction.name,
                         callback=self._on_instruction_selected_internal,
@@ -167,7 +168,7 @@ class LibraryPanelGUI:
             dpg.delete_item(child)
 
     def _update_library_highlighting(self, new_library: str) -> None:
-        # TODO: Implement proper highlighting when DearPyGui supports it
+        # TODO: Implement item highlighting properly
         self.current_highlighted_library = new_library
 
     def _generate_library(self) -> None:
@@ -234,4 +235,5 @@ class LibraryPanelGUI:
                 library_data = self.library_manager.get_library_data(display_name)
                 if library_data and instruction in library_data.data:
                     return library_data.data[instruction]
+
         return None

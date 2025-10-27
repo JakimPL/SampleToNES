@@ -4,10 +4,11 @@ from typing import Dict, List, Optional, Tuple
 from configs.config import Config
 from constants import LIBRARY_DIRECTORY, NOISE_PERIODS
 from ffts.window import Window
+from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from library.data import LibraryData
+from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
@@ -90,6 +91,7 @@ class LibraryManager:
         result = {}
         for generator_name in LIBRARY_GENERATOR_NAMES:
             instructions = self.get_library_instructions_by_generator(display_name, generator_name)
+            print(instructions)
             if instructions:
                 result[generator_name] = instructions
         return result
@@ -163,9 +165,10 @@ class LibraryManager:
         if not generator_data:
             return {}
 
-        grouped_instructions = {}
-
-        for instruction, fragment in generator_data.items():
+        instructions: Dict[str, List[Tuple[Instruction, LibraryFragment]]] = {}
+        sorted_generator_data = dict(sorted(generator_data.items(), key=lambda item: item[0]))
+        for instruction, fragment in sorted_generator_data.items():
+            print(instruction)
             if not instruction.on:
                 continue
 
@@ -174,11 +177,11 @@ class LibraryManager:
             elif isinstance(instruction, NoiseInstruction):
                 grouping_key = f"p{NOISE_PERIODS[instruction.period]}"
             else:
-                grouping_key = "Other"
+                raise TypeError(f"Unsupported instruction type {type(instruction)} for grouping")
 
-            if grouping_key not in grouped_instructions:
-                grouped_instructions[grouping_key] = []
+            if grouping_key not in instructions:
+                instructions[grouping_key] = []
 
-            grouped_instructions[grouping_key].append((instruction, fragment))
+            instructions[grouping_key].append((instruction, fragment))
 
-        return grouped_instructions
+        return instructions

@@ -24,6 +24,11 @@ class PulseInstruction(Instruction):
         duty = f"D{DUTY_CYCLES[self.duty_cycle]*100:.0f}"
         return f"P {pitch} {volume} {duty}"
 
+    def __lt__(self, other: "PulseInstruction") -> bool:
+        if not isinstance(other, PulseInstruction):
+            return TypeError("Cannot compare PulseInstruction with different type")
+        return (self.pitch, -self.volume, self.duty_cycle) < (other.pitch, -other.volume, other.duty_cycle)
+
     def distance(self, other: "PulseInstruction") -> float:
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0

@@ -16,6 +16,15 @@ class NoiseInstruction(Instruction):
         short = "s" if self.mode else "l"
         return f"N {period} {volume} {short}"
 
+    def __lt__(self, other: "NoiseInstruction") -> bool:
+        if not isinstance(other, NoiseInstruction):
+            return TypeError("Cannot compare NoiseInstruction with different type")
+        return (NOISE_PERIODS[self.period], -self.volume, self.mode) < (
+            NOISE_PERIODS[other.period],
+            -other.volume,
+            other.mode,
+        )
+
     def distance(self, other: "NoiseInstruction") -> float:
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0
