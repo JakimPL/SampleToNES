@@ -23,7 +23,7 @@ from browser.constants import (
 )
 from browser.player.data import AudioData
 from constants import SAMPLE_RATE
-from utils.audioio import play_audio
+from utils.audio.io import play_audio
 
 
 class AudioPlayerPanel:
@@ -90,7 +90,7 @@ class AudioPlayerPanel:
             return
 
         try:
-            play_audio(self.audio_data.sample)
+            play_audio(self.audio_data.sample, self.audio_data.sample_rate)
             self.is_playing = True
             self._update_controls()
         except Exception as exception:

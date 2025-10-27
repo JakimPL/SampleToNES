@@ -13,7 +13,7 @@ from browser.library.panel import LibraryPanelGUI
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
 from typehints.general import GENERATOR_NAMES, GeneratorName
-from utils.audioio import load_audio, play_audio, write_audio
+from utils.audio.io import load_audio, play_audio, write_audio
 
 
 class GUI:
@@ -119,9 +119,9 @@ class GUI:
                     )
 
                     dpg.add_separator()
-                    dpg.add_button(label=LBL_BUTTON_PLAY_ORIGINAL, callback=self.play_original)
-                    dpg.add_button(label=LBL_BUTTON_PLAY_RECONSTRUCTION, callback=self.play_reconstruction)
-                    dpg.add_button(label=LBL_BUTTON_EXPORT_WAV, callback=self.export_wav_dialog)
+                    # dpg.add_button(label=LBL_BUTTON_PLAY_ORIGINAL, callback=self.play_original)
+                    # dpg.add_button(label=LBL_BUTTON_PLAY_RECONSTRUCTION, callback=self.play_reconstruction)
+                    # dpg.add_button(label=LBL_BUTTON_EXPORT_WAV, callback=self.export_wav_dialog)
 
                 with dpg.child_window():
                     dpg.add_text(LBL_SECTION_WAVEFORM_DISPLAY)
@@ -297,20 +297,13 @@ class GUI:
                 x_data, self.current_reconstruction.approximation.tolist(), label=LBL_PLOT_RECONSTRUCTION, parent=y_axis
             )
 
-    def play_original(self) -> None:
-        if self.original_audio is not None:
-            play_audio(self.original_audio)
-
-    def play_reconstruction(self) -> None:
-        if self.current_reconstruction:
-            play_audio(self.current_reconstruction.approximation)
-
     def export_wav(self, sender: Any, app_data: Dict[str, Any]) -> None:
         if not self.current_reconstruction:
             return
 
         file_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
-        write_audio(Path(file_path), self.current_reconstruction.approximation)
+        sample_rate = self.current_reconstruction.config.library.sample_rate
+        write_audio(Path(file_path), self.current_reconstruction.approximation, sample_rate)
 
     def refresh_reconstruction_list(self) -> None:
         pass

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 from IPython.display import Audio, display
@@ -7,51 +7,12 @@ from scipy.io import wavfile
 
 from constants import QUANTIZATION_LEVELS, SAMPLE_RATE
 
-try:
-    import librosa
-
-    LIBROSA_AVAILABLE = True
-except ImportError:
-    LIBROSA_AVAILABLE = False
-
-try:
-    import sounddevice as sd
-
-    SOUNDDEVICE_AVAILABLE = True
-except ImportError:
-    SOUNDDEVICE_AVAILABLE = False
-
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
     return np.clip(audio, -1.0, 1.0)
 
 
-def play_audio(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
-    if not SOUNDDEVICE_AVAILABLE:
-        raise ImportError("sounddevice is not available. Install it with: pip install sounddevice")
-
-    audio = clip_audio(audio)
-
-    if audio.ndim > 1:
-        audio = stereo_to_mono(audio)
-
-    try:
-        sd.play(audio, samplerate=sample_rate)
-    except Exception as exception:
-        raise RuntimeError(f"Failed to play audio: {exception}") from exception
-
-
-def stop_audio() -> None:
-    if SOUNDDEVICE_AVAILABLE:
-        sd.stop()
-
-
-def wait_for_audio() -> None:
-    if SOUNDDEVICE_AVAILABLE:
-        sd.wait()
-
-
-def play_audio_in_notebook(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
+def play_audio(audio: np.ndarray, sample_rate: int) -> None:
     audio = clip_audio(audio)
     display(Audio(data=audio, rate=sample_rate))
 
@@ -69,7 +30,7 @@ def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
     return audio, sample_rate
 
 
-def write_audio(path: Union[str, Path], audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> None:
+def write_audio(path: Union[str, Path], audio: np.ndarray, sample_rate: int) -> None:
     audio = clip_audio(audio)
     wavfile.write(path, sample_rate, audio)
 
@@ -85,20 +46,31 @@ def resample(audio: np.ndarray, original_sample_rate: int, target_sample_rate: i
     if original_sample_rate == target_sample_rate:
         return audio
 
-    if LIBROSA_AVAILABLE:
+    try:
+        import librosa
+
         audio = librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
         return audio
+    except ImportError:
+        pass
 
     ratio = target_sample_rate / original_sample_rate
-
     original_length = len(audio)
-    new_length = int(original_length * ratio)
+    new_length = round(original_length * ratio)
+    return interpolate(audio, target_length=new_length)
+
+
+def interpolate(data: np.ndarray, target_length: int) -> np.ndarray:
+    original_length = len(data)
+
+    if original_length == target_length:
+        return data.astype(np.float32)
 
     original_indices = np.arange(original_length)
-    new_indices = np.linspace(0, original_length - 1, new_length)
-    resampled_audio = np.interp(new_indices, original_indices, audio)
+    new_indices = np.linspace(0, original_length - 1, target_length)
+    interpolated_data = np.interp(new_indices, original_indices, data)
 
-    return resampled_audio.astype(np.float32)
+    return interpolated_data.astype(np.float32)
 
 
 def normalize_audio(audio: np.ndarray) -> np.ndarray:
@@ -117,7 +89,7 @@ def quantize_audio(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.n
 
 def load_audio(
     path: Union[str, Path],
-    target_sample_rate: int = SAMPLE_RATE,
+    target_sample_rate: Optional[int] = None,
     normalize: bool = True,
     quantize: bool = True,
 ) -> np.ndarray:
@@ -127,6 +99,7 @@ def load_audio(
     if normalize:
         audio = normalize_audio(audio)
 
+    target_sample_rate = target_sample_rate or sample_rate
     audio = resample(audio, original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
 
     if quantize:
