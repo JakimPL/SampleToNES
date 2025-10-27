@@ -240,6 +240,7 @@ TITLE_DIALOG_PLAYBACK_ERROR = "Playback Error"
 MSG_INSTRUCTION_DETAILS = "Instruction Details"
 MSG_INSTRUCTION_NO_SELECTION = "No instruction selected"
 LBL_INSTRUCTION_WAVEFORM = "Instruction Waveform"
+LBL_INSTRUCTION_SPECTRUM = "Instruction Spectrum"
 
 # Waveform layer colors
 CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
@@ -253,7 +254,13 @@ SUF_WAVEFORM_LEGEND = "_legend"
 SUF_WAVEFORM_CONTROLS = "_controls"
 SUF_WAVEFORM_INFO = "_info"
 
-# Waveform default dimensions
+
+# Spectrum display settings
+VAL_SPECTRUM_LOG_OFFSET = 1e-2
+VAL_SPECTRUM_GRAYSCALE_MAX = 255
+LBL_SPECTRUM_X_AXIS = "Frequency (Hz, log)"
+LBL_SPECTRUM_Y_AXIS = "Energy"
+
 DIM_WAVEFORM_DEFAULT_WIDTH = -1
 DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT = 300
 

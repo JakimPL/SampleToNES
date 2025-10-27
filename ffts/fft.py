@@ -18,6 +18,10 @@ def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarr
     return rfft(audio, fft_size)[1:]
 
 
+def calculate_frequencies(fragment_length: int, sample_rate: int) -> np.ndarray:
+    return rfftfreq(fragment_length, 1 / sample_rate)[1:]
+
+
 def a_weighting(frequencies: np.ndarray) -> np.ndarray:
     frequencies = np.maximum(frequencies, 1e-6)
     squares = frequencies**2
@@ -30,7 +34,7 @@ def a_weighting(frequencies: np.ndarray) -> np.ndarray:
 
 @lru_cache(maxsize=128)
 def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
-    frequencies = rfftfreq(fragment_length, 1 / sample_rate)[1:]
+    frequencies = calculate_frequencies(fragment_length, sample_rate)
     density_weights = 1.0 / frequencies
     perceptual_weights = a_weighting(frequencies)
     return density_weights * perceptual_weights

@@ -36,7 +36,7 @@ from browser.waveform.layer import WaveformLayer
 from library.data import LibraryFragment
 
 
-class Waveform:
+class WaveformDisplay:
     def __init__(
         self,
         tag: str,

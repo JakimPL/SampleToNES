@@ -222,11 +222,11 @@ class LibraryPanelGUI:
 
     def _on_instruction_selected_internal(self, sender: Any, app_data: Any, user_data: Tuple[Any, Any]) -> None:
         generator_class_name, instruction = user_data
-
-        fragment = self._get_fragment_for_instruction(instruction)
-
-        if self.on_instruction_selected:
-            self.on_instruction_selected(generator_class_name, instruction, fragment)
+        library_config = self.config_manager.get_config()
+        if self.on_instruction_selected and library_config is not None:
+            library_config = library_config.library
+            fragment = self._get_fragment_for_instruction(instruction)
+            self.on_instruction_selected(generator_class_name, instruction, fragment, library_config=library_config)
 
     def _get_fragment_for_instruction(self, instruction: InstructionUnion) -> Optional[LibraryFragment]:
         for display_name in self.library_manager.get_available_libraries().keys():

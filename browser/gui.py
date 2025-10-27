@@ -10,6 +10,8 @@ from browser.config.panel import ConfigPanelGUI
 from browser.constants import *
 from browser.instruction.panel import InstructionPanelGUI
 from browser.library.panel import LibraryPanelGUI
+from configs.library import LibraryConfig
+from library.data import LibraryFragment
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
 from typehints.general import GENERATOR_NAMES, GeneratorName
@@ -313,9 +315,11 @@ class GUI:
     def load_selected_reconstruction(self) -> None:
         pass
 
-    def _on_instruction_selected(self, generator_class_name: str, instruction, fragment) -> None:
+    def _on_instruction_selected(
+        self, generator_class_name: str, instruction, fragment: LibraryFragment, library_config: LibraryConfig
+    ) -> None:
         if self.instruction_panel:
-            self.instruction_panel.display_instruction(generator_class_name, instruction, fragment)
+            self.instruction_panel.display_instruction(generator_class_name, instruction, fragment, library_config)
 
     def run(self) -> None:
         dpg.start_dearpygui()
