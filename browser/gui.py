@@ -13,7 +13,8 @@ from browser.library.panel import LibraryPanelGUI
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor
 from typehints.general import GENERATOR_NAMES, GeneratorName
-from utils.audio.io import load_audio, play_audio, write_audio
+from utils.audio.device import AudioDeviceManager
+from utils.audio.io import load_audio, write_audio
 
 
 class GUI:
@@ -24,6 +25,7 @@ class GUI:
         self.selected_generators = {generator_name: True for generator_name in GENERATOR_NAMES}
         self.audio_path: Optional[Path] = None
         self.reconstruction_path: Optional[Path] = None
+        self.audio_device_manager = AudioDeviceManager()
         self.config_manager = ConfigManager()
         self.config_panel = ConfigPanelGUI(self.config_manager)
         self.instruction_panel: Optional[InstructionPanelGUI] = None
@@ -74,7 +76,7 @@ class GUI:
                         self.library_panel.create_panel()
 
                 with dpg.child_window(tag=TAG_CONFIG_TAB):
-                    self.instruction_panel = InstructionPanelGUI(TAG_CONFIG_TAB)
+                    self.instruction_panel = InstructionPanelGUI(TAG_CONFIG_TAB, self.audio_device_manager)
                     self.instruction_panel.create_panel()
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)

@@ -14,11 +14,13 @@ from browser.waveform.waveform import Waveform
 from constants import SAMPLE_RATE
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
+from utils.audio.device import AudioDeviceManager
 
 
 class InstructionPanelGUI:
-    def __init__(self, parent_tag: str) -> None:
+    def __init__(self, parent_tag: str, audio_device_manager: AudioDeviceManager) -> None:
         self.parent_tag = parent_tag
+        self.audio_device_manager = audio_device_manager
         self.waveform_display: Waveform
         self.instruction_details: InstructionDetailsPanel
         self.player_panel: AudioPlayerPanel
@@ -48,7 +50,10 @@ class InstructionPanelGUI:
     def _create_player_panel(self) -> None:
         player_tag = f"{self.parent_tag}_player"
         self.player_panel = AudioPlayerPanel(
-            tag=player_tag, parent=self.parent_tag, on_position_changed=self._on_player_position_changed
+            tag=player_tag,
+            parent=self.parent_tag,
+            on_position_changed=self._on_player_position_changed,
+            audio_device_manager=self.audio_device_manager,
         )
 
     def display_instruction(

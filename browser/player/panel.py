@@ -23,16 +23,22 @@ from browser.constants import (
 )
 from browser.player.data import AudioData
 from constants import SAMPLE_RATE
-from utils.audio.io import play_audio
+from utils.audio.device import AudioDeviceManager
+from utils.audio.io import clip_audio, stereo_to_mono
 
 
 class AudioPlayerPanel:
     def __init__(
-        self, tag: str, parent: Optional[str] = None, on_position_changed: Optional[Callable[[int], None]] = None
+        self,
+        tag: str,
+        audio_device_manager: AudioDeviceManager,
+        parent: Optional[str] = None,
+        on_position_changed: Optional[Callable[[int], None]] = None,
     ):
         self.tag = tag
         self.parent = parent
         self.on_position_changed = on_position_changed
+        self.audio_device_manager = audio_device_manager
 
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
@@ -89,25 +95,28 @@ class AudioPlayerPanel:
             self._show_no_audio_dialog()
             return
 
-        try:
-            play_audio(self.audio_data.sample, self.audio_data.sample_rate)
-            self.is_playing = True
-            self._update_controls()
-        except Exception as exception:
-            self._show_playback_error_dialog(str(exception))
+        audio = self.audio_data.sample
+        audio = stereo_to_mono(audio)
+        audio = clip_audio(audio)
+
+        self.audio_device_manager.start(audio)
+        self.is_playing = True
+        self._update_controls()
 
     def _pause_audio(self) -> None:
+        self.audio_device_manager.pause()
         self.is_playing = False
         self._update_controls()
 
     def _stop_audio(self) -> None:
+        self.audio_device_manager.stop()
         if self.audio_data.is_loaded():
             self.audio_data.reset_position()
-            self.is_playing = False
-            self._update_controls()
-            self._update_position_display()
-            if self.on_position_changed:
-                self.on_position_changed(0)
+        self.is_playing = False
+        self._update_controls()
+        self._update_position_display()
+        if self.on_position_changed:
+            self.on_position_changed(0)
 
     def _update_controls(self) -> None:
         has_audio = self.audio_data.is_loaded()
