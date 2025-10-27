@@ -62,7 +62,7 @@ class AudioDeviceManager:
     def get_device(self) -> Optional[int]:
         return self._current_device
 
-    def start(self, audio: np.ndarray) -> None:
+    def play(self, audio: np.ndarray) -> None:
         sd.play(audio, samplerate=self._device_sample_rate, device=self._current_device)
 
     def stop(self) -> None:

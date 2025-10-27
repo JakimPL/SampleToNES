@@ -1,6 +1,7 @@
 from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
+import numpy as np
 
 from browser.constants import (
     DIM_PLAYER_PANEL_DEFAULT_WIDTH,
@@ -99,7 +100,8 @@ class AudioPlayerPanel:
         audio = stereo_to_mono(audio)
         audio = clip_audio(audio)
 
-        self.audio_device_manager.start(audio)
+        audio = self.audio_data.sample.astype(np.float32)
+        self.audio_device_manager.play(audio)
         self.is_playing = True
         self._update_controls()
 
