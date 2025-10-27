@@ -38,7 +38,7 @@ LBL_MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_MENU_EXIT = "Exit"
 
 # Tab labels
-LBL_TAB_CONFIGURATION = "Configuration"
+LBL_TAB_LIBRARY = "Library"
 LBL_TAB_RECONSTRUCTION = "Reconstruction"
 LBL_TAB_BROWSER = "Browse results"
 

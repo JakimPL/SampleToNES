@@ -66,7 +66,7 @@ class GUI:
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
     def create_config_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_CONFIGURATION):
+        with dpg.tab(label=LBL_TAB_LIBRARY):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=DIM_PANEL_LIBRARY_WIDTH, height=-1):
                     with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
