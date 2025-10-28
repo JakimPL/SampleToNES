@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -13,6 +13,9 @@ from browser.constants import (
     SUF_WAVEFORM_PLOT,
     SUF_WAVEFORM_X_AXIS,
     SUF_WAVEFORM_Y_AXIS,
+    VAL_SPECTRUM_GRAYSCALE_MAX,
+    VAL_SPECTRUM_LOG_OFFSET,
+    VAL_WAVEFORM_AXIS_SLOT,
 )
 from constants import MIN_FREQUENCY, SAMPLE_RATE
 from ffts.fft import calculate_frequencies
@@ -83,26 +86,18 @@ class SpectrumDisplay:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        children = dpg.get_item_children(self.y_axis_tag, slot=0) or []
+        children = dpg.get_item_children(self.y_axis_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
         for child in children:
             dpg.delete_item(child)
 
         if self.spectrum is None or self.frequencies is None:
             return
 
-        normalized_spectrum: np.ndarray = self.spectrum / (np.max(self.spectrum) + 1e-12)
+        total_energy = np.sqrt(np.sum(self.spectrum**2)) + VAL_SPECTRUM_LOG_OFFSET
+        normalized_spectrum: np.ndarray = self.spectrum / total_energy
         frequencies: np.ndarray = self.frequencies
-        bin_count: int = len(frequencies)
         for bin_index, (frequency, energy) in enumerate(zip(frequencies, normalized_spectrum)):
-            if bin_index == 0:
-                frequency_lower_bound = np.sqrt(frequencies[0] * frequencies[1])
-            else:
-                frequency_lower_bound = np.sqrt(frequencies[bin_index - 1] * frequency)
-            if bin_index == bin_count - 1:
-                frequency_upper_bound = np.sqrt(frequencies[-1] ** 2 / frequencies[-2])
-            else:
-                frequency_upper_bound = np.sqrt(frequency * frequencies[bin_index + 1])
-
+            frequency_lower_bound, frequency_upper_bound = self._get_frequency_band_bounds(frequencies, bin_index)
             frequency_band_width = frequency_upper_bound - frequency_lower_bound
             series_tag = f"{self.y_axis_tag}_bar_{bin_index}"
             dpg.add_bar_series(
@@ -116,10 +111,15 @@ class SpectrumDisplay:
             )
             with dpg.theme() as bar_theme:
                 with dpg.theme_component(dpg.mvBarSeries):
-                    brightness = int(255 * energy)
+                    brightness = int(VAL_SPECTRUM_GRAYSCALE_MAX * energy)
                     dpg.add_theme_color(
                         dpg.mvPlotCol_Fill,
-                        (255, 255, 255, brightness),
+                        (
+                            VAL_SPECTRUM_GRAYSCALE_MAX,
+                            VAL_SPECTRUM_GRAYSCALE_MAX,
+                            VAL_SPECTRUM_GRAYSCALE_MAX,
+                            brightness,
+                        ),
                         category=dpg.mvThemeCat_Plots,
                     )
             dpg.bind_item_theme(series_tag, bar_theme)
@@ -131,3 +131,18 @@ class SpectrumDisplay:
             return
 
         dpg.set_axis_limits(self.y_axis_tag, self.frequencies[0], self.frequencies[-1])
+
+    def _get_frequency_band_bounds(self, frequencies: np.ndarray, bin_index: int) -> Tuple[float, float]:
+        bin_count: int = len(frequencies)
+        frequency: float = frequencies[bin_index]
+
+        if bin_index == 0:
+            frequency_lower_bound = np.sqrt(frequencies[0] * frequencies[1])
+        else:
+            frequency_lower_bound = np.sqrt(frequencies[bin_index - 1] * frequency)
+        if bin_index == bin_count - 1:
+            frequency_upper_bound = np.sqrt(frequencies[-1] ** 2 / frequencies[-2])
+        else:
+            frequency_upper_bound = np.sqrt(frequency * frequencies[bin_index + 1])
+
+        return frequency_lower_bound, frequency_upper_bound
