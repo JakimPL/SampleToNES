@@ -85,9 +85,11 @@ class InstructionPanelGUI:
         self.instruction_details.display_instruction(generator_class_name, instruction, fragment)
 
         if fragment:
+            sample_rate = library_config.sample_rate
+            frame_length = library_config.window_size
             self.waveform_display.load_library_fragment(fragment)
-            self.spectrum_display.load_library_fragment(fragment, library_config.sample_rate)
-            audio_data = AudioData.from_library_fragment(fragment, library_config.sample_rate)
+            self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
+            audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
             self._clear_displays()

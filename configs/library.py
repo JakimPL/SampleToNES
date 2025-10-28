@@ -1,3 +1,4 @@
+import numpy as np
 from pydantic import BaseModel, Field
 
 from constants import (
@@ -7,6 +8,7 @@ from constants import (
     MAX_CHANGE_RATE,
     MAX_SAMPLE_RATE,
     MIN_CHANGE_RATE,
+    MIN_FREQUENCY,
     MIN_SAMPLE_RATE,
     SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
@@ -23,6 +25,11 @@ class LibraryConfig(BaseModel):
     @property
     def frame_length(self) -> int:
         return round(self.sample_rate / self.change_rate)
+
+    @property
+    def window_size(self) -> int:
+        lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
+        return max(self.frame_length, lower_bound)
 
     class Config:
         extra = "forbid"

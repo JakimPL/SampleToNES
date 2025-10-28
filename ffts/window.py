@@ -23,8 +23,7 @@ class Window:
     weights: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        lower_bound = int(np.ceil(2.0 * self.config.sample_rate / MIN_FREQUENCY))
-        size = max(self.config.frame_length, self.custom_size if self.custom_size is not None else lower_bound)
+        size = self.custom_size if self.custom_size is not None else self.config.window_size
 
         left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
         object.__setattr__(self, "size", size)

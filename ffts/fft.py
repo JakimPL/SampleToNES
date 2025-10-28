@@ -55,7 +55,7 @@ class FFTTransformer(BaseModel):
 
     def compose(self, callable: MultaryTransformation) -> MultaryTransformation:
         def composition(*args: np.ndarray) -> np.ndarray:
-            return self.base_operation(callable(**args))
+            return self.base_operation(callable(*args))
 
         return composition
 
