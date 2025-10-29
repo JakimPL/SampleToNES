@@ -8,8 +8,6 @@ from browser.constants import (
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_SPECTRUM_X_AXIS,
     LBL_SPECTRUM_Y_AXIS,
-    VAL_SPECTRUM_GRAYSCALE_MAX,
-    VAL_SPECTRUM_LOG_OFFSET,
     VAL_WAVEFORM_AXIS_SLOT,
 )
 from browser.graphs.graph import GraphDisplay
@@ -52,7 +50,9 @@ class SpectrumDisplay(GraphDisplay):
         sample_rate: int,
         frame_length: int,
     ) -> None:
+        self.clear_layers()
         self.current_library_fragment = fragment
+
         self.add_layer(
             SpectrumLayer(
                 fragment=fragment,
@@ -62,9 +62,6 @@ class SpectrumDisplay(GraphDisplay):
             )
         )
 
-        self.clear_layers()
-        self._update_display()
-
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
@@ -73,9 +70,10 @@ class SpectrumDisplay(GraphDisplay):
         for child in children:
             dpg.delete_item(child)
 
+        self._update_axes_limits()
         for layer in self.layers.values():
-            for frequency, band_width, brightness in layer:
-                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{bin_index}"
+            for index, (frequency, band_width, brightness) in enumerate(layer):
+                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}"
                 dpg.add_bar_series(
                     x=[self.x_max],
                     y=[frequency],
@@ -94,8 +92,6 @@ class SpectrumDisplay(GraphDisplay):
                         )
 
                 dpg.bind_item_theme(series_tag, bar_theme)
-
-        self._update_axes_limits()
 
     def _update_axes_limits(self) -> None:
         if not self.layers:
