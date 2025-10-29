@@ -70,9 +70,9 @@ class GUI:
     def create_config_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_LIBRARY):
             with dpg.group(horizontal=True):
-                with dpg.child_window(width=DIM_PANEL_LIBRARY_WIDTH, height=-1):
+                with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
                     with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
-                        self.config_panel.create_panel(TAG_CONFIG_PANEL_GROUP)
+                        self.config_panel.create_panel()
 
                     with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
                         self.library_panel.create_panel()

@@ -25,8 +25,13 @@ class ConfigPanelGUI:
         self.config_manager = config_manager
         self.on_library_directory_changed = on_library_directory_changed
 
-    def create_panel(self, parent_tag: str) -> None:
-        with dpg.child_window(width=DIM_PANEL_CONFIG_WIDTH, height=DIM_PANEL_CONFIG_HEIGHT, parent=parent_tag):
+    def create_panel(self) -> None:
+        with dpg.child_window(
+            tag=TAG_CONFIG_PANEL,
+            width=DIM_PANEL_CONFIG_WIDTH,
+            height=DIM_PANEL_CONFIG_HEIGHT,
+            parent=TAG_CONFIG_PANEL_GROUP,
+        ):
             dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
             dpg.add_separator()
 

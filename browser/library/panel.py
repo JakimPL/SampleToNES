@@ -30,13 +30,18 @@ class LibraryPanelGUI:
         self.generation_thread = None
         self.current_highlighted_library: Optional[str] = None
 
-    def create_panel(self):
-        with dpg.group(tag=TAG_LIBRARY_PANEL) as library_panel_group:
+    def create_panel(self) -> None:
+        with dpg.child_window(
+            tag=TAG_LIBRARY_PANEL,
+            width=DIM_PANEL_LIBRARY_WIDTH,
+            height=DIM_PANEL_LIBRARY_HEIGHT,
+            parent=TAG_LIBRARY_PANEL_GROUP,
+        ):
             dpg.add_text(LBL_LIBRARY_LIBRARIES)
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
-            with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP) as controls_group:
+            with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
                 dpg.add_button(
                     label=LBL_BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag=TAG_LIBRARY_BUTTON_GENERATE
                 )
@@ -46,8 +51,6 @@ class LibraryPanelGUI:
             dpg.add_separator()
             with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
                 pass
-
-        return library_panel_group
 
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
