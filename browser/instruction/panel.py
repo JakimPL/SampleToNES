@@ -6,11 +6,16 @@ from browser.constants import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTION_WAVEFORM,
+    TAG_INSTRUCTION_PANEL,
+    TAG_INSTRUCTION_PANEL_GROUP,
+    TAG_INSTRUCTION_SPECTRUM_DISPLAY,
+    TAG_INSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
 )
 from browser.graphs.spectrum import SpectrumDisplay
 from browser.graphs.waveform import WaveformDisplay
-from browser.instruction.details import InstructionDetailsPanel
+from browser.instruction.details import GUIInstructionDetailsPanel
+from browser.panels.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.panel import AudioPlayerPanel
 from configs.library import LibraryConfig
@@ -20,15 +25,18 @@ from typehints.instructions import InstructionUnion
 from utils.audio.device import AudioDeviceManager
 
 
-class InstructionPanelGUI:
-    def __init__(self, parent_tag: str, audio_device_manager: AudioDeviceManager) -> None:
-        self.parent_tag = parent_tag
+class GUIInstructionPanel(GUIPanel):
+    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
+        super().__init__(
+            tag=TAG_INSTRUCTION_PANEL,
+            parent_tag=TAG_INSTRUCTION_PANEL_GROUP,
+        )
+
         self.audio_device_manager = audio_device_manager
         self.waveform_display: WaveformDisplay
         self.spectrum_display: SpectrumDisplay
-        self.instruction_details: InstructionDetailsPanel
+        self.instruction_details: GUIInstructionDetailsPanel
         self.player_panel: AudioPlayerPanel
-
         self.library_config: Optional[LibraryConfig] = None
 
     def create_panel(self) -> None:
@@ -41,9 +49,8 @@ class InstructionPanelGUI:
         self._create_instruction_details()
 
     def _create_waveform_display(self) -> None:
-        waveform_tag = f"{self.parent_tag}_waveform"
         self.waveform_display = WaveformDisplay(
-            tag=waveform_tag,
+            tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
             parent=self.parent_tag,
@@ -51,9 +58,8 @@ class InstructionPanelGUI:
         )
 
     def _create_spectrum_display(self) -> None:
-        spectrum_tag = f"{self.parent_tag}_spectrum"
         self.spectrum_display = SpectrumDisplay(
-            tag=spectrum_tag,
+            tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
             parent=self.parent_tag,
@@ -61,9 +67,8 @@ class InstructionPanelGUI:
         )
 
     def _create_instruction_details(self) -> None:
-        details_tag = f"{self.parent_tag}_details"
-        self.instruction_details = InstructionDetailsPanel(details_tag)
-        self.instruction_details.create_panel(self.parent_tag)
+        self.instruction_details = GUIInstructionDetailsPanel()
+        self.instruction_details.create_panel()
 
     def _create_player_panel(self) -> None:
         player_tag = f"{self.parent_tag}_player"

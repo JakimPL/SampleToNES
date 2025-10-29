@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.config.manager import ConfigManager
 from browser.constants import *
 from browser.library.manager import LibraryManager
+from browser.panels.panel import GUIPanel
 from configs.config import Config
 from library.data import LibraryFragment
 from library.key import LibraryKey
@@ -14,13 +15,20 @@ from typehints.general import LibraryGeneratorName
 from typehints.instructions import InstructionUnion
 
 
-class LibraryPanelGUI:
+class GUILibraryPanel(GUIPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
         on_instruction_selected: Optional[Callable] = None,
         on_config_gui_update: Optional[Callable] = None,
     ) -> None:
+        super().__init__(
+            tag=TAG_LIBRARY_PANEL,
+            parent_tag=TAG_LIBRARY_PANEL_GROUP,
+            width=DIM_PANEL_LIBRARY_WIDTH,
+            height=DIM_PANEL_LIBRARY_HEIGHT,
+        )
+
         self.config_manager = config_manager
         self.library_manager = LibraryManager()
         self.on_instruction_selected = on_instruction_selected
@@ -31,12 +39,7 @@ class LibraryPanelGUI:
         self.current_highlighted_library: Optional[str] = None
 
     def create_panel(self) -> None:
-        with dpg.child_window(
-            tag=TAG_LIBRARY_PANEL,
-            width=DIM_PANEL_LIBRARY_WIDTH,
-            height=DIM_PANEL_LIBRARY_HEIGHT,
-            parent=TAG_LIBRARY_PANEL_GROUP,
-        ):
+        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
             dpg.add_text(LBL_LIBRARY_LIBRARIES)
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
@@ -164,8 +167,8 @@ class LibraryPanelGUI:
             self._clear_children(library_tag)
             self._create_generator_nodes(display_name)
 
-    def _clear_children(self, parent_tag: str) -> None:
-        children = dpg.get_item_children(parent_tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []
+    def _clear_children(self, tag: str) -> None:
+        children = dpg.get_item_children(tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []
         for child in children:
             dpg.delete_item(child)
 

@@ -8,8 +8,8 @@ import numpy as np
 from browser.config.manager import ConfigManager
 from browser.config.panel import ConfigPanelGUI
 from browser.constants import *
-from browser.instruction.panel import InstructionPanelGUI
-from browser.library.panel import LibraryPanelGUI
+from browser.instruction.panel import GUIInstructionPanel
+from browser.library.panel import GUILibraryPanel
 from configs.library import LibraryConfig
 from library.data import LibraryFragment
 from reconstructor.reconstruction import Reconstruction
@@ -30,8 +30,8 @@ class GUI:
         self.audio_device_manager = AudioDeviceManager()
         self.config_manager = ConfigManager()
         self.config_panel = ConfigPanelGUI(self.config_manager)
-        self.instruction_panel: Optional[InstructionPanelGUI] = None
-        self.library_panel = LibraryPanelGUI(
+        self.instruction_panel: Optional[GUIInstructionPanel] = None
+        self.library_panel = GUILibraryPanel(
             self.config_manager,
             on_instruction_selected=self._on_instruction_selected,
             on_config_gui_update=self.config_panel.apply_library_config,
@@ -41,13 +41,9 @@ class GUI:
 
     def setup_gui(self) -> None:
         dpg.create_context()
-
         self.create_main_window()
         dpg.create_viewport(title=TITLE_WINDOW_MAIN, width=DIM_WINDOW_MAIN_WIDTH, height=DIM_WINDOW_MAIN_HEIGHT)
         dpg.setup_dearpygui()
-
-        pass
-
         dpg.show_viewport()
 
     def create_main_window(self) -> None:
@@ -77,8 +73,8 @@ class GUI:
                     with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
                         self.library_panel.create_panel()
 
-                with dpg.child_window(tag=TAG_CONFIG_TAB):
-                    self.instruction_panel = InstructionPanelGUI(TAG_CONFIG_TAB, self.audio_device_manager)
+                with dpg.child_window(tag=TAG_INSTRUCTION_PANEL_GROUP):
+                    self.instruction_panel = GUIInstructionPanel(self.audio_device_manager)
                     self.instruction_panel.create_panel()
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)

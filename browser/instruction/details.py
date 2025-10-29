@@ -17,9 +17,13 @@ from browser.constants import (
     PFX_INSTRUCTION_PARAMETER_INDENT,
     PFX_INSTRUCTION_SAMPLE_LENGTH,
     SUF_INSTRUCTION_SAMPLE_LENGTH,
+    TAG_INSTRUCTION_DETAILS,
+    TAG_INSTRUCTION_DETAILS_INFO,
+    TAG_INSTRUCTION_PANEL,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
 from browser.instruction.data import InstructionPanelData
+from browser.panels.panel import GUIPanel
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
 
@@ -80,23 +84,20 @@ class InstructionDetailsLogic:
             return str(value)
 
 
-class InstructionDetailsPanel:
-    def __init__(self, tag: str) -> None:
-        self.tag = tag
-        self.logic = InstructionDetailsLogic()
-        self.info_tag = f"{tag}_instruction_info"
+class GUIInstructionDetailsPanel(GUIPanel):
+    def __init__(self) -> None:
+        super().__init__(
+            tag=TAG_INSTRUCTION_DETAILS,
+            parent_tag=TAG_INSTRUCTION_PANEL,
+        )
 
-    def create_panel(self, parent: Optional[Union[int, str]] = None) -> None:
-        if parent is not None:
-            with dpg.group(tag=self.tag, parent=parent):
-                dpg.add_text(MSG_INSTRUCTION_DETAILS)
-                dpg.add_separator()
-                dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=self.info_tag)
-        else:
-            with dpg.group(tag=self.tag):
-                dpg.add_text(MSG_INSTRUCTION_DETAILS)
-                dpg.add_separator()
-                dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=self.info_tag)
+        self.logic = InstructionDetailsLogic()
+
+    def create_panel(self) -> None:
+        with dpg.group(tag=self.tag):
+            dpg.add_text(MSG_INSTRUCTION_DETAILS)
+            dpg.add_separator()
+            dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
 
     def display_instruction(
         self, generator_class_name: str, instruction: InstructionUnion, fragment: Optional[LibraryFragment] = None
@@ -110,4 +111,4 @@ class InstructionDetailsPanel:
 
     def _update_display(self) -> None:
         display_text = self.logic.get_display_text()
-        dpg.set_value(self.info_tag, display_text)
+        dpg.set_value(TAG_INSTRUCTION_DETAILS_INFO, display_text)
