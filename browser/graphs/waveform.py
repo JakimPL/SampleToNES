@@ -92,6 +92,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
         self._update_info_display()
+        self._update_axes_limits()
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -101,7 +102,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         for child in children:
             dpg.delete_item(child)
 
-        self._update_axes_limits()
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
             dpg.add_line_series(
@@ -117,6 +117,8 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                     dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
 
             dpg.bind_item_theme(series_tag, series_theme)
+
+        self._update_axes_limits()
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
