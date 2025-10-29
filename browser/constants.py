@@ -249,12 +249,12 @@ CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
 # layer colors also defined above (keep for compatibility)
 
 # Waveform component suffixes
-SUF_WAVEFORM_PLOT = "_plot"
-SUF_WAVEFORM_X_AXIS = "_x_axis"
-SUF_WAVEFORM_Y_AXIS = "_y_axis"
-SUF_WAVEFORM_LEGEND = "_legend"
-SUF_WAVEFORM_CONTROLS = "_controls"
-SUF_WAVEFORM_INFO = "_info"
+SUF_GRAPH_PLOT = "_plot"
+SUF_GRAPH_X_AXIS = "_x_axis"
+SUF_GRAPH_Y_AXIS = "_y_axis"
+SUF_GRAPH_LEGEND = "_legend"
+SUF_GRAPH_CONTROLS = "_controls"
+SUF_GRAPH_INFO = "_info"
 
 
 # Spectrum display settings
@@ -263,8 +263,8 @@ VAL_SPECTRUM_GRAYSCALE_MAX = 255
 LBL_SPECTRUM_X_AXIS = ""
 LBL_SPECTRUM_Y_AXIS = "Frequency"
 
-DIM_WAVEFORM_DEFAULT_WIDTH = -1
-DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT = 300
+DIM_GRAPH_DEFAULT_WIDTH = -1
+DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT = 300
 
 # Boolean text values
 LBL_GLOBAL_YES = "Yes"
@@ -272,7 +272,7 @@ LBL_GLOBAL_NO = "No"
 
 # Default axis range
 VAL_WAVEFORM_DEFAULT_X_MIN = 0.0
-VAL_WAVEFORM_DEFAULT_X_MAX = 1.0
+VAL_GRAPH_DEFAULT_X_MAX = 1.0
 
 # Format precision
 VAL_WAVEFORM_FLOAT_PRECISION = 4

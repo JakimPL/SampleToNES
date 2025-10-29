@@ -8,11 +8,11 @@ from browser.constants import (
     LBL_INSTRUCTION_WAVEFORM,
     VAL_PLOT_WIDTH_FULL,
 )
+from browser.graphs.spectrum import SpectrumDisplay
+from browser.graphs.waveform import WaveformDisplay
 from browser.instruction.details import InstructionDetailsPanel
 from browser.player.data import AudioData
 from browser.player.panel import AudioPlayerPanel
-from browser.waveform.spectrum import SpectrumDisplay
-from browser.waveform.waveform import WaveformDisplay
 from configs.library import LibraryConfig
 from constants import SAMPLE_RATE
 from library.data import LibraryFragment

@@ -5,90 +5,51 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.constants import (
-    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
-    DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
-    DIM_WAVEFORM_DEFAULT_WIDTH,
+    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
+    DIM_GRAPH_DEFAULT_WIDTH,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
     LBL_WAVEFORM_BUTTON_RESET_ALL,
     LBL_WAVEFORM_BUTTON_RESET_X,
     LBL_WAVEFORM_BUTTON_RESET_Y,
-    LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME,
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
     MSG_WAVEFORM_NO_FRAGMENT,
-    SUF_WAVEFORM_CONTROLS,
-    SUF_WAVEFORM_INFO,
-    SUF_WAVEFORM_LEGEND,
-    SUF_WAVEFORM_PLOT,
-    SUF_WAVEFORM_X_AXIS,
-    SUF_WAVEFORM_Y_AXIS,
+    VAL_GRAPH_DEFAULT_X_MAX,
     VAL_WAVEFORM_AXIS_SLOT,
-    VAL_WAVEFORM_DEFAULT_X_MAX,
     VAL_WAVEFORM_DEFAULT_X_MIN,
-    VAL_WAVEFORM_DEFAULT_Y_MAX,
-    VAL_WAVEFORM_DEFAULT_Y_MIN,
-    VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from browser.waveform.layer import WaveformLayer
+from browser.graphs.graph import GraphDisplay
+from browser.graphs.layers.waveform import WaveformLayer
 from library.data import LibraryFragment
 
 
-class WaveformDisplay:
+class WaveformDisplay(GraphDisplay):
     def __init__(
         self,
         tag: str,
-        width: int = DIM_WAVEFORM_DEFAULT_WIDTH,
-        height: int = DIM_WAVEFORM_DEFAULT_DISPLAY_HEIGHT,
-        parent: Optional[str] = None,
+        parent: str,
+        width: int = DIM_GRAPH_DEFAULT_WIDTH,
+        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
         label: str = "Waveform Display",
     ):
-        self.tag = tag
-        self.width = width
-        self.height = height
-        self.parent = parent
-        self.label = label
-
-        self.plot_tag = f"{tag}{SUF_WAVEFORM_PLOT}"
-        self.x_axis_tag = f"{tag}{SUF_WAVEFORM_X_AXIS}"
-        self.y_axis_tag = f"{tag}{SUF_WAVEFORM_Y_AXIS}"
-        self.legend_tag = f"{tag}{SUF_WAVEFORM_LEGEND}"
-        self.controls_tag = f"{tag}{SUF_WAVEFORM_CONTROLS}"
-        self.info_tag = f"{tag}{SUF_WAVEFORM_INFO}"
-
-        self.layers: Dict[str, WaveformLayer] = {}
-        self.current_library_fragment: Optional[LibraryFragment] = None
-
-        self.x_min: float = VAL_WAVEFORM_DEFAULT_X_MIN
-        self.x_max: float = VAL_WAVEFORM_DEFAULT_X_MAX
-        self.y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN
-        self.y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX
-        self.default_y_range = (VAL_WAVEFORM_DEFAULT_Y_MIN, VAL_WAVEFORM_DEFAULT_Y_MAX)
+        super().__init__(tag, parent, width, height, label)
 
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
-
-        self._create_display()
-        self._update_axes_limits()
+        self.current_library_fragment: Optional[LibraryFragment] = None
 
     @property
     def sample_length(self) -> float:
         if self.current_library_fragment:
             return float(len(self.current_library_fragment.sample))
-        return VAL_WAVEFORM_DEFAULT_X_MAX
 
-    def _create_display(self) -> None:
-        if self.parent:
-            with dpg.group(tag=self.tag, parent=self.parent):
-                self._create_waveform_content()
-        else:
-            with dpg.group(tag=self.tag):
-                self._create_waveform_content()
+        return VAL_GRAPH_DEFAULT_X_MAX
 
-    def _create_waveform_content(self) -> None:
+    def _create_content(self) -> None:
         with dpg.group(tag=self.controls_tag, horizontal=True):
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
@@ -115,52 +76,23 @@ class WaveformDisplay:
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
 
-    def add_layer(
-        self,
-        name: str,
-        data: np.ndarray,
-        color: Tuple[int, int, int, int] = (255, 255, 255, 255),
-        visible: bool = True,
-        line_thickness: float = 1.0,
-    ) -> None:
-        layer = WaveformLayer(name=name, data=data, color=color, visible=visible, line_thickness=line_thickness)
-        self.layers[name] = layer
-        self._update_display()
-
-    def remove_layer(self, name: str) -> None:
-        if name in self.layers:
-            del self.layers[name]
-            self._update_display()
-
-    def clear_layers(self) -> None:
-        self.layers.clear()
-        self._update_display()
-
     def load_library_fragment(self, fragment: LibraryFragment) -> None:
-        self.current_library_fragment = fragment
         self.clear_layers()
 
+        self.current_library_fragment = fragment
         self.add_layer(
-            LBL_WAVEFORM_SAMPLE_LAYER_NAME,
-            fragment.sample,
-            color=CLR_WAVEFORM_LAYER_SAMPLE,
-            line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+            WaveformLayer(
+                fragment=fragment,
+                name=LBL_WAVEFORM_SAMPLE_LAYER_NAME,
+                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+            )
         )
-
-        self._update_info_display()
 
         self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
-        self._update_axes_limits()
-
-    def add_reconstruction_comparison(self, reconstruction: np.ndarray) -> None:
-        if len(reconstruction) > 0:
-            self.add_layer(
-                LBL_WAVEFORM_RECONSTRUCTION_LAYER_NAME,
-                reconstruction,
-                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
-                line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
-            )
+        self._update_info_display()
+        self._update_display()
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -171,17 +103,20 @@ class WaveformDisplay:
             dpg.delete_item(child)
 
         for layer in self.layers.values():
-            if layer.visible and len(layer.data) > 0:
-                x_data = [float(i) for i in range(len(layer.data))]
-                y_data = layer.data.tolist()
+            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+            dpg.add_line_series(
+                layer.x_data,
+                layer.y_data,
+                label=layer.name,
+                parent=self.y_axis_tag,
+                tag=series_tag,
+            )
 
-                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
-                dpg.add_line_series(x_data, y_data, label=layer.name, parent=self.y_axis_tag, tag=series_tag)
+            with dpg.theme() as series_theme:
+                with dpg.theme_component(dpg.mvLineSeries):
+                    dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
 
-                with dpg.theme() as series_theme:
-                    with dpg.theme_component(dpg.mvLineSeries):
-                        dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
-                dpg.bind_item_theme(series_tag, series_theme)
+            dpg.bind_item_theme(series_tag, series_theme)
 
         self._update_axes_limits()
 
@@ -206,7 +141,7 @@ class WaveformDisplay:
             self.x_max = float(max_length)
         else:
             self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
-            self.x_max = VAL_WAVEFORM_DEFAULT_X_MAX
+            self.x_max = VAL_GRAPH_DEFAULT_X_MAX
         self._update_axes_limits()
 
     def _reset_y_axis(self) -> None:
@@ -318,16 +253,3 @@ class WaveformDisplay:
     def _mouse_release_callback(self, sender: str, app_data: int) -> None:
         if app_data == dpg.mvMouseButton_Left:
             self.is_dragging = False
-
-    def set_view_bounds(self, x_min: float, x_max: float, y_min: float, y_max: float) -> None:
-        self.x_min = x_min
-        self.x_max = x_max
-        self.y_min = y_min
-        self.y_max = y_max
-        self._update_axes_limits()
-
-    def get_view_bounds(self) -> Tuple[float, float, float, float]:
-        return self.x_min, self.x_max, self.y_min, self.y_max
-
-    def export_view_as_image(self, path: Union[str, Path]) -> None:
-        pass
