@@ -3,7 +3,9 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from browser.constants import (
+from browser.panel import GUIPanel
+from browser.player.data import AudioData
+from constants.browser import (
     DIM_PLAYER_PANEL_HEIGHT,
     DIM_PLAYER_PANEL_WIDTH,
     LBL_BUTTON_OK,
@@ -22,9 +24,7 @@ from browser.constants import (
     SUF_PLAYER_SAMPLES,
     SUF_PLAYER_STOP,
 )
-from browser.panel import GUIPanel
-from browser.player.data import AudioData
-from constants import SAMPLE_RATE
+from constants.general import SAMPLE_RATE
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import clip_audio, stereo_to_mono
 

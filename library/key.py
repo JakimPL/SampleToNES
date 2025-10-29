@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from configs.config import Config as Config
 from configs.library import LibraryConfig
-from constants import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from ffts.window import Window
 from utils.common import dump
 

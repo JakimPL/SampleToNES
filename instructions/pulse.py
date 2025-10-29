@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from constants import (
+from constants.general import (
     DUTY_CYCLES,
     MAX_DUTY_CYCLE,
     MAX_PITCH,

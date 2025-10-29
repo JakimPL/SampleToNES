@@ -1,12 +1,13 @@
 from pydantic import BaseModel, Field
 
-from constants import (
+from constants.general import (
     LIBRARY_DIRECTORY,
     MAX_PITCH,
     MAX_WORKERS,
     MIN_PITCH,
     MIXER,
     NORMALIZE,
+    OUTPUT_DIRECTORY,
     QUANTIZE,
 )
 
@@ -17,8 +18,10 @@ class GeneralConfig(BaseModel):
     mixer: float = Field(default=MIXER, ge=0.0, le=100.0)
     normalize: bool = Field(default=NORMALIZE)
     quantize: bool = Field(default=QUANTIZE)
-    library_directory: str = Field(default=LIBRARY_DIRECTORY)
     max_workers: int = Field(default=MAX_WORKERS, ge=1)
+
+    library_directory: str = Field(default=LIBRARY_DIRECTORY)
+    output_directory: str = Field(default=OUTPUT_DIRECTORY)
 
     class Config:
         extra = "forbid"

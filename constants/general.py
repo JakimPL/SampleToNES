@@ -75,6 +75,7 @@ MIXER_NOISE = 0.1733941733941734
 # Paths
 
 LIBRARY_DIRECTORY = "data/library"
+OUTPUT_DIRECTORY = "data/output"
 
 
 # Calculation methods

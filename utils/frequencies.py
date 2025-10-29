@@ -3,7 +3,7 @@ from typing import Dict
 import numpy as np
 
 from configs.config import Config
-from constants import A4_FREQUENCY, A4_PITCH, MAX_PITCH, MIN_PITCH, NOTE_NAMES
+from constants.general import A4_FREQUENCY, A4_PITCH, MAX_PITCH, MIN_PITCH, NOTE_NAMES
 from timers.phase import PhaseTimer
 
 

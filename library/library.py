@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from configs.config import Config as Configuration
 from configs.library import LibraryConfig
-from constants import LIBRARY_DIRECTORY
+from constants.general import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
 from library.key import LibraryKey

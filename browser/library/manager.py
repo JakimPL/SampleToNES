@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from configs.config import Config
-from constants import LIBRARY_DIRECTORY, NOISE_PERIODS
+from constants.general import LIBRARY_DIRECTORY, NOISE_PERIODS
 from ffts.window import Window
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction

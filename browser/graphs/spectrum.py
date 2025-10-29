@@ -3,7 +3,9 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from browser.constants import (
+from browser.graphs.graph import GUIGraphDisplay
+from browser.graphs.layers.spectrum import SpectrumLayer
+from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_SPECTRUM_DISPLAY,
@@ -11,9 +13,7 @@ from browser.constants import (
     LBL_SPECTRUM_Y_AXIS,
     VAL_WAVEFORM_AXIS_SLOT,
 )
-from browser.graphs.graph import GUIGraphDisplay
-from browser.graphs.layers.spectrum import SpectrumLayer
-from constants import MIN_FREQUENCY, SAMPLE_RATE
+from constants.general import MIN_FREQUENCY, SAMPLE_RATE
 from library.data import LibraryFragment
 
 

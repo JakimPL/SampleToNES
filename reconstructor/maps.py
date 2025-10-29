@@ -1,6 +1,6 @@
 from typing import Dict, cast
 
-from constants import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
+from constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
 from generators.noise import NoiseGenerator
 from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator

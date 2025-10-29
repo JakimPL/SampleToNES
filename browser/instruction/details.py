@@ -2,7 +2,9 @@ from typing import Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from browser.constants import (
+from browser.instruction.data import InstructionPanelData
+from browser.panel import GUIPanel
+from constants.browser import (
     FMT_INSTRUCTION_FREQUENCY,
     LBL_GLOBAL_NO,
     LBL_GLOBAL_YES,
@@ -22,8 +24,6 @@ from browser.constants import (
     TAG_INSTRUCTION_PANEL,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
-from browser.instruction.data import InstructionPanelData
-from browser.panel import GUIPanel
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
 

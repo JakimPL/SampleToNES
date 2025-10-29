@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from constants import FAST_DIFFERENCE, FIND_BEST_PHASE
+from constants.general import FAST_DIFFERENCE, FIND_BEST_PHASE
 
 
 class CalculationConfig(BaseModel):

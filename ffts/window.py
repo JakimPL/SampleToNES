@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 import numpy as np
 
 from configs.library import LibraryConfig
-from constants import MIN_FREQUENCY
+from constants.general import MIN_FREQUENCY
 from ffts.fft import calculate_weights
 from utils.common import pad
 

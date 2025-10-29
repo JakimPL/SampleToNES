@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
-from constants import (
+from constants.general import (
     APU_CLOCK,
     MAX_LFSR,
     MAX_LFSR_SHORT,

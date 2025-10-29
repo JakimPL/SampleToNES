@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from constants import MIN_PITCH
+from constants.general import MIN_PITCH
 from exporters.exporter import Exporter
 from instructions.pulse import PulseInstruction
 from typehints.general import FeatureKey, FeatureValue

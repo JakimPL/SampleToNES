@@ -2,7 +2,14 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from browser.constants import (
+from browser.graphs.spectrum import GUISpectrumDisplay
+from browser.graphs.waveform import GUIWaveformDisplay
+from browser.instruction.details import GUIInstructionDetailsPanel
+from browser.panel import GUIPanel
+from browser.player.data import AudioData
+from browser.player.panel import GUIAudioPlayerPanel
+from configs.library import LibraryConfig
+from constants.browser import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTION_WAVEFORM,
@@ -13,13 +20,6 @@ from browser.constants import (
     TAG_INSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
 )
-from browser.graphs.spectrum import GUISpectrumDisplay
-from browser.graphs.waveform import GUIWaveformDisplay
-from browser.instruction.details import GUIInstructionDetailsPanel
-from browser.panel import GUIPanel
-from browser.player.data import AudioData
-from browser.player.panel import GUIAudioPlayerPanel
-from configs.library import LibraryConfig
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
 from utils.audio.device import AudioDeviceManager

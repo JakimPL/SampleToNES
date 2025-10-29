@@ -3,7 +3,7 @@ from typing import List, cast
 import numpy as np
 
 from configs.config import Config
-from constants import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
+from constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from generators.generator import Generator
 from instructions.pulse import PulseInstruction
 from timers.phase import PhaseTimer

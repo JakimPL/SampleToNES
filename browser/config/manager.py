@@ -1,17 +1,17 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from browser.constants import (
+from configs.config import Config
+from configs.general import GeneralConfig
+from configs.library import LibraryConfig
+from constants.browser import (
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
 )
-from configs.config import Config
-from configs.general import GeneralConfig
-from configs.library import LibraryConfig
-from constants import (
+from constants.general import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
     MAX_WORKERS,

@@ -1,7 +1,7 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, List, Optional, Self, Union, cast
+from typing import Any, Collection, Dict, List, Self, Union, cast
 
 import msgpack
 import numpy as np

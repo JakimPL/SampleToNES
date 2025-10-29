@@ -3,7 +3,7 @@ from typing import List, cast
 import numpy as np
 
 from configs.config import Config
-from constants import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
+from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer

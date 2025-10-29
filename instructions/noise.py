@@ -1,6 +1,6 @@
 from pydantic import Field
 
-from constants import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
+from constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
 from instructions.instruction import Instruction
 
 

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from constants import (
+from constants.general import (
     CONTINUITY_LOSS_WEIGHT,
     RESET_PHASE,
     SPECTRAL_LOSS_WEIGHT,

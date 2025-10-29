@@ -4,7 +4,9 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from browser.constants import (
+from browser.graphs.graph import GUIGraphDisplay
+from browser.graphs.layers.waveform import WaveformLayer
+from constants.browser import (
     CLR_WAVEFORM_LAYER_SAMPLE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -22,8 +24,6 @@ from browser.constants import (
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from browser.graphs.graph import GUIGraphDisplay
-from browser.graphs.layers.waveform import WaveformLayer
 from library.data import LibraryFragment
 
 

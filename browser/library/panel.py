@@ -4,10 +4,43 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
-from browser.constants import *
 from browser.library.manager import LibraryManager
 from browser.panel import GUIPanel
 from configs.config import Config
+from constants.browser import (
+    DIM_PANEL_LIBRARY_HEIGHT,
+    DIM_PANEL_LIBRARY_WIDTH,
+    LBL_BUTTON_GENERATE_LIBRARY,
+    LBL_BUTTON_REFRESH_LIBRARIES,
+    LBL_BUTTON_REGENERATE_LIBRARY,
+    LBL_LIBRARY_AVAILABLE_LIBRARIES,
+    LBL_LIBRARY_LIBRARIES,
+    MSG_CONFIG_NOT_READY,
+    MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
+    MSG_LIBRARY_ERROR_GENERATING,
+    MSG_LIBRARY_GENERATED_SUCCESSFULLY,
+    MSG_LIBRARY_GENERATING,
+    MSG_LIBRARY_LOADING,
+    MSG_LIBRARY_NO_VALID_INSTRUCTIONS,
+    MSG_LIBRARY_NOT_LOADED,
+    PFX_GLOBAL_ERROR,
+    TAG_LIBRARY_BUTTON_GENERATE,
+    TAG_LIBRARY_CONTROLS_GROUP,
+    TAG_LIBRARY_PANEL,
+    TAG_LIBRARY_PANEL_GROUP,
+    TAG_LIBRARY_PROGRESS,
+    TAG_LIBRARY_STATUS,
+    TAG_LIBRARY_TREE,
+    TPL_GENERATOR_TAG,
+    TPL_GROUP_LABEL,
+    TPL_GROUP_TAG,
+    TPL_LIBRARY_EXISTS,
+    TPL_LIBRARY_NOT_EXISTS,
+    TPL_LIBRARY_TAG,
+    VAL_GLOBAL_DEFAULT_FLOAT,
+    VAL_GLOBAL_DEFAULT_SLOT,
+    VAL_GLOBAL_PROGRESS_COMPLETE,
+)
 from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP

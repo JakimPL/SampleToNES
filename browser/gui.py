@@ -7,10 +7,10 @@ import numpy as np
 
 from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
-from browser.constants import *
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
 from configs.library import LibraryConfig
+from constants.browser import DIM_DIALOG_FILE_HEIGHT
 from library.data import LibraryFragment
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.reconstructor import Reconstructor

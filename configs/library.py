@@ -1,7 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, Field
 
-from constants import (
+from constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
     CHANGE_RATE,
