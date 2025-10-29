@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.constants import *
+from browser.panel import GUIPanel
 from constants import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
@@ -20,17 +21,24 @@ from constants import (
 from library.key import LibraryKey
 
 
-class ConfigPanelGUI:
+class GUIConfigPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager, on_library_directory_changed: Optional[Callable] = None):
         self.config_manager = config_manager
         self.on_library_directory_changed = on_library_directory_changed
 
-    def create_panel(self) -> None:
-        with dpg.child_window(
+        super().__init__(
             tag=TAG_CONFIG_PANEL,
             width=DIM_PANEL_CONFIG_WIDTH,
             height=DIM_PANEL_CONFIG_HEIGHT,
-            parent=TAG_CONFIG_PANEL_GROUP,
+            parent_tag=TAG_CONFIG_PANEL_GROUP,
+        )
+
+    def create_panel(self) -> None:
+        with dpg.child_window(
+            tag=self.tag,
+            parent=self.parent_tag,
+            width=self.width,
+            height=self.height,
         ):
             dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
             dpg.add_separator()
@@ -70,8 +78,8 @@ class ConfigPanelGUI:
 
         self._register_callbacks()
 
-    def create_preview_panel(self, parent_tag: str) -> None:
-        with dpg.child_window(parent=parent_tag):
+    def create_preview_panel(self) -> None:
+        with dpg.child_window(parent=self.parent_tag):
             dpg.add_text(MSG_CONFIG_PREVIEW)
             dpg.add_separator()
             dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag=TAG_CONFIG_PREVIEW)

@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.config.manager import ConfigManager
 from browser.constants import *
 from browser.library.manager import LibraryManager
-from browser.panels.panel import GUIPanel
+from browser.panel import GUIPanel
 from configs.config import Config
 from library.data import LibraryFragment
 from library.key import LibraryKey
@@ -22,13 +22,6 @@ class GUILibraryPanel(GUIPanel):
         on_instruction_selected: Optional[Callable] = None,
         on_config_gui_update: Optional[Callable] = None,
     ) -> None:
-        super().__init__(
-            tag=TAG_LIBRARY_PANEL,
-            parent_tag=TAG_LIBRARY_PANEL_GROUP,
-            width=DIM_PANEL_LIBRARY_WIDTH,
-            height=DIM_PANEL_LIBRARY_HEIGHT,
-        )
-
         self.config_manager = config_manager
         self.library_manager = LibraryManager()
         self.on_instruction_selected = on_instruction_selected
@@ -37,6 +30,13 @@ class GUILibraryPanel(GUIPanel):
         self.is_generating = False
         self.generation_thread = None
         self.current_highlighted_library: Optional[str] = None
+
+        super().__init__(
+            tag=TAG_LIBRARY_PANEL,
+            parent_tag=TAG_LIBRARY_PANEL_GROUP,
+            width=DIM_PANEL_LIBRARY_WIDTH,
+            height=DIM_PANEL_LIBRARY_HEIGHT,
+        )
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):

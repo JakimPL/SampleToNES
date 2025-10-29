@@ -1,10 +1,11 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from browser.constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
+    LBL_WAVEFORM_DISPLAY,
     SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
     SUF_GRAPH_LEGEND,
@@ -16,23 +17,19 @@ from browser.constants import (
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
+from browser.panel import GUIPanel
 
 
-class GraphDisplay:
+class GUIGraphDisplay(GUIPanel):
     def __init__(
         self,
         tag: str,
         parent: str,
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = "Waveform Display",
+        label: str = LBL_WAVEFORM_DISPLAY,
     ):
-        self.tag = tag
-        self.width = width
-        self.height = height
-        self.parent = parent
         self.label = label
-
         self.plot_tag = f"{tag}{SUF_GRAPH_PLOT}"
         self.x_axis_tag = f"{tag}{SUF_GRAPH_X_AXIS}"
         self.y_axis_tag = f"{tag}{SUF_GRAPH_Y_AXIS}"
@@ -40,19 +37,24 @@ class GraphDisplay:
         self.controls_tag = f"{tag}{SUF_GRAPH_CONTROLS}"
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
 
-        self.layers: Dict[str, Any] = {}
-
         self.x_min: float = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max: float = VAL_GRAPH_DEFAULT_X_MAX
         self.y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN
         self.y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX
         self.default_y_range = (VAL_WAVEFORM_DEFAULT_Y_MIN, VAL_WAVEFORM_DEFAULT_Y_MAX)
 
-        self._create_display()
-        self._update_axes_limits()
+        self.layers: Dict[str, Any] = {}
 
-    def _create_display(self) -> None:
-        with dpg.group(tag=self.tag, parent=self.parent):
+        super().__init__(
+            tag=tag,
+            parent_tag=parent,
+            width=width,
+            height=height,
+            init=True,
+        )
+
+    def create_panel(self) -> None:
+        with dpg.group(tag=self.tag, parent=self.parent_tag):
             self._create_content()
 
     def _create_content(self) -> None:

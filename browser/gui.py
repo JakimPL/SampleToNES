@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.config.manager import ConfigManager
-from browser.config.panel import ConfigPanelGUI
+from browser.config.panel import GUIConfigPanel
 from browser.constants import *
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
@@ -29,7 +29,7 @@ class GUI:
         self.reconstruction_path: Optional[Path] = None
         self.audio_device_manager = AudioDeviceManager()
         self.config_manager = ConfigManager()
-        self.config_panel = ConfigPanelGUI(self.config_manager)
+        self.config_panel = GUIConfigPanel(self.config_manager)
         self.instruction_panel: Optional[GUIInstructionPanel] = None
         self.library_panel = GUILibraryPanel(
             self.config_manager,
@@ -75,7 +75,6 @@ class GUI:
 
                 with dpg.child_window(tag=TAG_INSTRUCTION_PANEL_GROUP):
                     self.instruction_panel = GUIInstructionPanel(self.audio_device_manager)
-                    self.instruction_panel.create_panel()
 
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.initialize_config_with_defaults()

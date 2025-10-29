@@ -12,6 +12,7 @@ from browser.constants import (
     LBL_WAVEFORM_BUTTON_RESET_ALL,
     LBL_WAVEFORM_BUTTON_RESET_X,
     LBL_WAVEFORM_BUTTON_RESET_Y,
+    LBL_WAVEFORM_DISPLAY,
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
     MSG_WAVEFORM_NO_FRAGMENT,
@@ -21,22 +22,21 @@ from browser.constants import (
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from browser.graphs.graph import GraphDisplay
+from browser.graphs.graph import GUIGraphDisplay
 from browser.graphs.layers.waveform import WaveformLayer
 from library.data import LibraryFragment
 
 
-class WaveformDisplay(GraphDisplay):
+class GUIWaveformDisplay(GUIGraphDisplay):
     def __init__(
         self,
         tag: str,
         parent: str,
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = "Waveform Display",
+        label: str = LBL_WAVEFORM_DISPLAY,
     ):
         super().__init__(tag, parent, width, height, label)
-
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR

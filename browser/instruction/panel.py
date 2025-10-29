@@ -8,18 +8,18 @@ from browser.constants import (
     LBL_INSTRUCTION_WAVEFORM,
     TAG_INSTRUCTION_PANEL,
     TAG_INSTRUCTION_PANEL_GROUP,
+    TAG_INSTRUCTION_PLAYER_PANEL,
     TAG_INSTRUCTION_SPECTRUM_DISPLAY,
     TAG_INSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
 )
-from browser.graphs.spectrum import SpectrumDisplay
-from browser.graphs.waveform import WaveformDisplay
+from browser.graphs.spectrum import GUISpectrumDisplay
+from browser.graphs.waveform import GUIWaveformDisplay
 from browser.instruction.details import GUIInstructionDetailsPanel
-from browser.panels.panel import GUIPanel
+from browser.panel import GUIPanel
 from browser.player.data import AudioData
-from browser.player.panel import AudioPlayerPanel
+from browser.player.panel import GUIAudioPlayerPanel
 from configs.library import LibraryConfig
-from constants import SAMPLE_RATE
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
 from utils.audio.device import AudioDeviceManager
@@ -27,17 +27,18 @@ from utils.audio.device import AudioDeviceManager
 
 class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
+        self.audio_device_manager = audio_device_manager
+        self.waveform_display: GUIWaveformDisplay
+        self.spectrum_display: GUISpectrumDisplay
+        self.instruction_details: GUIInstructionDetailsPanel
+        self.player_panel: GUIAudioPlayerPanel
+        self.library_config: Optional[LibraryConfig] = None
+
         super().__init__(
             tag=TAG_INSTRUCTION_PANEL,
             parent_tag=TAG_INSTRUCTION_PANEL_GROUP,
+            init=True,
         )
-
-        self.audio_device_manager = audio_device_manager
-        self.waveform_display: WaveformDisplay
-        self.spectrum_display: SpectrumDisplay
-        self.instruction_details: GUIInstructionDetailsPanel
-        self.player_panel: AudioPlayerPanel
-        self.library_config: Optional[LibraryConfig] = None
 
     def create_panel(self) -> None:
         self._create_player_panel()
@@ -49,7 +50,7 @@ class GUIInstructionPanel(GUIPanel):
         self._create_instruction_details()
 
     def _create_waveform_display(self) -> None:
-        self.waveform_display = WaveformDisplay(
+        self.waveform_display = GUIWaveformDisplay(
             tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
@@ -58,7 +59,7 @@ class GUIInstructionPanel(GUIPanel):
         )
 
     def _create_spectrum_display(self) -> None:
-        self.spectrum_display = SpectrumDisplay(
+        self.spectrum_display = GUISpectrumDisplay(
             tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
@@ -71,9 +72,8 @@ class GUIInstructionPanel(GUIPanel):
         self.instruction_details.create_panel()
 
     def _create_player_panel(self) -> None:
-        player_tag = f"{self.parent_tag}_player"
-        self.player_panel = AudioPlayerPanel(
-            tag=player_tag,
+        self.player_panel = GUIAudioPlayerPanel(
+            tag=TAG_INSTRUCTION_PLAYER_PANEL,
             parent=self.parent_tag,
             on_position_changed=self._on_player_position_changed,
             audio_device_manager=self.audio_device_manager,
@@ -97,20 +97,7 @@ class GUIInstructionPanel(GUIPanel):
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
-            self._clear_displays()
-
-    def clear_display(self) -> None:
-        self.instruction_details.clear_display()
-        self._clear_displays()
-
-    def _clear_displays(self) -> None:
-        if dpg.does_item_exist(self.waveform_display.y_axis_tag):
-            self.waveform_display.clear_layers()
-        if dpg.does_item_exist(self.spectrum_display.y_axis_tag):
-            pass
-            # self.spectrum_display.clear_layers()
-        if hasattr(self, "player_panel"):
-            self.player_panel.clear_audio()
+            self.instruction_details.clear_display()
 
     def _on_player_position_changed(self, position: int) -> None:
         pass

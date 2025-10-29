@@ -166,6 +166,7 @@ TAG_CONFIG_PANEL_GROUP = "config_panel_group"
 TAG_LIBRARY_PANEL_GROUP = "library_panel_group"
 TAG_INSTRUCTION_PANEL = "instruction_panel"
 TAG_INSTRUCTION_PANEL_GROUP = "instruction_panel_group"
+TAG_INSTRUCTION_PLAYER_PANEL = "instruction_player_panel"
 TAG_INSTRUCTION_WAVEFORM_DISPLAY = "instruction_waveform_display"
 TAG_INSTRUCTION_SPECTRUM_DISPLAY = "instruction_spectrum_display"
 TAG_INSTRUCTION_DETAILS_INFO = "instruction_details_info"
@@ -207,6 +208,7 @@ VAL_WAVEFORM_DEFAULT_Y_MAX = 1.0
 VAL_WAVEFORM_AXIS_SLOT = 1
 
 # Waveform labels and messages
+LBL_WAVEFORM_DISPLAY = "Waveform Display"
 LBL_WAVEFORM_TIME_LABEL = "Time (samples)"
 LBL_WAVEFORM_AMPLITUDE_LABEL = "Amplitude"
 MSG_WAVEFORM_NO_FRAGMENT = "No fragment loaded. Select an instruction from the library tree to display its waveform."
@@ -234,6 +236,7 @@ FLAG_WINDOW_PRIMARY_ENABLED = True
 LBL_GLOBAL_EMPTY = ""
 
 # Audio player constants
+DIM_PLAYER_PANEL_WIDTH = -1
 DIM_PLAYER_PANEL_HEIGHT = 60
 LBL_PLAYER_BUTTON_PLAY = "Play"
 LBL_PLAYER_BUTTON_PAUSE = "Pause"
@@ -263,6 +266,7 @@ SUF_GRAPH_INFO = "_info"
 
 
 # Spectrum display settings
+LBL_SPECTRUM_DISPLAY = "Spectrum Display"
 VAL_SPECTRUM_LOG_OFFSET = 1e-2
 VAL_SPECTRUM_GRAYSCALE_MAX = 255
 LBL_SPECTRUM_X_AXIS = ""
@@ -290,9 +294,6 @@ SUF_PLAYER_POSITION = "_position"
 SUF_PLAYER_CONTROLS_GROUP = "_controls_group"
 SUF_PLAYER_NO_AUDIO_POPUP = "_no_audio_popup"
 SUF_PLAYER_ERROR_POPUP = "_error_popup"
-
-# Audio player default width
-DIM_PLAYER_PANEL_DEFAULT_WIDTH = -1
 
 # Audio player text constants
 PFX_PLAYER_POSITION = "Position: "

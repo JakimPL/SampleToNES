@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from browser.constants import *
-from browser.panels.panel import GUIPanel
+from browser.panel import GUIPanel
 
 
 class GUIReconstructionPanel(GUIPanel):

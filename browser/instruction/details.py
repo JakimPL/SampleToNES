@@ -23,7 +23,7 @@ from browser.constants import (
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
 from browser.instruction.data import InstructionPanelData
-from browser.panels.panel import GUIPanel
+from browser.panel import GUIPanel
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
 

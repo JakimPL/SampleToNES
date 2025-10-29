@@ -6,24 +6,25 @@ import numpy as np
 from browser.constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
+    LBL_SPECTRUM_DISPLAY,
     LBL_SPECTRUM_X_AXIS,
     LBL_SPECTRUM_Y_AXIS,
     VAL_WAVEFORM_AXIS_SLOT,
 )
-from browser.graphs.graph import GraphDisplay
+from browser.graphs.graph import GUIGraphDisplay
 from browser.graphs.layers.spectrum import SpectrumLayer
 from constants import MIN_FREQUENCY, SAMPLE_RATE
 from library.data import LibraryFragment
 
 
-class SpectrumDisplay(GraphDisplay):
+class GUISpectrumDisplay(GUIGraphDisplay):
     def __init__(
         self,
         tag: str,
         parent: str,
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = "Spectrum Display",
+        label: str = LBL_SPECTRUM_DISPLAY,
     ) -> None:
         super().__init__(tag, parent, width, height, label)
         self.spectrum: Optional[np.ndarray] = None
