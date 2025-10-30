@@ -17,11 +17,11 @@ from typehints.instructions import InstructionUnion
 class LibraryWorker:
     config: LibraryConfig
     window: Window
-    generators: Dict[str, Any]
+    generators: Dict[GeneratorClassName, Any]
 
     def __call__(
         self,
-        instructions: Tuple[GeneratorClassName, Instruction],
+        instructions: List[Tuple[GeneratorClassName, InstructionUnion]],
         instructions_ids: List[int],
         show_progress: bool = False,
     ) -> LibraryData:

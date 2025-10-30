@@ -20,7 +20,10 @@ class TriangleInstruction(Instruction):
             return TypeError("Cannot compare TriangleInstruction with different type")
         return self.pitch < other.pitch
 
-    def distance(self, other: Self) -> float:
+    def distance(self, other: Instruction) -> float:
+        if not isinstance(other, TriangleInstruction):
+            raise TypeError("Cannot compute distance between different instruction types")
+
         both_silent = not self.on and not other.on
         one_silent = (not self.on) != (not other.on)
 

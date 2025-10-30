@@ -8,7 +8,7 @@ from instructions.pulse import PulseInstruction
 from typehints.general import FeatureKey, FeatureValue
 
 
-class PulseExporter(Exporter):
+class PulseExporter(Exporter[PulseInstruction]):
     def extract_data(self, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
         initial_timer = None

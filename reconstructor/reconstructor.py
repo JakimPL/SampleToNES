@@ -25,7 +25,7 @@ def reconstruct(
     window: Window,
     generators: Dict[str, GeneratorUnion],
     library_data: LibraryData,
-) -> Dict[int, ApproximationData]:
+) -> Dict[int, Dict[str, ApproximationData]]:
     worker = ReconstructorWorker(
         config=config,
         window=window,
@@ -48,7 +48,7 @@ class Reconstructor:
 
         default_generators = list(GENERATOR_CLASSES.keys())
         generator_names = generator_names or default_generators
-        self.generators: Dict[str, GeneratorUnion] = {
+        self.generators: Dict[str, Generator] = {
             name: GENERATOR_CLASSES[name](config, name) for name in generator_names
         }
 
@@ -122,13 +122,16 @@ class Reconstructor:
     def load_library(self, library: Optional[Library] = None) -> LibraryData:
         library = library or Library(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
-        return LibraryData(data=library_data.filter({generator.class_name() for generator in self.generators.values()}))
+        return LibraryData(
+            config=self.config.library,
+            data=library_data.filter({generator.class_name() for generator in self.generators.values()}),
+        )
 
     def update_state(self, fragment_approximation: ApproximationData) -> None:
         generator = self.generators[fragment_approximation.generator_name]
         instruction = fragment_approximation.instruction
         initials = generator.initials
-        approximation = generator(instruction, initials=initials, save=True) * self.config.general.mixer
+        approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
         self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:

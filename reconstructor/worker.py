@@ -79,7 +79,7 @@ class ReconstructorWorker:
         length = library_fragment.sample.shape[0] // 3
         end = start + length
 
-        array = library_fragment.sample[start:end] * self.config.general.mixer
+        array = library_fragment.sample[start:end] * self.config.generation.mixer
         windows = sliding_window_view(array, self.config.library.frame_length)
         remainder = fragment.audio - windows
 
@@ -115,4 +115,4 @@ class ReconstructorWorker:
             self.window,
             generator.initials,
         )
-        return fragment * self.config.general.mixer
+        return fragment * self.config.generation.mixer

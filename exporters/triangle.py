@@ -8,7 +8,7 @@ from instructions.triangle import TriangleInstruction
 from typehints.general import FeatureKey, FeatureValue
 
 
-class TriangleExporter(Exporter):
+class TriangleExporter(Exporter[TriangleInstruction]):
     def extract_data(self, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
         initial_pitch = None
         initial_timer = None

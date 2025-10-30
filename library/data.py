@@ -1,7 +1,7 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, List, Self, Union, cast
+from typing import Any, Collection, Dict, Generic, List, Self, Type, Union, cast
 
 import msgpack
 import numpy as np
@@ -12,25 +12,16 @@ from configs.library import LibraryConfig
 from ffts.fft import FFTTransformer
 from ffts.window import Window
 from generators.generator import Generator
-from instructions.instruction import Instruction
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
-from typehints.generators import GeneratorUnion
-from typehints.instructions import InstructionUnion
+from typehints.instructions import InstructionType, InstructionUnion
 from utils.common import deserialize_array, dump, serialize_array
 
 
-def load_instruction(data: Dict[str, Any]) -> InstructionUnion:
-    instruction_dictionary = json.loads(data["instruction"])
-    instruction_class = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
-    instruction = instruction_class(**instruction_dictionary)
-    return instruction
-
-
-class LibraryFragment(BaseModel):
+class LibraryFragment(BaseModel, Generic[InstructionType]):
     generator_class: GeneratorClassName
-    instruction: InstructionUnion
+    instruction: InstructionType
     sample: np.ndarray
     feature: np.ndarray
     frequency: float
@@ -38,7 +29,11 @@ class LibraryFragment(BaseModel):
 
     @classmethod
     def create(
-        cls, generator: GeneratorUnion, instruction: InstructionUnion, window: Window, transformer: FFTTransformer
+        cls,
+        generator: Generator[InstructionType, Any],
+        instruction: InstructionType,
+        window: Window,
+        transformer: FFTTransformer,
     ) -> Self:
         sample, offset = generator.generate_sample(instruction, window=window)
         audio = generator.generate_frames(instruction)
@@ -74,13 +69,26 @@ class LibraryFragment(BaseModel):
             config=config,
         )
 
-    def get(self, generator: Generator, config: Configuration, window: Window, initials: Initials = None) -> Fragment:
+    def get(
+        self,
+        generator: Generator[InstructionType, Any],
+        config: Configuration,
+        window: Window,
+        initials: Initials = None,
+    ) -> Fragment:
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
         return self.get_fragment(shift, config, window)
 
+    @staticmethod
+    def load_instruction(data: Dict[str, Any]) -> InstructionType:
+        instruction_dictionary = json.loads(data["instruction"])
+        instruction_class: Type[InstructionType] = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
+        instruction = instruction_class(**instruction_dictionary)
+        return instruction
+
     @field_serializer("instruction")
-    def serialize_instruction(self, instruction: Instruction, _info) -> str:
+    def serialize_instruction(self, instruction: InstructionType, _info) -> str:
         return dump(instruction.model_dump())
 
     @field_serializer("sample")
@@ -93,7 +101,7 @@ class LibraryFragment(BaseModel):
 
     @classmethod
     def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
-        instruction: InstructionUnion = load_instruction(dictionary)
+        instruction: InstructionType = cls.load_instruction(dictionary)
 
         sample = deserialize_array(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
@@ -183,7 +191,7 @@ class LibraryData(BaseModel):
 
         data = {}
         for key, value in dictionary["data"].items():
-            instruction: InstructionUnion = load_instruction(
+            instruction: InstructionUnion = LibraryFragment.load_instruction(
                 {
                     "instruction": key,
                     "generator_class": value["generator_class"],

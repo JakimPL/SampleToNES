@@ -1,3 +1,5 @@
+from typing import Self
+
 from pydantic import Field
 
 from constants.general import (
@@ -29,7 +31,10 @@ class PulseInstruction(Instruction):
             return TypeError("Cannot compare PulseInstruction with different type")
         return (self.pitch, -self.volume, self.duty_cycle) < (other.pitch, -other.volume, other.duty_cycle)
 
-    def distance(self, other: "PulseInstruction") -> float:
+    def distance(self, other: Instruction) -> float:
+        if not isinstance(other, PulseInstruction):
+            raise TypeError("Cannot compute distance between different instruction types")
+
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0
 

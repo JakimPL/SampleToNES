@@ -37,16 +37,16 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
         return output
 
-    def set_timer(self, pulse_instruction: PulseInstruction) -> None:
-        if pulse_instruction.on:
-            self.timer.frequency = self.get_frequency(pulse_instruction.pitch)
+    def set_timer(self, instruction: PulseInstruction) -> None:
+        if instruction.on:
+            self.timer.frequency = self.get_frequency(instruction.pitch)
         else:
             self.timer.frequency = 0.0
 
-    def apply(self, output: np.ndarray, pulse_instruction: PulseInstruction) -> np.ndarray:
-        duty_cycle = DUTY_CYCLES[pulse_instruction.duty_cycle]
+    def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
+        duty_cycle = DUTY_CYCLES[instruction.duty_cycle]
         output = np.where(output < duty_cycle, 1.0, -1.0)
-        output *= pulse_instruction.volume / MAX_VOLUME
+        output *= instruction.volume / MAX_VOLUME
         return output * MIXER_PULSE
 
     def get_possible_instructions(self) -> List[PulseInstruction]:

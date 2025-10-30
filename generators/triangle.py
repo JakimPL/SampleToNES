@@ -37,13 +37,13 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
         return output
 
-    def set_timer(self, triangle_instruction: TriangleInstruction) -> None:
-        if triangle_instruction.on:
-            self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
+    def set_timer(self, instruction: TriangleInstruction) -> None:
+        if instruction.on:
+            self.timer.frequency = self.get_frequency(instruction.pitch)
         else:
             self.timer.frequency = 0.0
 
-    def apply(self, output: np.ndarray, triangle_instruction: TriangleInstruction) -> np.ndarray:
+    def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
         return triangle * MIXER_TRIANGLE
 

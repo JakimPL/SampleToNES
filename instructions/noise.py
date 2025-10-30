@@ -1,3 +1,5 @@
+from typing import Self
+
 from pydantic import Field
 
 from constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
@@ -25,7 +27,10 @@ class NoiseInstruction(Instruction):
             other.short,
         )
 
-    def distance(self, other: "NoiseInstruction") -> float:
+    def distance(self, other: Instruction) -> float:
+        if not isinstance(other, NoiseInstruction):
+            raise TypeError("Cannot compute distance between different instruction types")
+
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0
 

@@ -36,16 +36,16 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
         return output
 
-    def set_timer(self, noise_instruction: NoiseInstruction) -> None:
-        if noise_instruction.on:
-            self.timer.short = noise_instruction.short
-            self.timer.period = noise_instruction.period
+    def set_timer(self, instruction: NoiseInstruction) -> None:
+        if instruction.on:
+            self.timer.short = instruction.short
+            self.timer.period = instruction.period
         else:
             self.timer.short = False
             self.timer.period = 0
 
-    def apply(self, output: np.ndarray, noise_instruction: NoiseInstruction) -> np.ndarray:
-        volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+    def apply(self, output: np.ndarray, instruction: NoiseInstruction) -> np.ndarray:
+        volume = 0.5 * float(instruction.volume) / float(MAX_VOLUME)
         return volume * output * MIXER_NOISE
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:

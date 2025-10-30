@@ -7,7 +7,7 @@ from instructions.noise import NoiseInstruction
 from typehints.general import FeatureKey, FeatureValue
 
 
-class NoiseExporter(Exporter):
+class NoiseExporter(Exporter[NoiseInstruction]):
     def extract_data(self, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
 

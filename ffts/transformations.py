@@ -5,7 +5,7 @@ import numpy as np
 from scipy.special import gamma, gammaincc
 
 from typehints.general import BinaryTransformation, UnaryTransformation
-from utils.common import identity, zero
+from utils.functions import exp, expm1, identity, log1p, zero
 
 ITERATIONS = 6
 
@@ -57,9 +57,9 @@ class LinearExponentialMorpher:
 
         elif self.gamma == 1.0:
             p = float("inf")
-            interpolation = np.expm1
-            derivative = np.exp
-            inverse = np.log1p
+            interpolation = expm1
+            derivative = exp
+            inverse = log1p
 
         else:
             p = self.gamma / (1.0 - self.gamma)
@@ -71,16 +71,16 @@ class LinearExponentialMorpher:
             def derivative(x: np.ndarray) -> np.ndarray:
                 return np.exp(x) * gammaincc(a, x) - (x ** (a - 1)) / gamma(a)
 
-            def inverse(y: np.ndarray) -> np.ndarray:
-                y = np.asarray(y, dtype=float)
-                x = np.log1p(y)
+            def inverse(x: np.ndarray) -> np.ndarray:
+                x = np.asarray(x, dtype=float)
+                z = np.log1p(x)
 
                 for _ in range(ITERATIONS):
-                    fx = interpolation(x) - y
-                    fpx = derivative(x)
-                    x -= fx / fpx
+                    fx = interpolation(z) - x
+                    fpx = derivative(z)
+                    z -= fx / fpx
 
-                return x
+                return z
 
         object.__setattr__(self, "p", p)
         object.__setattr__(self, "a", p + 2.0 if np.isfinite(p) else float("inf"))

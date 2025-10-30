@@ -92,8 +92,8 @@ class Generator(Generic[InstructionType, TimerType]):
     def initials(self) -> Tuple[Any, ...]:
         return self.timer.initials
 
-    def get_frequency(self, pitch: int) -> Optional[float]:
-        return self.frequency_table.get(pitch, None)
+    def get_frequency(self, pitch: int) -> float:
+        return self.frequency_table[pitch]
 
     def get_possible_instructions(self) -> List[InstructionType]:
         raise NotImplementedError("Subclasses must implement this method")

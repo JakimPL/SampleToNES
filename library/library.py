@@ -1,4 +1,3 @@
-from dis import Instruction
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -13,23 +12,25 @@ from library.key import LibraryKey
 from library.worker import LibraryWorker
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import GeneratorClassName
+from typehints.generators import GeneratorUnion
+from typehints.instructions import InstructionUnion
 from utils.parallel import parallelize
 
 
 def generate_library_data(
     instructions_ids: List[int],
-    instructions: Tuple[GeneratorClassName, Instruction],
+    instructions: List[Tuple[GeneratorClassName, InstructionUnion]],
     config: LibraryConfig,
     window: Window,
-    generators: Dict[str, Any],
-) -> Dict[int, LibraryData]:
+    generators: Dict[GeneratorClassName, Any],
+) -> LibraryData:
     worker = LibraryWorker(config=config, window=window, generators=generators)
     return worker(instructions, instructions_ids)
 
 
 class Library(BaseModel):
-    directory: str = Field(LIBRARY_DIRECTORY, description="Path to the FFT library directory")
-    data: Dict[LibraryKey, LibraryData] = Field(..., default_factory=dict, description="FFT library data")
+    directory: str = Field(default=LIBRARY_DIRECTORY, description="Path to the FFT library directory")
+    data: Dict[LibraryKey, LibraryData] = Field(default_factory=dict, description="FFT library data")
 
     def __getitem__(self, key: LibraryKey) -> LibraryData:
         return self.data[key]
@@ -58,8 +59,10 @@ class Library(BaseModel):
         if not overwrite and key in self.data:
             return key
 
-        generators = {name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP}
-        instructions = [
+        generators: Dict[GeneratorClassName, GeneratorUnion] = {
+            name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP
+        }
+        instructions: List[Tuple[GeneratorClassName, InstructionUnion]] = [
             (generator.class_name(), instruction)
             for generator in generators.values()
             for instruction in generator.get_possible_instructions()
@@ -67,7 +70,7 @@ class Library(BaseModel):
 
         instructions_ids = list(range(len(instructions)))
         if config.general.max_workers > 1:
-            library_data = parallelize(
+            results = parallelize(
                 generate_library_data,
                 instructions_ids,
                 max_workers=config.general.max_workers,
@@ -77,7 +80,7 @@ class Library(BaseModel):
                 generators=generators,
             )
 
-            library_data = LibraryData.merge(library_data)
+            library_data = LibraryData.merge(results)
         else:
             worker = LibraryWorker(config=config.library, window=window, generators=generators)
             library_data = worker(instructions, instructions_ids, show_progress=True)
