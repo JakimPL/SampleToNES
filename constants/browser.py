@@ -49,7 +49,7 @@ LBL_SECTION_LIBRARY_DIRECTORY = "Library directory"
 LBL_SECTION_LIBRARY_SETTINGS = "Library settings"
 LBL_SECTION_LIBRARY_PANEL = "Library"
 LBL_SECTION_AUDIO_INPUT = "Audio input"
-LBL_SECTION_GENERATOR_SELECTION = "Generator selection"
+LBL_SECTION_GENERATOR_SELECTION = "Generators"
 LBL_SECTION_WAVEFORM_DISPLAY = "Waveform display"
 LBL_SECTION_SAVED_RECONSTRUCTIONS = "Saved reconstructions"
 LBL_SECTION_RECONSTRUCTION_DETAILS = "Reconstruction details"
@@ -208,7 +208,7 @@ VAL_WAVEFORM_DEFAULT_Y_MAX = 1.0
 VAL_WAVEFORM_AXIS_SLOT = 1
 
 # Waveform labels and messages
-LBL_WAVEFORM_DISPLAY = "Waveform Display"
+LBL_WAVEFORM_DISPLAY = "Waveform display"
 LBL_WAVEFORM_TIME_LABEL = "Time (samples)"
 LBL_WAVEFORM_AMPLITUDE_LABEL = "Amplitude"
 MSG_WAVEFORM_NO_FRAGMENT = "No fragment loaded. Select an instruction from the library tree to display its waveform."
@@ -220,8 +220,8 @@ FMT_WAVEFORM_FREQUENCY = "{:.2f} Hz"
 # Button labels for waveform
 LBL_WAVEFORM_BUTTON_RESET_X = "Reset X"
 LBL_WAVEFORM_BUTTON_RESET_Y = "Reset Y"
-LBL_WAVEFORM_BUTTON_RESET_ALL = "Reset All"
-LBL_WAVEFORM_BUTTON_PLAY_AUDIO = "Play Audio"
+LBL_WAVEFORM_BUTTON_RESET_ALL = "Reset all"
+LBL_WAVEFORM_BUTTON_PLAY_AUDIO = "Play audio"
 
 # Numeric constants for waveform
 VAL_WAVEFORM_FREQUENCY_DECIMALS = 2
@@ -244,13 +244,13 @@ LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded"
 MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error"
 TITLE_DIALOG_NO_AUDIO = "No Audio"
-TITLE_DIALOG_PLAYBACK_ERROR = "Playback Error"
+TITLE_DIALOG_PLAYBACK_ERROR = "Playback error"
 
 # Instruction panel constants
-MSG_INSTRUCTION_DETAILS = "Instruction Details"
+MSG_INSTRUCTION_DETAILS = "Instruction details"
 MSG_INSTRUCTION_NO_SELECTION = "No instruction selected"
-LBL_INSTRUCTION_WAVEFORM = "Instruction Waveform"
-LBL_INSTRUCTION_SPECTRUM = "Instruction Spectrum"
+LBL_INSTRUCTION_WAVEFORM = "Instruction waveform"
+LBL_INSTRUCTION_SPECTRUM = "Instruction spectrum"
 
 # Waveform layer colors
 CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
@@ -266,7 +266,7 @@ SUF_GRAPH_INFO = "_info"
 
 
 # Spectrum display settings
-LBL_SPECTRUM_DISPLAY = "Spectrum Display"
+LBL_SPECTRUM_DISPLAY = "Spectrum display"
 VAL_SPECTRUM_LOG_OFFSET = 1e-2
 VAL_SPECTRUM_GRAYSCALE_MAX = 255
 LBL_SPECTRUM_X_AXIS = ""
@@ -306,9 +306,16 @@ PFX_INSTRUCTION_NAME = "Instruction: "
 PFX_INSTRUCTION_FREQUENCY = "Frequency: "
 FMT_INSTRUCTION_FREQUENCY = "{:.2f} Hz"
 MSG_INSTRUCTION_NO_FREQUENCY = "No frequency data"
-PFX_INSTRUCTION_SAMPLE_LENGTH = "Sample Length: "
+PFX_INSTRUCTION_SAMPLE_LENGTH = "Sample length: "
 SUF_INSTRUCTION_SAMPLE_LENGTH = " samples"
 PFX_INSTRUCTION_OFFSET = "Offset: "
-LBL_INSTRUCTION_PARAMETERS_HEADER = "Instruction Parameters:"
+LBL_INSTRUCTION_PARAMETERS_HEADER = "Instruction parameters:"
 PFX_INSTRUCTION_PARAMETER_INDENT = "  "
 VAL_INSTRUCTION_FLOAT_PRECISION = 4
+
+# Reconstructor panel constants
+DIM_PANEL_RECONSTRUCTOR_HEIGHT = 300
+DIM_PANEL_RECONSTRUCTOR_WIDTH = 300
+TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
+TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
+LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"

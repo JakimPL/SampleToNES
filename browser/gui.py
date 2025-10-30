@@ -9,6 +9,7 @@ from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
+from browser.reconstructor.panel import GUIReconstructorPanel
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -24,17 +25,12 @@ from constants.browser import (
     DIM_WINDOW_MAIN_WIDTH,
     EXT_DIALOG_JSON,
     EXT_DIALOG_WAV,
-    FLAG_CHECKBOX_DEFAULT_ENABLED,
     FLAG_WINDOW_PRIMARY_ENABLED,
     IDX_DIALOG_FIRST_SELECTION,
     KEY_DIALOG_SELECTIONS,
     LBL_BUTTON_REFRESH_LIST,
     LBL_BUTTON_SELECT_AUDIO_FILE,
     LBL_BUTTON_START_RECONSTRUCTION,
-    LBL_CHECKBOX_NOISE,
-    LBL_CHECKBOX_PULSE_1,
-    LBL_CHECKBOX_PULSE_2,
-    LBL_CHECKBOX_TRIANGLE,
     LBL_GLOBAL_EMPTY,
     LBL_MENU_EXIT,
     LBL_MENU_FILE,
@@ -48,7 +44,6 @@ from constants.browser import (
     LBL_PLOT_TIME_SAMPLES,
     LBL_SECTION_AUDIO_INPUT,
     LBL_SECTION_FAMITRACKER_EXPORT,
-    LBL_SECTION_GENERATOR_SELECTION,
     LBL_SECTION_RECONSTRUCTION_DETAILS,
     LBL_SECTION_SAVED_RECONSTRUCTIONS,
     LBL_SECTION_WAVEFORM_DISPLAY,
@@ -110,6 +105,7 @@ class GUI:
         self.config_manager = ConfigManager()
         self.config_panel = GUIConfigPanel(self.config_manager)
         self.instruction_panel: Optional[GUIInstructionPanel] = None
+        self.reconstructor_panel: Optional[GUIReconstructorPanel] = None
         self.library_panel = GUILibraryPanel(
             self.config_manager,
             on_instruction_selected=self._on_instruction_selected,
@@ -162,61 +158,9 @@ class GUI:
     def create_reconstruction_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_RECONSTRUCTION):
             with dpg.group(horizontal=True):
-                with dpg.child_window(width=DIM_PANEL_RECONSTRUCTION_WIDTH, height=DIM_PANEL_RECONSTRUCTION_HEIGHT):
-                    dpg.add_text(LBL_SECTION_AUDIO_INPUT)
-                    dpg.add_separator()
-
-                    dpg.add_button(label=LBL_BUTTON_SELECT_AUDIO_FILE, callback=self.load_audio_dialog)
-                    dpg.add_text(MSG_GLOBAL_NO_FILE_SELECTED, tag=TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE)
-
-                    dpg.add_separator()
-                    dpg.add_button(label=LBL_BUTTON_START_RECONSTRUCTION, callback=self.start_reconstruction)
-                    dpg.add_progress_bar(tag=TAG_RECONSTRUCTION_PROGRESS, default_value=VAL_GLOBAL_DEFAULT_FLOAT)
-
-                    dpg.add_separator()
-                    dpg.add_text(LBL_SECTION_GENERATOR_SELECTION)
-                    dpg.add_checkbox(
-                        label=LBL_CHECKBOX_TRIANGLE,
-                        default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                        tag=TPL_RECONSTRUCTION_GEN_TAG.format("triangle"),
-                    )
-                    dpg.add_checkbox(
-                        label=LBL_CHECKBOX_PULSE_1,
-                        default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                        tag=TPL_RECONSTRUCTION_GEN_TAG.format("pulse1"),
-                    )
-                    dpg.add_checkbox(
-                        label=LBL_CHECKBOX_PULSE_2,
-                        default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                        tag=TPL_RECONSTRUCTION_GEN_TAG.format("pulse2"),
-                    )
-                    dpg.add_checkbox(
-                        label=LBL_CHECKBOX_NOISE,
-                        default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                        tag=TPL_RECONSTRUCTION_GEN_TAG.format("noise"),
-                    )
-
-                    dpg.add_separator()
-                    # dpg.add_button(label=LBL_BUTTON_PLAY_ORIGINAL, callback=self.play_original)
-                    # dpg.add_button(label=LBL_BUTTON_PLAY_RECONSTRUCTION, callback=self.play_reconstruction)
-                    # dpg.add_button(label=LBL_BUTTON_EXPORT_WAV, callback=self.export_wav_dialog)
-
-                with dpg.child_window():
-                    dpg.add_text(LBL_SECTION_WAVEFORM_DISPLAY)
-                    dpg.add_separator()
-
-                    with dpg.plot(
-                        label=LBL_PLOT_AUDIO_WAVEFORMS,
-                        height=DIM_WAVEFORM_PLOT_HEIGHT,
-                        width=VAL_PLOT_WIDTH_FULL,
-                        tag=TAG_WAVEFORM_PLOT,
-                    ):
-                        dpg.add_plot_legend()
-                        dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_TIME_SAMPLES, tag=TAG_PLOT_X_AXIS)
-                        dpg.add_plot_axis(dpg.mvYAxis, label=LBL_PLOT_AMPLITUDE, tag=TAG_PLOT_Y_AXIS)
-
-                    dpg.add_separator()
-                    dpg.add_text(MSG_RECONSTRUCTION_INFO, tag=TAG_RECONSTRUCTION_INFO)
+                with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
+                    with dpg.group(tag=TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE):
+                        self.reconstructor_panel = GUIReconstructorPanel(self.config_manager)
 
     def create_browser_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_BROWSER):
