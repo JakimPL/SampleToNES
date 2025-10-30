@@ -1,10 +1,12 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from configs.config import Config
 from ffts.window import Window
+from generators.generator import Generator
+from instructions.instruction import Instruction
 from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
 from reconstructor.approximation import ApproximationData
@@ -14,6 +16,7 @@ from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.general import GeneratorName
 from typehints.generators import GeneratorUnion
+from typehints.instructions import InstructionType
 from utils.audio.io import load_audio
 from utils.parallel import parallelize
 
@@ -48,7 +51,7 @@ class Reconstructor:
 
         default_generators = list(GENERATOR_CLASSES.keys())
         generator_names = generator_names or default_generators
-        self.generators: Dict[str, Generator] = {
+        self.generators: Dict[str, GeneratorUnion] = {
             name: GENERATOR_CLASSES[name](config, name) for name in generator_names
         }
 
@@ -128,8 +131,8 @@ class Reconstructor:
         )
 
     def update_state(self, fragment_approximation: ApproximationData) -> None:
-        generator = self.generators[fragment_approximation.generator_name]
-        instruction = fragment_approximation.instruction
+        generator: Generator[Any, Any] = self.generators[fragment_approximation.generator_name]
+        instruction: Any = fragment_approximation.instruction
         initials = generator.initials
         approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
         self.state.append(fragment_approximation, approximation)

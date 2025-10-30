@@ -11,7 +11,6 @@ from configs.config import Config as Configuration
 from configs.library import LibraryConfig
 from ffts.fft import FFTTransformer
 from ffts.window import Window
-from generators.generator import Generator
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
@@ -30,7 +29,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
     @classmethod
     def create(
         cls,
-        generator: Generator[InstructionType, Any],
+        generator: Any,
         instruction: InstructionType,
         window: Window,
         transformer: FFTTransformer,
@@ -71,7 +70,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
 
     def get(
         self,
-        generator: Generator[InstructionType, Any],
+        generator: Any,
         config: Configuration,
         window: Window,
         initials: Initials = None,
