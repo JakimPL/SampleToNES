@@ -1,41 +1,50 @@
 from typing import Dict, cast
 
 from constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
+from exporters.noise import NoiseExporter
+from exporters.pulse import PulseExporter
+from exporters.triangle import TriangleExporter
 from generators.noise import NoiseGenerator
 from generators.pulse import PulseGenerator
 from generators.triangle import TriangleGenerator
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from typehints.general import GeneratorClassName, GeneratorName, InstructionClassName, LibraryGeneratorName
+from typehints.enums import (
+    GeneratorClassName,
+    GeneratorName,
+    InstructionClassName,
+    LibraryGeneratorName,
+)
+from typehints.exporters import ExporterClass
 from typehints.generators import GeneratorClass, GeneratorUnion
 from typehints.instructions import InstructionClass, InstructionUnion
 
 LIBRARY_GENERATOR_CLASS_MAP: Dict[LibraryGeneratorName, GeneratorClassName] = {
-    "pulse": "PulseGenerator",
-    "triangle": "TriangleGenerator",
-    "noise": "NoiseGenerator",
+    LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
+    LibraryGeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
+    LibraryGeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
 }
 
 GENERATOR_CLASSES: Dict[GeneratorName, GeneratorClass] = {
-    "pulse1": PulseGenerator,
-    "pulse2": PulseGenerator,
-    "triangle": TriangleGenerator,
-    "noise": NoiseGenerator,
+    GeneratorName.PULSE1: PulseGenerator,
+    GeneratorName.PULSE2: PulseGenerator,
+    GeneratorName.TRIANGLE: TriangleGenerator,
+    GeneratorName.NOISE: NoiseGenerator,
 }
 
 
 GENERATOR_CLASS_MAP: Dict[GeneratorClassName, GeneratorClass] = {
-    "PulseGenerator": PulseGenerator,
-    "TriangleGenerator": TriangleGenerator,
-    "NoiseGenerator": NoiseGenerator,
+    GeneratorClassName.PULSE_GENERATOR: PulseGenerator,
+    GeneratorClassName.TRIANGLE_GENERATOR: TriangleGenerator,
+    GeneratorClassName.NOISE_GENERATOR: NoiseGenerator,
 }
 
 
 INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
-    "TriangleInstruction": TriangleInstruction,
-    "PulseInstruction": PulseInstruction,
-    "NoiseInstruction": NoiseInstruction,
+    InstructionClassName.TRIANGLE_INSTRUCTION: TriangleInstruction,
+    InstructionClassName.PULSE_INSTRUCTION: PulseInstruction,
+    InstructionClassName.NOISE_INSTRUCTION: NoiseInstruction,
 }
 
 
@@ -45,10 +54,18 @@ INSTRUCTION_TO_GENERATOR_MAP: Dict[InstructionClass, GeneratorClass] = {
     NoiseInstruction: NoiseGenerator,
 }
 
+
+INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
+    TriangleInstruction: TriangleExporter,
+    PulseInstruction: PulseExporter,
+    NoiseInstruction: NoiseExporter,
+}
+
+
 MIXER_LEVELS: Dict[GeneratorClassName, float] = {
-    "PulseGenerator": MIXER_PULSE,
-    "NoiseGenerator": MIXER_NOISE,
-    "TriangleGenerator": MIXER_TRIANGLE,
+    GeneratorClassName.PULSE_GENERATOR: MIXER_PULSE,
+    GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,
+    GeneratorClassName.TRIANGLE_GENERATOR: MIXER_TRIANGLE,
 }
 
 

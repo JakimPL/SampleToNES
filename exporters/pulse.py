@@ -5,7 +5,8 @@ import numpy as np
 from constants.general import MIN_PITCH
 from exporters.exporter import Exporter
 from instructions.pulse import PulseInstruction
-from typehints.general import FeatureKey, FeatureValue
+from typehints.enums import FeatureKey
+from typehints.general import FeatureValue
 
 
 class PulseExporter(Exporter[PulseInstruction]):
@@ -48,9 +49,9 @@ class PulseExporter(Exporter[PulseInstruction]):
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
 
         return {
-            "initial_pitch": initial_pitch,
-            "volume": np.array(volumes, dtype=np.int8),
-            "pitch": np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
-            "hi_pitch": np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
-            "duty_cycle": np.array(duty_cycles, dtype=np.int8),
+            FeatureKey.INITIAL_PITCH: initial_pitch,
+            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
+            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
+            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles, dtype=np.int8),
         }

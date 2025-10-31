@@ -6,10 +6,9 @@ from tqdm.auto import tqdm
 from configs.library import LibraryConfig
 from ffts.fft import FFTTransformer
 from ffts.window import Window
-from instructions.instruction import Instruction
 from library.data import LibraryFragment
 from library.library import LibraryData
-from typehints.general import GeneratorClassName
+from typehints.enums import GeneratorClassName
 from typehints.instructions import InstructionUnion
 
 

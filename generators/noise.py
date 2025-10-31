@@ -7,11 +7,12 @@ from constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
-from typehints.general import GeneratorClassName, Initials
+from typehints.enums import GeneratorClassName, GeneratorName
+from typehints.general import Initials
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
-    def __init__(self, config: Config, name: str = "noise") -> None:
+    def __init__(self, config: Config, name: GeneratorName = GeneratorName.NOISE) -> None:
         super().__init__(config, name)
         self.timer = LFSRTimer(
             sample_rate=config.library.sample_rate,

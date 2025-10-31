@@ -44,7 +44,7 @@ from constants.browser import (
 from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
-from typehints.general import LibraryGeneratorName
+from typehints.enums import LibraryGeneratorName
 from typehints.instructions import InstructionUnion
 
 
@@ -146,12 +146,10 @@ class GUILibraryPanel(GUIPanel):
                 )
 
     def _create_generator_nodes(self, display_name: str) -> None:
-        from typehints.general import LIBRARY_GENERATOR_NAMES
-
-        for generator_name in LIBRARY_GENERATOR_NAMES:
+        for generator_name in LibraryGeneratorName:
             generator_tag = TPL_GENERATOR_TAG.format(generator_name, display_name)
             with dpg.tree_node(
-                label=generator_name.capitalize(), tag=generator_tag, parent=TPL_LIBRARY_TAG.format(display_name)
+                label=generator_name.value.capitalize(), tag=generator_tag, parent=TPL_LIBRARY_TAG.format(display_name)
             ):
                 self._populate_generator_instructions(display_name, generator_name)
 

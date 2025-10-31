@@ -13,7 +13,7 @@ from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
-from typehints.general import GeneratorName
+from typehints.enums import GeneratorName
 from typehints.generators import GeneratorUnion
 from utils.audio.io import load_audio
 from utils.parallel import parallelize
@@ -24,9 +24,9 @@ def reconstruct(
     fragmented_audio: FragmentedAudio,
     config: Config,
     window: Window,
-    generators: Dict[str, GeneratorUnion],
+    generators: Dict[GeneratorName, GeneratorUnion],
     library_data: LibraryData,
-) -> Dict[int, Dict[str, ApproximationData]]:
+) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
     worker = ReconstructorWorker(
         config=config,
         window=window,
@@ -47,9 +47,9 @@ class Reconstructor:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
 
-        default_generators = list(GENERATOR_CLASSES.keys())
+        default_generators = list(GeneratorName)
         generator_names = generator_names or default_generators
-        self.generators: Dict[str, GeneratorUnion] = {
+        self.generators: Dict[GeneratorName, GeneratorUnion] = {
             name: GENERATOR_CLASSES[name](config, name) for name in generator_names
         }
 

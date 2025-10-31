@@ -11,7 +11,7 @@ from library.data import LibraryData
 from library.key import LibraryKey
 from library.worker import LibraryWorker
 from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.general import GeneratorClassName
+from typehints.enums import GeneratorClassName
 from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
 from utils.parallel import parallelize

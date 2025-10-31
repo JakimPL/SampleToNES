@@ -5,7 +5,8 @@ import numpy as np
 from constants.general import MAX_VOLUME, MIN_PITCH
 from exporters.exporter import Exporter
 from instructions.triangle import TriangleInstruction
-from typehints.general import FeatureKey, FeatureValue
+from typehints.enums import FeatureKey
+from typehints.general import FeatureValue
 
 
 class TriangleExporter(Exporter[TriangleInstruction]):
@@ -44,8 +45,8 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         initial_pitch, pitches, volumes = self.extract_data(instructions)
 
         return {
-            "initial_pitch": initial_pitch,
-            "volume": np.array(volumes, dtype=np.int8),
-            "pitch": np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
-            "hi_pitch": np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
+            FeatureKey.INITIAL_PITCH: initial_pitch,
+            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
+            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
+            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
         }

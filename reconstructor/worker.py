@@ -12,7 +12,8 @@ from library.library import LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.criterion import Criterion
 from reconstructor.maps import get_generator_by_instruction
-from typehints.general import GeneratorClassName
+from typehints.enums import GeneratorClassName, GeneratorName
+from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
 
 
@@ -20,14 +21,14 @@ from typehints.instructions import InstructionUnion
 class ReconstructorWorker:
     config: Config
     window: Window
-    generators: Dict[str, Any]
+    generators: Dict[GeneratorName, GeneratorUnion]
     library_data: LibraryData
 
     criterion: Criterion = field(init=False)
 
     def __call__(
         self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool = False
-    ) -> Dict[int, Dict[str, ApproximationData]]:
+    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
         return {
             fragment_id: self.reconstruct(fragmented_audio[fragment_id])
             for fragment_id in tqdm(fragment_ids, disable=not show_progress)
@@ -36,11 +37,11 @@ class ReconstructorWorker:
     def __post_init__(self):
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
 
-    def get_remaining_generators(self) -> Dict[str, Any]:
+    def get_remaining_generators(self) -> Dict[GeneratorName, Any]:
         return {name: generator for name, generator in self.generators.items()}
 
-    def reconstruct(self, fragment: Fragment) -> Dict[str, ApproximationData]:
-        approximations: Dict[str, ApproximationData] = {}
+    def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
+        approximations: Dict[GeneratorName, ApproximationData] = {}
         remaining_generators = self.get_remaining_generators()
         while remaining_generators:
             remaining_generator_classes = {

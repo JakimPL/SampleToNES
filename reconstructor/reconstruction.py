@@ -6,32 +6,20 @@ import numpy as np
 from pydantic import BaseModel, Field, field_serializer
 
 from configs.config import Config as Configuration
-from exporters.exporter import FeatureKey, FeatureValue
-from exporters.noise import NoiseExporter
-from exporters.pulse import PulseExporter
-from exporters.triangle import TriangleExporter
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
-from reconstructor.maps import INSTRUCTION_CLASS_MAP
+from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
+from typehints.enums import FeatureKey, GeneratorName, InstructionClassName
 from typehints.exporters import ExporterClass
-from typehints.general import InstructionClassName
+from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
 from utils.common import deserialize_array, serialize_array
-
-INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
-    TriangleInstruction: TriangleExporter,
-    PulseInstruction: PulseExporter,
-    NoiseInstruction: NoiseExporter,
-}
 
 
 class Reconstruction(BaseModel):
     approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[str, List[InstructionUnion]] = Field(..., description="Instructions per generator")
-    errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
+    approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
+    instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
+    errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Configuration = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
@@ -78,10 +66,10 @@ class Reconstruction(BaseModel):
             audio_filepath=path,
         )
 
-    def get_generator_approximation(self, generator_name: str) -> np.ndarray:
+    def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([]))
 
-    def get_generator_instructions(self, generator_name: str) -> List[InstructionUnion]:
+    def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
     def save(self, filepath: Path) -> None:

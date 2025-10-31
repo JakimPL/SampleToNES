@@ -4,7 +4,8 @@ import numpy as np
 
 from exporters.exporter import Exporter
 from instructions.noise import NoiseInstruction
-from typehints.general import FeatureKey, FeatureValue
+from typehints.enums import FeatureKey
+from typehints.general import FeatureValue
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):
@@ -44,8 +45,8 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         arpeggio = (np.array(periods, dtype=np.int16) - initial_period) % 16
 
         return {
-            "initial_pitch": initial_period,
-            "volume": np.array(volumes, dtype=np.int8),
-            "arpeggio": np.array(arpeggio, dtype=np.int8),
-            "duty_cycle": np.array(duty_cycles, dtype=np.int8),
+            FeatureKey.INITIAL_PITCH: initial_period,
+            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
+            FeatureKey.ARPEGGIO: np.array(arpeggio, dtype=np.int8),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles, dtype=np.int8),
         }

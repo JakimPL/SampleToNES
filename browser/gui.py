@@ -44,8 +44,6 @@ from constants.browser import (
     LBL_TAB_BROWSER,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
-    MSG_CONFIG_ERROR,
-    MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST,
     MSG_RECONSTRUCTION_SELECT_TO_VIEW,
     PFX_GLOBAL_LOADED,
     TAG_BROWSER_FAMITRACKER_EXPORT,
@@ -55,8 +53,6 @@ from constants.browser import (
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TAG_LIBRARY_PANEL_GROUP,
-    TAG_RECONSTRUCTION_INFO,
-    TAG_RECONSTRUCTION_PROGRESS,
     TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE,
     TAG_WAVEFORM_PLOT,
     TAG_WINDOW_MAIN,
@@ -67,17 +63,12 @@ from constants.browser import (
     TITLE_DIALOG_SELECT_LIBRARY_DIR,
     TITLE_WINDOW_MAIN,
     TPL_LIBRARY_CUSTOM_DIR_DISPLAY,
-    TPL_RECONSTRUCTION_COMPLETE,
-    TPL_RECONSTRUCTION_GEN_TAG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_GLOBAL_PROGRESS_COMPLETE,
     VAL_PLOT_CHILDREN_SLOT,
     VAL_PLOT_WIDTH_FULL,
 )
 from library.data import LibraryFragment
 from reconstructor.reconstruction import Reconstruction
-from reconstructor.reconstructor import Reconstructor
-from typehints.general import GENERATOR_NAMES, GeneratorName
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import load_audio, write_audio
 
@@ -255,28 +246,29 @@ class GUI:
         dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, TPL_LIBRARY_CUSTOM_DIR_DISPLAY.format(Path(directory_path).name))
 
     def start_reconstruction(self) -> None:
-        if self.original_audio is None or not self.audio_path:
-            dpg.set_value(TAG_RECONSTRUCTION_INFO, MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST)
-            return
+        pass
+        # if self.original_audio is None or not self.audio_path:
+        #     dpg.set_value(TAG_RECONSTRUCTION_INFO, MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST)
+        #     return
 
-        config = self.config_manager.get_config()
-        if not config:
-            dpg.set_value(TAG_RECONSTRUCTION_INFO, MSG_CONFIG_ERROR)
-            return
+        # config = self.config_manager.get_config()
+        # if not config:
+        #     dpg.set_value(TAG_RECONSTRUCTION_INFO, MSG_CONFIG_ERROR)
+        #     return
 
-        generator_names: List[GeneratorName] = [
-            name for name in GENERATOR_NAMES if dpg.get_value(TPL_RECONSTRUCTION_GEN_TAG.format(name))
-        ]
-        reconstructor = Reconstructor(config, generator_names)
-        self.current_reconstruction = reconstructor(self.audio_path)
+        # generator_names: List[GeneratorName] = [
+        #     name for name in GENERATOR_NAMES if dpg.get_value(TPL_RECONSTRUCTION_GEN_TAG.format(name))
+        # ]
+        # reconstructor = Reconstructor(config, generator_names)
+        # self.current_reconstruction = reconstructor(self.audio_path)
 
-        self.update_waveform_display()
+        # self.update_waveform_display()
 
-        dpg.set_value(TAG_RECONSTRUCTION_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
-        dpg.set_value(
-            TAG_RECONSTRUCTION_INFO,
-            TPL_RECONSTRUCTION_COMPLETE.format(self.current_reconstruction.total_error),
-        )
+        # dpg.set_value(TAG_RECONSTRUCTION_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
+        # dpg.set_value(
+        #     TAG_RECONSTRUCTION_INFO,
+        #     TPL_RECONSTRUCTION_COMPLETE.format(self.current_reconstruction.total_error),
+        # )
 
     def update_waveform_display(self) -> None:
         if not self.current_reconstruction:

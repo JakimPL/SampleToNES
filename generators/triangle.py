@@ -7,11 +7,12 @@ from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer
-from typehints.general import GeneratorClassName, Initials
+from typehints.enums import GeneratorClassName, GeneratorName
+from typehints.general import Initials
 
 
 class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
-    def __init__(self, config: Config, name: str = "triangle") -> None:
+    def __init__(self, config: Config, name: GeneratorName = GeneratorName.TRIANGLE) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,

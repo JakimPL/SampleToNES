@@ -13,7 +13,8 @@ from ffts.fft import FFTTransformer
 from ffts.window import Window
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
+from typehints.enums import GeneratorClassName
+from typehints.general import Initials
 from typehints.instructions import InstructionType, InstructionUnion
 from utils.common import deserialize_array, dump, serialize_array
 
@@ -124,12 +125,11 @@ class LibraryData(BaseModel):
     @cached_property
     def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
         subdata = {}
-        for generator_class_name in GeneratorClassNameValues:
-            generator_class_literal = cast(GeneratorClassName, generator_class_name)
-            subdata[generator_class_literal] = {
+        for generator_class_name in GeneratorClassName:
+            subdata[generator_class_name] = {
                 instruction: fragment
                 for instruction, fragment in self.data.items()
-                if fragment.generator_class == generator_class_literal
+                if fragment.generator_class == generator_class_name
             }
 
         return subdata
@@ -143,13 +143,12 @@ class LibraryData(BaseModel):
         if not generator_classes:
             return {}
 
-        if isinstance(generator_classes, str):
+        if isinstance(generator_classes, GeneratorClassName):
             return self.subdata.get(generator_classes, {})
         elif isinstance(generator_classes, Collection):
             result: Dict[InstructionUnion, LibraryFragment] = {}
-            for generator_class in generator_classes:
-                generator_class_literal = cast(GeneratorClassName, generator_class)
-                result |= self.subdata[generator_class_literal]
+            for generator_class_name in generator_classes:
+                result |= self.subdata[generator_class_name]
             return result
 
         raise ValueError("Incorrect type of generator class provided")

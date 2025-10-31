@@ -12,11 +12,7 @@ from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
-from typehints.general import (
-    LIBRARY_GENERATOR_NAMES,
-    GeneratorClassName,
-    LibraryGeneratorName,
-)
+from typehints.enums import GeneratorClassName, LibraryGeneratorName
 from utils.frequencies import pitch_to_name
 
 
@@ -89,7 +85,7 @@ class LibraryManager:
 
     def get_all_generator_instructions(self, display_name: str) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
         result = {}
-        for generator_name in LIBRARY_GENERATOR_NAMES:
+        for generator_name in LibraryGeneratorName:
             instructions = self.get_library_instructions_by_generator(display_name, generator_name)
             if instructions:
                 result[generator_name] = instructions
