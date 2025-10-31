@@ -41,10 +41,10 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_SLOT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from constants.enums import LibraryGeneratorName
 from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
-from typehints.enums import LibraryGeneratorName
 from typehints.instructions import InstructionUnion
 
 

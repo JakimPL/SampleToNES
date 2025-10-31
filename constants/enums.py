@@ -1,32 +1,32 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class LibraryGeneratorName(Enum):
+class LibraryGeneratorName(StrEnum):
     PULSE = "pulse"
     TRIANGLE = "triangle"
     NOISE = "noise"
 
 
-class GeneratorName(Enum):
+class GeneratorName(StrEnum):
     PULSE1 = "pulse1"
     PULSE2 = "pulse2"
     TRIANGLE = "triangle"
     NOISE = "noise"
 
 
-class GeneratorClassName(Enum):
+class GeneratorClassName(StrEnum):
     PULSE_GENERATOR = "PulseGenerator"
     TRIANGLE_GENERATOR = "TriangleGenerator"
     NOISE_GENERATOR = "NoiseGenerator"
 
 
-class InstructionClassName(Enum):
+class InstructionClassName(StrEnum):
     PULSE_INSTRUCTION = "PulseInstruction"
     TRIANGLE_INSTRUCTION = "TriangleInstruction"
     NOISE_INSTRUCTION = "NoiseInstruction"
 
 
-class FeatureKey(Enum):
+class FeatureKey(StrEnum):
     INITIAL_PITCH = "initial_pitch"
     VOLUME = "volume"
     ARPEGGIO = "arpeggio"

@@ -3,8 +3,8 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 import numpy as np
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
-from typehints.enums import GeneratorClassName, GeneratorName
 from typehints.general import Initials
 from typehints.instructions import InstructionType
 from typehints.timers import TimerType

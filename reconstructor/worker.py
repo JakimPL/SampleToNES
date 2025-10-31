@@ -6,13 +6,13 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
 from library.fragment import Fragment, FragmentedAudio
 from library.library import LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.criterion import Criterion
 from reconstructor.maps import get_generator_by_instruction
-from typehints.enums import GeneratorClassName, GeneratorName
 from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
 

@@ -2,10 +2,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from constants.enums import FeatureKey
 from constants.general import MAX_VOLUME, MIN_PITCH
 from exporters.exporter import Exporter
 from instructions.triangle import TriangleInstruction
-from typehints.enums import FeatureKey
 from typehints.general import FeatureValue
 
 

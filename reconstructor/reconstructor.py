@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 from configs.config import Config
+from constants.enums import GeneratorName
 from ffts.window import Window
 from generators.generator import Generator
 from library.fragment import FragmentedAudio
@@ -13,7 +14,6 @@ from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
-from typehints.enums import GeneratorName
 from typehints.generators import GeneratorUnion
 from utils.audio.io import load_audio
 from utils.parallel import parallelize
@@ -46,6 +46,13 @@ class Reconstructor:
     ) -> None:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
+
+        if generator_names is not None:
+            assert isinstance(
+                generator_names, (list, tuple, set)
+            ), "Generator names must be a list, tuple, or set of GeneratorName enums"
+            for name in generator_names:
+                assert isinstance(name, GeneratorName), "Generator names must be of type GeneratorName enum"
 
         default_generators = list(GeneratorName)
         generator_names = generator_names or default_generators

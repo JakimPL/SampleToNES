@@ -1,5 +1,11 @@
 from typing import Dict, cast
 
+from constants.enums import (
+    GeneratorClassName,
+    GeneratorName,
+    InstructionClassName,
+    LibraryGeneratorName,
+)
 from constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
 from exporters.noise import NoiseExporter
 from exporters.pulse import PulseExporter
@@ -10,12 +16,6 @@ from generators.triangle import TriangleGenerator
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from typehints.enums import (
-    GeneratorClassName,
-    GeneratorName,
-    InstructionClassName,
-    LibraryGeneratorName,
-)
 from typehints.exporters import ExporterClass
 from typehints.generators import GeneratorClass, GeneratorUnion
 from typehints.instructions import InstructionClass, InstructionUnion

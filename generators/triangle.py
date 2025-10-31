@@ -1,13 +1,13 @@
-from typing import List, cast
+from typing import List
 
 import numpy as np
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, GeneratorName
 from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer
-from typehints.enums import GeneratorClassName, GeneratorName
 from typehints.general import Initials
 
 
@@ -72,4 +72,4 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:
-        return cast(GeneratorClassName, cls.__name__)
+        return GeneratorClassName.TRIANGLE_GENERATOR

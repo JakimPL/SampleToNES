@@ -6,9 +6,9 @@ import numpy as np
 from pydantic import BaseModel, Field, field_serializer
 
 from configs.config import Config as Configuration
+from constants.enums import FeatureKey, GeneratorName, InstructionClassName
 from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
-from typehints.enums import FeatureKey, GeneratorName, InstructionClassName
 from typehints.exporters import ExporterClass
 from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion

@@ -3,9 +3,9 @@ from typing import Dict, List, Self
 import numpy as np
 from pydantic import BaseModel
 
+from constants.enums import GeneratorName
 from library.fragment import Fragment
 from reconstructor.approximation import ApproximationData
-from typehints.enums import GeneratorName
 from typehints.instructions import InstructionUnion
 
 

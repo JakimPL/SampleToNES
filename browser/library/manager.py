@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, LibraryGeneratorName
 from constants.general import LIBRARY_DIRECTORY, NOISE_PERIODS
 from ffts.window import Window
 from instructions.instruction import Instruction
@@ -12,7 +13,6 @@ from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
-from typehints.enums import GeneratorClassName, LibraryGeneratorName
 from utils.frequencies import pitch_to_name
 
 

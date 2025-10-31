@@ -2,6 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, Field
 
+from constants.enums import GeneratorName
 from constants.general import (
     CONTINUITY_LOSS_WEIGHT,
     MIXER,
@@ -9,7 +10,6 @@ from constants.general import (
     SPECTRAL_LOSS_WEIGHT,
     TEMPORAL_LOSS_WEIGHT,
 )
-from typehints.enums import GeneratorName
 
 
 class WeightsConfig(BaseModel):

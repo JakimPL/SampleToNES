@@ -2,8 +2,8 @@ from typing import Dict, Generic, List, Mapping, Union
 
 import numpy as np
 
+from constants.enums import FeatureKey
 from timers.phase import PhaseTimer
-from typehints.enums import FeatureKey
 from typehints.general import FeatureValue
 from typehints.instructions import InstructionType
 from utils.frequencies import pitch_to_frequency

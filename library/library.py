@@ -5,13 +5,13 @@ from pydantic import BaseModel, Field
 
 from configs.config import Config as Configuration
 from configs.library import LibraryConfig
+from constants.enums import GeneratorClassName
 from constants.general import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
 from library.key import LibraryKey
 from library.worker import LibraryWorker
 from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.enums import GeneratorClassName
 from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
 from utils.parallel import parallelize
@@ -62,6 +62,7 @@ class Library(BaseModel):
         generators: Dict[GeneratorClassName, GeneratorUnion] = {
             name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP
         }
+
         instructions: List[Tuple[GeneratorClassName, InstructionUnion]] = [
             (generator.class_name(), instruction)
             for generator in generators.values()

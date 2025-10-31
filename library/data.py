@@ -9,11 +9,11 @@ from pydantic import BaseModel, field_serializer
 
 from configs.config import Config as Configuration
 from configs.library import LibraryConfig
+from constants.enums import GeneratorClassName
 from ffts.fft import FFTTransformer
 from ffts.window import Window
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.enums import GeneratorClassName
 from typehints.general import Initials
 from typehints.instructions import InstructionType, InstructionUnion
 from utils.common import deserialize_array, dump, serialize_array
@@ -116,6 +116,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
 
     class Config:
         arbitrary_types_allowed = True
+        use_enum_values = True
 
 
 class LibraryData(BaseModel):

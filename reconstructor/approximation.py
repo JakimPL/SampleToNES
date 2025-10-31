@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
+from constants.enums import GeneratorName
 from library.fragment import Fragment
-from typehints.enums import GeneratorName
 from typehints.instructions import InstructionUnion
 
 

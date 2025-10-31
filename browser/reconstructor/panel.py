@@ -16,7 +16,7 @@ from constants.browser import (
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
-from typehints.enums import GeneratorName
+from constants.enums import GeneratorName
 
 
 class GUIReconstructorPanel(GUIPanel):
