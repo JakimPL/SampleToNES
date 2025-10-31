@@ -6,7 +6,6 @@ import numpy as np
 from configs.config import Config
 from ffts.window import Window
 from generators.generator import Generator
-from instructions.instruction import Instruction
 from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
 from reconstructor.approximation import ApproximationData
@@ -16,7 +15,6 @@ from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.general import GeneratorName
 from typehints.generators import GeneratorUnion
-from typehints.instructions import InstructionType
 from utils.audio.io import load_audio
 from utils.parallel import parallelize
 

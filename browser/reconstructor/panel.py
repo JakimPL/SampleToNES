@@ -16,6 +16,7 @@ from constants.browser import (
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
+from typehints.enums import GeneratorName
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -44,20 +45,20 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_checkbox(
                 label=LBL_CHECKBOX_PULSE_1,
                 default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format("pulse1"),
+                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE1.value),
             )
             dpg.add_checkbox(
                 label=LBL_CHECKBOX_PULSE_2,
                 default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format("pulse2"),
+                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE2.value),
             )
             dpg.add_checkbox(
                 label=LBL_CHECKBOX_TRIANGLE,
                 default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format("triangle"),
+                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.TRIANGLE.value),
             )
             dpg.add_checkbox(
                 label=LBL_CHECKBOX_NOISE,
                 default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format("noise"),
+                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
             )

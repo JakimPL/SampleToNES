@@ -71,7 +71,7 @@ class LFSRTimer(Timer):
 
     def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
         lfsrs = self.lfsr_tables[self.short].lfsrs[direction]
-        cumsum_table = self.lfsr_tables[self.short].cumsums[direction]
+        cumsum_table = self.lfsr_tables[self.short].cumsums[direction].astype(np.float32)
 
         indices = np.arange(self.frame_length + 1)
         sign = 1.0 if direction else -1.0

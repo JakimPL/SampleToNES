@@ -18,8 +18,6 @@ from constants.browser import (
     DIM_PANEL_BROWSER_HEIGHT,
     DIM_PANEL_BROWSER_WIDTH,
     DIM_PANEL_LEFT_WIDTH,
-    DIM_PANEL_RECONSTRUCTION_HEIGHT,
-    DIM_PANEL_RECONSTRUCTION_WIDTH,
     DIM_WAVEFORM_PLOT_HEIGHT,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
@@ -29,8 +27,6 @@ from constants.browser import (
     IDX_DIALOG_FIRST_SELECTION,
     KEY_DIALOG_SELECTIONS,
     LBL_BUTTON_REFRESH_LIST,
-    LBL_BUTTON_SELECT_AUDIO_FILE,
-    LBL_BUTTON_START_RECONSTRUCTION,
     LBL_GLOBAL_EMPTY,
     LBL_MENU_EXIT,
     LBL_MENU_FILE,
@@ -42,17 +38,13 @@ from constants.browser import (
     LBL_PLOT_ORIGINAL,
     LBL_PLOT_RECONSTRUCTION,
     LBL_PLOT_TIME_SAMPLES,
-    LBL_SECTION_AUDIO_INPUT,
     LBL_SECTION_FAMITRACKER_EXPORT,
     LBL_SECTION_RECONSTRUCTION_DETAILS,
     LBL_SECTION_SAVED_RECONSTRUCTIONS,
-    LBL_SECTION_WAVEFORM_DISPLAY,
     LBL_TAB_BROWSER,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
     MSG_CONFIG_ERROR,
-    MSG_GLOBAL_NO_FILE_SELECTED,
-    MSG_RECONSTRUCTION_INFO,
     MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST,
     MSG_RECONSTRUCTION_SELECT_TO_VIEW,
     PFX_GLOBAL_LOADED,
@@ -63,8 +55,6 @@ from constants.browser import (
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TAG_LIBRARY_PANEL_GROUP,
-    TAG_PLOT_X_AXIS,
-    TAG_PLOT_Y_AXIS,
     TAG_RECONSTRUCTION_INFO,
     TAG_RECONSTRUCTION_PROGRESS,
     TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE,
@@ -80,7 +70,6 @@ from constants.browser import (
     TPL_RECONSTRUCTION_COMPLETE,
     TPL_RECONSTRUCTION_GEN_TAG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
     VAL_PLOT_CHILDREN_SLOT,
     VAL_PLOT_WIDTH_FULL,
@@ -97,8 +86,6 @@ class GUI:
     def __init__(self) -> None:
         self.current_reconstruction: Optional[Reconstruction] = None
         self.original_audio: Optional[np.ndarray] = None
-        self.reconstructor_generators: List[GeneratorName] = GENERATOR_NAMES.copy()
-        self.selected_generators = {generator_name: True for generator_name in GENERATOR_NAMES}
         self.audio_path: Optional[Path] = None
         self.reconstruction_path: Optional[Path] = None
         self.audio_device_manager = AudioDeviceManager()

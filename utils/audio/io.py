@@ -19,14 +19,16 @@ def play_audio(audio: np.ndarray, sample_rate: int) -> None:
 
 def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
     sample_rate, audio = wavfile.read(path)
-    audio = np.asarray(audio).astype(np.float32)
-    if audio.dtype == np.int16:
+    if audio.dtype == np.uint8:
+        audio = (audio - 128) / 128.0
+    elif audio.dtype == np.int16:
         audio = audio / 32768.0
     elif audio.dtype == np.int32:
         audio = audio / 2147483648.0
-    elif audio.dtype == np.uint8:
-        audio = (audio - 128.0) / 128.0
+    elif not np.issubdtype(audio.dtype, np.floating):
+        raise ValueError(f"Unsupported audio data type: {audio.dtype}")
 
+    audio = np.asarray(audio).astype(np.float32)
     return audio, sample_rate
 
 
