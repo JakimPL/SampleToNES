@@ -6,17 +6,23 @@ from constants.browser import (
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
     DIM_PANEL_RECONSTRUCTOR_WIDTH,
     FLAG_CHECKBOX_DEFAULT_ENABLED,
+    LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
     LBL_SECTION_GENERATOR_SELECTION,
+    LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
+    LBL_SLIDER_RECONSTRUCTOR_MIXER,
+    LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
+    TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
+from constants.general import MAX_MIXER, OUTPUT_DIRECTORY
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -39,6 +45,30 @@ class GUIReconstructorPanel(GUIPanel):
             height=self.height,
         ):
             dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+            dpg.add_separator()
+
+            dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
+            dpg.add_button(label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY)
+
+            output_directory = (
+                self.config_manager.config.general.output_directory if self.config_manager.config else OUTPUT_DIRECTORY
+            )
+            dpg.add_text(output_directory, tag=TAG_OUTPUT_DIRECTORY_DISPLAY)
+
+            dpg.add_separator()
+
+            dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_MIXER)
+            dpg.add_slider_float(
+                min_value=0.0,
+                max_value=MAX_MIXER,
+                width=-1,
+            )
+            dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA)
+            dpg.add_slider_float(
+                min_value=0.0,
+                max_value=1.0,
+                width=-1,
+            )
             dpg.add_separator()
 
             dpg.add_text(LBL_SECTION_GENERATOR_SELECTION)

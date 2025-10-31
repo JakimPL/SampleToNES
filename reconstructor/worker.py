@@ -23,7 +23,6 @@ class ReconstructorWorker:
     window: Window
     generators: Dict[GeneratorName, GeneratorUnion]
     library_data: LibraryData
-
     criterion: Criterion = field(init=False)
 
     def __call__(

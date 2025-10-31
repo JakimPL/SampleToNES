@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from constants.enums import GeneratorName
 from constants.general import (
     CONTINUITY_LOSS_WEIGHT,
+    MAX_MIXER,
     MIXER,
     RESET_PHASE,
     SPECTRAL_LOSS_WEIGHT,
@@ -23,7 +24,7 @@ class WeightsConfig(BaseModel):
 
 
 class GenerationConfig(BaseModel):
-    mixer: float = Field(default=MIXER, ge=0.0, le=100.0)
+    mixer: float = Field(default=MIXER, ge=0.0, le=MAX_MIXER)
     reset_phase: bool = Field(default=RESET_PHASE)
     generators: List[GeneratorName] = Field(default_factory=lambda: list(GeneratorName))
     weights: WeightsConfig = Field(default_factory=WeightsConfig)

@@ -62,7 +62,7 @@ from constants.browser import (
     TITLE_DIALOG_LOAD_RECONSTRUCTION,
     TITLE_DIALOG_SELECT_LIBRARY_DIR,
     TITLE_WINDOW_MAIN,
-    TPL_LIBRARY_CUSTOM_DIR_DISPLAY,
+    TPL_LIBRARY_CUSTOM_DIRECTORY_DISPLAY,
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_CHILDREN_SLOT,
     VAL_PLOT_WIDTH_FULL,
@@ -243,7 +243,9 @@ class GUI:
         for tag in self.config_manager.config_params.keys():
             gui_values[tag] = dpg.get_value(tag)
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, TPL_LIBRARY_CUSTOM_DIR_DISPLAY.format(Path(directory_path).name))
+        dpg.set_value(
+            TAG_LIBRARY_DIRECTORY_DISPLAY, TPL_LIBRARY_CUSTOM_DIRECTORY_DISPLAY.format(Path(directory_path).name)
+        )
 
     def start_reconstruction(self) -> None:
         pass

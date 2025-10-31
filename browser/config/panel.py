@@ -12,7 +12,7 @@ from constants.browser import (
     DIM_PANEL_CONFIG_WIDTH,
     IDX_DIALOG_FIRST_SELECTION,
     KEY_DIALOG_SELECTIONS,
-    LBL_BUTTON_SELECT_LIBRARY_DIR,
+    LBL_BUTTON_SELECT_LIBRARY_DIRECTORY,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
     LBL_CHECKBOX_QUANTIZE_AUDIO,
     LBL_INPUT_CHANGE_RATE,
@@ -34,8 +34,7 @@ from constants.browser import (
     TAG_CONFIG_SAMPLE_RATE,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIR,
-    TPL_LIBRARY_CUSTOM_DIR_DISPLAY,
-    TPL_LIBRARY_DEFAULT_DIR_DISPLAY,
+    TPL_LIBRARY_CUSTOM_DIRECTORY_DISPLAY,
 )
 from constants.general import (
     CHANGE_RATE,
@@ -85,8 +84,14 @@ class GUIConfigPanel(GUIPanel):
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_LIBRARY_DIRECTORY)
-            dpg.add_button(label=LBL_BUTTON_SELECT_LIBRARY_DIR, callback=self._select_library_directory_dialog)
-            dpg.add_text(TPL_LIBRARY_DEFAULT_DIR_DISPLAY.format(LIBRARY_DIRECTORY), tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
+            dpg.add_button(label=LBL_BUTTON_SELECT_LIBRARY_DIRECTORY, callback=self._select_library_directory_dialog)
+
+            library_directory = (
+                self.config_manager.config.general.library_directory
+                if self.config_manager.config
+                else LIBRARY_DIRECTORY
+            )
+            dpg.add_text(library_directory, tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
@@ -144,7 +149,7 @@ class GUIConfigPanel(GUIPanel):
         self.config_manager.set_library_directory(directory_path)
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, TPL_LIBRARY_CUSTOM_DIR_DISPLAY.format(Path(directory_path).name))
+        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, str(Path(directory_path)))
 
         if self.on_library_directory_changed:
             self.on_library_directory_changed()

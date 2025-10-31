@@ -1,13 +1,17 @@
 from dataclasses import dataclass, field
+from functools import partial
 from typing import NamedTuple
 
 import numpy as np
-from scipy.special import gamma, gammaincc
 
 from typehints.general import BinaryTransformation, UnaryTransformation
-from utils.functions import exp, expm1, identity, log1p, zero
-
-ITERATIONS = 6
+from utils.functions import (
+    expm1,
+    general_interpolation,
+    general_inverse,
+    identity,
+    log1p,
+)
 
 
 class Transformations(NamedTuple):
@@ -52,35 +56,19 @@ class LinearExponentialMorpher:
         if self.gamma == 0.0:
             p = 0.0
             interpolation = identity
-            derivative = zero
             inverse = identity
 
         elif self.gamma == 1.0:
             p = float("inf")
             interpolation = expm1
-            derivative = exp
             inverse = log1p
 
         else:
             p = self.gamma / (1.0 - self.gamma)
             a = p + 2.0
 
-            def interpolation(x: np.ndarray) -> np.ndarray:
-                return np.exp(x) * gammaincc(a, x) - 1.0
-
-            def derivative(x: np.ndarray) -> np.ndarray:
-                return np.exp(x) * gammaincc(a, x) - (x ** (a - 1)) / gamma(a)
-
-            def inverse(x: np.ndarray) -> np.ndarray:
-                x = np.asarray(x, dtype=float)
-                z = np.log1p(x)
-
-                for _ in range(ITERATIONS):
-                    fx = interpolation(z) - x
-                    fpx = derivative(z)
-                    z -= fx / fpx
-
-                return z
+            interpolation = partial(general_interpolation, a=a)
+            inverse = partial(general_inverse, a=a)
 
         object.__setattr__(self, "p", p)
         object.__setattr__(self, "a", p + 2.0 if np.isfinite(p) else float("inf"))
