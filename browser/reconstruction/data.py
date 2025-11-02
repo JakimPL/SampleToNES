@@ -1,0 +1,37 @@
+from pathlib import Path
+from typing import Self
+
+import numpy as np
+from pydantic import BaseModel, ConfigDict
+
+from configs.config import Config
+from reconstructor.reconstruction import Reconstruction
+from utils.audio.io import load_audio
+
+
+class ReconstructionData(BaseModel):
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
+    config: Config
+    reconstruction: Reconstruction
+    original_audio: np.ndarray
+
+    @classmethod
+    def load(cls, reconstruction: Reconstruction) -> Self:
+        audio_filepath = reconstruction.audio_filepath
+        sample_rate = reconstruction.config.library.sample_rate
+        normalize = reconstruction.config.general.normalize
+        quantize = reconstruction.config.general.quantize
+
+        original_audio = load_audio(
+            path=audio_filepath,
+            target_sample_rate=sample_rate,
+            normalize=normalize,
+            quantize=quantize,
+        )
+
+        return cls(
+            config=reconstruction.config,
+            reconstruction=reconstruction,
+            original_audio=original_audio,
+        )

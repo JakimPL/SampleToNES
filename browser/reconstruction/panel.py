@@ -1,14 +1,13 @@
 from typing import Optional
 
 import dearpygui.dearpygui as dpg
-import numpy as np
 
 from browser.graphs.layers.array import ArrayLayer
-from browser.graphs.layers.waveform import WaveformLayer
 from browser.graphs.waveform import GUIWaveformDisplay
 from browser.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
+from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from browser.reconstruction.export import GUIReconstructionExportPanel
 from constants.browser import (
@@ -26,7 +25,6 @@ from constants.browser import (
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
-from reconstructor.reconstruction import Reconstruction
 from utils.audio.device import AudioDeviceManager
 
 
@@ -37,8 +35,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_details: GUIReconstructionDetailsPanel
         self.reconstruction_export: GUIReconstructionExportPanel
         self.player_panel: GUIAudioPlayerPanel
-        self.current_reconstruction: Optional[Reconstruction] = None
-        self.original_audio: Optional[np.ndarray] = None
+        self.reconstruction_data: Optional[ReconstructionData] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_PANEL,
@@ -79,23 +76,22 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_export = GUIReconstructionExportPanel()
         self.reconstruction_export.create_panel()
 
-    def display_reconstruction(self, reconstruction: Reconstruction, original_audio: np.ndarray) -> None:
-        self.current_reconstruction = reconstruction
-        self.original_audio = original_audio
+    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_data = reconstruction_data
 
-        self.reconstruction_details.display_reconstruction(reconstruction)
-        self.reconstruction_export.load_reconstruction(reconstruction)
+        self.reconstruction_details.display_reconstruction(reconstruction_data.reconstruction)
+        self.reconstruction_export.load_reconstruction(reconstruction_data.reconstruction)
 
-        sample_rate = reconstruction.config.library.sample_rate
-        self._load_waveform_data(reconstruction, original_audio)
-        self._load_audio_data(reconstruction, sample_rate)
+        sample_rate = reconstruction_data.reconstruction.config.library.sample_rate
+        self._load_waveform_data(reconstruction_data)
+        self._load_audio_data(reconstruction_data, sample_rate)
 
-    def _load_waveform_data(self, reconstruction: Reconstruction, original_audio: np.ndarray) -> None:
+    def _load_waveform_data(self, reconstruction_data: ReconstructionData) -> None:
         self.waveform_display.clear_layers()
 
         self.waveform_display.add_layer(
             ArrayLayer(
-                data=original_audio,
+                data=reconstruction_data.original_audio,
                 name=LBL_PLOT_ORIGINAL,
                 color=CLR_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
@@ -104,7 +100,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.waveform_display.add_layer(
             ArrayLayer(
-                data=reconstruction.approximation,
+                data=reconstruction_data.reconstruction.approximation,
                 name=LBL_PLOT_RECONSTRUCTION,
                 color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
@@ -112,16 +108,15 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
         self.waveform_display.x_min = 0.0
-        self.waveform_display.x_max = float(len(original_audio))
+        self.waveform_display.x_max = float(len(reconstruction_data.original_audio))
         self.waveform_display._update_axes_limits()
 
-    def _load_audio_data(self, reconstruction: Reconstruction, sample_rate: int) -> None:
-        audio_data = AudioData.from_array(reconstruction.approximation, sample_rate)
+    def _load_audio_data(self, reconstruction_data: ReconstructionData, sample_rate: int) -> None:
+        audio_data = AudioData.from_array(reconstruction_data.reconstruction.approximation, sample_rate)
         self.player_panel.load_audio_data(audio_data)
 
     def clear_display(self) -> None:
-        self.current_reconstruction = None
-        self.original_audio = None
+        self.reconstruction_data = None
         self.reconstruction_details.clear_display()
         self.reconstruction_export.clear()
         self.player_panel.clear_audio()
