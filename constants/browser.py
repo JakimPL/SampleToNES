@@ -259,6 +259,17 @@ MSG_INSTRUCTION_NO_SELECTION = "No instruction selected"
 LBL_INSTRUCTION_WAVEFORM = "Instruction waveform"
 LBL_INSTRUCTION_SPECTRUM = "Instruction spectrum"
 
+# Reconstruction panel constants
+TAG_RECONSTRUCTION_PANEL = "reconstruction_panel"
+TAG_RECONSTRUCTION_PLAYER_PANEL = "reconstruction_player_panel"
+TAG_RECONSTRUCTION_WAVEFORM_DISPLAY = "reconstruction_waveform_display"
+TAG_RECONSTRUCTION_DETAILS_PANEL = "reconstruction_details_panel"
+TAG_RECONSTRUCTION_EXPORT_PANEL = "reconstruction_export_panel"
+LBL_RECONSTRUCTION_WAVEFORM = "Reconstruction waveform"
+LBL_RECONSTRUCTION_DETAILS = "Reconstruction details"
+LBL_RECONSTRUCTION_EXPORT = "Export"
+MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected"
+
 # Waveform layer colors
 CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
 # layer colors also defined above (keep for compatibility)

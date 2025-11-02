@@ -5,6 +5,7 @@ from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
+from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
 from configs.library import LibraryConfig
 from constants.browser import (
@@ -28,6 +29,7 @@ from constants.browser import (
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_PANEL_GROUP,
     TAG_RECONSTRUCTION_PANEL_GROUP,
+    TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_EXPORT_WAV,
     TITLE_DIALOG_LOAD_AUDIO,
@@ -51,6 +53,7 @@ class GUI:
 
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
+        self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(self.audio_device_manager)
 
         self.setup_gui()
 
@@ -105,11 +108,14 @@ class GUI:
         with dpg.tab(label=LBL_TAB_RECONSTRUCTION):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
-                    with dpg.group(tag=TAG_RECONSTRUCTION_PANEL_GROUP):
+                    with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
                         self.reconstructor_panel.create_panel()
 
                     with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
                         self.browser_panel.create_panel()
+
+                with dpg.child_window(tag=TAG_RECONSTRUCTION_PANEL_GROUP):
+                    self.reconstruction_panel.create_panel()
 
         self.browser_panel.initialize_tree()
 
