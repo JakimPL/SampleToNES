@@ -37,13 +37,16 @@ class Fragment:
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted.")
 
-        if self.config.library != other.config.library or self.config.calculation != other.config.calculation:
+        if (
+            self.config.library != other.config.library
+            or self.config.generation.calculation != other.config.generation.calculation
+        ):
             raise ValueError("Both fragments must have the same config to be subtracted.")
 
         windowed_audio = self.windowed_audio - other.windowed_audio
         audio = self.audio - other.audio
 
-        if self.config.calculation.fast_difference:
+        if self.config.generation.calculation.fast_difference:
             feature = self.transformer.subtract(self.feature, other.feature)
         else:
             feature = self.transformer.calculate(windowed_audio)

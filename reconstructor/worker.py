@@ -95,7 +95,7 @@ class ReconstructorWorker:
         instruction, error = self.find_best_instruction(fragment, remaining_generator_classes)
         generator = get_generator_by_instruction(instruction, remaining_generator_classes)
 
-        if self.config.calculation.find_best_phase:
+        if self.config.generation.calculation.find_best_phase:
             approximation = self.find_best_phase(fragment, instruction)
         else:
             approximation = self.get_approximation(instruction, generator)

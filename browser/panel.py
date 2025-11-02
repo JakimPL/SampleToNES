@@ -10,3 +10,6 @@ class GUIPanel:
 
     def create_panel(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
+
+    def set_callbacks(self) -> None:
+        raise NotImplementedError("Subclasses must implement this method")

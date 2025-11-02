@@ -21,20 +21,16 @@ from constants.browser import (
     LBL_SECTION_GENERAL_SETTINGS,
     LBL_SECTION_LIBRARY_DIRECTORY,
     LBL_SECTION_LIBRARY_SETTINGS,
-    MSG_CONFIG_PREVIEW,
-    MSG_CONFIG_PREVIEW_DEFAULT,
     RNG_CONFIG_MIN_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_PANEL,
     TAG_CONFIG_PANEL_GROUP,
-    TAG_CONFIG_PREVIEW,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
-    TITLE_DIALOG_SELECT_LIBRARY_DIR,
-    TPL_LIBRARY_CUSTOM_DIRECTORY_DISPLAY,
+    TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
 from constants.general import (
     CHANGE_RATE,
@@ -52,9 +48,10 @@ from library.key import LibraryKey
 
 
 class GUIConfigPanel(GUIPanel):
-    def __init__(self, config_manager: ConfigManager, on_library_directory_changed: Optional[Callable] = None):
+    def __init__(self, config_manager: ConfigManager):
         self.config_manager = config_manager
-        self.on_library_directory_changed = on_library_directory_changed
+
+        self._on_update_library_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_CONFIG_PANEL,
@@ -114,14 +111,8 @@ class GUIConfigPanel(GUIPanel):
 
         self._register_callbacks()
 
-    def create_preview_panel(self) -> None:
-        with dpg.child_window(parent=self.parent_tag):
-            dpg.add_text(MSG_CONFIG_PREVIEW)
-            dpg.add_separator()
-            dpg.add_text(MSG_CONFIG_PREVIEW_DEFAULT, tag=TAG_CONFIG_PREVIEW)
-
     def _register_callbacks(self) -> None:
-        for tag in self.config_manager.config_params.keys():
+        for tag in self.config_manager.config_parameters["config"].keys():
             dpg.set_item_callback(tag, self._on_parameter_change)
 
     def _on_parameter_change(self, sender: Any, app_data: Any) -> None:
@@ -130,13 +121,13 @@ class GUIConfigPanel(GUIPanel):
 
     def _get_all_gui_values(self) -> Dict[str, Any]:
         gui_values = {}
-        for tag in self.config_manager.config_params.keys():
+        for tag in self.config_manager.config_parameters["config"].keys():
             gui_values[tag] = dpg.get_value(tag)
         return gui_values
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_SELECT_LIBRARY_DIR,
+            label=TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._select_library_directory,
@@ -146,13 +137,16 @@ class GUIConfigPanel(GUIPanel):
 
     def _select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
         directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
-        self.config_manager.set_library_directory(directory_path)
+        self.change_library_directory(directory_path)
+
+    def change_library_directory(self, directory_path: str) -> None:
+        self.config_manager.library_directory = directory_path
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
         dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, str(Path(directory_path)))
 
-        if self.on_library_directory_changed:
-            self.on_library_directory_changed()
+        if self._on_update_library_directory is not None:
+            self._on_update_library_directory()
 
     def load_config_from_data(self, config_data: Dict[str, Any]) -> None:
         gui_updates = self.config_manager.load_config_from_data(config_data)

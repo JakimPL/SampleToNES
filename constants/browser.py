@@ -88,7 +88,8 @@ LBL_INPUT_CHANGE_RATE = "Change rate"
 TITLE_DIALOG_LOAD_CONFIG = "Load configuration"
 TITLE_DIALOG_LOAD_AUDIO = "Load audio"
 TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
-TITLE_DIALOG_SELECT_LIBRARY_DIR = "Select library directory"
+TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
+TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
 TITLE_DIALOG_EXPORT_WAV = "Export WAV"
 
 # Plot labels
@@ -101,7 +102,7 @@ LBL_PLOT_RECONSTRUCTION = "Reconstruction"
 # Status messages
 MSG_CONFIG_PREVIEW_DEFAULT = "Load or modify configuration to see preview"
 MSG_GLOBAL_NO_FILE_SELECTED = "No file selected"
-MSG_GLOBAL_NO_DIR_SELECTED = "No directory selected"
+MSG_GLOBAL_NO_DIRECTORY_SELECTED = "No directory selected"
 MSG_RECONSTRUCTION_SELECT_TO_VIEW = "Select a reconstruction to view details"
 MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully"
 TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
@@ -126,7 +127,6 @@ EXT_DIALOG_JSON = "*.json"
 EXT_DIALOG_WAV = "*.wav"
 
 # Default display values
-TPL_LIBRARY_CUSTOM_DIRECTORY_DISPLAY = "Custom: {}"
 PFX_GLOBAL_ERROR = "Error: {}"
 PFX_GLOBAL_LOADED = "Loaded: {}"
 
@@ -323,3 +323,5 @@ TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "Transformation gamma"
+TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "transformation_gamma"
+TAG_RECONSTRUCTOR_MIXER = "mixer"

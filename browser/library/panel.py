@@ -42,6 +42,7 @@ from constants.browser import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from constants.enums import LibraryGeneratorName
+from constants.general import LIBRARY_DIRECTORY
 from library.data import LibraryFragment
 from library.key import LibraryKey
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
@@ -49,20 +50,18 @@ from typehints.instructions import InstructionUnion
 
 
 class GUILibraryPanel(GUIPanel):
-    def __init__(
-        self,
-        config_manager: ConfigManager,
-        on_instruction_selected: Optional[Callable] = None,
-        on_config_gui_update: Optional[Callable] = None,
-    ) -> None:
+    def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        self.library_manager = LibraryManager()
-        self.on_instruction_selected = on_instruction_selected
-        self.on_config_gui_update = on_config_gui_update
-
+        library_directory = (
+            config_manager.config.general.library_directory if config_manager.config else LIBRARY_DIRECTORY
+        )
+        self.library_manager = LibraryManager(library_directory)
         self.is_generating = False
         self.generation_thread = None
         self.current_highlighted_library: Optional[str] = None
+
+        self._on_instruction_selected: Optional[Callable] = None
+        self._on_apply_library_config: Optional[Callable] = None
 
         super().__init__(
             tag=TAG_LIBRARY_PANEL,
@@ -187,8 +186,8 @@ class GUILibraryPanel(GUIPanel):
 
         if apply_config:
             library_key = self.library_manager.get_library_key_for_config_update(display_name)
-            if library_key and self.on_config_gui_update:
-                self.on_config_gui_update(library_key)
+            if library_key and self._on_apply_library_config:
+                self._on_apply_library_config(library_key)
 
         self._update_library_highlighting(display_name)
 
@@ -260,10 +259,10 @@ class GUILibraryPanel(GUIPanel):
     def _on_instruction_selected_internal(self, sender: Any, app_data: Any, user_data: Tuple[Any, Any]) -> None:
         generator_class_name, instruction = user_data
         library_config = self.config_manager.get_config()
-        if self.on_instruction_selected and library_config is not None:
+        if self._on_instruction_selected and library_config is not None:
             library_config = library_config.library
             fragment = self._get_fragment_for_instruction(instruction)
-            self.on_instruction_selected(generator_class_name, instruction, fragment, library_config=library_config)
+            self._on_instruction_selected(generator_class_name, instruction, fragment, library_config=library_config)
 
     def _get_fragment_for_instruction(self, instruction: InstructionUnion) -> Optional[LibraryFragment]:
         for display_name in self.library_manager.get_available_libraries().keys():
@@ -273,3 +272,11 @@ class GUILibraryPanel(GUIPanel):
                     return library_data.data[instruction]
 
         return None
+
+    def set_callbacks(
+        self,
+        on_instruction_selected: Optional[Callable] = None,
+        on_apply_library_config: Optional[Callable] = None,
+    ) -> None:
+        self._on_instruction_selected = on_instruction_selected
+        self._on_apply_library_config = on_apply_library_config

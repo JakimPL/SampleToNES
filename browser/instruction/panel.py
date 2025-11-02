@@ -37,7 +37,6 @@ class GUIInstructionPanel(GUIPanel):
         super().__init__(
             tag=TAG_INSTRUCTION_PANEL,
             parent_tag=TAG_INSTRUCTION_PANEL_GROUP,
-            init=True,
         )
 
     def create_panel(self) -> None:
