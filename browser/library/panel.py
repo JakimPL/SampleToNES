@@ -8,9 +8,12 @@ from browser.library.manager import LibraryManager
 from browser.panel import GUIPanel
 from configs.config import Config
 from constants.browser import (
+    DIM_DIALOG_ERROR_HEIGHT,
+    DIM_DIALOG_ERROR_WIDTH,
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
+    LBL_BUTTON_OK,
     LBL_BUTTON_REFRESH_LIBRARIES,
     LBL_BUTTON_REGENERATE_LIBRARY,
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
@@ -23,7 +26,7 @@ from constants.browser import (
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NO_VALID_INSTRUCTIONS,
     MSG_LIBRARY_NOT_LOADED,
-    PFX_GLOBAL_ERROR,
+    TAG_DIALOG_ERROR_LIBRARY_GENERATION,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_CONTROLS_GROUP,
     TAG_LIBRARY_PANEL,
@@ -31,6 +34,7 @@ from constants.browser import (
     TAG_LIBRARY_PROGRESS,
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
+    TITLE_DIALOG_ERROR,
     TPL_GENERATOR_TAG,
     TPL_GROUP_LABEL,
     TPL_GROUP_TAG,
@@ -235,8 +239,8 @@ class GUILibraryPanel(GUIPanel):
             dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
             self.update_status()
 
-        except Exception as exception:  # TODO: to narrow
-            dpg.set_value(TAG_LIBRARY_STATUS, PFX_GLOBAL_ERROR.format(f"{MSG_LIBRARY_ERROR_GENERATING}: {exception}"))
+        except Exception as exception:
+            self._show_error_dialog(str(exception))
 
         finally:
             self.is_generating = False
@@ -280,3 +284,26 @@ class GUILibraryPanel(GUIPanel):
     ) -> None:
         self._on_instruction_selected = on_instruction_selected
         self._on_apply_library_config = on_apply_library_config
+
+    def _show_error_dialog(self, error_message: str) -> None:
+        if dpg.does_item_exist(TAG_DIALOG_ERROR_LIBRARY_GENERATION):
+            dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION)
+
+        with dpg.window(
+            label=TITLE_DIALOG_ERROR,
+            tag=TAG_DIALOG_ERROR_LIBRARY_GENERATION,
+            modal=True,
+            width=DIM_DIALOG_ERROR_WIDTH,
+            height=DIM_DIALOG_ERROR_HEIGHT,
+            no_resize=True,
+            on_close=lambda: dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION),
+        ):
+            dpg.add_text(MSG_LIBRARY_ERROR_GENERATING)
+            dpg.add_separator()
+            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH - 20)
+            dpg.add_separator()
+            dpg.add_button(
+                label=LBL_BUTTON_OK,
+                callback=lambda: dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION),
+                width=-1,
+            )

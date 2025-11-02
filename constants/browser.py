@@ -20,6 +20,8 @@ DIM_PANEL_BROWSER_HEIGHT = -1
 # File dialog dimensions
 DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
+DIM_DIALOG_ERROR_WIDTH = 500
+DIM_DIALOG_ERROR_HEIGHT = 150
 
 # Plot dimensions
 DIM_WAVEFORM_PLOT_HEIGHT = 200
@@ -91,6 +93,7 @@ TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
 TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
 TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
 TITLE_DIALOG_EXPORT_WAV = "Export WAV"
+TITLE_DIALOG_ERROR = "Error"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -120,7 +123,7 @@ LBL_LIBRARY_AVAILABLE_LIBRARIES = "Libraries"
 TPL_LIBRARY_NOT_EXISTS = "Library {} does not exist."
 MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found"
 MSG_GLOBAL_WINDOW_NOT_AVAILABLE = "Window not available"
-MSG_LIBRARY_ERROR_GENERATING = "generating library"
+MSG_LIBRARY_ERROR_GENERATING = "Error generating library"
 
 # File extensions
 EXT_DIALOG_JSON = "*.json"
@@ -183,6 +186,7 @@ TAG_RECONSTRUCTION_INFO = "reconstruction_info"
 TAG_BROWSER_RECONSTRUCTION_LIST = "reconstruction_list"
 TAG_BROWSER_RECONSTRUCTION_DETAILS = "reconstruction_details"
 TAG_BROWSER_FAMITRACKER_EXPORT = "famitracker_export"
+TAG_DIALOG_ERROR_LIBRARY_GENERATION = "error_dialog_library_generation"
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"

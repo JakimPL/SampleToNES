@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from browser.browser.node import ReconstructionNode
 from constants.general import OUTPUT_DIRECTORY
@@ -36,7 +36,7 @@ class BrowserManager:
 
         if path.is_file():
             if path.suffix == ".json":
-                return ReconstructionNode(name=path.name, path=path, is_file=True, children=[])
+                return ReconstructionNode(name=path.stem, path=path, is_file=True, children=[])
             return None
 
         children = []
