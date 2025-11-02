@@ -1,5 +1,6 @@
 import dearpygui.dearpygui as dpg
 
+from browser.browser.panel import GUIBrowserPanel
 from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
 from browser.instruction.panel import GUIInstructionPanel
@@ -22,10 +23,11 @@ from constants.browser import (
     LBL_MENU_LOAD_RECONSTRUCTION,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
+    TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_PANEL_GROUP,
-    TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE,
+    TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_EXPORT_WAV,
     TITLE_DIALOG_LOAD_AUDIO,
@@ -44,9 +46,11 @@ class GUI:
         self.config_manager = ConfigManager()
 
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
-        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
+
+        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
+        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
 
         self.setup_gui()
 
@@ -101,8 +105,13 @@ class GUI:
         with dpg.tab(label=LBL_TAB_RECONSTRUCTION):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
-                    with dpg.group(tag=TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE):
+                    with dpg.group(tag=TAG_RECONSTRUCTION_PANEL_GROUP):
                         self.reconstructor_panel.create_panel()
+
+                    with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
+                        self.browser_panel.create_panel()
+
+        self.browser_panel.initialize_tree()
 
     def load_config_dialog(self) -> None:
         with dpg.file_dialog(

@@ -24,6 +24,7 @@ class LibraryManager:
 
     def set_library_directory(self, directory: str) -> None:
         self.library.directory = directory
+        self.gather_available_libraries()
 
     def gather_available_libraries(self) -> Dict[str, str]:
         library_directory = Path(self.library.directory)

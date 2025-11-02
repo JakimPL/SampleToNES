@@ -175,7 +175,6 @@ TAG_INSTRUCTION_WAVEFORM_DISPLAY = "instruction_waveform_display"
 TAG_INSTRUCTION_SPECTRUM_DISPLAY = "instruction_spectrum_display"
 TAG_INSTRUCTION_DETAILS_INFO = "instruction_details_info"
 TAG_INSTRUCTION_DETAILS = "instruction_details"
-TAG_RECONSTRUCTION_SELECTED_AUDIO_FILE = "selected_audio_file"
 TAG_RECONSTRUCTION_PROGRESS = "reconstruction_progress"
 TAG_WAVEFORM_PLOT = "waveform_plot"
 TAG_PLOT_X_AXIS = "x_axis"
@@ -318,6 +317,7 @@ PFX_INSTRUCTION_PARAMETER_INDENT = "  "
 VAL_INSTRUCTION_FLOAT_PRECISION = 4
 
 # Reconstructor panel constants
+TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
 TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
@@ -325,3 +325,9 @@ LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "Transformation gamma"
 TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "transformation_gamma"
 TAG_RECONSTRUCTOR_MIXER = "mixer"
+
+# Browser panel constants
+LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"
+TAG_BROWSER_PANEL = "browser_panel"
+TAG_BROWSER_TREE = "browser_tree"
+TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
