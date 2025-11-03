@@ -138,6 +138,7 @@ PFX_GLOBAL_LOADED = "Loaded: {}"
 
 # Template strings
 TPL_LIBRARY_EXISTS = "Library {} exists."
+TPL_LIBRARY_LOADED = "Library {} loaded."
 TPL_LIBRARY_TAG = "lib_{}"
 TPL_GENERATOR_TAG = "generator_{}_{}"
 TPL_GROUP_TAG = "{}_{}_{}"
@@ -350,6 +351,7 @@ TAG_BROWSER_TREE = "browser_tree"
 TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
 
 # Node type constants
+NOD_TYPE_ROOT = "root"
 NOD_TYPE_LIBRARY = "library"
 NOD_TYPE_LIBRARY_PLACEHOLDER = "library_placeholder"
 NOD_TYPE_GENERATOR = "generator"
@@ -364,3 +366,4 @@ NOD_LABEL_LIBRARIES = "Libraries"
 
 # File extensions
 EXT_RECONSTRUCTION_FILE = ".json"
+EXT_LIBRARY_FILE = ".dat"

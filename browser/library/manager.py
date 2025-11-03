@@ -11,6 +11,7 @@ from browser.tree.node import (
 from browser.tree.tree import Tree
 from configs.config import Config
 from constants.browser import (
+    EXT_LIBRARY_FILE,
     NOD_LABEL_LIBRARIES,
     NOD_LABEL_NOT_LOADED,
     NOD_TYPE_GENERATOR,
@@ -18,6 +19,7 @@ from constants.browser import (
     NOD_TYPE_INSTRUCTION,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    NOD_TYPE_ROOT,
 )
 from constants.enums import GeneratorClassName, LibraryGeneratorName
 from constants.general import LIBRARY_DIRECTORY, NOISE_PERIODS
@@ -36,7 +38,7 @@ from utils.frequencies import pitch_to_name
 class LibraryManager:
     def __init__(self, library_directory: str = LIBRARY_DIRECTORY) -> None:
         self.library = Library(directory=library_directory)
-        self.library_files: Dict[str, str] = {}
+        self.library_files: Dict[LibraryKey, str] = {}
         self.current_library_key: Optional[LibraryKey] = None
         self.tree = Tree()
 
@@ -44,7 +46,7 @@ class LibraryManager:
         self.library.directory = directory
         self.gather_available_libraries()
 
-    def gather_available_libraries(self) -> Dict[str, str]:
+    def gather_available_libraries(self) -> Dict[LibraryKey, str]:
         library_directory = Path(self.library.directory)
         if not library_directory.exists():
             self.library_files.clear()
@@ -53,48 +55,44 @@ class LibraryManager:
 
         new_library_files = {}
         for file_path in library_directory.iterdir():
-            if file_path.is_file() and file_path.suffix == ".dat" and self._is_library_file(file_path.stem):
-                display_name = self._get_display_name(file_path.stem)
-                new_library_files[display_name] = file_path.stem
+            if file_path.is_file() and file_path.suffix == EXT_LIBRARY_FILE and self._is_library_file(file_path.stem):
+                library_key = self._create_key_from_file_name(file_path.stem)
+                new_library_files[library_key] = file_path.stem
 
         removed_libraries = set(self.library_files.keys()) - set(new_library_files.keys())
-        for removed_library in removed_libraries:
-            key = self._get_library_key_from_display_name(removed_library)
-            if key and key in self.library.data:
-                del self.library.data[key]
+        for removed_key in removed_libraries:
+            if removed_key in self.library.data:
+                del self.library.data[removed_key]
 
         self.library_files = new_library_files
         self._rebuild_tree()
         return self.library_files
 
-    def get_available_libraries(self) -> Dict[str, str]:
+    def get_available_libraries(self) -> Dict[LibraryKey, str]:
         return self.library_files.copy()
 
-    def is_library_loaded(self, display_name: str) -> bool:
-        key = self._get_library_key_from_display_name(display_name)
-        return key is not None and key in self.library.data
+    def is_library_loaded(self, library_key: LibraryKey) -> bool:
+        return library_key in self.library.data
 
-    def load_library(self, display_name: str) -> bool:
-        if display_name not in self.library_files:
+    def load_library(self, library_key: LibraryKey) -> bool:
+        if self.is_library_loaded(library_key):
+            self.current_library_key = library_key
+            return True
+
+        if library_key not in self.library_files:
             return False
 
-        if self.is_library_loaded(display_name):
-            return True
+        self.library.load_data(library_key)
+        self.current_library_key = library_key
+        return True
 
-        library_key = self._get_library_key_from_display_name(display_name)
-        if library_key:
-            self.library.load_data(library_key)
-            return True
-        return False
-
-    def get_library_data(self, display_name: str) -> Optional[LibraryData]:
-        key = self._get_library_key_from_display_name(display_name)
-        return self.library.data.get(key) if key else None
+    def get_library_data(self, library_key: LibraryKey) -> Optional[LibraryData]:
+        return self.library.data.get(library_key)
 
     def get_library_instructions_by_generator(
-        self, display_name: str, generator_name: LibraryGeneratorName
+        self, library_key: LibraryKey, generator_name: LibraryGeneratorName
     ) -> Dict[str, List[Tuple]]:
-        library_data = self.get_library_data(display_name)
+        library_data = self.get_library_data(library_key)
         if not library_data:
             return {}
 
@@ -104,23 +102,21 @@ class LibraryManager:
 
         return self._parse_instructions_by_generator(library_data, generator_class_name)
 
-    def get_all_generator_instructions(self, display_name: str) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
+    def get_all_generator_instructions(
+        self, library_key: LibraryKey
+    ) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
         result = {}
         for generator_name in LibraryGeneratorName:
-            instructions = self.get_library_instructions_by_generator(display_name, generator_name)
+            instructions = self.get_library_instructions_by_generator(library_key, generator_name)
             if instructions:
                 result[generator_name] = instructions
         return result
 
-    def sync_with_config_key(self, config_key: LibraryKey) -> Optional[str]:
-        matching_display_name = self._get_display_name_from_key(config_key)
-        if matching_display_name in self.library_files:
+    def sync_with_config_key(self, config_key: LibraryKey) -> Optional[LibraryKey]:
+        if config_key in self.library_files:
             self.current_library_key = config_key
-            return matching_display_name
+            return config_key
         return None
-
-    def get_library_key_for_config_update(self, display_name: str) -> Optional[LibraryKey]:
-        return self._get_library_key_from_display_name(display_name)
 
     def library_exists_for_key(self, key: LibraryKey) -> bool:
         return self.library.exists(key)
@@ -168,12 +164,6 @@ class LibraryManager:
         key = self._create_key_from_file_name(file_name)
         return self._get_display_name_from_key(key)
 
-    def _get_library_key_from_display_name(self, display_name: str) -> Optional[LibraryKey]:
-        if display_name not in self.library_files:
-            return None
-        full_file_name = self.library_files[display_name]
-        return self._create_key_from_file_name(full_file_name)
-
     def _parse_instructions_by_generator(
         self, library_data: LibraryData, generator_class_name: GeneratorClassName
     ) -> Dict[str, List[Tuple]]:
@@ -202,18 +192,19 @@ class LibraryManager:
         return instructions
 
     def _rebuild_tree(self) -> None:
-        root = TreeNode(NOD_LABEL_LIBRARIES)
+        root = TreeNode(NOD_LABEL_LIBRARIES, node_type=NOD_TYPE_ROOT)
 
-        for display_name in sorted(self.library_files.keys()):
-            self._build_library_node(display_name, root)
+        for library_key in sorted(self.library_files.keys(), key=lambda k: self._get_display_name_from_key(k)):
+            self._build_library_node(library_key, root)
 
         self.tree.set_root(root)
 
-    def _build_library_node(self, display_name: str, parent: TreeNode) -> LibraryNode:
-        library_node = LibraryNode(display_name, parent=parent, display_name=display_name, node_type=NOD_TYPE_LIBRARY)
+    def _build_library_node(self, library_key: LibraryKey, parent: TreeNode) -> LibraryNode:
+        display_name = self._get_display_name_from_key(library_key)
+        library_node = LibraryNode(display_name, node_type=NOD_TYPE_LIBRARY, library_key=library_key, parent=parent)
 
-        if self.is_library_loaded(display_name):
-            self._build_generator_nodes(display_name, library_node)
+        if self.is_library_loaded(library_key):
+            self._build_generator_nodes(library_key, library_node)
         else:
             self._create_placeholder_node(library_node)
 
@@ -221,76 +212,71 @@ class LibraryManager:
 
     def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
         return LibraryNode(
-            NOD_LABEL_NOT_LOADED,
-            parent=parent,
-            display_name=parent.display_name,
-            node_type=NOD_TYPE_LIBRARY_PLACEHOLDER,
+            NOD_LABEL_NOT_LOADED, node_type=NOD_TYPE_LIBRARY_PLACEHOLDER, library_key=parent.library_key, parent=parent
         )
 
-    def _build_generator_nodes(self, display_name: str, parent: TreeNode) -> None:
+    def _build_generator_nodes(self, library_key: LibraryKey, parent: TreeNode) -> None:
         for generator_name in LibraryGeneratorName:
-            grouped_instructions = self.get_library_instructions_by_generator(display_name, generator_name)
+            grouped_instructions = self.get_library_instructions_by_generator(library_key, generator_name)
 
             if not grouped_instructions:
                 continue
 
             generator_node = GeneratorNode(
                 generator_name.value.capitalize(),
-                parent=parent,
-                display_name=display_name,
-                generator_name=generator_name,
                 node_type=NOD_TYPE_GENERATOR,
+                generator_name=generator_name,
+                parent=parent,
             )
 
-            self._build_group_nodes(display_name, generator_name, grouped_instructions, generator_node)
+            self._build_group_nodes(generator_name, grouped_instructions, generator_node)
 
     def _build_group_nodes(
         self,
-        display_name: str,
         generator_name: LibraryGeneratorName,
         grouped_instructions: Dict[str, List[Tuple]],
         parent: TreeNode,
     ) -> None:
         generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
+        if not generator_class_name:
+            raise ValueError(f"No generator class name found for {generator_name}")
 
         for group_key, instructions in grouped_instructions.items():
             group_label = f"{group_key} ({len(instructions)} item(s))"
             group_node = GroupNode(
                 group_label,
-                parent=parent,
-                display_name=display_name,
+                node_type=NOD_TYPE_GROUP,
                 generator_name=generator_name,
                 group_key=group_key,
-                node_type=NOD_TYPE_GROUP,
+                parent=parent,
             )
 
             for instruction, fragment in instructions:
                 InstructionNode(
                     instruction.name,
-                    parent=group_node,
-                    display_name=display_name,
+                    node_type=NOD_TYPE_INSTRUCTION,
                     generator_name=generator_name,
                     generator_class_name=generator_class_name,
                     instruction=instruction,
                     fragment=fragment,
-                    node_type=NOD_TYPE_INSTRUCTION,
+                    parent=group_node,
                 )
 
-    def refresh_library_node(self, display_name: str) -> None:
+    def refresh_library_node(self, library_key: LibraryKey) -> None:
         if not self.tree.root:
             return
 
         library_node = self.tree.find_node(
             lambda node: isinstance(node, LibraryNode)
             and node.node_type == NOD_TYPE_LIBRARY
-            and node.name == display_name
+            and node.library_key == library_key
         )
 
         if library_node and isinstance(library_node, LibraryNode):
             for child in list(library_node.children):
                 child.parent = None
 
-            if self.is_library_loaded(display_name):
-                self._build_generator_nodes(display_name, library_node)
+            if self.is_library_loaded(library_key):
+                self._build_generator_nodes(library_key, library_node)
             else:
                 self._create_placeholder_node(library_node)

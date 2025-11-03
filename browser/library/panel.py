@@ -1,5 +1,5 @@
 import threading
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -39,14 +39,13 @@ from constants.browser import (
     TAG_LIBRARY_TREE,
     TITLE_DIALOG_ERROR,
     TPL_LIBRARY_EXISTS,
+    TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from constants.general import LIBRARY_DIRECTORY
-from library.data import LibraryFragment
 from library.key import LibraryKey
-from typehints.instructions import InstructionUnion
 
 
 class GUILibraryPanel(GUITreePanel):
@@ -88,23 +87,31 @@ class GUILibraryPanel(GUITreePanel):
             with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
                 pass
 
+        self.update_status()
+
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
         key = self.config_manager.key
         if key is not None:
             self._sync_with_config_key(key)
 
+        self.update_status()
+
     def update_status(self) -> None:
         config = self.config_manager.get_config()
         key = self.config_manager.key
 
-        if not config or not key:
+        if config is None or key is None:
             dpg.set_value(TAG_LIBRARY_STATUS, MSG_CONFIG_NOT_READY)
             dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=False)
             return
 
         library_name = self.library_manager._get_display_name_from_key(key)
-        if self.library_manager.library_exists_for_key(key):
+
+        if self.library_manager.is_library_loaded(key):
+            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
+            dpg.set_item_label(TAG_LIBRARY_BUTTON_GENERATE, LBL_BUTTON_REGENERATE_LIBRARY)
+        elif self.library_manager.library_exists_for_key(key):
             dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
             dpg.set_item_label(TAG_LIBRARY_BUTTON_GENERATE, LBL_BUTTON_REGENERATE_LIBRARY)
         else:
@@ -115,37 +122,43 @@ class GUILibraryPanel(GUITreePanel):
 
     def _refresh_libraries(self) -> None:
         self.library_manager.gather_available_libraries()
-        self.build_tree_ui(TAG_LIBRARY_TREE)
         key = self.config_manager.key
         if key is not None:
             self._sync_with_config_key(key)
+        self.build_tree_ui(TAG_LIBRARY_TREE)
+        self.update_status()
 
     def _sync_with_config_key(self, config_key: LibraryKey) -> None:
-        matching_display_name = self.library_manager.sync_with_config_key(config_key)
-        if matching_display_name:
-            self._set_current_library(matching_display_name, load_if_needed=True, apply_config=False)
+        matching_key = self.library_manager.sync_with_config_key(config_key)
+        if matching_key:
+            self._set_current_library(matching_key, load_if_needed=True, apply_config=False)
 
-    def _set_current_library(self, display_name: str, load_if_needed: bool = True, apply_config: bool = False) -> None:
-        if load_if_needed and not self.library_manager.is_library_loaded(display_name):
-            if self.library_manager.load_library(display_name):
-                self.library_manager.refresh_library_node(display_name)
-                self.build_tree_ui(TAG_LIBRARY_TREE)
+    def _set_current_library(
+        self, library_key: LibraryKey, load_if_needed: bool = True, apply_config: bool = False
+    ) -> None:
+        if load_if_needed and not self.library_manager.is_library_loaded(library_key):
+            self.library_manager.load_library(library_key)
+            self.library_manager.refresh_library_node(library_key)
 
-        if apply_config:
-            library_key = self.library_manager.get_library_key_for_config_update(display_name)
-            if library_key and self._on_apply_library_config:
-                self._on_apply_library_config(library_key)
+        if apply_config and self._on_apply_library_config:
+            self._on_apply_library_config(library_key)
+
+        self.update_status()
 
     def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
         node_tag = self._generate_node_tag(node)
 
         if node.node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
-            display_name = node.display_name if isinstance(node, LibraryNode) else ""
+            library_node = self._find_parent_library(node)
+            if not library_node:
+                return
+
+            library_key = library_node.library_key
             dpg.add_selectable(
                 label=node.name,
                 parent=parent_tag,
                 callback=self._on_load_library_clicked,
-                user_data=display_name,
+                user_data=library_key,
                 tag=node_tag,
                 default_value=False,
             )
@@ -168,50 +181,58 @@ class GUILibraryPanel(GUITreePanel):
                 default_value=False,
             )
         else:
-            is_current = node.node_type == NOD_TYPE_LIBRARY and self._is_current_library(node.name)
+            is_current = node.node_type == NOD_TYPE_LIBRARY and self._is_current_library_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=is_current):
                 for child in node.children:
                     self._build_tree_node_ui(child, node_tag)
 
-    def _is_current_library(self, display_name: str) -> bool:
-        if not self.config_manager.key:
+    def _is_current_library_node(self, node: TreeNode) -> bool:
+        if not isinstance(node, LibraryNode):
             return False
-        expected_display_name = self.library_manager._get_display_name_from_key(self.config_manager.key)
-        return display_name == expected_display_name
+        return node.library_key == self.library_manager.current_library_key
 
-    def _on_load_library_clicked(self, sender: int, app_data: bool, user_data: str) -> None:
-        display_name = user_data
+    def _find_parent_library(self, node: TreeNode) -> Optional[LibraryNode]:
+        current = node.parent
+        while current is not None:
+            if isinstance(current, LibraryNode) and current.node_type == NOD_TYPE_LIBRARY:
+                return current
+            current = current.parent
+        return None
+
+    def _on_load_library_clicked(self, sender: int, app_data: bool, user_data: LibraryKey) -> None:
+        library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
-        if self.library_manager.load_library(display_name):
-            self.library_manager.refresh_library_node(display_name)
-            self.build_tree_ui(TAG_LIBRARY_TREE)
-            self._set_current_library(display_name, load_if_needed=False, apply_config=True)
+        self.library_manager.load_library(library_key)
+        self.library_manager.refresh_library_node(library_key)
+        self.build_tree_ui(TAG_LIBRARY_TREE)
+        self._set_current_library(library_key, load_if_needed=False, apply_config=True)
 
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
-        if (
-            isinstance(user_data, InstructionNode)
-            and user_data.node_type == NOD_TYPE_INSTRUCTION
-            and user_data.instruction is not None
-        ):
-            if self._on_instruction_selected:
-                library_config = self.config_manager.get_config()
-                if library_config is not None:
-                    library_config = library_config.library
-                    self._on_instruction_selected(
-                        user_data.generator_class_name,
-                        user_data.instruction,
-                        user_data.fragment,
-                        library_config=library_config,
-                    )
+        if not self._on_instruction_selected:
+            return
+
+        if not isinstance(user_data, InstructionNode):
+            return
+
+        config = self.config_manager.get_config()
+        if config is None:
+            return
+
+        self._on_instruction_selected(
+            user_data.generator_class_name,
+            user_data.instruction,
+            user_data.fragment,
+            library_config=config.library,
+        )
 
     def _generate_library(self) -> None:
         if self.is_generating:
             return
 
         config = self.config_manager.get_config()
-        if not config:
+        if config is None:
             return
 
         self.is_generating = True
