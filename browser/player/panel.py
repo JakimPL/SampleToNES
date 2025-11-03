@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.player import AudioPlayer, PlaybackError
 from constants.browser import (

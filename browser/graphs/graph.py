@@ -2,7 +2,7 @@ from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,

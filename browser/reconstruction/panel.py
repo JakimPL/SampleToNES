@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.graphs.waveform import GUIWaveformDisplay
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData

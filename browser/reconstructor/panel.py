@@ -4,7 +4,7 @@ from typing import Any, Dict
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,

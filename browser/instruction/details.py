@@ -3,7 +3,7 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from browser.instruction.logic import InstructionDetailsLogic
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from constants.browser import (
     MSG_INSTRUCTION_DETAILS,
     MSG_INSTRUCTION_NO_SELECTION,

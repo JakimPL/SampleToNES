@@ -2,7 +2,7 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
-from browser.panel import GUIPanel
+from browser.panels.panel import GUIPanel
 from constants.browser import (
     LBL_RECONSTRUCTION_DETAILS,
     MSG_RECONSTRUCTION_NO_SELECTION,

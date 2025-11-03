@@ -348,3 +348,16 @@ LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"
 TAG_BROWSER_PANEL = "browser_panel"
 TAG_BROWSER_TREE = "browser_tree"
 TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
+
+# Node type constants
+NOD_TYPE_LIBRARY = "library"
+NOD_TYPE_LIBRARY_PLACEHOLDER = "library_placeholder"
+NOD_TYPE_GENERATOR = "generator"
+NOD_TYPE_GROUP = "group"
+NOD_TYPE_INSTRUCTION = "instruction"
+NOD_TYPE_DIRECTORY = "directory"
+NOD_TYPE_FILE = "file"
+
+# Node labels
+NOD_LABEL_NOT_LOADED = "Not loaded"
+NOD_LABEL_LIBRARIES = "Libraries"
