@@ -41,21 +41,12 @@ class Reconstructor:
     def __init__(
         self,
         config: Config,
-        generator_names: Optional[List[GeneratorName]] = None,
         library: Optional[Library] = None,
     ) -> None:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
 
-        if generator_names is not None:
-            assert isinstance(
-                generator_names, (list, tuple, set)
-            ), "Generator names must be a list, tuple, or set of GeneratorName enums"
-            for name in generator_names:
-                assert isinstance(name, GeneratorName), "Generator names must be of type GeneratorName enum"
-
-        default_generators = list(GeneratorName)
-        generator_names = generator_names or default_generators
+        generator_names = self.config.generation.generators
         self.generators: Dict[GeneratorName, GeneratorUnion] = {
             name: GENERATOR_CLASSES[name](config, name) for name in generator_names
         }

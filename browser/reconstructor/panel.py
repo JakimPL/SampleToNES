@@ -110,7 +110,14 @@ class GUIReconstructorPanel(GUIPanel):
         for tag in self.config_manager.config_parameters["reconstructor"].keys():
             dpg.set_item_callback(tag, self._on_parameter_change)
 
+        for generator_tag in self.config_manager.generator_tags.keys():
+            dpg.set_item_callback(generator_tag, self._on_generator_change)
+
     def _on_parameter_change(self, sender: Any, app_data: Any) -> None:
+        gui_values = self._get_all_gui_values()
+        self.config_manager.update_config_from_gui_values(gui_values)
+
+    def _on_generator_change(self, sender: Any, app_data: bool) -> None:
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
@@ -118,6 +125,10 @@ class GUIReconstructorPanel(GUIPanel):
         gui_values = {}
         for tag in self.config_manager.config_parameters["reconstructor"].keys():
             gui_values[tag] = dpg.get_value(tag)
+
+        for generator_tag in self.config_manager.generator_tags.keys():
+            gui_values[generator_tag] = dpg.get_value(generator_tag)
+
         return gui_values
 
     def _select_output_directory_dialog(self) -> None:
@@ -151,5 +162,8 @@ class GUIReconstructorPanel(GUIPanel):
             section = getattr(config, section_name)
             if hasattr(section, tag):
                 dpg.set_value(tag, getattr(section, tag))
+
+        for generator_tag, generator in self.config_manager.generator_tags.items():
+            dpg.set_value(generator_tag, generator in config.generation.generators)
 
         dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(config.general.output_directory))

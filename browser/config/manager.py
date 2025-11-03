@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from configs.config import Config
@@ -13,7 +12,9 @@ from constants.browser import (
     TAG_CONFIG_SAMPLE_RATE,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
+    TPL_RECONSTRUCTION_GEN_TAG,
 )
+from constants.enums import GeneratorName
 from constants.general import (
     CHANGE_RATE,
     LIBRARY_DIRECTORY,
@@ -35,6 +36,7 @@ class ConfigManager:
         self.window: Optional[Window] = None
         self.library_directory: str = LIBRARY_DIRECTORY
         self.output_directory: str = OUTPUT_DIRECTORY
+        self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[Callable] = []
         self.config_parameters = {
             "config": {
@@ -49,9 +51,14 @@ class ConfigManager:
                 TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
         }
+        self.generator_tags = {
+            TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
+        }
 
     def update_config_from_gui_values(self, gui_values: Dict[str, Any]) -> None:
+        self._update_generators_from_gui_values(gui_values)
         config_data = self._build_config_data_from_values(gui_values)
+        config_data["generation"]["generators"] = self.generators
         self.config = Config(
             general=GeneralConfig(**config_data["general"]),
             library=LibraryConfig(**config_data["library"]),
@@ -75,8 +82,13 @@ class ConfigManager:
 
         return config_data
 
+    def _update_generators_from_gui_values(self, gui_values: Dict[str, Any]) -> None:
+        self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values.get(tag, True)]
+
     def initialize_config_with_defaults(self) -> None:
         default_values = {tag: info["default"] for tag, info in self.config_parameters["config"].items()}
+        for generator_tag in self.generator_tags.keys():
+            default_values[generator_tag] = True
         self.update_config_from_gui_values(default_values)
 
     def get_config(self) -> Optional[Config]:
@@ -118,6 +130,7 @@ class ConfigManager:
     def load_config_from_data(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
         self.config = Config(**config_data)
         self.window = Window(self.config.library)
+        self.generators = list(self.config.generation.generators)
 
         gui_updates = {}
         for tag, info in self.config_parameters.items():
@@ -136,4 +149,5 @@ class ConfigManager:
         self.window = Window(self.config.library)
         self.library_directory = config.general.library_directory
         self.output_directory = config.general.output_directory
+        self.generators = list(config.generation.generators)
         self._notify_config_change()
