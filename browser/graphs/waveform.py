@@ -46,6 +46,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
+        self.reconstruction_autoscale = True
 
         self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
 
@@ -105,10 +106,23 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     def load_reconstruction_data(self, reconstruction_data: ReconstructionData) -> None:
         self.clear_layers()
+        self.current_data = reconstruction_data
+
+        approximation = reconstruction_data.reconstruction.approximation
+        original_audio = reconstruction_data.original_audio
+
+        original_audio_coefficient = 1.0
+        if self.reconstruction_autoscale:
+            original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+
+        coefficient = max(
+            np.max(np.abs(approximation)),
+            np.max(np.abs(original_audio / original_audio_coefficient)),
+        )
 
         self.add_layer(
             ArrayLayer(
-                data=reconstruction_data.original_audio,
+                data=original_audio / (coefficient * original_audio_coefficient),
                 name=LBL_PLOT_ORIGINAL,
                 color=CLR_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
@@ -117,7 +131,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.add_layer(
             ArrayLayer(
-                data=reconstruction_data.reconstruction.approximation,
+                data=approximation / coefficient,
                 name=LBL_PLOT_RECONSTRUCTION,
                 color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
