@@ -38,8 +38,6 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         self.current_data: Optional[np.ndarray] = None
 
     def _create_content(self) -> None:
-        dpg.add_text(MSG_BAR_PLOT_NO_DATA, tag=self.info_tag)
-
         with dpg.plot(
             label=self.label,
             height=self.height,
@@ -60,7 +58,6 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         self.x_min = VAL_BAR_PLOT_DEFAULT_X_MIN
         self.x_max = float(len(data))
 
-        self._update_info_display()
         self._update_axes_limits()
 
     def _update_display(self) -> None:
@@ -93,13 +90,3 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
-
-    def _update_info_display(self) -> None:
-        if not dpg.does_item_exist(self.info_tag):
-            return
-
-        if self.current_data is None:
-            dpg.set_value(self.info_tag, MSG_BAR_PLOT_NO_DATA)
-            return
-
-        dpg.set_value(self.info_tag, "")

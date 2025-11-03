@@ -57,11 +57,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             if not generator_features:
                 return
 
-            for feature_key in FEATURE_DISPLAY_ORDER:
-                if feature_key == FeatureKey.INITIAL_PITCH:
-                    continue
-
+            for i, feature_key in enumerate(FEATURE_DISPLAY_ORDER):
                 if feature_key in generator_features and feature_key in FEATURE_PLOT_CONFIGS:
+                    if i != 0:
+                        dpg.add_separator(parent=tab_tag)
+
                     feature_data_array = generator_features[feature_key]
                     plot = self._create_feature_plot(generator_name, feature_key, feature_data_array)
                     self.generator_plots[generator_name][feature_key] = plot
@@ -72,6 +72,18 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         config = FEATURE_PLOT_CONFIGS[feature_key]
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
+
+        raw_data_text = " ".join(map(str, data.tolist()))
+        raw_data_tag = f"{plot_tag}_raw_data"
+
+        dpg.add_input_text(
+            tag=raw_data_tag,
+            parent=tab_tag,
+            default_value=raw_data_text,
+            width=VAL_PLOT_WIDTH_FULL,
+            readonly=True,
+            multiline=False,
+        )
 
         y_min = config.y_min
         y_max = config.y_max
