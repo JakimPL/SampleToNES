@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+import threading
+from typing import Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -9,10 +10,17 @@ from browser.reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CO
 from browser.reconstruction.feature import FeatureData
 from constants.browser import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
+    DIM_COPY_BUTTON_WIDTH,
+    LBL_COPIED_TOOLTIP,
+    LBL_COPY_BUTTON,
     LBL_RECONSTRUCTION_DETAILS,
+    LBL_RECONSTRUCTION_EXPORT_FTI,
+    SUF_GRAPH_COPY_BUTTON,
     SUF_GRAPH_RAW_DATA,
+    SUF_GRAPH_RAW_DATA_GROUP,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
+    TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     VAL_PLOT_WIDTH_FULL,
 )
@@ -25,6 +33,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.current_features: Optional[FeatureData] = None
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
         self.tab_bar_tag = TAG_RECONSTRUCTION_DETAILS_TAB_BAR
+        self._on_instrument_export = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
@@ -35,6 +44,21 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         with dpg.child_window(tag=self.tag, parent=self.parent_tag, autosize_x=True, autosize_y=True):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
             dpg.add_separator()
+
+            dpg.add_button(
+                tag=TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
+                label=LBL_RECONSTRUCTION_EXPORT_FTI,
+                width=-1,
+                callback=self._handle_export_button_clicked,
+            )
+            dpg.add_separator()
+
+    def set_callback(self, on_instrument_export: Optional[Callable[[], None]] = None) -> None:
+        self._on_instrument_export = on_instrument_export
+
+    def _handle_export_button_clicked(self) -> None:
+        if self._on_instrument_export is not None and self.current_features is not None:
+            self._on_instrument_export()
 
     def _clear_tabs(self) -> None:
         if dpg.does_item_exist(self.tab_bar_tag):
@@ -114,15 +138,38 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _add_raw_data_text(self, plot_tag: str, parent_tag: str, data: np.ndarray) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
+        copy_button_tag = f"{plot_tag}{SUF_GRAPH_COPY_BUTTON}"
+        group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
 
-        dpg.add_input_text(
-            tag=raw_data_tag,
-            parent=parent_tag,
-            default_value=raw_data_text,
-            width=VAL_PLOT_WIDTH_FULL,
-            readonly=True,
-            multiline=False,
-        )
+        with dpg.group(tag=group_tag, parent=parent_tag, horizontal=True):
+            dpg.add_button(
+                tag=copy_button_tag,
+                label=LBL_COPY_BUTTON,
+                width=DIM_COPY_BUTTON_WIDTH,
+                callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
+            )
+
+            dpg.add_input_text(
+                tag=raw_data_tag,
+                default_value=raw_data_text,
+                width=-1,
+                readonly=True,
+                multiline=False,
+            )
+
+    def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
+        dpg.set_clipboard_text(text)
+
+        if dpg.does_item_exist(button_tag):
+            original_label = dpg.get_item_label(button_tag)
+            dpg.configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
+
+            def restore_label():
+                if dpg.does_item_exist(button_tag):
+                    dpg.configure_item(button_tag, label=original_label)
+
+            timer = threading.Timer(1.0, restore_label)
+            timer.start()
 
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)

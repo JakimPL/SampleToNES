@@ -27,6 +27,7 @@ DIM_WAVEFORM_PLOT_HEIGHT = 200
 # Search UI dimensions
 DIM_SEARCH_INPUT_WIDTH = -80
 DIM_SEARCH_BUTTON_WIDTH = -1
+DIM_COPY_BUTTON_WIDTH = 60
 
 # Input validation ranges
 RNG_CONFIG_MIN_WORKERS = 1
@@ -35,7 +36,7 @@ RNG_CONFIG_MIN_WORKERS = 1
 DIM_FAMITRACKER_EXPORT_HEIGHT = 200
 
 # GUI Labels
-TITLE_WINDOW_MAIN = "SampleToNES Converter"
+TITLE_WINDOW_MAIN = "SampleToNES"
 
 # Menu labels
 LBL_MENU_FILE = "File"
@@ -275,14 +276,18 @@ TAG_RECONSTRUCTION_DETAILS_PANEL = "reconstruction_details_panel"
 TAG_RECONSTRUCTION_EXPORT_PANEL = "reconstruction_export_panel"
 TAG_RECONSTRUCTION_PITCH_BAR_PLOT = "reconstruction_pitch_bar_plot"
 TAG_RECONSTRUCTION_DETAILS_TAB_BAR = "reconstruction_details_tab_bar"
+TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON = "reconstruction_export_fti_button"
 LBL_RECONSTRUCTION_WAVEFORM = "Reconstruction waveform"
 LBL_RECONSTRUCTION_DETAILS = "Reconstruction details"
 LBL_RECONSTRUCTION_EXPORT = "Export"
+LBL_RECONSTRUCTION_EXPORT_FTI = "Export instrument to FTI"
 LBL_RECONSTRUCTION_PITCH_PLOT = "Pitch"
 LBL_RECONSTRUCTION_HI_PITCH_PLOT = "Hi-Pitch"
 LBL_RECONSTRUCTION_VOLUME_PLOT = "Volume"
 LBL_RECONSTRUCTION_ARPEGGIO_PLOT = "Arpeggio"
 LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT = "Duty Cycle"
+LBL_COPY_BUTTON = "Copy"
+LBL_COPIED_TOOLTIP = "Copied!"
 MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected"
 
 # Waveform layer colors
@@ -297,6 +302,8 @@ SUF_GRAPH_LEGEND = "_legend"
 SUF_GRAPH_CONTROLS = "_controls"
 SUF_GRAPH_INFO = "_info"
 SUF_GRAPH_RAW_DATA = "_raw_data"
+SUF_GRAPH_COPY_BUTTON = "_copy_button"
+SUF_GRAPH_RAW_DATA_GROUP = "_raw_data_group"
 
 
 # Spectrum display settings

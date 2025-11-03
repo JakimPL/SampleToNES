@@ -9,7 +9,6 @@ from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
-from browser.reconstruction.export import GUIReconstructionExportPanel
 from constants.browser import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_RECONSTRUCTION_WAVEFORM,
@@ -28,7 +27,6 @@ class GUIReconstructionPanel(GUIPanel):
         self.audio_device_manager = audio_device_manager
         self.waveform_display: GUIWaveformDisplay
         self.reconstruction_details: GUIReconstructionDetailsPanel
-        self.reconstruction_export: GUIReconstructionExportPanel
         self.player_panel: GUIAudioPlayerPanel
         self.reconstruction_data: Optional[ReconstructionData] = None
 
@@ -43,8 +41,6 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_waveform_display()
         dpg.add_separator(parent=self.parent_tag)
         self._create_reconstruction_details()
-        dpg.add_separator(parent=self.parent_tag)
-        self._create_reconstruction_export()
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
@@ -67,16 +63,11 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_details = GUIReconstructionDetailsPanel()
         self.reconstruction_details.create_panel()
 
-    def _create_reconstruction_export(self) -> None:
-        self.reconstruction_export = GUIReconstructionExportPanel()
-        self.reconstruction_export.create_panel()
-
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
         self.config_manager.load_config(reconstruction_data.config)
 
         self.reconstruction_details.display_reconstruction(reconstruction_data.reconstruction)
-        self.reconstruction_export.load_reconstruction(reconstruction_data.reconstruction)
 
         sample_rate = reconstruction_data.reconstruction.config.library.sample_rate
         self.waveform_display.load_reconstruction_data(reconstruction_data)
@@ -89,7 +80,6 @@ class GUIReconstructionPanel(GUIPanel):
     def clear_display(self) -> None:
         self.reconstruction_data = None
         self.reconstruction_details.clear_display()
-        self.reconstruction_export.clear()
         self.player_panel.clear_audio()
         self.waveform_display.clear_layers()
 
