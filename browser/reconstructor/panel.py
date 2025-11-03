@@ -139,3 +139,17 @@ class GUIReconstructorPanel(GUIPanel):
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
         dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(Path(directory_path)))
+
+    def update_gui_from_config(self) -> None:
+        if not self.config_manager.config:
+            return
+
+        config = self.config_manager.config
+
+        for tag, info in self.config_manager.config_parameters["reconstructor"].items():
+            section_name = info["section"]
+            section = getattr(config, section_name)
+            if hasattr(section, tag):
+                dpg.set_value(tag, getattr(section, tag))
+
+        dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(config.general.output_directory))

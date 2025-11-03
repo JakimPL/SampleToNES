@@ -3,7 +3,6 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
-from browser.graphs.layers.array import ArrayLayer
 from browser.graphs.waveform import GUIWaveformDisplay
 from browser.panel import GUIPanel
 from browser.player.data import AudioData
@@ -12,19 +11,13 @@ from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from browser.reconstruction.export import GUIReconstructionExportPanel
 from constants.browser import (
-    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
-    CLR_WAVEFORM_LAYER_SAMPLE,
     DIM_WAVEFORM_DEFAULT_HEIGHT,
-    LBL_PLOT_ORIGINAL,
-    LBL_PLOT_RECONSTRUCTION,
     LBL_RECONSTRUCTION_WAVEFORM,
     TAG_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTION_PLAYER_PANEL,
     TAG_RECONSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
-    VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
-    VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
 from utils.audio.device import AudioDeviceManager
 
@@ -86,33 +79,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_export.load_reconstruction(reconstruction_data.reconstruction)
 
         sample_rate = reconstruction_data.reconstruction.config.library.sample_rate
-        self._load_waveform_data(reconstruction_data)
+        self.waveform_display.load_reconstruction_data(reconstruction_data)
         self._load_audio_data(reconstruction_data, sample_rate)
-
-    def _load_waveform_data(self, reconstruction_data: ReconstructionData) -> None:
-        self.waveform_display.clear_layers()
-
-        self.waveform_display.add_layer(
-            ArrayLayer(
-                data=reconstruction_data.original_audio,
-                name=LBL_PLOT_ORIGINAL,
-                color=CLR_WAVEFORM_LAYER_SAMPLE,
-                line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
-            )
-        )
-
-        self.waveform_display.add_layer(
-            ArrayLayer(
-                data=reconstruction_data.reconstruction.approximation,
-                name=LBL_PLOT_RECONSTRUCTION,
-                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
-                line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
-            )
-        )
-
-        self.waveform_display.x_min = 0.0
-        self.waveform_display.x_max = float(len(reconstruction_data.original_audio))
-        self.waveform_display._update_axes_limits()
 
     def _load_audio_data(self, reconstruction_data: ReconstructionData, sample_rate: int) -> None:
         audio_data = AudioData.from_array(reconstruction_data.reconstruction.approximation, sample_rate)

@@ -124,6 +124,9 @@ TPL_LIBRARY_NOT_EXISTS = "Library {} does not exist."
 MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found"
 MSG_GLOBAL_WINDOW_NOT_AVAILABLE = "Window not available"
 MSG_LIBRARY_ERROR_GENERATING = "Error generating library"
+MSG_WAVEFORM_NO_RECONSTRUCTION = (
+    "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
+)
 
 # File extensions
 EXT_DIALOG_JSON = "*.json"
@@ -190,7 +193,6 @@ TAG_DIALOG_ERROR_LIBRARY_GENERATION = "error_dialog_library_generation"
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"
-MSG_RECONSTRUCTION_SELECT_AUDIO_FIRST = "Please select an audio file first"
 MSG_CONFIG_ERROR = "Configuration error - please check settings"
 
 # Template strings

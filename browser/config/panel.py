@@ -159,3 +159,17 @@ class GUIConfigPanel(GUIPanel):
 
         for tag, value in gui_updates.items():
             dpg.set_value(tag, value)
+
+    def update_gui_from_config(self) -> None:
+        if not self.config_manager.config:
+            return
+
+        config = self.config_manager.config
+
+        for tag, info in self.config_manager.config_parameters["config"].items():
+            section_name = info["section"]
+            section = getattr(config, section_name)
+            if hasattr(section, tag):
+                dpg.set_value(tag, getattr(section, tag))
+
+        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, str(config.general.library_directory))

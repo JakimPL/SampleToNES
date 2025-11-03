@@ -1,15 +1,19 @@
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
 from browser.graphs.graph import GUIGraphDisplay
+from browser.graphs.layers.array import ArrayLayer
 from browser.graphs.layers.waveform import WaveformLayer
+from browser.reconstruction.data import ReconstructionData
 from constants.browser import (
+    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
+    LBL_PLOT_ORIGINAL,
+    LBL_PLOT_RECONSTRUCTION,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
     LBL_WAVEFORM_BUTTON_RESET_ALL,
     LBL_WAVEFORM_BUTTON_RESET_X,
@@ -18,9 +22,11 @@ from constants.browser import (
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
     MSG_WAVEFORM_NO_FRAGMENT,
+    MSG_WAVEFORM_NO_RECONSTRUCTION,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_WAVEFORM_AXIS_SLOT,
     VAL_WAVEFORM_DEFAULT_X_MIN,
+    VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
@@ -40,12 +46,15 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
-        self.current_library_fragment: Optional[LibraryFragment] = None
+
+        self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
 
     @property
     def sample_length(self) -> float:
-        if self.current_library_fragment:
-            return float(len(self.current_library_fragment.sample))
+        if isinstance(self.current_data, LibraryFragment):
+            return float(len(self.current_data.sample))
+        elif isinstance(self.current_data, ReconstructionData):
+            return float(len(self.current_data.reconstruction.approximation))
 
         return VAL_GRAPH_DEFAULT_X_MAX
 
@@ -78,7 +87,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     def load_library_fragment(self, fragment: LibraryFragment) -> None:
         self.clear_layers()
-        self.current_library_fragment = fragment
+        self.current_data = fragment
 
         self.add_layer(
             WaveformLayer(
@@ -91,7 +100,33 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
-        self._update_info_display()
+        self._update_info_display(MSG_WAVEFORM_NO_FRAGMENT)
+        self._update_axes_limits()
+
+    def load_reconstruction_data(self, reconstruction_data: ReconstructionData) -> None:
+        self.clear_layers()
+
+        self.add_layer(
+            ArrayLayer(
+                data=reconstruction_data.original_audio,
+                name=LBL_PLOT_ORIGINAL,
+                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+            )
+        )
+
+        self.add_layer(
+            ArrayLayer(
+                data=reconstruction_data.reconstruction.approximation,
+                name=LBL_PLOT_RECONSTRUCTION,
+                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
+                line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+            )
+        )
+
+        self.x_min = 0.0
+        self.x_max = float(len(reconstruction_data.original_audio))
+        self._update_info_display(MSG_WAVEFORM_NO_RECONSTRUCTION)
         self._update_axes_limits()
 
     def _update_display(self) -> None:
@@ -124,12 +159,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
-    def _update_info_display(self) -> None:
+    def _update_info_display(self, message: str) -> None:
         if not dpg.does_item_exist(self.info_tag):
             return
 
-        if not self.current_library_fragment:
-            dpg.set_value(self.info_tag, MSG_WAVEFORM_NO_FRAGMENT)
+        if not self.current_data:
+            dpg.set_value(self.info_tag, message)
             return
 
         dpg.set_value(self.info_tag, "")
@@ -176,7 +211,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         return clamped_min, clamped_max
 
     def _mouse_wheel_callback(self, sender: str, app_data: float) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or not self.current_library_fragment:
+        if not dpg.is_item_hovered(self.plot_tag) or not self.current_data:
             return
 
         plot_mouse_pos = dpg.get_plot_mouse_pos()
@@ -217,7 +252,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
             return
 
-        if not self.current_library_fragment:
+        if not self.current_data:
             return
 
         x_position = app_data[1]

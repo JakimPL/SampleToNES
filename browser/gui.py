@@ -70,6 +70,8 @@ class GUI:
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
+        self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
