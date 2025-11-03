@@ -1,15 +1,18 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-from browser.browser.node import ReconstructionNode
+from anytree import Node
+
 from browser.reconstruction.data import ReconstructionData
+from browser.tree.tree import Tree
+from constants.browser import EXT_RECONSTRUCTION_FILE, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from constants.general import OUTPUT_DIRECTORY
 
 
 class BrowserManager:
     def __init__(self, output_directory: str = OUTPUT_DIRECTORY) -> None:
         self.output_directory = output_directory
-        self.tree: Optional[ReconstructionNode] = None
+        self.tree = Tree()
         self.file_cache: Dict[Path, Optional[ReconstructionData]] = {}
 
     def set_output_directory(self, directory: str) -> None:
@@ -19,36 +22,36 @@ class BrowserManager:
     def refresh_tree(self) -> None:
         output_path = Path(self.output_directory)
         if not output_path.exists() or not output_path.is_dir():
-            self.tree = None
+            self.tree.set_root(None)
             return
 
-        self.tree = self._build_tree(output_path)
+        root = self._build_tree(output_path)
+        self.tree.set_root(root)
 
-    def get_tree(self) -> Optional[ReconstructionNode]:
-        if self.tree is None:
-            self.refresh_tree()
-
-        return self.tree
-
-    def _build_tree(self, path: Path) -> Optional[ReconstructionNode]:
+    def _build_tree(self, path: Path) -> Optional[Node]:
         if not path.exists():
             return None
 
         if path.is_file():
-            if path.suffix == ".json":
-                return ReconstructionNode(name=path.stem, path=path, is_file=True, children=[])
+            if path.suffix == EXT_RECONSTRUCTION_FILE:
+                return Node(path.stem, file_path=path, node_type=NOD_TYPE_FILE)
             return None
 
-        children = []
+        children_nodes = []
         for child_path in sorted(path.iterdir()):
             child_node = self._build_tree(child_path)
             if child_node is not None:
-                children.append(child_node)
+                children_nodes.append(child_node)
 
-        if not children:
+        if not children_nodes:
             return None
 
-        return ReconstructionNode(name=path.name, path=path, is_file=False, children=children)
+        directory_node = Node(path.name, file_path=path, node_type=NOD_TYPE_DIRECTORY)
+
+        for child_node in children_nodes:
+            child_node.parent = directory_node
+
+        return directory_node
 
     def load_reconstruction_data(self, file_path: Path) -> ReconstructionData:
         if file_path in self.file_cache:
@@ -64,27 +67,11 @@ class BrowserManager:
         return data
 
     def validate_reconstruction_file(self, file_path: Path) -> bool:
-        # TODO: Proper validation logic
-        return file_path.suffix == ".json" and file_path.exists()
+        return file_path.suffix == EXT_RECONSTRUCTION_FILE and file_path.exists()
 
-    def get_all_reconstruction_files(self) -> List[Path]:
-        if self.tree is None:
-            self.refresh_tree()
-
-        if self.tree is None:
-            return []
-
-        return self._collect_files(self.tree)
+    def get_all_reconstruction_files(self) -> list[Path]:
+        file_nodes = [node for node in self.tree.collect_leaves() if getattr(node, "node_type", None) == NOD_TYPE_FILE]
+        return [getattr(node, "file_path") for node in file_nodes if hasattr(node, "file_path")]
 
     def clear_cache(self) -> None:
         self.file_cache.clear()
-
-    def _collect_files(self, node: ReconstructionNode) -> List[Path]:
-        files = []
-        if node.is_file:
-            files.append(node.path)
-        else:
-            for child in node.children:
-                files.extend(self._collect_files(child))
-
-        return files

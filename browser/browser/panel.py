@@ -3,23 +3,24 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from browser.browser.manager import BrowserManager, ReconstructionNode
+from browser.browser.manager import BrowserManager
 from browser.config.manager import ConfigManager
-from browser.panels.panel import GUIPanel
+from browser.panels.tree import GUITreePanel
+from browser.tree.node import TreeNode
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
+    NOD_TYPE_FILE,
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
-    VAL_GLOBAL_DEFAULT_SLOT,
 )
 from constants.general import OUTPUT_DIRECTORY
 
 
-class GUIBrowserPanel(GUIPanel):
+class GUIBrowserPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         output_directory = config_manager.config.general.output_directory if config_manager.config else OUTPUT_DIRECTORY
@@ -32,6 +33,8 @@ class GUIBrowserPanel(GUIPanel):
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
+
+        self.tree = self.browser_manager.tree
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
@@ -48,42 +51,16 @@ class GUIBrowserPanel(GUIPanel):
             self.config_manager.config.general.output_directory if self.config_manager.config else OUTPUT_DIRECTORY
         )
         self.browser_manager.set_output_directory(output_directory)
-        self._rebuild_tree()
+        self.build_tree_ui(TAG_BROWSER_TREE)
 
-    def _rebuild_tree(self) -> None:
-        self._clear_children(TAG_BROWSER_TREE)
+    def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
+        super()._on_selectable_clicked(sender, app_data, user_data)
 
-        tree = self.browser_manager.get_tree()
-        if tree is None:
-            return
-
-        for child in tree.children:
-            self._build_tree_node(child, TAG_BROWSER_TREE)
-
-    def _build_tree_node(self, node: ReconstructionNode, parent_tag: str) -> None:
-        node_tag = self._generate_node_tag(node.path)
-
-        if node.is_file:
-            dpg.add_selectable(label=node.name, parent=parent_tag, callback=self._on_file_selected, user_data=node.path)
-        else:
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag):
-                for child in node.children:
-                    self._build_tree_node(child, node_tag)
-
-    def _generate_node_tag(self, path: Path) -> str:
-        return f"browser_node_{str(path).replace('/', '_').replace('.', '_')}"
-
-    def _on_file_selected(self, sender: int, app_data: bool, user_data: Path) -> None:
-        if not self._on_reconstruction_selected:
-            return
-
-        reconstruction_data = self.browser_manager.load_reconstruction_data(user_data)
-        self._on_reconstruction_selected(reconstruction_data)
+        node_type = getattr(user_data, "node_type", None)
+        if node_type == NOD_TYPE_FILE and self._on_reconstruction_selected:
+            file_path = getattr(user_data, "file_path")
+            reconstruction_data = self.browser_manager.load_reconstruction_data(file_path)
+            self._on_reconstruction_selected(reconstruction_data)
 
     def set_callbacks(self, on_reconstruction_selected: Optional[Callable] = None) -> None:
         self._on_reconstruction_selected = on_reconstruction_selected
-
-    def _clear_children(self, tag: str) -> None:
-        children = dpg.get_item_children(tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)

@@ -361,3 +361,6 @@ NOD_TYPE_FILE = "file"
 # Node labels
 NOD_LABEL_NOT_LOADED = "Not loaded"
 NOD_LABEL_LIBRARIES = "Libraries"
+
+# File extensions
+EXT_RECONSTRUCTION_FILE = ".json"
