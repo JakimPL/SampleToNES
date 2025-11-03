@@ -1,9 +1,8 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from anytree import Node
-
 from browser.reconstruction.data import ReconstructionData
+from browser.tree.node import FileSystemNode, TreeNode
 from browser.tree.tree import Tree
 from constants.browser import EXT_RECONSTRUCTION_FILE, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from constants.general import OUTPUT_DIRECTORY
@@ -28,13 +27,13 @@ class BrowserManager:
         root = self._build_tree(output_path)
         self.tree.set_root(root)
 
-    def _build_tree(self, path: Path) -> Optional[Node]:
+    def _build_tree(self, path: Path) -> Optional[FileSystemNode]:
         if not path.exists():
             return None
 
         if path.is_file():
             if path.suffix == EXT_RECONSTRUCTION_FILE:
-                return Node(path.stem, file_path=path, node_type=NOD_TYPE_FILE)
+                return FileSystemNode(path.stem, file_path=path, node_type=NOD_TYPE_FILE)
             return None
 
         children_nodes = []
@@ -46,7 +45,7 @@ class BrowserManager:
         if not children_nodes:
             return None
 
-        directory_node = Node(path.name, file_path=path, node_type=NOD_TYPE_DIRECTORY)
+        directory_node = FileSystemNode(path.name, file_path=path, node_type=NOD_TYPE_DIRECTORY)
 
         for child_node in children_nodes:
             child_node.parent = directory_node
@@ -70,8 +69,12 @@ class BrowserManager:
         return file_path.suffix == EXT_RECONSTRUCTION_FILE and file_path.exists()
 
     def get_all_reconstruction_files(self) -> list[Path]:
-        file_nodes = [node for node in self.tree.collect_leaves() if getattr(node, "node_type", None) == NOD_TYPE_FILE]
-        return [getattr(node, "file_path") for node in file_nodes if hasattr(node, "file_path")]
+        file_nodes = [
+            node
+            for node in self.tree.collect_leaves()
+            if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_FILE
+        ]
+        return [node.file_path for node in file_nodes if node.file_path is not None]
 
     def clear_cache(self) -> None:
         self.file_cache.clear()

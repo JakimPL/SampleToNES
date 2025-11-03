@@ -1,6 +1,6 @@
 from typing import Callable, Optional, Sequence
 
-from anytree import Node, PreOrderIter
+from anytree import PreOrderIter
 from anytree.search import findall
 
 from browser.tree.node import TreeNode
@@ -55,17 +55,7 @@ class Tree:
         for original_node in PreOrderIter(self.root):
             if original_node in nodes_to_include:
                 parent_copy = node_map.get(original_node.parent) if original_node.parent else None
-                node_copy = Node(original_node.name, parent=parent_copy)
-
-                for attr_name in dir(original_node):
-                    if not attr_name.startswith("_") and attr_name not in ["parent", "children", "name"]:
-                        attr_value = getattr(original_node, attr_name, None)
-                        if attr_value is not None and not callable(attr_value):
-                            try:
-                                setattr(node_copy, attr_name, attr_value)
-                            except (AttributeError, TypeError):
-                                pass
-
+                node_copy = original_node.copy(parent=parent_copy)
                 node_map[original_node] = node_copy
 
         return node_map.get(self.root)

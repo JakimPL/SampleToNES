@@ -1,8 +1,13 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from anytree import Node
-
+from browser.tree.node import (
+    GeneratorNode,
+    GroupNode,
+    InstructionNode,
+    LibraryNode,
+    TreeNode,
+)
 from browser.tree.tree import Tree
 from configs.config import Config
 from constants.browser import (
@@ -197,36 +202,39 @@ class LibraryManager:
         return instructions
 
     def _rebuild_tree(self) -> None:
-        root = Node(NOD_LABEL_LIBRARIES)
+        root = TreeNode(NOD_LABEL_LIBRARIES)
 
         for display_name in sorted(self.library_files.keys()):
             self._build_library_node(display_name, root)
 
         self.tree.set_root(root)
 
-    def _build_library_node(self, display_name: str, parent: Node) -> Node:
-        library_node = Node(display_name, parent=parent, display_name=display_name, node_type=NOD_TYPE_LIBRARY)
+    def _build_library_node(self, display_name: str, parent: TreeNode) -> LibraryNode:
+        library_node = LibraryNode(display_name, parent=parent, display_name=display_name, node_type=NOD_TYPE_LIBRARY)
 
         if self.is_library_loaded(display_name):
             self._build_generator_nodes(display_name, library_node)
         else:
-            self._create_placeholder_node(display_name, library_node)
+            self._create_placeholder_node(library_node)
 
         return library_node
 
-    def _create_placeholder_node(self, display_name: str, parent: Node) -> Node:
-        return Node(
-            NOD_LABEL_NOT_LOADED, parent=parent, display_name=display_name, node_type=NOD_TYPE_LIBRARY_PLACEHOLDER
+    def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
+        return LibraryNode(
+            NOD_LABEL_NOT_LOADED,
+            parent=parent,
+            display_name=parent.display_name,
+            node_type=NOD_TYPE_LIBRARY_PLACEHOLDER,
         )
 
-    def _build_generator_nodes(self, display_name: str, parent: Node) -> None:
+    def _build_generator_nodes(self, display_name: str, parent: TreeNode) -> None:
         for generator_name in LibraryGeneratorName:
             grouped_instructions = self.get_library_instructions_by_generator(display_name, generator_name)
 
             if not grouped_instructions:
                 continue
 
-            generator_node = Node(
+            generator_node = GeneratorNode(
                 generator_name.value.capitalize(),
                 parent=parent,
                 display_name=display_name,
@@ -241,13 +249,13 @@ class LibraryManager:
         display_name: str,
         generator_name: LibraryGeneratorName,
         grouped_instructions: Dict[str, List[Tuple]],
-        parent: Node,
+        parent: TreeNode,
     ) -> None:
         generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
 
         for group_key, instructions in grouped_instructions.items():
             group_label = f"{group_key} ({len(instructions)} item(s))"
-            group_node = Node(
+            group_node = GroupNode(
                 group_label,
                 parent=parent,
                 display_name=display_name,
@@ -257,7 +265,7 @@ class LibraryManager:
             )
 
             for instruction, fragment in instructions:
-                Node(
+                InstructionNode(
                     instruction.name,
                     parent=group_node,
                     display_name=display_name,
@@ -273,14 +281,16 @@ class LibraryManager:
             return
 
         library_node = self.tree.find_node(
-            lambda node: getattr(node, "node_type", None) == NOD_TYPE_LIBRARY and node.name == display_name
+            lambda node: isinstance(node, LibraryNode)
+            and node.node_type == NOD_TYPE_LIBRARY
+            and node.name == display_name
         )
 
-        if library_node:
+        if library_node and isinstance(library_node, LibraryNode):
             for child in list(library_node.children):
                 child.parent = None
 
             if self.is_library_loaded(display_name):
                 self._build_generator_nodes(display_name, library_node)
             else:
-                self._create_placeholder_node(display_name, library_node)
+                self._create_placeholder_node(library_node)

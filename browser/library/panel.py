@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.config.manager import ConfigManager
 from browser.library.manager import LibraryManager
 from browser.panels.tree import GUITreePanel
-from browser.tree.node import TreeNode
+from browser.tree.node import InstructionNode, LibraryNode, TreeNode
 from configs.config import Config
 from constants.browser import (
     DIM_DIALOG_ERROR_HEIGHT,
@@ -138,18 +138,18 @@ class GUILibraryPanel(GUITreePanel):
 
     def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
         node_tag = self._generate_node_tag(node)
-        node_type = getattr(node, "node_type", None)
 
-        if node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
+        if node.node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
+            display_name = node.display_name if isinstance(node, LibraryNode) else ""
             dpg.add_selectable(
                 label=node.name,
                 parent=parent_tag,
                 callback=self._on_load_library_clicked,
-                user_data=getattr(node, "display_name", ""),
+                user_data=display_name,
                 tag=node_tag,
                 default_value=False,
             )
-        elif node_type == NOD_TYPE_INSTRUCTION:
+        elif node.node_type == NOD_TYPE_INSTRUCTION:
             dpg.add_selectable(
                 label=node.name,
                 parent=parent_tag,
@@ -168,7 +168,7 @@ class GUILibraryPanel(GUITreePanel):
                 default_value=False,
             )
         else:
-            is_current = node_type == NOD_TYPE_LIBRARY and self._is_current_library(node.name)
+            is_current = node.node_type == NOD_TYPE_LIBRARY and self._is_current_library(node.name)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=is_current):
                 for child in node.children:
                     self._build_tree_node_ui(child, node_tag)
@@ -190,18 +190,20 @@ class GUILibraryPanel(GUITreePanel):
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
-        node_type = getattr(user_data, "node_type", None)
-        if node_type == NOD_TYPE_INSTRUCTION:
-            generator_class_name = getattr(user_data, "generator_class_name", None)
-            instruction = getattr(user_data, "instruction", None)
-            fragment = getattr(user_data, "fragment", None)
-
-            if self._on_instruction_selected and instruction is not None:
+        if (
+            isinstance(user_data, InstructionNode)
+            and user_data.node_type == NOD_TYPE_INSTRUCTION
+            and user_data.instruction is not None
+        ):
+            if self._on_instruction_selected:
                 library_config = self.config_manager.get_config()
                 if library_config is not None:
                     library_config = library_config.library
                     self._on_instruction_selected(
-                        generator_class_name, instruction, fragment, library_config=library_config
+                        user_data.generator_class_name,
+                        user_data.instruction,
+                        user_data.fragment,
+                        library_config=library_config,
                     )
 
     def _generate_library(self) -> None:
