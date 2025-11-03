@@ -58,6 +58,9 @@ class BrowserManager:
             if cached_data is not None:
                 return cached_data
 
+        if not file_path.exists():
+            raise FileNotFoundError(f"Reconstruction file not found: {file_path}")
+
         if not self.validate_reconstruction_file(file_path):
             raise ValueError(f"Invalid reconstruction file: {file_path}")
 
@@ -66,14 +69,11 @@ class BrowserManager:
         return data
 
     def validate_reconstruction_file(self, file_path: Path) -> bool:
-        return file_path.suffix == EXT_RECONSTRUCTION_FILE and file_path.exists()
+        # TODO: Implement actual validation logic
+        return file_path.suffix == EXT_RECONSTRUCTION_FILE
 
     def get_all_reconstruction_files(self) -> list[Path]:
-        file_nodes = [
-            node
-            for node in self.tree.collect_leaves()
-            if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_FILE
-        ]
+        file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]
         return [node.file_path for node in file_nodes if node.file_path is not None]
 
     def clear_cache(self) -> None:

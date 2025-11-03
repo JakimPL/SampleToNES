@@ -32,7 +32,7 @@ from constants.browser import (
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
-from constants.general import MAX_MIXER, OUTPUT_DIRECTORY
+from constants.general import MAX_MIXER, MIXER, OUTPUT_DIRECTORY
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -70,6 +70,7 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_slider_float(
                 min_value=0.0,
                 max_value=MAX_MIXER,
+                default_value=MIXER,
                 width=-1,
                 tag=TAG_RECONSTRUCTOR_MIXER,
             )

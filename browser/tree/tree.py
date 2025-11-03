@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Sequence
+from typing import Callable, Optional, Sequence, Set
 
 from anytree import PreOrderIter
 from anytree.search import findall
@@ -11,13 +11,15 @@ class Tree:
         self.root = root
         self._filter_query: Optional[str] = None
         self._filtered_root: Optional[TreeNode] = None
+        self._matching_nodes: Set[TreeNode] = set()
+        self._original_to_copy: dict[TreeNode, TreeNode] = {}
 
     def set_root(self, root: Optional[TreeNode]) -> None:
         self.root = root
         self.clear_filter()
 
     def get_root(self) -> Optional[TreeNode]:
-        if self._filter_query is not None and self._filtered_root is not None:
+        if self._filter_query is not None:
             return self._filtered_root
         return self.root
 
@@ -25,6 +27,7 @@ class Tree:
         if not self.root:
             self._filtered_root = None
             self._filter_query = query
+            self._matching_nodes = set()
             return
 
         if not query:
@@ -33,6 +36,7 @@ class Tree:
 
         self._filter_query = query
         matching_nodes = [node for node in PreOrderIter(self.root) if predicate(node, query)]
+        self._matching_nodes = set(matching_nodes)
 
         if not matching_nodes:
             self._filtered_root = None
@@ -51,6 +55,9 @@ class Tree:
                 nodes_to_include.add(current)
                 current = current.parent
 
+            for descendant in PreOrderIter(node):
+                nodes_to_include.add(descendant)
+
         node_map = {}
         for original_node in PreOrderIter(self.root):
             if original_node in nodes_to_include:
@@ -58,14 +65,27 @@ class Tree:
                 node_copy = original_node.copy(parent=parent_copy)
                 node_map[original_node] = node_copy
 
+        self._original_to_copy = node_map
         return node_map.get(self.root)
 
     def clear_filter(self) -> None:
         self._filter_query = None
         self._filtered_root = None
+        self._matching_nodes = set()
+        self._original_to_copy = {}
 
     def is_filtered(self) -> bool:
         return self._filter_query is not None
+
+    def is_matching_node(self, node: TreeNode) -> bool:
+        if node in self._matching_nodes:
+            return True
+
+        for original_node, copied_node in self._original_to_copy.items():
+            if copied_node is node and original_node in self._matching_nodes:
+                return True
+
+        return False
 
     def get_filter_query(self) -> Optional[str]:
         return self._filter_query

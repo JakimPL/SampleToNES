@@ -6,7 +6,13 @@ import dearpygui.dearpygui as dpg
 from browser.config.manager import ConfigManager
 from browser.library.manager import LibraryManager
 from browser.panels.tree import GUITreePanel
-from browser.tree.node import InstructionNode, LibraryNode, TreeNode
+from browser.tree.node import (
+    GeneratorNode,
+    GroupNode,
+    InstructionNode,
+    LibraryNode,
+    TreeNode,
+)
 from configs.config import Config
 from constants.browser import (
     DIM_DIALOG_ERROR_HEIGHT,
@@ -26,7 +32,6 @@ from constants.browser import (
     MSG_LIBRARY_GENERATING,
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NOT_LOADED,
-    NOD_TYPE_INSTRUCTION,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     TAG_DIALOG_ERROR_LIBRARY_GENERATION,
@@ -84,10 +89,15 @@ class GUILibraryPanel(GUITreePanel):
                 dpg.add_progress_bar(tag=TAG_LIBRARY_PROGRESS, show=False)
 
             dpg.add_separator()
+            self.create_search_ui(self.tag)
+            dpg.add_separator()
             with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
                 pass
 
         self.update_status()
+
+    def _rebuild_tree_ui(self) -> None:
+        self.build_tree_ui(TAG_LIBRARY_TREE)
 
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
@@ -162,7 +172,7 @@ class GUILibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
-        elif node.node_type == NOD_TYPE_INSTRUCTION:
+        elif isinstance(node, InstructionNode):
             dpg.add_selectable(
                 label=node.name,
                 parent=parent_tag,
@@ -171,18 +181,10 @@ class GUILibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
-        elif node.is_leaf:
-            dpg.add_selectable(
-                label=node.name,
-                parent=parent_tag,
-                callback=self._on_selectable_clicked,
-                user_data=node,
-                tag=node_tag,
-                default_value=False,
-            )
-        else:
-            is_current = node.node_type == NOD_TYPE_LIBRARY and self._is_current_library_node(node)
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=is_current):
+        elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
+            is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
+            should_expand = is_current or self._should_expand_node(node)
+            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=should_expand):
                 for child in node.children:
                     self._build_tree_node_ui(child, node_tag)
 
