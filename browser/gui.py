@@ -5,6 +5,7 @@ from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
+from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
 from configs.library import LibraryConfig
@@ -53,7 +54,9 @@ class GUI:
 
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
-        self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(self.audio_device_manager)
+        self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
+            self.config_manager, self.audio_device_manager
+        )
 
         self.setup_gui()
 
@@ -70,6 +73,9 @@ class GUI:
         self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
+        )
+        self.browser_panel.set_callbacks(
+            on_reconstruction_selected=self._on_reconstruction_selected,
         )
 
     def create_main_window(self) -> None:
@@ -162,8 +168,10 @@ class GUI:
     def _on_instruction_selected(
         self, generator_class_name: str, instruction, fragment: LibraryFragment, library_config: LibraryConfig
     ) -> None:
-        if self.instruction_panel:
-            self.instruction_panel.display_instruction(generator_class_name, instruction, fragment, library_config)
+        self.instruction_panel.display_instruction(generator_class_name, instruction, fragment, library_config)
+
+    def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_panel.display_reconstruction(reconstruction_data)
 
     def run(self) -> None:
         dpg.start_dearpygui()

@@ -2,15 +2,15 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from browser.browser.node import ReconstructionNode
+from browser.reconstruction.data import ReconstructionData
 from constants.general import OUTPUT_DIRECTORY
-from reconstructor.reconstruction import Reconstruction
 
 
 class BrowserManager:
     def __init__(self, output_directory: str = OUTPUT_DIRECTORY) -> None:
         self.output_directory = output_directory
         self.tree: Optional[ReconstructionNode] = None
-        self.file_cache: Dict[Path, Optional[Reconstruction]] = {}
+        self.file_cache: Dict[Path, Optional[ReconstructionData]] = {}
 
     def set_output_directory(self, directory: str) -> None:
         self.output_directory = directory
@@ -50,7 +50,7 @@ class BrowserManager:
 
         return ReconstructionNode(name=path.name, path=path, is_file=False, children=children)
 
-    def load_reconstruction_data(self, file_path: Path) -> Reconstruction:
+    def load_reconstruction_data(self, file_path: Path) -> ReconstructionData:
         if file_path in self.file_cache:
             cached_data = self.file_cache[file_path]
             if cached_data is not None:
@@ -59,7 +59,7 @@ class BrowserManager:
         if not self.validate_reconstruction_file(file_path):
             raise ValueError(f"Invalid reconstruction file: {file_path}")
 
-        data = Reconstruction.load(file_path)
+        data = ReconstructionData.load(file_path)
         self.file_cache[file_path] = data
         return data
 

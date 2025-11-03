@@ -2,6 +2,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from browser.config.manager import ConfigManager
 from browser.graphs.layers.array import ArrayLayer
 from browser.graphs.waveform import GUIWaveformDisplay
 from browser.panel import GUIPanel
@@ -29,7 +30,8 @@ from utils.audio.device import AudioDeviceManager
 
 
 class GUIReconstructionPanel(GUIPanel):
-    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
+    def __init__(self, config_manager: ConfigManager, audio_device_manager: AudioDeviceManager) -> None:
+        self.config_manager = config_manager
         self.audio_device_manager = audio_device_manager
         self.waveform_display: GUIWaveformDisplay
         self.reconstruction_details: GUIReconstructionDetailsPanel
@@ -78,6 +80,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
+        self.config_manager.load_config(reconstruction_data.config)
 
         self.reconstruction_details.display_reconstruction(reconstruction_data.reconstruction)
         self.reconstruction_export.load_reconstruction(reconstruction_data.reconstruction)

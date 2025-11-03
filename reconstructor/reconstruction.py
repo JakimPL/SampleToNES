@@ -7,12 +7,21 @@ from pydantic import BaseModel, Field, field_serializer
 
 from configs.config import Config as Configuration
 from constants.enums import FeatureKey, GeneratorName, InstructionClassName
+from constants.general import SAMPLE_TO_NES_VERSION
 from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
 from utils.common import deserialize_array, serialize_array
+
+
+def default_metadata() -> Dict[str, Any]:
+    return {
+        "SampleToNES": {
+            "version": SAMPLE_TO_NES_VERSION,
+        }
+    }
 
 
 class Reconstruction(BaseModel):
@@ -23,6 +32,7 @@ class Reconstruction(BaseModel):
     config: Configuration = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
+    metadata: Dict[str, Any] = Field(default_factory=default_metadata, description="Additional metadata")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -92,6 +102,7 @@ class Reconstruction(BaseModel):
         data["config"] = Configuration(**data["config"])
         data["coefficient"] = float(data["coefficient"])
         data["audio_filepath"] = Path(data["audio_filepath"])
+        data["metadata"] = data.get("metadata", {})
 
         return cls(**data)
 

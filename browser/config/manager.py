@@ -130,3 +130,10 @@ class ConfigManager:
 
         self._notify_config_change()
         return gui_updates
+
+    def load_config(self, config: Config) -> None:
+        self.config = config
+        self.window = Window(self.config.library)
+        self.library_directory = config.general.library_directory
+        self.output_directory = config.general.output_directory
+        self._notify_config_change()

@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -23,6 +24,7 @@ class GUIBrowserPanel(GUIPanel):
         self.config_manager = config_manager
         output_directory = config_manager.config.general.output_directory if config_manager.config else OUTPUT_DIRECTORY
         self.browser_manager = BrowserManager(output_directory)
+        self._on_reconstruction_selected: Optional[Callable] = None
 
         super().__init__(
             tag=TAG_BROWSER_PANEL,
@@ -72,7 +74,14 @@ class GUIBrowserPanel(GUIPanel):
         return f"browser_node_{str(path).replace('/', '_').replace('.', '_')}"
 
     def _on_file_selected(self, sender: int, app_data: bool, user_data: Path) -> None:
-        pass
+        if not self._on_reconstruction_selected:
+            return
+
+        reconstruction_data = self.browser_manager.load_reconstruction_data(user_data)
+        self._on_reconstruction_selected(reconstruction_data)
+
+    def set_callbacks(self, on_reconstruction_selected: Optional[Callable] = None) -> None:
+        self._on_reconstruction_selected = on_reconstruction_selected
 
     def _clear_children(self, tag: str) -> None:
         children = dpg.get_item_children(tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []

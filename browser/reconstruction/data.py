@@ -17,7 +17,8 @@ class ReconstructionData(BaseModel):
     original_audio: np.ndarray
 
     @classmethod
-    def load(cls, reconstruction: Reconstruction) -> Self:
+    def load(cls, path: Path) -> Self:
+        reconstruction = Reconstruction.load(path)
         audio_filepath = reconstruction.audio_filepath
         sample_rate = reconstruction.config.library.sample_rate
         normalize = reconstruction.config.general.normalize
