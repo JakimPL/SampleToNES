@@ -13,7 +13,6 @@ class FeatureData(BaseModel):
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> "FeatureData":
         exported_features = reconstruction.export(as_string=False)
-        print(exported_features)
 
         generators = {}
         for generator_name_str, features in exported_features.items():

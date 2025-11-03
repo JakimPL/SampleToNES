@@ -9,9 +9,7 @@ from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_BAR_PLOT_DISPLAY,
-    LBL_BAR_PLOT_FRAME_LABEL,
     LBL_BAR_PLOT_VALUE_LABEL,
-    MSG_BAR_PLOT_NO_DATA,
     VAL_BAR_PLOT_AXIS_SLOT,
     VAL_BAR_PLOT_DEFAULT_X_MIN,
     VAL_BAR_PLOT_DEFAULT_Y_MAX,
@@ -46,7 +44,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             anti_aliased=True,
         ):
             dpg.add_plot_legend(tag=self.legend_tag)
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_BAR_PLOT_FRAME_LABEL, tag=self.x_axis_tag)
+            dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, label=LBL_BAR_PLOT_VALUE_LABEL, tag=self.y_axis_tag)
 
     def load_data(self, data: np.ndarray, name: str, color: Tuple[int, int, int, int]) -> None:

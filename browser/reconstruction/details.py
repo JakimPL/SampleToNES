@@ -10,6 +10,7 @@ from browser.reconstruction.feature import FeatureData
 from constants.browser import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     LBL_RECONSTRUCTION_DETAILS,
+    SUF_GRAPH_RAW_DATA,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
     TAG_RECONSTRUCTION_PANEL_GROUP,
@@ -73,18 +74,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
 
-        raw_data_text = " ".join(map(str, data.tolist()))
-        raw_data_tag = f"{plot_tag}_raw_data"
+        plot = self._add_bar_plot(plot_tag, tab_tag, config, data)
+        self._add_raw_data_text(plot_tag, tab_tag, data)
 
-        dpg.add_input_text(
-            tag=raw_data_tag,
-            parent=tab_tag,
-            default_value=raw_data_text,
-            width=VAL_PLOT_WIDTH_FULL,
-            readonly=True,
-            multiline=False,
-        )
+        return plot
 
+    def _add_bar_plot(self, plot_tag: str, parent_tag: str, config, data: np.ndarray) -> GUIBarPlotDisplay:
         y_min = config.y_min
         y_max = config.y_max
 
@@ -93,9 +88,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_min = -max_abs_value
             y_max = max_abs_value
 
+        y_min -= 1.0
+        y_max += 1.0
+
         plot = GUIBarPlotDisplay(
             tag=plot_tag,
-            parent=tab_tag,
+            parent=parent_tag,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_BAR_PLOT_DEFAULT_HEIGHT,
             label=config.label,
@@ -103,6 +101,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_max=y_max,
         )
 
+        generator_name = plot_tag.split("_")[-2]
+        feature_key = plot_tag.split("_")[-1]
         plot.load_data(
             data=data,
             name=f"{generator_name} - {feature_key}",
@@ -110,6 +110,19 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
         return plot
+
+    def _add_raw_data_text(self, plot_tag: str, parent_tag: str, data: np.ndarray) -> None:
+        raw_data_text = " ".join(map(str, data.tolist()))
+        raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
+
+        dpg.add_input_text(
+            tag=raw_data_tag,
+            parent=parent_tag,
+            default_value=raw_data_text,
+            width=VAL_PLOT_WIDTH_FULL,
+            readonly=True,
+            multiline=False,
+        )
 
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)
