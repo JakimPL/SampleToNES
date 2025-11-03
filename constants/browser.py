@@ -24,6 +24,10 @@ DIM_DIALOG_ERROR_HEIGHT = 150
 # Plot dimensions
 DIM_WAVEFORM_PLOT_HEIGHT = 200
 
+# Search UI dimensions
+DIM_SEARCH_INPUT_WIDTH = -80
+DIM_SEARCH_BUTTON_WIDTH = -1
+
 # Input validation ranges
 RNG_CONFIG_MIN_WORKERS = 1
 

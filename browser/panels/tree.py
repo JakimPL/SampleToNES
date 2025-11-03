@@ -6,6 +6,8 @@ from browser.panels.panel import GUIPanel
 from browser.tree.node import TreeNode
 from browser.tree.tree import Tree
 from constants.browser import (
+    DIM_SEARCH_BUTTON_WIDTH,
+    DIM_SEARCH_INPUT_WIDTH,
     LBL_BUTTON_CLEAR_SEARCH,
     LBL_INPUT_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
@@ -42,13 +44,13 @@ class GUITreePanel(GUIPanel):
                 tag=self._search_input_tag,
                 hint=LBL_INPUT_SEARCH,
                 callback=self._on_search_changed,
-                width=-80,
+                width=DIM_SEARCH_INPUT_WIDTH,
             )
             dpg.add_button(
                 label=LBL_BUTTON_CLEAR_SEARCH,
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,
-                width=-1,
+                width=DIM_SEARCH_BUTTON_WIDTH,
             )
 
     def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
@@ -58,9 +60,6 @@ class GUITreePanel(GUIPanel):
         if not self.tree.is_filtered():
             return False
 
-        # Only expand nodes that have matching descendants. Do not auto-expand
-        # nodes that themselves match — expanding their parent is enough so the
-        # matched node is visible but its children remain collapsed by default.
         for descendant in node.descendants:
             if self.tree.is_matching_node(descendant):
                 return True
