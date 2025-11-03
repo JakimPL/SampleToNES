@@ -15,9 +15,12 @@ from constants.browser import (
     LBL_COPY_BUTTON,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
+    MSG_RECONSTRUCTION_NO_DATA,
     SUF_GRAPH_COPY_BUTTON,
     SUF_GRAPH_RAW_DATA,
     SUF_GRAPH_RAW_DATA_GROUP,
+    SUF_NO_DATA_MESSAGE,
+    SUF_SEPARATOR,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
     TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
@@ -33,6 +36,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.current_features: Optional[FeatureData] = None
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
         self.tab_bar_tag = TAG_RECONSTRUCTION_DETAILS_TAB_BAR
+        self.no_data_message_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}{SUF_NO_DATA_MESSAGE}"
+        self.export_button_separator_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}{SUF_SEPARATOR}"
         self._on_instrument_export = None
 
         super().__init__(
@@ -50,8 +55,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 label=LBL_RECONSTRUCTION_EXPORT_FTI,
                 width=-1,
                 callback=self._handle_export_button_clicked,
+                show=False,
             )
-            dpg.add_separator()
+            dpg.add_separator(tag=self.export_button_separator_tag, show=False)
+
+            dpg.add_text(
+                tag=self.no_data_message_tag,
+                default_value=MSG_RECONSTRUCTION_NO_DATA,
+                show=True,
+            )
 
     def set_callback(self, on_instrument_export: Optional[Callable[[], None]] = None) -> None:
         self._on_instrument_export = on_instrument_export
@@ -175,8 +187,22 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         feature_data = FeatureData.load(reconstruction)
         self.current_features = feature_data
 
+        if dpg.does_item_exist(self.no_data_message_tag):
+            dpg.configure_item(self.no_data_message_tag, show=False)
+
+        if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
+            dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=True)
+            dpg.configure_item(self.export_button_separator_tag, show=True)
+
         self._create_tabs_for_generators(feature_data)
 
     def clear_display(self) -> None:
         self.current_features = None
         self._clear_tabs()
+
+        if dpg.does_item_exist(self.no_data_message_tag):
+            dpg.configure_item(self.no_data_message_tag, show=True)
+
+        if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
+            dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
+            dpg.configure_item(self.export_button_separator_tag, show=False)

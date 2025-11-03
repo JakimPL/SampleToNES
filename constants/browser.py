@@ -289,10 +289,10 @@ LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT = "Duty Cycle"
 LBL_COPY_BUTTON = "Copy"
 LBL_COPIED_TOOLTIP = "Copied!"
 MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected"
+MSG_RECONSTRUCTION_NO_DATA = "No reconstruction loaded"
 
 # Waveform layer colors
 CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
-# layer colors also defined above (keep for compatibility)
 
 # Waveform component suffixes
 SUF_GRAPH_PLOT = "_plot"
@@ -304,6 +304,8 @@ SUF_GRAPH_INFO = "_info"
 SUF_GRAPH_RAW_DATA = "_raw_data"
 SUF_GRAPH_COPY_BUTTON = "_copy_button"
 SUF_GRAPH_RAW_DATA_GROUP = "_raw_data_group"
+SUF_SEPARATOR = "_separator"
+SUF_NO_DATA_MESSAGE = "_no_data_message"
 
 
 # Spectrum display settings
