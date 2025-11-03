@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -92,7 +91,6 @@ class Reconstructor:
                 window=self.window,
                 generators=self.generators,
                 library_data=self.library_data,
-                executor_class=ThreadPoolExecutor,
             )
 
             results = dict(

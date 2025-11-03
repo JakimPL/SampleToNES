@@ -24,8 +24,8 @@ from constants.browser import (
     MSG_WAVEFORM_NO_FRAGMENT,
     MSG_WAVEFORM_NO_RECONSTRUCTION,
     VAL_GRAPH_DEFAULT_X_MAX,
+    VAL_GRAPH_DEFAULT_X_MIN,
     VAL_WAVEFORM_AXIS_SLOT,
-    VAL_WAVEFORM_DEFAULT_X_MIN,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
@@ -41,8 +41,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
         label: str = LBL_WAVEFORM_DISPLAY,
+        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
+        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        y_min: float = -1.0,
+        y_max: float = 1.0,
     ):
-        super().__init__(tag, parent, width, height, label)
+        super().__init__(tag, parent, width, height, label, x_min, x_max, y_min, y_max)
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
@@ -99,7 +103,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             )
         )
 
-        self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
+        self.x_min = VAL_GRAPH_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
         self._update_info_display(MSG_WAVEFORM_NO_FRAGMENT)
         self._update_axes_limits()
@@ -186,10 +190,10 @@ class GUIWaveformDisplay(GUIGraphDisplay):
     def _reset_x_axis(self) -> None:
         if self.layers:
             max_length = max(len(layer.data) for layer in self.layers.values())
-            self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
+            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
             self.x_max = float(max_length)
         else:
-            self.x_min = VAL_WAVEFORM_DEFAULT_X_MIN
+            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
             self.x_max = VAL_GRAPH_DEFAULT_X_MAX
         self._update_axes_limits()
 

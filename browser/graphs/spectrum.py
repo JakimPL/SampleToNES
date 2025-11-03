@@ -11,6 +11,8 @@ from constants.browser import (
     LBL_SPECTRUM_DISPLAY,
     LBL_SPECTRUM_X_AXIS,
     LBL_SPECTRUM_Y_AXIS,
+    VAL_GRAPH_DEFAULT_X_MAX,
+    VAL_GRAPH_DEFAULT_X_MIN,
     VAL_WAVEFORM_AXIS_SLOT,
 )
 from constants.general import MIN_FREQUENCY, SAMPLE_RATE
@@ -25,8 +27,12 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
         label: str = LBL_SPECTRUM_DISPLAY,
+        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
+        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        y_min: float = MIN_FREQUENCY,
+        y_max: float = SAMPLE_RATE / 2,
     ) -> None:
-        super().__init__(tag, parent, width, height, label)
+        super().__init__(tag, parent, width, height, label, x_min, x_max, y_min, y_max)
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
         self.current_library_fragment: Optional[LibraryFragment] = None
@@ -43,7 +49,6 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         ):
             dpg.add_plot_axis(dpg.mvXAxis, label=LBL_SPECTRUM_X_AXIS, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, label=LBL_SPECTRUM_Y_AXIS, tag=self.y_axis_tag, scale=dpg.mvPlotScale_Log10)
-            dpg.set_axis_limits(self.y_axis_tag, MIN_FREQUENCY, SAMPLE_RATE // 2)
 
     def load_library_fragment(
         self,
@@ -95,10 +100,12 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                 dpg.bind_item_theme(series_tag, bar_theme)
 
     def _update_axes_limits(self) -> None:
+        dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         if not self.layers:
+            dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
             return
 
         frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
-        min_frequency = frequencies[0]
-        max_frequency = frequencies[-1]
-        dpg.set_axis_limits(self.y_axis_tag, min_frequency, max_frequency)
+        self.y_min = frequencies[0]
+        self.y_max = frequencies[-1]
+        dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)

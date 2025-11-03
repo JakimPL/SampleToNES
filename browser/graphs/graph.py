@@ -14,7 +14,7 @@ from constants.browser import (
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
     VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_WAVEFORM_DEFAULT_X_MIN,
+    VAL_GRAPH_DEFAULT_X_MIN,
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
@@ -28,6 +28,10 @@ class GUIGraphDisplay(GUIPanel):
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
         label: str = LBL_WAVEFORM_DISPLAY,
+        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
+        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN,
+        y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX,
     ):
         self.label = label
         self.plot_tag = f"{tag}{SUF_GRAPH_PLOT}"
@@ -37,11 +41,11 @@ class GUIGraphDisplay(GUIPanel):
         self.controls_tag = f"{tag}{SUF_GRAPH_CONTROLS}"
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
 
-        self.x_min: float = VAL_WAVEFORM_DEFAULT_X_MIN
-        self.x_max: float = VAL_GRAPH_DEFAULT_X_MAX
-        self.y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN
-        self.y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX
-        self.default_y_range = (VAL_WAVEFORM_DEFAULT_Y_MIN, VAL_WAVEFORM_DEFAULT_Y_MAX)
+        self.x_min: float = x_min
+        self.x_max: float = x_max
+        self.y_min: float = y_min
+        self.y_max: float = y_max
+        self.default_y_range = (y_min, y_max)
 
         self.layers: Dict[str, Any] = {}
 
@@ -56,6 +60,8 @@ class GUIGraphDisplay(GUIPanel):
     def create_panel(self) -> None:
         with dpg.group(tag=self.tag, parent=self.parent_tag):
             self._create_content()
+
+        self._update_axes_limits()
 
     def _create_content(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
