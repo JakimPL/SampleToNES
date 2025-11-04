@@ -146,6 +146,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
 
         approximation = reconstruction_data.get_partials(selected_generators)
+        full_approximation = reconstruction_data.reconstruction.approximation
         original_audio = reconstruction_data.original_audio
 
         original_audio_coefficient = 1.0
@@ -153,7 +154,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             original_audio_coefficient = reconstruction_data.reconstruction.coefficient
 
         coefficient = max(
-            np.max(np.abs(approximation)),
+            np.max(np.abs(full_approximation)),
             np.max(np.abs(original_audio / original_audio_coefficient)),
         )
 
