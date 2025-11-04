@@ -1,5 +1,5 @@
 import threading
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -19,6 +19,7 @@ from constants.browser import (
     LBL_COPY_BUTTON,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
+    LBL_RECONSTRUCTION_INITIAL_PITCH,
     MSG_RECONSTRUCTION_NO_DATA,
     SUF_GRAPH_COPY_BUTTON,
     SUF_GRAPH_RAW_DATA,
@@ -33,6 +34,7 @@ from constants.browser import (
 )
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
+from utils.frequencies import pitch_to_name
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -54,15 +56,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
             dpg.add_separator()
 
-            dpg.add_button(
-                tag=TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
-                label=LBL_RECONSTRUCTION_EXPORT_FTI,
-                width=-1,
-                callback=self._handle_export_button_clicked,
-                show=False,
-            )
             dpg.add_separator(tag=self.export_button_separator_tag, show=False)
-
             dpg.add_text(
                 tag=self.no_data_message_tag,
                 default_value=MSG_RECONSTRUCTION_NO_DATA,
@@ -98,14 +92,38 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             if not generator_features:
                 return
 
-            for i, feature_key in enumerate(FEATURE_DISPLAY_ORDER):
-                if feature_key in generator_features and feature_key in FEATURE_PLOT_CONFIGS:
-                    if i != 0:
-                        dpg.add_separator(parent=tab_tag)
+            button_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}_{tab_tag}"
+            dpg.add_button(
+                tag=button_tag,
+                label=LBL_RECONSTRUCTION_EXPORT_FTI,
+                width=-1,
+                callback=self._handle_export_button_clicked,
+            )
 
-                    feature_data_array = generator_features[feature_key]
-                    plot = self._create_feature_plot(generator_name, feature_key, feature_data_array)
-                    self.generator_plots[generator_name][feature_key] = plot
+            dpg.add_separator(parent=tab_tag)
+
+            initial_pitch = cast(int, generator_features.get(FeatureKey.INITIAL_PITCH))
+            self._add_initial_pitch_display(generator_name, initial_pitch, tab_tag)
+
+            feature_keys = [
+                key for key in FEATURE_DISPLAY_ORDER if key in generator_features and key in FEATURE_PLOT_CONFIGS
+            ]
+            for feature_key in feature_keys:
+                dpg.add_separator(parent=tab_tag)
+                feature_data_array = cast(np.ndarray, generator_features[feature_key])
+                plot = self._create_feature_plot(generator_name, feature_key, feature_data_array)
+                self.generator_plots[generator_name][feature_key] = plot
+
+    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent_tag: str) -> None:
+        if generator_name == GeneratorName.NOISE:
+            pitch_display = f"{initial_pitch:X}"
+        else:
+            pitch_display = pitch_to_name(initial_pitch)
+
+        dpg.add_text(
+            default_value=LBL_RECONSTRUCTION_INITIAL_PITCH.format(pitch_display),
+            parent=parent_tag,
+        )
 
     def _create_feature_plot(
         self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray
@@ -205,10 +223,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         if dpg.does_item_exist(self.no_data_message_tag):
             dpg.configure_item(self.no_data_message_tag, show=False)
-
-        if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
-            dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=True)
-            dpg.configure_item(self.export_button_separator_tag, show=True)
 
         self._create_tabs_for_generators(feature_data)
 

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from reconstructor.reconstruction import Reconstruction
 
 
 class FeatureData(BaseModel):
-    generators: Dict[GeneratorName, Dict[FeatureKey, np.ndarray]]
+    generators: Dict[GeneratorName, Dict[FeatureKey, Union[int, np.ndarray]]]
 
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> "FeatureData":
@@ -17,8 +17,7 @@ class FeatureData(BaseModel):
         generators = {}
         for generator_name_str, features in exported_features.items():
             generator_name = GeneratorName(generator_name_str)
-            numpy_features = {key: value for key, value in features.items() if isinstance(value, np.ndarray)}
-            generators[generator_name] = numpy_features
+            generators[generator_name] = features
 
         return cls(generators=generators)
 
@@ -28,10 +27,14 @@ class FeatureData(BaseModel):
     def has_generator(self, generator_name: GeneratorName) -> bool:
         return generator_name in self.generators
 
-    def get_generator_features(self, generator_name: GeneratorName) -> Optional[Dict[FeatureKey, np.ndarray]]:
+    def get_generator_features(
+        self, generator_name: GeneratorName
+    ) -> Optional[Dict[FeatureKey, Union[int, np.ndarray]]]:
         return self.generators.get(generator_name)
 
-    def get_feature_for_generator(self, generator_name: GeneratorName, feature_key: FeatureKey) -> Optional[np.ndarray]:
+    def get_feature_for_generator(
+        self, generator_name: GeneratorName, feature_key: FeatureKey
+    ) -> Optional[Union[int, np.ndarray]]:
         features = self.get_generator_features(generator_name)
         return features.get(feature_key) if features else None
 
