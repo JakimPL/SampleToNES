@@ -5,10 +5,11 @@ from pydantic import BaseModel
 
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
+from typehints.general import FeatureValue
 
 
 class FeatureData(BaseModel):
-    generators: Dict[GeneratorName, Dict[FeatureKey, Union[int, np.ndarray]]]
+    generators: Dict[GeneratorName, Dict[FeatureKey, FeatureValue]]
 
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> "FeatureData":
@@ -27,14 +28,12 @@ class FeatureData(BaseModel):
     def has_generator(self, generator_name: GeneratorName) -> bool:
         return generator_name in self.generators
 
-    def get_generator_features(
-        self, generator_name: GeneratorName
-    ) -> Optional[Dict[FeatureKey, Union[int, np.ndarray]]]:
+    def get_generator_features(self, generator_name: GeneratorName) -> Optional[Dict[FeatureKey, FeatureValue]]:
         return self.generators.get(generator_name)
 
     def get_feature_for_generator(
         self, generator_name: GeneratorName, feature_key: FeatureKey
-    ) -> Optional[Union[int, np.ndarray]]:
+    ) -> Optional[FeatureValue]:
         features = self.get_generator_features(generator_name)
         return features.get(feature_key) if features else None
 

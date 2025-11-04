@@ -11,7 +11,7 @@ from utils.frequencies import pitch_to_frequency
 
 class Exporter(Generic[InstructionType]):
     def __call__(
-        self, instructions: List[InstructionType], as_string: bool = True
+        self, instructions: List[InstructionType], as_string: bool = False
     ) -> Mapping[FeatureKey, Union[str, int, np.ndarray]]:
         features: Mapping[FeatureKey, FeatureValue] = self.get_features(instructions)
         if as_string:

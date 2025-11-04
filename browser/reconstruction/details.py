@@ -44,7 +44,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.tab_bar_tag = TAG_RECONSTRUCTION_DETAILS_TAB_BAR
         self.no_data_message_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}{SUF_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}{SUF_SEPARATOR}"
-        self._on_instrument_export = None
+        self._on_instrument_export: Optional[Callable[[GeneratorName], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
@@ -63,12 +63,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 show=True,
             )
 
-    def set_callback(self, on_instrument_export: Optional[Callable[[], None]] = None) -> None:
+    def set_callback(self, on_instrument_export: Optional[Callable[[GeneratorName], None]] = None) -> None:
         self._on_instrument_export = on_instrument_export
 
-    def _handle_export_button_clicked(self) -> None:
-        if self._on_instrument_export is not None and self.current_features is not None:
-            self._on_instrument_export()
+    def _handle_export_button_clicked(self, generator_name: GeneratorName) -> None:
+        if self._on_instrument_export is not None:
+            self._on_instrument_export(generator_name)
 
     def _clear_tabs(self) -> None:
         if dpg.does_item_exist(self.tab_bar_tag):
@@ -97,7 +97,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 tag=button_tag,
                 label=LBL_RECONSTRUCTION_EXPORT_FTI,
                 width=-1,
-                callback=self._handle_export_button_clicked,
+                callback=lambda s, a, u: self._handle_export_button_clicked(generator_name),
             )
 
             dpg.add_separator(parent=tab_tag)

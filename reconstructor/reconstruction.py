@@ -106,7 +106,7 @@ class Reconstruction(BaseModel):
 
         return cls(**data)
 
-    def export(self, as_string: bool = True) -> Dict[str, Dict[FeatureKey, Union[str, FeatureValue]]]:
+    def export(self, as_string: bool = False) -> Dict[GeneratorName, Dict[FeatureKey, Union[str, FeatureValue]]]:
         features = {}
         for name, instructions in self.instructions.items():
             if not instructions:

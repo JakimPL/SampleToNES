@@ -398,6 +398,7 @@ NOD_LABEL_LIBRARIES = "Libraries"
 # File extensions
 EXT_RECONSTRUCTION_FILE = ".json"
 EXT_LIBRARY_FILE = ".dat"
+EXT_FTI_FILE = ".fti"
 
 # Bar plot display settings
 LBL_BAR_PLOT_DISPLAY = "Bar plot display"

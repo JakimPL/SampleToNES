@@ -1,6 +1,8 @@
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, cast
 
 import dearpygui.dearpygui as dpg
+import numpy as np
 
 from browser.config.manager import ConfigManager
 from browser.graphs.waveform import GUIWaveformDisplay
@@ -11,6 +13,7 @@ from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from constants.browser import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
+    EXT_FTI_FILE,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -24,8 +27,9 @@ from constants.browser import (
     TPL_RECONSTRUCTION_GENERATOR_CHECKBOX,
     VAL_PLOT_WIDTH_FULL,
 )
-from constants.enums import GeneratorName
+from constants.enums import FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
+from utils.fami import write_fti
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -89,6 +93,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_reconstruction_details(self) -> None:
         self.reconstruction_details = GUIReconstructionDetailsPanel()
         self.reconstruction_details.create_panel()
+        self.reconstruction_details.set_callback(on_instrument_export=self._handle_instrument_export)
 
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
@@ -149,3 +154,24 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
+
+    def _handle_instrument_export(self, generator_name: GeneratorName) -> None:
+        if not self.reconstruction_data:
+            return
+
+        reconstruction = self.reconstruction_data.reconstruction
+        feature_data = reconstruction.export(as_string=False)
+        if generator_name in feature_data:
+            generator_features = feature_data[generator_name]
+            file_name = Path(reconstruction.audio_filepath).stem
+            instrument_name = f"{file_name}_{generator_name}"
+
+            write_fti(
+                filename=f"{instrument_name}{EXT_FTI_FILE}",
+                instrument_name=instrument_name,
+                volume=cast(Optional[np.ndarray], generator_features.get(FeatureKey.VOLUME)),
+                arpeggio=cast(Optional[np.ndarray], generator_features.get(FeatureKey.ARPEGGIO)),
+                pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.PITCH)),
+                hi_pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.HI_PITCH)),
+                duty_cycle=cast(Optional[np.ndarray], generator_features.get(FeatureKey.DUTY_CYCLE)),
+            )
