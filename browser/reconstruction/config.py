@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from constants.browser import (
     CLR_BAR_PLOT_ARPEGGIO,
@@ -28,6 +28,7 @@ class FeaturePlotConfig:
     color: Tuple[int, int, int, int]
     y_min: float
     y_max: float
+    y_ticks: Optional[Tuple[int, ...]]
 
 
 FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
@@ -37,6 +38,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         color=CLR_BAR_PLOT_VOLUME,
         y_min=VAL_BAR_PLOT_VOLUME_Y_MIN,
         y_max=VAL_BAR_PLOT_VOLUME_Y_MAX,
+        y_ticks=(0, 4, 8, 12, 16),
     ),
     FeatureKey.ARPEGGIO: FeaturePlotConfig(
         feature_key=FeatureKey.ARPEGGIO,
@@ -44,6 +46,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         color=CLR_BAR_PLOT_ARPEGGIO,
         y_min=-1.0,
         y_max=-1.0,
+        y_ticks=None,
     ),
     FeatureKey.PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.PITCH,
@@ -51,6 +54,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         color=CLR_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
+        y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
     ),
     FeatureKey.HI_PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.HI_PITCH,
@@ -58,6 +62,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         color=CLR_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
+        y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
     ),
     FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
         feature_key=FeatureKey.DUTY_CYCLE,
@@ -65,6 +70,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         color=CLR_BAR_PLOT_DUTY_CYCLE,
         y_min=VAL_BAR_PLOT_DUTY_CYCLE_Y_MIN,
         y_max=VAL_BAR_PLOT_DUTY_CYCLE_Y_MAX,
+        y_ticks=(0, 1, 2, 3),
     ),
 }
 

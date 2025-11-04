@@ -6,7 +6,11 @@ import numpy as np
 
 from browser.graphs.bar import GUIBarPlotDisplay
 from browser.panels.panel import GUIPanel
-from browser.reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CONFIGS
+from browser.reconstruction.config import (
+    FEATURE_DISPLAY_ORDER,
+    FEATURE_PLOT_CONFIGS,
+    FeaturePlotConfig,
+)
 from browser.reconstruction.feature import FeatureData
 from constants.browser import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
@@ -110,19 +114,32 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
 
-        plot = self._add_bar_plot(plot_tag, tab_tag, config, data)
+        plot = self._add_bar_plot(plot_tag, tab_tag, config, data, generator_name, feature_key)
         self._add_raw_data_text(plot_tag, tab_tag, data)
 
         return plot
 
-    def _add_bar_plot(self, plot_tag: str, parent_tag: str, config, data: np.ndarray) -> GUIBarPlotDisplay:
+    def _add_bar_plot(
+        self,
+        plot_tag: str,
+        parent_tag: str,
+        config: FeaturePlotConfig,
+        data: np.ndarray,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> GUIBarPlotDisplay:
         y_min = config.y_min
         y_max = config.y_max
+        y_ticks = config.y_ticks
 
         if y_min == -1.0 and y_max == -1.0:
             max_abs_value = float(np.max(np.abs(data)))
             y_min = -max_abs_value
             y_max = max_abs_value
+
+            step = max(1, int(np.ceil(max_abs_value / 4)))
+            max_tick = step * 4
+            y_ticks = tuple(range(-max_tick, max_tick + 1, step))
 
         y_min -= 1.0
         y_max += 1.0
@@ -137,12 +154,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_max=y_max,
         )
 
-        generator_name = plot_tag.split("_")[-2]
-        feature_key = plot_tag.split("_")[-1]
         plot.load_data(
             data=data,
             name=f"{generator_name} - {feature_key}",
             color=config.color,
+            y_ticks=y_ticks,
         )
 
         return plot

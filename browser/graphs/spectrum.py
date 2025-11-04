@@ -32,10 +32,21 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         y_min: float = MIN_FREQUENCY,
         y_max: float = SAMPLE_RATE / 2,
     ) -> None:
-        super().__init__(tag, parent, width, height, label, x_min, x_max, y_min, y_max)
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
         self.current_library_fragment: Optional[LibraryFragment] = None
+
+        super().__init__(
+            tag,
+            parent,
+            width,
+            height,
+            label,
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+        )
 
     def _create_content(self) -> None:
         with dpg.plot(

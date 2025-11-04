@@ -46,13 +46,23 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         y_min: float = -1.0,
         y_max: float = 1.0,
     ):
-        super().__init__(tag, parent, width, height, label, x_min, x_max, y_min, y_max)
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
-
         self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
+
+        super().__init__(
+            tag,
+            parent,
+            width,
+            height,
+            label,
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+        )
 
     @property
     def sample_length(self) -> float:

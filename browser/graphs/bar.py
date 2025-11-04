@@ -32,8 +32,20 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         y_min: float = VAL_BAR_PLOT_DEFAULT_Y_MIN,
         y_max: float = VAL_BAR_PLOT_DEFAULT_Y_MAX,
     ):
-        super().__init__(tag, parent, width, height, label, x_min, x_max, y_min, y_max)
         self.current_data: Optional[np.ndarray] = None
+        self.y_ticks: Optional[Tuple[int, ...]] = None
+
+        super().__init__(
+            tag,
+            parent,
+            width,
+            height,
+            label,
+            x_min,
+            x_max,
+            y_min,
+            y_max,
+        )
 
     def _create_content(self) -> None:
         with dpg.plot(
@@ -47,9 +59,12 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, label=LBL_BAR_PLOT_VALUE_LABEL, tag=self.y_axis_tag)
 
-    def load_data(self, data: np.ndarray, name: str, color: Tuple[int, int, int, int]) -> None:
+    def load_data(
+        self, data: np.ndarray, name: str, color: Tuple[int, int, int, int], y_ticks: Optional[Tuple[int, ...]] = None
+    ) -> None:
         self.clear_layers()
         self.current_data = data
+        self.y_ticks = y_ticks
 
         self.add_layer(BarLayer(data=data, name=name, color=color))
 
@@ -88,3 +103,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+
+        if self.y_ticks is not None:
+            tick_labels = [str(val) for val in self.y_ticks]
+            dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
