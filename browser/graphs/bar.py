@@ -6,14 +6,17 @@ import numpy as np
 from browser.graphs.graph import GUIGraphDisplay
 from browser.graphs.layers.bar import BarLayer
 from constants.browser import (
+    CLR_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_BAR_PLOT_DISPLAY,
     LBL_BAR_PLOT_VALUE_LABEL,
+    SUF_BAR_PLOT_ZERO_LINE,
     VAL_BAR_PLOT_AXIS_SLOT,
     VAL_BAR_PLOT_DEFAULT_X_MIN,
     VAL_BAR_PLOT_DEFAULT_Y_MAX,
     VAL_BAR_PLOT_DEFAULT_Y_MIN,
+    VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
@@ -34,6 +37,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
     ):
         self.current_data: Optional[np.ndarray] = None
         self.y_ticks: Optional[Tuple[int, ...]] = None
+        self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
 
         super().__init__(
             tag,
@@ -98,11 +102,40 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
 
             dpg.bind_item_theme(series_tag, series_theme)
 
+        self._add_zero_line()
         self._update_axes_limits()
+
+    def _add_zero_line(self) -> None:
+        if not dpg.does_item_exist(self.y_axis_tag):
+            return
+
+        if dpg.does_item_exist(self.zero_line_tag):
+            dpg.delete_item(self.zero_line_tag)
+
+        dpg.add_line_series(
+            [self.x_min, self.x_max],
+            [0.0, 0.0],
+            parent=self.y_axis_tag,
+            tag=self.zero_line_tag,
+        )
+
+        with dpg.theme() as zero_line_theme:
+            with dpg.theme_component(dpg.mvLineSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Line, CLR_BAR_PLOT_ZERO_LINE, category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_style(
+                    dpg.mvPlotStyleVar_LineWeight,
+                    VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
+                    category=dpg.mvThemeCat_Plots,
+                )
+
+        dpg.bind_item_theme(self.zero_line_tag, zero_line_theme)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+
+        if dpg.does_item_exist(self.zero_line_tag):
+            dpg.configure_item(self.zero_line_tag, x=[self.x_min, self.x_max], y=[0.0, 0.0])
 
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
