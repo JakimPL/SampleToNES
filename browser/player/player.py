@@ -22,7 +22,6 @@ class AudioPlayer:
         self.audio_device_manager = audio_device_manager
         self.audio_data: AudioData = AudioData.empty(sample_rate)
         self.on_position_changed = on_position_changed
-        self.audio_device_manager.set_position_callback(on_position_changed)
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
@@ -30,6 +29,12 @@ class AudioPlayer:
     def clear_audio(self) -> None:
         self.stop()
         self.audio_data = AudioData.empty(self.audio_data.sample_rate)
+
+    def _on_device_position_changed(self, position: int) -> None:
+        if self.audio_data.is_loaded():
+            self.audio_data.set_position(position)
+        if self.on_position_changed:
+            self.on_position_changed(position)
 
     def set_position(self, position: int) -> None:
         if self.audio_data.is_loaded():
@@ -43,6 +48,7 @@ class AudioPlayer:
             raise PlaybackError("no audio loaded")
 
         try:
+            self.audio_device_manager.set_position_callback(self._on_device_position_changed)
             audio = self.audio_data.sample
             audio = stereo_to_mono(audio)
             audio = clip_audio(audio)

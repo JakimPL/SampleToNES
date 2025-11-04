@@ -36,7 +36,19 @@ class AudioDeviceManager:
         if default_output is not None:
             self.set_device(default_output)
 
-    def _audio_callback(self, outdata: np.ndarray, frames: int, time_info: Any, status: sd.CallbackFlags) -> None:
+    def _audio_callback(
+        self,
+        outdata: np.ndarray,
+        frames: int,
+        time_info: Any,
+        status: sd.CallbackFlags,
+    ) -> None:
+        should_stop = False
+        callback = None
+        position = 0
+        chunk_size = 0
+        chunk_data = np.array([])
+
         with self._lock:
             if self._audio_data is None or not self._is_playing:
                 outdata.fill(0)
@@ -51,16 +63,18 @@ class AudioDeviceManager:
                 position = len(self._audio_data)
                 self._position = position
                 callback = self._on_position_changed
+                should_stop = True
+            else:
+                chunk_size = min(frames, remaining)
+                chunk_data = self._audio_data[self._position : self._position + chunk_size].copy()
+                self._position += chunk_size
+                position = self._position
+                callback = self._on_position_changed
 
-                if callback:
-                    callback(position)
-                raise sd.CallbackStop()
-
-            chunk_size = min(frames, remaining)
-            chunk_data = self._audio_data[self._position : self._position + chunk_size].copy()
-            self._position += chunk_size
-            position = self._position
-            callback = self._on_position_changed
+        if should_stop:
+            if callback:
+                callback(position)
+            raise sd.CallbackStop()
 
         outdata[:chunk_size] = chunk_data.reshape(-1, 1)
 

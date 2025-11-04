@@ -84,4 +84,4 @@ class GUIReconstructionPanel(GUIPanel):
         self.waveform_display.clear_layers()
 
     def _on_player_position_changed(self, position: int) -> None:
-        pass
+        self.waveform_display.set_position(position)

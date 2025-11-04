@@ -10,6 +10,7 @@ from browser.reconstruction.data import ReconstructionData
 from constants.browser import (
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
+    CLR_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_PLOT_ORIGINAL,
@@ -23,9 +24,11 @@ from constants.browser import (
     LBL_WAVEFORM_TIME_LABEL,
     MSG_WAVEFORM_NO_FRAGMENT,
     MSG_WAVEFORM_NO_RECONSTRUCTION,
+    SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
     VAL_WAVEFORM_AXIS_SLOT,
+    VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
@@ -50,6 +53,9 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
+
+        self.current_position: int = 0
+        self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
         self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
 
         super().__init__(
@@ -103,6 +109,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
     def load_library_fragment(self, fragment: LibraryFragment) -> None:
         self.clear_layers()
         self.current_data = fragment
+        self.current_position = 0
 
         self.add_layer(
             WaveformLayer(
@@ -117,10 +124,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.x_max = float(len(fragment.sample))
         self._update_info_display(MSG_WAVEFORM_NO_FRAGMENT)
         self._update_axes_limits()
+        self._update_position_indicator()
 
     def load_reconstruction_data(self, reconstruction_data: ReconstructionData) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data
+        self.current_position = 0
 
         approximation = reconstruction_data.reconstruction.approximation
         original_audio = reconstruction_data.original_audio
@@ -156,6 +165,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.x_max = float(len(reconstruction_data.original_audio))
         self._update_info_display(MSG_WAVEFORM_NO_RECONSTRUCTION)
         self._update_axes_limits()
+        self._update_position_indicator()
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -187,6 +197,14 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
+        if dpg.does_item_exist(self.position_indicator_tag):
+            position_x = float(self.current_position)
+            dpg.configure_item(
+                self.position_indicator_tag,
+                x=[position_x, position_x],
+                y=[self.y_min, self.y_max],
+            )
+
     def _update_info_display(self, message: str) -> None:
         if not dpg.does_item_exist(self.info_tag):
             return
@@ -196,6 +214,40 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             return
 
         dpg.set_value(self.info_tag, "")
+
+    def set_position(self, position: int) -> None:
+        self.current_position = position
+        self._update_position_indicator()
+
+    def _update_position_indicator(self) -> None:
+        if not dpg.does_item_exist(self.y_axis_tag):
+            return
+
+        if dpg.does_item_exist(self.position_indicator_tag):
+            dpg.delete_item(self.position_indicator_tag)
+
+        if self.current_position > 0 and self.current_data:
+            position_x = float(self.current_position)
+
+            dpg.add_line_series(
+                [position_x, position_x],
+                [self.y_min, self.y_max],
+                parent=self.y_axis_tag,
+                tag=self.position_indicator_tag,
+            )
+
+            with dpg.theme() as indicator_theme:
+                with dpg.theme_component(dpg.mvLineSeries):
+                    dpg.add_theme_color(
+                        dpg.mvPlotCol_Line, CLR_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
+                    )
+                    dpg.add_theme_style(
+                        dpg.mvPlotStyleVar_LineWeight,
+                        VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
+                        category=dpg.mvThemeCat_Plots,
+                    )
+
+            dpg.bind_item_theme(self.position_indicator_tag, indicator_theme)
 
     def _reset_x_axis(self) -> None:
         if self.layers:

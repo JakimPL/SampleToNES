@@ -99,4 +99,4 @@ class GUIInstructionPanel(GUIPanel):
             self.instruction_details.clear_display()
 
     def _on_player_position_changed(self, position: int) -> None:
-        pass
+        self.waveform_display.set_position(position)
