@@ -1,4 +1,3 @@
-import hashlib
 from typing import Self
 
 from pydantic import BaseModel, Field
@@ -7,7 +6,7 @@ from configs.config import Config as Config
 from configs.library import LibraryConfig
 from constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from ffts.window import Window
-from utils.common import dump
+from utils.common import hash_model
 
 
 class LibraryKey(BaseModel):
@@ -18,9 +17,7 @@ class LibraryKey(BaseModel):
 
     @classmethod
     def create(cls, config: LibraryConfig, window: Window) -> Self:
-        config_fields = config.model_dump()
-        json_string = dump(config_fields)
-        config_hash = hashlib.sha256(json_string.encode("utf-8")).hexdigest()[:32]
+        config_hash = hash_model(config)
         return cls(
             sample_rate=config.sample_rate,
             frame_length=window.frame_length,

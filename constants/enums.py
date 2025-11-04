@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import List
 
 
 class LibraryGeneratorName(StrEnum):
@@ -33,3 +34,15 @@ class FeatureKey(StrEnum):
     PITCH = "pitch"
     HI_PITCH = "hi_pitch"
     DUTY_CYCLE = "duty_cycle"
+
+
+ABBREVIATIONS = {
+    GeneratorName.PULSE1: "P",
+    GeneratorName.PULSE2: "p",
+    GeneratorName.TRIANGLE: "T",
+    GeneratorName.NOISE: "N",
+}
+
+
+def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
+    return "".join(ABBREVIATIONS[name] for name in generator_names)
