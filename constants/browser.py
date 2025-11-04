@@ -98,6 +98,7 @@ TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
 TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
 TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
 TITLE_DIALOG_EXPORT_WAV = "Export WAV"
+TITLE_DIALOG_EXPORT_FTI = "Export FTI Instrument"
 TITLE_DIALOG_ERROR = "Error"
 
 # Plot labels
@@ -135,8 +136,9 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
 )
 
 # File extensions
-EXT_DIALOG_JSON = "*.json"
-EXT_DIALOG_WAV = "*.wav"
+EXT_DIALOG_JSON = ".json"
+EXT_DIALOG_WAV = ".wav"
+EXT_DIALOG_FTI = ".fti"
 
 # Default display values
 PFX_GLOBAL_ERROR = "Error: {}"
