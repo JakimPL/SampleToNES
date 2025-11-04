@@ -33,6 +33,7 @@ from constants.browser import (
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
+from constants.enums import GeneratorName
 from library.data import LibraryFragment
 
 
@@ -134,12 +135,17 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self._update_axes_limits()
         self._update_position_indicator()
 
-    def load_reconstruction_data(self, reconstruction_data: ReconstructionData) -> None:
+    def load_reconstruction_data(
+        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+    ) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data
         self.current_position = 0
 
-        approximation = reconstruction_data.reconstruction.approximation
+        if selected_generators is None:
+            selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
+
+        approximation = reconstruction_data.get_partials(selected_generators)
         original_audio = reconstruction_data.original_audio
 
         original_audio_coefficient = 1.0

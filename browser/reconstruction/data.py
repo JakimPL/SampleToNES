@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Self
+from typing import List, Self
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from configs.config import Config
+from constants.enums import GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from utils.audio.io import load_audio
 
@@ -36,3 +37,18 @@ class ReconstructionData(BaseModel):
             reconstruction=reconstruction,
             original_audio=original_audio,
         )
+
+    def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
+        if not generator_names:
+            return np.zeros_like(self.original_audio)
+
+        selected_approximations = [
+            self.reconstruction.approximations[generator_name]
+            for generator_name in generator_names
+            if generator_name in self.reconstruction.approximations
+        ]
+
+        if not selected_approximations:
+            return np.zeros_like(self.original_audio)
+
+        return np.sum(selected_approximations, axis=0)
