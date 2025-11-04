@@ -77,7 +77,15 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         elif isinstance(self.current_data, ReconstructionData):
             return float(len(self.current_data.reconstruction.approximation))
 
-        return VAL_GRAPH_DEFAULT_X_MAX
+        return 0.0
+
+    def _get_sample_length_int(self) -> int:
+        if isinstance(self.current_data, LibraryFragment):
+            return len(self.current_data.sample)
+        elif isinstance(self.current_data, ReconstructionData):
+            return len(self.current_data.reconstruction.approximation)
+
+        return 0
 
     def _create_content(self) -> None:
         with dpg.group(tag=self.controls_tag, horizontal=True):
@@ -226,7 +234,8 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         if dpg.does_item_exist(self.position_indicator_tag):
             dpg.delete_item(self.position_indicator_tag)
 
-        if self.current_position > 0 and self.current_data:
+        sample_length = self._get_sample_length_int()
+        if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
 
             dpg.add_line_series(
