@@ -22,7 +22,7 @@ class AudioPlayer:
         self.audio_device_manager = audio_device_manager
         self.audio_data: AudioData = AudioData.empty(sample_rate)
         self.on_position_changed = on_position_changed
-        self.is_playing = False
+        self.audio_device_manager.set_position_callback(on_position_changed)
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
@@ -30,11 +30,11 @@ class AudioPlayer:
     def clear_audio(self) -> None:
         self.stop()
         self.audio_data = AudioData.empty(self.audio_data.sample_rate)
-        self.is_playing = False
 
     def set_position(self, position: int) -> None:
         if self.audio_data.is_loaded():
             self.audio_data.set_position(position)
+            self.audio_device_manager.set_position(position)
             if self.on_position_changed:
                 self.on_position_changed(position)
 
@@ -48,19 +48,26 @@ class AudioPlayer:
             audio = clip_audio(audio)
             audio = audio.astype(np.float32)
             self.audio_device_manager.play(audio)
-        except Exception as e:
-            raise PlaybackError(str(e)) from e
-
-        self.is_playing = True
+        except Exception as exception:
+            raise PlaybackError(str(exception)) from exception
 
     def pause(self) -> None:
         self.audio_device_manager.pause()
-        self.is_playing = False
+
+    def resume(self) -> None:
+        self.audio_device_manager.resume()
 
     def stop(self) -> None:
         self.audio_device_manager.stop()
         if self.audio_data.is_loaded():
             self.audio_data.reset_position()
-        self.is_playing = False
         if self.on_position_changed:
             self.on_position_changed(0)
+
+    @property
+    def is_playing(self) -> bool:
+        return self.audio_device_manager.is_playing()
+
+    @property
+    def is_paused(self) -> bool:
+        return self.audio_device_manager.is_paused()
