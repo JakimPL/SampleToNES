@@ -57,7 +57,11 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_separator()
 
             dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
-            dpg.add_button(label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY)
+            dpg.add_button(
+                label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
+                width=-1,
+                callback=self._select_output_directory_dialog,
+            )
 
             output_directory = (
                 self.config_manager.config.general.output_directory if self.config_manager.config else OUTPUT_DIRECTORY

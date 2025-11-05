@@ -81,7 +81,11 @@ class GUIConfigPanel(GUIPanel):
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_LIBRARY_DIRECTORY)
-            dpg.add_button(label=LBL_BUTTON_SELECT_LIBRARY_DIRECTORY, callback=self._select_library_directory_dialog)
+            dpg.add_button(
+                label=LBL_BUTTON_SELECT_LIBRARY_DIRECTORY,
+                width=-1,
+                callback=self._select_library_directory_dialog,
+            )
 
             library_directory = (
                 self.config_manager.config.general.library_directory

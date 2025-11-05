@@ -36,7 +36,12 @@ class GUIBrowserPanel(GUITreePanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
-            dpg.add_button(label=LBL_BUTTON_REFRESH_LIST, callback=self._refresh_tree)
+            dpg.add_button(
+                label=LBL_BUTTON_REFRESH_LIST,
+                width=-1,
+                callback=self._refresh_tree,
+            )
+
             dpg.add_separator()
             self.create_search_ui(self.tag)
             dpg.add_separator()

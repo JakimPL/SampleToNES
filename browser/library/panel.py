@@ -16,12 +16,10 @@ from browser.tree.node import (
 from browser.utils import show_modal_dialog
 from configs.config import Config
 from constants.browser import (
-    DIM_DIALOG_ERROR_HEIGHT,
     DIM_DIALOG_ERROR_WIDTH,
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
-    LBL_BUTTON_OK,
     LBL_BUTTON_REFRESH_LIBRARIES,
     LBL_BUTTON_REGENERATE_LIBRARY,
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
@@ -83,9 +81,16 @@ class GUILibraryPanel(GUITreePanel):
 
             with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
                 dpg.add_button(
-                    label=LBL_BUTTON_GENERATE_LIBRARY, callback=self._generate_library, tag=TAG_LIBRARY_BUTTON_GENERATE
+                    label=LBL_BUTTON_GENERATE_LIBRARY,
+                    width=-1,
+                    callback=self._generate_library,
+                    tag=TAG_LIBRARY_BUTTON_GENERATE,
                 )
-                dpg.add_button(label=LBL_BUTTON_REFRESH_LIBRARIES, callback=self._refresh_libraries)
+                dpg.add_button(
+                    label=LBL_BUTTON_REFRESH_LIBRARIES,
+                    width=-1,
+                    callback=self._refresh_libraries,
+                )
                 dpg.add_progress_bar(tag=TAG_LIBRARY_PROGRESS, show=False)
 
             dpg.add_separator()
