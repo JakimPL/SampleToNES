@@ -23,7 +23,6 @@ from constants.browser import (
     LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
     LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
-    LBL_MENU_LOAD_AUDIO,
     LBL_MENU_LOAD_CONFIG,
     LBL_MENU_LOAD_RECONSTRUCTION,
     LBL_MENU_RECONSTRUCT_DIRECTORY,
@@ -31,9 +30,7 @@ from constants.browser import (
     LBL_MENU_SAVE_CONFIG,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
-    MSG_CONFIG_LOAD_ERROR,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
-    MSG_CONFIG_SAVE_ERROR,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
@@ -45,8 +42,6 @@ from constants.browser import (
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
     TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
-    TITLE_DIALOG_EXPORT_WAV,
-    TITLE_DIALOG_LOAD_AUDIO,
     TITLE_DIALOG_LOAD_CONFIG,
     TITLE_DIALOG_LOAD_RECONSTRUCTION,
     TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
@@ -167,17 +162,17 @@ class GUI:
             dpg.add_file_extension(EXT_DIALOG_JSON)
 
     def _handle_save_config(self, sender, app_data) -> None:
-        if not app_data or "filepath_name" not in app_data:
+        if not app_data or "file_path_name" not in app_data:
             return
 
-        filepath = app_data["filepath_name"]
+        filepath = app_data["file_path_name"]
         if not filepath:
             return
 
         try:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
-        except Exception as error:
+        except Exception as error:  # TODO: to narrow
             self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
 
     def _load_config_dialog(self) -> None:
@@ -191,10 +186,10 @@ class GUI:
             dpg.add_file_extension(EXT_DIALOG_JSON)
 
     def _handle_load_config(self, sender, app_data) -> None:
-        if not app_data or "filepath_name" not in app_data:
+        if not app_data or "file_path_name" not in app_data:
             return
 
-        filepath = app_data["filepath_name"]
+        filepath = app_data["file_path_name"]
         if not filepath:
             return
 

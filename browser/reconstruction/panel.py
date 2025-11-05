@@ -51,6 +51,7 @@ from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import write_audio
 from utils.fami import write_fti
+from utils.serialization import SerializedData
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -261,11 +262,11 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_file_extension(EXT_DIALOG_FTI)
 
     def _handle_fti_export_dialog_result(self, sender, app_data) -> None:
-        if not app_data or "filepath_name" not in app_data:
+        if not app_data or "file_path_name" not in app_data:
             self._pending_fti_export = None
             return
 
-        filepath = app_data["filepath_name"]
+        filepath = app_data["file_path_name"]
         if not filepath or not self._pending_fti_export:
             self._pending_fti_export = None
             return
@@ -312,11 +313,11 @@ class GUIReconstructionPanel(GUIPanel):
         ):
             dpg.add_file_extension(EXT_DIALOG_WAV)
 
-    def _handle_wav_export_dialog_result(self, sender, app_data) -> None:
-        if not app_data or "filepath_name" not in app_data:
+    def _handle_wav_export_dialog_result(self, sender, app_data: SerializedData) -> None:
+        if not app_data or "file_path_name" not in app_data:
             return
 
-        filepath = app_data["filepath_name"]
+        filepath = app_data["file_path_name"]
         if not filepath or not self.reconstruction_data:
             return
 
