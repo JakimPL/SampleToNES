@@ -36,6 +36,11 @@ class FeatureKey(StrEnum):
     DUTY_CYCLE = "duty_cycle"
 
 
+class AudioSourceType(StrEnum):
+    RECONSTRUCTION = "reconstruction"
+    ORIGINAL = "original"
+
+
 ABBREVIATIONS = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",

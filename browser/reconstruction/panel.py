@@ -21,18 +21,23 @@ from constants.browser import (
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
+    LBL_RADIO_ORIGINAL_AUDIO,
+    LBL_RADIO_RECONSTRUCTION_AUDIO,
+    LBL_RECONSTRUCTION_AUDIO_SOURCE,
     LBL_RECONSTRUCTION_WAVEFORM,
+    TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
     TAG_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTION_PLAYER_PANEL,
     TAG_RECONSTRUCTION_WAVEFORM_DISPLAY,
     TITLE_DIALOG_EXPORT_FTI,
+    TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO,
     TPL_RECONSTRUCTION_GENERATOR_CHECKBOX,
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_FULL,
 )
-from constants.enums import FeatureKey, GeneratorName
+from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
 from utils.fami import write_fti
 
@@ -46,6 +51,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.player_panel: GUIAudioPlayerPanel
         self.reconstruction_data: Optional[ReconstructionData] = None
         self._pending_fti_export: Optional[tuple[GeneratorName, dict]] = None
+        self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_PANEL,
@@ -54,6 +60,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def create_panel(self) -> None:
         self._create_player_panel()
+        self._create_audio_source_radio_buttons()
         dpg.add_separator(parent=self.parent_tag)
         self._create_waveform_display()
         self._create_generator_checkboxes()
@@ -67,6 +74,18 @@ class GUIReconstructionPanel(GUIPanel):
             on_position_changed=self._on_player_position_changed,
             audio_device_manager=self.audio_device_manager,
         )
+
+    def _create_audio_source_radio_buttons(self) -> None:
+        with dpg.group(horizontal=True, parent=self.parent_tag, tag=TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP):
+            dpg.add_text(LBL_RECONSTRUCTION_AUDIO_SOURCE)
+            dpg.add_radio_button(
+                items=[LBL_RADIO_RECONSTRUCTION_AUDIO, LBL_RADIO_ORIGINAL_AUDIO],
+                tag=TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector"),
+                default_value=LBL_RADIO_RECONSTRUCTION_AUDIO,
+                callback=self._on_audio_source_changed,
+                horizontal=True,
+                enabled=False,
+            )
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformDisplay(
@@ -123,16 +142,34 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         selected_generators = self._get_selected_generators()
-        sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
 
         self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
-
-        partial_approximation = self.reconstruction_data.get_partials(selected_generators)
-        audio_data = AudioData.from_array(partial_approximation, sample_rate)
-        self.player_panel.load_audio_data(audio_data)
+        self._update_audio_player()
 
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
+
+    def _on_audio_source_changed(self, sender, app_data) -> None:
+        if app_data == LBL_RADIO_ORIGINAL_AUDIO:
+            self.current_audio_source = AudioSourceType.ORIGINAL
+        else:
+            self.current_audio_source = AudioSourceType.RECONSTRUCTION
+        self._update_audio_player()
+
+    def _update_audio_player(self) -> None:
+        if not self.reconstruction_data:
+            return
+
+        sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
+
+        if self.current_audio_source == AudioSourceType.ORIGINAL:
+            audio_data = AudioData.from_array(self.reconstruction_data.original_audio, sample_rate)
+        else:
+            selected_generators = self._get_selected_generators()
+            partial_approximation = self.reconstruction_data.get_partials(selected_generators)
+            audio_data = AudioData.from_array(partial_approximation, sample_rate)
+
+        self.player_panel.load_audio_data(audio_data)
 
     def _update_generator_checkboxes(self, reconstruction_data: ReconstructionData) -> None:
         available_generators = set(reconstruction_data.reconstruction.instructions.keys())
@@ -145,18 +182,28 @@ class GUIReconstructionPanel(GUIPanel):
             if is_available:
                 dpg.set_value(tag, True)
 
+        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector")
+        dpg.configure_item(radio_tag, enabled=True)
+
     def clear_display(self) -> None:
         self.reconstruction_data = None
+        self.current_audio_source = AudioSourceType.RECONSTRUCTION
         self.reconstruction_details.clear_display()
         self.player_panel.clear_audio()
         self.waveform_display.clear_layers()
         self._reset_generator_checkboxes()
+        self._reset_audio_source_radio()
 
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:
             tag = TPL_RECONSTRUCTION_GENERATOR_CHECKBOX.format(generator_name)
             dpg.configure_item(tag, enabled=False, default_value=False)
             dpg.set_value(tag, False)
+
+    def _reset_audio_source_radio(self) -> None:
+        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector")
+        dpg.configure_item(radio_tag, enabled=False)
+        dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
