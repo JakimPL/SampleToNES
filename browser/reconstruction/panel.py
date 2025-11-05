@@ -246,8 +246,8 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         generator_features = feature_data[generator_name]
-        file_name = Path(reconstruction.audio_filepath).stem
-        instrument_name = f"{file_name} ({generator_name})"
+        filename = Path(reconstruction.audio_filepath).stem
+        instrument_name = f"{filename} ({generator_name})"
 
         self._pending_fti_export = (generator_name, generator_features)
         with dpg.file_dialog(
@@ -261,12 +261,12 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_file_extension(EXT_DIALOG_FTI)
 
     def _handle_fti_export_dialog_result(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
+        if not app_data or "filepath_name" not in app_data:
             self._pending_fti_export = None
             return
 
-        file_path = app_data["file_path_name"]
-        if not file_path or not self._pending_fti_export:
+        filepath = app_data["filepath_name"]
+        if not filepath or not self._pending_fti_export:
             self._pending_fti_export = None
             return
 
@@ -277,11 +277,11 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         reconstruction = self.reconstruction_data.reconstruction
-        file_name = Path(reconstruction.audio_filepath).stem
-        instrument_name = f"{file_name}_{generator_name}"
+        filename = Path(reconstruction.audio_filepath).stem
+        instrument_name = f"{filename}_{generator_name}"
 
         write_fti(
-            filename=file_path,
+            filename=filepath,
             instrument_name=instrument_name,
             volume=cast(Optional[np.ndarray], generator_features.get(FeatureKey.VOLUME)),
             arpeggio=cast(Optional[np.ndarray], generator_features.get(FeatureKey.ARPEGGIO)),
@@ -300,7 +300,7 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         reconstruction = self.reconstruction_data.reconstruction
-        file_name = Path(reconstruction.audio_filepath).stem
+        filename = Path(reconstruction.audio_filepath).stem
 
         with dpg.file_dialog(
             label=TITLE_DIALOG_EXPORT_WAV,
@@ -308,16 +308,16 @@ class GUIReconstructionPanel(GUIPanel):
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_wav_export_dialog_result,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-            default_filename=file_name,
+            default_filename=filename,
         ):
             dpg.add_file_extension(EXT_DIALOG_WAV)
 
     def _handle_wav_export_dialog_result(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
+        if not app_data or "filepath_name" not in app_data:
             return
 
-        file_path = app_data["file_path_name"]
-        if not file_path or not self.reconstruction_data:
+        filepath = app_data["filepath_name"]
+        if not filepath or not self.reconstruction_data:
             return
 
         selected_generators = self._get_selected_generators()
@@ -325,7 +325,7 @@ class GUIReconstructionPanel(GUIPanel):
         sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
 
         try:
-            write_audio(file_path, partial_approximation, sample_rate)
+            write_audio(filepath, partial_approximation, sample_rate)
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
         except Exception as error:
             self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))

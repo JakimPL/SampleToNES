@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import dearpygui.dearpygui as dpg
 
@@ -33,6 +33,7 @@ from constants.browser import (
 )
 from constants.enums import GeneratorName
 from constants.general import MAX_MIXER, MIXER, OUTPUT_DIRECTORY
+from utils.serialization import SerializedData
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -126,7 +127,7 @@ class GUIReconstructorPanel(GUIPanel):
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
-    def _get_all_gui_values(self) -> Dict[str, Any]:
+    def _get_all_gui_values(self) -> SerializedData:
         gui_values = {}
         for tag in self.config_manager.config_parameters["reconstructor"].keys():
             gui_values[tag] = dpg.get_value(tag)
@@ -146,7 +147,7 @@ class GUIReconstructorPanel(GUIPanel):
         ):
             pass
 
-    def _select_output_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
+    def _select_output_directory(self, sender: Any, app_data: SerializedData) -> None:
         directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
         self.change_output_directory(directory_path)
 

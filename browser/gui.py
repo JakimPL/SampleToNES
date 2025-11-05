@@ -8,6 +8,7 @@ from browser.library.panel import GUILibraryPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
+from browser.utils import show_modal_dialog
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -19,25 +20,40 @@ from constants.browser import (
     EXT_DIALOG_WAV,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_EXIT,
+    LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
     LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
     LBL_MENU_LOAD_AUDIO,
     LBL_MENU_LOAD_CONFIG,
     LBL_MENU_LOAD_RECONSTRUCTION,
+    LBL_MENU_RECONSTRUCT_DIRECTORY,
+    LBL_MENU_RECONSTRUCT_FILE,
+    LBL_MENU_SAVE_CONFIG,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
+    MSG_CONFIG_LOAD_ERROR,
+    MSG_CONFIG_LOADED_SUCCESSFULLY,
+    MSG_CONFIG_SAVE_ERROR,
+    MSG_CONFIG_SAVED_SUCCESSFULLY,
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
+    TAG_CONFIG_STATUS_POPUP,
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_PANEL_GROUP,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_WINDOW_MAIN,
+    TITLE_DIALOG_CONFIG_STATUS,
+    TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
     TITLE_DIALOG_EXPORT_WAV,
     TITLE_DIALOG_LOAD_AUDIO,
     TITLE_DIALOG_LOAD_CONFIG,
     TITLE_DIALOG_LOAD_RECONSTRUCTION,
+    TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
+    TITLE_DIALOG_RECONSTRUCT_FILE,
+    TITLE_DIALOG_SAVE_CONFIG,
     TITLE_WINDOW_MAIN,
+    TPL_RECONSTRUCTION_EXPORT_ERROR,
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
 from library.data import LibraryFragment
@@ -86,12 +102,18 @@ class GUI:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
             with dpg.menu_bar():
                 with dpg.menu(label=LBL_MENU_FILE):
-                    dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self.load_config_dialog)
-                    dpg.add_menu_item(label=LBL_MENU_LOAD_AUDIO, callback=self.load_audio_dialog)
-                    dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self.load_reconstruction_dialog)
+                    dpg.add_menu_item(label=LBL_MENU_SAVE_CONFIG, callback=self._save_config_dialog)
+                    dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self._load_config_dialog)
+                    dpg.add_separator()
+                    dpg.add_menu_item(label=LBL_MENU_RECONSTRUCT_FILE, callback=self._reconstruct_file_dialog)
+                    dpg.add_menu_item(label=LBL_MENU_RECONSTRUCT_DIRECTORY, callback=self._reconstruct_directory_dialog)
+                    dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
                     dpg.add_separator()
                     dpg.add_menu_item(
                         label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV, callback=self._export_reconstruction_to_wav
+                    )
+                    dpg.add_menu_item(
+                        label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI, callback=self._export_reconstruction_fti_dialog
                     )
                     dpg.add_separator()
                     dpg.add_menu_item(label=LBL_MENU_EXIT, callback=lambda: dpg.stop_dearpygui())
@@ -133,45 +155,100 @@ class GUI:
 
         self.browser_panel.initialize_tree()
 
-    def load_config_dialog(self) -> None:
+    def _save_config_dialog(self) -> None:
+        with dpg.file_dialog(
+            label=TITLE_DIALOG_SAVE_CONFIG,
+            width=DIM_DIALOG_FILE_WIDTH,
+            height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_save_config,
+            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_filename="config",
+        ):
+            dpg.add_file_extension(EXT_DIALOG_JSON)
+
+    def _handle_save_config(self, sender, app_data) -> None:
+        if not app_data or "filepath_name" not in app_data:
+            return
+
+        filepath = app_data["filepath_name"]
+        if not filepath:
+            return
+
+        try:
+            self.config_manager.save_config_to_file(filepath)
+            self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
+        except Exception as error:
+            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+
+    def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TITLE_DIALOG_LOAD_CONFIG,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            # callback=self.load_config,
+            callback=self._handle_load_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
             dpg.add_file_extension(EXT_DIALOG_JSON)
 
-    def load_audio_dialog(self) -> None:
+    def _handle_load_config(self, sender, app_data) -> None:
+        if not app_data or "filepath_name" not in app_data:
+            return
+
+        filepath = app_data["filepath_name"]
+        if not filepath:
+            return
+
+        try:
+            self.config_manager.load_config_from_file(filepath)
+            self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
+        except Exception as error:
+            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+
+    def _reconstruct_file_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_LOAD_AUDIO,
+            label=TITLE_DIALOG_RECONSTRUCT_FILE,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            # callback=self.load_audio,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
             dpg.add_file_extension(EXT_DIALOG_WAV)
 
-    def load_reconstruction_dialog(self) -> None:
+    def _reconstruct_directory_dialog(self) -> None:
+        dpg.add_file_dialog(
+            label=TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
+            width=DIM_DIALOG_FILE_WIDTH,
+            height=DIM_DIALOG_FILE_HEIGHT,
+            directory_selector=True,
+            show=True,
+        )
+
+    def _load_reconstruction_dialog(self) -> None:
         with dpg.file_dialog(
             label=TITLE_DIALOG_LOAD_RECONSTRUCTION,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            # callback=self.load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
             dpg.add_file_extension(EXT_DIALOG_JSON)
 
-    def export_wav_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=TITLE_DIALOG_EXPORT_WAV,
+    def _export_reconstruction_fti_dialog(self) -> None:
+        dpg.add_file_dialog(
+            label=TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            # callback=self.export_wav,
-            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-        ):
-            dpg.add_file_extension(EXT_DIALOG_WAV)
+            directory_selector=True,
+            show=True,
+        )
+
+    def _show_config_status_dialog(self, message: str) -> None:
+        def content_builder(parent: str) -> None:
+            dpg.add_text(message, parent=parent)
+
+        show_modal_dialog(
+            tag=TAG_CONFIG_STATUS_POPUP,
+            title=TITLE_DIALOG_CONFIG_STATUS,
+            content=content_builder,
+        )
 
     def _on_instruction_selected(
         self, generator_class_name: str, instruction, fragment: LibraryFragment, library_config: LibraryConfig

@@ -6,7 +6,7 @@ from configs.config import Config as Config
 from configs.library import LibraryConfig
 from constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from ffts.window import Window
-from utils.common import hash_model
+from utils.serialization import hash_model
 
 
 class LibraryKey(BaseModel):

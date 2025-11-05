@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -45,6 +45,7 @@ from constants.general import (
     SAMPLE_RATE,
 )
 from library.key import LibraryKey
+from utils.serialization import SerializedData
 
 
 class GUIConfigPanel(GUIPanel):
@@ -123,7 +124,7 @@ class GUIConfigPanel(GUIPanel):
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
-    def _get_all_gui_values(self) -> Dict[str, Any]:
+    def _get_all_gui_values(self) -> SerializedData:
         gui_values = {}
         for tag in self.config_manager.config_parameters["config"].keys():
             gui_values[tag] = dpg.get_value(tag)
@@ -139,7 +140,7 @@ class GUIConfigPanel(GUIPanel):
         ):
             pass
 
-    def _select_library_directory(self, sender: Any, app_data: Dict[str, Any]) -> None:
+    def _select_library_directory(self, sender: Any, app_data: SerializedData) -> None:
         directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
         self.change_library_directory(directory_path)
 
@@ -152,7 +153,7 @@ class GUIConfigPanel(GUIPanel):
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
 
-    def load_config_from_data(self, config_data: Dict[str, Any]) -> None:
+    def load_config_from_data(self, config_data: SerializedData) -> None:
         gui_updates = self.config_manager.load_config_from_data(config_data)
 
         for tag, value in gui_updates.items():

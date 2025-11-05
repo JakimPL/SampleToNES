@@ -54,10 +54,10 @@ class LibraryManager:
             return {}
 
         new_library_files = {}
-        for file_path in library_directory.iterdir():
-            if file_path.is_file() and file_path.suffix == EXT_LIBRARY_FILE and self._is_library_file(file_path.stem):
-                library_key = self._create_key_from_file_name(file_path.stem)
-                new_library_files[library_key] = file_path.stem
+        for filepath in library_directory.iterdir():
+            if filepath.is_file() and filepath.suffix == EXT_LIBRARY_FILE and self._is_library_file(filepath.stem):
+                library_key = self._create_key_from_filename(filepath.stem)
+                new_library_files[library_key] = filepath.stem
 
         removed_libraries = set(self.library_files.keys()) - set(new_library_files.keys())
         for removed_key in removed_libraries:
@@ -130,8 +130,8 @@ class LibraryManager:
         self.library_files.clear()
         self.current_library_key = None
 
-    def _is_library_file(self, file_name: str) -> bool:
-        file_parts = file_name.split("_")
+    def _is_library_file(self, filename: str) -> bool:
+        file_parts = filename.split("_")
         if len(file_parts) < 4:
             return False
         if not file_parts[0] == "sr" or not file_parts[1].isdigit():
@@ -140,10 +140,10 @@ class LibraryManager:
             return False
         return len(file_parts) >= 6
 
-    def _create_key_from_file_name(self, file_name: str) -> LibraryKey:
-        file_parts = file_name.split("_")
+    def _create_key_from_filename(self, filename: str) -> LibraryKey:
+        file_parts = filename.split("_")
         if len(file_parts) < 8:
-            raise ValueError(f"Invalid library file name format: {file_name}")
+            raise ValueError(f"Invalid library file name format: {filename}")
 
         sample_rate = int(file_parts[1])
         frame_length = int(file_parts[3])
@@ -160,8 +160,8 @@ class LibraryManager:
         hash_part = key.config_hash[:7]
         return f"{sample_rate}_{change_rate}_{hash_part}"
 
-    def _get_display_name(self, file_name: str) -> str:
-        key = self._create_key_from_file_name(file_name)
+    def _get_display_name(self, filename: str) -> str:
+        key = self._create_key_from_filename(filename)
         return self._get_display_name_from_key(key)
 
     def _parse_instructions_by_generator(

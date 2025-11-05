@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple
+from typing import Any, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -18,6 +18,7 @@ from constants.browser import (
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
+from utils.serialization import SerializedData
 
 
 class GUIGraphDisplay(GUIPanel):
@@ -47,7 +48,7 @@ class GUIGraphDisplay(GUIPanel):
         self.y_max: float = y_max
         self.default_y_range = (y_min, y_max)
 
-        self.layers: Dict[str, Any] = {}
+        self.layers: SerializedData = {}
 
         super().__init__(
             tag=tag,

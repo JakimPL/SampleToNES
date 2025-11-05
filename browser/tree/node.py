@@ -28,14 +28,14 @@ class FileSystemNode(TreeNode):
         self,
         name: str,
         node_type: str,
-        file_path: Path,
+        filepath: Path,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
-        self.file_path = file_path
+        self.filepath = filepath
 
     def copy(self, parent: Optional[TreeNode] = None) -> "FileSystemNode":
-        return FileSystemNode(self.name, file_path=self.file_path, node_type=self.node_type, parent=parent)
+        return FileSystemNode(self.name, filepath=self.filepath, node_type=self.node_type, parent=parent)
 
 
 class LibraryNode(TreeNode):

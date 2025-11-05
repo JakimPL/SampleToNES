@@ -13,10 +13,16 @@ from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
-from utils.common import deserialize_array, serialize_array
+from utils.serialization import (
+    SerializedData,
+    deserialize_array,
+    load_json,
+    save_json,
+    serialize_array,
+)
 
 
-def default_metadata() -> Dict[str, Any]:
+def default_metadata() -> SerializedData:
     return {
         "SampleToNES": {
             "version": SAMPLE_TO_NES_VERSION,
@@ -32,7 +38,7 @@ class Reconstruction(BaseModel):
     config: Configuration = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
-    metadata: Dict[str, Any] = Field(default_factory=default_metadata, description="Additional metadata")
+    metadata: SerializedData = Field(default_factory=default_metadata, description="Additional metadata")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -44,7 +50,7 @@ class Reconstruction(BaseModel):
         return INSTRUCTION_TO_EXPORTER_MAP[instruction_type]
 
     @classmethod
-    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[InstructionUnion]]:
+    def _parse_instructions(cls, data: Dict[str, SerializedData]) -> Dict[str, List[InstructionUnion]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
             instruction_class = cls._get_instruction_class(instructions_data["type"])
@@ -82,19 +88,17 @@ class Reconstruction(BaseModel):
     def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
-    def save(self, filepath: Path) -> None:
+    def save(self, filepath: Union[str, Path]) -> None:
         data = self.model_dump()
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
+        save_json(filepath, data)
 
     @property
     def total_error(self) -> float:
         return sum(sum(errors) for errors in self.errors.values())
 
     @classmethod
-    def load(cls, filepath: Path) -> Self:
-        with open(filepath, "r") as f:
-            data = json.load(f)
+    def load(cls, filepath: Union[str, Path]) -> Self:
+        data = load_json(filepath)
 
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
@@ -119,17 +123,17 @@ class Reconstruction(BaseModel):
         return features
 
     @field_serializer("approximation")
-    def _serialize_approximation(self, approximation: np.ndarray, _info) -> Dict[str, Any]:
+    def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
         return serialize_array(approximation)
 
     @field_serializer("approximations")
-    def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> Dict[str, Any]:
+    def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> SerializedData:
         return {name: serialize_array(array) for name, array in approximations.items()}
 
     @field_serializer("instructions")
     def _serialize_instructions(
         self, instructions: Dict[str, List[InstructionUnion]], _info
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> Dict[str, SerializedData]:
         return {
             name: {
                 "instructions": [instruction.model_dump() for instruction in instructions],
@@ -140,7 +144,7 @@ class Reconstruction(BaseModel):
         }
 
     @field_serializer("config")
-    def _serialize_config(self, config: Configuration, _info) -> Dict[str, Any]:
+    def _serialize_config(self, config: Configuration, _info) -> SerializedData:
         return config.model_dump()
 
     @field_serializer("audio_filepath")

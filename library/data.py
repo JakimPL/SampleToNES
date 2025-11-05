@@ -1,7 +1,7 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, Generic, List, Self, Type, Union, cast
+from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
@@ -16,7 +16,7 @@ from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.general import Initials
 from typehints.instructions import InstructionType, InstructionUnion
-from utils.common import deserialize_array, dump, serialize_array
+from utils.serialization import SerializedData, deserialize_array, dump, serialize_array
 
 
 class LibraryFragment(BaseModel, Generic[InstructionType]):
@@ -81,7 +81,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
         return self.get_fragment(shift, config, window)
 
     @staticmethod
-    def load_instruction(data: Dict[str, Any]) -> InstructionType:
+    def load_instruction(data: SerializedData) -> InstructionType:
         instruction_dictionary = json.loads(data["instruction"])
         instruction_class: Type[InstructionType] = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
         instruction = instruction_class(**instruction_dictionary)
@@ -92,15 +92,15 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
         return dump(instruction.model_dump())
 
     @field_serializer("sample")
-    def serialize_sample(self, sample: np.ndarray, _info) -> Dict[str, Any]:
+    def serialize_sample(self, sample: np.ndarray, _info) -> SerializedData:
         return serialize_array(sample)
 
     @field_serializer("feature")
-    def serialize_feature(self, feature: np.ndarray, _info) -> Dict[str, Any]:
+    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
         return serialize_array(feature)
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+    def deserialize(cls, dictionary: SerializedData) -> Self:
         instruction: InstructionType = cls.load_instruction(dictionary)
 
         sample = deserialize_array(dictionary["sample"])
@@ -181,11 +181,11 @@ class LibraryData(BaseModel):
         return LibraryData.deserialize(data)
 
     @field_serializer("data")
-    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> Dict[str, Any]:
+    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> SerializedData:
         return {dump(instruction.model_dump()): fragment.model_dump() for instruction, fragment in data.items()}
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+    def deserialize(cls, dictionary: SerializedData) -> Self:
         config = LibraryConfig(**dictionary["config"])
 
         data = {}

@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from browser.reconstruction.data import ReconstructionData
-from browser.tree.node import FileSystemNode, TreeNode
+from browser.tree.node import FileSystemNode
 from browser.tree.tree import Tree
 from constants.browser import EXT_RECONSTRUCTION_FILE, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from constants.general import OUTPUT_DIRECTORY
@@ -33,7 +33,7 @@ class BrowserManager:
 
         if path.is_file():
             if path.suffix == EXT_RECONSTRUCTION_FILE:
-                return FileSystemNode(path.stem, file_path=path, node_type=NOD_TYPE_FILE)
+                return FileSystemNode(path.stem, filepath=path, node_type=NOD_TYPE_FILE)
             return None
 
         children_nodes = []
@@ -45,36 +45,36 @@ class BrowserManager:
         if not children_nodes:
             return None
 
-        directory_node = FileSystemNode(path.name, file_path=path, node_type=NOD_TYPE_DIRECTORY)
+        directory_node = FileSystemNode(path.name, filepath=path, node_type=NOD_TYPE_DIRECTORY)
 
         for child_node in children_nodes:
             child_node.parent = directory_node
 
         return directory_node
 
-    def load_reconstruction_data(self, file_path: Path) -> ReconstructionData:
-        if file_path in self.file_cache:
-            cached_data = self.file_cache[file_path]
+    def load_reconstruction_data(self, filepath: Path) -> ReconstructionData:
+        if filepath in self.file_cache:
+            cached_data = self.file_cache[filepath]
             if cached_data is not None:
                 return cached_data
 
-        if not file_path.exists():
-            raise FileNotFoundError(f"Reconstruction file not found: {file_path}")
+        if not filepath.exists():
+            raise FileNotFoundError(f"Reconstruction file not found: {filepath}")
 
-        if not self.validate_reconstruction_file(file_path):
-            raise ValueError(f"Invalid reconstruction file: {file_path}")
+        if not self.validate_reconstruction_file(filepath):
+            raise ValueError(f"Invalid reconstruction file: {filepath}")
 
-        data = ReconstructionData.load(file_path)
-        self.file_cache[file_path] = data
+        data = ReconstructionData.load(filepath)
+        self.file_cache[filepath] = data
         return data
 
-    def validate_reconstruction_file(self, file_path: Path) -> bool:
+    def validate_reconstruction_file(self, filepath: Path) -> bool:
         # TODO: Implement actual validation logic
-        return file_path.suffix == EXT_RECONSTRUCTION_FILE
+        return filepath.suffix == EXT_RECONSTRUCTION_FILE
 
     def get_all_reconstruction_files(self) -> list[Path]:
         file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]
-        return [node.file_path for node in file_nodes if node.file_path is not None]
+        return [node.filepath for node in file_nodes if node.filepath is not None]
 
     def clear_cache(self) -> None:
         self.file_cache.clear()

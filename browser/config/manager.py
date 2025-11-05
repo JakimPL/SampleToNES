@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List, Optional
+from pathlib import Path
+from typing import Callable, Dict, List, Optional, Union
 
 from configs.config import Config
 from configs.general import GeneralConfig
@@ -28,6 +29,7 @@ from constants.general import (
 )
 from ffts.window import Window
 from library.key import LibraryKey
+from utils.serialization import SerializedData, load_json, save_json
 
 
 class ConfigManager:
@@ -55,7 +57,7 @@ class ConfigManager:
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
 
-    def update_config_from_gui_values(self, gui_values: Dict[str, Any]) -> None:
+    def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
         self._update_generators_from_gui_values(gui_values)
         config_data = self._build_config_data_from_values(gui_values)
         config_data["generation"]["generators"] = self.generators
@@ -67,7 +69,7 @@ class ConfigManager:
         self.window = Window(self.config.library)
         self._notify_config_change()
 
-    def _build_config_data_from_values(self, gui_values: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
         config_data = {
             "general": {"library_directory": self.library_directory, "output_directory": self.output_directory},
             "library": {},
@@ -82,7 +84,7 @@ class ConfigManager:
 
         return config_data
 
-    def _update_generators_from_gui_values(self, gui_values: Dict[str, Any]) -> None:
+    def _update_generators_from_gui_values(self, gui_values: SerializedData) -> None:
         self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values.get(tag, True)]
 
     def initialize_config_with_defaults(self) -> None:
@@ -110,7 +112,7 @@ class ConfigManager:
         for callback in self.config_change_callbacks:
             callback()
 
-    def apply_library_config(self, library_key: LibraryKey) -> Dict[str, Any]:
+    def apply_library_config(self, library_key: LibraryKey) -> SerializedData:
         if not self.config:
             raise ValueError("No config available")
 
@@ -127,7 +129,7 @@ class ConfigManager:
 
         return {TAG_CONFIG_SAMPLE_RATE: sample_rate, TAG_CONFIG_CHANGE_RATE: change_rate}
 
-    def load_config_from_data(self, config_data: Dict[str, Any]) -> Dict[str, Any]:
+    def load_config_from_data(self, config_data: SerializedData) -> SerializedData:
         self.config = Config(**config_data)
         self.window = Window(self.config.library)
         self.generators = list(self.config.generation.generators)
@@ -150,4 +152,21 @@ class ConfigManager:
         self.library_directory = config.general.library_directory
         self.output_directory = config.general.output_directory
         self.generators = list(config.generation.generators)
+        self._notify_config_change()
+
+    def save_config_to_file(self, filepath: Union[str, Path]) -> None:
+        if not self.config:
+            raise ValueError("No configuration to save")
+
+        config_dict = self.config.model_dump()
+        save_json(filepath, config_dict)
+
+    def load_config_from_file(self, filepath: Union[str, Path]) -> None:
+        config_dict = load_json(filepath)
+
+        self.config = Config(**config_dict)
+        self.window = Window(self.config.library)
+        self.library_directory = self.config.general.library_directory
+        self.output_directory = self.config.general.output_directory
+        self.generators = list(self.config.generation.generators)
         self._notify_config_change()
