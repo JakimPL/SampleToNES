@@ -19,6 +19,7 @@ from constants.browser import (
     EXT_DIALOG_WAV,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_EXIT,
+    LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
     LBL_MENU_LOAD_AUDIO,
     LBL_MENU_LOAD_CONFIG,
@@ -79,6 +80,7 @@ class GUI:
         self.browser_panel.set_callbacks(
             on_reconstruction_selected=self._on_reconstruction_selected,
         )
+        self.reconstruction_panel.set_export_wav_callback(self._export_reconstruction_to_wav)
 
     def create_main_window(self) -> None:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
@@ -87,6 +89,10 @@ class GUI:
                     dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self.load_config_dialog)
                     dpg.add_menu_item(label=LBL_MENU_LOAD_AUDIO, callback=self.load_audio_dialog)
                     dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self.load_reconstruction_dialog)
+                    dpg.add_separator()
+                    dpg.add_menu_item(
+                        label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV, callback=self._export_reconstruction_to_wav
+                    )
                     dpg.add_separator()
                     dpg.add_menu_item(label=LBL_MENU_EXIT, callback=lambda: dpg.stop_dearpygui())
 
@@ -174,6 +180,9 @@ class GUI:
 
     def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
+
+    def _export_reconstruction_to_wav(self) -> None:
+        self.reconstruction_panel.export_reconstruction_to_wav()
 
     def run(self) -> None:
         dpg.start_dearpygui()

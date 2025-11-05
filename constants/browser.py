@@ -18,8 +18,14 @@ DIM_PANEL_BROWSER_HEIGHT = -1
 # File dialog dimensions
 DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
-DIM_DIALOG_ERROR_WIDTH = 500
-DIM_DIALOG_ERROR_HEIGHT = 150
+DIM_DIALOG_ERROR_WIDTH = 350
+DIM_DIALOG_ERROR_HEIGHT = 80
+
+# UI element dimensions
+DIM_BUTTON_DEFAULT_HEIGHT = 23
+DIM_TEXT_DEFAULT_HEIGHT = 19
+DIM_WINDOW_TITLE_BAR_HEIGHT = 25
+DIM_WINDOW_PADDING = 8
 
 # Plot dimensions
 DIM_WAVEFORM_PLOT_HEIGHT = 200
@@ -43,6 +49,7 @@ LBL_MENU_FILE = "File"
 LBL_MENU_LOAD_CONFIG = "Load configuration"
 LBL_MENU_LOAD_AUDIO = "Load audio"
 LBL_MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
+LBL_MENU_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction to WAV"
 LBL_MENU_EXIT = "Exit"
 
 # Tab labels
@@ -114,13 +121,13 @@ MSG_GLOBAL_NO_FILE_SELECTED = "No file selected"
 MSG_GLOBAL_NO_DIRECTORY_SELECTED = "No directory selected"
 MSG_GLOBAL_NO_RESULTS_FOUND = "No results found"
 MSG_RECONSTRUCTION_SELECT_TO_VIEW = "Select a reconstruction to view details"
-MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully"
+MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully."
 TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
 MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first"
 MSG_LIBRARY_EXISTS = "Library exists"
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist"
 MSG_LIBRARY_GENERATING = "Generating library..."
-MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully"
+MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully."
 MSG_LIBRARY_NOT_LOADED = "Library is not loaded"
 MSG_LIBRARY_LOADING = "Library is loading..."
 MSG_CONFIG_NOT_READY = "Configuration not ready"
@@ -264,14 +271,14 @@ LBL_PLAYER_BUTTON_PLAY = "Play"
 LBL_PLAYER_BUTTON_PAUSE = "Pause"
 LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
-MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded"
-MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error"
+MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
+MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error."
 TITLE_DIALOG_NO_AUDIO = "No Audio"
-TITLE_DIALOG_PLAYBACK_ERROR = "Playback error"
+TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
 
 # Instruction panel constants
 MSG_INSTRUCTION_DETAILS = "Instruction details"
-MSG_INSTRUCTION_NO_SELECTION = "No instruction selected"
+MSG_INSTRUCTION_NO_SELECTION = "No instruction selected."
 LBL_INSTRUCTION_WAVEFORM = "Instruction waveform"
 LBL_INSTRUCTION_SPECTRUM = "Instruction spectrum"
 
@@ -288,23 +295,31 @@ TAG_RECONSTRUCTION_GENERATORS_GROUP = "reconstruction_generators_group"
 TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP = "reconstruction_audio_source_group"
 TPL_RECONSTRUCTION_GENERATOR_CHECKBOX = "reconstruction_generator_{}"
 TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO = "reconstruction_audio_source_{}"
+TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON = "reconstruction_export_wav_button"
+TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP = "reconstruction_export_wav_status_popup"
 LBL_RECONSTRUCTION_WAVEFORM = "Reconstruction waveform"
 LBL_RECONSTRUCTION_AUDIO_SOURCE = "Audio source:"
 LBL_RECONSTRUCTION_DETAILS = "Reconstruction details"
 LBL_RECONSTRUCTION_EXPORT = "Export"
 LBL_RECONSTRUCTION_EXPORT_FTI = "Export instrument to FTI"
+LBL_RECONSTRUCTION_EXPORT_WAV = "Export reconstruction to WAV"
 LBL_RECONSTRUCTION_PITCH_PLOT = "Pitch"
-LBL_RECONSTRUCTION_HI_PITCH_PLOT = "Hi-Pitch"
+LBL_RECONSTRUCTION_HI_PITCH_PLOT = "Hi-pitch"
 LBL_RECONSTRUCTION_VOLUME_PLOT = "Volume"
 LBL_RECONSTRUCTION_ARPEGGIO_PLOT = "Arpeggio"
-LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT = "Duty Cycle"
+LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT = "Duty cycle"
 LBL_RECONSTRUCTION_INITIAL_PITCH = "Initial pitch: {}"
 LBL_COPY_BUTTON = "Copy"
 LBL_COPIED_TOOLTIP = "Copied!"
 LBL_RADIO_ORIGINAL_AUDIO = "Original audio"
 LBL_RADIO_RECONSTRUCTION_AUDIO = "Reconstruction"
-MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected"
-MSG_RECONSTRUCTION_NO_DATA = "No reconstruction loaded"
+MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected."
+MSG_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
+MSG_RECONSTRUCTION_EXPORT_SUCCESS = "Reconstruction saved successfully."
+MSG_RECONSTRUCTION_EXPORT_NO_DATA = "No reconstruction loaded."
+TPL_RECONSTRUCTION_EXPORT_ERROR = "Error: {}"
+TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+VAL_AUDIO_SOURCE_SELECTOR = "selector"
 
 # Waveform layer colors
 CLR_WAVEFORM_DEFAULT = (255, 255, 255, 255)
@@ -410,7 +425,7 @@ EXT_FTI_FILE = ".fti"
 # Bar plot display settings
 LBL_BAR_PLOT_DISPLAY = "Bar plot display"
 LBL_BAR_PLOT_VALUE_LABEL = "Value"
-MSG_BAR_PLOT_NO_DATA = "No data loaded"
+MSG_BAR_PLOT_NO_DATA = "No data loaded."
 CLR_BAR_PLOT_DEFAULT = (100, 200, 255, 255)
 CLR_BAR_PLOT_PITCH = (100, 200, 255, 255)
 CLR_BAR_PLOT_VOLUME = (100, 255, 100, 255)

@@ -13,6 +13,7 @@ from browser.tree.node import (
     LibraryNode,
     TreeNode,
 )
+from browser.utils import show_modal_dialog
 from configs.config import Config
 from constants.browser import (
     DIM_DIALOG_ERROR_HEIGHT,
@@ -274,24 +275,13 @@ class GUILibraryPanel(GUITreePanel):
         self._on_apply_library_config = on_apply_library_config
 
     def _show_error_dialog(self, error_message: str) -> None:
-        if dpg.does_item_exist(TAG_DIALOG_ERROR_LIBRARY_GENERATION):
-            dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION)
+        def content(parent: str) -> None:
+            dpg.add_text(MSG_LIBRARY_ERROR_GENERATING, parent=parent)
+            dpg.add_separator(parent=parent)
+            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH - 20, parent=parent)
 
-        with dpg.window(
-            label=TITLE_DIALOG_ERROR,
+        show_modal_dialog(
             tag=TAG_DIALOG_ERROR_LIBRARY_GENERATION,
-            modal=True,
-            width=DIM_DIALOG_ERROR_WIDTH,
-            height=DIM_DIALOG_ERROR_HEIGHT,
-            no_resize=True,
-            on_close=lambda: dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION),
-        ):
-            dpg.add_text(MSG_LIBRARY_ERROR_GENERATING)
-            dpg.add_separator()
-            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH - 20)
-            dpg.add_separator()
-            dpg.add_button(
-                label=LBL_BUTTON_OK,
-                callback=lambda: dpg.delete_item(TAG_DIALOG_ERROR_LIBRARY_GENERATION),
-                width=-1,
-            )
+            title=TITLE_DIALOG_ERROR,
+            content=content,
+        )

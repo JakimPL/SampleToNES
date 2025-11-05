@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, cast
+from typing import Callable, List, Optional, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -11,12 +11,13 @@ from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
+from browser.utils import show_modal_dialog
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     EXT_DIALOG_FTI,
-    EXT_FTI_FILE,
+    EXT_DIALOG_WAV,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -24,21 +25,31 @@ from constants.browser import (
     LBL_RADIO_ORIGINAL_AUDIO,
     LBL_RADIO_RECONSTRUCTION_AUDIO,
     LBL_RECONSTRUCTION_AUDIO_SOURCE,
+    LBL_RECONSTRUCTION_EXPORT_WAV,
     LBL_RECONSTRUCTION_WAVEFORM,
+    MSG_RECONSTRUCTION_EXPORT_NO_DATA,
+    MSG_RECONSTRUCTION_EXPORT_SUCCESS,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
+    TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
+    TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
     TAG_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTION_PLAYER_PANEL,
     TAG_RECONSTRUCTION_WAVEFORM_DISPLAY,
     TITLE_DIALOG_EXPORT_FTI,
+    TITLE_DIALOG_EXPORT_WAV,
+    TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
     TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO,
+    TPL_RECONSTRUCTION_EXPORT_ERROR,
     TPL_RECONSTRUCTION_GENERATOR_CHECKBOX,
+    VAL_AUDIO_SOURCE_SELECTOR,
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_FULL,
 )
 from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
+from utils.audio.io import write_audio
 from utils.fami import write_fti
 
 
@@ -52,6 +63,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_data: Optional[ReconstructionData] = None
         self._pending_fti_export: Optional[tuple[GeneratorName, dict]] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
+        self._export_wav_callback: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_PANEL,
@@ -61,6 +73,7 @@ class GUIReconstructionPanel(GUIPanel):
     def create_panel(self) -> None:
         self._create_player_panel()
         self._create_audio_source_radio_buttons()
+        self._create_export_wav_button()
         dpg.add_separator(parent=self.parent_tag)
         self._create_waveform_display()
         self._create_generator_checkboxes()
@@ -80,12 +93,22 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_text(LBL_RECONSTRUCTION_AUDIO_SOURCE)
             dpg.add_radio_button(
                 items=[LBL_RADIO_RECONSTRUCTION_AUDIO, LBL_RADIO_ORIGINAL_AUDIO],
-                tag=TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector"),
+                tag=TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR),
                 default_value=LBL_RADIO_RECONSTRUCTION_AUDIO,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
                 enabled=False,
             )
+
+    def _create_export_wav_button(self) -> None:
+        dpg.add_button(
+            label=LBL_RECONSTRUCTION_EXPORT_WAV,
+            tag=TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
+            parent=self.parent_tag,
+            callback=self._handle_export_wav_button_click,
+            width=-1,
+            enabled=False,
+        )
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformDisplay(
@@ -119,6 +142,9 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_details = GUIReconstructionDetailsPanel()
         self.reconstruction_details.create_panel()
         self.reconstruction_details.set_callback(on_instrument_export=self._handle_instrument_export)
+
+    def set_export_wav_callback(self, callback: Callable[[], None]) -> None:
+        self._export_wav_callback = callback
 
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
@@ -182,8 +208,9 @@ class GUIReconstructionPanel(GUIPanel):
             if is_available:
                 dpg.set_value(tag, True)
 
-        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector")
+        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg.configure_item(radio_tag, enabled=True)
+        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
     def clear_display(self) -> None:
         self.reconstruction_data = None
@@ -201,9 +228,10 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.set_value(tag, False)
 
     def _reset_audio_source_radio(self) -> None:
-        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format("selector")
+        radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg.configure_item(radio_tag, enabled=False)
         dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
+        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
@@ -260,4 +288,54 @@ class GUIReconstructionPanel(GUIPanel):
             pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.PITCH)),
             hi_pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.HI_PITCH)),
             duty_cycle=cast(Optional[np.ndarray], generator_features.get(FeatureKey.DUTY_CYCLE)),
+        )
+
+    def _handle_export_wav_button_click(self) -> None:
+        if self._export_wav_callback:
+            self._export_wav_callback()
+
+    def export_reconstruction_to_wav(self) -> None:
+        if not self.reconstruction_data:
+            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_NO_DATA)
+            return
+
+        reconstruction = self.reconstruction_data.reconstruction
+        file_name = Path(reconstruction.audio_filepath).stem
+
+        with dpg.file_dialog(
+            label=TITLE_DIALOG_EXPORT_WAV,
+            width=DIM_DIALOG_FILE_WIDTH,
+            height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_wav_export_dialog_result,
+            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_filename=file_name,
+        ):
+            dpg.add_file_extension(EXT_DIALOG_WAV)
+
+    def _handle_wav_export_dialog_result(self, sender, app_data) -> None:
+        if not app_data or "file_path_name" not in app_data:
+            return
+
+        file_path = app_data["file_path_name"]
+        if not file_path or not self.reconstruction_data:
+            return
+
+        selected_generators = self._get_selected_generators()
+        partial_approximation = self.reconstruction_data.get_partials(selected_generators)
+        sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
+
+        try:
+            write_audio(file_path, partial_approximation, sample_rate)
+            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+        except Exception as error:
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+
+    def _show_export_status_dialog(self, message: str) -> None:
+        def content(parent: str) -> None:
+            dpg.add_text(message, parent=parent)
+
+        show_modal_dialog(
+            tag=TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP,
+            title=TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
+            content=content,
         )
