@@ -27,13 +27,12 @@ class GUIBrowserPanel(GUITreePanel):
         self._on_reconstruction_selected: Optional[Callable] = None
 
         super().__init__(
+            tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
             parent_tag=TAG_RECONSTRUCTOR_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
-
-        self.tree = self.browser_manager.tree
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):

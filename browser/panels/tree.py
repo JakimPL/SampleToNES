@@ -16,8 +16,15 @@ from constants.browser import (
 
 
 class GUITreePanel(GUIPanel):
-    def __init__(self, tag: str, parent_tag: str, width: int = -1, height: int = -1) -> None:
-        self.tree = Tree()
+    def __init__(
+        self,
+        tree: Tree,
+        tag: str,
+        parent_tag: str,
+        width: int = -1,
+        height: int = -1,
+    ) -> None:
+        self.tree = tree
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._on_node_selected: Optional[Callable] = None
         self._search_input_tag: Optional[str] = None

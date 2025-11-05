@@ -67,13 +67,12 @@ class GUILibraryPanel(GUITreePanel):
         self._on_apply_library_config: Optional[Callable] = None
 
         super().__init__(
+            tree=self.library_manager.tree,
             tag=TAG_LIBRARY_PANEL,
             parent_tag=TAG_LIBRARY_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
-
-        self.tree = self.library_manager.tree
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
