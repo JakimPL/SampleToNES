@@ -43,6 +43,31 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
     gc.collect()
 
 
+def reconstruct_single_file(
+    config: Config,
+    input_path: Union[str, Path],
+    progress_queue: Optional[Any] = None,
+    cancel_flag: Optional[Any] = None,
+) -> Path:
+    input_path = Path(input_path)
+    config_directory = generate_config_directory_name(config)
+    output_directory = Path(config.general.output_directory) / config_directory
+    output_path = output_directory / input_path.stem
+
+    try:
+        reconstructor = Reconstructor(config)
+        reconstruct_file(reconstructor, input_path, output_path)
+
+        if progress_queue:
+            progress_queue.put(("completed", str(input_path)))
+
+        del reconstructor
+    finally:
+        gc.collect()
+
+    return output_path.with_suffix(EXT_FILE_JSON)
+
+
 def reconstruct_directory_file(
     file_ids: List[int],
     wav_files: List[Path],

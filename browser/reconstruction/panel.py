@@ -51,7 +51,6 @@ from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import write_audio
 from utils.fami import write_fti
-from utils.serialization import SerializedData
 
 
 class GUIReconstructionPanel(GUIPanel):

@@ -13,9 +13,11 @@ from constants.browser import (
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
     LBL_BUTTON_CANCEL,
+    LBL_BUTTON_CLOSE,
     LBL_BUTTON_LOAD,
     MSG_CONVERTER_CANCELLED,
     MSG_CONVERTER_CANCELLING,
+    MSG_CONVERTER_COMPLETED,
     MSG_CONVERTER_CONFIG_NOT_AVAILABLE,
     MSG_CONVERTER_ERROR_PREFIX,
     MSG_CONVERTER_IDLE,
@@ -32,7 +34,9 @@ from constants.browser import (
     TITLE_DIALOG_CONVERTER,
     TITLE_DIALOG_ERROR,
     VAL_GLOBAL_DEFAULT_FLOAT,
+    VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from utils.common import shorten_path
 
 
 class GUIConverterWindow:
@@ -40,12 +44,17 @@ class GUIConverterWindow:
         self.config_manager = config_manager
         self._on_load_callback: Optional[Callable[[Path], None]] = None
         self.converter: Optional[ReconstructionConverter] = None
+
         self.target_path: Optional[Path] = None
+        self.shortened_path: str = ""
+
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
 
     def show(self, target_path: Union[str, Path], is_file: bool = False) -> None:
         self.target_path = Path(target_path)
+        self.shortened_path = shorten_path(self.target_path) if self.target_path else ""
+
         self.is_file = is_file
         self.output_file_path = None
 
@@ -80,7 +89,7 @@ class GUIConverterWindow:
                 width=-1,
             )
             dpg.add_text(
-                str(self.target_path),
+                self.shortened_path,
                 tag=TAG_CONVERTER_PATH_TEXT,
                 color=CLR_CONVERTER_PATH_TEXT,
             )
@@ -127,10 +136,10 @@ class GUIConverterWindow:
 
         current_file = self.converter.get_current_file()
         if dpg.does_item_exist(TAG_CONVERTER_PATH_TEXT):
-            if current_file:
-                dpg.set_value(TAG_CONVERTER_PATH_TEXT, current_file)
+            if current_file is not None:
+                dpg.set_value(TAG_CONVERTER_PATH_TEXT, shorten_path(Path(current_file)))
             elif self.target_path:
-                dpg.set_value(TAG_CONVERTER_PATH_TEXT, str(self.target_path))
+                dpg.set_value(TAG_CONVERTER_PATH_TEXT, self.shortened_path)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             from constants.browser import TPL_CONVERTER_STATUS
@@ -168,7 +177,13 @@ class GUIConverterWindow:
     def _on_cancellation_complete(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._on_close)
+        self._rename_cancel_to_close()
+        dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
+
+    def _rename_cancel_to_close(self) -> None:
+        if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
+            dpg.configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
+            dpg.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
     def _on_close(self) -> None:
         if self.converter and self.converter.is_running():
@@ -181,6 +196,7 @@ class GUIConverterWindow:
 
     def _finalize_complete(self, output_path: Optional[Path]) -> None:
         self.set_completed(output_path)
+        self._rename_cancel_to_close()
         self._show_success_dialog()
 
     def _on_conversion_error(self, error_message: str) -> None:
@@ -189,8 +205,8 @@ class GUIConverterWindow:
     def _finalize_error(self, error_message: str) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR_PREFIX)
+        self._rename_cancel_to_close()
         self._show_error_dialog(error_message)
-        self._on_close()
 
     def _show_error_dialog(self, error_message: str) -> None:
         def content(parent: str) -> None:
@@ -228,13 +244,9 @@ class GUIConverterWindow:
             self.output_file_path = output_path
 
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
-            from constants.browser import VAL_GLOBAL_PROGRESS_COMPLETE
-
             dpg.set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            from constants.browser import MSG_CONVERTER_COMPLETED
-
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
 
         if self.is_file and dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
