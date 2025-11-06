@@ -28,6 +28,8 @@ DIM_BUTTON_DEFAULT_HEIGHT = 23
 DIM_TEXT_DEFAULT_HEIGHT = 19
 DIM_WINDOW_TITLE_BAR_HEIGHT = 25
 DIM_WINDOW_PADDING = 8
+DIM_CONVERTER_BUTTON_WIDTH = 100
+DIM_CONVERTER_BUTTON_SPACING = 10
 
 # Plot dimensions
 DIM_WAVEFORM_PLOT_HEIGHT = 200
@@ -223,11 +225,16 @@ TAG_CONVERTER_STATUS = "converter_status"
 TAG_CONVERTER_PATH_TEXT = "converter_path_text"
 TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
 TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
+TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
+TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"
 MSG_CONFIG_ERROR = "Configuration error - please check settings"
 MSG_CONVERTER_PROCESSING = "Processing: {}"
+MSG_CONVERTER_ERROR_PREFIX = "Reconstruction failed"
+MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
+MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_IDLE = "Waiting to start..."
 
@@ -255,6 +262,10 @@ VAL_WAVEFORM_DEFAULT_Y_MIN = -1.0
 VAL_WAVEFORM_DEFAULT_Y_MAX = 1.0
 VAL_WAVEFORM_AXIS_SLOT = 1
 SUF_WAVEFORM_POSITION_INDICATOR = "_position_indicator"
+
+# Converter window settings
+CLR_CONVERTER_PATH_TEXT = (100, 150, 255)
+SUF_CONVERTER_HANDLER = "_handler"
 
 # Waveform labels and messages
 LBL_WAVEFORM_DISPLAY = "Waveform display"

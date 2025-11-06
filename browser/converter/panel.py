@@ -3,44 +3,41 @@ from typing import Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from configs.config import Config
+from browser.config.manager import ConfigManager
+from browser.converter.converter import ReconstructionConverter
+from browser.utils import show_modal_dialog
 from constants.browser import (
+    CLR_CONVERTER_PATH_TEXT,
+    DIM_CONVERTER_BUTTON_SPACING,
+    DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_LOAD,
+    MSG_CONVERTER_CONFIG_NOT_AVAILABLE,
+    MSG_CONVERTER_ERROR_PREFIX,
     MSG_CONVERTER_IDLE,
+    MSG_CONVERTER_SUCCESS,
+    SUF_CONVERTER_HANDLER,
     TAG_CONVERTER_CANCEL_BUTTON,
+    TAG_CONVERTER_ERROR_DIALOG,
     TAG_CONVERTER_LOAD_BUTTON,
     TAG_CONVERTER_PATH_TEXT,
     TAG_CONVERTER_PROGRESS,
     TAG_CONVERTER_STATUS,
+    TAG_CONVERTER_SUCCESS_DIALOG,
     TAG_CONVERTER_WINDOW,
     TITLE_DIALOG_CONVERTER,
+    TITLE_DIALOG_ERROR,
     VAL_GLOBAL_DEFAULT_FLOAT,
 )
 
 
-class ReconstructionConverter:
-    def start(self, target_path: Union[str, Path], config: Config) -> None:
-        raise NotImplementedError
-
-    def cancel(self) -> None:
-        raise NotImplementedError
-
-    def is_running(self) -> bool:
-        raise NotImplementedError
-
-    def get_progress(self) -> float:
-        raise NotImplementedError
-
-    def get_current_file(self) -> Optional[str]:
-        raise NotImplementedError
-
-
 class GUIConverterWindow:
-    def __init__(self, config: Config, on_load_callback: Optional[Callable[[Path], None]] = None) -> None:
-        self.config = config
+    def __init__(
+        self, config_manager: ConfigManager, on_load_callback: Optional[Callable[[Path], None]] = None
+    ) -> None:
+        self.config_manager = config_manager
         self.on_load_callback = on_load_callback
         self.converter: Optional[ReconstructionConverter] = None
         self.target_path: Optional[Path] = None
@@ -52,8 +49,19 @@ class GUIConverterWindow:
         self.is_file = is_file
         self.output_file_path = None
 
+        config = self.config_manager.get_config()
+        if not config:
+            self._show_error_dialog(MSG_CONVERTER_CONFIG_NOT_AVAILABLE)
+            return
+
         if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             dpg.delete_item(TAG_CONVERTER_WINDOW)
+
+        self.converter = ReconstructionConverter(
+            config=config,
+            on_complete=self._on_conversion_complete,
+            on_error=self._on_conversion_error,
+        )
 
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
@@ -73,7 +81,7 @@ class GUIConverterWindow:
             dpg.add_text(
                 str(self.target_path),
                 tag=TAG_CONVERTER_PATH_TEXT,
-                color=(100, 150, 255),
+                color=CLR_CONVERTER_PATH_TEXT,
             )
             dpg.bind_item_handler_registry(TAG_CONVERTER_PATH_TEXT, self._create_path_handler())
 
@@ -86,19 +94,21 @@ class GUIConverterWindow:
                         tag=TAG_CONVERTER_LOAD_BUTTON,
                         callback=self._on_load_clicked,
                         enabled=False,
-                        width=100,
+                        width=DIM_CONVERTER_BUTTON_WIDTH,
                     )
-                    dpg.add_spacer(width=10)
+                    dpg.add_spacer(width=DIM_CONVERTER_BUTTON_SPACING)
 
                 dpg.add_button(
                     label=LBL_BUTTON_CANCEL,
                     tag=TAG_CONVERTER_CANCEL_BUTTON,
                     callback=self._on_cancel_clicked,
-                    width=-1,
+                    width=DIM_CONVERTER_BUTTON_WIDTH,
                 )
 
+        self.converter.start(self.target_path, self.is_file)
+
     def _create_path_handler(self) -> str:
-        handler_tag = f"{TAG_CONVERTER_PATH_TEXT}_handler"
+        handler_tag = f"{TAG_CONVERTER_PATH_TEXT}{SUF_CONVERTER_HANDLER}"
         if dpg.does_item_exist(handler_tag):
             dpg.delete_item(handler_tag)
 
@@ -111,16 +121,50 @@ class GUIConverterWindow:
         pass
 
     def _on_load_clicked(self) -> None:
-        pass
+        if self.output_file_path and self.on_load_callback:
+            self.on_load_callback(self.output_file_path)
+        self._on_close()
 
     def _on_cancel_clicked(self) -> None:
-        pass
+        if self.converter and self.converter.is_running():
+            self.converter.cancel()
+        self._on_close()
 
     def _on_close(self) -> None:
         if self.converter and self.converter.is_running():
             self.converter.cancel()
         if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             dpg.delete_item(TAG_CONVERTER_WINDOW)
+
+    def _on_conversion_complete(self, output_path: Optional[Path]) -> None:
+        self.set_completed(output_path)
+        self._show_success_dialog()
+
+    def _on_conversion_error(self, error_message: str) -> None:
+        self._show_error_dialog(error_message)
+        self._on_close()
+
+    def _show_error_dialog(self, error_message: str) -> None:
+        def content(parent: str) -> None:
+            dpg.add_text(MSG_CONVERTER_ERROR_PREFIX, parent=parent)
+            dpg.add_separator(parent=parent)
+            dpg.add_text(error_message, wrap=DIM_DIALOG_CONVERTER_WIDTH - 20, parent=parent)
+
+        show_modal_dialog(
+            tag=TAG_CONVERTER_ERROR_DIALOG,
+            title=TITLE_DIALOG_ERROR,
+            content=content,
+        )
+
+    def _show_success_dialog(self) -> None:
+        def content(parent: str) -> None:
+            dpg.add_text(MSG_CONVERTER_SUCCESS, parent=parent)
+
+        show_modal_dialog(
+            tag=TAG_CONVERTER_SUCCESS_DIALOG,
+            title=TITLE_DIALOG_CONVERTER,
+            content=content,
+        )
 
     def update_progress(self, progress: float, current_file: Optional[str] = None) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):

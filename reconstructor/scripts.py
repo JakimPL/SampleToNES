@@ -52,12 +52,18 @@ def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
 
     try:
         config_directory = generate_config_directory_name(config)
-        output_path = Path(config.general.output_directory) / config_directory / directory.name
+        output_directory = Path(config.general.output_directory) / config_directory / directory.name
         wav_files = list(directory.rglob(f"*{EXT_FILE_WAV}"))
+
+        if not wav_files:
+            raise ValueError(f"No WAV files found in directory: {directory}")
+
         reconstructor = Reconstructor(config)
         for wav_file in tqdm(wav_files, desc="WAV files", leave=False):
             relative_path = wav_file.relative_to(directory)
-            output_path = output_path / relative_path
+            output_path = output_directory / relative_path
+            reconstruct_file(reconstructor, wav_file, output_path)
+            reconstruct_file(reconstructor, wav_file, output_path)
 
         del reconstructor
     finally:
