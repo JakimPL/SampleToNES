@@ -2,12 +2,11 @@ import gc
 from pathlib import Path
 from typing import List, Union
 
-from tqdm.auto import tqdm
-
 from configs.config import Config
 from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
 from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
 from reconstructor.reconstructor import Reconstructor
+from utils.parallel import parallelize
 from utils.serialization import hash_models
 
 
@@ -33,6 +32,7 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path = output_path.with_suffix(EXT_FILE_JSON)
+
     # TODO: ask for skip/replace
     if output_path.exists():
         return
@@ -40,6 +40,17 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
     reconstruction = reconstructor(input_path)
     reconstruction.save(output_path)
     gc.collect()
+
+
+def reconstruct_directory_file(
+    file_ids: List[int], wav_files: List[Path], reconstructor: Reconstructor, directory: Path, output_directory: Path
+) -> None:
+    for idx in file_ids:
+        wav_file = wav_files[idx]
+        print(f"Reconstructing file: {wav_file}")
+        relative_path = wav_file.relative_to(directory)
+        output_path = output_directory / relative_path
+        reconstruct_file(reconstructor, wav_file, output_path)
 
 
 def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
@@ -58,12 +69,18 @@ def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
         if not wav_files:
             raise ValueError(f"No WAV files found in directory: {directory}")
 
+        print("Reconstructing files...")
         reconstructor = Reconstructor(config)
-        for wav_file in tqdm(wav_files, desc="WAV files", leave=False):
-            relative_path = wav_file.relative_to(directory)
-            output_path = output_directory / relative_path
-            reconstruct_file(reconstructor, wav_file, output_path)
-            reconstruct_file(reconstructor, wav_file, output_path)
+        file_ids = list(range(len(wav_files)))
+        parallelize(
+            reconstruct_directory_file,
+            file_ids,
+            wav_files=wav_files,
+            max_workers=config.general.max_workers,
+            reconstructor=reconstructor,
+            directory=directory,
+            output_directory=output_directory,
+        )
 
         del reconstructor
     finally:

@@ -1,4 +1,3 @@
-import gc
 import threading
 from pathlib import Path
 from typing import Callable, Optional, Union
@@ -46,23 +45,12 @@ class ReconstructionConverter:
 
         try:
             reconstructor = Reconstructor(self.config)
-        except Exception as error:
-            self._handle_error(error)
-            return
-        finally:
-            self.running = False
-            gc.collect()
-
-        try:
             reconstruct_file(reconstructor, input_path, output_path)
-        except KeyboardInterrupt:
-            raise
         except Exception as error:
             self._handle_error(error)
             return
         finally:
             self.running = False
-            gc.collect()
 
         output_json = output_path.with_suffix(EXT_FILE_JSON)
         if self.on_complete:
@@ -76,7 +64,6 @@ class ReconstructionConverter:
             return
         finally:
             self.running = False
-            gc.collect()
 
         if not self.should_cancel and self.on_complete:
             self.on_complete(None)
