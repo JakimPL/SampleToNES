@@ -106,6 +106,33 @@ class GUIConverterWindow:
                 )
 
         self.converter.start(self.target_path, self.is_file)
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._update_progress_callback)
+
+    def _update_progress_callback(self) -> None:
+        if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+            return
+
+        progress = self.converter.get_progress()
+        if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
+            dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
+
+        current_file = self.converter.get_current_file()
+        if dpg.does_item_exist(TAG_CONVERTER_PATH_TEXT):
+            if current_file:
+                dpg.set_value(TAG_CONVERTER_PATH_TEXT, current_file)
+            elif self.target_path:
+                dpg.set_value(TAG_CONVERTER_PATH_TEXT, str(self.target_path))
+
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            from constants.browser import TPL_CONVERTER_STATUS
+
+            dpg.set_value(
+                TAG_CONVERTER_STATUS,
+                TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
+            )
+
+        if self.converter.is_running():
+            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._update_progress_callback)
 
     def _create_path_handler(self) -> str:
         handler_tag = f"{TAG_CONVERTER_PATH_TEXT}{SUF_CONVERTER_HANDLER}"

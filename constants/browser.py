@@ -237,6 +237,7 @@ MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_IDLE = "Waiting to start..."
+TPL_CONVERTER_STATUS = "Progress: {}/{} files"
 
 # Template strings
 TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"

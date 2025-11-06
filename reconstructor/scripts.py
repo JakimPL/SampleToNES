@@ -1,6 +1,7 @@
 import gc
+from multiprocessing import Manager
 from pathlib import Path
-from typing import List, Union
+from typing import Any, List, Optional, Union
 
 from configs.config import Config
 from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
@@ -43,17 +44,24 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
 
 
 def reconstruct_directory_file(
-    file_ids: List[int], wav_files: List[Path], reconstructor: Reconstructor, directory: Path, output_directory: Path
+    file_ids: List[int],
+    wav_files: List[Path],
+    reconstructor: Reconstructor,
+    directory: Path,
+    output_directory: Path,
+    progress_queue: Optional[Any] = None,
 ) -> None:
     for idx in file_ids:
         wav_file = wav_files[idx]
-        print(f"Reconstructing file: {wav_file}")
         relative_path = wav_file.relative_to(directory)
         output_path = output_directory / relative_path
         reconstruct_file(reconstructor, wav_file, output_path)
 
+        if progress_queue:
+            progress_queue.put(("completed", str(wav_file)))
 
-def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
+
+def reconstruct_directory(config: Config, directory: Union[str, Path], progress_queue: Optional[Any] = None) -> None:
     directory = Path(directory)
     if not directory.exists():
         raise FileNotFoundError(f"Directory does not exist: {directory}")
@@ -69,7 +77,9 @@ def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
         if not wav_files:
             raise ValueError(f"No WAV files found in directory: {directory}")
 
-        print("Reconstructing files...")
+        if progress_queue:
+            progress_queue.put(("total", len(wav_files)))
+
         reconstructor = Reconstructor(config)
         file_ids = list(range(len(wav_files)))
         parallelize(
@@ -80,6 +90,7 @@ def reconstruct_directory(config: Config, directory: Union[str, Path]) -> None:
             reconstructor=reconstructor,
             directory=directory,
             output_directory=output_directory,
+            progress_queue=progress_queue,
         )
 
         del reconstructor
