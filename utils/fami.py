@@ -1,11 +1,12 @@
 import struct
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 
 
 def write_fti(
-    filename: str,
+    filename: Union[str, Path],
     instrument_name: str,
     volume: Optional[np.ndarray] = None,
     arpeggio: Optional[np.ndarray] = None,

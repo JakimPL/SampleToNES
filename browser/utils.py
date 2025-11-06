@@ -1,4 +1,6 @@
-from typing import Callable
+from functools import wraps
+from pathlib import Path
+from typing import Callable, TypeVar, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -7,6 +9,24 @@ from constants.browser import (
     DIM_DIALOG_ERROR_WIDTH,
     LBL_BUTTON_OK,
 )
+from utils.serialization import SerializedData
+
+T = TypeVar("T")
+
+
+def file_dialog_handler(func: Callable[[T, Union[str, Path]], None]) -> Callable[[T, int, SerializedData], None]:
+    @wraps(func)
+    def wrapper(self: T, sender: int, app_data: SerializedData) -> None:
+        if not app_data or "file_path_name" not in app_data:
+            return
+
+        filepath = app_data["file_path_name"]
+        if not filepath:
+            return
+
+        func(self, filepath)
+
+    return wrapper
 
 
 def show_modal_dialog(

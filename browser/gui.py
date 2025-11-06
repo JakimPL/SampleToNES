@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Union
+
 import dearpygui.dearpygui as dpg
 
 from browser.browser.panel import GUIBrowserPanel
@@ -8,7 +11,7 @@ from browser.library.panel import GUILibraryPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
-from browser.utils import show_modal_dialog
+from browser.utils import file_dialog_handler, show_modal_dialog
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -162,14 +165,8 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
-    def _handle_save_config(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            return
-
-        filepath = app_data["file_path_name"]
-        if not filepath:
-            return
-
+    @file_dialog_handler
+    def _handle_save_config(self, filepath: Union[str, Path]) -> None:
         try:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
@@ -186,14 +183,8 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
-    def _handle_load_config(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            return
-
-        filepath = app_data["file_path_name"]
-        if not filepath:
-            return
-
+    @file_dialog_handler
+    def _handle_load_config(self, filepath: Union[str, Path]) -> None:
         try:
             self.config_manager.load_config_from_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
@@ -260,15 +251,17 @@ class GUI:
     def _export_reconstruction_to_wav(self) -> None:
         self.reconstruction_panel.export_reconstruction_to_wav()
 
-    def _handle_reconstruct_file(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            return
+    @file_dialog_handler
+    def _handle_reconstruct_file(self, filepath: Union[str, Path]) -> None:
+        pass
 
-        filepath = app_data["file_path_name"]
-        if not filepath:
-            return
+    @file_dialog_handler
+    def _handle_reconstruct_directory(self, directory_path: Union[str, Path]) -> None:
+        pass
 
-        self.reconstructor_panel.reconstruct_file(filepath)
+    @file_dialog_handler
+    def _handle_load_reconstruction(self, filepath: Union[str, Path]) -> None:
+        pass
 
     def run(self) -> None:
         dpg.start_dearpygui()

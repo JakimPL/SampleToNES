@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional, cast
+from typing import Callable, List, Optional, Union, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -11,7 +11,7 @@ from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
-from browser.utils import show_modal_dialog
+from browser.utils import file_dialog_handler, show_modal_dialog
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -261,13 +261,9 @@ class GUIReconstructionPanel(GUIPanel):
         ):
             dpg.add_file_extension(EXT_FILE_FTI)
 
-    def _handle_fti_export_dialog_result(self, sender, app_data) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            self._pending_fti_export = None
-            return
-
-        filepath = app_data["file_path_name"]
-        if not filepath or not self._pending_fti_export:
+    @file_dialog_handler
+    def _handle_fti_export_dialog_result(self, filepath: Union[str, Path]) -> None:
+        if not self._pending_fti_export:
             self._pending_fti_export = None
             return
 
@@ -313,12 +309,9 @@ class GUIReconstructionPanel(GUIPanel):
         ):
             dpg.add_file_extension(EXT_FILE_WAV)
 
-    def _handle_wav_export_dialog_result(self, sender, app_data: SerializedData) -> None:
-        if not app_data or "file_path_name" not in app_data:
-            return
-
-        filepath = app_data["file_path_name"]
-        if not filepath or not self.reconstruction_data:
+    @file_dialog_handler
+    def _handle_wav_export_dialog_result(self, filepath: Union[str, Path]) -> None:
+        if not self.reconstruction_data:
             return
 
         selected_generators = self._get_selected_generators()

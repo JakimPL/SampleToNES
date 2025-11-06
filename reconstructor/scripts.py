@@ -4,7 +4,6 @@ from typing import List, Union
 
 from tqdm.auto import tqdm
 
-from configs import config
 from configs.config import Config
 from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
 from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
