@@ -3,19 +3,20 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 import numpy as np
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
-from typehints.general import GeneratorClassName, Initials
+from typehints.general import Initials
 from typehints.instructions import InstructionType
 from typehints.timers import TimerType
 from utils.frequencies import get_frequency_table
 
 
 class Generator(Generic[InstructionType, TimerType]):
-    def __init__(self, config: Config, name: str) -> None:
+    def __init__(self, config: Config, name: GeneratorName) -> None:
         self.config: Config = config
         self.frequency_table: Dict[int, float] = get_frequency_table(config)
 
-        self.name: str = name
+        self.name: GeneratorName = name
         self.clock: Optional[float] = None
         self.previous_instruction: Optional[InstructionType] = None
 
@@ -92,8 +93,8 @@ class Generator(Generic[InstructionType, TimerType]):
     def initials(self) -> Tuple[Any, ...]:
         return self.timer.initials
 
-    def get_frequency(self, pitch: int) -> Optional[float]:
-        return self.frequency_table.get(pitch, None)
+    def get_frequency(self, pitch: int) -> float:
+        return self.frequency_table[pitch]
 
     def get_possible_instructions(self) -> List[InstructionType]:
         raise NotImplementedError("Subclasses must implement this method")

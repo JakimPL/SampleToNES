@@ -6,35 +6,39 @@ import numpy as np
 from pydantic import BaseModel, Field, field_serializer
 
 from configs.config import Config as Configuration
-from exporters.exporter import FeatureKey, FeatureValue
-from exporters.noise import NoiseExporter
-from exporters.pulse import PulseExporter
-from exporters.triangle import TriangleExporter
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
-from reconstructor.maps import INSTRUCTION_CLASS_MAP
+from constants.enums import FeatureKey, GeneratorName, InstructionClassName
+from constants.general import SAMPLE_TO_NES_VERSION
+from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
-from typehints.general import InstructionClassName
+from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
-from utils.common import deserialize_array, serialize_array
+from utils.serialization import (
+    SerializedData,
+    deserialize_array,
+    load_json,
+    save_json,
+    serialize_array,
+)
 
-INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
-    TriangleInstruction: TriangleExporter,
-    PulseInstruction: PulseExporter,
-    NoiseInstruction: NoiseExporter,
-}
+
+def default_metadata() -> SerializedData:
+    return {
+        "SampleToNES": {
+            "version": SAMPLE_TO_NES_VERSION,
+        }
+    }
 
 
 class Reconstruction(BaseModel):
     approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations: Dict[str, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[str, List[InstructionUnion]] = Field(..., description="Instructions per generator")
-    errors: Dict[str, List[float]] = Field(..., description="Reconstruction errors per generator")
+    approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
+    instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
+    errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
     config: Configuration = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
+    metadata: SerializedData = Field(default_factory=default_metadata, description="Additional metadata")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
@@ -46,7 +50,7 @@ class Reconstruction(BaseModel):
         return INSTRUCTION_TO_EXPORTER_MAP[instruction_type]
 
     @classmethod
-    def _parse_instructions(cls, data: Dict[str, Dict[str, Any]]) -> Dict[str, List[InstructionUnion]]:
+    def _parse_instructions(cls, data: Dict[str, SerializedData]) -> Dict[str, List[InstructionUnion]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
             instruction_class = cls._get_instruction_class(instructions_data["type"])
@@ -78,25 +82,23 @@ class Reconstruction(BaseModel):
             audio_filepath=path,
         )
 
-    def get_generator_approximation(self, generator_name: str) -> np.ndarray:
+    def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([]))
 
-    def get_generator_instructions(self, generator_name: str) -> List[InstructionUnion]:
+    def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
-    def save(self, filepath: Path) -> None:
+    def save(self, filepath: Union[str, Path]) -> None:
         data = self.model_dump()
-        with open(filepath, "w") as f:
-            json.dump(data, f, indent=2)
+        save_json(filepath, data)
 
     @property
     def total_error(self) -> float:
         return sum(sum(errors) for errors in self.errors.values())
 
     @classmethod
-    def load(cls, filepath: Path) -> Self:
-        with open(filepath, "r") as f:
-            data = json.load(f)
+    def load(cls, filepath: Union[str, Path]) -> Self:
+        data = load_json(filepath)
 
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
@@ -104,10 +106,11 @@ class Reconstruction(BaseModel):
         data["config"] = Configuration(**data["config"])
         data["coefficient"] = float(data["coefficient"])
         data["audio_filepath"] = Path(data["audio_filepath"])
+        data["metadata"] = data.get("metadata", {})
 
         return cls(**data)
 
-    def export(self, as_string: bool = True) -> Dict[str, Dict[FeatureKey, Union[str, FeatureValue]]]:
+    def export(self, as_string: bool = False) -> Dict[GeneratorName, Dict[FeatureKey, Union[str, FeatureValue]]]:
         features = {}
         for name, instructions in self.instructions.items():
             if not instructions:
@@ -120,17 +123,17 @@ class Reconstruction(BaseModel):
         return features
 
     @field_serializer("approximation")
-    def _serialize_approximation(self, approximation: np.ndarray, _info) -> Dict[str, Any]:
+    def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
         return serialize_array(approximation)
 
     @field_serializer("approximations")
-    def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> Dict[str, Any]:
+    def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> SerializedData:
         return {name: serialize_array(array) for name, array in approximations.items()}
 
     @field_serializer("instructions")
     def _serialize_instructions(
         self, instructions: Dict[str, List[InstructionUnion]], _info
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> Dict[str, SerializedData]:
         return {
             name: {
                 "instructions": [instruction.model_dump() for instruction in instructions],
@@ -141,7 +144,7 @@ class Reconstruction(BaseModel):
         }
 
     @field_serializer("config")
-    def _serialize_config(self, config: Configuration, _info) -> Dict[str, Any]:
+    def _serialize_config(self, config: Configuration, _info) -> SerializedData:
         return config.model_dump()
 
     @field_serializer("audio_filepath")

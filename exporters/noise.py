@@ -2,12 +2,13 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from constants.enums import FeatureKey
 from exporters.exporter import Exporter
 from instructions.noise import NoiseInstruction
-from typehints.general import FeatureKey, FeatureValue
+from typehints.general import FeatureValue
 
 
-class NoiseExporter(Exporter):
+class NoiseExporter(Exporter[NoiseInstruction]):
     def extract_data(self, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
 
@@ -26,7 +27,7 @@ class NoiseExporter(Exporter):
 
                 period = instruction.period
                 volume = instruction.volume
-                duty_cycle = instruction.mode
+                duty_cycle = instruction.short
             else:
                 volume = 0
 
@@ -41,11 +42,11 @@ class NoiseExporter(Exporter):
 
     def get_features(self, instructions: List[NoiseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
-        arpeggio = (np.array(periods) - initial_period) % 16
+        arpeggio = (np.array(periods, dtype=np.int16) - initial_period) % 16
 
         return {
-            "initial_pitch": initial_period,
-            "volume": np.array(volumes, dtype=np.int8),
-            "arpeggio": np.array(arpeggio, dtype=np.int8),
-            "duty_cycle": np.array(duty_cycles, dtype=np.int8),
+            FeatureKey.INITIAL_PITCH: initial_period,
+            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
+            FeatureKey.ARPEGGIO: np.array(arpeggio, dtype=np.int8),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles, dtype=np.int8),
         }

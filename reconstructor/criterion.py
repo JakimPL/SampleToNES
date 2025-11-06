@@ -54,9 +54,9 @@ class Criterion:
         return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
 
     def get_loss_weights(self) -> Tuple[float, float, float]:
-        alpha = self.config.generation.spectral_loss_weight
-        beta = self.config.generation.temporal_loss_weight
-        gamma = self.config.generation.continuity_loss_weight
+        alpha = self.config.generation.weights.spectral_loss_weight
+        beta = self.config.generation.weights.temporal_loss_weight
+        gamma = self.config.generation.weights.continuity_loss_weight
         weights = alpha, beta, gamma
 
         assert all(

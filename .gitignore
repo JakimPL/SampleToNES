@@ -3,6 +3,7 @@ __pycache__/
 .mypy_cache/
 .idea/
 .vscode/
+.github/
 
 **/*.idea
 **/*.vscode/**
@@ -14,6 +15,7 @@ __pycache__/
 *.txt
 *.npy
 *.dat
+*.fti
 
 data/
 output/

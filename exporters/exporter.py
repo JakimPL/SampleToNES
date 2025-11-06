@@ -2,15 +2,16 @@ from typing import Dict, Generic, List, Mapping, Union
 
 import numpy as np
 
+from constants.enums import FeatureKey
 from timers.phase import PhaseTimer
-from typehints.general import FeatureKey, FeatureValue
+from typehints.general import FeatureValue
 from typehints.instructions import InstructionType
 from utils.frequencies import pitch_to_frequency
 
 
 class Exporter(Generic[InstructionType]):
     def __call__(
-        self, instructions: List[InstructionType], as_string: bool = True
+        self, instructions: List[InstructionType], as_string: bool = False
     ) -> Mapping[FeatureKey, Union[str, int, np.ndarray]]:
         features: Mapping[FeatureKey, FeatureValue] = self.get_features(instructions)
         if as_string:

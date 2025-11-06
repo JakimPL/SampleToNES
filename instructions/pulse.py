@@ -1,6 +1,9 @@
+from typing import Self
+
 from pydantic import Field
 
-from constants import (
+from constants.general import (
+    DUTY_CYCLES,
     MAX_DUTY_CYCLE,
     MAX_PITCH,
     MAX_VOLUME,
@@ -8,6 +11,7 @@ from constants import (
     PITCH_RANGE,
 )
 from instructions.instruction import Instruction
+from utils.frequencies import pitch_to_name
 
 
 class PulseInstruction(Instruction):
@@ -15,7 +19,22 @@ class PulseInstruction(Instruction):
     volume: int = Field(..., ge=0, le=MAX_VOLUME, description="Volume (0-15)")
     duty_cycle: int = Field(..., ge=0, le=MAX_DUTY_CYCLE, description="Duty cycle (e.g. 12, 25, 50, 75)")
 
-    def distance(self, other: "PulseInstruction") -> float:
+    @property
+    def name(self) -> str:
+        pitch = pitch_to_name(self.pitch)
+        volume = f"v{self.volume:X}"
+        duty = f"D{DUTY_CYCLES[self.duty_cycle]*100:.0f}"
+        return f"P {pitch} {volume} {duty}"
+
+    def __lt__(self, other: "PulseInstruction") -> bool:
+        if not isinstance(other, PulseInstruction):
+            return TypeError("Cannot compare PulseInstruction with different type")
+        return (self.pitch, -self.volume, self.duty_cycle) < (other.pitch, -other.volume, other.duty_cycle)
+
+    def distance(self, other: Instruction) -> float:
+        if not isinstance(other, PulseInstruction):
+            raise TypeError("Cannot compute distance between different instruction types")
+
         volume1 = self.volume if self.on else 0
         volume2 = other.volume if other.on else 0
 

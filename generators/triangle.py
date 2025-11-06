@@ -1,17 +1,18 @@
-from typing import List, cast
+from typing import List
 
 import numpy as np
 
 from configs.config import Config
-from constants import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
+from constants.enums import GeneratorClassName, GeneratorName
+from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer
-from typehints.general import GeneratorClassName, Initials
+from typehints.general import Initials
 
 
 class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
-    def __init__(self, config: Config, name: str = "triangle") -> None:
+    def __init__(self, config: Config, name: GeneratorName = GeneratorName.TRIANGLE) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,
@@ -37,13 +38,13 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
         return output
 
-    def set_timer(self, triangle_instruction: TriangleInstruction) -> None:
-        if triangle_instruction.on:
-            self.timer.frequency = self.get_frequency(triangle_instruction.pitch)
+    def set_timer(self, instruction: TriangleInstruction) -> None:
+        if instruction.on:
+            self.timer.frequency = self.get_frequency(instruction.pitch)
         else:
             self.timer.frequency = 0.0
 
-    def apply(self, output: np.ndarray, triangle_instruction: TriangleInstruction) -> np.ndarray:
+    def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
         return triangle * MIXER_TRIANGLE
 
@@ -71,4 +72,4 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:
-        return cast(GeneratorClassName, cls.__name__)
+        return GeneratorClassName.TRIANGLE_GENERATOR

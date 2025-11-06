@@ -6,8 +6,12 @@ from pydantic import BaseModel
 class Instruction(BaseModel):
     on: bool
 
-    class Config:
-        frozen = True
+    @property
+    def name(self) -> str:
+        raise NotImplementedError("Subclasses must implement name property")
 
     def distance(self, other: Self) -> float:
         raise NotImplementedError("Subclasses must implement distance method")
+
+    class Config:
+        frozen = True

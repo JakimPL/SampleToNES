@@ -3,6 +3,7 @@ from typing import Dict, List, Self
 import numpy as np
 from pydantic import BaseModel
 
+from constants.enums import GeneratorName
 from library.fragment import Fragment
 from reconstructor.approximation import ApproximationData
 from typehints.instructions import InstructionUnion
@@ -18,13 +19,13 @@ class FragmentReconstructionState(BaseModel):
 
 
 class ReconstructionState(BaseModel):
-    generator_names: List[str] = []
-    instructions: Dict[str, List[InstructionUnion]] = {}
-    approximations: Dict[str, List[np.ndarray]] = {}
-    errors: Dict[str, List[float]] = {}
+    generator_names: List[GeneratorName] = []
+    instructions: Dict[GeneratorName, List[InstructionUnion]] = {}
+    approximations: Dict[GeneratorName, List[np.ndarray]] = {}
+    errors: Dict[GeneratorName, List[float]] = {}
 
     @classmethod
-    def create(cls, generator_names: List[str]) -> Self:
+    def create(cls, generator_names: List[GeneratorName]) -> Self:
         return cls(
             generator_names=generator_names,
             instructions={name: [] for name in generator_names},

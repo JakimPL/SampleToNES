@@ -6,13 +6,14 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
 from configs.config import Config
+from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
 from library.fragment import Fragment, FragmentedAudio
 from library.library import LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.criterion import Criterion
 from reconstructor.maps import get_generator_by_instruction
-from typehints.general import GeneratorClassName
+from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
 
 
@@ -20,14 +21,13 @@ from typehints.instructions import InstructionUnion
 class ReconstructorWorker:
     config: Config
     window: Window
-    generators: Dict[str, Any]
+    generators: Dict[GeneratorName, GeneratorUnion]
     library_data: LibraryData
-
     criterion: Criterion = field(init=False)
 
     def __call__(
         self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool = False
-    ) -> Dict[int, Dict[str, ApproximationData]]:
+    ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
         return {
             fragment_id: self.reconstruct(fragmented_audio[fragment_id])
             for fragment_id in tqdm(fragment_ids, disable=not show_progress)
@@ -36,11 +36,11 @@ class ReconstructorWorker:
     def __post_init__(self):
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
 
-    def get_remaining_generators(self) -> Dict[str, Any]:
+    def get_remaining_generators(self) -> Dict[GeneratorName, Any]:
         return {name: generator for name, generator in self.generators.items()}
 
-    def reconstruct(self, fragment: Fragment) -> Dict[str, ApproximationData]:
-        approximations: Dict[str, ApproximationData] = {}
+    def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
+        approximations: Dict[GeneratorName, ApproximationData] = {}
         remaining_generators = self.get_remaining_generators()
         while remaining_generators:
             remaining_generator_classes = {
@@ -79,7 +79,7 @@ class ReconstructorWorker:
         length = library_fragment.sample.shape[0] // 3
         end = start + length
 
-        array = library_fragment.sample[start:end] * self.config.general.mixer
+        array = library_fragment.sample[start:end] * self.config.generation.mixer
         windows = sliding_window_view(array, self.config.library.frame_length)
         remainder = fragment.audio - windows
 
@@ -95,7 +95,7 @@ class ReconstructorWorker:
         instruction, error = self.find_best_instruction(fragment, remaining_generator_classes)
         generator = get_generator_by_instruction(instruction, remaining_generator_classes)
 
-        if self.config.calculation.find_best_phase:
+        if self.config.generation.calculation.find_best_phase:
             approximation = self.find_best_phase(fragment, instruction)
         else:
             approximation = self.get_approximation(instruction, generator)
@@ -115,4 +115,4 @@ class ReconstructorWorker:
             self.window,
             generator.initials,
         )
-        return fragment * self.config.general.mixer
+        return fragment * self.config.generation.mixer

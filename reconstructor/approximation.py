@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 
+from constants.enums import GeneratorName
 from library.fragment import Fragment
 from typehints.instructions import InstructionUnion
 
 
 class ApproximationData(BaseModel):
-    generator_name: str
+    generator_name: GeneratorName
     approximation: Fragment
     instruction: InstructionUnion
     error: float

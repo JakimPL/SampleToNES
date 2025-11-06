@@ -1,17 +1,18 @@
-from typing import List, cast
+from typing import List
 
 import numpy as np
 
 from configs.config import Config
-from constants import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
+from constants.enums import GeneratorClassName, GeneratorName
+from constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from generators.generator import Generator
 from instructions.pulse import PulseInstruction
 from timers.phase import PhaseTimer
-from typehints.general import GeneratorClassName, Initials
+from typehints.general import Initials
 
 
 class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
-    def __init__(self, config: Config, name: str = "pulse") -> None:
+    def __init__(self, config: Config, name: GeneratorName = GeneratorName.PULSE1) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,
@@ -37,16 +38,16 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
         return output
 
-    def set_timer(self, pulse_instruction: PulseInstruction) -> None:
-        if pulse_instruction.on:
-            self.timer.frequency = self.get_frequency(pulse_instruction.pitch)
+    def set_timer(self, instruction: PulseInstruction) -> None:
+        if instruction.on:
+            self.timer.frequency = self.get_frequency(instruction.pitch)
         else:
             self.timer.frequency = 0.0
 
-    def apply(self, output: np.ndarray, pulse_instruction: PulseInstruction) -> np.ndarray:
-        duty_cycle = DUTY_CYCLES[pulse_instruction.duty_cycle]
+    def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
+        duty_cycle = DUTY_CYCLES[instruction.duty_cycle]
         output = np.where(output < duty_cycle, 1.0, -1.0)
-        output *= pulse_instruction.volume / MAX_VOLUME
+        output *= instruction.volume / MAX_VOLUME
         return output * MIXER_PULSE
 
     def get_possible_instructions(self) -> List[PulseInstruction]:
@@ -67,4 +68,4 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:
-        return cast(GeneratorClassName, cls.__name__)
+        return GeneratorClassName.PULSE_GENERATOR

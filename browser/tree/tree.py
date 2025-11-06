@@ -1,0 +1,111 @@
+from typing import Callable, Optional, Sequence, Set
+
+from anytree import PreOrderIter
+from anytree.search import findall
+
+from browser.tree.node import TreeNode
+
+
+class Tree:
+    def __init__(self, root: Optional[TreeNode] = None) -> None:
+        self.root = root
+        self._filter_query: Optional[str] = None
+        self._filtered_root: Optional[TreeNode] = None
+        self._matching_nodes: Set[TreeNode] = set()
+        self._original_to_copy: dict[TreeNode, TreeNode] = {}
+
+    def set_root(self, root: Optional[TreeNode]) -> None:
+        self.root = root
+        self.clear_filter()
+
+    def get_root(self) -> Optional[TreeNode]:
+        if self._filter_query is not None:
+            return self._filtered_root
+        return self.root
+
+    def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
+        if not self.root:
+            self._filtered_root = None
+            self._filter_query = query
+            self._matching_nodes = set()
+            return
+
+        if not query:
+            self.clear_filter()
+            return
+
+        self._filter_query = query
+        matching_nodes = [node for node in PreOrderIter(self.root) if predicate(node, query)]
+        self._matching_nodes = set(matching_nodes)
+
+        if not matching_nodes:
+            self._filtered_root = None
+            return
+
+        self._filtered_root = self._build_filtered_tree(matching_nodes)
+
+    def _build_filtered_tree(self, matching_nodes: Sequence[TreeNode]) -> Optional[TreeNode]:
+        if not matching_nodes:
+            return None
+
+        nodes_to_include = set(matching_nodes)
+        for node in matching_nodes:
+            current = node.parent
+            while current is not None:
+                nodes_to_include.add(current)
+                current = current.parent
+
+            for descendant in PreOrderIter(node):
+                nodes_to_include.add(descendant)
+
+        node_map = {}
+        for original_node in PreOrderIter(self.root):
+            if original_node in nodes_to_include:
+                parent_copy = node_map.get(original_node.parent) if original_node.parent else None
+                node_copy = original_node.copy(parent=parent_copy)
+                node_map[original_node] = node_copy
+
+        self._original_to_copy = node_map
+        return node_map.get(self.root)
+
+    def clear_filter(self) -> None:
+        self._filter_query = None
+        self._filtered_root = None
+        self._matching_nodes = set()
+        self._original_to_copy = {}
+
+    def is_filtered(self) -> bool:
+        return self._filter_query is not None
+
+    def is_matching_node(self, node: TreeNode) -> bool:
+        if node in self._matching_nodes:
+            return True
+
+        for original_node, copied_node in self._original_to_copy.items():
+            if copied_node is node and original_node in self._matching_nodes:
+                return True
+
+        return False
+
+    def get_filter_query(self) -> Optional[str]:
+        return self._filter_query
+
+    def find_node(self, predicate: Callable[[TreeNode], bool]) -> Optional[TreeNode]:
+        current_root = self.get_root()
+        if not current_root:
+            return None
+
+        results = findall(current_root, filter_=predicate)
+        return results[0] if results else None
+
+    def collect_leaves(self) -> Sequence[TreeNode]:
+        current_root = self.get_root()
+        if not current_root:
+            return []
+        return [node for node in PreOrderIter(current_root) if node.is_leaf]
+
+    def collect_all_nodes(self) -> Sequence[TreeNode]:
+        current_root = self.get_root()
+        if not current_root:
+            return []
+        return list(PreOrderIter(current_root))

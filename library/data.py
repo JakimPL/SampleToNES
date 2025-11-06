@@ -1,35 +1,27 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, List, Self, Union, cast
+from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
 from pydantic import BaseModel, field_serializer
 
 from configs.config import Config as Configuration
-from ffts.fft import FFTTransformer, calculate_fft
+from configs.library import LibraryConfig
+from constants.enums import GeneratorClassName
+from ffts.fft import FFTTransformer
 from ffts.window import Window
-from generators.generator import Generator
-from instructions.instruction import Instruction
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.general import GeneratorClassName, GeneratorClassNameValues, Initials
-from typehints.generators import GeneratorUnion
-from typehints.instructions import InstructionUnion
-from utils.common import deserialize_array, dump, serialize_array
+from typehints.general import Initials
+from typehints.instructions import InstructionType, InstructionUnion
+from utils.serialization import SerializedData, deserialize_array, dump, serialize_array
 
 
-def load_instruction(data: Dict[str, Any]) -> InstructionUnion:
-    instruction_dictionary = json.loads(data["instruction"])
-    instruction_class = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
-    instruction = instruction_class(**instruction_dictionary)
-    return instruction
-
-
-class LibraryFragment(BaseModel):
+class LibraryFragment(BaseModel, Generic[InstructionType]):
     generator_class: GeneratorClassName
-    instruction: InstructionUnion
+    instruction: InstructionType
     sample: np.ndarray
     feature: np.ndarray
     frequency: float
@@ -37,7 +29,11 @@ class LibraryFragment(BaseModel):
 
     @classmethod
     def create(
-        cls, generator: GeneratorUnion, instruction: InstructionUnion, window: Window, transformer: FFTTransformer
+        cls,
+        generator: Any,
+        instruction: InstructionType,
+        window: Window,
+        transformer: FFTTransformer,
     ) -> Self:
         sample, offset = generator.generate_sample(instruction, window=window)
         audio = generator.generate_frames(instruction)
@@ -73,26 +69,39 @@ class LibraryFragment(BaseModel):
             config=config,
         )
 
-    def get(self, generator: Generator, config: Config, window: Window, initials: Initials = None) -> Fragment:
+    def get(
+        self,
+        generator: Any,
+        config: Configuration,
+        window: Window,
+        initials: Initials = None,
+    ) -> Fragment:
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
         return self.get_fragment(shift, config, window)
 
+    @staticmethod
+    def load_instruction(data: SerializedData) -> InstructionType:
+        instruction_dictionary = json.loads(data["instruction"])
+        instruction_class: Type[InstructionType] = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
+        instruction = instruction_class(**instruction_dictionary)
+        return instruction
+
     @field_serializer("instruction")
-    def serialize_instruction(self, instruction: Instruction, _info) -> str:
+    def serialize_instruction(self, instruction: InstructionType, _info) -> str:
         return dump(instruction.model_dump())
 
     @field_serializer("sample")
-    def serialize_sample(self, sample: np.ndarray, _info) -> Dict[str, Any]:
+    def serialize_sample(self, sample: np.ndarray, _info) -> SerializedData:
         return serialize_array(sample)
 
     @field_serializer("feature")
-    def serialize_feature(self, feature: np.ndarray, _info) -> Dict[str, Any]:
+    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
         return serialize_array(feature)
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
-        instruction: InstructionUnion = load_instruction(dictionary)
+    def deserialize(cls, dictionary: SerializedData) -> Self:
+        instruction: InstructionType = cls.load_instruction(dictionary)
 
         sample = deserialize_array(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
@@ -107,20 +116,21 @@ class LibraryFragment(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+        use_enum_values = True
 
 
 class LibraryData(BaseModel):
+    config: LibraryConfig
     data: Dict[InstructionUnion, LibraryFragment]
 
     @cached_property
     def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
         subdata = {}
-        for generator_class_name in GeneratorClassNameValues:
-            generator_class_literal = cast(GeneratorClassName, generator_class_name)
-            subdata[generator_class_literal] = {
+        for generator_class_name in GeneratorClassName:
+            subdata[generator_class_name] = {
                 instruction: fragment
                 for instruction, fragment in self.data.items()
-                if fragment.generator_class == generator_class_literal
+                if fragment.generator_class == generator_class_name
             }
 
         return subdata
@@ -134,13 +144,12 @@ class LibraryData(BaseModel):
         if not generator_classes:
             return {}
 
-        if isinstance(generator_classes, str):
+        if isinstance(generator_classes, GeneratorClassName):
             return self.subdata.get(generator_classes, {})
         elif isinstance(generator_classes, Collection):
             result: Dict[InstructionUnion, LibraryFragment] = {}
-            for generator_class in generator_classes:
-                generator_class_literal = cast(GeneratorClassName, generator_class)
-                result |= self.subdata[generator_class_literal]
+            for generator_class_name in generator_classes:
+                result |= self.subdata[generator_class_name]
             return result
 
         raise ValueError("Incorrect type of generator class provided")
@@ -163,7 +172,7 @@ class LibraryData(BaseModel):
             file.write(binary)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> Self:
+    def load(cls, path: Union[str, Path]) -> "LibraryData":
         path_object = Path(path)
         with open(path_object, "rb") as file:
             binary = file.read()
@@ -172,15 +181,16 @@ class LibraryData(BaseModel):
         return LibraryData.deserialize(data)
 
     @field_serializer("data")
-    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> Dict[str, Any]:
+    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> SerializedData:
         return {dump(instruction.model_dump()): fragment.model_dump() for instruction, fragment in data.items()}
 
     @classmethod
-    def deserialize(cls, dictionary: Dict[str, Any]) -> Self:
+    def deserialize(cls, dictionary: SerializedData) -> Self:
+        config = LibraryConfig(**dictionary["config"])
+
         data = {}
         for key, value in dictionary["data"].items():
-
-            instruction: InstructionUnion = load_instruction(
+            instruction: InstructionUnion = LibraryFragment.load_instruction(
                 {
                     "instruction": key,
                     "generator_class": value["generator_class"],
@@ -190,15 +200,22 @@ class LibraryData(BaseModel):
             fragment: LibraryFragment = LibraryFragment.deserialize(value)
             data[instruction] = fragment
 
-        return cls(data=data)
+        return cls(config=config, data=data)
 
     @classmethod
     def merge(cls, library_data_list: List[Self]) -> Self:
+        if not library_data_list:
+            raise ValueError("Cannot merge an empty list of LibraryData")
+
+        config: LibraryConfig = library_data_list[0].config
         merged_data: Dict[InstructionUnion, LibraryFragment] = {}
         for library_data in library_data_list:
+            assert config == library_data.config
             merged_data.update(library_data.data)
+            if config is None:
+                config = library_data.config
 
-        return cls(data=merged_data)
+        return cls(config=config, data=merged_data)
 
     class Config:
         arbitrary_types_allowed = True

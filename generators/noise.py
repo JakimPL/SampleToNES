@@ -1,17 +1,18 @@
-from typing import List, cast
+from typing import List
 
 import numpy as np
 
 from configs.config import Config
-from constants import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
+from constants.enums import GeneratorClassName, GeneratorName
+from constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
-from typehints.general import GeneratorClassName, Initials
+from typehints.general import Initials
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
-    def __init__(self, config: Config, name: str = "noise") -> None:
+    def __init__(self, config: Config, name: GeneratorName = GeneratorName.NOISE) -> None:
         super().__init__(config, name)
         self.timer = LFSRTimer(
             sample_rate=config.library.sample_rate,
@@ -36,16 +37,16 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
         return output
 
-    def set_timer(self, noise_instruction: NoiseInstruction) -> None:
-        if noise_instruction.on:
-            self.timer.mode = noise_instruction.mode
-            self.timer.period = noise_instruction.period
+    def set_timer(self, instruction: NoiseInstruction) -> None:
+        if instruction.on:
+            self.timer.short = instruction.short
+            self.timer.period = instruction.period
         else:
-            self.timer.mode = False
+            self.timer.short = False
             self.timer.period = 0
 
-    def apply(self, output: np.ndarray, noise_instruction: NoiseInstruction) -> np.ndarray:
-        volume = 0.5 * float(noise_instruction.volume) / float(MAX_VOLUME)
+    def apply(self, output: np.ndarray, instruction: NoiseInstruction) -> np.ndarray:
+        volume = 0.5 * float(instruction.volume) / float(MAX_VOLUME)
         return volume * output * MIXER_NOISE
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
@@ -54,19 +55,19 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
                 on=False,
                 period=0,
                 volume=0,
-                mode=False,
+                short=False,
             )
         ]
 
         for period in range(len(NOISE_PERIODS)):
             for volume in range(1, MAX_VOLUME + 1):
-                for mode in [False, True]:
+                for short in [False, True]:
                     noise_instructions.append(
                         NoiseInstruction(
                             on=True,
                             period=period,
                             volume=volume,
-                            mode=mode,
+                            short=short,
                         )
                     )
 
@@ -78,4 +79,4 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
     @classmethod
     def class_name(cls) -> GeneratorClassName:
-        return cast(GeneratorClassName, cls.__name__)
+        return GeneratorClassName.NOISE_GENERATOR

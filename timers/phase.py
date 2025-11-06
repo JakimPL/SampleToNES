@@ -2,7 +2,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from constants import APU_CLOCK, RESET_PHASE
+from constants.general import APU_CLOCK, RESET_PHASE
 from timers.timer import Timer
 from typehints.general import Initials
 
