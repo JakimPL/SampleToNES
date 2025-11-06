@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.browser.panel import GUIBrowserPanel
 from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
+from browser.converter.panel import GUIConverterWindow
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
 from browser.reconstruction.data import ReconstructionData
@@ -73,6 +74,8 @@ class GUI:
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager, self.audio_device_manager
         )
+
+        self.converter_window: GUIConverterWindow | None = None
 
         self.setup_gui()
 
@@ -253,14 +256,27 @@ class GUI:
 
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Union[str, Path]) -> None:
-        pass
+        config = self.config_manager.get_config()
+        if not config:
+            return
+
+        self.converter_window = GUIConverterWindow(config, on_load_callback=self._on_reconstruction_loaded)
+        self.converter_window.show(filepath, is_file=True)
 
     @file_dialog_handler
     def _handle_reconstruct_directory(self, directory_path: Union[str, Path]) -> None:
-        pass
+        config = self.config_manager.get_config()
+        if not config:
+            return
+
+        self.converter_window = GUIConverterWindow(config, on_load_callback=None)
+        self.converter_window.show(directory_path, is_file=False)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Union[str, Path]) -> None:
+        pass
+
+    def _on_reconstruction_loaded(self, filepath: Path) -> None:
         pass
 
     def run(self) -> None:

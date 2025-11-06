@@ -20,6 +20,8 @@ DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_ERROR_WIDTH = 350
 DIM_DIALOG_ERROR_HEIGHT = 80
+DIM_DIALOG_CONVERTER_WIDTH = 700
+DIM_DIALOG_CONVERTER_HEIGHT = 128
 
 # UI element dimensions
 DIM_BUTTON_DEFAULT_HEIGHT = 23
@@ -37,9 +39,6 @@ DIM_COPY_BUTTON_WIDTH = 60
 
 # Input validation ranges
 RNG_CONFIG_MIN_WORKERS = 1
-
-# Multiline text heights
-DIM_FAMITRACKER_EXPORT_HEIGHT = 200
 
 # GUI Labels
 TITLE_WINDOW_MAIN = "SampleToNES"
@@ -87,6 +86,8 @@ LBL_BUTTON_PLAY_RECONSTRUCTION = "Play reconstruction"
 LBL_BUTTON_EXPORT_WAV = "Export WAV"
 LBL_BUTTON_REFRESH_LIST = "Refresh list"
 LBL_BUTTON_CLEAR_SEARCH = "Clear"
+LBL_BUTTON_CANCEL = "Cancel"
+LBL_BUTTON_LOAD = "Load"
 
 # Checkbox labels
 LBL_CHECKBOX_NORMALIZE_AUDIO = "Normalize audio"
@@ -116,6 +117,7 @@ TITLE_DIALOG_EXPORT_FTI = "Export FTI"
 TITLE_DIALOG_EXPORT_FTI_DIRECTORY = "Export FTI to directory"
 TITLE_DIALOG_ERROR = "Error"
 TITLE_DIALOG_CONFIG_STATUS = "Configuration Status"
+TITLE_DIALOG_CONVERTER = "Reconstruction Progress"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -215,10 +217,19 @@ TAG_BROWSER_RECONSTRUCTION_LIST = "reconstruction_list"
 TAG_BROWSER_RECONSTRUCTION_DETAILS = "reconstruction_details"
 TAG_BROWSER_FAMITRACKER_EXPORT = "famitracker_export"
 TAG_DIALOG_ERROR_LIBRARY_GENERATION = "error_dialog_library_generation"
+TAG_CONVERTER_WINDOW = "converter_window"
+TAG_CONVERTER_PROGRESS = "converter_progress"
+TAG_CONVERTER_STATUS = "converter_status"
+TAG_CONVERTER_PATH_TEXT = "converter_path_text"
+TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
+TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"
 MSG_CONFIG_ERROR = "Configuration error - please check settings"
+MSG_CONVERTER_PROCESSING = "Processing: {}"
+MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
+MSG_CONVERTER_IDLE = "Waiting to start..."
 
 # Template strings
 TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
