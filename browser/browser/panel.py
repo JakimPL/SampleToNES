@@ -82,8 +82,12 @@ class GUIBrowserPanel(GUITreePanel):
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
-        if isinstance(user_data, FileSystemNode) and self._on_reconstruction_selected:
-            reconstruction_data = self.browser_manager.load_reconstruction_data(user_data.filepath)
+        if isinstance(user_data, FileSystemNode):
+            self.load_and_display_reconstruction(user_data.filepath)
+
+    def load_and_display_reconstruction(self, filepath) -> None:
+        reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
+        if self._on_reconstruction_selected:
             self._on_reconstruction_selected(reconstruction_data)
 
     def set_callbacks(self, on_reconstruction_selected: Optional[Callable] = None) -> None:

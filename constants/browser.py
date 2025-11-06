@@ -200,6 +200,9 @@ KEY_DIALOG_SELECTIONS = "selections"
 
 # Main GUI tags
 TAG_WINDOW_MAIN = "main_window"
+TAG_TAB_BAR_MAIN = "main_tab_bar"
+TAG_TAB_LIBRARY = "tab_library"
+TAG_TAB_RECONSTRUCTION = "tab_reconstruction"
 TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
 TAG_CONFIG_PANEL_GROUP = "config_panel_group"
 TAG_LIBRARY_PANEL_GROUP = "library_panel_group"
@@ -237,6 +240,8 @@ MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_IDLE = "Waiting to start..."
+MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
+MSG_CONVERTER_CANCELLED = "Conversion cancelled."
 TPL_CONVERTER_STATUS = "Progress: {}/{} files"
 
 # Template strings

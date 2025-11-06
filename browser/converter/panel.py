@@ -14,6 +14,8 @@ from constants.browser import (
     DIM_DIALOG_CONVERTER_WIDTH,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_LOAD,
+    MSG_CONVERTER_CANCELLED,
+    MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_CONFIG_NOT_AVAILABLE,
     MSG_CONVERTER_ERROR_PREFIX,
     MSG_CONVERTER_IDLE,
@@ -34,11 +36,9 @@ from constants.browser import (
 
 
 class GUIConverterWindow:
-    def __init__(
-        self, config_manager: ConfigManager, on_load_callback: Optional[Callable[[Path], None]] = None
-    ) -> None:
+    def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        self.on_load_callback = on_load_callback
+        self._on_load_callback: Optional[Callable[[Path], None]] = None
         self.converter: Optional[ReconstructionConverter] = None
         self.target_path: Optional[Path] = None
         self.is_file: bool = False
@@ -62,6 +62,7 @@ class GUIConverterWindow:
             on_complete=self._on_conversion_complete,
             on_error=self._on_conversion_error,
         )
+        self.converter.on_cancelled = self._on_cancellation_complete
 
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
@@ -112,6 +113,14 @@ class GUIConverterWindow:
         if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             return
 
+        if self.converter.is_cancelling():
+            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
+            if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
+                dpg.configure_item(TAG_CONVERTER_CANCEL_BUTTON, enabled=False)
+            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._update_progress_callback)
+            return
+
         progress = self.converter.get_progress()
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
@@ -148,14 +157,18 @@ class GUIConverterWindow:
         pass
 
     def _on_load_clicked(self) -> None:
-        if self.output_file_path and self.on_load_callback:
-            self.on_load_callback(self.output_file_path)
+        if self.output_file_path and self._on_load_callback:
+            self._on_load_callback(self.output_file_path)
         self._on_close()
 
     def _on_cancel_clicked(self) -> None:
         if self.converter and self.converter.is_running():
             self.converter.cancel()
-        self._on_close()
+
+    def _on_cancellation_complete(self) -> None:
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._on_close)
 
     def _on_close(self) -> None:
         if self.converter and self.converter.is_running():
@@ -164,10 +177,18 @@ class GUIConverterWindow:
             dpg.delete_item(TAG_CONVERTER_WINDOW)
 
     def _on_conversion_complete(self, output_path: Optional[Path]) -> None:
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_complete(output_path))
+
+    def _finalize_complete(self, output_path: Optional[Path]) -> None:
         self.set_completed(output_path)
         self._show_success_dialog()
 
     def _on_conversion_error(self, error_message: str) -> None:
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(error_message))
+
+    def _finalize_error(self, error_message: str) -> None:
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR_PREFIX)
         self._show_error_dialog(error_message)
         self._on_close()
 
@@ -218,3 +239,6 @@ class GUIConverterWindow:
 
         if self.is_file and dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
             dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
+
+    def set_callbacks(self, on_load_callback: Optional[Callable[[Path], None]] = None) -> None:
+        self._on_load_callback = on_load_callback

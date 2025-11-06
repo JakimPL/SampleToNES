@@ -43,6 +43,9 @@ from constants.browser import (
     TAG_LIBRARY_PANEL_GROUP,
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
+    TAG_TAB_BAR_MAIN,
+    TAG_TAB_LIBRARY,
+    TAG_TAB_RECONSTRUCTION,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
     TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
@@ -74,8 +77,7 @@ class GUI:
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager, self.audio_device_manager
         )
-
-        self.converter_window: GUIConverterWindow | None = None
+        self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
 
         self.setup_gui()
 
@@ -98,7 +100,8 @@ class GUI:
         self.browser_panel.set_callbacks(
             on_reconstruction_selected=self._on_reconstruction_selected,
         )
-        self.reconstruction_panel.set_export_wav_callback(self._export_reconstruction_to_wav)
+        self.reconstruction_panel.set_callbacks(on_export_wav=self._export_reconstruction_to_wav)
+        self.converter_window.set_callbacks(on_load_callback=self._on_reconstruction_loaded)
 
     def create_main_window(self) -> None:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
@@ -120,14 +123,14 @@ class GUI:
                     dpg.add_separator()
                     dpg.add_menu_item(label=LBL_MENU_EXIT, callback=lambda: dpg.stop_dearpygui())
 
-            with dpg.tab_bar():
+            with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
                 self.create_config_tab()
                 self.create_reconstruction_tab()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
     def create_config_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_LIBRARY):
+        with dpg.tab(label=LBL_TAB_LIBRARY, tag=TAG_TAB_LIBRARY):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
                     with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
@@ -143,7 +146,7 @@ class GUI:
         self.library_panel.initialize_libraries()
 
     def create_reconstruction_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_RECONSTRUCTION):
+        with dpg.tab(label=LBL_TAB_RECONSTRUCTION, tag=TAG_TAB_RECONSTRUCTION):
             with dpg.group(horizontal=True):
                 with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
                     with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
@@ -169,7 +172,7 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_JSON)
 
     @file_dialog_handler
-    def _handle_save_config(self, filepath: Union[str, Path]) -> None:
+    def _handle_save_config(self, filepath: Path) -> None:
         try:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
@@ -187,7 +190,7 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_JSON)
 
     @file_dialog_handler
-    def _handle_load_config(self, filepath: Union[str, Path]) -> None:
+    def _handle_load_config(self, filepath: Path) -> None:
         try:
             self.config_manager.load_config_from_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
@@ -255,21 +258,21 @@ class GUI:
         self.reconstruction_panel.export_reconstruction_to_wav()
 
     @file_dialog_handler
-    def _handle_reconstruct_file(self, filepath: Union[str, Path]) -> None:
-        self.converter_window = GUIConverterWindow(self.config_manager, on_load_callback=self._on_reconstruction_loaded)
+    def _handle_reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)
 
     @file_dialog_handler
-    def _handle_reconstruct_directory(self, directory_path: Union[str, Path]) -> None:
-        self.converter_window = GUIConverterWindow(self.config_manager, on_load_callback=None)
+    def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
 
     @file_dialog_handler
-    def _handle_load_reconstruction(self, filepath: Union[str, Path]) -> None:
-        pass
+    def _handle_load_reconstruction(self, filepath: Path) -> None:
+        self.browser_panel.load_and_display_reconstruction(filepath)
+        dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
-        pass
+        self.browser_panel.load_and_display_reconstruction(filepath)
+        dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def run(self) -> None:
         dpg.start_dearpygui()

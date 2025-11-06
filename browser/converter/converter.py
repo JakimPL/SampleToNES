@@ -31,7 +31,10 @@ class ReconstructionConverter:
         self.total_files = 0
         self.completed_files = 0
         self.current_file: Optional[str] = None
+        self.cancel_flag: Optional[Any] = None
         self._manager: Optional[Any] = None
+        self.cancelling = False
+        self.on_cancelled: Optional[Callable[[], None]] = None
 
     def start(self, target_path: Union[str, Path], is_file: bool) -> None:
         if self.running:
@@ -43,6 +46,7 @@ class ReconstructionConverter:
         self.completed_files = 0
         self._manager = Manager()
         self.progress_queue = self._manager.Queue()
+        self.cancel_flag = self._manager.Value("b", False)
 
         if is_file:
             self.total_files = 1
@@ -87,7 +91,7 @@ class ReconstructionConverter:
 
     def _reconstruct_directory_worker(self, directory_path: Path) -> None:
         try:
-            reconstruct_directory(self.config, directory_path, self.progress_queue)
+            reconstruct_directory(self.config, directory_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
             self._handle_error(error)
             return
@@ -103,10 +107,31 @@ class ReconstructionConverter:
             self.on_error(str(error))
 
     def cancel(self) -> None:
+        if self.cancelling:
+            return
+
+        self.cancelling = True
+        if self.cancel_flag:
+            self.cancel_flag.value = True
+
+        cancel_monitor = threading.Thread(target=self._wait_for_cancellation, daemon=True)
+        cancel_monitor.start()
+
+    def _wait_for_cancellation(self) -> None:
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5)
+
         self.running = False
+        self.cancelling = False
+
+        if self.on_cancelled:
+            self.on_cancelled()
 
     def is_running(self) -> bool:
         return self.running
+
+    def is_cancelling(self) -> bool:
+        return self.cancelling
 
     def get_progress(self) -> float:
         if self.total_files == 0:

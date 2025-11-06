@@ -50,8 +50,12 @@ def reconstruct_directory_file(
     directory: Path,
     output_directory: Path,
     progress_queue: Optional[Any] = None,
+    cancel_flag: Optional[Any] = None,
 ) -> None:
     for idx in file_ids:
+        if cancel_flag and cancel_flag.value:
+            return
+
         wav_file = wav_files[idx]
         relative_path = wav_file.relative_to(directory)
         output_path = output_directory / relative_path
@@ -61,7 +65,9 @@ def reconstruct_directory_file(
             progress_queue.put(("completed", str(wav_file)))
 
 
-def reconstruct_directory(config: Config, directory: Union[str, Path], progress_queue: Optional[Any] = None) -> None:
+def reconstruct_directory(
+    config: Config, directory: Union[str, Path], progress_queue: Optional[Any] = None, cancel_flag: Optional[Any] = None
+) -> None:
     directory = Path(directory)
     if not directory.exists():
         raise FileNotFoundError(f"Directory does not exist: {directory}")
@@ -91,6 +97,7 @@ def reconstruct_directory(config: Config, directory: Union[str, Path], progress_
             directory=directory,
             output_directory=output_directory,
             progress_queue=progress_queue,
+            cancel_flag=cancel_flag,
         )
 
         del reconstructor
