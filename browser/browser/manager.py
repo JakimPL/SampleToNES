@@ -4,7 +4,7 @@ from typing import Dict, Optional
 from browser.reconstruction.data import ReconstructionData
 from browser.tree.node import FileSystemNode
 from browser.tree.tree import Tree
-from constants.browser import EXT_RECONSTRUCTION_FILE, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
+from constants.browser import EXT_FILE_JSON, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from constants.general import OUTPUT_DIRECTORY
 
 
@@ -32,7 +32,7 @@ class BrowserManager:
             return None
 
         if path.is_file():
-            if path.suffix == EXT_RECONSTRUCTION_FILE:
+            if path.suffix == EXT_FILE_JSON:
                 return FileSystemNode(path.stem, filepath=path, node_type=NOD_TYPE_FILE)
             return None
 
@@ -70,7 +70,7 @@ class BrowserManager:
 
     def validate_reconstruction_file(self, filepath: Path) -> bool:
         # TODO: Implement actual validation logic
-        return filepath.suffix == EXT_RECONSTRUCTION_FILE
+        return filepath.suffix == EXT_FILE_JSON
 
     def get_all_reconstruction_files(self) -> list[Path]:
         file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]

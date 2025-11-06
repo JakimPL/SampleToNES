@@ -16,8 +16,8 @@ from constants.browser import (
     DIM_PANEL_LEFT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
-    EXT_DIALOG_JSON,
-    EXT_DIALOG_WAV,
+    EXT_FILE_JSON,
+    EXT_FILE_WAV,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_EXIT,
     LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
@@ -49,6 +49,7 @@ from constants.browser import (
     TITLE_DIALOG_SAVE_CONFIG,
     TITLE_WINDOW_MAIN,
     TPL_RECONSTRUCTION_EXPORT_ERROR,
+    VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
 from library.data import LibraryFragment
@@ -157,9 +158,9 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_save_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-            default_filename="config",
+            default_filename=VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
         ):
-            dpg.add_file_extension(EXT_DIALOG_JSON)
+            dpg.add_file_extension(EXT_FILE_JSON)
 
     def _handle_save_config(self, sender, app_data) -> None:
         if not app_data or "file_path_name" not in app_data:
@@ -183,7 +184,7 @@ class GUI:
             callback=self._handle_load_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
-            dpg.add_file_extension(EXT_DIALOG_JSON)
+            dpg.add_file_extension(EXT_FILE_JSON)
 
     def _handle_load_config(self, sender, app_data) -> None:
         if not app_data or "file_path_name" not in app_data:
@@ -204,15 +205,17 @@ class GUI:
             label=TITLE_DIALOG_RECONSTRUCT_FILE,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_reconstruct_file,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
-            dpg.add_file_extension(EXT_DIALOG_WAV)
+            dpg.add_file_extension(EXT_FILE_WAV)
 
     def _reconstruct_directory_dialog(self) -> None:
         dpg.add_file_dialog(
             label=TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_reconstruct_directory,
             directory_selector=True,
             show=True,
         )
@@ -222,9 +225,10 @@ class GUI:
             label=TITLE_DIALOG_LOAD_RECONSTRUCTION,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
-            dpg.add_file_extension(EXT_DIALOG_JSON)
+            dpg.add_file_extension(EXT_FILE_JSON)
 
     def _export_reconstruction_fti_dialog(self) -> None:
         dpg.add_file_dialog(
@@ -255,6 +259,16 @@ class GUI:
 
     def _export_reconstruction_to_wav(self) -> None:
         self.reconstruction_panel.export_reconstruction_to_wav()
+
+    def _handle_reconstruct_file(self, sender, app_data) -> None:
+        if not app_data or "file_path_name" not in app_data:
+            return
+
+        filepath = app_data["file_path_name"]
+        if not filepath:
+            return
+
+        self.reconstructor_panel.reconstruct_file(filepath)
 
     def run(self) -> None:
         dpg.start_dearpygui()

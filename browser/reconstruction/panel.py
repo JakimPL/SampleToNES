@@ -16,8 +16,8 @@ from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_WAVEFORM_DEFAULT_HEIGHT,
-    EXT_DIALOG_FTI,
-    EXT_DIALOG_WAV,
+    EXT_FILE_FTI,
+    EXT_FILE_WAV,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -259,7 +259,7 @@ class GUIReconstructionPanel(GUIPanel):
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=instrument_name,
         ):
-            dpg.add_file_extension(EXT_DIALOG_FTI)
+            dpg.add_file_extension(EXT_FILE_FTI)
 
     def _handle_fti_export_dialog_result(self, sender, app_data) -> None:
         if not app_data or "file_path_name" not in app_data:
@@ -311,7 +311,7 @@ class GUIReconstructionPanel(GUIPanel):
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=filename,
         ):
-            dpg.add_file_extension(EXT_DIALOG_WAV)
+            dpg.add_file_extension(EXT_FILE_WAV)
 
     def _handle_wav_export_dialog_result(self, sender, app_data: SerializedData) -> None:
         if not app_data or "file_path_name" not in app_data:

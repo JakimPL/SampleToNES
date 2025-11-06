@@ -41,13 +41,9 @@ class AudioSourceType(StrEnum):
     ORIGINAL = "original"
 
 
-ABBREVIATIONS = {
+GENERATOR_ABBREVIATIONS = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",
     GeneratorName.TRIANGLE: "T",
     GeneratorName.NOISE: "N",
 }
-
-
-def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
-    return "".join(ABBREVIATIONS[name] for name in generator_names)

@@ -155,11 +155,6 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
 
-# File extensions
-EXT_DIALOG_JSON = ".json"
-EXT_DIALOG_WAV = ".wav"
-EXT_DIALOG_FTI = ".fti"
-
 # Default display values
 PFX_GLOBAL_ERROR = "Error: {}"
 PFX_GLOBAL_LOADED = "Loaded: {}"
@@ -230,6 +225,7 @@ TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
 
 # File dialog settings
 VAL_DIALOG_FILE_COUNT_SINGLE = 1
+VAL_DIALOG_DEFAULT_FILENAME_CONFIG = "config"
 
 # Plot settings
 VAL_PLOT_WIDTH_FULL = -1
@@ -432,9 +428,10 @@ NOD_LABEL_NOT_LOADED = "Not loaded"
 NOD_LABEL_LIBRARIES = "Libraries"
 
 # File extensions
-EXT_RECONSTRUCTION_FILE = ".json"
-EXT_LIBRARY_FILE = ".dat"
-EXT_FTI_FILE = ".fti"
+EXT_FILE_JSON = ".json"
+EXT_FILE_LIBRARY = ".dat"
+EXT_FILE_FTI = ".fti"
+EXT_FILE_WAV = ".wav"
 
 # Bar plot display settings
 LBL_BAR_PLOT_DISPLAY = "Bar plot display"

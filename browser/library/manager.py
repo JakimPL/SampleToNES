@@ -11,7 +11,7 @@ from browser.tree.node import (
 from browser.tree.tree import Tree
 from configs.config import Config
 from constants.browser import (
-    EXT_LIBRARY_FILE,
+    EXT_FILE_LIBRARY,
     NOD_LABEL_LIBRARIES,
     NOD_LABEL_NOT_LOADED,
     NOD_TYPE_GENERATOR,
@@ -55,7 +55,7 @@ class LibraryManager:
 
         new_library_files = {}
         for filepath in library_directory.iterdir():
-            if filepath.is_file() and filepath.suffix == EXT_LIBRARY_FILE and self._is_library_file(filepath.stem):
+            if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
                 library_key = self._create_key_from_filename(filepath.stem)
                 new_library_files[library_key] = filepath.stem
 
