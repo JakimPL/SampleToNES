@@ -1,16 +1,10 @@
-import gc
 import threading
+from multiprocessing import Manager
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 from configs.config import Config
-from constants.browser import EXT_FILE_JSON
-from reconstructor.reconstructor import Reconstructor
-from reconstructor.scripts import (
-    generate_config_directory_name,
-    reconstruct_directory,
-    reconstruct_file,
-)
+from reconstructor.scripts import reconstruct_directory, reconstruct_single_file
 
 
 class ReconstructionConverter:
@@ -24,75 +18,112 @@ class ReconstructionConverter:
         self.on_complete = on_complete
         self.on_error = on_error
         self.thread: Optional[threading.Thread] = None
+        self.monitor_thread: Optional[threading.Thread] = None
         self.running = False
-        self.should_cancel = False
+        self.progress_queue: Optional[Any] = None
+        self.total_files = 0
+        self.completed_files = 0
+        self.current_file: Optional[str] = None
+        self.cancel_flag: Optional[Any] = None
+        self._manager: Optional[Any] = None
+        self.cancelling = False
+        self.on_cancelled: Optional[Callable[[], None]] = None
 
     def start(self, target_path: Union[str, Path], is_file: bool) -> None:
         if self.running:
             return
 
         self.running = True
-        self.should_cancel = False
         target_path = Path(target_path)
+        self.total_files = 0
+        self.completed_files = 0
+        self._manager = Manager()
+        self.progress_queue = self._manager.Queue()
+        self.cancel_flag = self._manager.Value("b", False)
 
-        worker = self._reconstruct_file_worker if is_file else self._reconstruct_directory_worker
+        if is_file:
+            self.total_files = 1
+            worker = self._reconstruct_file_worker
+        else:
+            worker = self._reconstruct_directory_worker
+
         self.thread = threading.Thread(target=worker, args=(target_path,), daemon=True)
         self.thread.start()
 
+        self.monitor_thread = threading.Thread(target=self._monitor_queue, daemon=True)
+        self.monitor_thread.start()
+
+    def _monitor_queue(self) -> None:
+        while self.running:
+            if self.progress_queue and not self.progress_queue.empty():
+                message = self.progress_queue.get()
+                if message[0] == "total":
+                    self.total_files = message[1]
+                elif message[0] == "completed":
+                    self.completed_files += 1
+                    self.current_file = message[1]
+
     def _reconstruct_file_worker(self, input_path: Path) -> None:
-        config_directory = generate_config_directory_name(self.config)
-        output_directory = Path(self.config.general.output_directory) / config_directory
-        output_path = output_directory / input_path.stem
-
         try:
-            reconstructor = Reconstructor(self.config)
+            output_json = reconstruct_single_file(self.config, input_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
             self._handle_error(error)
             return
         finally:
             self.running = False
-            gc.collect()
 
-        try:
-            reconstruct_file(reconstructor, input_path, output_path)
-        except KeyboardInterrupt:
-            raise
-        except Exception as error:
-            self._handle_error(error)
-            return
-        finally:
-            self.running = False
-            gc.collect()
-
-        output_json = output_path.with_suffix(EXT_FILE_JSON)
-        if self.on_complete:
-            self.on_complete(output_json)
+        if not self.cancel_flag or not self.cancel_flag.value:
+            if self.on_complete:
+                self.on_complete(output_json)
 
     def _reconstruct_directory_worker(self, directory_path: Path) -> None:
         try:
-            reconstruct_directory(self.config, directory_path)
+            reconstruct_directory(self.config, directory_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
             self._handle_error(error)
             return
         finally:
             self.running = False
-            gc.collect()
 
-        if not self.should_cancel and self.on_complete:
-            self.on_complete(None)
+        if not self.cancel_flag or not self.cancel_flag.value:
+            if self.on_complete:
+                self.on_complete(None)
 
     def _handle_error(self, error: Exception) -> None:
         if self.on_error:
             self.on_error(str(error))
 
     def cancel(self) -> None:
-        self.should_cancel = True
+        if self.cancelling:
+            return
+
+        self.cancelling = True
+        if self.cancel_flag:
+            self.cancel_flag.value = True
+
+        cancel_monitor = threading.Thread(target=self._wait_for_cancellation, daemon=True)
+        cancel_monitor.start()
+
+    def _wait_for_cancellation(self) -> None:
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=5)
+
+        self.running = False
+        self.cancelling = False
+
+        if self.on_cancelled:
+            self.on_cancelled()
 
     def is_running(self) -> bool:
         return self.running
 
+    def is_cancelling(self) -> bool:
+        return self.cancelling
+
     def get_progress(self) -> float:
-        return 0.0
+        if self.total_files == 0:
+            return 0.0
+        return self.completed_files / self.total_files
 
     def get_current_file(self) -> Optional[str]:
-        return None
+        return self.current_file

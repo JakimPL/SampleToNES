@@ -177,7 +177,7 @@ class GUIAudioPlayerPanel(GUIPanel):
 
     def _show_playback_error_dialog(self, error_message: str) -> None:
         def content(parent: str) -> None:
-            dpg.add_text(f"{MSG_PLAYER_AUDIO_PLAYBACK_ERROR}: {error_message}", parent=parent)
+            dpg.add_text(f"{MSG_PLAYER_AUDIO_PLAYBACK_ERROR}:\n{error_message}", parent=parent)
 
         show_modal_dialog(
             tag=self.error_popup_tag,

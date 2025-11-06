@@ -19,7 +19,7 @@ DIM_PANEL_BROWSER_HEIGHT = -1
 DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_ERROR_WIDTH = 350
-DIM_DIALOG_ERROR_HEIGHT = 80
+DIM_DIALOG_ERROR_HEIGHT = 0
 DIM_DIALOG_CONVERTER_WIDTH = 700
 DIM_DIALOG_CONVERTER_HEIGHT = 128
 
@@ -89,6 +89,7 @@ LBL_BUTTON_EXPORT_WAV = "Export WAV"
 LBL_BUTTON_REFRESH_LIST = "Refresh list"
 LBL_BUTTON_CLEAR_SEARCH = "Clear"
 LBL_BUTTON_CANCEL = "Cancel"
+LBL_BUTTON_CLOSE = "Close"
 LBL_BUTTON_LOAD = "Load"
 
 # Checkbox labels
@@ -119,7 +120,7 @@ TITLE_DIALOG_EXPORT_FTI = "Export FTI"
 TITLE_DIALOG_EXPORT_FTI_DIRECTORY = "Export FTI to directory"
 TITLE_DIALOG_ERROR = "Error"
 TITLE_DIALOG_CONFIG_STATUS = "Configuration Status"
-TITLE_DIALOG_CONVERTER = "Reconstruction Progress"
+TITLE_DIALOG_CONVERTER = "Reconstruction progress"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -200,6 +201,9 @@ KEY_DIALOG_SELECTIONS = "selections"
 
 # Main GUI tags
 TAG_WINDOW_MAIN = "main_window"
+TAG_TAB_BAR_MAIN = "main_tab_bar"
+TAG_TAB_LIBRARY = "tab_library"
+TAG_TAB_RECONSTRUCTION = "tab_reconstruction"
 TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
 TAG_CONFIG_PANEL_GROUP = "config_panel_group"
 TAG_LIBRARY_PANEL_GROUP = "library_panel_group"
@@ -237,6 +241,9 @@ MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_IDLE = "Waiting to start..."
+MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
+MSG_CONVERTER_CANCELLED = "Conversion cancelled."
+TPL_CONVERTER_STATUS = "Progress: {}/{} files"
 
 # Template strings
 TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
@@ -304,7 +311,7 @@ LBL_PLAYER_BUTTON_PAUSE = "Pause"
 LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
-MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error."
+MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error"
 TITLE_DIALOG_NO_AUDIO = "No Audio"
 TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
 

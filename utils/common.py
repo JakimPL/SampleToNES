@@ -1,10 +1,8 @@
-import base64
-import hashlib
-import json
-from typing import Any, Dict
+import os
+from pathlib import Path
+from typing import Any
 
 import numpy as np
-from pydantic import BaseModel
 
 
 def next_power_of_two(length: int) -> int:
@@ -34,3 +32,21 @@ def first_key_for_value(dictionary: dict, target: Any) -> Any:
             return key
 
     return None
+
+
+def shorten_path(path: Path) -> str:
+    path = path.expanduser().resolve()
+    parts = path.parts
+    root = parts[0]
+
+    if len(parts) <= 3:
+        return str(path)
+
+    first_dir = parts[1]
+    last_dir = parts[-2]
+    filename = parts[-1]
+
+    if len(parts) == 4:
+        return str(path)
+    else:
+        return os.sep.join([root.rstrip(os.sep), first_dir, "...", last_dir, filename])

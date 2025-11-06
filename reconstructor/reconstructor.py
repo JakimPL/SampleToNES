@@ -81,11 +81,12 @@ class Reconstructor:
 
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids
-        if self.config.general.max_workers > 1:
+        max_workers = 1  # Disable parallelization for now
+        if max_workers > 1:
             results = parallelize(
                 reconstruct,
                 fragments_ids,
-                max_workers=self.config.general.max_workers,
+                max_workers=max_workers,
                 fragmented_audio=fragmented_audio,
                 config=self.config,
                 window=self.window,
@@ -112,7 +113,7 @@ class Reconstructor:
                 library_data=self.library_data,
             )
 
-            results = worker(fragmented_audio, fragments_ids, show_progress=True)
+            results = worker(fragmented_audio, fragments_ids, show_progress=False)
 
         for fragment_approximations in results.values():
             for fragment_approximation in fragment_approximations.values():

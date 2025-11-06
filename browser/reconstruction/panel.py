@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional, Union, cast
+from typing import Callable, List, Optional, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -51,7 +51,6 @@ from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import write_audio
 from utils.fami import write_fti
-from utils.serialization import SerializedData
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -144,8 +143,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_details.create_panel()
         self.reconstruction_details.set_callback(on_instrument_export=self._handle_instrument_export)
 
-    def set_export_wav_callback(self, callback: Callable[[], None]) -> None:
-        self._export_wav_callback = callback
+    def set_callbacks(self, on_export_wav: Optional[Callable[[], None]] = None) -> None:
+        self._export_wav_callback = on_export_wav
 
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
@@ -262,7 +261,7 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_file_extension(EXT_FILE_FTI)
 
     @file_dialog_handler
-    def _handle_fti_export_dialog_result(self, filepath: Union[str, Path]) -> None:
+    def _handle_fti_export_dialog_result(self, filepath: Path) -> None:
         if not self._pending_fti_export:
             self._pending_fti_export = None
             return
@@ -310,7 +309,7 @@ class GUIReconstructionPanel(GUIPanel):
             dpg.add_file_extension(EXT_FILE_WAV)
 
     @file_dialog_handler
-    def _handle_wav_export_dialog_result(self, filepath: Union[str, Path]) -> None:
+    def _handle_wav_export_dialog_result(self, filepath: Path) -> None:
         if not self.reconstruction_data:
             return
 

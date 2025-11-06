@@ -154,14 +154,14 @@ class ConfigManager:
         self.generators = list(config.generation.generators)
         self._notify_config_change()
 
-    def save_config_to_file(self, filepath: Union[str, Path]) -> None:
+    def save_config_to_file(self, filepath: Path) -> None:
         if not self.config:
             raise ValueError("No configuration to save")
 
         config_dict = self.config.model_dump()
         save_json(filepath, config_dict)
 
-    def load_config_from_file(self, filepath: Union[str, Path]) -> None:
+    def load_config_from_file(self, filepath: Path) -> None:
         config_dict = load_json(filepath)
 
         self.config = Config(**config_dict)
