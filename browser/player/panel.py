@@ -67,6 +67,8 @@ class GUIAudioPlayerPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
+            no_scroll_with_mouse=True,
+            no_scrollbar=True,
         ):
             with dpg.group(tag=self.controls_group_tag, horizontal=True):
                 dpg.add_button(

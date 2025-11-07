@@ -51,8 +51,8 @@ class GUISpectrumDisplay(GUIGraphDisplay):
     def _create_content(self) -> None:
         with dpg.plot(
             label=self.label,
-            height=self.height,
             width=self.width,
+            height=self.height,
             tag=self.plot_tag,
             anti_aliased=True,
             no_inputs=True,

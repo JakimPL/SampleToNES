@@ -13,6 +13,8 @@ from constants.browser import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTION_WAVEFORM,
+    SUF_INSTRUCTION_SPECTRUM,
+    SUF_INSTRUCTION_WAVEFORM,
     TAG_INSTRUCTION_PANEL,
     TAG_INSTRUCTION_PANEL_GROUP,
     TAG_INSTRUCTION_PLAYER_PANEL,
@@ -34,6 +36,9 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel: GUIAudioPlayerPanel
         self.library_config: Optional[LibraryConfig] = None
 
+        self.waveform_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_WAVEFORM}"
+        self.spectrum_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_SPECTRUM}"
+
         super().__init__(
             tag=TAG_INSTRUCTION_PANEL,
             parent=TAG_INSTRUCTION_PANEL_GROUP,
@@ -41,30 +46,39 @@ class GUIInstructionPanel(GUIPanel):
 
     def create_panel(self) -> None:
         self._create_player_panel()
-        dpg.add_separator(parent=self.parent)
         self._create_waveform_display()
-        dpg.add_separator(parent=self.parent)
         self._create_spectrum_display()
-        dpg.add_separator(parent=self.parent)
         self._create_instruction_details()
 
     def _create_waveform_display(self) -> None:
-        self.waveform_display = GUIWaveformDisplay(
-            tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
-            width=VAL_PLOT_WIDTH_FULL,
-            height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+        with dpg.child_window(
+            tag=self.waveform_tag,
             parent=self.parent,
-            label=LBL_INSTRUCTION_WAVEFORM,
-        )
+            no_scrollbar=True,
+            auto_resize_y=True,
+        ):
+            self.waveform_display = GUIWaveformDisplay(
+                tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
+                width=VAL_PLOT_WIDTH_FULL,
+                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+                parent=self.waveform_tag,
+                label=LBL_INSTRUCTION_WAVEFORM,
+            )
 
     def _create_spectrum_display(self) -> None:
-        self.spectrum_display = GUISpectrumDisplay(
-            tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
-            width=VAL_PLOT_WIDTH_FULL,
-            height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+        with dpg.child_window(
+            tag=self.spectrum_tag,
             parent=self.parent,
-            label=LBL_INSTRUCTION_SPECTRUM,
-        )
+            no_scrollbar=True,
+            auto_resize_y=True,
+        ):
+            self.spectrum_display = GUISpectrumDisplay(
+                tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
+                width=VAL_PLOT_WIDTH_FULL,
+                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+                parent=self.spectrum_tag,
+                label=LBL_INSTRUCTION_SPECTRUM,
+            )
 
     def _create_instruction_details(self) -> None:
         self.instruction_details = GUIInstructionDetailsPanel()

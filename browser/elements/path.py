@@ -6,6 +6,7 @@ from typing import Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 
 from constants.browser import CLR_PATH_TEXT, CLR_PATH_TEXT_HOVER, SUF_CONVERTER_HANDLER
+from utils.common import shorten_path
 
 
 class GUIPathText:
@@ -14,13 +15,12 @@ class GUIPathText:
         tag: str,
         path: Path,
         parent: Optional[str] = None,
-        display_text: Optional[str] = None,
         color: Tuple[int, int, int] = CLR_PATH_TEXT,
         hover_color: Tuple[int, int, int] = CLR_PATH_TEXT_HOVER,
     ) -> None:
         self.tag = tag
-        self.path = Path(path)
-        self.display_text = display_text if display_text is not None else str(self.path)
+        self.path = path
+        self.display_text = shorten_path(self.path)
         self.color = color
         self.hover_color = hover_color
         self.handler_tag = f"{tag}{SUF_CONVERTER_HANDLER}"

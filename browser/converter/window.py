@@ -97,7 +97,6 @@ class GUIConverterWindow:
                 tag=TAG_CONVERTER_PATH_TEXT,
                 path=self.target_path,
                 parent=TAG_CONVERTER_WINDOW,
-                display_text=self.shortened_path,
             )
 
             dpg.add_separator()

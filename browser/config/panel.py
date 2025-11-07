@@ -94,7 +94,6 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
                 path=library_directory,
                 parent=self.tag,
-                display_text=shorten_path(Path(library_directory)),
             )
 
             dpg.add_separator()

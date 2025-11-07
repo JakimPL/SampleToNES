@@ -98,8 +98,8 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         with dpg.plot(
             label=self.label,
-            height=self.height,
             width=self.width,
+            height=self.height,
             tag=self.plot_tag,
             anti_aliased=True,
             callback=self._plot_callback,
@@ -267,7 +267,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     def _reset_x_axis(self) -> None:
         if self.layers:
-            max_length = max(len(layer.data) for layer in self.layers.values())
+            max_length = max(len(layer.x_data) for layer in self.layers.values())
             self.x_min = VAL_GRAPH_DEFAULT_X_MIN
             self.x_max = float(max_length)
         else:

@@ -13,6 +13,7 @@ from constants.browser import (
     SUF_GRAPH_PLOT,
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
+    SUF_WINDOW,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
     VAL_WAVEFORM_DEFAULT_Y_MAX,

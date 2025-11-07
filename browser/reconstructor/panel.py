@@ -72,7 +72,6 @@ class GUIReconstructorPanel(GUIPanel):
                 tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
                 path=output_directory,
                 parent=self.tag,
-                display_text=shorten_path(output_directory),
             )
 
             dpg.add_separator()

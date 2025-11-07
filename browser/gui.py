@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Union
 
 import dearpygui.dearpygui as dpg
 
@@ -17,6 +16,7 @@ from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_PANEL_LEFT_HEIGHT,
     DIM_PANEL_LEFT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
@@ -137,15 +137,23 @@ class GUI:
 
     def create_config_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_LIBRARY, tag=TAG_TAB_LIBRARY):
-            with dpg.group(horizontal=True):
-                with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
+            with dpg.group(parent=TAG_TAB_LIBRARY, horizontal=True):
+                with dpg.child_window(
+                    width=DIM_PANEL_LEFT_WIDTH,
+                    height=DIM_PANEL_LEFT_HEIGHT,
+                    no_scrollbar=True,
+                    no_scroll_with_mouse=True,
+                ):
                     with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
                         self.config_panel.create_panel()
 
                     with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
                         self.library_panel.create_panel()
 
-                with dpg.child_window(tag=TAG_INSTRUCTION_PANEL_GROUP):
+                with dpg.child_window(
+                    tag=TAG_INSTRUCTION_PANEL_GROUP,
+                    no_scroll_with_mouse=True,
+                ):
                     self.instruction_panel.create_panel()
 
         self.config_manager.initialize_config_with_defaults()
@@ -153,15 +161,23 @@ class GUI:
 
     def create_reconstruction_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_RECONSTRUCTION, tag=TAG_TAB_RECONSTRUCTION):
-            with dpg.group(horizontal=True):
-                with dpg.child_window(width=DIM_PANEL_LEFT_WIDTH, height=-1):
+            with dpg.group(parent=TAG_TAB_RECONSTRUCTION, horizontal=True):
+                with dpg.child_window(
+                    width=DIM_PANEL_LEFT_WIDTH,
+                    height=DIM_PANEL_LEFT_HEIGHT,
+                    no_scrollbar=True,
+                    no_scroll_with_mouse=True,
+                ):
                     with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
                         self.reconstructor_panel.create_panel()
 
                     with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
                         self.browser_panel.create_panel()
 
-                with dpg.child_window(tag=TAG_RECONSTRUCTION_PANEL_GROUP):
+                with dpg.child_window(
+                    tag=TAG_RECONSTRUCTION_PANEL_GROUP,
+                    no_scroll_with_mouse=True,
+                ):
                     self.reconstruction_panel.create_panel()
 
         self.browser_panel.initialize_tree()

@@ -29,6 +29,8 @@ from constants.browser import (
     LBL_RECONSTRUCTION_WAVEFORM,
     MSG_RECONSTRUCTION_EXPORT_NO_DATA,
     MSG_RECONSTRUCTION_EXPORT_SUCCESS,
+    SUF_RECONSTRUCTION_AUDIO,
+    SUF_RECONSTRUCTION_PLOT,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
     TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
     TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP,
@@ -60,10 +62,15 @@ class GUIReconstructionPanel(GUIPanel):
         self.waveform_display: GUIWaveformDisplay
         self.reconstruction_details: GUIReconstructionDetailsPanel
         self.player_panel: GUIAudioPlayerPanel
+
         self.reconstruction_data: Optional[ReconstructionData] = None
-        self._pending_fti_export: Optional[tuple[GeneratorName, dict]] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
+
+        self._pending_fti_export: Optional[tuple[GeneratorName, dict]] = None
         self._export_wav_callback: Optional[Callable[[], None]] = None
+
+        self.audio_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_AUDIO}"
+        self.plot_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_PLOT}"
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_PANEL,
@@ -72,13 +79,29 @@ class GUIReconstructionPanel(GUIPanel):
 
     def create_panel(self) -> None:
         self._create_player_panel()
-        self._create_audio_source_radio_buttons()
-        self._create_export_wav_button()
-        dpg.add_separator(parent=self.parent)
-        self._create_waveform_display()
-        self._create_generator_checkboxes()
-        dpg.add_separator(parent=self.parent)
+        self._create_audio_panel()
+        self._create_plot_panel()
         self._create_reconstruction_details()
+
+    def _create_audio_panel(self) -> None:
+        with dpg.child_window(
+            tag=self.audio_tag,
+            parent=self.parent,
+            no_scrollbar=True,
+            auto_resize_y=True,
+        ):
+            self._create_audio_source_radio_buttons()
+            self._create_export_wav_button()
+
+    def _create_plot_panel(self) -> None:
+        with dpg.child_window(
+            tag=self.plot_tag,
+            parent=self.parent,
+            no_scrollbar=True,
+            auto_resize_y=True,
+        ):
+            self._create_waveform_display()
+            self._create_generator_checkboxes()
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
@@ -89,7 +112,7 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
     def _create_audio_source_radio_buttons(self) -> None:
-        with dpg.group(horizontal=True, parent=self.parent, tag=TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP):
+        with dpg.group(horizontal=True, parent=self.audio_tag, tag=TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP):
             dpg.add_text(LBL_RECONSTRUCTION_AUDIO_SOURCE)
             dpg.add_radio_button(
                 items=[LBL_RADIO_RECONSTRUCTION_AUDIO, LBL_RADIO_ORIGINAL_AUDIO],
@@ -104,7 +127,7 @@ class GUIReconstructionPanel(GUIPanel):
         dpg.add_button(
             label=LBL_RECONSTRUCTION_EXPORT_WAV,
             tag=TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
-            parent=self.parent,
+            parent=self.audio_tag,
             callback=self._handle_export_wav_button_click,
             width=-1,
             enabled=False,
@@ -115,7 +138,7 @@ class GUIReconstructionPanel(GUIPanel):
             tag=TAG_RECONSTRUCTION_WAVEFORM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
-            parent=self.parent,
+            parent=self.plot_tag,
             label=LBL_RECONSTRUCTION_WAVEFORM,
         )
 
@@ -127,7 +150,7 @@ class GUIReconstructionPanel(GUIPanel):
             GeneratorName.NOISE: LBL_CHECKBOX_NOISE,
         }
 
-        with dpg.group(horizontal=True, parent=self.parent, tag=TAG_RECONSTRUCTION_GENERATORS_GROUP):
+        with dpg.group(horizontal=True, parent=self.plot_tag, tag=TAG_RECONSTRUCTION_GENERATORS_GROUP):
             for generator_name, label in generator_labels.items():
                 tag = TPL_RECONSTRUCTION_GENERATOR_CHECKBOX.format(generator_name)
                 dpg.add_checkbox(
