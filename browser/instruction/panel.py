@@ -1,11 +1,10 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
 from browser.elements.panel import GUIPanel
 from browser.graphs.spectrum import GUISpectrumDisplay
 from browser.graphs.waveform import GUIWaveformDisplay
-from browser.instruction.details import GUIInstructionDetailsPanel
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from configs.library import LibraryConfig
@@ -32,9 +31,13 @@ class GUIInstructionPanel(GUIPanel):
         self.audio_device_manager = audio_device_manager
         self.waveform_display: GUIWaveformDisplay
         self.spectrum_display: GUISpectrumDisplay
-        self.instruction_details: GUIInstructionDetailsPanel
         self.player_panel: GUIAudioPlayerPanel
         self.library_config: Optional[LibraryConfig] = None
+
+        self._on_display_instruction_details: Optional[
+            Callable[[str, InstructionUnion, Optional[LibraryFragment]], None]
+        ] = None
+        self._on_clear_instruction_details: Optional[Callable[[], None]] = None
 
         self.waveform_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_WAVEFORM}"
         self.spectrum_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_SPECTRUM}"
@@ -44,11 +47,22 @@ class GUIInstructionPanel(GUIPanel):
             parent=TAG_INSTRUCTION_PANEL_GROUP,
         )
 
+    def set_callbacks(
+        self,
+        on_display_instruction_details: Optional[
+            Callable[[str, InstructionUnion, Optional[LibraryFragment]], None]
+        ] = None,
+        on_clear_instruction_details: Optional[Callable[[], None]] = None,
+    ) -> None:
+        if on_display_instruction_details is not None:
+            self._on_display_instruction_details = on_display_instruction_details
+        if on_clear_instruction_details is not None:
+            self._on_clear_instruction_details = on_clear_instruction_details
+
     def create_panel(self) -> None:
         self._create_player_panel()
         self._create_waveform_display()
         self._create_spectrum_display()
-        self._create_instruction_details()
 
     def _create_waveform_display(self) -> None:
         with dpg.child_window(
@@ -80,10 +94,6 @@ class GUIInstructionPanel(GUIPanel):
                 label=LBL_INSTRUCTION_SPECTRUM,
             )
 
-    def _create_instruction_details(self) -> None:
-        self.instruction_details = GUIInstructionDetailsPanel()
-        self.instruction_details.create_panel()
-
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_INSTRUCTION_PLAYER_PANEL,
@@ -100,7 +110,9 @@ class GUIInstructionPanel(GUIPanel):
         library_config: LibraryConfig,
     ) -> None:
         self.library_config = library_config
-        self.instruction_details.display_instruction(generator_class_name, instruction, fragment)
+
+        if self._on_display_instruction_details:
+            self._on_display_instruction_details(generator_class_name, instruction, fragment)
 
         if fragment:
             sample_rate = library_config.sample_rate
@@ -110,7 +122,8 @@ class GUIInstructionPanel(GUIPanel):
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
-            self.instruction_details.clear_display()
+            if self._on_clear_instruction_details:
+                self._on_clear_instruction_details()
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)

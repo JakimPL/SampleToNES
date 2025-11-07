@@ -135,6 +135,9 @@ class GUIBrowserPanel(GUITreePanel):
         on_reconstruct_file: Optional[Callable] = None,
         on_reconstruct_directory: Optional[Callable] = None,
     ) -> None:
-        self._on_reconstruction_selected = on_reconstruction_selected
-        self._on_reconstruct_file = on_reconstruct_file
-        self._on_reconstruct_directory = on_reconstruct_directory
+        if on_reconstruction_selected is not None:
+            self._on_reconstruction_selected = on_reconstruction_selected
+        if on_reconstruct_file is not None:
+            self._on_reconstruct_file = on_reconstruct_file
+        if on_reconstruct_directory is not None:
+            self._on_reconstruct_directory = on_reconstruct_directory

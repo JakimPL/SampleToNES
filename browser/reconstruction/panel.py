@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional, cast
+from typing import Callable, Dict, List, Optional, Tuple, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -10,7 +10,6 @@ from browser.graphs.waveform import GUIWaveformDisplay
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
-from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from browser.utils import file_dialog_handler, show_modal_dialog
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -50,6 +49,7 @@ from constants.browser import (
     VAL_PLOT_WIDTH_FULL,
 )
 from constants.enums import AudioSourceType, FeatureKey, GeneratorName
+from reconstructor.reconstruction import Reconstruction
 from utils.audio.device import AudioDeviceManager
 from utils.audio.io import write_audio
 from utils.fami import write_fti
@@ -60,14 +60,15 @@ class GUIReconstructionPanel(GUIPanel):
         self.config_manager = config_manager
         self.audio_device_manager = audio_device_manager
         self.waveform_display: GUIWaveformDisplay
-        self.reconstruction_details: GUIReconstructionDetailsPanel
         self.player_panel: GUIAudioPlayerPanel
 
         self.reconstruction_data: Optional[ReconstructionData] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
+        self._pending_fti_export: Optional[Tuple[GeneratorName, Dict]] = None
 
-        self._pending_fti_export: Optional[tuple[GeneratorName, dict]] = None
-        self._export_wav_callback: Optional[Callable[[], None]] = None
+        self._on_export_wav: Optional[Callable[[], None]] = None
+        self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
+        self._on_clear_reconstruction_details: Optional[Callable[[], None]] = None
 
         self.audio_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_PLOT}"
@@ -81,7 +82,6 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_player_panel()
         self._create_audio_panel()
         self._create_plot_panel()
-        self._create_reconstruction_details()
 
     def _create_audio_panel(self) -> None:
         with dpg.child_window(
@@ -161,19 +161,26 @@ class GUIReconstructionPanel(GUIPanel):
                     callback=self._on_generator_checkbox_changed,
                 )
 
-    def _create_reconstruction_details(self) -> None:
-        self.reconstruction_details = GUIReconstructionDetailsPanel()
-        self.reconstruction_details.create_panel()
-        self.reconstruction_details.set_callback(on_instrument_export=self._handle_instrument_export)
-
-    def set_callbacks(self, on_export_wav: Optional[Callable[[], None]] = None) -> None:
-        self._export_wav_callback = on_export_wav
+    def set_callbacks(
+        self,
+        *,
+        on_export_wav: Optional[Callable[[], None]] = None,
+        on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None,
+        on_clear_reconstruction_details: Optional[Callable[[], None]] = None,
+    ) -> None:
+        if on_export_wav is not None:
+            self._on_export_wav = on_export_wav
+        if on_display_reconstruction_details is not None:
+            self._on_display_reconstruction_details = on_display_reconstruction_details
+        if on_clear_reconstruction_details is not None:
+            self._on_clear_reconstruction_details = on_clear_reconstruction_details
 
     def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
         self.config_manager.load_config(reconstruction_data.config)
 
-        self.reconstruction_details.display_reconstruction(reconstruction_data.reconstruction)
+        if self._on_display_reconstruction_details:
+            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
 
         self._update_generator_checkboxes(reconstruction_data)
         self._update_reconstruction_display()
@@ -238,7 +245,10 @@ class GUIReconstructionPanel(GUIPanel):
     def clear_display(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
-        self.reconstruction_details.clear_display()
+
+        if self._on_clear_reconstruction_details:
+            self._on_clear_reconstruction_details()
+
         self.player_panel.clear_audio()
         self.waveform_display.clear_layers()
         self._reset_generator_checkboxes()
@@ -310,8 +320,8 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
     def _handle_export_wav_button_click(self) -> None:
-        if self._export_wav_callback:
-            self._export_wav_callback()
+        if self._on_export_wav:
+            self._on_export_wav()
 
     def export_reconstruction_to_wav(self) -> None:
         if not self.reconstruction_data:

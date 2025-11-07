@@ -289,8 +289,10 @@ class GUILibraryPanel(GUITreePanel):
         on_instruction_selected: Optional[Callable] = None,
         on_apply_library_config: Optional[Callable] = None,
     ) -> None:
-        self._on_instruction_selected = on_instruction_selected
-        self._on_apply_library_config = on_apply_library_config
+        if on_instruction_selected is not None:
+            self._on_instruction_selected = on_instruction_selected
+        if on_apply_library_config is not None:
+            self._on_apply_library_config = on_apply_library_config
 
     def _show_error_dialog(self, error_message: str) -> None:
         def content(parent: str) -> None:

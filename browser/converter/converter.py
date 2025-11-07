@@ -132,6 +132,9 @@ class ReconstructionConverter:
         on_error: Optional[Callable[[str], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
     ) -> None:
-        self._on_complete = on_complete
-        self._on_error = on_error
-        self._on_cancelled = on_cancelled
+        if on_complete is not None:
+            self._on_complete = on_complete
+        if on_error is not None:
+            self._on_error = on_error
+        if on_cancelled is not None:
+            self._on_cancelled = on_cancelled

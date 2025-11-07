@@ -261,5 +261,7 @@ class GUIConverterWindow:
         on_load_file_callback: Optional[Callable[[Path], None]] = None,
         on_load_directory_callback: Optional[Callable[[], None]] = None,
     ) -> None:
-        self._on_load_file_callback = on_load_file_callback
-        self._on_load_directory_callback = on_load_directory_callback
+        if on_load_file_callback is not None:
+            self._on_load_file_callback = on_load_file_callback
+        if on_load_directory_callback is not None:
+            self._on_load_directory_callback = on_load_directory_callback

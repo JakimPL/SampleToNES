@@ -185,4 +185,5 @@ class GUIConfigPanel(GUIPanel):
             self.library_path_text.set_path(library_directory, display_text=shorten_path(library_directory))
 
     def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
-        self._on_update_library_directory = on_update_library_directory
+        if on_update_library_directory is not None:
+            self._on_update_library_directory = on_update_library_directory

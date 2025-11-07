@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
@@ -6,9 +7,11 @@ from browser.browser.panel import GUIBrowserPanel
 from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
 from browser.converter.window import GUIConverterWindow
+from browser.instruction.details import GUIInstructionDetailsPanel
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
 from browser.reconstruction.data import ReconstructionData
+from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
 from browser.utils import file_dialog_handler, show_modal_dialog
@@ -16,8 +19,12 @@ from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
     DIM_PANEL_LEFT_HEIGHT,
     DIM_PANEL_LEFT_WIDTH,
+    DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
+    DIM_PANEL_RIGHT_HEIGHT,
+    DIM_PANEL_RIGHT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
     EXT_FILE_JSON,
@@ -36,12 +43,11 @@ from constants.browser import (
     LBL_TAB_RECONSTRUCTION,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
+    SUF_CENTER_PANEL,
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_INSTRUCTION_PANEL_GROUP,
     TAG_LIBRARY_PANEL_GROUP,
-    TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
     TAG_TAB_LIBRARY,
@@ -71,12 +77,15 @@ class GUI:
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
         self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
+        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager, self.audio_device_manager
         )
+        self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
+
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
 
         self.setup_gui()
@@ -103,10 +112,25 @@ class GUI:
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
-        self.reconstruction_panel.set_callbacks(on_export_wav=self._export_reconstruction_to_wav)
+
         self.converter_window.set_callbacks(
             on_load_file_callback=self._on_reconstruction_loaded,
             on_load_directory_callback=self.browser_panel.refresh,
+        )
+
+        self.instruction_panel.set_callbacks(
+            on_display_instruction_details=self.instruction_details_panel.display_instruction,
+            on_clear_instruction_details=self.instruction_details_panel.clear_display,
+        )
+
+        self.reconstruction_panel.set_callbacks(
+            on_export_wav=self._export_reconstruction_to_wav,
+            on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
+            on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
+        )
+
+        self.reconstruction_details_panel.set_callback(
+            on_instrument_export=self.reconstruction_panel._handle_instrument_export,
         )
 
     def create_main_window(self) -> None:
@@ -130,57 +154,98 @@ class GUI:
                     dpg.add_menu_item(label=LBL_MENU_EXIT, callback=lambda: dpg.stop_dearpygui())
 
             with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
-                self.create_config_tab()
+                self.create_library_tab()
                 self.create_reconstruction_tab()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
-    def create_config_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_LIBRARY, tag=TAG_TAB_LIBRARY):
-            with dpg.group(parent=TAG_TAB_LIBRARY, horizontal=True):
-                with dpg.child_window(
-                    width=DIM_PANEL_LEFT_WIDTH,
-                    height=DIM_PANEL_LEFT_HEIGHT,
-                    no_scrollbar=True,
-                    no_scroll_with_mouse=True,
-                ):
-                    with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
-                        self.config_panel.create_panel()
+    @staticmethod
+    def create_layout(
+        label: str,
+        tab_tag: str,
+        left_content_builder: Callable[[], None],
+        center_content_builder: Callable[[], None],
+        right_content_builder: Callable[[], None],
+        left_panel_height: int,
+        right_panel_height: int,
+        left_panel_width: int = DIM_PANEL_LEFT_WIDTH,
+        right_panel_width: int = DIM_PANEL_RIGHT_WIDTH,
+    ) -> None:
+        with dpg.tab(tag=tab_tag, label=label):
+            with dpg.table(
+                header_row=False,
+                resizable=False,
+                policy=dpg.mvTable_SizingStretchProp,
+                borders_innerV=False,
+                borders_outerV=False,
+            ):
+                dpg.add_table_column(width_fixed=True)
+                dpg.add_table_column()
+                dpg.add_table_column(width_fixed=True)
 
-                    with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
-                        self.library_panel.create_panel()
+                with dpg.table_row():
+                    with dpg.child_window(
+                        width=left_panel_width,
+                        height=left_panel_height,
+                        no_scrollbar=True,
+                        no_scroll_with_mouse=True,
+                    ):
+                        left_content_builder()
 
-                with dpg.child_window(
-                    tag=TAG_INSTRUCTION_PANEL_GROUP,
-                    no_scroll_with_mouse=True,
-                ):
-                    self.instruction_panel.create_panel()
+                    with dpg.child_window(
+                        tag=f"{tab_tag}{SUF_CENTER_PANEL}",
+                        no_scroll_with_mouse=True,
+                    ):
+                        center_content_builder()
 
+                    with dpg.child_window(
+                        width=right_panel_width,
+                        height=right_panel_height,
+                        no_scrollbar=True,
+                        no_scroll_with_mouse=True,
+                    ):
+                        right_content_builder()
+
+    def create_library_tab(self) -> None:
+        self.create_layout(
+            label=LBL_TAB_LIBRARY,
+            tab_tag=TAG_TAB_LIBRARY,
+            left_content_builder=self._create_library_left_panel,
+            center_content_builder=lambda: self.instruction_panel.create_panel(),
+            right_content_builder=lambda: self.instruction_details_panel.create_panel(),
+            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
+            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
+            right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
+        )
         self.config_manager.initialize_config_with_defaults()
         self.library_panel.initialize_libraries()
 
     def create_reconstruction_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_RECONSTRUCTION, tag=TAG_TAB_RECONSTRUCTION):
-            with dpg.group(parent=TAG_TAB_RECONSTRUCTION, horizontal=True):
-                with dpg.child_window(
-                    width=DIM_PANEL_LEFT_WIDTH,
-                    height=DIM_PANEL_LEFT_HEIGHT,
-                    no_scrollbar=True,
-                    no_scroll_with_mouse=True,
-                ):
-                    with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
-                        self.reconstructor_panel.create_panel()
-
-                    with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
-                        self.browser_panel.create_panel()
-
-                with dpg.child_window(
-                    tag=TAG_RECONSTRUCTION_PANEL_GROUP,
-                    no_scroll_with_mouse=True,
-                ):
-                    self.reconstruction_panel.create_panel()
-
+        self.create_layout(
+            label=LBL_TAB_RECONSTRUCTION,
+            tab_tag=TAG_TAB_RECONSTRUCTION,
+            left_content_builder=self._create_reconstruction_left_panel,
+            center_content_builder=lambda: self.reconstruction_panel.create_panel(),
+            right_content_builder=lambda: self.reconstruction_details_panel.create_panel(),
+            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
+            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
+            right_panel_width=DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
+        )
         self.browser_panel.initialize_tree()
+
+    def _create_library_left_panel(self) -> None:
+        with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
+            self.config_panel.create_panel()
+
+        with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
+            self.library_panel.create_panel()
+
+    def _create_reconstruction_left_panel(self) -> None:
+        with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
+            self.reconstructor_panel.create_panel()
+
+        with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
+            self.browser_panel.create_panel()
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(

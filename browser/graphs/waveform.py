@@ -22,7 +22,6 @@ from constants.browser import (
     LBL_WAVEFORM_DISPLAY,
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
-    MSG_WAVEFORM_NO_FRAGMENT,
     MSG_WAVEFORM_NO_RECONSTRUCTION,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_GRAPH_DEFAULT_X_MAX,
@@ -94,8 +93,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
             dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
 
-        dpg.add_text(MSG_WAVEFORM_NO_FRAGMENT, tag=self.info_tag)
-
         with dpg.plot(
             label=self.label,
             width=self.width,
@@ -131,7 +128,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.x_min = VAL_GRAPH_DEFAULT_X_MIN
         self.x_max = float(len(fragment.sample))
-        self._update_info_display(MSG_WAVEFORM_NO_FRAGMENT)
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -178,7 +174,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.x_min = 0.0
         self.x_max = float(len(reconstruction_data.original_audio))
-        self._update_info_display(MSG_WAVEFORM_NO_RECONSTRUCTION)
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -219,16 +214,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                 x=[position_x, position_x],
                 y=[self.y_min, self.y_max],
             )
-
-    def _update_info_display(self, message: str) -> None:
-        if not dpg.does_item_exist(self.info_tag):
-            return
-
-        if not self.current_data:
-            dpg.set_value(self.info_tag, message)
-            return
-
-        dpg.set_value(self.info_tag, "")
 
     def set_position(self, position: int) -> None:
         self.current_position = position

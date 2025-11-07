@@ -27,9 +27,9 @@ from constants.browser import (
     SUF_NO_DATA_MESSAGE,
     SUF_SEPARATOR,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
+    TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
     TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
-    TAG_RECONSTRUCTION_PANEL_GROUP,
     VAL_PLOT_WIDTH_FULL,
 )
 from constants.enums import FeatureKey, GeneratorName
@@ -48,11 +48,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
-            parent=TAG_RECONSTRUCTION_PANEL_GROUP,
+            parent=TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, parent=self.parent, autosize_x=True, autosize_y=True):
+        with dpg.child_window(tag=self.tag, parent=self.parent):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
             dpg.add_separator()
 

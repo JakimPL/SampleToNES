@@ -25,7 +25,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.logic = InstructionDetailsLogic()
 
     def create_panel(self) -> None:
-        with dpg.group(tag=self.tag):
+        with dpg.child_window(tag=self.tag, parent=self.parent):
             dpg.add_text(MSG_INSTRUCTION_DETAILS)
             dpg.add_separator()
             dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
