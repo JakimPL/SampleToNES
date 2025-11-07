@@ -79,6 +79,7 @@ MIXER_NOISE = 0.1733941733941734
 
 LIBRARY_DIRECTORY = "data/library"
 OUTPUT_DIRECTORY = "data/output"
+CONFIG_PATH = "data/config.json"
 
 
 # Calculation methods

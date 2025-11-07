@@ -18,6 +18,7 @@ from constants.browser import (
 from constants.enums import GeneratorName
 from constants.general import (
     CHANGE_RATE,
+    CONFIG_PATH,
     LIBRARY_DIRECTORY,
     MAX_WORKERS,
     MIXER,
@@ -40,6 +41,7 @@ class ConfigManager:
         self.output_directory: Path = Path(OUTPUT_DIRECTORY)
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[Callable] = []
+        self.config_path: Path = Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
                 TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
@@ -56,6 +58,35 @@ class ConfigManager:
         self.generator_tags = {
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
+
+        self._load_or_create_default_config()
+
+    def _load_or_create_default_config(self) -> None:
+        if self.config_path.exists():
+            try:
+                self.load_config_from_file(self.config_path)
+            except Exception:  # TODO: to narrow
+                self.config = Config()
+                self.window = Window(self.config.library)
+                self.library_directory = Path(self.config.general.library_directory)
+                self.output_directory = Path(self.config.general.output_directory)
+                self.generators = list(self.config.generation.generators)
+                self._notify_config_change()
+        else:
+            self.config = Config()
+            self.window = Window(self.config.library)
+            self.library_directory = Path(self.config.general.library_directory)
+            self.output_directory = Path(self.config.general.output_directory)
+            self.generators = list(self.config.generation.generators)
+            self._notify_config_change()
+
+    def save_config(self) -> None:
+        if not self.config:
+            return
+
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_dict = self.config.model_dump()
+        save_json(self.config_path, config_dict)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
         self._update_generators_from_gui_values(gui_values)
@@ -89,12 +120,6 @@ class ConfigManager:
 
     def _update_generators_from_gui_values(self, gui_values: SerializedData) -> None:
         self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values.get(tag, True)]
-
-    def initialize_config_with_defaults(self) -> None:
-        default_values = {tag: info["default"] for tag, info in self.config_parameters["config"].items()}
-        for generator_tag in self.generator_tags.keys():
-            default_values[generator_tag] = True
-        self.update_config_from_gui_values(default_values)
 
     def get_config(self) -> Optional[Config]:
         return self.config

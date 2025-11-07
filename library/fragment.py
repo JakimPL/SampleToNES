@@ -104,9 +104,6 @@ class FragmentedAudio(BaseModel):
     def __len__(self) -> int:
         return len(self.fragments)
 
-    def __iter__(self) -> Iterator[Fragment]:
-        return iter(self.fragments)
-
     @property
     def fragments_ids(self) -> List[int]:
         return list(range(len(self.fragments)))

@@ -151,7 +151,7 @@ class GUI:
                         label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI, callback=self._export_reconstruction_fti_dialog
                     )
                     dpg.add_separator()
-                    dpg.add_menu_item(label=LBL_MENU_EXIT, callback=lambda: dpg.stop_dearpygui())
+                    dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
 
             with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
                 self.create_library_tab()
@@ -217,7 +217,6 @@ class GUI:
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
         )
-        self.config_manager.initialize_config_with_defaults()
         self.library_panel.initialize_libraries()
 
     def create_reconstruction_tab(self) -> None:
@@ -361,6 +360,11 @@ class GUI:
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
+    def _exit_application(self) -> None:
+        self.config_manager.save_config()
+        dpg.stop_dearpygui()
+
     def run(self) -> None:
         dpg.start_dearpygui()
+        self.config_manager.save_config()
         dpg.destroy_context()
