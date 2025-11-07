@@ -7,7 +7,7 @@ from browser.config.manager import ConfigManager
 from browser.converter.converter import ReconstructionConverter
 from browser.utils import show_modal_dialog
 from constants.browser import (
-    CLR_CONVERTER_PATH_TEXT,
+    CLR_PATH_TEXT,
     DIM_CONVERTER_BUTTON_SPACING,
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
@@ -42,7 +42,6 @@ from utils.common import shorten_path
 class GUIConverterWindow:
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        self._on_load_callback: Optional[Callable[[Path], None]] = None
         self.converter: Optional[ReconstructionConverter] = None
 
         self.target_path: Optional[Path] = None
@@ -50,6 +49,8 @@ class GUIConverterWindow:
 
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
+
+        self._on_load_callback: Optional[Callable[[Path], None]] = None
 
     def show(self, target_path: Union[str, Path], is_file: bool = False) -> None:
         self.target_path = Path(target_path)
@@ -59,7 +60,7 @@ class GUIConverterWindow:
         self.output_file_path = None
 
         config = self.config_manager.get_config()
-        if not config:
+        if config is None:
             self._show_error_dialog(MSG_CONVERTER_CONFIG_NOT_AVAILABLE)
             return
 
@@ -91,7 +92,7 @@ class GUIConverterWindow:
             dpg.add_text(
                 self.shortened_path,
                 tag=TAG_CONVERTER_PATH_TEXT,
-                color=CLR_CONVERTER_PATH_TEXT,
+                color=CLR_PATH_TEXT,
             )
             dpg.bind_item_handler_registry(TAG_CONVERTER_PATH_TEXT, self._create_path_handler())
 

@@ -105,6 +105,9 @@ class ConfigManager:
     def get_library_directory(self) -> Path:
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
+    def get_output_directory(self) -> Path:
+        return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
+
     @property
     def key(self) -> Optional[LibraryKey]:
         if self.config and self.window:

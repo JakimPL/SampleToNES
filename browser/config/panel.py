@@ -7,12 +7,11 @@ from browser.config.manager import ConfigManager
 from browser.panels.panel import GUIPanel
 from browser.utils import file_dialog_handler
 from constants.browser import (
+    CLR_PATH_TEXT,
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
     DIM_PANEL_CONFIG_WIDTH,
-    IDX_DIALOG_FIRST_SELECTION,
-    KEY_DIALOG_SELECTIONS,
     LBL_BUTTON_SELECT_LIBRARY_DIRECTORY,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
     LBL_CHECKBOX_QUANTIZE_AUDIO,
@@ -35,7 +34,6 @@ from constants.browser import (
 )
 from constants.general import (
     CHANGE_RATE,
-    LIBRARY_DIRECTORY,
     MAX_CHANGE_RATE,
     MAX_SAMPLE_RATE,
     MAX_WORKERS,
@@ -92,7 +90,11 @@ class GUIConfigPanel(GUIPanel):
 
             library_directory = self.config_manager.get_library_directory()
             library_path = shorten_path(Path(library_directory))
-            dpg.add_text(library_path, tag=TAG_LIBRARY_DIRECTORY_DISPLAY)
+            dpg.add_text(
+                library_path,
+                tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
+                color=CLR_PATH_TEXT,
+            )
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)

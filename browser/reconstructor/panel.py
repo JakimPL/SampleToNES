@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.config.manager import ConfigManager
 from browser.panels.panel import GUIPanel
 from constants.browser import (
+    CLR_PATH_TEXT,
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
@@ -33,6 +34,7 @@ from constants.browser import (
 )
 from constants.enums import GeneratorName
 from constants.general import MAX_MIXER, MIXER, OUTPUT_DIRECTORY
+from utils.common import shorten_path
 from utils.serialization import SerializedData
 
 
@@ -64,10 +66,12 @@ class GUIReconstructorPanel(GUIPanel):
                 callback=self._select_output_directory_dialog,
             )
 
-            output_directory = (
-                self.config_manager.config.general.output_directory if self.config_manager.config else OUTPUT_DIRECTORY
+            output_directory = shorten_path(self.config_manager.get_output_directory())
+            dpg.add_text(
+                output_directory,
+                tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
+                color=CLR_PATH_TEXT,
             )
-            dpg.add_text(output_directory, tag=TAG_OUTPUT_DIRECTORY_DISPLAY)
 
             dpg.add_separator()
 

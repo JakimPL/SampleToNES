@@ -56,10 +56,10 @@ class GUILibraryPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         library_directory = config_manager.get_library_directory()
-
         self.library_manager = LibraryManager(library_directory)
+
         self.is_generating = False
-        self.generation_thread = None
+        self.generation_thread: Optional[threading.Thread] = None
 
         self._on_instruction_selected: Optional[Callable] = None
         self._on_apply_library_config: Optional[Callable] = None
@@ -147,8 +147,8 @@ class GUILibraryPanel(GUITreePanel):
         if key is not None:
             self._sync_with_config_key(key)
         self.build_tree_ui(TAG_LIBRARY_TREE)
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
         self.update_status()
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
     def _sync_with_config_key(self, config_key: LibraryKey) -> None:
         matching_key = self.library_manager.sync_with_config_key(config_key)

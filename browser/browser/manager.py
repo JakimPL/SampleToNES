@@ -5,26 +5,24 @@ from browser.reconstruction.data import ReconstructionData
 from browser.tree.node import FileSystemNode
 from browser.tree.tree import Tree
 from constants.browser import EXT_FILE_JSON, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
-from constants.general import OUTPUT_DIRECTORY
 
 
 class BrowserManager:
-    def __init__(self, output_directory: str = OUTPUT_DIRECTORY) -> None:
+    def __init__(self, output_directory: Path) -> None:
         self.output_directory = output_directory
         self.tree = Tree()
         self.file_cache: Dict[Path, Optional[ReconstructionData]] = {}
 
-    def set_output_directory(self, directory: str) -> None:
+    def set_output_directory(self, directory: Path) -> None:
         self.output_directory = directory
         self.refresh_tree()
 
     def refresh_tree(self) -> None:
-        output_path = Path(self.output_directory)
-        if not output_path.exists() or not output_path.is_dir():
+        if not self.output_directory.exists() or not self.output_directory.is_dir():
             self.tree.set_root(None)
             return
 
-        root = self._build_tree(output_path)
+        root = self._build_tree(self.output_directory)
         self.tree.set_root(root)
 
     def _build_tree(self, path: Path) -> Optional[FileSystemNode]:

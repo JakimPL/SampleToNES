@@ -79,6 +79,8 @@ LBL_SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
 LBL_BUTTON_SELECT_OUTPUT_DIRECTORY = "Select output directory"
 LBL_BUTTON_SELECT_LIBRARY_DIRECTORY = "Select library directory"
 LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
+LBL_BUTTON_RECONSTRUCT_FILE = "Reconstruct file"
+LBL_BUTTON_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
 LBL_BUTTON_REGENERATE_LIBRARY = "Regenerate library"
 LBL_BUTTON_REFRESH_LIBRARIES = "Refresh libraries"
 LBL_BUTTON_SELECT_AUDIO_FILE = "Select audio file"
@@ -151,6 +153,7 @@ MSG_LIBRARY_LOADING = "Library is loading..."
 MSG_CONFIG_NOT_READY = "Configuration not ready."
 MSG_CONFIG_PREVIEW = "Configuration preview."
 LBL_LIBRARY_LIBRARIES = "Libraries"
+LBL_BROWSER_RECONSTRUCTIONS = "Reconstructions"
 LBL_LIBRARY_AVAILABLE_LIBRARIES = "Libraries"
 TPL_LIBRARY_NOT_EXISTS = "Library {} does not exist."
 MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found."
@@ -176,9 +179,12 @@ TPL_GROUP_LABEL = "{} ({} item(s))"
 TAG_LIBRARY_PANEL = "library_panel"
 TAG_LIBRARY_STATUS = "library_status"
 TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
+TAG_BROWSER_CONTROLS_GROUP = "browser_controls_group"
 TAG_LIBRARY_BUTTON_GENERATE = "generate_library_button"
 TAG_LIBRARY_PROGRESS = "library_progress"
 TAG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
+TAG_BROWSER_BUTTON_RECONSTRUCT_FILE = "browser_reconstruct_file_button"
+TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY = "browser_reconstruct_directory_button"
 TAG_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
 TAG_CONFIG_STATUS_POPUP = "config_status_popup"
 TAG_CONFIG_PANEL = "config_panel"
@@ -272,7 +278,7 @@ VAL_WAVEFORM_AXIS_SLOT = 1
 SUF_WAVEFORM_POSITION_INDICATOR = "_position_indicator"
 
 # Converter window settings
-CLR_CONVERTER_PATH_TEXT = (100, 150, 255)
+CLR_PATH_TEXT = (100, 150, 255)
 SUF_CONVERTER_HANDLER = "_handler"
 
 # Waveform labels and messages
@@ -441,6 +447,7 @@ TAG_RECONSTRUCTOR_MIXER = "mixer"
 LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"
 TAG_BROWSER_PANEL = "browser_panel"
 TAG_BROWSER_TREE = "browser_tree"
+TAG_BROWSER_TREE_GROUP = "browser_tree_group"
 TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
 
 # Node type constants

@@ -9,22 +9,31 @@ from browser.tree.node import FileSystemNode, TreeNode
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
+    LBL_BROWSER_RECONSTRUCTIONS,
+    LBL_BUTTON_RECONSTRUCT_DIRECTORY,
+    LBL_BUTTON_RECONSTRUCT_FILE,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     NOD_TYPE_DIRECTORY,
+    TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+    TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+    TAG_BROWSER_CONTROLS_GROUP,
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
+    TAG_BROWSER_TREE_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
-from constants.general import OUTPUT_DIRECTORY
 
 
 class GUIBrowserPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        output_directory = config_manager.config.general.output_directory if config_manager.config else OUTPUT_DIRECTORY
+        output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
+
         self._on_reconstruction_selected: Optional[Callable] = None
+        self._on_reconstruct_file: Optional[Callable] = None
+        self._on_reconstruct_directory: Optional[Callable] = None
 
         super().__init__(
             tree=self.browser_manager.tree,
@@ -36,6 +45,22 @@ class GUIBrowserPanel(GUITreePanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
+            dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+            dpg.add_separator()
+            with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
+                dpg.add_button(
+                    label=LBL_BUTTON_RECONSTRUCT_FILE,
+                    width=-1,
+                    callback=self._reconstruct_file,
+                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+                )
+                dpg.add_button(
+                    label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
+                    width=-1,
+                    callback=self._reconstruct_directory,
+                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+                )
+
             dpg.add_button(
                 label=LBL_BUTTON_REFRESH_LIST,
                 width=-1,
@@ -45,8 +70,9 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             self.create_search_ui(self.tag)
             dpg.add_separator()
-            with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
-                pass
+            with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
+                with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
+                    pass
 
     def _rebuild_tree_ui(self) -> None:
         self.build_tree_ui(TAG_BROWSER_TREE)
@@ -73,11 +99,11 @@ class GUIBrowserPanel(GUITreePanel):
         self._refresh_tree()
 
     def _refresh_tree(self) -> None:
-        output_directory = (
-            self.config_manager.config.general.output_directory if self.config_manager.config else OUTPUT_DIRECTORY
-        )
+        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
+        output_directory = self.config_manager.get_output_directory()
         self.browser_manager.set_output_directory(output_directory)
         self.build_tree_ui(TAG_BROWSER_TREE)
+        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
 
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -85,10 +111,27 @@ class GUIBrowserPanel(GUITreePanel):
         if isinstance(user_data, FileSystemNode):
             self.load_and_display_reconstruction(user_data.filepath)
 
+    def _reconstruct_file(self) -> None:
+        if self._on_reconstruct_file is not None:
+            self._on_reconstruct_file()
+
+    def _reconstruct_directory(self) -> None:
+        if self._on_reconstruct_directory is not None:
+            self._on_reconstruct_directory()
+
     def load_and_display_reconstruction(self, filepath) -> None:
         reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
         if self._on_reconstruction_selected:
+            dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
             self._on_reconstruction_selected(reconstruction_data)
+            dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
 
-    def set_callbacks(self, on_reconstruction_selected: Optional[Callable] = None) -> None:
+    def set_callbacks(
+        self,
+        on_reconstruction_selected: Optional[Callable] = None,
+        on_reconstruct_file: Optional[Callable] = None,
+        on_reconstruct_directory: Optional[Callable] = None,
+    ) -> None:
         self._on_reconstruction_selected = on_reconstruction_selected
+        self._on_reconstruct_file = on_reconstruct_file
+        self._on_reconstruct_directory = on_reconstruct_directory

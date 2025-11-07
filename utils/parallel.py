@@ -1,21 +1,31 @@
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
-from typing import Callable, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Concatenate,
+    List,
+    Optional,
+    ParamSpec,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from constants.general import MAX_WORKERS
 
-T = TypeVar("T")
+P = ParamSpec("P")
 R = TypeVar("R")
 ExecutorType = Type[Union[ThreadPoolExecutor, ProcessPoolExecutor]]
 
 
 def parallelize(
-    function: Callable[..., R],
-    collection: List[T],
+    function: Callable[Concatenate[List[int], P], R],
+    collection: List[int],
     *args,
     executor_class: ExecutorType = ProcessPoolExecutor,
     max_workers: Optional[int] = None,
     **kwargs,
-) -> List[Tuple[int, R]]:
+) -> List[Any]:
     if not collection:
         return []
 

@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from browser.browser.panel import GUIBrowserPanel
 from browser.config.manager import ConfigManager
 from browser.config.panel import GUIConfigPanel
-from browser.converter.panel import GUIConverterWindow
+from browser.converter.window import GUIConverterWindow
 from browser.instruction.panel import GUIInstructionPanel
 from browser.library.panel import GUILibraryPanel
 from browser.reconstruction.data import ReconstructionData
@@ -100,6 +100,8 @@ class GUI:
         )
         self.browser_panel.set_callbacks(
             on_reconstruction_selected=self._on_reconstruction_selected,
+            on_reconstruct_file=self._reconstruct_file_dialog,
+            on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
         self.reconstruction_panel.set_callbacks(on_export_wav=self._export_reconstruction_to_wav)
         self.converter_window.set_callbacks(on_load_callback=self._on_reconstruction_loaded)
