@@ -33,7 +33,7 @@ from constants.browser import (
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
-from constants.general import MAX_MIXER, MIXER, OUTPUT_DIRECTORY
+from constants.general import MAX_MIXER, MIXER
 from utils.common import shorten_path
 from utils.serialization import SerializedData
 

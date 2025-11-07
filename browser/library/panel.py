@@ -90,7 +90,12 @@ class GUILibraryPanel(GUITreePanel):
                     width=-1,
                     callback=self._refresh_libraries,
                 )
-                dpg.add_progress_bar(tag=TAG_LIBRARY_PROGRESS, show=False)
+                dpg.add_progress_bar(
+                    tag=TAG_LIBRARY_PROGRESS,
+                    show=False,
+                    width=-1,
+                    default_value=VAL_GLOBAL_DEFAULT_FLOAT,
+                )
 
             dpg.add_separator()
             self.create_search_ui(self.tag)

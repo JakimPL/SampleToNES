@@ -8,7 +8,6 @@ from browser.converter.converter import ReconstructionConverter
 from browser.utils import show_modal_dialog
 from constants.browser import (
     CLR_PATH_TEXT,
-    DIM_CONVERTER_BUTTON_SPACING,
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
@@ -33,6 +32,7 @@ from constants.browser import (
     TAG_CONVERTER_WINDOW,
     TITLE_DIALOG_CONVERTER,
     TITLE_DIALOG_ERROR,
+    TPL_CONVERTER_STATUS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
@@ -50,7 +50,12 @@ class GUIConverterWindow:
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
 
-        self._on_load_callback: Optional[Callable[[Path], None]] = None
+        self._on_load_file_callback: Optional[Callable[[Path], None]] = None
+        self._on_load_directory_callback: Optional[Callable[[], None]] = None
+
+    def hide(self) -> None:
+        if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+            dpg.delete_item(TAG_CONVERTER_WINDOW)
 
     def show(self, target_path: Union[str, Path], is_file: bool = False) -> None:
         self.target_path = Path(target_path)
@@ -64,16 +69,14 @@ class GUIConverterWindow:
             self._show_error_dialog(MSG_CONVERTER_CONFIG_NOT_AVAILABLE)
             return
 
-        if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            dpg.delete_item(TAG_CONVERTER_WINDOW)
-
-        self.converter = ReconstructionConverter(
-            config=config,
+        self.converter = ReconstructionConverter(config=config)
+        self.converter.set_callbacks(
             on_complete=self._on_conversion_complete,
             on_error=self._on_conversion_error,
+            on_cancelled=self._on_cancellation_complete,
         )
-        self.converter.on_cancelled = self._on_cancellation_complete
 
+        self.hide()
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
             tag=TAG_CONVERTER_WINDOW,
@@ -98,23 +101,29 @@ class GUIConverterWindow:
 
             dpg.add_separator()
 
-            with dpg.group(horizontal=True):
-                if self.is_file:
+            with dpg.table(
+                header_row=False,
+                policy=dpg.mvTable_SizingStretchProp,
+                resizable=False,
+                width=-1,
+            ):
+                dpg.add_table_column()
+                dpg.add_table_column()
+
+                with dpg.table_row():
                     dpg.add_button(
                         label=LBL_BUTTON_LOAD,
                         tag=TAG_CONVERTER_LOAD_BUTTON,
+                        width=DIM_CONVERTER_BUTTON_WIDTH,
                         callback=self._on_load_clicked,
                         enabled=False,
-                        width=DIM_CONVERTER_BUTTON_WIDTH,
                     )
-                    dpg.add_spacer(width=DIM_CONVERTER_BUTTON_SPACING)
-
-                dpg.add_button(
-                    label=LBL_BUTTON_CANCEL,
-                    tag=TAG_CONVERTER_CANCEL_BUTTON,
-                    callback=self._on_cancel_clicked,
-                    width=DIM_CONVERTER_BUTTON_WIDTH,
-                )
+                    dpg.add_button(
+                        label=LBL_BUTTON_CANCEL,
+                        tag=TAG_CONVERTER_CANCEL_BUTTON,
+                        width=DIM_CONVERTER_BUTTON_WIDTH,
+                        callback=self._on_cancel_clicked,
+                    )
 
         self.converter.start(self.target_path, self.is_file)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, self._update_progress_callback)
@@ -143,8 +152,6 @@ class GUIConverterWindow:
                 dpg.set_value(TAG_CONVERTER_PATH_TEXT, self.shortened_path)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            from constants.browser import TPL_CONVERTER_STATUS
-
             dpg.set_value(
                 TAG_CONVERTER_STATUS,
                 TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
@@ -164,11 +171,16 @@ class GUIConverterWindow:
         return handler_tag
 
     def _on_path_clicked(self) -> None:
-        pass
+        print(self.target_path)
 
     def _on_load_clicked(self) -> None:
-        if self.output_file_path and self._on_load_callback:
-            self._on_load_callback(self.output_file_path)
+        if self.is_file:
+            if self.output_file_path and self._on_load_file_callback is not None:
+                self._on_load_file_callback(self.output_file_path)
+        else:
+            if self._on_load_directory_callback is not None:
+                self._on_load_directory_callback()
+
         self._on_close()
 
     def _on_cancel_clicked(self) -> None:
@@ -189,13 +201,13 @@ class GUIConverterWindow:
     def _on_close(self) -> None:
         if self.converter and self.converter.is_running():
             self.converter.cancel()
-        if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            dpg.delete_item(TAG_CONVERTER_WINDOW)
 
-    def _on_conversion_complete(self, output_path: Optional[Path]) -> None:
+        self.hide()
+
+    def _on_conversion_complete(self, output_path: Path) -> None:
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_complete(output_path))
 
-    def _finalize_complete(self, output_path: Optional[Path]) -> None:
+    def _finalize_complete(self, output_path: Path) -> None:
         self.set_completed(output_path)
         self._rename_cancel_to_close()
         self._show_success_dialog()
@@ -240,8 +252,8 @@ class GUIConverterWindow:
 
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_PROCESSING.format(current_file))
 
-    def set_completed(self, output_path: Optional[Path] = None) -> None:
-        if output_path:
+    def set_completed(self, output_path: Path) -> None:
+        if output_path.exists():
             self.output_file_path = output_path
 
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
@@ -250,8 +262,13 @@ class GUIConverterWindow:
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
 
-        if self.is_file and dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
+        if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
             dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
 
-    def set_callbacks(self, on_load_callback: Optional[Callable[[Path], None]] = None) -> None:
-        self._on_load_callback = on_load_callback
+    def set_callbacks(
+        self,
+        on_load_file_callback: Optional[Callable[[Path], None]] = None,
+        on_load_directory_callback: Optional[Callable[[], None]] = None,
+    ) -> None:
+        self._on_load_file_callback = on_load_file_callback
+        self._on_load_directory_callback = on_load_directory_callback

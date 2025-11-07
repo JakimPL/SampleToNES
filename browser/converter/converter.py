@@ -8,33 +8,32 @@ from reconstructor.scripts import reconstruct_directory, reconstruct_single_file
 
 
 class ReconstructionConverter:
-    def __init__(
-        self,
-        config: Config,
-        on_complete: Optional[Callable[[Optional[Path]], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None,
-    ) -> None:
+    def __init__(self, config: Config) -> None:
         self.config = config
-        self.on_complete = on_complete
-        self.on_error = on_error
+
         self.thread: Optional[threading.Thread] = None
         self.monitor_thread: Optional[threading.Thread] = None
-        self.running = False
         self.progress_queue: Optional[Any] = None
+        self._manager: Optional[Any] = None
+
+        self.cancelling = False
+        self.running = False
         self.total_files = 0
         self.completed_files = 0
         self.current_file: Optional[str] = None
         self.cancel_flag: Optional[Any] = None
-        self._manager: Optional[Any] = None
-        self.cancelling = False
-        self.on_cancelled: Optional[Callable[[], None]] = None
+        self.target_path: Optional[Path] = None
 
-    def start(self, target_path: Union[str, Path], is_file: bool) -> None:
+        self._on_cancelled: Optional[Callable[[], None]] = None
+        self._on_complete: Optional[Callable[[Path], None]] = None
+        self._on_error: Optional[Callable[[str], None]] = None
+
+    def start(self, target_path: Path, is_file: bool) -> None:
         if self.running:
             return
 
         self.running = True
-        target_path = Path(target_path)
+        self.target_path = target_path
         self.total_files = 0
         self.completed_files = 0
         self._manager = Manager()
@@ -73,25 +72,24 @@ class ReconstructionConverter:
             self.running = False
 
         if not self.cancel_flag or not self.cancel_flag.value:
-            if self.on_complete:
-                self.on_complete(output_json)
+            if self._on_complete:
+                self._on_complete(output_json)
 
     def _reconstruct_directory_worker(self, directory_path: Path) -> None:
         try:
             reconstruct_directory(self.config, directory_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
             self._handle_error(error)
-            return
         finally:
             self.running = False
 
         if not self.cancel_flag or not self.cancel_flag.value:
-            if self.on_complete:
-                self.on_complete(None)
+            if self._on_complete is not None:
+                self._on_complete(directory_path)
 
     def _handle_error(self, error: Exception) -> None:
-        if self.on_error:
-            self.on_error(str(error))
+        if self._on_error is not None:
+            self._on_error(str(error))
 
     def cancel(self) -> None:
         if self.cancelling:
@@ -111,8 +109,8 @@ class ReconstructionConverter:
         self.running = False
         self.cancelling = False
 
-        if self.on_cancelled:
-            self.on_cancelled()
+        if self._on_cancelled:
+            self._on_cancelled()
 
     def is_running(self) -> bool:
         return self.running
@@ -127,3 +125,13 @@ class ReconstructionConverter:
 
     def get_current_file(self) -> Optional[str]:
         return self.current_file
+
+    def set_callbacks(
+        self,
+        on_complete: Optional[Callable[[Path], None]] = None,
+        on_error: Optional[Callable[[str], None]] = None,
+        on_cancelled: Optional[Callable[[], None]] = None,
+    ) -> None:
+        self._on_complete = on_complete
+        self._on_error = on_error
+        self._on_cancelled = on_cancelled

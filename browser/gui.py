@@ -104,7 +104,10 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
         self.reconstruction_panel.set_callbacks(on_export_wav=self._export_reconstruction_to_wav)
-        self.converter_window.set_callbacks(on_load_callback=self._on_reconstruction_loaded)
+        self.converter_window.set_callbacks(
+            on_load_file_callback=self._on_reconstruction_loaded,
+            on_load_directory_callback=self.browser_panel.refresh,
+        )
 
     def create_main_window(self) -> None:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):

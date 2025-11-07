@@ -74,6 +74,9 @@ class GUIBrowserPanel(GUITreePanel):
                 with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
                     pass
 
+    def refresh(self) -> None:
+        self._refresh_tree()
+
     def _rebuild_tree_ui(self) -> None:
         self.build_tree_ui(TAG_BROWSER_TREE)
 
