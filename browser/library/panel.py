@@ -4,8 +4,8 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
+from browser.elements.tree import GUITreePanel
 from browser.library.manager import LibraryManager
-from browser.panels.tree import GUITreePanel
 from browser.tree.node import (
     GeneratorNode,
     GroupNode,
@@ -67,13 +67,13 @@ class GUILibraryPanel(GUITreePanel):
         super().__init__(
             tree=self.library_manager.tree,
             tag=TAG_LIBRARY_PANEL,
-            parent_tag=TAG_LIBRARY_PANEL_GROUP,
+            parent=TAG_LIBRARY_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
+        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
             dpg.add_text(LBL_LIBRARY_LIBRARIES)
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
@@ -172,7 +172,7 @@ class GUILibraryPanel(GUITreePanel):
 
         self.update_status()
 
-    def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
+    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
         if node.node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
@@ -183,7 +183,7 @@ class GUILibraryPanel(GUITreePanel):
             library_key = library_node.library_key
             dpg.add_selectable(
                 label=node.name,
-                parent=parent_tag,
+                parent=parent,
                 callback=self._on_load_library_clicked,
                 user_data=library_key,
                 tag=node_tag,
@@ -192,7 +192,7 @@ class GUILibraryPanel(GUITreePanel):
         elif isinstance(node, InstructionNode):
             dpg.add_selectable(
                 label=node.name,
-                parent=parent_tag,
+                parent=parent,
                 callback=self._on_selectable_clicked,
                 user_data=node,
                 tag=node_tag,
@@ -201,7 +201,7 @@ class GUILibraryPanel(GUITreePanel):
         elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
             is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
             should_expand = is_current or self._should_expand_node(node)
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=should_expand):
+            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 for child in node.children:
                     self._build_tree_node_ui(child, node_tag)
 

@@ -1,6 +1,6 @@
 from functools import wraps
 from pathlib import Path
-from typing import Callable, TypeVar, Union
+from typing import Callable, TypeVar
 
 import dearpygui.dearpygui as dpg
 

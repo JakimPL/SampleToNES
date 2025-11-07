@@ -279,6 +279,7 @@ SUF_WAVEFORM_POSITION_INDICATOR = "_position_indicator"
 
 # Converter window settings
 CLR_PATH_TEXT = (100, 150, 255)
+CLR_PATH_TEXT_HOVER = (150, 200, 255)
 SUF_CONVERTER_HANDLER = "_handler"
 
 # Waveform labels and messages

@@ -2,10 +2,10 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from browser.elements.panel import GUIPanel
 from browser.graphs.spectrum import GUISpectrumDisplay
 from browser.graphs.waveform import GUIWaveformDisplay
 from browser.instruction.details import GUIInstructionDetailsPanel
-from browser.panels.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from configs.library import LibraryConfig
@@ -36,16 +36,16 @@ class GUIInstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_INSTRUCTION_PANEL,
-            parent_tag=TAG_INSTRUCTION_PANEL_GROUP,
+            parent=TAG_INSTRUCTION_PANEL_GROUP,
         )
 
     def create_panel(self) -> None:
         self._create_player_panel()
-        dpg.add_separator(parent=self.parent_tag)
+        dpg.add_separator(parent=self.parent)
         self._create_waveform_display()
-        dpg.add_separator(parent=self.parent_tag)
+        dpg.add_separator(parent=self.parent)
         self._create_spectrum_display()
-        dpg.add_separator(parent=self.parent_tag)
+        dpg.add_separator(parent=self.parent)
         self._create_instruction_details()
 
     def _create_waveform_display(self) -> None:
@@ -53,7 +53,7 @@ class GUIInstructionPanel(GUIPanel):
             tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
-            parent=self.parent_tag,
+            parent=self.parent,
             label=LBL_INSTRUCTION_WAVEFORM,
         )
 
@@ -62,7 +62,7 @@ class GUIInstructionPanel(GUIPanel):
             tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_WAVEFORM_DEFAULT_HEIGHT,
-            parent=self.parent_tag,
+            parent=self.parent,
             label=LBL_INSTRUCTION_SPECTRUM,
         )
 
@@ -73,7 +73,7 @@ class GUIInstructionPanel(GUIPanel):
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_INSTRUCTION_PLAYER_PANEL,
-            parent=self.parent_tag,
+            parent=self.parent,
             on_position_changed=self._on_player_position_changed,
             audio_device_manager=self.audio_device_manager,
         )

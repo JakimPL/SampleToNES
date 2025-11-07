@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from browser.browser.manager import BrowserManager
 from browser.config.manager import ConfigManager
-from browser.panels.tree import GUITreePanel
+from browser.elements.tree import GUITreePanel
 from browser.tree.node import FileSystemNode, TreeNode
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
@@ -38,13 +38,13 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
-            parent_tag=TAG_RECONSTRUCTOR_PANEL_GROUP,
+            parent=TAG_RECONSTRUCTOR_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent_tag):
+        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
             dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
@@ -80,18 +80,18 @@ class GUIBrowserPanel(GUITreePanel):
     def _rebuild_tree_ui(self) -> None:
         self.build_tree_ui(TAG_BROWSER_TREE)
 
-    def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
+    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
         if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node)
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent_tag, default_open=should_expand):
+            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 for child in node.children:
                     self._build_tree_node_ui(child, node_tag)
         else:
             dpg.add_selectable(
                 label=node.name,
-                parent=parent_tag,
+                parent=parent,
                 callback=self._on_selectable_clicked,
                 user_data=node,
                 tag=node_tag,

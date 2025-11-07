@@ -2,7 +2,7 @@ from typing import Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from browser.panels.panel import GUIPanel
+from browser.elements.panel import GUIPanel
 from browser.tree.node import TreeNode
 from browser.tree.tree import Tree
 from constants.browser import (
@@ -20,7 +20,7 @@ class GUITreePanel(GUIPanel):
         self,
         tree: Tree,
         tag: str,
-        parent_tag: str,
+        parent: str,
         width: int = -1,
         height: int = -1,
     ) -> None:
@@ -29,7 +29,7 @@ class GUITreePanel(GUIPanel):
         self._on_node_selected: Optional[Callable] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
-        super().__init__(tag, parent_tag, width, height)
+        super().__init__(tag, parent, width, height)
 
     def build_tree_ui(self, tree_root_tag: str) -> None:
         self._clear_children(tree_root_tag)
@@ -42,11 +42,11 @@ class GUITreePanel(GUIPanel):
         for child in root.children:
             self._build_tree_node_ui(child, tree_root_tag)
 
-    def create_search_ui(self, parent_tag: str) -> None:
+    def create_search_ui(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}_search_input"
         self._search_button_tag = f"{self.tag}_search_button"
 
-        with dpg.group(horizontal=True, parent=parent_tag):
+        with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
                 tag=self._search_input_tag,
                 hint=LBL_INPUT_SEARCH,
@@ -60,7 +60,7 @@ class GUITreePanel(GUIPanel):
                 width=DIM_SEARCH_BUTTON_WIDTH,
             )
 
-    def _build_tree_node_ui(self, node: TreeNode, parent_tag: str) -> None:
+    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _should_expand_node(self, node: TreeNode) -> bool:

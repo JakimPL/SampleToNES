@@ -4,8 +4,8 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from browser.elements.panel import GUIPanel
 from browser.graphs.bar import GUIBarPlotDisplay
-from browser.panels.panel import GUIPanel
 from browser.reconstruction.config import (
     FEATURE_DISPLAY_ORDER,
     FEATURE_PLOT_CONFIGS,
@@ -48,11 +48,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
-            parent_tag=TAG_RECONSTRUCTION_PANEL_GROUP,
+            parent=TAG_RECONSTRUCTION_PANEL_GROUP,
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, parent=self.parent_tag, autosize_x=True, autosize_y=True):
+        with dpg.child_window(tag=self.tag, parent=self.parent, autosize_x=True, autosize_y=True):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
             dpg.add_separator()
 
@@ -114,7 +114,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 plot = self._create_feature_plot(generator_name, feature_key, feature_data_array)
                 self.generator_plots[generator_name][feature_key] = plot
 
-    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent_tag: str) -> None:
+    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
         if generator_name == GeneratorName.NOISE:
             pitch_display = f"{initial_pitch:X}"
         else:
@@ -122,7 +122,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         dpg.add_text(
             default_value=LBL_RECONSTRUCTION_INITIAL_PITCH.format(pitch_display),
-            parent=parent_tag,
+            parent=parent,
         )
 
     def _create_feature_plot(
@@ -140,7 +140,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _add_bar_plot(
         self,
         plot_tag: str,
-        parent_tag: str,
+        parent: str,
         config: FeaturePlotConfig,
         data: np.ndarray,
         generator_name: GeneratorName,
@@ -164,7 +164,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         plot = GUIBarPlotDisplay(
             tag=plot_tag,
-            parent=parent_tag,
+            parent=parent,
             width=VAL_PLOT_WIDTH_FULL,
             height=DIM_BAR_PLOT_DEFAULT_HEIGHT,
             label=config.label,
@@ -181,13 +181,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         return plot
 
-    def _add_raw_data_text(self, plot_tag: str, parent_tag: str, data: np.ndarray) -> None:
+    def _add_raw_data_text(self, plot_tag: str, parent: str, data: np.ndarray) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         copy_button_tag = f"{plot_tag}{SUF_GRAPH_COPY_BUTTON}"
         group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
 
-        with dpg.group(tag=group_tag, parent=parent_tag, horizontal=True):
+        with dpg.group(tag=group_tag, parent=parent, horizontal=True):
             dpg.add_button(
                 tag=copy_button_tag,
                 label=LBL_COPY_BUTTON,

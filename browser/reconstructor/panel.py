@@ -4,7 +4,7 @@ from typing import Any
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
-from browser.panels.panel import GUIPanel
+from browser.elements.panel import GUIPanel
 from constants.browser import (
     CLR_PATH_TEXT,
     DIM_DIALOG_FILE_HEIGHT,
@@ -46,13 +46,13 @@ class GUIReconstructorPanel(GUIPanel):
             tag=TAG_RECONSTRUCTOR_PANEL,
             width=DIM_PANEL_RECONSTRUCTOR_WIDTH,
             height=DIM_PANEL_RECONSTRUCTOR_HEIGHT,
-            parent_tag=TAG_RECONSTRUCTOR_PANEL_GROUP,
+            parent=TAG_RECONSTRUCTOR_PANEL_GROUP,
         )
 
     def create_panel(self) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent_tag,
+            parent=self.parent,
             width=self.width,
             height=self.height,
         ):

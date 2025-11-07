@@ -5,9 +5,9 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.converter.converter import ReconstructionConverter
+from browser.elements.path import GUIPathText
 from browser.utils import show_modal_dialog
 from constants.browser import (
-    CLR_PATH_TEXT,
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
@@ -21,7 +21,6 @@ from constants.browser import (
     MSG_CONVERTER_ERROR_PREFIX,
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_SUCCESS,
-    SUF_CONVERTER_HANDLER,
     TAG_CONVERTER_CANCEL_BUTTON,
     TAG_CONVERTER_ERROR_DIALOG,
     TAG_CONVERTER_LOAD_BUTTON,
@@ -46,6 +45,7 @@ class GUIConverterWindow:
 
         self.target_path: Optional[Path] = None
         self.shortened_path: str = ""
+        self.path_text: Optional[GUIPathText] = None
 
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
@@ -92,12 +92,13 @@ class GUIConverterWindow:
                 default_value=VAL_GLOBAL_DEFAULT_FLOAT,
                 width=-1,
             )
-            dpg.add_text(
-                self.shortened_path,
+
+            self.path_text = GUIPathText(
                 tag=TAG_CONVERTER_PATH_TEXT,
-                color=CLR_PATH_TEXT,
+                path=self.target_path,
+                parent=TAG_CONVERTER_WINDOW,
+                display_text=self.shortened_path,
             )
-            dpg.bind_item_handler_registry(TAG_CONVERTER_PATH_TEXT, self._create_path_handler())
 
             dpg.add_separator()
 
@@ -145,11 +146,12 @@ class GUIConverterWindow:
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
 
         current_file = self.converter.get_current_file()
-        if dpg.does_item_exist(TAG_CONVERTER_PATH_TEXT):
+        if self.path_text:
             if current_file is not None:
-                dpg.set_value(TAG_CONVERTER_PATH_TEXT, shorten_path(Path(current_file)))
+                current_file_path = Path(current_file)
+                self.path_text.set_path(current_file_path, display_text=shorten_path(current_file_path))
             elif self.target_path:
-                dpg.set_value(TAG_CONVERTER_PATH_TEXT, self.shortened_path)
+                self.path_text.set_path(self.target_path, display_text=self.shortened_path)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(
@@ -160,20 +162,10 @@ class GUIConverterWindow:
         if self.converter.is_running():
             dpg.set_frame_callback(dpg.get_frame_count() + 10, self._update_progress_callback)
 
-    def _create_path_handler(self) -> str:
-        handler_tag = f"{TAG_CONVERTER_PATH_TEXT}{SUF_CONVERTER_HANDLER}"
-        if dpg.does_item_exist(handler_tag):
-            dpg.delete_item(handler_tag)
-
-        with dpg.item_handler_registry(tag=handler_tag):
-            dpg.add_item_clicked_handler(callback=self._on_path_clicked)
-
-        return handler_tag
-
-    def _on_path_clicked(self) -> None:
-        print(self.target_path)
-
     def _on_load_clicked(self) -> None:
+        if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
+            dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
+
         if self.is_file:
             if self.output_file_path and self._on_load_file_callback is not None:
                 self._on_load_file_callback(self.output_file_path)

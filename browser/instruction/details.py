@@ -2,8 +2,8 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from browser.elements.panel import GUIPanel
 from browser.instruction.logic import InstructionDetailsLogic
-from browser.panels.panel import GUIPanel
 from constants.browser import (
     MSG_INSTRUCTION_DETAILS,
     MSG_INSTRUCTION_NO_SELECTION,
@@ -19,7 +19,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
         super().__init__(
             tag=TAG_INSTRUCTION_DETAILS,
-            parent_tag=TAG_INSTRUCTION_PANEL,
+            parent=TAG_INSTRUCTION_PANEL,
         )
 
         self.logic = InstructionDetailsLogic()

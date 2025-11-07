@@ -2,7 +2,7 @@ from typing import Any, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from browser.panels.panel import GUIPanel
+from browser.elements.panel import GUIPanel
 from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -52,14 +52,14 @@ class GUIGraphDisplay(GUIPanel):
 
         super().__init__(
             tag=tag,
-            parent_tag=parent,
+            parent=parent,
             width=width,
             height=height,
             init=True,
         )
 
     def create_panel(self) -> None:
-        with dpg.group(tag=self.tag, parent=self.parent_tag):
+        with dpg.group(tag=self.tag, parent=self.parent):
             self._create_content()
 
         self._update_axes_limits()

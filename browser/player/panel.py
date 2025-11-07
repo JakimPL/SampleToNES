@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from browser.panels.panel import GUIPanel
+from browser.elements.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.player import AudioPlayer, PlaybackError
 from browser.utils import show_modal_dialog
@@ -55,7 +55,7 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         super().__init__(
             tag=tag,
-            parent_tag=parent,
+            parent=parent,
             width=DIM_PLAYER_PANEL_WIDTH,
             height=DIM_PLAYER_PANEL_HEIGHT,
             init=True,
@@ -64,7 +64,7 @@ class GUIAudioPlayerPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.child_window(
             tag=self.tag,
-            parent=self.parent_tag,
+            parent=self.parent,
             width=self.width,
             height=self.height,
         ):
