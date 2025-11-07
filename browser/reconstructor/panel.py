@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.elements.panel import GUIPanel
+from browser.elements.path import GUIPathText
 from constants.browser import (
-    CLR_PATH_TEXT,
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
@@ -41,6 +41,7 @@ from utils.serialization import SerializedData
 class GUIReconstructorPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
+        self.output_path_text: Optional[GUIPathText] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
@@ -66,11 +67,12 @@ class GUIReconstructorPanel(GUIPanel):
                 callback=self._select_output_directory_dialog,
             )
 
-            output_directory = shorten_path(self.config_manager.get_output_directory())
-            dpg.add_text(
-                output_directory,
+            output_directory = self.config_manager.get_output_directory()
+            self.output_path_text = GUIPathText(
                 tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
-                color=CLR_PATH_TEXT,
+                path=output_directory,
+                parent=self.tag,
+                display_text=shorten_path(output_directory),
             )
 
             dpg.add_separator()
@@ -159,7 +161,9 @@ class GUIReconstructorPanel(GUIPanel):
         self.config_manager.output_directory = directory_path
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(directory_path))
+
+        if self.output_path_text:
+            self.output_path_text.set_path(directory_path, display_text=shorten_path(directory_path))
 
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:
@@ -176,4 +180,6 @@ class GUIReconstructorPanel(GUIPanel):
         for generator_tag, generator in self.config_manager.generator_tags.items():
             dpg.set_value(generator_tag, generator in config.generation.generators)
 
-        dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(config.general.output_directory))
+        output_directory = Path(config.general.output_directory)
+        if self.output_path_text:
+            self.output_path_text.set_path(output_directory, display_text=shorten_path(output_directory))

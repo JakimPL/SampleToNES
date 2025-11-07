@@ -5,9 +5,9 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.elements.panel import GUIPanel
+from browser.elements.path import GUIPathText
 from browser.utils import file_dialog_handler
 from constants.browser import (
-    CLR_PATH_TEXT,
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
@@ -53,6 +53,7 @@ class GUIConfigPanel(GUIPanel):
         self.config_manager = config_manager
 
         self._on_update_library_directory: Optional[Callable[[], None]] = None
+        self.library_path_text: Optional[GUIPathText] = None
 
         super().__init__(
             tag=TAG_CONFIG_PANEL,
@@ -89,11 +90,11 @@ class GUIConfigPanel(GUIPanel):
             )
 
             library_directory = self.config_manager.get_library_directory()
-            library_path = shorten_path(Path(library_directory))
-            dpg.add_text(
-                library_path,
+            self.library_path_text = GUIPathText(
                 tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
-                color=CLR_PATH_TEXT,
+                path=library_directory,
+                parent=self.tag,
+                display_text=shorten_path(Path(library_directory)),
             )
 
             dpg.add_separator()
@@ -149,8 +150,9 @@ class GUIConfigPanel(GUIPanel):
         self.config_manager.library_directory = directory_path
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        library_path = shorten_path(directory_path)
-        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, library_path)
+
+        if self.library_path_text:
+            self.library_path_text.set_path(directory_path, display_text=shorten_path(directory_path))
 
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
@@ -179,7 +181,9 @@ class GUIConfigPanel(GUIPanel):
             if hasattr(section, tag):
                 dpg.set_value(tag, getattr(section, tag))
 
-        dpg.set_value(TAG_LIBRARY_DIRECTORY_DISPLAY, str(config.general.library_directory))
+        library_directory = Path(config.general.library_directory)
+        if self.library_path_text:
+            self.library_path_text.set_path(library_directory, display_text=shorten_path(library_directory))
 
     def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
         self._on_update_library_directory = on_update_library_directory
