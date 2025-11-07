@@ -26,6 +26,7 @@ from constants.browser import (
     SUF_GRAPH_RAW_DATA_GROUP,
     SUF_NO_DATA_MESSAGE,
     SUF_SEPARATOR,
+    SUF_WINDOW,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
@@ -41,9 +42,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
         self.current_features: Optional[FeatureData] = None
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
+
         self.tab_bar_tag = TAG_RECONSTRUCTION_DETAILS_TAB_BAR
         self.no_data_message_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}{SUF_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}{SUF_SEPARATOR}"
+
         self._on_instrument_export: Optional[Callable[[GeneratorName], None]] = None
 
         super().__init__(
@@ -84,6 +87,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _create_generator_tab(self, generator_name: GeneratorName, feature_data: FeatureData) -> None:
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
+        window_tag = f"{tab_tag}{SUF_WINDOW}"
 
         with dpg.tab(label=generator_name, parent=self.tab_bar_tag, tag=tab_tag):
             self.generator_plots[generator_name] = {}
@@ -97,22 +101,22 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 tag=button_tag,
                 label=LBL_RECONSTRUCTION_EXPORT_FTI,
                 width=-1,
+                parent=window_tag,
                 callback=lambda s, a, u: self._handle_export_button_clicked(generator_name),
             )
 
-            dpg.add_separator(parent=tab_tag)
+            with dpg.child_window(tag=window_tag, parent=tab_tag):
+                initial_pitch = cast(int, generator_features.get(FeatureKey.INITIAL_PITCH))
+                self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
 
-            initial_pitch = cast(int, generator_features.get(FeatureKey.INITIAL_PITCH))
-            self._add_initial_pitch_display(generator_name, initial_pitch, tab_tag)
-
-            feature_keys = [
-                key for key in FEATURE_DISPLAY_ORDER if key in generator_features and key in FEATURE_PLOT_CONFIGS
-            ]
-            for feature_key in feature_keys:
-                dpg.add_separator(parent=tab_tag)
-                feature_data_array = cast(np.ndarray, generator_features[feature_key])
-                plot = self._create_feature_plot(generator_name, feature_key, feature_data_array)
-                self.generator_plots[generator_name][feature_key] = plot
+                feature_keys = [
+                    key for key in FEATURE_DISPLAY_ORDER if key in generator_features and key in FEATURE_PLOT_CONFIGS
+                ]
+                for feature_key in feature_keys:
+                    dpg.add_separator(parent=window_tag)
+                    feature_data_array = cast(np.ndarray, generator_features[feature_key])
+                    plot = self._create_feature_plot(generator_name, feature_key, feature_data_array, window_tag)
+                    self.generator_plots[generator_name][feature_key] = plot
 
     def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
         if generator_name == GeneratorName.NOISE:
@@ -126,14 +130,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
     def _create_feature_plot(
-        self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray
+        self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray, parent: str
     ) -> GUIBarPlotDisplay:
         config = FEATURE_PLOT_CONFIGS[feature_key]
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
-        tab_tag = f"{self.tab_bar_tag}_{generator_name}"
 
-        plot = self._add_bar_plot(plot_tag, tab_tag, config, data, generator_name, feature_key)
-        self._add_raw_data_text(plot_tag, tab_tag, data)
+        plot = self._add_bar_plot(plot_tag, parent, config, data, generator_name, feature_key)
+        self._add_raw_data_text(plot_tag, parent, data)
 
         return plot
 
