@@ -97,6 +97,7 @@ class GUI:
         dpg.setup_dearpygui()
         dpg.show_viewport()
         self.set_callbacks()
+        self.config_manager.initialize()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
@@ -361,7 +362,6 @@ class GUI:
         dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _exit_application(self) -> None:
-        self.config_manager.save_config()
         dpg.stop_dearpygui()
 
     def run(self) -> None:

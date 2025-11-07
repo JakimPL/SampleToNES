@@ -1,18 +1,24 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional
 
+import dearpygui.dearpygui as dpg
+
+from browser.utils import show_modal_dialog
 from configs.config import Config
 from configs.general import GeneralConfig
 from configs.generation import GenerationConfig
 from configs.library import LibraryConfig
 from constants.browser import (
+    MSG_CONFIG_LOAD_ERROR,
     TAG_CONFIG_CHANGE_RATE,
+    TAG_CONFIG_LOAD_ERROR_DIALOG,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
+    TITLE_DIALOG_ERROR,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
@@ -59,26 +65,27 @@ class ConfigManager:
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
 
-        self._load_or_create_default_config()
-
-    def _load_or_create_default_config(self) -> None:
+    def initialize(self) -> None:
         if self.config_path.exists():
             try:
                 self.load_config_from_file(self.config_path)
-            except Exception:  # TODO: to narrow
-                self.config = Config()
-                self.window = Window(self.config.library)
-                self.library_directory = Path(self.config.general.library_directory)
-                self.output_directory = Path(self.config.general.output_directory)
-                self.generators = list(self.config.generation.generators)
-                self._notify_config_change()
+            except Exception as error:  # TODO: to narrow
+                self._show_config_load_error(str(error))
+                self.load_config(Config())
         else:
-            self.config = Config()
-            self.window = Window(self.config.library)
-            self.library_directory = Path(self.config.general.library_directory)
-            self.output_directory = Path(self.config.general.output_directory)
-            self.generators = list(self.config.generation.generators)
-            self._notify_config_change()
+            self.load_config(Config())
+
+    def _show_config_load_error(self, error_message: str) -> None:
+        def content(parent: str) -> None:
+            dpg.add_text(MSG_CONFIG_LOAD_ERROR, parent=parent)
+            dpg.add_separator(parent=parent)
+            dpg.add_text(error_message, wrap=400, parent=parent)
+
+        show_modal_dialog(
+            tag=TAG_CONFIG_LOAD_ERROR_DIALOG,
+            title=TITLE_DIALOG_ERROR,
+            content=content,
+        )
 
     def save_config(self) -> None:
         if not self.config:
