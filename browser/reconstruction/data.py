@@ -4,6 +4,7 @@ from typing import List, Self
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
+from browser.reconstruction.feature import FeatureData
 from configs.config import Config
 from constants.enums import GeneratorName
 from reconstructor.reconstruction import Reconstruction
@@ -16,6 +17,7 @@ class ReconstructionData(BaseModel):
     config: Config
     reconstruction: Reconstruction
     original_audio: np.ndarray
+    feature_data: FeatureData
 
     @classmethod
     def load(cls, path: Path) -> Self:
@@ -32,10 +34,13 @@ class ReconstructionData(BaseModel):
             quantize=quantize,
         )
 
+        feature_data = FeatureData.load(reconstruction)
+
         return cls(
             config=reconstruction.config,
             reconstruction=reconstruction,
             original_audio=original_audio,
+            feature_data=feature_data,
         )
 
     def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:

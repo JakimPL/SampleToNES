@@ -1,15 +1,65 @@
-from typing import Dict, List, Optional, Union
+from pathlib import Path
+from typing import Dict, List, Optional, cast
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from typehints.general import FeatureValue
+from utils.fami import write_fti
+
+
+class Feature(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    generator_name: GeneratorName
+    initial_pitch: int
+    volume: np.ndarray
+    arpeggio: np.ndarray
+    pitch: Optional[np.ndarray]
+    hi_pitch: Optional[np.ndarray]
+    duty_cycle: Optional[np.ndarray]
+
+    def _feature_map(self) -> Dict[FeatureKey, Optional[FeatureValue]]:
+        return {
+            FeatureKey.INITIAL_PITCH: self.initial_pitch,
+            FeatureKey.VOLUME: self.volume,
+            FeatureKey.ARPEGGIO: self.arpeggio,
+            FeatureKey.PITCH: self.pitch,
+            FeatureKey.HI_PITCH: self.hi_pitch,
+            FeatureKey.DUTY_CYCLE: self.duty_cycle,
+        }
+
+    def __getitem__(self, feature_key: FeatureKey) -> FeatureValue:
+        value = self._feature_map().get(feature_key)
+        if value is None:
+            raise KeyError(feature_key)
+        return value
+
+    def get(self, feature_key: FeatureKey) -> Optional[FeatureValue]:
+        return self._feature_map().get(feature_key)
+
+    def keys(self) -> List[FeatureKey]:
+        return [key for key, value in self._feature_map().items() if value is not None]
+
+    def save(self, filepath: Path, instrument_name: str) -> None:
+        write_fti(
+            filename=filepath,
+            instrument_name=instrument_name,
+            volume=cast(Optional[np.ndarray], self.volume),
+            arpeggio=cast(Optional[np.ndarray], self.arpeggio),
+            pitch=cast(Optional[np.ndarray], self.pitch),
+            hi_pitch=cast(Optional[np.ndarray], self.hi_pitch),
+            duty_cycle=cast(Optional[np.ndarray], self.duty_cycle),
+        )
 
 
 class FeatureData(BaseModel):
-    generators: Dict[GeneratorName, Dict[FeatureKey, FeatureValue]]
+    generators: Dict[GeneratorName, Feature]
+
+    def __getitem__(self, generator_name: GeneratorName) -> Feature:
+        return self.generators[generator_name]
 
     @classmethod
     def load(cls, reconstruction: Reconstruction) -> "FeatureData":
@@ -18,7 +68,17 @@ class FeatureData(BaseModel):
         generators = {}
         for generator_name_str, features in exported_features.items():
             generator_name = GeneratorName(generator_name_str)
-            generators[generator_name] = features
+            feature = Feature(
+                generator_name=generator_name,
+                initial_pitch=cast(int, features.get(FeatureKey.INITIAL_PITCH)),
+                volume=cast(np.ndarray, features.get(FeatureKey.VOLUME)),
+                arpeggio=cast(np.ndarray, features.get(FeatureKey.ARPEGGIO)),
+                pitch=cast(Optional[np.ndarray], features.get(FeatureKey.PITCH)),
+                hi_pitch=cast(Optional[np.ndarray], features.get(FeatureKey.HI_PITCH)),
+                duty_cycle=cast(Optional[np.ndarray], features.get(FeatureKey.DUTY_CYCLE)),
+            )
+
+            generators[generator_name] = feature
 
         return cls(generators=generators)
 
@@ -28,7 +88,7 @@ class FeatureData(BaseModel):
     def has_generator(self, generator_name: GeneratorName) -> bool:
         return generator_name in self.generators
 
-    def get_generator_features(self, generator_name: GeneratorName) -> Optional[Dict[FeatureKey, FeatureValue]]:
+    def get_generator_features(self, generator_name: GeneratorName) -> Optional[Feature]:
         return self.generators.get(generator_name)
 
     def get_feature_for_generator(
@@ -39,11 +99,11 @@ class FeatureData(BaseModel):
 
     def has_feature_for_generator(self, generator_name: GeneratorName, feature_key: FeatureKey) -> bool:
         features = self.get_generator_features(generator_name)
-        return feature_key in features if features else False
+        return features.get(feature_key) is not None if features else False
 
     def get_first_generator_with_feature(self, feature_key: FeatureKey) -> Optional[GeneratorName]:
         for generator_name, features in self.generators.items():
-            if feature_key in features:
+            if features.get(feature_key) is not None:
                 return generator_name
         return None
 

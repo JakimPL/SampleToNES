@@ -344,6 +344,9 @@ class GUI:
     def _export_reconstruction_to_wav(self) -> None:
         self.reconstruction_panel.export_reconstruction_to_wav()
 
+    def _export_reconstruction_to_fti(self) -> None:
+        pass  # self.reconstruction_details_panel.export_reconstruction_to_fti()
+
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)

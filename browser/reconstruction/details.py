@@ -110,7 +110,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
 
                 feature_keys = [
-                    key for key in FEATURE_DISPLAY_ORDER if key in generator_features and key in FEATURE_PLOT_CONFIGS
+                    key
+                    for key in FEATURE_DISPLAY_ORDER
+                    if key in generator_features.keys() and key in FEATURE_PLOT_CONFIGS
                 ]
                 for feature_key in feature_keys:
                     dpg.add_separator(parent=window_tag)

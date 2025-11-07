@@ -10,6 +10,7 @@ from browser.graphs.waveform import GUIWaveformDisplay
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
+from browser.reconstruction.feature import Feature, FeatureData
 from browser.utils import file_dialog_handler, show_modal_dialog
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -64,7 +65,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.reconstruction_data: Optional[ReconstructionData] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
-        self._pending_fti_export: Optional[Tuple[GeneratorName, Dict]] = None
+        self._pending_fti_export: Optional[Tuple[GeneratorName, Feature]] = None
 
         self._on_export_wav: Optional[Callable[[], None]] = None
         self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
@@ -274,8 +275,8 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         reconstruction = self.reconstruction_data.reconstruction
-        feature_data = reconstruction.export(as_string=False)
-        if generator_name not in feature_data:
+        feature_data = self.reconstruction_data.feature_data
+        if generator_name not in feature_data.generators:
             return
 
         generator_features = feature_data[generator_name]
@@ -308,16 +309,9 @@ class GUIReconstructionPanel(GUIPanel):
         reconstruction = self.reconstruction_data.reconstruction
         filename = Path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename}_{generator_name}"
-
-        write_fti(
-            filename=filepath,
-            instrument_name=instrument_name,
-            volume=cast(Optional[np.ndarray], generator_features.get(FeatureKey.VOLUME)),
-            arpeggio=cast(Optional[np.ndarray], generator_features.get(FeatureKey.ARPEGGIO)),
-            pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.PITCH)),
-            hi_pitch=cast(Optional[np.ndarray], generator_features.get(FeatureKey.HI_PITCH)),
-            duty_cycle=cast(Optional[np.ndarray], generator_features.get(FeatureKey.DUTY_CYCLE)),
-        )
+        feature = self.reconstruction_data.feature_data[generator_name]
+        feature.save(filepath, instrument_name)
+        # TODO: Show success/failure message
 
     def _handle_export_wav_button_click(self) -> None:
         if self._on_export_wav:
