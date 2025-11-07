@@ -189,6 +189,7 @@ TAG_CONFIG_MAX_WORKERS = "max_workers"
 TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
+TAG_LIBRARY_TREE_GROUP = "libraries_tree_group"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0

@@ -41,6 +41,7 @@ from constants.browser import (
     TAG_LIBRARY_PROGRESS,
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
+    TAG_LIBRARY_TREE_GROUP,
     TITLE_DIALOG_ERROR,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_LOADED,
@@ -94,8 +95,9 @@ class GUILibraryPanel(GUITreePanel):
             dpg.add_separator()
             self.create_search_ui(self.tag)
             dpg.add_separator()
-            with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
-                pass
+            with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
+                with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
+                    pass
 
         self.update_status()
 
@@ -136,13 +138,16 @@ class GUILibraryPanel(GUITreePanel):
             dpg.set_item_label(TAG_LIBRARY_BUTTON_GENERATE, LBL_BUTTON_GENERATE_LIBRARY)
 
         dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not self.is_generating)
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not self.is_generating)
 
     def _refresh_libraries(self) -> None:
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self.library_manager.gather_available_libraries()
         key = self.config_manager.key
         if key is not None:
             self._sync_with_config_key(key)
         self.build_tree_ui(TAG_LIBRARY_TREE)
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
         self.update_status()
 
     def _sync_with_config_key(self, config_key: LibraryKey) -> None:
@@ -271,6 +276,7 @@ class GUILibraryPanel(GUITreePanel):
         finally:
             self.is_generating = False
             dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
+            dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
             dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
 
     def set_callbacks(
