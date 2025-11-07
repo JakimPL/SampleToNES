@@ -13,9 +13,11 @@ __pycache__/
 *.wav
 *.json
 *.txt
+*.log
 *.npy
 *.dat
 *.fti
+*.lock
 
 data/
 output/

@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Optional, Tuple, Union
 
 import numpy as np
-from IPython.display import Audio, display
 from scipy.io import wavfile
 
 from constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
@@ -10,11 +9,6 @@ from constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
     return np.clip(audio, -1.0, 1.0)
-
-
-def play_audio(audio: np.ndarray, sample_rate: int) -> None:
-    audio = clip_audio(audio)
-    display(Audio(data=audio, rate=sample_rate))
 
 
 def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:

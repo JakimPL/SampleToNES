@@ -36,8 +36,8 @@ class ConfigManager:
     def __init__(self) -> None:
         self.config: Optional[Config] = None
         self.window: Optional[Window] = None
-        self.library_directory: str = LIBRARY_DIRECTORY
-        self.output_directory: str = OUTPUT_DIRECTORY
+        self.library_directory: Path = Path(LIBRARY_DIRECTORY)
+        self.output_directory: Path = Path(OUTPUT_DIRECTORY)
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[Callable] = []
         self.config_parameters = {
@@ -71,7 +71,10 @@ class ConfigManager:
 
     def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
         config_data = {
-            "general": {"library_directory": self.library_directory, "output_directory": self.output_directory},
+            "general": {
+                "library_directory": str(self.library_directory),
+                "output_directory": str(self.output_directory),
+            },
             "library": {},
             "generation": {},
         }
@@ -98,6 +101,9 @@ class ConfigManager:
 
     def get_window(self) -> Optional[Window]:
         return self.window
+
+    def get_library_directory(self) -> Path:
+        return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
     @property
     def key(self) -> Optional[LibraryKey]:
@@ -149,8 +155,8 @@ class ConfigManager:
     def load_config(self, config: Config) -> None:
         self.config = config
         self.window = Window(self.config.library)
-        self.library_directory = config.general.library_directory
-        self.output_directory = config.general.output_directory
+        self.library_directory = Path(config.general.library_directory)
+        self.output_directory = Path(config.general.output_directory)
         self.generators = list(config.generation.generators)
         self._notify_config_change()
 
@@ -163,10 +169,5 @@ class ConfigManager:
 
     def load_config_from_file(self, filepath: Path) -> None:
         config_dict = load_json(filepath)
-
         self.config = Config(**config_dict)
-        self.window = Window(self.config.library)
-        self.library_directory = self.config.general.library_directory
-        self.output_directory = self.config.general.output_directory
-        self.generators = list(self.config.generation.generators)
-        self._notify_config_change()
+        return self.load_config(self.config)

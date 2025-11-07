@@ -151,11 +151,11 @@ class GUIReconstructorPanel(GUIPanel):
         directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
         self.change_output_directory(directory_path)
 
-    def change_output_directory(self, directory_path: str) -> None:
+    def change_output_directory(self, directory_path: Path) -> None:
         self.config_manager.output_directory = directory_path
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
-        dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(Path(directory_path)))
+        dpg.set_value(TAG_OUTPUT_DIRECTORY_DISPLAY, str(directory_path))
 
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:

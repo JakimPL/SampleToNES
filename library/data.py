@@ -166,6 +166,7 @@ class LibraryData(BaseModel):
     def save(self, path: Union[str, Path]) -> None:
         dump = self.model_dump()
         binary = msgpack.packb(dump)
+        assert binary is not None, "Failed to serialize LibraryData"
         path_object = Path(path)
         path_object.parent.mkdir(parents=True, exist_ok=True)
         with open(path_object, "wb") as file:

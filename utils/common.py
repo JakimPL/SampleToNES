@@ -34,19 +34,15 @@ def first_key_for_value(dictionary: dict, target: Any) -> Any:
     return None
 
 
-def shorten_path(path: Path) -> str:
+def shorten_path(path: Path, levels: int = 5) -> str:
     path = path.expanduser().resolve()
     parts = path.parts
+
+    if len(parts) <= levels:
+        return str(path)
+
     root = parts[0]
-
-    if len(parts) <= 3:
-        return str(path)
-
     first_dir = parts[1]
-    last_dir = parts[-2]
-    filename = parts[-1]
+    last_parts = parts[-(levels - 2) :]
 
-    if len(parts) == 4:
-        return str(path)
-    else:
-        return os.sep.join([root.rstrip(os.sep), first_dir, "...", last_dir, filename])
+    return os.sep.join([root.rstrip(os.sep), first_dir, "..."] + list(last_parts))

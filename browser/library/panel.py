@@ -48,16 +48,14 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from constants.general import LIBRARY_DIRECTORY
 from library.key import LibraryKey
 
 
 class GUILibraryPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        library_directory = (
-            config_manager.config.general.library_directory if config_manager.config else LIBRARY_DIRECTORY
-        )
+        library_directory = config_manager.get_library_directory()
+
         self.library_manager = LibraryManager(library_directory)
         self.is_generating = False
         self.generation_thread = None
@@ -100,6 +98,10 @@ class GUILibraryPanel(GUITreePanel):
                 pass
 
         self.update_status()
+
+    def refresh(self) -> None:
+        self.library_manager.set_library_directory(self.config_manager.get_library_directory())
+        self._refresh_libraries()
 
     def _rebuild_tree_ui(self) -> None:
         self.build_tree_ui(TAG_LIBRARY_TREE)

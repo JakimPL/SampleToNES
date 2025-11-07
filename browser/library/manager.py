@@ -36,14 +36,14 @@ from utils.frequencies import pitch_to_name
 
 
 class LibraryManager:
-    def __init__(self, library_directory: str = LIBRARY_DIRECTORY) -> None:
-        self.library = Library(directory=library_directory)
+    def __init__(self, library_directory: Path) -> None:
+        self.library = Library(directory=str(library_directory))
         self.library_files: Dict[LibraryKey, str] = {}
         self.current_library_key: Optional[LibraryKey] = None
         self.tree = Tree()
 
-    def set_library_directory(self, directory: str) -> None:
-        self.library.directory = directory
+    def set_library_directory(self, directory: Path) -> None:
+        self.library = Library(directory=str(directory))
         self.gather_available_libraries()
 
     def gather_available_libraries(self) -> Dict[LibraryKey, str]:
