@@ -50,8 +50,8 @@ from constants.browser import (
 )
 from constants.enums import AudioSourceType, FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
-from utils.audio.device import AudioDeviceManager
 from utils.audio.io import write_audio
+from utils.audio.manager import AudioDeviceManager
 from utils.fami import write_fti
 
 

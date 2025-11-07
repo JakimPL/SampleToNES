@@ -66,7 +66,7 @@ from constants.browser import (
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
 from library.data import LibraryFragment
-from utils.audio.device import AudioDeviceManager
+from utils.audio.manager import AudioDeviceManager
 
 
 class GUI:

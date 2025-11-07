@@ -4,8 +4,8 @@ import numpy as np
 
 from browser.player.data import AudioData
 from constants.general import SAMPLE_RATE
-from utils.audio.device import AudioDeviceManager
 from utils.audio.io import clip_audio, stereo_to_mono
+from utils.audio.manager import AudioDeviceManager
 
 
 class PlaybackError(Exception):

@@ -28,7 +28,7 @@ from constants.browser import (
     TITLE_DIALOG_NO_AUDIO,
     TITLE_DIALOG_PLAYBACK_ERROR,
 )
-from utils.audio.device import AudioDeviceManager
+from utils.audio.manager import AudioDeviceManager
 
 
 class GUIAudioPlayerPanel(GUIPanel):

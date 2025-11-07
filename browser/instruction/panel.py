@@ -23,7 +23,7 @@ from constants.browser import (
 )
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
-from utils.audio.device import AudioDeviceManager
+from utils.audio.manager import AudioDeviceManager
 
 
 class GUIInstructionPanel(GUIPanel):
