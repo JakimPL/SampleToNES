@@ -6,6 +6,7 @@ from browser.player.data import AudioData
 from constants.general import SAMPLE_RATE
 from utils.audio.io import clip_audio, stereo_to_mono
 from utils.audio.manager import AudioDeviceManager
+from utils.logger import logger
 
 
 class PlaybackError(Exception):
@@ -55,6 +56,7 @@ class AudioPlayer:
             audio = audio.astype(np.float32)
             self.audio_device_manager.play(audio)
         except Exception as exception:
+            logger.error_with_traceback("Audio playback failed", exception)
             raise PlaybackError(str(exception)) from exception
 
     def pause(self) -> None:

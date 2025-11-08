@@ -193,6 +193,9 @@ class GUIConverterWindow:
         if self.converter and self.converter.is_running():
             self.converter.cancel()
 
+        if self.converter:
+            self.converter.cleanup()
+
         self.hide()
 
     def _on_conversion_complete(self, output_path: Path) -> None:

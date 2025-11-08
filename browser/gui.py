@@ -67,6 +67,7 @@ from constants.browser import (
 )
 from library.data import LibraryFragment
 from utils.audio.manager import AudioDeviceManager
+from utils.logger import logger
 
 
 class GUI:
@@ -263,7 +264,8 @@ class GUI:
         try:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
-        except Exception as error:  # TODO: to narrow
+        except Exception as error:
+            logger.error_with_traceback(f"Failed to save config to {filepath}", error)
             self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
 
     def _load_config_dialog(self) -> None:
@@ -282,6 +284,7 @@ class GUI:
             self.config_manager.load_config_from_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
         except Exception as error:
+            logger.error_with_traceback(f"Failed to load config from {filepath}", error)
             self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
 
     def _reconstruct_file_dialog(self) -> None:
@@ -365,9 +368,15 @@ class GUI:
         dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _exit_application(self) -> None:
+        if self.converter_window and self.converter_window.converter:
+            self.converter_window.converter.cleanup()
         dpg.stop_dearpygui()
 
     def run(self) -> None:
-        dpg.start_dearpygui()
-        self.config_manager.save_config()
-        dpg.destroy_context()
+        try:
+            dpg.start_dearpygui()
+        finally:
+            if self.converter_window and self.converter_window.converter:
+                self.converter_window.converter.cleanup()
+            self.config_manager.save_config()
+            dpg.destroy_context()

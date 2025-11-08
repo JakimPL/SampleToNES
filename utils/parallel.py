@@ -12,6 +12,7 @@ from typing import (
 )
 
 from constants.general import MAX_WORKERS
+from utils.logger import logger
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -43,12 +44,17 @@ def parallelize(
             try:
                 result = future.result()
                 results.append(result)
-            except KeyboardInterrupt:
-                print("Parallel execution interrupted by user.")
+            except KeyboardInterrupt as exception:
+                logger.info("Parallel execution interrupted by user")
                 executor.shutdown(wait=False, cancel_futures=True)
-                raise
-            except Exception as exception:  # TODO: to narrow
-                print(f"Task {index} generated an exception: {exception}")
+                raise exception
+            except (BrokenPipeError, EOFError, OSError) as exception:
+                logger.warning(f"Worker process terminated unexpectedly: {type(exception).__name__}")
+                executor.shutdown(wait=False, cancel_futures=True)
+                raise exception
+            except Exception as exception:
+                logger.error(f"Task {index} generated an exception: {exception}")
+                executor.shutdown(wait=False, cancel_futures=True)
                 raise exception
 
     return results

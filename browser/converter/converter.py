@@ -1,10 +1,12 @@
+import atexit
 import threading
 from multiprocessing import Manager
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional
 
 from configs.config import Config
 from reconstructor.scripts import reconstruct_directory, reconstruct_single_file
+from utils.logger import logger
 
 
 class ReconstructionConverter:
@@ -27,6 +29,8 @@ class ReconstructionConverter:
         self._on_cancelled: Optional[Callable[[], None]] = None
         self._on_complete: Optional[Callable[[Path], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
+
+        atexit.register(self.cleanup)
 
     def start(self, target_path: Path, is_file: bool) -> None:
         if self.running:
@@ -54,18 +58,24 @@ class ReconstructionConverter:
 
     def _monitor_queue(self) -> None:
         while self.running:
-            if self.progress_queue and not self.progress_queue.empty():
-                message = self.progress_queue.get()
-                if message[0] == "total":
-                    self.total_files = message[1]
-                elif message[0] == "completed":
-                    self.completed_files += 1
-                    self.current_file = message[1]
+            if self.progress_queue:
+                try:
+                    if not self.progress_queue.empty():
+                        message = self.progress_queue.get()
+                        if message[0] == "total":
+                            self.total_files = message[1]
+                        elif message[0] == "completed":
+                            self.completed_files += 1
+                            self.current_file = message[1]
+                except (BrokenPipeError, EOFError, OSError) as error:
+                    logger.warning(f"Monitor queue connection lost: {type(error).__name__}")
+                    break
 
     def _reconstruct_file_worker(self, input_path: Path) -> None:
         try:
             output_json = reconstruct_single_file(self.config, input_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
+            logger.error_with_traceback(f"File reconstruction failed for {input_path}", error)
             self._handle_error(error)
             return
         finally:
@@ -79,6 +89,7 @@ class ReconstructionConverter:
         try:
             reconstruct_directory(self.config, directory_path, self.progress_queue, self.cancel_flag)
         except Exception as error:
+            logger.error_with_traceback(f"Directory reconstruction failed for {directory_path}", error)
             self._handle_error(error)
         finally:
             self.running = False
@@ -138,3 +149,38 @@ class ReconstructionConverter:
             self._on_error = on_error
         if on_cancelled is not None:
             self._on_cancelled = on_cancelled
+
+    def cleanup(self) -> None:
+        if self.cancel_flag:
+            try:
+                self.cancel_flag.value = True
+            except (BrokenPipeError, EOFError, OSError) as error:
+                logger.debug(f"Failed to set cancel flag during cleanup: {type(error).__name__}")
+
+        self.running = False
+
+        if self.monitor_thread and self.monitor_thread.is_alive():
+            self.monitor_thread.join(timeout=2)
+
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=2)
+
+        if self._manager:
+            try:
+                self._manager.shutdown()
+            except (BrokenPipeError, EOFError, OSError) as error:
+                logger.debug(f"Manager shutdown encountered error: {type(error).__name__}")
+            finally:
+                self._manager = None
+
+        self.cancelling = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
+        return False
+
+    def __del__(self):
+        self.cleanup()

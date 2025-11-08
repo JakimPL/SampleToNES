@@ -49,11 +49,11 @@ from constants.browser import (
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_FULL,
 )
-from constants.enums import AudioSourceType, FeatureKey, GeneratorName
+from constants.enums import AudioSourceType, GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from utils.audio.io import write_audio
 from utils.audio.manager import AudioDeviceManager
-from utils.fami import write_fti
+from utils.logger import logger
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -348,6 +348,7 @@ class GUIReconstructionPanel(GUIPanel):
             write_audio(filepath, partial_approximation, sample_rate)
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
         except Exception as error:
+            logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", error)
             self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
 
     def _show_export_status_dialog(self, message: str) -> None:

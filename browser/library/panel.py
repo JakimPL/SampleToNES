@@ -50,6 +50,7 @@ from constants.browser import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from library.key import LibraryKey
+from utils.logger import logger
 
 
 class GUILibraryPanel(GUITreePanel):
@@ -276,6 +277,7 @@ class GUILibraryPanel(GUITreePanel):
             self.update_status()
 
         except Exception as exception:
+            logger.error_with_traceback("Library generation failed", exception)
             self._show_error_dialog(str(exception))
 
         finally:

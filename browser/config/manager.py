@@ -36,6 +36,7 @@ from constants.general import (
 )
 from ffts.window import Window
 from library.key import LibraryKey
+from utils.logger import logger
 from utils.serialization import SerializedData, load_json, save_json
 
 
@@ -69,7 +70,8 @@ class ConfigManager:
         if self.config_path.exists():
             try:
                 self.load_config_from_file(self.config_path)
-            except Exception as error:  # TODO: to narrow
+            except Exception as error:
+                logger.error_with_traceback(f"Failed to load config from {self.config_path}", error)
                 self._show_config_load_error(str(error))
                 self.load_config(Config())
         else:

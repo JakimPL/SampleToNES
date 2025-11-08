@@ -5,6 +5,7 @@ import numpy as np
 from scipy.io import wavfile
 
 from constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
+from utils.logger import logger
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
@@ -48,7 +49,7 @@ def resample(audio: np.ndarray, original_sample_rate: int, target_sample_rate: i
         audio = librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
         return audio
     except ImportError:
-        pass
+        logger.debug("librosa not available, falling back to scipy interpolation")
 
     ratio = target_sample_rate / original_sample_rate
     original_length = len(audio)
