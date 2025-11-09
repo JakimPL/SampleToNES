@@ -109,6 +109,9 @@ class GUI:
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
         )
+        self.reconstructor_panel.set_callbacks(
+            on_update_library_directory=self.browser_panel.refresh,
+        )
         self.browser_panel.set_callbacks(
             on_reconstruction_selected=self._on_reconstruction_selected,
             on_reconstruct_file=self._reconstruct_file_dialog,
@@ -264,9 +267,9 @@ class GUI:
         try:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
-        except Exception as error:
-            logger.error_with_traceback(f"Failed to save config to {filepath}", error)
-            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to save config to {filepath}", exception)
+            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -283,9 +286,9 @@ class GUI:
         try:
             self.config_manager.load_config_from_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
-        except Exception as error:
-            logger.error_with_traceback(f"Failed to load config from {filepath}", error)
-            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to load config from {filepath}", exception)
+            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     def _reconstruct_file_dialog(self) -> None:
         with dpg.file_dialog(

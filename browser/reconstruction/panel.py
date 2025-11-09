@@ -347,9 +347,9 @@ class GUIReconstructionPanel(GUIPanel):
         try:
             write_audio(filepath, partial_approximation, sample_rate)
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
-        except Exception as error:
-            logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", error)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(error)))
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     def _show_export_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:

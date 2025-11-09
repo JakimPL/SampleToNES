@@ -1,19 +1,18 @@
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.elements.panel import GUIPanel
 from browser.elements.path import GUIPathText
+from browser.utils import file_dialog_handler
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
     DIM_PANEL_RECONSTRUCTOR_WIDTH,
     FLAG_CHECKBOX_DEFAULT_ENABLED,
-    IDX_DIALOG_FIRST_SELECTION,
-    KEY_DIALOG_SELECTIONS,
     LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
@@ -42,6 +41,8 @@ class GUIReconstructorPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.output_path_text: Optional[GUIPathText] = None
+
+        self._on_update_library_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
@@ -152,8 +153,8 @@ class GUIReconstructorPanel(GUIPanel):
         ):
             pass
 
-    def _select_output_directory(self, sender: Any, app_data: SerializedData) -> None:
-        directory_path = list(app_data[KEY_DIALOG_SELECTIONS].values())[IDX_DIALOG_FIRST_SELECTION]
+    @file_dialog_handler
+    def _select_output_directory(self, directory_path: Path) -> None:
         self.change_output_directory(directory_path)
 
     def change_output_directory(self, directory_path: Path) -> None:
@@ -161,8 +162,11 @@ class GUIReconstructorPanel(GUIPanel):
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
-        if self.output_path_text:
-            self.output_path_text.set_path(directory_path, display_text=shorten_path(directory_path))
+        if self.output_path_text is not None:
+            self.output_path_text.set_path(directory_path)
+
+        if self._on_update_library_directory:
+            self._on_update_library_directory()
 
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:
@@ -182,3 +186,7 @@ class GUIReconstructorPanel(GUIPanel):
         output_directory = Path(config.general.output_directory)
         if self.output_path_text:
             self.output_path_text.set_path(output_directory, display_text=shorten_path(output_directory))
+
+    def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
+        if on_update_library_directory is not None:
+            self._on_update_library_directory = on_update_library_directory

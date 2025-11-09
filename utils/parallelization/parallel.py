@@ -52,7 +52,7 @@ def parallelize(
                 logger.warning(f"Worker process terminated unexpectedly: {type(exception).__name__}")
                 executor.shutdown(wait=False, cancel_futures=True)
                 raise exception
-            except Exception as exception:
+            except Exception as exception:  # TODO: specify exception type
                 logger.error(f"Task {index} generated an exception: {exception}")
                 executor.shutdown(wait=False, cancel_futures=True)
                 raise exception

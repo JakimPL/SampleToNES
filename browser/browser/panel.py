@@ -49,6 +49,11 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
                 dpg.add_button(
+                    label=LBL_BUTTON_REFRESH_LIST,
+                    width=-1,
+                    callback=self._refresh_tree,
+                )
+                dpg.add_button(
                     label=LBL_BUTTON_RECONSTRUCT_FILE,
                     width=-1,
                     callback=self._reconstruct_file,
@@ -60,12 +65,6 @@ class GUIBrowserPanel(GUITreePanel):
                     callback=self._reconstruct_directory,
                     tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                 )
-
-            dpg.add_button(
-                label=LBL_BUTTON_REFRESH_LIST,
-                width=-1,
-                callback=self._refresh_tree,
-            )
 
             dpg.add_separator()
             self.create_search_ui(self.tag)

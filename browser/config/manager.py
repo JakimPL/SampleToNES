@@ -44,8 +44,8 @@ class ConfigManager:
     def __init__(self) -> None:
         self.config: Optional[Config] = None
         self.window: Optional[Window] = None
-        self.library_directory: Path = Path(LIBRARY_DIRECTORY)
-        self.output_directory: Path = Path(OUTPUT_DIRECTORY)
+        self.library_directory: Optional[Path] = None
+        self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[Callable] = []
         self.config_path: Path = Path(CONFIG_PATH)
@@ -70,9 +70,9 @@ class ConfigManager:
         if self.config_path.exists():
             try:
                 self.load_config_from_file(self.config_path)
-            except Exception as error:
-                logger.error_with_traceback(f"Failed to load config from {self.config_path}", error)
-                self._show_config_load_error(str(error))
+            except Exception as exception:  # TODO: specify exception type
+                logger.error_with_traceback(f"Failed to load config from {self.config_path}", exception)
+                self._show_config_load_error(str(exception))
                 self.load_config(Config())
         else:
             self.load_config(Config())
@@ -130,16 +130,24 @@ class ConfigManager:
     def _update_generators_from_gui_values(self, gui_values: SerializedData) -> None:
         self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values.get(tag, True)]
 
-    def get_config(self) -> Optional[Config]:
+    def get_config(self) -> Config:
+        if self.config is None:
+            raise RuntimeError("Config is not loaded")
         return self.config
 
-    def get_window(self) -> Optional[Window]:
+    def get_window(self) -> Window:
+        if self.window is None:
+            raise RuntimeError("Window is not loaded")
         return self.window
 
     def get_library_directory(self) -> Path:
+        if self.config is None:
+            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
     def get_output_directory(self) -> Path:
+        if self.config is None:
+            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
 
     @property

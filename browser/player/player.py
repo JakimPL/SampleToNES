@@ -55,7 +55,7 @@ class AudioPlayer:
             audio = clip_audio(audio)
             audio = audio.astype(np.float32)
             self.audio_device_manager.play(audio)
-        except Exception as exception:
+        except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback("Audio playback failed", exception)
             raise PlaybackError(str(exception)) from exception
 

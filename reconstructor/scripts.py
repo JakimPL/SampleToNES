@@ -36,6 +36,7 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
 
     # TODO: ask for skip/replace
     if output_path.exists():
+        print("Skipping existing file:", output_path)
         return
 
     reconstruction = reconstructor(input_path)

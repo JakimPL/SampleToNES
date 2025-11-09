@@ -117,8 +117,8 @@ class GUIAudioPlayerPanel(GUIPanel):
     def _play_audio(self) -> None:
         try:
             self.audio_player.play()
-        except PlaybackError as error:
-            self._show_playback_error_dialog(str(error))
+        except PlaybackError as exception:
+            self._show_playback_error_dialog(str(exception))
             return
 
         self._update_controls()

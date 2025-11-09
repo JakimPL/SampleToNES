@@ -42,10 +42,7 @@ class GUIConverterWindow:
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.converter: Optional[ReconstructionConverter] = None
-
-        self.target_path: Optional[Path] = None
-        self.shortened_path: str = ""
-        self.path_text: Optional[GUIPathText] = None
+        self.path: Optional[GUIPathText] = None
 
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
@@ -57,18 +54,11 @@ class GUIConverterWindow:
         if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             dpg.delete_item(TAG_CONVERTER_WINDOW)
 
-    def show(self, target_path: Union[str, Path], is_file: bool = False) -> None:
-        self.target_path = Path(target_path)
-        self.shortened_path = shorten_path(self.target_path) if self.target_path else ""
-
+    def show(self, target_path: Path, is_file: bool = False) -> None:
         self.is_file = is_file
         self.output_file_path = None
 
         config = self.config_manager.get_config()
-        if config is None:
-            self._show_error_dialog(MSG_CONVERTER_CONFIG_NOT_AVAILABLE)
-            return
-
         self.converter = ReconstructionConverter(config=config)
         self.converter.set_callbacks(
             on_complete=self._on_conversion_complete,
@@ -93,9 +83,9 @@ class GUIConverterWindow:
                 width=-1,
             )
 
-            self.path_text = GUIPathText(
+            self.path = GUIPathText(
                 tag=TAG_CONVERTER_PATH_TEXT,
-                path=self.target_path,
+                path=target_path,
                 parent=TAG_CONVERTER_WINDOW,
             )
 
@@ -125,7 +115,7 @@ class GUIConverterWindow:
                         callback=self._on_cancel_clicked,
                     )
 
-        self.converter.start(self.target_path, self.is_file)
+        self.converter.start(target_path, self.is_file)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, self._update_progress_callback)
 
     def _update_progress_callback(self) -> None:
@@ -145,12 +135,10 @@ class GUIConverterWindow:
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
 
         current_file = self.converter.get_current_file()
-        if self.path_text:
+        if self.path:
             if current_file is not None:
                 current_file_path = Path(current_file)
-                self.path_text.set_path(current_file_path, display_text=shorten_path(current_file_path))
-            elif self.target_path:
-                self.path_text.set_path(self.target_path, display_text=self.shortened_path)
+                self.path.set_path(current_file_path, display_text=shorten_path(current_file_path))
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(

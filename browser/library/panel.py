@@ -126,7 +126,7 @@ class GUILibraryPanel(GUITreePanel):
         config = self.config_manager.get_config()
         key = self.config_manager.key
 
-        if config is None or key is None:
+        if key is None:
             dpg.set_value(TAG_LIBRARY_STATUS, MSG_CONFIG_NOT_READY)
             dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=False)
             return
@@ -237,9 +237,6 @@ class GUILibraryPanel(GUITreePanel):
             return
 
         config = self.config_manager.get_config()
-        if config is None:
-            return
-
         self._on_instruction_selected(
             user_data.generator_class_name,
             user_data.instruction,
@@ -252,9 +249,6 @@ class GUILibraryPanel(GUITreePanel):
             return
 
         config = self.config_manager.get_config()
-        if config is None:
-            return
-
         self.is_generating = True
         dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
         dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATING)
@@ -276,7 +270,7 @@ class GUILibraryPanel(GUITreePanel):
             dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
             self.update_status()
 
-        except Exception as exception:
+        except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback("Library generation failed", exception)
             self._show_error_dialog(str(exception))
 

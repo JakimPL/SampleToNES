@@ -1,11 +1,9 @@
 import atexit
 import threading
-from pathlib import Path
 from typing import Any, Callable, Generic, List, Optional, TypeVar
 
 from pebble import ProcessPool
 
-from configs.config import Config
 from constants.general import MAX_WORKERS
 from utils.logger import logger
 from utils.parallelization.task import TaskProgress
@@ -15,7 +13,7 @@ T = TypeVar("T")
 
 class TaskProcessor(Generic[T]):
     def __init__(self, max_workers: Optional[int] = None) -> None:
-        self.max_workers = max_workers or MAX_WORKERS
+        self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
         self.future: Optional[Any] = None
         self.monitor_thread: Optional[threading.Thread] = None
@@ -52,7 +50,7 @@ class TaskProcessor(Generic[T]):
 
         self._notify_progress()
 
-        workers = self.max_workers if self.max_workers else 4
+        workers = self.max_workers
         self.pool = ProcessPool(max_workers=workers)
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
@@ -71,28 +69,22 @@ class TaskProcessor(Generic[T]):
                     self._notify_progress()
                 except StopIteration:
                     break
-                except Exception as error:
-                    logger.error(f"Task failed: {error}")
-                    self.running = False
-                    if self._on_error:
-                        self._on_error(str(error))
-                    return
+                except Exception as exception:  # TODO: specify exception type
+                    if self.cancelling:
+                        self._finalize_cancellation()
+                    else:
+                        logger.error_with_traceback(f"Task failed: {exception}")
+                        self.running = False
+                        self.stop_with_error(str(exception))
 
-        except Exception as error:
-            logger.error(f"Pool execution failed: {error}")
-            self.running = False
-            if self._on_error:
-                self._on_error(str(error))
-            return
+                    return
         finally:
             self.pool.close()
             self.pool.join()
 
         self.running = False
-
         if self.cancelling:
-            if self._on_cancelled:
-                self._on_cancelled()
+            self._finalize_cancellation()
         else:
             result = self._process_results(results)
             if self._on_complete:
@@ -106,6 +98,16 @@ class TaskProcessor(Generic[T]):
                 current_item=self.current_item,
             )
             self._on_progress(progress)
+
+    def _finalize_cancellation(self) -> None:
+        if self._on_cancelled:
+            self._on_cancelled()
+        self.running = False
+
+    def stop_with_error(self, error_message: str) -> None:
+        self.running = False
+        if self._on_error:
+            self._on_error(str(error_message))
 
     def cancel(self) -> None:
         if self.cancelling:
@@ -127,7 +129,6 @@ class TaskProcessor(Generic[T]):
             self.pool.join()
 
         self.running = False
-        self.cancelling = False
 
     def is_running(self) -> bool:
         return self.running
