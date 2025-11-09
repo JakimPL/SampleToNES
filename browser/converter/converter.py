@@ -1,36 +1,31 @@
 import threading
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
+from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
+from reconstructor.reconstructor import Reconstructor
+from reconstructor.scripts import (
+    filter_files,
+    get_output_directory,
+    get_relative_path,
+    reconstruct_file,
+)
 from utils.parallelization.processor import TaskProcessor
 
-
-def reconstruct_single_file_task(args) -> Path:
-    config, input_path = args
-    from reconstructor.scripts import reconstruct_single_file
-
-    return reconstruct_single_file(config, input_path, progress_queue=None, cancel_flag=None)
+ReconstructionArguments = Tuple[Reconstructor, Path, Path]
 
 
-def reconstruct_file_task(args) -> str:
-    config, input_path, directory, output_directory = args
-    from reconstructor.reconstructor import Reconstructor
-    from reconstructor.scripts import reconstruct_file
-
-    reconstructor = Reconstructor(config)
-    relative_path = input_path.relative_to(directory)
-    output_path = output_directory / relative_path
+def reconstruct_file_wrapper(arguments: ReconstructionArguments) -> None:
+    reconstructor, input_path, output_path = arguments
     reconstruct_file(reconstructor, input_path, output_path)
-
-    return str(input_path)
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
     def __init__(self, config: Config) -> None:
         super().__init__(max_workers=config.general.max_workers)
         self.config = config
-        self.target_path: Optional[Path] = None
+        self.input_path: Optional[Path] = None
         self.is_file: bool = False
         self.wav_files: List[Path] = []
 
@@ -43,49 +38,46 @@ class ReconstructionConverter(TaskProcessor[Path]):
             return
 
         self.running = True
-        self.target_path = target_path
+        self.input_path = target_path
         self.is_file = is_file
 
         self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
         self.monitor_thread.start()
 
     def _create_tasks(self) -> List[Any]:
-        from constants.browser import EXT_FILE_WAV
-        from reconstructor.scripts import generate_config_directory_name
-
-        if not self.target_path:
-            raise ValueError("Target path not set")
+        assert self.input_path is not None, "Input path must be set before creating tasks"
+        reconstructor = Reconstructor(self.config)
+        output_directory = get_output_directory(self.config)
 
         if self.is_file:
-            return [(self.config, self.target_path)]
+            output_path = output_directory / self.input_path.stem
+            output_path = output_path.with_suffix(EXT_FILE_JSON)
+            return [(reconstructor, self.input_path, output_path)]
 
-        if not self.target_path.exists():
-            raise FileNotFoundError(f"Directory does not exist: {self.target_path}")
-
-        if not self.target_path.is_dir():
-            raise NotADirectoryError(f"Path is not a directory: {self.target_path}")
-
-        config_directory = generate_config_directory_name(self.config)
-        output_directory = Path(self.config.general.output_directory) / config_directory / self.target_path.name
-        self.wav_files = list(self.target_path.rglob(f"*{EXT_FILE_WAV}"))
+        self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAV}"))
+        self.wav_files = filter_files(self.wav_files, self.input_path, output_directory)
 
         if not self.wav_files:
-            raise ValueError(f"No WAV files found in directory: {self.target_path}")
+            raise ValueError(f"No WAV files found in directory: {self.input_path}")
 
-        return [(self.config, wav_file, self.target_path, output_directory) for wav_file in self.wav_files]
+        arguments: List[ReconstructionArguments] = []
+        for wav_file in self.wav_files:
+            output_path = get_relative_path(self.input_path, wav_file, output_directory)
+            arguments.append((reconstructor, wav_file, output_path))
 
-    def _get_task_function(self) -> Callable:
-        if self.is_file:
-            return reconstruct_single_file_task
-        return reconstruct_file_task
+        return arguments
+
+    def _get_task_function(self) -> Callable[[ReconstructionArguments], None]:
+        return reconstruct_file_wrapper
 
     def _process_results(self, results: List[Any]) -> Path:
-        if not self.target_path:
+        if not self.input_path:
             raise ValueError("Target path not set")
 
         if self.is_file:
             return results[0]
-        return self.target_path
+
+        return self.input_path
 
     def get_current_file(self) -> Optional[str]:
         return self.current_file

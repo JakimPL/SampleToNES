@@ -18,7 +18,7 @@ from constants.browser import (
     MSG_CONVERTER_CANCELLED,
     MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_COMPLETED,
-    MSG_CONVERTER_ERROR_PREFIX,
+    MSG_CONVERTER_ERROR,
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_SUCCESS,
     TAG_CONVERTER_CANCEL_BUTTON,
@@ -115,17 +115,20 @@ class GUIConverterWindow:
                         callback=self._on_cancel_clicked,
                     )
 
-        self.converter.start(target_path, self.is_file)
+        self.converter.start(target_path, is_file)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, self._update_progress_callback)
 
     def _update_progress_callback(self) -> None:
         if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             return
 
-        if self.converter.is_cancelled():
+        if self.converter.is_failed():
+            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
+        elif self.converter.is_cancelled():
             if dpg.does_item_exist(TAG_CONVERTER_STATUS):
                 dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
-        if self.converter.is_cancelling():
+        elif self.converter.is_cancelling():
             if dpg.does_item_exist(TAG_CONVERTER_STATUS):
                 dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
             if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
@@ -201,13 +204,13 @@ class GUIConverterWindow:
 
     def _finalize_error(self, error_message: str) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR_PREFIX)
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
         self._rename_cancel_to_close()
         self._show_error_dialog(error_message)
 
     def _show_error_dialog(self, error_message: str) -> None:
         def content(parent: str) -> None:
-            dpg.add_text(MSG_CONVERTER_ERROR_PREFIX, parent=parent)
+            dpg.add_text(MSG_CONVERTER_ERROR, parent=parent)
             dpg.add_separator(parent=parent)
             dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH_WRAP, parent=parent)
 

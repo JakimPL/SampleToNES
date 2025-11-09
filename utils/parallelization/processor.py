@@ -21,6 +21,7 @@ class TaskProcessor(Generic[T]):
 
         self.running = False
         self.cancelling = False
+        self.failed = False
         self.total_tasks = 0
         self.completed_tasks = 0
         self.current_item: Optional[str] = None
@@ -112,6 +113,7 @@ class TaskProcessor(Generic[T]):
 
     def stop_with_error(self, error_message: str) -> None:
         self.running = False
+        self.failed = True
         if self._on_error:
             self._on_error(str(error_message))
 
@@ -145,6 +147,9 @@ class TaskProcessor(Generic[T]):
 
     def is_cancelling(self) -> bool:
         return self.cancelling
+
+    def is_failed(self) -> bool:
+        return self.failed
 
     def get_progress(self) -> float:
         if self.total_tasks == 0:

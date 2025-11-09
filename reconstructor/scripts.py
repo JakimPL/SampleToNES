@@ -1,13 +1,11 @@
 import gc
-from multiprocessing import Manager
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import List
 
 from configs.config import Config
-from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
+from constants.browser import EXT_FILE_JSON
 from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
 from reconstructor.reconstructor import Reconstructor
-from utils.parallelization.parallel import parallelize
 from utils.serialization import hash_models
 
 
@@ -24,108 +22,35 @@ def generate_config_directory_name(config: Config) -> str:
     return config_directory
 
 
-def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path: Path) -> None:
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input file does not exist: {input_path}")
-
-    if not input_path.is_file():
-        raise IsADirectoryError(f"Input path is not a file: {input_path}")
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+def get_relative_path(base_directory: Path, wav_file: Path, output_path, suffix: str = EXT_FILE_JSON) -> Path:
+    relative_path = wav_file.relative_to(base_directory)
+    output_path = output_path / relative_path
     output_path = output_path.with_suffix(EXT_FILE_JSON)
+    return output_path
 
-    # TODO: ask for skip/replace
-    if output_path.exists():
-        print("Skipping existing file:", output_path)
-        return
 
+def get_output_directory(config: Config) -> Path:
+    config_directory = generate_config_directory_name(config)
+    output_directory = Path(config.general.output_directory) / config_directory
+    return output_directory
+
+
+def filter_files(
+    wav_files: List[Path],
+    base_directory: Path,
+    output_directory: Path,
+) -> List[Path]:
+    filtered_files = []
+    for wav_file in wav_files:
+        output_path = get_relative_path(base_directory, wav_file, output_directory)
+        if not output_path.exists():
+            filtered_files.append(wav_file)
+
+    return filtered_files
+
+
+def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     reconstruction = reconstructor(input_path)
     reconstruction.save(output_path)
     gc.collect()
-
-
-def reconstruct_single_file(
-    config: Config,
-    input_path: Union[str, Path],
-    progress_queue: Optional[Any] = None,
-    cancel_flag: Optional[Any] = None,
-) -> Path:
-    input_path = Path(input_path)
-    config_directory = generate_config_directory_name(config)
-    output_directory = Path(config.general.output_directory) / config_directory
-    output_path = output_directory / input_path.stem
-
-    try:
-        reconstructor = Reconstructor(config)
-        reconstruct_file(reconstructor, input_path, output_path)
-
-        if progress_queue:
-            progress_queue.put(("completed", str(input_path)))
-
-        del reconstructor
-    finally:
-        gc.collect()
-
-    return output_path.with_suffix(EXT_FILE_JSON)
-
-
-def reconstruct_directory_file(
-    file_ids: List[int],
-    wav_files: List[Path],
-    reconstructor: Reconstructor,
-    directory: Path,
-    output_directory: Path,
-    progress_queue: Optional[Any] = None,
-    cancel_flag: Optional[Any] = None,
-) -> None:
-    for idx in file_ids:
-        if cancel_flag and cancel_flag.value:
-            return
-
-        wav_file = wav_files[idx]
-        relative_path = wav_file.relative_to(directory)
-        output_path = output_directory / relative_path
-        reconstruct_file(reconstructor, wav_file, output_path)
-
-        if progress_queue:
-            progress_queue.put(("completed", str(wav_file)))
-
-
-def reconstruct_directory(
-    config: Config, directory: Union[str, Path], progress_queue: Optional[Any] = None, cancel_flag: Optional[Any] = None
-) -> None:
-    directory = Path(directory)
-    if not directory.exists():
-        raise FileNotFoundError(f"Directory does not exist: {directory}")
-
-    if not directory.is_dir():
-        raise NotADirectoryError(f"Path is not a directory: {directory}")
-
-    try:
-        config_directory = generate_config_directory_name(config)
-        output_directory = Path(config.general.output_directory) / config_directory / directory.name
-        wav_files = list(directory.rglob(f"*{EXT_FILE_WAV}"))
-
-        if not wav_files:
-            raise ValueError(f"No WAV files found in directory: {directory}")
-
-        if progress_queue:
-            progress_queue.put(("total", len(wav_files)))
-
-        reconstructor = Reconstructor(config)
-        file_ids = list(range(len(wav_files)))
-        parallelize(
-            reconstruct_directory_file,
-            file_ids,
-            wav_files=wav_files,
-            max_workers=config.general.max_workers,
-            reconstructor=reconstructor,
-            directory=directory,
-            output_directory=output_directory,
-            progress_queue=progress_queue,
-            cancel_flag=cancel_flag,
-        )
-
-        del reconstructor
-    finally:
-        gc.collect()
