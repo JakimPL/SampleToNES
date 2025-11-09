@@ -8,10 +8,18 @@ from constants.browser import (
     CLR_PATH_TEXT,
     DIM_DIALOG_ERROR_HEIGHT,
     DIM_DIALOG_ERROR_WIDTH,
+    DIM_DIALOG_ERROR_WIDTH_WRAP,
     LBL_BUTTON_OK,
+    MSG_LIBRARY_NOT_LOADED,
+    MSG_RECONSTRUCTION_NO_DATA,
     TAG_FILE_NOT_FOUND_DIALOG,
+    TAG_LIBRARY_NOT_LOADED_DIALOG,
+    TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
     TITLE_DIALOG_FILE_NOT_FOUND,
+    TITLE_DIALOG_LIBRARY_NOT_LOADED,
+    TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
 )
+from library.key import LibraryKey
 from utils.serialization import SerializedData
 
 T = TypeVar("T")
@@ -63,11 +71,50 @@ def show_modal_dialog(
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:
     def content(parent: str) -> None:
-        dpg.add_text(message, parent=parent)
-        dpg.add_text(str(filepath), color=CLR_PATH_TEXT, wrap=DIM_DIALOG_ERROR_WIDTH - 10, parent=parent)
+        dpg.add_text(
+            message,
+            parent=parent,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
+        dpg.add_text(
+            str(filepath),
+            parent=parent,
+            color=CLR_PATH_TEXT,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
 
     show_modal_dialog(
         tag=TAG_FILE_NOT_FOUND_DIALOG,
         title=TITLE_DIALOG_FILE_NOT_FOUND,
+        content=content,
+    )
+
+
+def show_library_not_loaded_dialog(key: LibraryKey) -> None:
+    def content(parent: str) -> None:
+        dpg.add_text(
+            MSG_LIBRARY_NOT_LOADED.format(library_key=key),
+            parent=parent,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
+
+    show_modal_dialog(
+        tag=TAG_LIBRARY_NOT_LOADED_DIALOG,
+        title=TITLE_DIALOG_LIBRARY_NOT_LOADED,
+        content=content,
+    )
+
+
+def show_reconstruction_not_loaded_dialog() -> None:
+    def content(parent: str) -> None:
+        dpg.add_text(
+            MSG_RECONSTRUCTION_NO_DATA,
+            parent=parent,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
+
+    show_modal_dialog(
+        tag=TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
+        title=TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
         content=content,
     )

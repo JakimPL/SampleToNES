@@ -16,7 +16,7 @@ from browser.tree.node import (
 from browser.utils import show_file_not_found_dialog, show_modal_dialog
 from configs.config import Config
 from constants.browser import (
-    DIM_DIALOG_ERROR_WIDTH,
+    DIM_DIALOG_ERROR_WIDTH_WRAP,
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
@@ -24,7 +24,6 @@ from constants.browser import (
     LBL_BUTTON_REGENERATE_LIBRARY,
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_LIBRARY_LIBRARIES,
-    MSG_CONFIG_NOT_READY,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
     MSG_LIBRARY_ERROR_GENERATING,
     MSG_LIBRARY_FILE_NOT_FOUND,
@@ -120,6 +119,10 @@ class GUILibraryPanel(GUITreePanel):
         key = self.config_manager.key
         self._sync_with_config_key(key)
         self.update_status()
+
+    def is_loaded(self) -> bool:
+        key = self.config_manager.key
+        return self.library_manager.is_library_loaded(key)
 
     def update_status(self) -> None:
         key = self.config_manager.key
@@ -293,7 +296,7 @@ class GUILibraryPanel(GUITreePanel):
         def content(parent: str) -> None:
             dpg.add_text(MSG_LIBRARY_ERROR_GENERATING, parent=parent)
             dpg.add_separator(parent=parent)
-            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH - 20, parent=parent)
+            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH_WRAP, parent=parent)
 
         show_modal_dialog(
             tag=TAG_DIALOG_ERROR_LIBRARY_GENERATION,

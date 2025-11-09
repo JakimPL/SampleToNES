@@ -22,7 +22,7 @@ from constants.browser import (
     NOD_TYPE_ROOT,
 )
 from constants.enums import GeneratorClassName, LibraryGeneratorName
-from constants.general import LIBRARY_DIRECTORY, NOISE_PERIODS
+from constants.general import NOISE_PERIODS
 from ffts.window import Window
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction

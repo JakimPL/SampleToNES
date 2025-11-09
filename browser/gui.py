@@ -14,7 +14,12 @@ from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.details import GUIReconstructionDetailsPanel
 from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
-from browser.utils import file_dialog_handler, show_modal_dialog
+from browser.utils import (
+    file_dialog_handler,
+    show_library_not_loaded_dialog,
+    show_modal_dialog,
+    show_reconstruction_not_loaded_dialog,
+)
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -140,29 +145,46 @@ class GUI:
 
     def create_main_window(self) -> None:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
-            with dpg.menu_bar():
-                with dpg.menu(label=LBL_MENU_FILE):
-                    dpg.add_menu_item(label=LBL_MENU_SAVE_CONFIG, callback=self._save_config_dialog)
-                    dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self._load_config_dialog)
-                    dpg.add_separator()
-                    dpg.add_menu_item(label=LBL_MENU_RECONSTRUCT_FILE, callback=self._reconstruct_file_dialog)
-                    dpg.add_menu_item(label=LBL_MENU_RECONSTRUCT_DIRECTORY, callback=self._reconstruct_directory_dialog)
-                    dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
-                    dpg.add_separator()
-                    dpg.add_menu_item(
-                        label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV, callback=self._export_reconstruction_to_wav
-                    )
-                    dpg.add_menu_item(
-                        label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI, callback=self._export_reconstruction_fti_dialog
-                    )
-                    dpg.add_separator()
-                    dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
-
-            with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
-                self.create_library_tab()
-                self.create_reconstruction_tab()
+            self.create_menu_bar()
+            self.create_tabs()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
+
+    def create_menu_bar(self) -> None:
+        with dpg.menu_bar():
+            with dpg.menu(label=LBL_MENU_FILE):
+                dpg.add_menu_item(label=LBL_MENU_SAVE_CONFIG, callback=self._save_config_dialog)
+                dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self._load_config_dialog)
+                dpg.add_separator()
+                dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
+                dpg.add_menu_item(
+                    label=LBL_MENU_RECONSTRUCT_FILE,
+                    callback=self._reconstruct_file_dialog,
+                    enabled=self._is_library_loaded(),
+                )
+                dpg.add_menu_item(
+                    label=LBL_MENU_RECONSTRUCT_DIRECTORY,
+                    callback=self._reconstruct_directory_dialog,
+                    enabled=self._is_library_loaded(),
+                )
+                dpg.add_separator()
+                dpg.add_menu_item(
+                    label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
+                    callback=self._export_reconstruction_to_wav,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                dpg.add_menu_item(
+                    label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
+                    callback=self._export_reconstruction_fti_dialog,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                dpg.add_separator()
+                dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
+
+    def create_tabs(self) -> None:
+        with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
+            self.create_library_tab()
+            self.create_reconstruction_tab()
 
     @staticmethod
     def create_layout(
@@ -291,6 +313,9 @@ class GUI:
             self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     def _reconstruct_file_dialog(self) -> None:
+        if not self._check_if_library_loaded():
+            return
+
         with dpg.file_dialog(
             label=TITLE_DIALOG_RECONSTRUCT_FILE,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -301,6 +326,9 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_WAV)
 
     def _reconstruct_directory_dialog(self) -> None:
+        if not self._check_if_library_loaded():
+            return
+
         dpg.add_file_dialog(
             label=TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -321,6 +349,9 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_JSON)
 
     def _export_reconstruction_fti_dialog(self) -> None:
+        if not self._check_if_reconstruction_loaded():
+            return
+
         dpg.add_file_dialog(
             label=TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -348,10 +379,35 @@ class GUI:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
 
     def _export_reconstruction_to_wav(self) -> None:
-        self.reconstruction_panel.export_reconstruction_to_wav()
+        if self._check_if_reconstruction_loaded():
+            self.reconstruction_panel.export_reconstruction_to_wav()
 
     def _export_reconstruction_to_fti(self) -> None:
-        pass  # self.reconstruction_details_panel.export_reconstruction_to_fti()
+        if self._check_if_reconstruction_loaded():
+            pass  # self.reconstruction_details_panel.export_reconstruction_to_fti()
+
+    def _check_if_reconstruction_loaded(self) -> bool:
+        if not self._is_reconstruction_loaded():
+            logger.warning("No reconstruction loaded; cannot proceed")
+            show_reconstruction_not_loaded_dialog()
+            return False
+
+        return True
+
+    def _is_reconstruction_loaded(self) -> bool:
+        return self.reconstruction_panel.is_loaded()
+
+    def _is_library_loaded(self) -> bool:
+        return self.library_panel.is_loaded()
+
+    def _check_if_library_loaded(self) -> bool:
+        if not self._is_library_loaded():
+            key = self.config_manager.key
+            logger.warning(f"Library {key} is not loaded; cannot proceed")
+            show_library_not_loaded_dialog(key)
+            return False
+
+        return True
 
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:

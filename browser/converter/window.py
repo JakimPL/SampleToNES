@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -11,13 +11,13 @@ from constants.browser import (
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
+    DIM_DIALOG_ERROR_WIDTH_WRAP,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_LOAD,
     MSG_CONVERTER_CANCELLED,
     MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_COMPLETED,
-    MSG_CONVERTER_CONFIG_NOT_AVAILABLE,
     MSG_CONVERTER_ERROR_PREFIX,
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_SUCCESS,
@@ -122,6 +122,9 @@ class GUIConverterWindow:
         if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             return
 
+        if self.converter.is_cancelled():
+            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
         if self.converter.is_cancelling():
             if dpg.does_item_exist(TAG_CONVERTER_STATUS):
                 dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
@@ -167,14 +170,13 @@ class GUIConverterWindow:
             self.converter.cancel()
 
     def _on_cancellation_complete(self) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
         self._rename_cancel_to_close()
         dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
 
     def _rename_cancel_to_close(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
             dpg.configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
+            dpg.configure_item
             dpg.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
     def _on_close(self) -> None:
@@ -207,7 +209,7 @@ class GUIConverterWindow:
         def content(parent: str) -> None:
             dpg.add_text(MSG_CONVERTER_ERROR_PREFIX, parent=parent)
             dpg.add_separator(parent=parent)
-            dpg.add_text(error_message, wrap=DIM_DIALOG_CONVERTER_WIDTH - 20, parent=parent)
+            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH_WRAP, parent=parent)
 
         show_modal_dialog(
             tag=TAG_CONVERTER_ERROR_DIALOG,

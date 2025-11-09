@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -128,8 +128,24 @@ class GUIConfigPanel(GUIPanel):
     def _get_all_gui_values(self) -> SerializedData:
         gui_values = {}
         for tag in self.config_manager.config_parameters["config"].keys():
-            gui_values[tag] = dpg.get_value(tag)
+            gui_values[tag] = self._clamp_value(tag)
+
         return gui_values
+
+    def _clamp_value(self, tag: str) -> Union[int, float, bool, str]:
+        value = dpg.get_value(tag)
+        cfg = dpg.get_item_configuration(tag)
+
+        min_v = cfg.get("min_value")
+        max_v = cfg.get("max_value")
+        if min_v is not None and isinstance(value, (int, float)):
+            if value < min_v:
+                value = min_v
+        if max_v is not None and isinstance(value, (int, float)):
+            if value > max_v:
+                value = max_v
+
+        return value
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
@@ -158,7 +174,6 @@ class GUIConfigPanel(GUIPanel):
 
     def load_config_from_data(self, config_data: SerializedData) -> None:
         gui_updates = self.config_manager.load_config_from_data(config_data)
-
         for tag, value in gui_updates.items():
             dpg.set_value(tag, value)
 

@@ -1,8 +1,9 @@
 import atexit
 import threading
+from concurrent.futures._base import CancelledError
 from typing import Any, Callable, Generic, List, Optional, TypeVar
 
-from pebble import ProcessPool
+from pebble import ProcessMapFuture, ProcessPool
 
 from constants.general import MAX_WORKERS
 from utils.logger import logger
@@ -15,7 +16,7 @@ class TaskProcessor(Generic[T]):
     def __init__(self, max_workers: Optional[int] = None) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
-        self.future: Optional[Any] = None
+        self.future: Optional[ProcessMapFuture] = None
         self.monitor_thread: Optional[threading.Thread] = None
 
         self.running = False
@@ -78,6 +79,10 @@ class TaskProcessor(Generic[T]):
                         self.stop_with_error(str(exception))
 
                     return
+        except CancelledError:
+            if self.cancelling:
+                self._finalize_cancellation()
+            return
         finally:
             self.pool.close()
             self.pool.join()
@@ -100,6 +105,7 @@ class TaskProcessor(Generic[T]):
             self._on_progress(progress)
 
     def _finalize_cancellation(self) -> None:
+        logger.info("Task processing was cancelled.")
         if self._on_cancelled:
             self._on_cancelled()
         self.running = False
@@ -111,6 +117,7 @@ class TaskProcessor(Generic[T]):
 
     def cancel(self) -> None:
         if self.cancelling:
+            self._finalize_cancellation()
             return
 
         self.cancelling = True
@@ -132,6 +139,9 @@ class TaskProcessor(Generic[T]):
 
     def is_running(self) -> bool:
         return self.running
+
+    def is_cancelled(self) -> bool:
+        return self.cancelling and not self.running
 
     def is_cancelling(self) -> bool:
         return self.cancelling

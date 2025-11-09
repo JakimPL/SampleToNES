@@ -7,7 +7,7 @@ from browser.browser.manager import BrowserManager
 from browser.config.manager import ConfigManager
 from browser.elements.tree import GUITreePanel
 from browser.tree.node import FileSystemNode, TreeNode
-from browser.utils import show_file_not_found_dialog, show_modal_dialog
+from browser.utils import show_file_not_found_dialog
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,

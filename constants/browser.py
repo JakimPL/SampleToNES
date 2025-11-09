@@ -26,6 +26,7 @@ DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_ERROR_WIDTH = 350
 DIM_DIALOG_ERROR_HEIGHT = 0
+DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
 DIM_DIALOG_CONVERTER_WIDTH = 700
 DIM_DIALOG_CONVERTER_HEIGHT = 131
 
@@ -130,6 +131,7 @@ TITLE_DIALOG_ERROR = "Error"
 TITLE_DIALOG_CONFIG_STATUS = "Configuration Status"
 TITLE_DIALOG_CONVERTER = "Reconstruction progress"
 TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
+TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -155,7 +157,7 @@ MSG_LIBRARY_EXISTS = "Library exists."
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist."
 MSG_LIBRARY_GENERATING = "Generating library..."
 MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully."
-MSG_LIBRARY_NOT_LOADED = "Library is not loaded."
+MSG_LIBRARY_NOT_LOADED = "Library is not loaded. Please load or generate a library."
 MSG_LIBRARY_LOADING = "Library is loading..."
 MSG_CONFIG_NOT_READY = "Configuration not ready."
 MSG_CONFIG_PREVIEW = "Configuration preview."
@@ -205,6 +207,8 @@ TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
 TAG_LIBRARY_TREE_GROUP = "libraries_tree_group"
+TAG_LIBRARY_NOT_LOADED_DIALOG = "library_not_loaded_dialog"
+TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0
@@ -381,6 +385,7 @@ MSG_RECONSTRUCTION_EXPORT_SUCCESS = "Reconstruction saved successfully."
 MSG_RECONSTRUCTION_EXPORT_NO_DATA = "No reconstruction loaded."
 TPL_RECONSTRUCTION_EXPORT_ERROR = "Error: {}"
 TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
 
 # Waveform layer colors

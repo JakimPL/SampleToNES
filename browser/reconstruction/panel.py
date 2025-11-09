@@ -84,6 +84,9 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_audio_panel()
         self._create_plot_panel()
 
+    def is_loaded(self) -> bool:
+        return self.reconstruction_data is not None
+
     def _create_audio_panel(self) -> None:
         with dpg.child_window(
             tag=self.audio_tag,
@@ -272,7 +275,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _handle_instrument_export(self, generator_name: GeneratorName) -> None:
         if not self.reconstruction_data:
-            return
+            raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
 
         reconstruction = self.reconstruction_data.reconstruction
         feature_data = self.reconstruction_data.feature_data
@@ -319,8 +322,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def export_reconstruction_to_wav(self) -> None:
         if not self.reconstruction_data:
-            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_NO_DATA)
-            return
+            raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
         reconstruction = self.reconstruction_data.reconstruction
         filename = Path(reconstruction.audio_filepath).stem
