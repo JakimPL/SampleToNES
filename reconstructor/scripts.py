@@ -1,4 +1,5 @@
 import gc
+import os
 from pathlib import Path
 from typing import List
 
@@ -22,17 +23,22 @@ def generate_config_directory_name(config: Config) -> str:
     return config_directory
 
 
-def get_relative_path(base_directory: Path, wav_file: Path, output_path, suffix: str = EXT_FILE_JSON) -> Path:
+def get_relative_path(base_directory: Path, wav_file: Path, output_path: Path, suffix: str = EXT_FILE_JSON) -> Path:
     relative_path = wav_file.relative_to(base_directory)
     output_path = output_path / relative_path
-    output_path = output_path.with_suffix(EXT_FILE_JSON)
-    return output_path
+    output_path = output_path.with_suffix(suffix)
+    return Path(os.path.abspath(output_path))
 
 
-def get_output_directory(config: Config) -> Path:
+def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_JSON) -> Path:
     config_directory = generate_config_directory_name(config)
     output_directory = Path(config.general.output_directory) / config_directory
-    return output_directory
+    if input_path.is_dir():
+        return output_directory / input_path.name
+    elif input_path.is_file():
+        return output_directory / input_path.with_suffix(suffix).name
+
+    raise OSError(f"Input path is neither a file nor a directory: {input_path}")
 
 
 def filter_files(
@@ -49,8 +55,9 @@ def filter_files(
     return filtered_files
 
 
-def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path: Path) -> None:
+def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     reconstruction = reconstructor(input_path)
     reconstruction.save(output_path)
     gc.collect()
+    return output_path

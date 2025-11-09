@@ -20,6 +20,7 @@ from constants.browser import (
     MSG_CONVERTER_COMPLETED,
     MSG_CONVERTER_ERROR,
     MSG_CONVERTER_IDLE,
+    MSG_CONVERTER_PROCESSING,
     MSG_CONVERTER_SUCCESS,
     TAG_CONVERTER_CANCEL_BUTTON,
     TAG_CONVERTER_ERROR_DIALOG,
@@ -35,7 +36,7 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from utils.common import shorten_path
+from utils.parallelization.task import TaskProgress, TaskStatus
 
 
 class GUIConverterWindow:
@@ -64,6 +65,7 @@ class GUIConverterWindow:
             on_complete=self._on_conversion_complete,
             on_error=self._on_conversion_error,
             on_cancelled=self._on_cancellation_complete,
+            on_progress=self._update_status,
         )
 
         self.hide()
@@ -116,44 +118,51 @@ class GUIConverterWindow:
                     )
 
         self.converter.start(target_path, is_file)
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._update_progress_callback)
 
-    def _update_progress_callback(self) -> None:
+    def _set_status_completed(self):
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
+
+    def _set_status_cancelling(self):
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
+
+    def _set_status_cancelled(self):
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
+
+    def _set_status_failed(self):
+        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
+            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
+
+    def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             return
 
-        if self.converter.is_failed():
-            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
-        elif self.converter.is_cancelled():
-            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
-        elif self.converter.is_cancelling():
-            if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-                dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
-            if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
-                dpg.configure_item(TAG_CONVERTER_CANCEL_BUTTON, enabled=False)
-            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._update_progress_callback)
-            return
+        match task_status:
+            case TaskStatus.COMPLETED:
+                self._set_status_completed()
+            case TaskStatus.FAILED:
+                self._set_status_failed()
+            case TaskStatus.CANCELLED:
+                self._set_status_cancelled()
+            case TaskStatus.CANCELLING:
+                self._set_status_cancelling()
 
-        progress = self.converter.get_progress()
+        progress = task_progress.get_progress()
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
 
-        current_file = self.converter.get_current_file()
-        if self.path:
-            if current_file is not None:
-                current_file_path = Path(current_file)
-                self.path.set_path(current_file_path, display_text=shorten_path(current_file_path))
+        current_file = task_progress.current_item
+        if self.path and current_file is not None:
+            current_file_path = Path(current_file)
+            self.path.set_path(current_file_path)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(
                 TAG_CONVERTER_STATUS,
                 TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
             )
-
-        if self.converter.is_running():
-            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._update_progress_callback)
 
     def _on_load_clicked(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
@@ -169,8 +178,7 @@ class GUIConverterWindow:
         self._on_close()
 
     def _on_cancel_clicked(self) -> None:
-        if self.converter and self.converter.is_running():
-            self.converter.cancel()
+        self._cancel()
 
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
@@ -182,14 +190,18 @@ class GUIConverterWindow:
             dpg.configure_item
             dpg.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
-    def _on_close(self) -> None:
+    def _cancel(self) -> None:
         if self.converter and self.converter.is_running():
+            self._set_status_cancelling()
             self.converter.cancel()
 
-        if self.converter:
-            self.converter.cleanup()
-
-        self.hide()
+    def _on_close(self) -> None:
+        try:
+            self._cancel()
+            if self.converter:
+                self.converter.cleanup()
+        finally:
+            self.hide()
 
     def _on_conversion_complete(self, output_path: Path) -> None:
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_complete(output_path))
@@ -200,11 +212,10 @@ class GUIConverterWindow:
         self._show_success_dialog()
 
     def _on_conversion_error(self, error_message: str) -> None:
+        self._set_status_failed()
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(error_message))
 
     def _finalize_error(self, error_message: str) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
         self._rename_cancel_to_close()
         self._show_error_dialog(error_message)
 
@@ -235,19 +246,15 @@ class GUIConverterWindow:
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
 
         if current_file and dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            from constants.browser import MSG_CONVERTER_PROCESSING
-
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_PROCESSING.format(current_file))
 
     def set_completed(self, output_path: Path) -> None:
         if output_path.exists():
             self.output_file_path = output_path
 
+        self._set_status_completed()
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
             dpg.set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
-
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
 
         if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
             dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)

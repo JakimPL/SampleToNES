@@ -7,9 +7,11 @@ from pebble import ProcessMapFuture, ProcessPool
 
 from constants.general import MAX_WORKERS
 from utils.logger import logger
-from utils.parallelization.task import TaskProgress
+from utils.parallelization.task import TaskProgress, TaskStatus
 
 T = TypeVar("T")
+
+TIMEOUT = 1
 
 
 class TaskProcessor(Generic[T]):
@@ -19,14 +21,14 @@ class TaskProcessor(Generic[T]):
         self.future: Optional[ProcessMapFuture] = None
         self.monitor_thread: Optional[threading.Thread] = None
 
+        self.status: TaskStatus = TaskStatus.PENDING
         self.running = False
         self.cancelling = False
-        self.failed = False
         self.total_tasks = 0
         self.completed_tasks = 0
         self.current_item: Optional[str] = None
 
-        self._on_progress: Optional[Callable[[TaskProgress], None]] = None
+        self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self._on_complete: Optional[Callable[[T], None]] = None
         self._on_error: Optional[Callable[[str], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
@@ -45,11 +47,19 @@ class TaskProcessor(Generic[T]):
     def _process_results(self, results: List[Any]) -> T:
         raise NotImplementedError
 
+    def _reset_status(self) -> None:
+        self.status = TaskStatus.PENDING
+        self.running = False
+        self.cancelling = False
+        self.total_tasks = 0
+        self.completed_tasks = 0
+        self.current_item = None
+
     def _run_tasks(self) -> None:
+        self._reset_status()
         tasks = self._create_tasks()
         self.total_tasks = len(tasks)
         self.completed_tasks = 0
-
         self._notify_progress()
 
         workers = self.max_workers
@@ -59,10 +69,12 @@ class TaskProcessor(Generic[T]):
 
         results = []
         try:
+            self.running = True
+            self.status = TaskStatus.RUNNING
             iterator = self.future.result()
             while True:
                 if self.cancelling:
-                    break
+                    raise CancelledError()
 
                 try:
                     result = next(iterator)
@@ -77,7 +89,7 @@ class TaskProcessor(Generic[T]):
                     else:
                         logger.error_with_traceback(f"Task failed: {exception}")
                         self.running = False
-                        self.stop_with_error(str(exception))
+                        self._stop_with_error(str(exception))
 
                     return
         except CancelledError:
@@ -88,39 +100,44 @@ class TaskProcessor(Generic[T]):
             self.pool.close()
             self.pool.join()
 
-        self.running = False
-        if self.cancelling:
-            self._finalize_cancellation()
-        else:
-            result = self._process_results(results)
-            if self._on_complete:
-                self._on_complete(result)
+        self._finalize_completion(results)
 
     def _notify_progress(self) -> None:
-        if self._on_progress:
-            progress = TaskProgress(
-                total=self.total_tasks,
-                completed=self.completed_tasks,
-                current_item=self.current_item,
-            )
-            self._on_progress(progress)
+        if self._on_progress is None:
+            return
+
+        progress = TaskProgress(
+            total=self.total_tasks,
+            completed=self.completed_tasks,
+            current_item=self.current_item,
+        )
+        self._on_progress(self.status, progress)
 
     def _finalize_cancellation(self) -> None:
         logger.info("Task processing was cancelled.")
+
+        self.cancelling = False
+        self.running = False
+        self.status = TaskStatus.CANCELLED
         if self._on_cancelled:
             self._on_cancelled()
-        self.running = False
 
-    def stop_with_error(self, error_message: str) -> None:
+    def _finalize_completion(self, results: List[Any]) -> None:
         self.running = False
-        self.failed = True
+        self.status = TaskStatus.COMPLETED
+        processed_result = self._process_results(results)
+        if self._on_complete:
+            self._on_complete(processed_result)
+
+    def _stop_with_error(self, error_message: str) -> None:
+        self.running = False
+        self.status = TaskStatus.FAILED
         if self._on_error:
             self._on_error(str(error_message))
 
     def cancel(self) -> None:
-        if self.cancelling:
-            self._finalize_cancellation()
-            return
+        self.status = TaskStatus.CANCELLING
+        self._notify_progress()
 
         self.cancelling = True
         if self.future:
@@ -131,34 +148,36 @@ class TaskProcessor(Generic[T]):
 
     def _wait_for_cancellation(self) -> None:
         if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join(timeout=5)
+            self.monitor_thread.join(timeout=TIMEOUT)
 
         if self.pool:
             self.pool.stop()
             self.pool.join()
 
-        self.running = False
+        self._finalize_cancellation()
+        self._notify_progress()
 
     def is_running(self) -> bool:
         return self.running
 
+    def is_completed(self) -> bool:
+        return self.status == TaskStatus.COMPLETED
+
     def is_cancelled(self) -> bool:
-        return self.cancelling and not self.running
+        return self.status == TaskStatus.CANCELLED
 
     def is_cancelling(self) -> bool:
-        return self.cancelling
+        return self.status == TaskStatus.CANCELLING
 
     def is_failed(self) -> bool:
-        return self.failed
+        return self.status == TaskStatus.FAILED
 
-    def get_progress(self) -> float:
-        if self.total_tasks == 0:
-            return 0.0
-        return self.completed_tasks / self.total_tasks
+    def get_status(self) -> TaskStatus:
+        return self.status
 
     def set_callbacks(
         self,
-        on_progress: Optional[Callable[[TaskProgress], None]] = None,
+        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_complete: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[str], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
@@ -173,6 +192,7 @@ class TaskProcessor(Generic[T]):
             self._on_cancelled = on_cancelled
 
     def cleanup(self) -> None:
+        self.status = TaskStatus.CANCELLING
         self.running = False
         self.cancelling = True
 
@@ -182,6 +202,8 @@ class TaskProcessor(Generic[T]):
         if self.pool:
             self.pool.stop()
             self.pool.join()
+
+        self.status = TaskStatus.NONE
 
     def __enter__(self):
         return self

@@ -83,9 +83,9 @@ class GUIPathText:
         else:
             subprocess.run(["xdg-open", str(path_to_open)])
 
-    def set_path(self, path: Union[str, Path], display_text: Optional[str] = None) -> None:
+    def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
         self.path = Path(path)
-        self.display_text = display_text if display_text is not None else shorten_path(self.path)
+        self.display_text = shorten_path(self.path) if shorten else str(self.path)
         if dpg.does_item_exist(self.tag):
             dpg.set_value(self.tag, self.display_text)
 

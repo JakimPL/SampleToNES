@@ -167,7 +167,7 @@ class GUIConfigPanel(GUIPanel):
         self.config_manager.update_config_from_gui_values(gui_values)
 
         if self.library_path_text:
-            self.library_path_text.set_path(directory_path, display_text=shorten_path(directory_path))
+            self.library_path_text.set_path(directory_path)
 
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
@@ -197,7 +197,7 @@ class GUIConfigPanel(GUIPanel):
 
         library_directory = Path(config.general.library_directory)
         if self.library_path_text:
-            self.library_path_text.set_path(library_directory, display_text=shorten_path(library_directory))
+            self.library_path_text.set_path(library_directory)
 
     def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
         if on_update_library_directory is not None:

@@ -3,22 +3,23 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
-from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
+from constants.browser import EXT_FILE_WAV
 from reconstructor.reconstructor import Reconstructor
 from reconstructor.scripts import (
     filter_files,
-    get_output_directory,
+    get_output_path,
     get_relative_path,
     reconstruct_file,
 )
+from utils.logger import logger
 from utils.parallelization.processor import TaskProcessor
 
 ReconstructionArguments = Tuple[Reconstructor, Path, Path]
 
 
-def reconstruct_file_wrapper(arguments: ReconstructionArguments) -> None:
+def reconstruct_file_wrapper(arguments: ReconstructionArguments) -> Path:
     reconstructor, input_path, output_path = arguments
-    reconstruct_file(reconstructor, input_path, output_path)
+    return reconstruct_file(reconstructor, input_path, output_path)
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
@@ -35,9 +36,9 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
     def start(self, target_path: Path, is_file: bool) -> None:
         if self.running:
+            logger.warning("Reconstruction is already running")
             return
 
-        self.running = True
         self.input_path = target_path
         self.is_file = is_file
 
@@ -47,27 +48,22 @@ class ReconstructionConverter(TaskProcessor[Path]):
     def _create_tasks(self) -> List[Any]:
         assert self.input_path is not None, "Input path must be set before creating tasks"
         reconstructor = Reconstructor(self.config)
-        output_directory = get_output_directory(self.config)
+        output_path = get_output_path(self.config, self.input_path)
 
         if self.is_file:
-            output_path = output_directory / self.input_path.stem
-            output_path = output_path.with_suffix(EXT_FILE_JSON)
             return [(reconstructor, self.input_path, output_path)]
 
         self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAV}"))
-        self.wav_files = filter_files(self.wav_files, self.input_path, output_directory)
-
-        if not self.wav_files:
-            raise ValueError(f"No WAV files found in directory: {self.input_path}")
+        self.wav_files = filter_files(self.wav_files, self.input_path, output_path)
 
         arguments: List[ReconstructionArguments] = []
         for wav_file in self.wav_files:
-            output_path = get_relative_path(self.input_path, wav_file, output_directory)
-            arguments.append((reconstructor, wav_file, output_path))
+            target_path = get_relative_path(self.input_path, wav_file, output_path)
+            arguments.append((reconstructor, wav_file, target_path))
 
         return arguments
 
-    def _get_task_function(self) -> Callable[[ReconstructionArguments], None]:
+    def _get_task_function(self) -> Callable[[ReconstructionArguments], Path]:
         return reconstruct_file_wrapper
 
     def _process_results(self, results: List[Any]) -> Path:
@@ -78,9 +74,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
             return results[0]
 
         return self.input_path
-
-    def get_current_file(self) -> Optional[str]:
-        return self.current_file
 
     def _notify_progress(self) -> None:
         self.total_files = self.total_tasks
