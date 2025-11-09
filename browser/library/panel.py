@@ -13,7 +13,7 @@ from browser.tree.node import (
     LibraryNode,
     TreeNode,
 )
-from browser.utils import show_modal_dialog
+from browser.utils import show_file_not_found_dialog, show_modal_dialog
 from configs.config import Config
 from constants.browser import (
     DIM_DIALOG_ERROR_WIDTH,
@@ -27,6 +27,7 @@ from constants.browser import (
     MSG_CONFIG_NOT_READY,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
     MSG_LIBRARY_ERROR_GENERATING,
+    MSG_LIBRARY_FILE_NOT_FOUND,
     MSG_LIBRARY_GENERATED_SUCCESSFULLY,
     MSG_LIBRARY_GENERATING,
     MSG_LIBRARY_LOADING,
@@ -81,15 +82,15 @@ class GUILibraryPanel(GUITreePanel):
 
             with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
                 dpg.add_button(
+                    label=LBL_BUTTON_REFRESH_LIBRARIES,
+                    width=-1,
+                    callback=self._refresh_libraries,
+                )
+                dpg.add_button(
                     label=LBL_BUTTON_GENERATE_LIBRARY,
                     width=-1,
                     callback=self._generate_library,
                     tag=TAG_LIBRARY_BUTTON_GENERATE,
-                )
-                dpg.add_button(
-                    label=LBL_BUTTON_REFRESH_LIBRARIES,
-                    width=-1,
-                    callback=self._refresh_libraries,
                 )
                 dpg.add_progress_bar(
                     tag=TAG_LIBRARY_PROGRESS,
@@ -117,20 +118,11 @@ class GUILibraryPanel(GUITreePanel):
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
         key = self.config_manager.key
-        if key is not None:
-            self._sync_with_config_key(key)
-
+        self._sync_with_config_key(key)
         self.update_status()
 
     def update_status(self) -> None:
-        config = self.config_manager.get_config()
         key = self.config_manager.key
-
-        if key is None:
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_CONFIG_NOT_READY)
-            dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=False)
-            return
-
         library_name = self.library_manager._get_display_name_from_key(key)
 
         if self.library_manager.is_library_loaded(key):
@@ -150,8 +142,7 @@ class GUILibraryPanel(GUITreePanel):
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self.library_manager.gather_available_libraries()
         key = self.config_manager.key
-        if key is not None:
-            self._sync_with_config_key(key)
+        self._sync_with_config_key(key)
         self.build_tree_ui(TAG_LIBRARY_TREE)
         self.update_status()
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
@@ -165,13 +156,22 @@ class GUILibraryPanel(GUITreePanel):
         self, library_key: LibraryKey, load_if_needed: bool = True, apply_config: bool = False
     ) -> None:
         if load_if_needed and not self.library_manager.is_library_loaded(library_key):
-            self.library_manager.load_library(library_key)
-            self.library_manager.refresh_library_node(library_key)
+            self._load_library(library_key)
 
         if apply_config and self._on_apply_library_config:
             self._on_apply_library_config(library_key)
 
         self.update_status()
+
+    def _load_library(self, library_key: LibraryKey) -> None:
+        try:
+            self.library_manager.load_library(library_key)
+        except FileNotFoundError as error:
+            logger.error_with_traceback(f"Failed to load library for key {library_key}", error)
+            show_file_not_found_dialog(
+                self.library_manager.get_path(library_key),
+                MSG_LIBRARY_FILE_NOT_FOUND,
+            )
 
     def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
@@ -222,8 +222,7 @@ class GUILibraryPanel(GUITreePanel):
     def _on_load_library_clicked(self, sender: int, app_data: bool, user_data: LibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
-        self.library_manager.load_library(library_key)
-        self.library_manager.refresh_library_node(library_key)
+        self._load_library(library_key)
         self.build_tree_ui(TAG_LIBRARY_TREE)
         self._set_current_library(library_key, load_if_needed=False, apply_config=True)
 

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -6,6 +7,7 @@ from browser.browser.manager import BrowserManager
 from browser.config.manager import ConfigManager
 from browser.elements.tree import GUITreePanel
 from browser.tree.node import FileSystemNode, TreeNode
+from browser.utils import show_file_not_found_dialog, show_modal_dialog
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
@@ -14,6 +16,7 @@ from constants.browser import (
     LBL_BUTTON_RECONSTRUCT_FILE,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
+    MSG_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
@@ -23,6 +26,7 @@ from constants.browser import (
     TAG_BROWSER_TREE_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
+from utils.logger import logger
 
 
 class GUIBrowserPanel(GUITreePanel):
@@ -121,8 +125,14 @@ class GUIBrowserPanel(GUITreePanel):
         if self._on_reconstruct_directory is not None:
             self._on_reconstruct_directory()
 
-    def load_and_display_reconstruction(self, filepath) -> None:
-        reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
+    def load_and_display_reconstruction(self, filepath: Path) -> None:
+        try:
+            reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
+        except FileNotFoundError as error:
+            logger.error_with_traceback(f"Failed to load reconstruction data from {filepath}", error)
+            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
+            return
+
         if self._on_reconstruction_selected:
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
             self._on_reconstruction_selected(reconstruction_data)

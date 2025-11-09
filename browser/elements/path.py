@@ -85,7 +85,7 @@ class GUIPathText:
 
     def set_path(self, path: Union[str, Path], display_text: Optional[str] = None) -> None:
         self.path = Path(path)
-        self.display_text = display_text if display_text is not None else str(self.path)
+        self.display_text = display_text if display_text is not None else shorten_path(self.path)
         if dpg.does_item_exist(self.tag):
             dpg.set_value(self.tag, self.display_text)
 

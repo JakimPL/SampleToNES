@@ -129,6 +129,7 @@ TITLE_DIALOG_EXPORT_FTI_DIRECTORY = "Export FTI to directory"
 TITLE_DIALOG_ERROR = "Error"
 TITLE_DIALOG_CONFIG_STATUS = "Configuration Status"
 TITLE_DIALOG_CONVERTER = "Reconstruction progress"
+TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -168,6 +169,8 @@ MSG_LIBRARY_ERROR_GENERATING = "Error generating library."
 MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
+MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
+MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 
 # Default display values
 PFX_GLOBAL_ERROR = "Error: {}"
@@ -247,6 +250,8 @@ TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
 TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
+TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
+
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"

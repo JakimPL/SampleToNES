@@ -86,6 +86,9 @@ class LibraryManager:
         self.current_library_key = library_key
         return True
 
+    def get_path(self, library_key: LibraryKey) -> Path:
+        return self.library.get_path(library_key)
+
     def get_library_data(self, library_key: LibraryKey) -> Optional[LibraryData]:
         return self.library.data.get(library_key)
 

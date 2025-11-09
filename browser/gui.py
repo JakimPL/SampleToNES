@@ -98,7 +98,7 @@ class GUI:
         dpg.setup_dearpygui()
         dpg.show_viewport()
         self.set_callbacks()
-        self.config_manager.initialize()
+        self.config_manager.update_gui()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)

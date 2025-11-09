@@ -66,6 +66,8 @@ class ConfigManager:
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
 
+        self.initialize()
+
     def initialize(self) -> None:
         if self.config_path.exists():
             try:
@@ -75,6 +77,7 @@ class ConfigManager:
                 self._show_config_load_error(str(exception))
                 self.load_config(Config())
         else:
+            logger.warning(f"Config file does not exist: {self.config_path}")
             self.load_config(Config())
 
     def _show_config_load_error(self, error_message: str) -> None:
@@ -91,6 +94,7 @@ class ConfigManager:
 
     def save_config(self) -> None:
         if not self.config:
+            logger.warning("No configuration to save")
             return
 
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,7 +111,7 @@ class ConfigManager:
             generation=GenerationConfig(**config_data["generation"]),
         )
         self.window = Window(self.config.library)
-        self._notify_config_change()
+        self.update_gui()
 
     def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
         config_data = {
@@ -151,15 +155,15 @@ class ConfigManager:
         return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
 
     @property
-    def key(self) -> Optional[LibraryKey]:
-        if self.config and self.window:
-            return LibraryKey.create(self.config.library, self.window)
-        return None
+    def key(self) -> LibraryKey:
+        if not self.config or not self.window:
+            raise RuntimeError("Library key is not available")
+        return LibraryKey.create(self.config.library, self.window)
 
     def add_config_change_callback(self, callback: Callable) -> None:
         self.config_change_callbacks.append(callback)
 
-    def _notify_config_change(self) -> None:
+    def update_gui(self) -> None:
         for callback in self.config_change_callbacks:
             callback()
 
@@ -194,7 +198,7 @@ class ConfigManager:
         self.output_directory = config_data["paths"]["output_directory"]
         self.library_directory = config_data["paths"]["library_directory"]
 
-        self._notify_config_change()
+        self.update_gui()
         return gui_updates
 
     def load_config(self, config: Config) -> None:
@@ -203,7 +207,7 @@ class ConfigManager:
         self.library_directory = Path(config.general.library_directory)
         self.output_directory = Path(config.general.output_directory)
         self.generators = list(config.generation.generators)
-        self._notify_config_change()
+        self.update_gui()
 
     def save_config_to_file(self, filepath: Path) -> None:
         if not self.config:

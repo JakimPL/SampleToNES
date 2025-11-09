@@ -185,7 +185,7 @@ class GUIReconstructorPanel(GUIPanel):
 
         output_directory = Path(config.general.output_directory)
         if self.output_path_text:
-            self.output_path_text.set_path(output_directory, display_text=shorten_path(output_directory))
+            self.output_path_text.set_path(output_directory)
 
     def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
         if on_update_library_directory is not None:

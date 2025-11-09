@@ -5,9 +5,12 @@ from typing import Callable, TypeVar
 import dearpygui.dearpygui as dpg
 
 from constants.browser import (
+    CLR_PATH_TEXT,
     DIM_DIALOG_ERROR_HEIGHT,
     DIM_DIALOG_ERROR_WIDTH,
     LBL_BUTTON_OK,
+    TAG_FILE_NOT_FOUND_DIALOG,
+    TITLE_DIALOG_FILE_NOT_FOUND,
 )
 from utils.serialization import SerializedData
 
@@ -56,3 +59,15 @@ def show_modal_dialog(
             callback=lambda: dpg.delete_item(tag),
             width=-1,
         )
+
+
+def show_file_not_found_dialog(filepath: Path, message: str) -> None:
+    def content(parent: str) -> None:
+        dpg.add_text(message, parent=parent)
+        dpg.add_text(str(filepath), color=CLR_PATH_TEXT, wrap=DIM_DIALOG_ERROR_WIDTH - 10, parent=parent)
+
+    show_modal_dialog(
+        tag=TAG_FILE_NOT_FOUND_DIALOG,
+        title=TITLE_DIALOG_FILE_NOT_FOUND,
+        content=content,
+    )
