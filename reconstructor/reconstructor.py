@@ -16,7 +16,7 @@ from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.generators import GeneratorUnion
 from utils.audio.io import load_audio
-from utils.parallel import parallelize
+from utils.parallelization.parallel import parallelize
 
 
 def reconstruct(

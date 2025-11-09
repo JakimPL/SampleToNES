@@ -50,8 +50,8 @@ class GUIConverterWindow:
         self.is_file: bool = False
         self.output_file_path: Optional[Path] = None
 
-        self._on_load_file_callback: Optional[Callable[[Path], None]] = None
-        self._on_load_directory_callback: Optional[Callable[[], None]] = None
+        self._on_load_file: Optional[Callable[[Path], None]] = None
+        self._on_load_directory: Optional[Callable[[], None]] = None
 
     def hide(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
@@ -166,11 +166,11 @@ class GUIConverterWindow:
             dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
 
         if self.is_file:
-            if self.output_file_path and self._on_load_file_callback is not None:
-                self._on_load_file_callback(self.output_file_path)
+            if self.output_file_path and self._on_load_file is not None:
+                self._on_load_file(self.output_file_path)
         else:
-            if self._on_load_directory_callback is not None:
-                self._on_load_directory_callback()
+            if self._on_load_directory is not None:
+                self._on_load_directory()
 
         self._on_close()
 
@@ -261,10 +261,10 @@ class GUIConverterWindow:
 
     def set_callbacks(
         self,
-        on_load_file_callback: Optional[Callable[[Path], None]] = None,
-        on_load_directory_callback: Optional[Callable[[], None]] = None,
+        on_load_file: Optional[Callable[[Path], None]] = None,
+        on_load_directory: Optional[Callable[[], None]] = None,
     ) -> None:
-        if on_load_file_callback is not None:
-            self._on_load_file_callback = on_load_file_callback
-        if on_load_directory_callback is not None:
-            self._on_load_directory_callback = on_load_directory_callback
+        if on_load_file is not None:
+            self._on_load_file = on_load_file
+        if on_load_directory is not None:
+            self._on_load_directory = on_load_directory

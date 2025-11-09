@@ -7,7 +7,7 @@ from configs.config import Config
 from constants.browser import EXT_FILE_JSON, EXT_FILE_WAV
 from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
 from reconstructor.reconstructor import Reconstructor
-from utils.parallel import parallelize
+from utils.parallelization.parallel import parallelize
 from utils.serialization import hash_models
 
 

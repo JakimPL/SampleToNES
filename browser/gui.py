@@ -116,8 +116,8 @@ class GUI:
         )
 
         self.converter_window.set_callbacks(
-            on_load_file_callback=self._on_reconstruction_loaded,
-            on_load_directory_callback=self.browser_panel.refresh,
+            on_load_file=self._on_reconstruction_loaded,
+            on_load_directory=self.browser_panel.refresh,
         )
 
         self.instruction_panel.set_callbacks(

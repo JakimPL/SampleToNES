@@ -1,36 +1,42 @@
-import atexit
 import threading
-from multiprocessing import Manager
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, List, Optional
 
 from configs.config import Config
-from reconstructor.scripts import reconstruct_directory, reconstruct_single_file
-from utils.logger import logger
+from utils.parallelization.processor import TaskProcessor
 
 
-class ReconstructionConverter:
+def reconstruct_single_file_task(args) -> Path:
+    config, input_path = args
+    from reconstructor.scripts import reconstruct_single_file
+
+    return reconstruct_single_file(config, input_path, progress_queue=None, cancel_flag=None)
+
+
+def reconstruct_file_task(args) -> str:
+    config, input_path, directory, output_directory = args
+    from reconstructor.reconstructor import Reconstructor
+    from reconstructor.scripts import reconstruct_file
+
+    reconstructor = Reconstructor(config)
+    relative_path = input_path.relative_to(directory)
+    output_path = output_directory / relative_path
+    reconstruct_file(reconstructor, input_path, output_path)
+
+    return str(input_path)
+
+
+class ReconstructionConverter(TaskProcessor[Path]):
     def __init__(self, config: Config) -> None:
+        super().__init__(max_workers=config.general.max_workers)
         self.config = config
+        self.target_path: Optional[Path] = None
+        self.is_file: bool = False
+        self.wav_files: List[Path] = []
 
-        self.thread: Optional[threading.Thread] = None
-        self.monitor_thread: Optional[threading.Thread] = None
-        self.progress_queue: Optional[Any] = None
-        self._manager: Optional[Any] = None
-
-        self.cancelling = False
-        self.running = False
         self.total_files = 0
         self.completed_files = 0
         self.current_file: Optional[str] = None
-        self.cancel_flag: Optional[Any] = None
-        self.target_path: Optional[Path] = None
-
-        self._on_cancelled: Optional[Callable[[], None]] = None
-        self._on_complete: Optional[Callable[[Path], None]] = None
-        self._on_error: Optional[Callable[[str], None]] = None
-
-        atexit.register(self.cleanup)
 
     def start(self, target_path: Path, is_file: bool) -> None:
         if self.running:
@@ -38,149 +44,56 @@ class ReconstructionConverter:
 
         self.running = True
         self.target_path = target_path
-        self.total_files = 0
-        self.completed_files = 0
-        self._manager = Manager()
-        self.progress_queue = self._manager.Queue()
-        self.cancel_flag = self._manager.Value("b", False)
+        self.is_file = is_file
 
-        if is_file:
-            self.total_files = 1
-            worker = self._reconstruct_file_worker
-        else:
-            worker = self._reconstruct_directory_worker
-
-        self.thread = threading.Thread(target=worker, args=(target_path,), daemon=True)
-        self.thread.start()
-
-        self.monitor_thread = threading.Thread(target=self._monitor_queue, daemon=True)
+        self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
         self.monitor_thread.start()
 
-    def _monitor_queue(self) -> None:
-        while self.running:
-            if self.progress_queue:
-                try:
-                    if not self.progress_queue.empty():
-                        message = self.progress_queue.get()
-                        if message[0] == "total":
-                            self.total_files = message[1]
-                        elif message[0] == "completed":
-                            self.completed_files += 1
-                            self.current_file = message[1]
-                except (BrokenPipeError, EOFError, OSError) as error:
-                    logger.warning(f"Monitor queue connection lost: {type(error).__name__}")
-                    break
+    def _create_tasks(self) -> List[Any]:
+        from constants.browser import EXT_FILE_WAV
+        from reconstructor.scripts import generate_config_directory_name
 
-    def _reconstruct_file_worker(self, input_path: Path) -> None:
-        try:
-            output_json = reconstruct_single_file(self.config, input_path, self.progress_queue, self.cancel_flag)
-        except Exception as error:
-            logger.error_with_traceback(f"File reconstruction failed for {input_path}", error)
-            self._handle_error(error)
-            return
-        finally:
-            self.running = False
+        if not self.target_path:
+            raise ValueError("Target path not set")
 
-        if not self.cancel_flag or not self.cancel_flag.value:
-            if self._on_complete:
-                self._on_complete(output_json)
+        if self.is_file:
+            return [(self.config, self.target_path)]
 
-    def _reconstruct_directory_worker(self, directory_path: Path) -> None:
-        try:
-            reconstruct_directory(self.config, directory_path, self.progress_queue, self.cancel_flag)
-        except Exception as error:
-            logger.error_with_traceback(f"Directory reconstruction failed for {directory_path}", error)
-            self._handle_error(error)
-        finally:
-            self.running = False
+        if not self.target_path.exists():
+            raise FileNotFoundError(f"Directory does not exist: {self.target_path}")
 
-        if not self.cancel_flag or not self.cancel_flag.value:
-            if self._on_complete is not None:
-                self._on_complete(directory_path)
+        if not self.target_path.is_dir():
+            raise NotADirectoryError(f"Path is not a directory: {self.target_path}")
 
-    def _handle_error(self, error: Exception) -> None:
-        if self._on_error is not None:
-            self._on_error(str(error))
+        config_directory = generate_config_directory_name(self.config)
+        output_directory = Path(self.config.general.output_directory) / config_directory / self.target_path.name
+        self.wav_files = list(self.target_path.rglob(f"*{EXT_FILE_WAV}"))
 
-    def cancel(self) -> None:
-        if self.cancelling:
-            return
+        if not self.wav_files:
+            raise ValueError(f"No WAV files found in directory: {self.target_path}")
 
-        self.cancelling = True
-        if self.cancel_flag:
-            self.cancel_flag.value = True
+        return [(self.config, wav_file, self.target_path, output_directory) for wav_file in self.wav_files]
 
-        cancel_monitor = threading.Thread(target=self._wait_for_cancellation, daemon=True)
-        cancel_monitor.start()
+    def _get_task_function(self) -> Callable:
+        if self.is_file:
+            return reconstruct_single_file_task
+        return reconstruct_file_task
 
-    def _wait_for_cancellation(self) -> None:
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=5)
+    def _process_results(self, results: List[Any]) -> Path:
+        if not self.target_path:
+            raise ValueError("Target path not set")
 
-        self.running = False
-        self.cancelling = False
-
-        if self._on_cancelled:
-            self._on_cancelled()
-
-    def is_running(self) -> bool:
-        return self.running
-
-    def is_cancelling(self) -> bool:
-        return self.cancelling
-
-    def get_progress(self) -> float:
-        if self.total_files == 0:
-            return 0.0
-        return self.completed_files / self.total_files
+        if self.is_file:
+            return results[0]
+        return self.target_path
 
     def get_current_file(self) -> Optional[str]:
         return self.current_file
 
-    def set_callbacks(
-        self,
-        on_complete: Optional[Callable[[Path], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
-    ) -> None:
-        if on_complete is not None:
-            self._on_complete = on_complete
-        if on_error is not None:
-            self._on_error = on_error
-        if on_cancelled is not None:
-            self._on_cancelled = on_cancelled
+    def _notify_progress(self) -> None:
+        self.total_files = self.total_tasks
+        self.completed_files = self.completed_tasks
+        if self.completed_tasks > 0 and self.completed_tasks <= len(self.wav_files):
+            self.current_file = str(self.wav_files[self.completed_tasks - 1])
 
-    def cleanup(self) -> None:
-        if self.cancel_flag:
-            try:
-                self.cancel_flag.value = True
-            except (BrokenPipeError, EOFError, OSError) as error:
-                logger.debug(f"Failed to set cancel flag during cleanup: {type(error).__name__}")
-
-        self.running = False
-
-        if self.monitor_thread and self.monitor_thread.is_alive():
-            self.monitor_thread.join(timeout=2)
-
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=2)
-
-        if self._manager:
-            try:
-                self._manager.shutdown()
-            except (BrokenPipeError, EOFError, OSError) as error:
-                logger.debug(f"Manager shutdown encountered error: {type(error).__name__}")
-            finally:
-                self._manager = None
-
-        self.cancelling = False
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
-        return False
-
-    def __del__(self):
-        self.cleanup()
+        super()._notify_progress()

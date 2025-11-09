@@ -14,7 +14,7 @@ from library.worker import LibraryWorker
 from reconstructor.maps import GENERATOR_CLASS_MAP
 from typehints.generators import GeneratorUnion
 from typehints.instructions import InstructionUnion
-from utils.parallel import parallelize
+from utils.parallelization.parallel import parallelize
 
 
 def generate_library_data(
