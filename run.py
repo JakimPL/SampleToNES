@@ -4,17 +4,19 @@ import shutil
 import subprocess
 import sys
 
+from utils.logger import logger
+
 
 def ensure_python():
     if sys.version_info < (3, 13):
-        sys.stderr.write(f"Python 3.13+ required, found {sys.version}. Please install Python ≥ 3.13.\n")
+        logger.error(f"Python 3.13+ required, found {sys.version}. Please install Python ≥ 3.13")
         sys.exit(1)
 
 
 def ensure_uv():
     if shutil.which("uv"):
         return
-    print("Installing uv...")
+    logger.info("Installing uv...")
     subprocess.run(
         [sys.executable, "-m", "pip", "install", "--user", "uv"],
         check=True,
@@ -27,11 +29,15 @@ def ensure_uv():
 
 def run_project():
     if not os.path.exists("pyproject.toml"):
-        sys.stderr.write("pyproject.toml not found in current directory.\n")
+        logger.error("pyproject.toml not found in current directory")
         sys.exit(1)
 
     subprocess.run(["uv", "sync"], check=True)
-    subprocess.run(["uv", "run", "python", "main.py"], check=True)
+
+    try:
+        subprocess.run(["uv", "run", "python", "main.py"], check=True)
+    except KeyboardInterrupt:
+        logger.info("Application terminated")
 
 
 def main():

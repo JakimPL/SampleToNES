@@ -135,20 +135,8 @@ class GUIConverterWindow:
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
 
-    def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
-        if not self.converter or not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            return
-
-        match task_status:
-            case TaskStatus.COMPLETED:
-                self._set_status_completed()
-            case TaskStatus.FAILED:
-                self._set_status_failed()
-            case TaskStatus.CANCELLED:
-                self._set_status_cancelled()
-            case TaskStatus.CANCELLING:
-                self._set_status_cancelling()
-
+    def _set_status_running(self, task_progress: TaskProgress):
+        assert self.converter is not None, "Converter is not initialized"
         progress = task_progress.get_progress()
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
@@ -163,6 +151,26 @@ class GUIConverterWindow:
                 TAG_CONVERTER_STATUS,
                 TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
             )
+
+    def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
+        if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+            return
+
+        match task_status:
+            case TaskStatus.COMPLETED:
+                self._set_status_completed()
+                print("completed")
+            case TaskStatus.FAILED:
+                self._set_status_failed()
+                print("failed")
+            case TaskStatus.CANCELLED:
+                self._set_status_cancelled()
+                print("cancelled")
+            case TaskStatus.CANCELLING:
+                self._set_status_cancelling()
+                print("cancelling")
+            case TaskStatus.RUNNING:
+                self._set_status_running(task_progress)
 
     def _on_load_clicked(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
