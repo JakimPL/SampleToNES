@@ -39,13 +39,8 @@ class Logger:
     def error(self, message: str) -> None:
         self._logger.error(message)
 
-    def error_with_traceback(self, message: str, exception: Optional[Exception] = None) -> None:
-        if exception:
-            tb = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
-            self._logger.error(f"{message}\n{tb}")
-        else:
-            tb = "".join(traceback.format_stack())
-            self._logger.error(f"{message}\n{tb}")
+    def error_with_traceback(self, message: str, exception: Exception) -> None:
+        self._logger.error(message, exc_info=exception, stack_info=True)
 
     def critical(self, message: str) -> None:
         self._logger.critical(message)

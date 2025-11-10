@@ -1,4 +1,5 @@
 import atexit
+import multiprocessing
 import threading
 from concurrent.futures._base import CancelledError
 from typing import Any, Callable, Generic, List, Optional, TypeVar
@@ -63,7 +64,8 @@ class TaskProcessor(Generic[T]):
         self._notify_progress()
 
         workers = self.max_workers
-        self.pool = ProcessPool(max_workers=workers)
+        context = multiprocessing.get_context("spawn")
+        self.pool = ProcessPool(max_workers=workers, context=context)
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
 
@@ -71,34 +73,31 @@ class TaskProcessor(Generic[T]):
         try:
             self.running = True
             self.status = TaskStatus.RUNNING
+            self._notify_progress()
             iterator = self.future.result()
+
             while True:
                 if self.cancelling:
                     raise CancelledError()
 
-                try:
-                    result = next(iterator)
-                    results.append(result)
-                    self.completed_tasks += 1
-                    self._notify_progress()
-                except StopIteration:
-                    break
-                except Exception as exception:  # TODO: specify exception type
-                    if self.cancelling:
-                        self._finalize_cancellation()
-                    else:
-                        logger.error_with_traceback(f"Task failed: {exception}")
-                        self.running = False
-                        self._stop_with_error(str(exception))
-
-                    return
+                result = next(iterator)
+                results.append(result)
+                self.completed_tasks += 1
+                self._notify_progress()
+        except StopIteration:
+            pass
         except CancelledError:
-            if self.cancelling:
-                self._finalize_cancellation()
+            self._finalize_cancellation()
+            return
+        except Exception as exception:
+            logger.error_with_traceback(f"Task failed: {exception}", exception)
+            self._stop_with_error(str(exception))
             return
         finally:
-            self.pool.close()
-            self.pool.join()
+            self.running = False
+            if self.pool:
+                self.pool.close()
+                self.pool.join()
 
         self._finalize_completion(results)
 
@@ -150,11 +149,8 @@ class TaskProcessor(Generic[T]):
         if self.monitor_thread and self.monitor_thread.is_alive():
             self.monitor_thread.join(timeout=TIMEOUT)
 
-        if self.pool:
-            self.pool.stop()
-            self.pool.join()
-
         self._finalize_cancellation()
+        self._stop_pool()
         self._notify_progress()
 
     def is_running(self) -> bool:
@@ -199,11 +195,13 @@ class TaskProcessor(Generic[T]):
         if self.future:
             self.future.cancel()
 
+        self.status = TaskStatus.NONE
+        self._stop_pool()
+
+    def _stop_pool(self) -> None:
         if self.pool:
             self.pool.stop()
             self.pool.join()
-
-        self.status = TaskStatus.NONE
 
     def __enter__(self):
         return self
