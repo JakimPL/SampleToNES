@@ -159,16 +159,12 @@ class GUIConverterWindow:
         match task_status:
             case TaskStatus.COMPLETED:
                 self._set_status_completed()
-                print("completed")
             case TaskStatus.FAILED:
                 self._set_status_failed()
-                print("failed")
             case TaskStatus.CANCELLED:
                 self._set_status_cancelled()
-                print("cancelled")
             case TaskStatus.CANCELLING:
                 self._set_status_cancelling()
-                print("cancelling")
             case TaskStatus.RUNNING:
                 self._set_status_running(task_progress)
 

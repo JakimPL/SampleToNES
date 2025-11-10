@@ -4,22 +4,20 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
 from constants.browser import EXT_FILE_WAV
-from reconstructor.reconstructor import Reconstructor
-from reconstructor.scripts import (
-    filter_files,
-    get_output_path,
-    get_relative_path,
-    reconstruct_file,
-)
 from utils.logger import logger
 from utils.parallelization.processor import TaskProcessor
 
-ReconstructionArguments = Tuple[Reconstructor, Path, Path]
 
+def reconstruct_file_wrapper(arguments: Tuple) -> Path:
+    import gc
 
-def reconstruct_file_wrapper(arguments: ReconstructionArguments) -> Path:
+    from reconstructor.scripts import reconstruct_file
+
     reconstructor, input_path, output_path = arguments
-    return reconstruct_file(reconstructor, input_path, output_path)
+    results = reconstruct_file(reconstructor, input_path, output_path)
+    gc.collect()
+
+    return results
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
@@ -47,6 +45,14 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
     def _create_tasks(self) -> List[Any]:
         assert self.input_path is not None, "Input path must be set before creating tasks"
+
+        from reconstructor.reconstructor import Reconstructor
+        from reconstructor.scripts import (
+            filter_files,
+            get_output_path,
+            get_relative_path,
+        )
+
         reconstructor = Reconstructor(self.config)
         output_path = get_output_path(self.config, self.input_path)
 
@@ -56,14 +62,14 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAV}"))
         self.wav_files = filter_files(self.wav_files, self.input_path, output_path)
 
-        arguments: List[ReconstructionArguments] = []
+        arguments: List[Tuple[Reconstructor, Path, Path]] = []
         for wav_file in self.wav_files:
             target_path = get_relative_path(self.input_path, wav_file, output_path)
             arguments.append((reconstructor, wav_file, target_path))
 
         return arguments
 
-    def _get_task_function(self) -> Callable[[ReconstructionArguments], Path]:
+    def _get_task_function(self) -> Callable[[Tuple], Path]:
         return reconstruct_file_wrapper
 
     def _process_results(self, results: List[Any]) -> Path:

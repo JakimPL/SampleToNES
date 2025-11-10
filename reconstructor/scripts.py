@@ -1,4 +1,3 @@
-import gc
 import os
 from pathlib import Path
 from typing import List
@@ -59,5 +58,4 @@ def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path
     output_path.parent.mkdir(parents=True, exist_ok=True)
     reconstruction = reconstructor(input_path)
     reconstruction.save(output_path)
-    gc.collect()
     return output_path
