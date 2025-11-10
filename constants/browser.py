@@ -173,6 +173,7 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
 )
 MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
 MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
+MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
 
 # Default display values
 PFX_GLOBAL_ERROR = "Error: {}"

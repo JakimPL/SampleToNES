@@ -16,6 +16,7 @@ from constants.browser import (
     LBL_BUTTON_RECONSTRUCT_FILE,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
+    MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -129,8 +130,12 @@ class GUIBrowserPanel(GUITreePanel):
         try:
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
         except FileNotFoundError as error:
+            missing_file = Path(error.filename)
             logger.error_with_traceback(f"Failed to load reconstruction data from {filepath}", error)
-            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
+            if missing_file == filepath:
+                show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
+            else:
+                show_file_not_found_dialog(missing_file, MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND)
             return
 
         if self._on_reconstruction_selected:

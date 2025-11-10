@@ -34,10 +34,6 @@ class GUITreePanel(GUIPanel):
         super().__init__(tag, parent, width, height)
 
     def build_tree(self, tree_root_tag: str) -> None:
-        import traceback
-
-        print("Building tree...", tree_root_tag)
-        traceback.print_stack()
         self._clear_children(tree_root_tag)
         root = self.tree.get_root()
         if root is None:
