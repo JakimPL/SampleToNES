@@ -186,16 +186,28 @@ class ConfigManager:
 
         sample_rate = library_key.sample_rate
         change_rate = round(sample_rate / library_key.frame_length)
+        window_size = library_key.window_size
+        transformation_gamma = library_key.transformation_gamma
 
         new_library_config = self.config.library.model_copy(
-            update={"sample_rate": sample_rate, "change_rate": change_rate}
+            update={
+                "sample_rate": sample_rate,
+                "change_rate": change_rate,
+                "window_size": window_size,
+                "transformation_gamma": transformation_gamma,
+            }
         )
+
         new_config = self.config.model_copy(update={"library": new_library_config})
 
         self.config = new_config
         self.window = Window(self.config.library)
 
-        return {TAG_CONFIG_SAMPLE_RATE: sample_rate, TAG_CONFIG_CHANGE_RATE: change_rate}
+        return {
+            TAG_CONFIG_SAMPLE_RATE: sample_rate,
+            TAG_CONFIG_CHANGE_RATE: change_rate,
+            TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA: transformation_gamma,
+        }
 
     def load_config(self, config: Config) -> None:
         self.config = config

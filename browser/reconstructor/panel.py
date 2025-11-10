@@ -32,7 +32,7 @@ from constants.browser import (
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
-from constants.general import MAX_MIXER, MIXER
+from constants.general import MAX_MIXER, MAX_TRANSFORMATION_GAMMA, MIXER
 from utils.serialization import SerializedData
 
 
@@ -85,9 +85,9 @@ class GUIReconstructorPanel(GUIPanel):
                 tag=TAG_RECONSTRUCTOR_MIXER,
             )
             dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA)
-            dpg.add_slider_float(
-                min_value=0.0,
-                max_value=1.0,
+            dpg.add_slider_int(
+                min_value=0,
+                max_value=MAX_TRANSFORMATION_GAMMA,
                 width=-1,
                 tag=TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
             )

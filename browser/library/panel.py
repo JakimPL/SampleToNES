@@ -112,10 +112,10 @@ class GUILibraryPanel(GUITreePanel):
     def _rebuild_tree(self) -> None:
         self.library_manager.rebuild_tree()
         self.build_tree(TAG_LIBRARY_TREE)
+        self.update_status()
 
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
-        self.update_status()
 
     def is_loaded(self) -> bool:
         return self.library_manager.is_library_loaded(self.config_manager.key)
@@ -161,6 +161,8 @@ class GUILibraryPanel(GUITreePanel):
 
         if apply_config and self._on_apply_library_config:
             self._on_apply_library_config(library_key)
+
+        self.update_status()
 
     def _load_library(self, library_key: LibraryKey) -> None:
         try:
@@ -223,8 +225,8 @@ class GUILibraryPanel(GUITreePanel):
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self._load_library(library_key)
-        self._rebuild_tree()
         self._set_current_library(library_key, load_if_needed=False, apply_config=True)
+        self._rebuild_tree()
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
@@ -243,6 +245,8 @@ class GUILibraryPanel(GUITreePanel):
             user_data.fragment,
             library_config=config.library,
         )
+
+        self.update_status()
 
     def _generate_library(self) -> None:
         if self.is_generating:
@@ -277,6 +281,7 @@ class GUILibraryPanel(GUITreePanel):
             dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
             dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
             dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
+            self.update_status()
 
     def set_callbacks(
         self,

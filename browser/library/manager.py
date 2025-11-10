@@ -145,23 +145,29 @@ class LibraryManager:
 
     def _create_key_from_filename(self, filename: str) -> LibraryKey:
         file_parts = filename.split("_")
-        if len(file_parts) < 8:
+        if len(file_parts) < 10:
             raise ValueError(f"Invalid library file name format: {filename}")
 
         sample_rate = int(file_parts[1])
         frame_length = int(file_parts[3])
         window_size = int(file_parts[5])
-        config_hash = file_parts[7]
+        transformation_gamma = int(file_parts[7])
+        config_hash = file_parts[9]
 
         return LibraryKey(
-            sample_rate=sample_rate, frame_length=frame_length, window_size=window_size, config_hash=config_hash
+            sample_rate=sample_rate,
+            frame_length=frame_length,
+            window_size=window_size,
+            transformation_gamma=transformation_gamma,
+            config_hash=config_hash,
         )
 
     def _get_display_name_from_key(self, key: LibraryKey) -> str:
         sample_rate = key.sample_rate
         change_rate = round(sample_rate / key.frame_length)
+        transformation_gamma = key.transformation_gamma
         hash_part = key.config_hash[:7]
-        return f"{sample_rate}_{change_rate}_{hash_part}"
+        return f"{sample_rate}_{change_rate}_{transformation_gamma}_{hash_part}"
 
     def _get_display_name(self, filename: str) -> str:
         key = self._create_key_from_filename(filename)
