@@ -14,6 +14,7 @@ class TaskStatus(Enum):
     FAILED = "FAILED"
     CANCELLING = "CANCELLING"
     CANCELLED = "CANCELLED"
+    CLEANING_UP = "CLEANING_UP"
 
 
 class TaskProgress(BaseModel):

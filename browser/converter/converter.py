@@ -4,26 +4,17 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
 from constants.browser import EXT_FILE_WAV
+from reconstructor.reconstructor import Reconstructor
+from reconstructor.scripts.conversion import reconstruct_file
+from reconstructor.scripts.paths import filter_files, get_output_path, get_relative_path
 from utils.logger import logger
 from utils.parallelization.processor import TaskProcessor
-
-
-def reconstruct_file_wrapper(arguments: Tuple) -> Path:
-    import gc
-
-    from reconstructor.scripts import reconstruct_file
-
-    reconstructor, input_path, output_path = arguments
-    results = reconstruct_file(reconstructor, input_path, output_path)
-    gc.collect()
-
-    return results
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
     def __init__(self, config: Config) -> None:
         super().__init__(max_workers=config.general.max_workers)
-        self.config = config
+        self.config = config.model_copy()
         self.input_path: Optional[Path] = None
         self.is_file: bool = False
         self.wav_files: List[Path] = []
@@ -46,13 +37,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
     def _create_tasks(self) -> List[Any]:
         assert self.input_path is not None, "Input path must be set before creating tasks"
 
-        from reconstructor.reconstructor import Reconstructor
-        from reconstructor.scripts import (
-            filter_files,
-            get_output_path,
-            get_relative_path,
-        )
-
         reconstructor = Reconstructor(self.config)
         output_path = get_output_path(self.config, self.input_path)
 
@@ -70,7 +54,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
         return arguments
 
     def _get_task_function(self) -> Callable[[Tuple], Path]:
-        return reconstruct_file_wrapper
+        return reconstruct_file
 
     def _process_results(self, results: List[Any]) -> Path:
         if not self.input_path:

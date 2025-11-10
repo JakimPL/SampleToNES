@@ -44,7 +44,7 @@ class TaskProcessor(Generic[T]):
     def _get_task_function(self) -> Callable:
         raise NotImplementedError
 
-    def _process_results(self, results: List[Any]) -> T:
+    def _process_results(self, results: List[T]) -> Any:
         raise NotImplementedError
 
     def _reset_status(self) -> None:
@@ -90,8 +90,7 @@ class TaskProcessor(Generic[T]):
             self._finalize_cancellation()
             return
         except Exception as exception:
-            logger.error_with_traceback(f"Task failed: {exception}", exception)
-            self._stop_with_error(str(exception))
+            self._stop_with_error(exception)
             return
         finally:
             self.running = False
@@ -115,9 +114,9 @@ class TaskProcessor(Generic[T]):
             return
 
         logger.info("Task processing was cancelled.")
+        self.status = TaskStatus.CANCELLED
         self.cancelling = False
         self.running = False
-        self.status = TaskStatus.CANCELLED
         self._notify_progress()
 
         if self._on_cancelled:
@@ -125,34 +124,46 @@ class TaskProcessor(Generic[T]):
 
     def _finalize_completion(self, results: List[T]) -> None:
         logger.info("Conversion completed successfully")
-        self.running = False
+
         self.status = TaskStatus.COMPLETED
+        self.running = False
         self._notify_progress()
 
         processed_result = self._process_results(results)
         if self._on_complete:
             self._on_complete(processed_result)
 
-    def _stop_with_error(self, error_message: str) -> None:
-        self.running = False
+    def _stop_with_error(self, exception: Exception) -> None:
+        logger.error_with_traceback(f"Task failed: {exception}", exception)
+
         self.status = TaskStatus.FAILED
+        self.running = False
         self._notify_progress()
 
         if self._on_error:
-            self._on_error(str(error_message))
+            self._on_error(str(exception))
 
-        self._stop_pool()
+    def cleanup(self) -> None:
+        self.status = TaskStatus.CLEANING_UP
+        self.running = False
+        self.cancelling = True
+
+        self._notify_progress()
+        self._cleanup()
 
     def cancel(self) -> None:
-        self.cancelling = True
         self.status = TaskStatus.CANCELLING
-        self._notify_progress()
+        self.cancelling = True
 
+        self._notify_progress()
+        self._cleanup()
+
+    def _cleanup(self) -> None:
         if self.future:
             self.future.cancel()
 
-        cancel_thread = threading.Thread(target=self._wait_for_cancellation, daemon=True)
-        cancel_thread.start()
+        cleanup_thread = threading.Thread(target=self._wait_for_cleanup, daemon=True)
+        cleanup_thread.start()
 
     def _is_thread_alive(self) -> bool:
         return self.monitor_thread is not None and self.monitor_thread.is_alive()
@@ -162,14 +173,15 @@ class TaskProcessor(Generic[T]):
             assert self.monitor_thread is not None, "Monitor thread expected to be alive"
             self.monitor_thread.join(timeout=CANCEL_TIMEOUT)
 
-    def _wait_for_cancellation(self) -> None:
-        self._finalize_cancellation()
-        self._stop_pool(timeout=CANCEL_TIMEOUT)
+    def _wait_for_cleanup(self) -> None:
+        self._cleanup_pool()
         self._join_thread()
+        self._reset_status()
 
     def _complete_process(self, results: List[T]) -> None:
         self._finalize_completion(results)
         self._cleanup_pool()
+        self._reset_status()
 
     def is_running(self) -> bool:
         return self.running
@@ -204,16 +216,6 @@ class TaskProcessor(Generic[T]):
             self._on_error = on_error
         if on_cancelled is not None:
             self._on_cancelled = on_cancelled
-
-    def cleanup(self) -> None:
-        self.status = TaskStatus.CANCELLING
-        self.running = False
-        self.cancelling = True
-
-        if self.future:
-            self.future.cancel()
-
-        self.status = TaskStatus.NONE
 
     def _cleanup_pool(self) -> None:
         self._notify_progress()

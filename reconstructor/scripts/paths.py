@@ -1,11 +1,9 @@
-import os
 from pathlib import Path
 from typing import List
 
 from configs.config import Config
 from constants.browser import EXT_FILE_JSON
 from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
-from reconstructor.reconstructor import Reconstructor
 from utils.serialization import hash_models
 
 
@@ -26,7 +24,7 @@ def get_relative_path(base_directory: Path, wav_file: Path, output_path: Path, s
     relative_path = wav_file.relative_to(base_directory)
     output_path = output_path / relative_path
     output_path = output_path.with_suffix(suffix)
-    return Path(os.path.abspath(output_path))
+    return Path(output_path.absolute())
 
 
 def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_JSON) -> Path:
@@ -52,10 +50,3 @@ def filter_files(
             filtered_files.append(wav_file)
 
     return filtered_files
-
-
-def reconstruct_file(reconstructor: Reconstructor, input_path: Path, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    reconstruction = reconstructor(input_path)
-    reconstruction.save(output_path)
-    return output_path
