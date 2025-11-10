@@ -135,13 +135,20 @@ class LibraryManager:
 
     def _is_library_file(self, filename: str) -> bool:
         file_parts = filename.split("_")
-        if len(file_parts) < 4:
+        if len(file_parts) != 10:
             return False
         if not file_parts[0] == "sr" or not file_parts[1].isdigit():
             return False
         if not file_parts[2] == "fl" or not file_parts[3].isdigit():
             return False
-        return len(file_parts) >= 6
+        if not file_parts[4] == "ws" or not file_parts[5].isdigit():
+            return False
+        if not file_parts[6] == "tg" or not file_parts[7].isdigit():
+            return False
+        if not file_parts[8] == "ch" or not file_parts[9].isdigit():
+            return False
+
+        return True
 
     def _create_key_from_filename(self, filename: str) -> LibraryKey:
         file_parts = filename.split("_")

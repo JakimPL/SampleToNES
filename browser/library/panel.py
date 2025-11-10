@@ -281,6 +281,11 @@ class GUILibraryPanel(GUITreePanel):
             dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
             dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
             dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
+            self._set_current_library(
+                self.config_manager.key,
+                load_if_needed=True,
+                apply_config=False,
+            )
             self._rebuild_tree()
 
     def set_callbacks(
