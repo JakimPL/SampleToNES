@@ -1,12 +1,15 @@
-import threading
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
 from constants.browser import EXT_FILE_WAV
+from reconstructor.converter.conversion import reconstruct_file
+from reconstructor.converter.paths import (
+    filter_files,
+    get_output_path,
+    get_relative_path,
+)
 from reconstructor.reconstructor import Reconstructor
-from reconstructor.scripts.conversion import reconstruct_file
-from reconstructor.scripts.paths import filter_files, get_output_path, get_relative_path
 from utils.logger import logger
 from utils.parallelization.processor import TaskProcessor
 
@@ -30,9 +33,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
         self.input_path = target_path
         self.is_file = is_file
-
-        self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
-        self.monitor_thread.start()
+        super().start()
 
     def _create_tasks(self) -> List[Any]:
         assert self.input_path is not None, "Input path must be set before creating tasks"

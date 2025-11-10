@@ -36,7 +36,8 @@ class TaskProcessor(Generic[T]):
         self._on_cancelled: Optional[Callable[[], None]] = None
 
     def start(self, *args, **kwargs) -> None:
-        raise NotImplementedError
+        self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
+        self.monitor_thread.start()
 
     def _create_tasks(self) -> List[Any]:
         raise NotImplementedError

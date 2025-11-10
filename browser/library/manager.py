@@ -28,6 +28,7 @@ from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
+from library.creator import LibraryCreator
 from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
@@ -41,6 +42,7 @@ class LibraryManager:
         self.library_files: Dict[LibraryKey, str] = {}
         self.current_library_key: Optional[LibraryKey] = None
         self.tree = Tree()
+        self.creator: Optional[LibraryCreator] = None
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = Library(directory=str(directory))
@@ -124,9 +126,39 @@ class LibraryManager:
     def library_exists_for_key(self, key: LibraryKey) -> bool:
         return self.library.exists(key)
 
-    def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> LibraryKey:
+    def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> None:
         self.library.directory = config.general.library_directory
-        return self.library.update(config, window, overwrite=overwrite)
+
+        self.creator = LibraryCreator(config)
+        self.creator.set_callbacks(
+            on_complete=self._on_generation_complete,
+            on_error=self._on_generation_error,
+            on_cancelled=self._on_generation_cancelled,
+        )
+        self.creator.start(window, overwrite)
+
+    def _on_generation_complete(self, result: Tuple[LibraryKey, LibraryData]) -> None:
+        key, library_data = result
+        self.library.save_data(key, library_data)
+        self.current_library_key = key
+
+    def _on_generation_error(self, error_message: str) -> None:
+        pass
+
+    def _on_generation_cancelled(self) -> None:
+        pass
+
+    def is_generating(self) -> bool:
+        return self.creator is not None and self.creator.is_running()
+
+    def cancel_generation(self) -> None:
+        if self.creator:
+            self.creator.cancel()
+
+    def cleanup_creator(self) -> None:
+        if self.creator:
+            self.creator.cleanup()
+            self.creator = None
 
     def clear_all_libraries(self) -> None:
         self.library.purge()
@@ -145,7 +177,7 @@ class LibraryManager:
             return False
         if not file_parts[6] == "tg" or not file_parts[7].isdigit():
             return False
-        if not file_parts[8] == "ch" or not file_parts[9].isdigit():
+        if not file_parts[8] == "ch" or not all(c in "0123456789abcdef" for c in file_parts[9]):
             return False
 
         return True

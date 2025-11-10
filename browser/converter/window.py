@@ -4,7 +4,6 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
-from browser.converter.converter import ReconstructionConverter
 from browser.elements.path import GUIPathText
 from browser.utils import show_modal_dialog
 from constants.browser import (
@@ -36,6 +35,7 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from reconstructor.converter.converter import ReconstructionConverter
 from utils.parallelization.task import TaskProgress, TaskStatus
 
 
