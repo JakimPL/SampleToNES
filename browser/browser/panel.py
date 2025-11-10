@@ -71,7 +71,7 @@ class GUIBrowserPanel(GUITreePanel):
                 )
 
             dpg.add_separator()
-            self.create_search_ui(self.tag)
+            self.create_search(self.tag)
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
                 with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
@@ -80,17 +80,17 @@ class GUIBrowserPanel(GUITreePanel):
     def refresh(self) -> None:
         self._refresh_tree()
 
-    def _rebuild_tree_ui(self) -> None:
-        self.build_tree_ui(TAG_BROWSER_TREE)
+    def _rebuild_tree(self) -> None:
+        self.build_tree(TAG_BROWSER_TREE)
 
-    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
         if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 for child in node.children:
-                    self._build_tree_node_ui(child, node_tag)
+                    self._build_tree_node(child, node_tag)
         else:
             dpg.add_selectable(
                 label=node.name,
@@ -108,7 +108,7 @@ class GUIBrowserPanel(GUITreePanel):
         dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
         output_directory = self.config_manager.get_output_directory()
         self.browser_manager.set_output_directory(output_directory)
-        self.build_tree_ui(TAG_BROWSER_TREE)
+        self._rebuild_tree()
         dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
 
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:

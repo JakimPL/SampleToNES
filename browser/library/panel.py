@@ -99,30 +99,26 @@ class GUILibraryPanel(GUITreePanel):
                 )
 
             dpg.add_separator()
-            self.create_search_ui(self.tag)
+            self.create_search(self.tag)
             dpg.add_separator()
             with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
                 with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
                     pass
 
-        self.update_status()
-
     def refresh(self) -> None:
         self.library_manager.set_library_directory(self.config_manager.get_library_directory())
         self._refresh_libraries()
 
-    def _rebuild_tree_ui(self) -> None:
-        self.build_tree_ui(TAG_LIBRARY_TREE)
+    def _rebuild_tree(self) -> None:
+        self.library_manager.rebuild_tree()
+        self.build_tree(TAG_LIBRARY_TREE)
 
     def initialize_libraries(self) -> None:
         self._refresh_libraries()
-        key = self.config_manager.key
-        self._sync_with_config_key(key)
         self.update_status()
 
     def is_loaded(self) -> bool:
-        key = self.config_manager.key
-        return self.library_manager.is_library_loaded(key)
+        return self.library_manager.is_library_loaded(self.config_manager.key)
 
     def update_status(self) -> None:
         key = self.config_manager.key
@@ -144,27 +140,27 @@ class GUILibraryPanel(GUITreePanel):
     def _refresh_libraries(self) -> None:
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self.library_manager.gather_available_libraries()
-        key = self.config_manager.key
-        self._sync_with_config_key(key)
-        self.build_tree_ui(TAG_LIBRARY_TREE)
-        self.update_status()
+        self._sync_with_config_key()
+        self._rebuild_tree()
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
-    def _sync_with_config_key(self, config_key: LibraryKey) -> None:
+    def _sync_with_config_key(self) -> None:
+        config_key = self.config_manager.key
         matching_key = self.library_manager.sync_with_config_key(config_key)
         if matching_key:
             self._set_current_library(matching_key, load_if_needed=True, apply_config=False)
 
     def _set_current_library(
-        self, library_key: LibraryKey, load_if_needed: bool = True, apply_config: bool = False
+        self,
+        library_key: LibraryKey,
+        load_if_needed: bool = True,
+        apply_config: bool = False,
     ) -> None:
         if load_if_needed and not self.library_manager.is_library_loaded(library_key):
             self._load_library(library_key)
 
         if apply_config and self._on_apply_library_config:
             self._on_apply_library_config(library_key)
-
-        self.update_status()
 
     def _load_library(self, library_key: LibraryKey) -> None:
         try:
@@ -176,7 +172,7 @@ class GUILibraryPanel(GUITreePanel):
                 MSG_LIBRARY_FILE_NOT_FOUND,
             )
 
-    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
         if node.node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
@@ -207,7 +203,7 @@ class GUILibraryPanel(GUITreePanel):
             should_expand = is_current or self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 for child in node.children:
-                    self._build_tree_node_ui(child, node_tag)
+                    self._build_tree_node(child, node_tag)
 
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):
@@ -225,9 +221,11 @@ class GUILibraryPanel(GUITreePanel):
     def _on_load_library_clicked(self, sender: int, app_data: bool, user_data: LibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self._load_library(library_key)
-        self.build_tree_ui(TAG_LIBRARY_TREE)
+        self._rebuild_tree()
         self._set_current_library(library_key, load_if_needed=False, apply_config=True)
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
     def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -267,10 +265,8 @@ class GUILibraryPanel(GUITreePanel):
                 raise ValueError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
 
             self.library_manager.generate_library(config, window, overwrite=True)
-
             dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATED_SUCCESSFULLY)
             dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
-            self.update_status()
 
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback("Library generation failed", exception)

@@ -11,6 +11,8 @@ from constants.browser import (
     LBL_BUTTON_CLEAR_SEARCH,
     LBL_INPUT_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
+    SUF_SEARCH_BUTTON,
+    SUF_SEARCH_INPUT,
     VAL_GLOBAL_DEFAULT_SLOT,
 )
 
@@ -31,7 +33,11 @@ class GUITreePanel(GUIPanel):
         self._search_button_tag: Optional[str] = None
         super().__init__(tag, parent, width, height)
 
-    def build_tree_ui(self, tree_root_tag: str) -> None:
+    def build_tree(self, tree_root_tag: str) -> None:
+        import traceback
+
+        print("Building tree...", tree_root_tag)
+        traceback.print_stack()
         self._clear_children(tree_root_tag)
         root = self.tree.get_root()
         if root is None:
@@ -40,11 +46,11 @@ class GUITreePanel(GUIPanel):
             return
 
         for child in root.children:
-            self._build_tree_node_ui(child, tree_root_tag)
+            self._build_tree_node(child, tree_root_tag)
 
-    def create_search_ui(self, parent: str) -> None:
-        self._search_input_tag = f"{self.tag}_search_input"
-        self._search_button_tag = f"{self.tag}_search_button"
+    def create_search(self, parent: str) -> None:
+        self._search_input_tag = f"{self.tag}{SUF_SEARCH_INPUT}"
+        self._search_button_tag = f"{self.tag}{SUF_SEARCH_BUTTON}"
 
         with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
@@ -60,7 +66,7 @@ class GUITreePanel(GUIPanel):
                 width=DIM_SEARCH_BUTTON_WIDTH,
             )
 
-    def _build_tree_node_ui(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _should_expand_node(self, node: TreeNode) -> bool:
@@ -97,18 +103,18 @@ class GUITreePanel(GUIPanel):
             self.apply_filter(query, self._default_search_predicate)
         else:
             self.clear_filter()
-        self._rebuild_tree_ui()
+        self._rebuild_tree()
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
         self.clear_filter()
-        self._rebuild_tree_ui()
+        self._rebuild_tree()
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
 
-    def _rebuild_tree_ui(self) -> None:
+    def _rebuild_tree(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:

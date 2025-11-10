@@ -50,7 +50,7 @@ class LibraryManager:
         library_directory = Path(self.library.directory)
         if not library_directory.exists():
             self.library_files.clear()
-            self._rebuild_tree()
+            self.rebuild_tree()
             return {}
 
         new_library_files = {}
@@ -65,7 +65,6 @@ class LibraryManager:
                 del self.library.data[removed_key]
 
         self.library_files = new_library_files
-        self._rebuild_tree()
         return self.library_files
 
     def get_available_libraries(self) -> Dict[LibraryKey, str]:
@@ -116,9 +115,10 @@ class LibraryManager:
         return result
 
     def sync_with_config_key(self, config_key: LibraryKey) -> Optional[LibraryKey]:
-        if config_key in self.library_files:
+        if self.library_exists_for_key(config_key):
             self.current_library_key = config_key
             return config_key
+
         return None
 
     def library_exists_for_key(self, key: LibraryKey) -> bool:
@@ -194,7 +194,7 @@ class LibraryManager:
 
         return instructions
 
-    def _rebuild_tree(self) -> None:
+    def rebuild_tree(self) -> None:
         root = TreeNode(NOD_LABEL_LIBRARIES, node_type=NOD_TYPE_ROOT)
 
         for library_key in sorted(self.library_files.keys(), key=lambda k: self._get_display_name_from_key(k)):

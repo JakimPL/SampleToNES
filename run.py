@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import os
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ def ensure_uv():
     os.environ["PATH"] = scripts_dir + os.pathsep + os.environ["PATH"]
 
 
-def run_project():
+def run():
     if not os.path.exists("pyproject.toml"):
         logger.error("pyproject.toml not found in current directory")
         sys.exit(1)
@@ -43,7 +44,7 @@ def run_project():
 def main():
     ensure_python()
     ensure_uv()
-    run_project()
+    run()
 
 
 if __name__ == "__main__":
