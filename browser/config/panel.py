@@ -44,7 +44,6 @@ from constants.general import (
     SAMPLE_RATE,
 )
 from library.key import LibraryKey
-from utils.common import shorten_path
 from utils.serialization import SerializedData
 
 
@@ -172,14 +171,8 @@ class GUIConfigPanel(GUIPanel):
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
 
-    def load_config_from_data(self, config_data: SerializedData) -> None:
-        gui_updates = self.config_manager.load_config_from_data(config_data)
-        for tag, value in gui_updates.items():
-            dpg.set_value(tag, value)
-
     def apply_library_config(self, library_key: LibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
-
         for tag, value in gui_updates.items():
             dpg.set_value(tag, value)
 
@@ -188,7 +181,6 @@ class GUIConfigPanel(GUIPanel):
             return
 
         config = self.config_manager.config
-
         for tag, info in self.config_manager.config_parameters["config"].items():
             section_name = info["section"]
             section = getattr(config, section_name)

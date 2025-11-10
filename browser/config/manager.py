@@ -102,13 +102,20 @@ class ConfigManager:
         save_json(self.config_path, config_dict)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
+        assert self.config is not None, "Config must be loaded before updating from GUI values"
+
         self._update_generators_from_gui_values(gui_values)
         config_data = self._build_config_data_from_values(gui_values)
         config_data["generation"]["generators"] = self.generators
+
+        general_config_data = {**self.config.general.model_dump(), **config_data["general"]}
+        library_config_data = {**self.config.library.model_dump(), **config_data["library"]}
+        generation_config_data = {**self.config.generation.model_dump(), **config_data["generation"]}
+
         self.config = Config(
-            general=GeneralConfig(**config_data["general"]),
-            library=LibraryConfig(**config_data["library"]),
-            generation=GenerationConfig(**config_data["generation"]),
+            general=GeneralConfig(**general_config_data),
+            library=LibraryConfig(**library_config_data),
+            generation=GenerationConfig(**generation_config_data),
         )
         self.window = Window(self.config.library)
         self.update_gui()
@@ -125,14 +132,20 @@ class ConfigManager:
 
         for data in self.config_parameters.values():
             for tag, info in data.items():
-                value = gui_values.get(tag, info["default"])
+                value = gui_values.get(tag)
+                if value is None:
+                    continue
+
                 section = info["section"]
                 config_data[section][tag] = value
 
         return config_data
 
     def _update_generators_from_gui_values(self, gui_values: SerializedData) -> None:
-        self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values.get(tag, True)]
+        if any(tag not in gui_values for tag in self.generator_tags.keys()):
+            return
+
+        self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values[tag]]
 
     def get_config(self) -> Config:
         if self.config is None:
@@ -183,23 +196,6 @@ class ConfigManager:
         self.window = Window(self.config.library)
 
         return {TAG_CONFIG_SAMPLE_RATE: sample_rate, TAG_CONFIG_CHANGE_RATE: change_rate}
-
-    def load_config_from_data(self, config_data: SerializedData) -> SerializedData:
-        self.config = Config(**config_data)
-        self.window = Window(self.config.library)
-        self.generators = list(self.config.generation.generators)
-
-        gui_updates = {}
-        for tag, info in self.config_parameters.items():
-            section = info["section"]
-            if section in config_data and tag in config_data[section]:
-                gui_updates[tag] = config_data[section][tag]
-
-        self.output_directory = config_data["paths"]["output_directory"]
-        self.library_directory = config_data["paths"]["library_directory"]
-
-        self.update_gui()
-        return gui_updates
 
     def load_config(self, config: Config) -> None:
         self.config = config

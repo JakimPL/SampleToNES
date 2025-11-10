@@ -33,7 +33,6 @@ from constants.browser import (
 )
 from constants.enums import GeneratorName
 from constants.general import MAX_MIXER, MIXER
-from utils.common import shorten_path
 from utils.serialization import SerializedData
 
 
@@ -173,7 +172,6 @@ class GUIReconstructorPanel(GUIPanel):
             return
 
         config = self.config_manager.config
-
         for tag, info in self.config_manager.config_parameters["reconstructor"].items():
             section_name = info["section"]
             section = getattr(config, section_name)
