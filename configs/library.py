@@ -1,5 +1,5 @@
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from constants.general import (
     A4_FREQUENCY,
@@ -17,6 +17,8 @@ from constants.general import (
 
 
 class LibraryConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     change_rate: int = Field(default=CHANGE_RATE, ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
     sample_rate: int = Field(default=SAMPLE_RATE, ge=MIN_SAMPLE_RATE, le=MAX_SAMPLE_RATE)
     a4_frequency: float = Field(default=A4_FREQUENCY, gt=20.0, lt=20000.0)
@@ -31,7 +33,3 @@ class LibraryConfig(BaseModel):
     def window_size(self) -> int:
         lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
         return max(self.frame_length, lower_bound)
-
-    class Config:
-        extra = "forbid"
-        frozen = True

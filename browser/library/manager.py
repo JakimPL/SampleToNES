@@ -145,7 +145,7 @@ class LibraryManager:
 
     def _create_key_from_filename(self, filename: str) -> LibraryKey:
         file_parts = filename.split("_")
-        if len(file_parts) < 10:
+        if len(file_parts) != 10:
             raise ValueError(f"Invalid library file name format: {filename}")
 
         sample_rate = int(file_parts[1])
