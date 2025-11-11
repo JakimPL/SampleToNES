@@ -201,6 +201,9 @@ class GUIConverterWindow:
 
     def _on_close(self) -> None:
         try:
+            if self.converter and self.converter.is_running():
+                self.converter.cancel()
+
             if self.converter:
                 self.converter.cleanup()
         finally:

@@ -28,7 +28,7 @@ from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
-from library.creator import LibraryCreator
+from library.creator.creator import LibraryCreator
 from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
