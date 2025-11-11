@@ -71,5 +71,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.completed_files = self.completed_tasks
         if self.completed_tasks > 0 and self.completed_tasks <= len(self.wav_files):
             self.current_file = str(self.wav_files[self.completed_tasks - 1])
+            self.current_item = self.current_file
 
         super()._notify_progress()

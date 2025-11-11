@@ -59,9 +59,10 @@ class TaskProcessor(Generic[T]):
     def _run_tasks(self) -> None:
         self._reset_status()
         tasks = self._create_tasks()
+        self._notify_progress()
+
         self.total_tasks = len(tasks)
         self.completed_tasks = 0
-        self._notify_progress()
 
         workers = self.max_workers
         context = multiprocessing.get_context("spawn")
