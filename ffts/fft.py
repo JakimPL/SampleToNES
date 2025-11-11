@@ -5,6 +5,7 @@ import numpy as np
 from pydantic import BaseModel, Field
 from scipy.fft import rfft, rfftfreq
 
+from constants.general import MAX_TRANSFORMATION_GAMMA
 from ffts.transformations import LinearExponentialMorpher, Transformations
 from typehints.general import (
     BinaryTransformation,
@@ -48,8 +49,9 @@ class FFTTransformer(BaseModel):
     )
 
     @classmethod
-    def from_gamma(cls, gamma: float) -> "FFTTransformer":
-        morpher = LinearExponentialMorpher(gamma)
+    def from_gamma(cls, gamma: int) -> "FFTTransformer":
+        assert 0 <= gamma <= MAX_TRANSFORMATION_GAMMA, f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]"
+        morpher = LinearExponentialMorpher(gamma / MAX_TRANSFORMATION_GAMMA)
         transformations = morpher.transformations
         return cls(transformations=transformations)
 

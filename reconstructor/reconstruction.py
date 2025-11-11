@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import Any, Dict, List, Self, Union, cast
 
@@ -7,7 +6,8 @@ from pydantic import BaseModel, Field, field_serializer
 
 from configs.config import Config as Configuration
 from constants.enums import FeatureKey, GeneratorName, InstructionClassName
-from constants.general import SAMPLE_TO_NES_VERSION
+from constants.general import SAMPLE_TO_NES_NAME, SAMPLE_TO_NES_VERSION
+from exceptions.reconstruction import InvalidReconstructionError
 from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
@@ -24,7 +24,7 @@ from utils.serialization import (
 
 def default_metadata() -> SerializedData:
     return {
-        "SampleToNES": {
+        SAMPLE_TO_NES_NAME: {
             "version": SAMPLE_TO_NES_VERSION,
         }
     }
@@ -99,6 +99,7 @@ class Reconstruction(BaseModel):
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> Self:
         data = load_json(filepath)
+        cls.validate_json(data)
 
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
@@ -109,6 +110,23 @@ class Reconstruction(BaseModel):
         data["metadata"] = data.get("metadata", {})
 
         return cls(**data)
+
+    @staticmethod
+    def validate_json(data: Dict[str, Any]) -> None:
+        if SAMPLE_TO_NES_NAME not in data.get("metadata", {}):
+            raise InvalidReconstructionError("Metadata is missing. Probably not a valid reconstruction file.")
+
+        for field in [
+            "approximation",
+            "approximations",
+            "instructions",
+            "config",
+            "coefficient",
+            "audio_filepath",
+            "metadata",
+        ]:
+            if field not in data:
+                raise InvalidReconstructionError(f"Reconstruction data is missing '{field}' field.")
 
     def export(self, as_string: bool = False) -> Dict[GeneratorName, Dict[FeatureKey, Union[str, FeatureValue]]]:
         features = {}

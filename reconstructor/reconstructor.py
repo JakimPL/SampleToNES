@@ -5,6 +5,7 @@ import numpy as np
 
 from configs.config import Config
 from constants.enums import GeneratorName
+from exceptions.library import NoLibraryDataError
 from ffts.window import Window
 from generators.generator import Generator
 from library.fragment import FragmentedAudio
@@ -16,7 +17,6 @@ from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.generators import GeneratorUnion
 from utils.audio.io import load_audio
-from utils.parallel import parallelize
 
 
 def reconstruct(
@@ -81,40 +81,14 @@ class Reconstructor:
 
     def reconstruct(self, fragmented_audio: FragmentedAudio) -> None:
         fragments_ids = fragmented_audio.fragments_ids
-        max_workers = 1  # Disable parallelization for now
-        if max_workers > 1:
-            results = parallelize(
-                reconstruct,
-                fragments_ids,
-                max_workers=max_workers,
-                fragmented_audio=fragmented_audio,
-                config=self.config,
-                window=self.window,
-                generators=self.generators,
-                library_data=self.library_data,
-            )
+        worker = ReconstructorWorker(
+            config=self.config,
+            window=self.window,
+            generators=self.generators,
+            library_data=self.library_data,
+        )
 
-            results = dict(
-                sorted(
-                    (
-                        (fragment_id, fragment_approximation)
-                        for partial_results in results
-                        for fragment_id, fragment_approximation in partial_results.items()
-                    ),
-                    key=lambda fragment: fragment[0],
-                ),
-            )
-
-        else:
-            worker = ReconstructorWorker(
-                config=self.config,
-                window=self.window,
-                generators=self.generators,
-                library_data=self.library_data,
-            )
-
-            results = worker(fragmented_audio, fragments_ids, show_progress=False)
-
+        results = worker(fragmented_audio, fragments_ids, show_progress=False)
         for fragment_approximations in results.values():
             for fragment_approximation in fragment_approximations.values():
                 self.update_state(fragment_approximation)
@@ -122,6 +96,9 @@ class Reconstructor:
     def load_library(self, library: Optional[Library] = None) -> LibraryData:
         library = library or Library(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
+        if not library_data:
+            raise NoLibraryDataError("No library data found for the given configuration and window.")
+
         return LibraryData(
             config=self.config.library,
             data=library_data.filter({generator.class_name() for generator in self.generators.values()}),

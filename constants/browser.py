@@ -13,10 +13,10 @@ DIM_PANEL_RIGHT_HEIGHT = -1
 DIM_PANEL_INSTRUCTION_DETAILS_WIDTH = 300
 DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH = 400
 DIM_PANEL_CONFIG_WIDTH = DIM_PANEL_LEFT_WIDTH - DIM_PANEL_LEFT_GAP
-DIM_PANEL_CONFIG_HEIGHT = 260
+DIM_PANEL_CONFIG_HEIGHT = 0
 DIM_PANEL_LIBRARY_WIDTH = DIM_PANEL_LEFT_WIDTH - DIM_PANEL_LEFT_GAP
 DIM_PANEL_LIBRARY_HEIGHT = -1
-DIM_PANEL_RECONSTRUCTOR_HEIGHT = 324
+DIM_PANEL_RECONSTRUCTOR_HEIGHT = 0
 DIM_PANEL_RECONSTRUCTOR_WIDTH = DIM_PANEL_LEFT_WIDTH - DIM_PANEL_LEFT_GAP
 DIM_PANEL_BROWSER_WIDTH = DIM_PANEL_LEFT_WIDTH - DIM_PANEL_LEFT_GAP
 DIM_PANEL_BROWSER_HEIGHT = -1
@@ -24,10 +24,11 @@ DIM_PANEL_BROWSER_HEIGHT = -1
 # File dialog dimensions
 DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
-DIM_DIALOG_ERROR_WIDTH = 350
-DIM_DIALOG_ERROR_HEIGHT = 0
+DIM_DIALOG_WIDTH = 350
+DIM_DIALOG_HEIGHT = 0
+DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_WIDTH - 10
 DIM_DIALOG_CONVERTER_WIDTH = 700
-DIM_DIALOG_CONVERTER_HEIGHT = 131
+DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
 DIM_BUTTON_DEFAULT_HEIGHT = 23
@@ -59,7 +60,8 @@ LBL_MENU_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_MENU_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
 LBL_MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_MENU_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
-LBL_MENU_EXPORT_RECONSTRUCTION_FTI = "Export reconstruction as FTI"
+LBL_MENU_EXPORT_RECONSTRUCTION_FTI = "Export instrument as FTI"
+LBL_MENU_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
 LBL_MENU_LOAD_AUDIO = "Load audio"
 LBL_MENU_EXIT = "Exit"
 
@@ -83,7 +85,7 @@ LBL_SECTION_FAMITRACKER_EXPORT = "FamiTracker export"
 
 # Button labels
 LBL_BUTTON_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-LBL_BUTTON_SELECT_LIBRARY_DIRECTORY = "Select library directory"
+LBL_CONFIG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
 LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
 LBL_BUTTON_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_BUTTON_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
@@ -94,7 +96,7 @@ LBL_BUTTON_START_RECONSTRUCTION = "Start reconstruction"
 LBL_BUTTON_PLAY_ORIGINAL = "Play original"
 LBL_BUTTON_PLAY_RECONSTRUCTION = "Play reconstruction"
 LBL_BUTTON_EXPORT_WAV = "Export WAV"
-LBL_BUTTON_REFRESH_LIST = "Refresh list"
+LBL_BUTTON_REFRESH_LIST = "Refresh reconstructions"
 LBL_BUTTON_CLEAR_SEARCH = "Clear"
 LBL_BUTTON_CANCEL = "Cancel"
 LBL_BUTTON_CLOSE = "Close"
@@ -109,7 +111,7 @@ LBL_CHECKBOX_PULSE_2 = "Pulse 2"
 LBL_CHECKBOX_NOISE = "Noise"
 
 # Input field labels
-LBL_INPUT_MAX_WORKERS = "Max workers"
+LBL_CONFIG_INPUT_MAX_WORKERS = "Workers"
 LBL_INPUT_SAMPLE_RATE = "Sample rate"
 LBL_INPUT_CHANGE_RATE = "Change rate"
 LBL_INPUT_SEARCH = "Search"
@@ -125,10 +127,15 @@ TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
 TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
 TITLE_DIALOG_EXPORT_WAV = "Export WAV"
 TITLE_DIALOG_EXPORT_FTI = "Export FTI"
-TITLE_DIALOG_EXPORT_FTI_DIRECTORY = "Export FTI to directory"
+TITLE_DIALOG_EXPORT_FTIS_DIRECTORY = "Export reconstruction as FTI instruments"
+TITLE_DIALOG_EXPORT_FTI_DIRECTORY = "Export FTI instrument"
 TITLE_DIALOG_ERROR = "Error"
-TITLE_DIALOG_CONFIG_STATUS = "Configuration Status"
+TITLE_DIALOG_CONFIG_STATUS = "Configuration status"
 TITLE_DIALOG_CONVERTER = "Reconstruction progress"
+TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
+TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
+TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS = "Library generated successfully"
+TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED = "Library generation cancelled"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -146,32 +153,32 @@ MSG_RECONSTRUCTION_SELECT_TO_VIEW = "Select a reconstruction to view details."
 MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully."
 MSG_CONFIG_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIG_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
-MSG_CONFIG_SAVE_ERROR = "Error saving configuration."
-MSG_CONFIG_LOAD_ERROR = "Error loading configuration."
+MSG_CONFIG_SAVE_ERROR = "Error saving configuration:"
+MSG_CONFIG_LOAD_ERROR = "Error loading configuration:"
 TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
 MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first."
 MSG_LIBRARY_EXISTS = "Library exists."
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist."
 MSG_LIBRARY_GENERATING = "Generating library..."
-MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully."
-MSG_LIBRARY_NOT_LOADED = "Library is not loaded."
+MSG_LIBRARY_GENERATION_SUCCESS = "Library generated successfully."
+MSG_LIBRARY_NOT_LOADED = "Library is not loaded. Please load or generate a library."
 MSG_LIBRARY_LOADING = "Library is loading..."
 MSG_CONFIG_NOT_READY = "Configuration not ready."
 MSG_CONFIG_PREVIEW = "Configuration preview."
 LBL_LIBRARY_LIBRARIES = "Libraries"
 LBL_BROWSER_RECONSTRUCTIONS = "Reconstructions"
 LBL_LIBRARY_AVAILABLE_LIBRARIES = "Libraries"
-TPL_LIBRARY_NOT_EXISTS = "Library {} does not exist."
+TPL_LIBRARY_NOT_EXISTS = "Library {} doesn't exist."
 MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found."
 MSG_GLOBAL_WINDOW_NOT_AVAILABLE = "Window not available."
-MSG_LIBRARY_ERROR_GENERATING = "Error generating library."
+MSG_LIBRARY_GENERATION_CANCELLATION = "Library generation cancelled."
+MSG_LIBRARY_GENERATION_FAILED = "Error generating library."
 MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
-
-# Default display values
-PFX_GLOBAL_ERROR = "Error: {}"
-PFX_GLOBAL_LOADED = "Loaded: {}"
+MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
+MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
+MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
 
 # Template strings
 TPL_LIBRARY_EXISTS = "Library {} exists."
@@ -186,9 +193,11 @@ TAG_LIBRARY_PANEL = "library_panel"
 TAG_LIBRARY_STATUS = "library_status"
 TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
 TAG_BROWSER_CONTROLS_GROUP = "browser_controls_group"
-TAG_LIBRARY_BUTTON_GENERATE = "generate_library_button"
+TAG_LIBRARY_BUTTON_GENERATE = "library_generate_button"
+TAG_LIBRARY_BUTTON_REFRESH = "library_refresh_button"
 TAG_LIBRARY_PROGRESS = "library_progress"
 TAG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
+TAG_BROWSER_BUTTON_REFRESH_LIST = "browser_refresh_list_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_FILE = "browser_reconstruct_file_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY = "browser_reconstruct_directory_button"
 TAG_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
@@ -202,6 +211,16 @@ TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
 TAG_LIBRARY_TREE_GROUP = "libraries_tree_group"
+TAG_LIBRARY_NOT_LOADED_DIALOG = "library_not_loaded_dialog"
+TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
+TAG_PATH_MESSAGE_DIALOG = "path_message_dialog"
+TAG_CONFIG_LIBRARY_DIRECTORY = "config_library_directory"
+
+# Menu item tags
+TAG_MENU_RECONSTRUCT_FILE = "menu_reconstruct_file"
+TAG_MENU_RECONSTRUCT_DIRECTORY = "menu_reconstruct_directory"
+TAG_MENU_RECONSTRUCTION_EXPORT_WAV = "menu_reconstruction_export_wav"
+TAG_MENU_RECONSTRUCTION_EXPORT_FTIS = "menu_reconstruction_export_ftis"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0
@@ -241,18 +260,23 @@ TAG_CONFIG_LOAD_ERROR_DIALOG = "config_load_error_dialog"
 TAG_CONVERTER_WINDOW = "converter_window"
 TAG_CONVERTER_PROGRESS = "converter_progress"
 TAG_CONVERTER_STATUS = "converter_status"
-TAG_CONVERTER_PATH_TEXT = "converter_path_text"
+TAG_CONVERTER_INPUT_PATH_TEXT = "converter_input_path_text"
+TAG_CONVERTER_OUTPUT_PATH_TEXT = "converter_output_path_text"
 TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
 TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
 TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
+TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
+TAG_INFO_DIALOG = "info_dialog"
+TAG_ERROR_DIALOG = "error_dialog"
+
 
 # Messages
 MSG_RECONSTRUCTION_INFO = "Reconstruction info"
 MSG_CONFIG_ERROR = "Configuration error - please check settings"
 MSG_CONVERTER_PROCESSING = "Processing: {}"
-MSG_CONVERTER_ERROR_PREFIX = "Reconstruction failed"
+MSG_CONVERTER_ERROR = "Reconstruction failed."
 MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
@@ -260,6 +284,8 @@ MSG_CONVERTER_IDLE = "Waiting to start..."
 MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_CONVERTER_CANCELLED = "Conversion cancelled."
 TPL_CONVERTER_STATUS = "Progress: {}/{} files"
+MSG_INPUT_PATH_PREFIX = "Input:"
+MSG_OUTPUT_PATH_PREFIX = "Output:"
 
 # Template strings
 TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
@@ -305,6 +331,9 @@ LBL_WAVEFORM_BUTTON_RESET_X = "Reset X"
 LBL_WAVEFORM_BUTTON_RESET_Y = "Reset Y"
 LBL_WAVEFORM_BUTTON_RESET_ALL = "Reset all"
 LBL_WAVEFORM_BUTTON_PLAY_AUDIO = "Play audio"
+SUF_BUTTON_RESET_X = "_button_reset_x"
+SUF_BUTTON_RESET_Y = "_button_reset_y"
+SUF_BUTTON_RESET_ALL = "_button_reset_all"
 
 # Numeric constants for waveform
 VAL_WAVEFORM_FREQUENCY_DECIMALS = 2
@@ -327,7 +356,7 @@ LBL_PLAYER_BUTTON_PAUSE = "Pause"
 LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
-MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error"
+MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error:"
 TITLE_DIALOG_NO_AUDIO = "No Audio"
 TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
 
@@ -346,17 +375,19 @@ TAG_RECONSTRUCTION_EXPORT_PANEL = "reconstruction_export_panel"
 TAG_RECONSTRUCTION_PITCH_BAR_PLOT = "reconstruction_pitch_bar_plot"
 TAG_RECONSTRUCTION_DETAILS_TAB_BAR = "reconstruction_details_tab_bar"
 TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON = "reconstruction_export_fti_button"
+TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON = "reconstruction_export_ftis_button"
 TAG_RECONSTRUCTION_GENERATORS_GROUP = "reconstruction_generators_group"
 TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP = "reconstruction_audio_source_group"
 TPL_RECONSTRUCTION_GENERATOR_CHECKBOX = "reconstruction_generator_{}"
 TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO = "reconstruction_audio_source_{}"
 TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON = "reconstruction_export_wav_button"
-TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP = "reconstruction_export_wav_status_popup"
+TAG_RECONSTRUCTION_EXPORT_STATUS = "reconstruction_export_wav_status_popup"
 LBL_RECONSTRUCTION_WAVEFORM = "Reconstruction waveform"
 LBL_RECONSTRUCTION_AUDIO_SOURCE = "Play audio source:"
 LBL_RECONSTRUCTION_DETAILS = "Reconstruction details"
 LBL_RECONSTRUCTION_EXPORT = "Export"
 LBL_RECONSTRUCTION_EXPORT_FTI = "Export instrument to FTI"
+LBL_RECONSTRUCTION_EXPORT_FTIS = "Export reconstruction as FTIs"
 LBL_RECONSTRUCTION_EXPORT_WAV = "Export reconstruction to WAV"
 LBL_RECONSTRUCTION_PITCH_PLOT = "Pitch"
 LBL_RECONSTRUCTION_HI_PITCH_PLOT = "Hi-pitch"
@@ -366,6 +397,10 @@ LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT = "Duty cycle"
 LBL_RECONSTRUCTION_INITIAL_PITCH = "Initial pitch: {}"
 SUF_RECONSTRUCTION_AUDIO = "_audio"
 SUF_RECONSTRUCTION_PLOT = "_plot"
+SUF_SEARCH_BUTTON = "_search_button"
+SUF_SEARCH_INPUT = "_search_input"
+SUF_GROUP = "_group"
+SUF_PATH_TEXT = "_path_text"
 LBL_COPY_BUTTON = "Copy"
 LBL_COPIED_TOOLTIP = "Copied!"
 LBL_RADIO_ORIGINAL_AUDIO = "Original audio"
@@ -373,9 +408,19 @@ LBL_RADIO_RECONSTRUCTION_AUDIO = "Reconstruction"
 MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected."
 MSG_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
 MSG_RECONSTRUCTION_EXPORT_SUCCESS = "Reconstruction saved successfully."
+MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS = "Reconstruction rendered successfully."
+MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS = "Instrument saved successfully."
+MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instruments saved successfully."
 MSG_RECONSTRUCTION_EXPORT_NO_DATA = "No reconstruction loaded."
-TPL_RECONSTRUCTION_EXPORT_ERROR = "Error: {}"
+MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE = "Reconstruction failed to save:"
+MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE = "Failed to export instrument as FTI:"
+MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE = "Failed to export reconstruction as FTIs:"
+MSG_RECONSTRUCTION_LOAD_FAILURE = "Failed to load reconstruction:"
+MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
+MSG_CONFIG_SAVE_FAILED = "Failed to save configuration:"
+MSG_CONFIG_LOAD_FAILED = "Failed to load configuration:"
 TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
 
 # Waveform layer colors
@@ -396,6 +441,7 @@ SUF_SEPARATOR = "_separator"
 SUF_NO_DATA_MESSAGE = "_no_data_message"
 SUF_WINDOW = "_window"
 SUF_CENTER_PANEL = "_center_panel"
+SUF_BUTTON = "_button"
 
 # Spectrum display settings
 LBL_SPECTRUM_DISPLAY = "Spectrum display"
@@ -431,6 +477,7 @@ SUF_PLAYER_ERROR_POPUP = "_error_popup"
 PFX_PLAYER_POSITION = "Position: "
 SUF_PLAYER_SAMPLES = " samples"
 LBL_BUTTON_OK = "OK"
+TAG_BUTTON_OK = "button_ok"
 
 # Instruction display text constants
 PFX_INSTRUCTION_GENERATOR = "Generator: "
@@ -451,10 +498,11 @@ SUF_INSTRUCTION_SPECTRUM = "_spectrum"
 TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
 TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
+TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
-LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "Transformation gamma"
-TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA = "transformation_gamma"
+LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "Transformation gamma"
+TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"
 TAG_RECONSTRUCTOR_MIXER = "mixer"
 
 # Browser panel constants
@@ -507,3 +555,5 @@ VAL_BAR_PLOT_AXIS_SLOT = 1
 VAL_BAR_PLOT_BAR_WEIGHT = 0.8
 VAL_BAR_PLOT_ZERO_LINE_THICKNESS = 1.0
 DIM_BAR_PLOT_DEFAULT_HEIGHT = 200
+
+CLR_ERROR_TEXT = (255, 100, 100, 255)
