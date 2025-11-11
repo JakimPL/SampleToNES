@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.path import GUIPathText
 from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
@@ -114,14 +115,14 @@ class GUIConverterWindow:
                 dpg.add_table_column()
 
                 with dpg.table_row():
-                    dpg.add_button(
+                    GUIButton(
                         label=LBL_BUTTON_LOAD,
                         tag=TAG_CONVERTER_LOAD_BUTTON,
                         width=DIM_CONVERTER_BUTTON_WIDTH,
                         callback=self._on_load_clicked,
                         enabled=False,
                     )
-                    dpg.add_button(
+                    GUIButton(
                         label=LBL_BUTTON_CANCEL,
                         tag=TAG_CONVERTER_CANCEL_BUTTON,
                         width=DIM_CONVERTER_BUTTON_WIDTH,
@@ -181,7 +182,7 @@ class GUIConverterWindow:
 
     def _on_load_clicked(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
-            dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
+            GUIButton.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
 
         if self.is_file:
             if self.output_path and self._on_load_file is not None:
@@ -201,9 +202,8 @@ class GUIConverterWindow:
 
     def _rename_cancel_to_close(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
-            dpg.configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
-            dpg.configure_item
-            dpg.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
+            GUIButton.configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
+            GUIButton.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
     def _cancel(self) -> None:
         if self.converter and self.converter.is_running():
@@ -262,7 +262,7 @@ class GUIConverterWindow:
             dpg.set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
         if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
-            dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
+            GUIButton.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
 
     def set_callbacks(
         self,

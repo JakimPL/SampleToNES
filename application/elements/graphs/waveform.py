@@ -3,6 +3,7 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from application.elements.button import GUIButton
 from application.elements.graphs.graph import GUIGraphDisplay
 from application.elements.graphs.layers.array import ArrayLayer
 from application.elements.graphs.layers.waveform import WaveformLayer
@@ -22,6 +23,9 @@ from constants.browser import (
     LBL_WAVEFORM_DISPLAY,
     LBL_WAVEFORM_SAMPLE_LAYER_NAME,
     LBL_WAVEFORM_TIME_LABEL,
+    SUF_BUTTON_RESET_ALL,
+    SUF_BUTTON_RESET_X,
+    SUF_BUTTON_RESET_Y,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
@@ -52,6 +56,10 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
+
+        self.reset_x_tag = f"{tag}{SUF_BUTTON_RESET_X}"
+        self.reset_y_tag = f"{tag}{SUF_BUTTON_RESET_Y}"
+        self.reset_all_tag = f"{tag}{SUF_BUTTON_RESET_ALL}"
 
         self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
@@ -88,9 +96,24 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     def _create_content(self) -> None:
         with dpg.group(tag=self.controls_tag, horizontal=True):
-            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_X, callback=self._reset_x_axis, small=True)
-            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_Y, callback=self._reset_y_axis, small=True)
-            dpg.add_button(label=LBL_WAVEFORM_BUTTON_RESET_ALL, callback=self._reset_all_axes, small=True)
+            GUIButton(
+                tag=self.reset_x_tag,
+                label=LBL_WAVEFORM_BUTTON_RESET_X,
+                callback=self._reset_x_axis,
+                small=True,
+            )
+            GUIButton(
+                tag=self.reset_y_tag,
+                label=LBL_WAVEFORM_BUTTON_RESET_Y,
+                callback=self._reset_y_axis,
+                small=True,
+            )
+            GUIButton(
+                tag=self.reset_all_tag,
+                label=LBL_WAVEFORM_BUTTON_RESET_ALL,
+                callback=self._reset_all_axes,
+                small=True,
+            )
 
         with dpg.plot(
             label=self.label,

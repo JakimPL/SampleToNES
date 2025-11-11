@@ -2,10 +2,10 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from application.elements.button import GUIButton
 from application.elements.panel import GUIPanel
 from application.player.data import AudioData
 from application.player.player import AudioPlayer, PlaybackError
-from application.utils.buttons import GUIButton
 from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_PLAYER_BUTTON_WIDTH,
@@ -78,23 +78,16 @@ class GUIAudioPlayerPanel(GUIPanel):
                     enabled=False,
                     width=DIM_PLAYER_BUTTON_WIDTH,
                 )
-                # dpg.add_button(
-                #     label=LBL_PLAYER_BUTTON_PLAY,
-                #     tag=self.play_button_tag,
-                #     callback=self._play_audio,
-                #     enabled=False,
-                #     width=DIM_PLAYER_BUTTON_WIDTH,
-                # )
-                dpg.add_button(
-                    label=LBL_PLAYER_BUTTON_PAUSE,
+                GUIButton(
                     tag=self.pause_button_tag,
+                    label=LBL_PLAYER_BUTTON_PAUSE,
                     callback=self._pause_audio,
                     enabled=False,
                     width=DIM_PLAYER_BUTTON_WIDTH,
                 )
-                dpg.add_button(
-                    label=LBL_PLAYER_BUTTON_STOP,
+                GUIButton(
                     tag=self.stop_button_tag,
+                    label=LBL_PLAYER_BUTTON_STOP,
                     callback=self._stop_audio,
                     enabled=False,
                     width=DIM_PLAYER_BUTTON_WIDTH,
@@ -152,20 +145,20 @@ class GUIAudioPlayerPanel(GUIPanel):
             is_playing = self.audio_player.is_playing
             is_paused = self.audio_player.is_paused
 
-            dpg.configure_item(self.play_button_tag, enabled=True)
-            dpg.configure_item(self.pause_button_tag, enabled=is_playing or is_paused)
-            dpg.configure_item(self.stop_button_tag, enabled=True)
+            GUIButton.configure_item(self.play_button_tag, enabled=True)
+            GUIButton.configure_item(self.pause_button_tag, enabled=is_playing or is_paused)
+            GUIButton.configure_item(self.stop_button_tag, enabled=True)
 
             if is_paused:
-                dpg.set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_RESUME)
-                dpg.set_item_callback(self.pause_button_tag, self._resume_audio)
+                GUIButton.set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_RESUME)
+                GUIButton.set_item_callback(self.pause_button_tag, self._resume_audio)
             else:
-                dpg.set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_PAUSE)
-                dpg.set_item_callback(self.pause_button_tag, self._pause_audio)
+                GUIButton.set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_PAUSE)
+                GUIButton.set_item_callback(self.pause_button_tag, self._pause_audio)
         else:
-            dpg.configure_item(self.play_button_tag, enabled=False)
-            dpg.configure_item(self.pause_button_tag, enabled=False)
-            dpg.configure_item(self.stop_button_tag, enabled=False)
+            GUIButton.configure_item(self.play_button_tag, enabled=False)
+            GUIButton.configure_item(self.pause_button_tag, enabled=False)
+            GUIButton.configure_item(self.stop_button_tag, enabled=False)
 
     def _update_position_display(self) -> None:
         if not self.audio_player.audio_data:

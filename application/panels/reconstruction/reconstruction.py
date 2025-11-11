@@ -4,6 +4,7 @@ from typing import Callable, List, Optional
 import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.graphs.waveform import GUIWaveformDisplay
 from application.elements.panel import GUIPanel
 from application.panels.player import GUIAudioPlayerPanel
@@ -129,7 +130,7 @@ class GUIReconstructionPanel(GUIPanel):
             )
 
     def _create_export_wav_button(self) -> None:
-        dpg.add_button(
+        GUIButton(
             label=LBL_RECONSTRUCTION_EXPORT_WAV,
             tag=TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
             parent=self.audio_tag,
@@ -245,7 +246,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg.configure_item(radio_tag, enabled=True)
-        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
+        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
     def clear_display(self) -> None:
         self.reconstruction_data = None
@@ -269,7 +270,7 @@ class GUIReconstructionPanel(GUIPanel):
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg.configure_item(radio_tag, enabled=False)
         dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
-        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
+        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)

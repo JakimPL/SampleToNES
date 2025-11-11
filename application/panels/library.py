@@ -3,6 +3,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.tree import GUITreePanel
 from application.library.manager import LibraryManager
 from application.utils.dialogs import show_error_dialog, show_file_not_found_dialog
@@ -25,6 +26,7 @@ from constants.browser import (
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     TAG_LIBRARY_BUTTON_GENERATE,
+    TAG_LIBRARY_BUTTON_REFRESH,
     TAG_LIBRARY_CONTROLS_GROUP,
     TAG_LIBRARY_PANEL,
     TAG_LIBRARY_PANEL_GROUP,
@@ -80,16 +82,17 @@ class GUILibraryPanel(GUITreePanel):
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
             with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
-                dpg.add_button(
+                GUIButton(
+                    tag=TAG_LIBRARY_BUTTON_REFRESH,
                     label=LBL_BUTTON_REFRESH_LIBRARIES,
                     width=-1,
                     callback=self._refresh_libraries,
                 )
-                dpg.add_button(
+                GUIButton(
+                    tag=TAG_LIBRARY_BUTTON_GENERATE,
                     label=LBL_BUTTON_GENERATE_LIBRARY,
                     width=-1,
                     callback=self._generate_library,
-                    tag=TAG_LIBRARY_BUTTON_GENERATE,
                 )
                 dpg.add_progress_bar(
                     tag=TAG_LIBRARY_PROGRESS,
@@ -126,16 +129,16 @@ class GUILibraryPanel(GUITreePanel):
 
         if self.library_manager.is_library_loaded(key):
             dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
-            dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_REGENERATE_LIBRARY)
+            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_REGENERATE_LIBRARY)
         elif self.library_manager.library_exists_for_key(key):
             dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
-            dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
         else:
             dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_NOT_EXISTS.format(library_name))
-            dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
 
         is_generating = self.library_manager.is_generating()
-        dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
+        GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not is_generating)
 
     def _refresh_libraries(self) -> None:

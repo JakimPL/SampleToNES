@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from application.elements.button import GUIButton
 from application.elements.path import GUIPathText
 from constants.browser import (
     CLR_ERROR_TEXT,
@@ -15,6 +16,7 @@ from constants.browser import (
     MSG_RECONSTRUCTION_NO_DATA,
     SUF_GROUP,
     SUF_PATH_TEXT,
+    TAG_BUTTON_OK,
     TAG_ERROR_DIALOG,
     TAG_FILE_NOT_FOUND_DIALOG,
     TAG_INFO_DIALOG,
@@ -49,7 +51,8 @@ def show_modal_dialog(
     ):
         content(tag)
         dpg.add_separator()
-        dpg.add_button(
+        GUIButton(
+            tag=TAG_BUTTON_OK,
             label=LBL_BUTTON_OK,
             callback=lambda: dpg.delete_item(tag),
             width=-1,

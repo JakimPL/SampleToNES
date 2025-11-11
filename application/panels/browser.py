@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from application.browser.manager import BrowserManager
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.tree import GUITreePanel
 from application.utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from constants.browser import (
@@ -22,6 +23,7 @@ from constants.browser import (
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+    TAG_BROWSER_BUTTON_REFRESH_LIST,
     TAG_BROWSER_CONTROLS_GROUP,
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
@@ -56,22 +58,23 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
-                dpg.add_button(
+                GUIButton(
+                    tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
                     label=LBL_BUTTON_REFRESH_LIST,
                     width=-1,
                     callback=self._refresh_tree,
                 )
-                dpg.add_button(
+                GUIButton(
+                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
                     label=LBL_BUTTON_RECONSTRUCT_FILE,
                     width=-1,
                     callback=self._reconstruct_file,
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
                 )
-                dpg.add_button(
+                GUIButton(
+                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                     label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
                     width=-1,
                     callback=self._reconstruct_directory,
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                 )
 
             dpg.add_separator()

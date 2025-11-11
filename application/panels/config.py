@@ -4,6 +4,7 @@ from typing import Any, Callable, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.panel import GUIPanel
 from application.elements.path import GUIPathText
 from application.utils.file import file_dialog_handler
@@ -12,11 +13,11 @@ from constants.browser import (
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
     DIM_PANEL_CONFIG_WIDTH,
-    LBL_BUTTON_SELECT_LIBRARY_DIRECTORY,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
     LBL_CHECKBOX_QUANTIZE_AUDIO,
+    LBL_CONFIG_INPUT_MAX_WORKERS,
+    LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
     LBL_INPUT_CHANGE_RATE,
-    LBL_INPUT_MAX_WORKERS,
     LBL_INPUT_SAMPLE_RATE,
     LBL_SECTION_GENERAL_SETTINGS,
     LBL_SECTION_LIBRARY_DIRECTORY,
@@ -24,6 +25,7 @@ from constants.browser import (
     LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
     RNG_CONFIG_MIN_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
+    TAG_CONFIG_LIBRARY_DIRECTORY,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_PANEL,
@@ -78,7 +80,7 @@ class GUIConfigPanel(GUIPanel):
             dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
             dpg.add_checkbox(label=LBL_CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_CONFIG_QUANTIZE)
             dpg.add_input_int(
-                label=LBL_INPUT_MAX_WORKERS,
+                label=LBL_CONFIG_INPUT_MAX_WORKERS,
                 default_value=MAX_WORKERS,
                 tag=TAG_CONFIG_MAX_WORKERS,
                 min_value=RNG_CONFIG_MIN_WORKERS,
@@ -86,8 +88,9 @@ class GUIConfigPanel(GUIPanel):
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_LIBRARY_DIRECTORY)
-            dpg.add_button(
-                label=LBL_BUTTON_SELECT_LIBRARY_DIRECTORY,
+            GUIButton(
+                tag=TAG_CONFIG_LIBRARY_DIRECTORY,
+                label=LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
                 width=-1,
                 callback=self._select_library_directory_dialog,
             )

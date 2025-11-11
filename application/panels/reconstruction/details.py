@@ -4,6 +4,7 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from application.elements.button import GUIButton
 from application.elements.graphs.bar import GUIBarPlotDisplay
 from application.elements.panel import GUIPanel
 from application.reconstruction.config import (
@@ -60,7 +61,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
-            dpg.add_button(
+            GUIButton(
                 tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
                 label=LBL_RECONSTRUCTION_EXPORT_FTIS,
                 width=-1,
@@ -117,7 +118,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 return
 
             button_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}_{tab_tag}"
-            dpg.add_button(
+            GUIButton(
                 tag=button_tag,
                 label=LBL_RECONSTRUCTION_EXPORT_FTI,
                 width=-1,
@@ -213,7 +214,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
 
         with dpg.group(tag=group_tag, parent=parent, horizontal=True):
-            dpg.add_button(
+            GUIButton(
                 tag=copy_button_tag,
                 label=LBL_COPY_BUTTON,
                 width=DIM_COPY_BUTTON_WIDTH,
@@ -233,11 +234,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         if dpg.does_item_exist(button_tag):
             original_label = dpg.get_item_label(button_tag)
-            dpg.configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
+            GUIButton.configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
 
             def restore_label():
                 if dpg.does_item_exist(button_tag):
-                    dpg.configure_item(button_tag, label=original_label)
+                    GUIButton.configure_item(button_tag, label=original_label)
 
             timer = threading.Timer(1.0, restore_label)
             timer.start()
@@ -249,17 +250,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         if dpg.does_item_exist(self.no_data_message_tag):
             dpg.configure_item(self.no_data_message_tag, show=False)
 
-        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
+        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
         self._create_tabs_for_generators(feature_data)
 
     def clear_display(self) -> None:
         self.current_features = None
-        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
+        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
         self._clear_tabs()
 
         if dpg.does_item_exist(self.no_data_message_tag):
             dpg.configure_item(self.no_data_message_tag, show=True)
 
         if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
-            dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
+            GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
             dpg.configure_item(self.export_button_separator_tag, show=False)

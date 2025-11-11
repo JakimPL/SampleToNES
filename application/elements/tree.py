@@ -2,6 +2,7 @@ from typing import Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from application.elements.button import GUIButton
 from application.elements.panel import GUIPanel
 from constants.browser import (
     DIM_SEARCH_BUTTON_WIDTH,
@@ -55,7 +56,7 @@ class GUITreePanel(GUIPanel):
                 callback=self._on_search_changed,
                 width=DIM_SEARCH_INPUT_WIDTH,
             )
-            dpg.add_button(
+            GUIButton(
                 label=LBL_BUTTON_CLEAR_SEARCH,
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,

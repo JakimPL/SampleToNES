@@ -4,6 +4,7 @@ from typing import Any, Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
+from application.elements.button import GUIButton
 from application.elements.panel import GUIPanel
 from application.elements.path import GUIPathText
 from application.utils.file import file_dialog_handler
@@ -23,6 +24,7 @@ from constants.browser import (
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
+    TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
@@ -60,7 +62,8 @@ class GUIReconstructorPanel(GUIPanel):
             dpg.add_separator()
 
             dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
-            dpg.add_button(
+            GUIButton(
+                tag=TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
                 label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
                 width=-1,
                 callback=self._select_output_directory_dialog,

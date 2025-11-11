@@ -49,6 +49,20 @@ class GUIButton:
         else:
             dpg.configure_item(tag, **kwargs)
 
+    @classmethod
+    def set_item_label(cls, tag: str, label: str) -> None:
+        if tag in cls._REGISTRY:
+            dpg.set_item_label(cls._REGISTRY[tag]._button_tag, label)
+        else:
+            dpg.set_item_label(tag, label)
+
+    @classmethod
+    def set_item_callback(cls, tag: str, callback: Callable[..., Any]) -> None:
+        if tag in cls._REGISTRY:
+            dpg.set_item_callback(cls._REGISTRY[tag]._button_tag, callback)
+        else:
+            dpg.set_item_callback(tag, callback)
+
     @property
     def tag(self) -> str:
         return self._tag
