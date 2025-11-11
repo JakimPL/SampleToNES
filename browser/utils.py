@@ -12,12 +12,15 @@ from constants.browser import (
     LBL_BUTTON_OK,
     MSG_LIBRARY_NOT_LOADED,
     MSG_RECONSTRUCTION_NO_DATA,
+    TAG_ERROR_DIALOG,
     TAG_FILE_NOT_FOUND_DIALOG,
     TAG_LIBRARY_NOT_LOADED_DIALOG,
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
+    TITLE_DIALOG_ERROR,
     TITLE_DIALOG_FILE_NOT_FOUND,
     TITLE_DIALOG_LIBRARY_NOT_LOADED,
     TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
+    TPL_ERROR,
 )
 from library.key import LibraryKey
 from utils.serialization import SerializedData
@@ -67,6 +70,21 @@ def show_modal_dialog(
             callback=lambda: dpg.delete_item(tag),
             width=-1,
         )
+
+
+def show_error_dialog(exception: Exception) -> None:
+    def content(parent: str) -> None:
+        dpg.add_text(
+            TPL_ERROR.format(str(exception)),
+            parent=parent,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
+
+    show_modal_dialog(
+        tag=TAG_ERROR_DIALOG,
+        title=TITLE_DIALOG_ERROR,
+        content=content,
+    )
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

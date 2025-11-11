@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, cast
+from typing import Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
-import numpy as np
 
 from browser.config.manager import ConfigManager
 from browser.elements.panel import GUIPanel
@@ -10,7 +9,7 @@ from browser.graphs.waveform import GUIWaveformDisplay
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
-from browser.reconstruction.feature import Feature, FeatureData
+from browser.reconstruction.feature import Feature
 from browser.utils import file_dialog_handler, show_modal_dialog
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -27,7 +26,6 @@ from constants.browser import (
     LBL_RECONSTRUCTION_AUDIO_SOURCE,
     LBL_RECONSTRUCTION_EXPORT_WAV,
     LBL_RECONSTRUCTION_WAVEFORM,
-    MSG_RECONSTRUCTION_EXPORT_NO_DATA,
     MSG_RECONSTRUCTION_EXPORT_SUCCESS,
     SUF_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTION_PLOT,
@@ -309,12 +307,53 @@ class GUIReconstructionPanel(GUIPanel):
         if not self.reconstruction_data:
             return
 
+        self.save_instrument_feature(filepath, generator_name)
+
+    @file_dialog_handler
+    def _handle_ftis_export_dialog_result(self, directory: Path) -> None:
+        if not self.reconstruction_data:
+            return
+
+        reconstruction = self.reconstruction_data.reconstruction
+        filename = Path(reconstruction.audio_filepath).stem
+
+        for generator_name in self.reconstruction_data.feature_data.generators.keys():
+            instrument_name = f"{filename} ({generator_name})"
+            filepath = directory / f"{instrument_name}{EXT_FILE_FTI}"
+            self.save_instrument_feature(filepath, generator_name)
+
+    def export_reconstruction_to_ftis(self) -> None:
+        if not self.reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
+
+        reconstruction = self.reconstruction_data.reconstruction
+        filename = Path(reconstruction.audio_filepath).stem
+
+        with dpg.file_dialog(
+            label=TITLE_DIALOG_EXPORT_FTI,
+            width=DIM_DIALOG_FILE_WIDTH,
+            height=DIM_DIALOG_FILE_HEIGHT,
+            callback=self._handle_ftis_export_dialog_result,
+            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_filename=filename,
+            directory_selector=True,
+        ):
+            pass
+
+    def save_instrument_feature(self, filepath: Path, generator_name: GeneratorName) -> None:
+        if not self.reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
+
         reconstruction = self.reconstruction_data.reconstruction
         filename = Path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename}_{generator_name}"
         feature = self.reconstruction_data.feature_data[generator_name]
-        feature.save(filepath, instrument_name)
-        # TODO: Show success/failure message
+
+        try:
+            feature.save(filepath, instrument_name)
+        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+            logger.error_with_traceback(f"Failed to export instrument feature to FTI: {filepath}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     def _handle_export_wav_button_click(self) -> None:
         if self._on_export_wav:

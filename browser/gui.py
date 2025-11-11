@@ -384,7 +384,7 @@ class GUI:
 
     def _export_reconstruction_to_fti(self) -> None:
         if self._check_if_reconstruction_loaded():
-            pass  # self.reconstruction_details_panel.export_reconstruction_to_fti()
+            self.reconstruction_panel.export_reconstruction_to_ftis()
 
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():

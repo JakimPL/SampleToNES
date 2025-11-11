@@ -7,7 +7,7 @@ from browser.browser.manager import BrowserManager
 from browser.config.manager import ConfigManager
 from browser.elements.tree import GUITreePanel
 from browser.tree.node import FileSystemNode, TreeNode
-from browser.utils import show_file_not_found_dialog
+from browser.utils import show_error_dialog, show_file_not_found_dialog
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
@@ -27,6 +27,7 @@ from constants.browser import (
     TAG_BROWSER_TREE_GROUP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
+from exceptions.reconstruction import InvalidReconstructionError
 from utils.logger import logger
 
 
@@ -136,6 +137,14 @@ class GUIBrowserPanel(GUITreePanel):
                 show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
             else:
                 show_file_not_found_dialog(missing_file, MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND)
+            return
+        except (IsADirectoryError, OSError, PermissionError) as exception:
+            logger.error_with_traceback(f"Error while loading reconstruction data from {filepath}", exception)
+            show_error_dialog(exception)
+            return
+        except InvalidReconstructionError as exception:
+            logger.error_with_traceback(f"Invalid reconstruction file: {filepath}", exception)
+            show_error_dialog(exception)
             return
 
         if self._on_reconstruction_selected:
