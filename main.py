@@ -1,4 +1,4 @@
-from browser.gui import GUI
+from application.gui import GUI
 from constants.general import SAMPLE_TO_NES_VERSION
 from utils.logger import logger
 

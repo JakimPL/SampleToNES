@@ -1,0 +1,2 @@
+class PlaybackError(Exception):
+    pass
