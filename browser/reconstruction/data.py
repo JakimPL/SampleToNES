@@ -9,6 +9,7 @@ from configs.config import Config
 from constants.enums import GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from utils.audio.io import load_audio
+from utils.logger import logger
 
 
 class ReconstructionData(BaseModel):
@@ -27,12 +28,16 @@ class ReconstructionData(BaseModel):
         normalize = reconstruction.config.general.normalize
         quantize = reconstruction.config.general.quantize
 
-        original_audio = load_audio(
-            path=audio_filepath,
-            target_sample_rate=sample_rate,
-            normalize=normalize,
-            quantize=quantize,
-        )
+        try:
+            original_audio = load_audio(
+                path=audio_filepath,
+                target_sample_rate=sample_rate,
+                normalize=normalize,
+                quantize=quantize,
+            )
+        except (FileNotFoundError, IsADirectoryError, OSError, PermissionError):
+            logger.warning(f"Could not load original audio from {audio_filepath}. Using silent audio instead.")
+            original_audio = np.zeros_like(reconstruction.approximation)
 
         feature_data = FeatureData.load(reconstruction)
 

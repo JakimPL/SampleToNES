@@ -1,5 +1,6 @@
 # Global constants
 
+SAMPLE_TO_NES_NAME = "SampleToNES"
 SAMPLE_TO_NES_VERSION = "0.2.0"
 
 SAMPLE_RATE = 44100

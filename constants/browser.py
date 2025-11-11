@@ -134,6 +134,7 @@ TITLE_DIALOG_CONFIG_STATUS = "Configuration status"
 TITLE_DIALOG_CONVERTER = "Reconstruction progress"
 TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
 TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
+TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS = "Library generated successfully"
 TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED = "Library generation cancelled"
 
 # Plot labels

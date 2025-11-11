@@ -133,12 +133,8 @@ class GUIBrowserPanel(GUITreePanel):
         try:
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
         except FileNotFoundError as error:
-            missing_file = Path(error.filename)
             logger.error_with_traceback(f"Failed to load reconstruction data from {filepath}", error)
-            if missing_file == filepath:
-                show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
-            else:
-                show_file_not_found_dialog(missing_file, MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND)
+            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
             return
         except (IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"Error while loading reconstruction data from {filepath}", exception)
@@ -148,6 +144,12 @@ class GUIBrowserPanel(GUITreePanel):
             logger.error_with_traceback(f"Invalid reconstruction file: {filepath}", exception)
             show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
             return
+
+        if not reconstruction_data.reconstruction.audio_filepath.exists():
+            show_file_not_found_dialog(
+                reconstruction_data.reconstruction.audio_filepath,
+                MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+            )
 
         if self._on_reconstruction_selected:
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)

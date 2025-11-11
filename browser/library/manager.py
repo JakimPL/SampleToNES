@@ -15,6 +15,7 @@ from constants.browser import (
     EXT_FILE_LIBRARY,
     MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
+    MSG_LIBRARY_GENERATION_SUCCESS,
     NOD_LABEL_LIBRARIES,
     NOD_LABEL_NOT_LOADED,
     NOD_TYPE_GENERATOR,
@@ -24,6 +25,7 @@ from constants.browser import (
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     NOD_TYPE_ROOT,
     TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
+    TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS,
 )
 from constants.enums import GeneratorClassName, LibraryGeneratorName
 from constants.general import NOISE_PERIODS
@@ -146,6 +148,7 @@ class LibraryManager:
         key, library_data = result
         self.library.save_data(key, library_data)
         self.current_library_key = key
+        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS)
 
     def _on_generation_error(self, exception: Exception) -> None:
         show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
