@@ -53,6 +53,10 @@ from constants.browser import (
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
     TAG_LIBRARY_PANEL_GROUP,
+    TAG_MENU_RECONSTRUCT_DIRECTORY,
+    TAG_MENU_RECONSTRUCT_FILE,
+    TAG_MENU_RECONSTRUCTION_EXPORT_FTI,
+    TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
     TAG_TAB_LIBRARY,
@@ -104,9 +108,11 @@ class GUI:
         dpg.show_viewport()
         self.set_callbacks()
         self.config_manager.update_gui()
+        self.update_menu()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.add_config_change_callback(self.update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_panel.set_callbacks(on_update_library_directory=self.library_panel.refresh)
@@ -158,28 +164,48 @@ class GUI:
                 dpg.add_separator()
                 dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
                 dpg.add_menu_item(
+                    tag=TAG_MENU_RECONSTRUCT_FILE,
                     label=LBL_MENU_RECONSTRUCT_FILE,
                     callback=self._reconstruct_file_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_menu_item(
+                    tag=TAG_MENU_RECONSTRUCT_DIRECTORY,
                     label=LBL_MENU_RECONSTRUCT_DIRECTORY,
                     callback=self._reconstruct_directory_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_separator()
                 dpg.add_menu_item(
+                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
                     label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
                     callback=self._export_reconstruction_to_wav,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_menu_item(
+                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_FTI,
                     label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
                     callback=self._export_reconstruction_fti_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_separator()
                 dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
+
+    def update_menu(self) -> None:
+        library_loaded = self._is_library_loaded()
+        reconstruction_loaded = self._is_reconstruction_loaded()
+
+        if dpg.does_item_exist(TAG_MENU_RECONSTRUCT_FILE):
+            dpg.configure_item(TAG_MENU_RECONSTRUCT_FILE, enabled=library_loaded)
+
+        if dpg.does_item_exist(TAG_MENU_RECONSTRUCT_DIRECTORY):
+            dpg.configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
+
+        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_WAV):
+            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
+
+        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_FTI):
+            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTI, enabled=reconstruction_loaded)
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
@@ -377,6 +403,7 @@ class GUI:
 
     def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
+        self.update_menu()
 
     def _export_reconstruction_to_wav(self) -> None:
         if self._check_if_reconstruction_loaded():

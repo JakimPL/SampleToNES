@@ -6,9 +6,9 @@ import dearpygui.dearpygui as dpg
 
 from constants.browser import (
     CLR_PATH_TEXT,
-    DIM_DIALOG_ERROR_HEIGHT,
-    DIM_DIALOG_ERROR_WIDTH,
     DIM_DIALOG_ERROR_WIDTH_WRAP,
+    DIM_DIALOG_HEIGHT,
+    DIM_DIALOG_WIDTH,
     LBL_BUTTON_OK,
     MSG_LIBRARY_NOT_LOADED,
     MSG_RECONSTRUCTION_NO_DATA,
@@ -48,8 +48,8 @@ def show_modal_dialog(
     tag: str,
     title: str,
     content: Callable[[str], None],
-    width: int = DIM_DIALOG_ERROR_WIDTH,
-    height: int = DIM_DIALOG_ERROR_HEIGHT,
+    width: int = DIM_DIALOG_WIDTH,
+    height: int = DIM_DIALOG_HEIGHT,
 ) -> None:
     if dpg.does_item_exist(tag):
         dpg.delete_item(tag)
@@ -60,6 +60,7 @@ def show_modal_dialog(
         modal=True,
         width=width,
         height=height,
+        min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg.delete_item(tag),
     ):
