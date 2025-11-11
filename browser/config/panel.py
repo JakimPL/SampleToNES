@@ -21,6 +21,7 @@ from constants.browser import (
     LBL_SECTION_GENERAL_SETTINGS,
     LBL_SECTION_LIBRARY_DIRECTORY,
     LBL_SECTION_LIBRARY_SETTINGS,
+    LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
     RNG_CONFIG_MIN_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_MAX_WORKERS,
@@ -29,6 +30,7 @@ from constants.browser import (
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
+    TAG_CONFIG_TRANSFORMATION_GAMMA,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
@@ -36,6 +38,7 @@ from constants.general import (
     CHANGE_RATE,
     MAX_CHANGE_RATE,
     MAX_SAMPLE_RATE,
+    MAX_TRANSFORMATION_GAMMA,
     MAX_WORKERS,
     MIN_CHANGE_RATE,
     MIN_SAMPLE_RATE,
@@ -67,6 +70,7 @@ class GUIConfigPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
+            auto_resize_y=True,
         ):
             dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
             dpg.add_separator()
@@ -112,6 +116,13 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_CONFIG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
+            )
+            dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
+            dpg.add_slider_int(
+                min_value=0,
+                max_value=MAX_TRANSFORMATION_GAMMA,
+                width=-1,
+                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
             )
 
         self._register_callbacks()

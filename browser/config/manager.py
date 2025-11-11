@@ -16,8 +16,8 @@ from constants.browser import (
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
+    TAG_CONFIG_TRANSFORMATION_GAMMA,
     TAG_RECONSTRUCTOR_MIXER,
-    TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
     TITLE_DIALOG_ERROR,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
@@ -56,10 +56,10 @@ class ConfigManager:
                 TAG_CONFIG_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
                 TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": SAMPLE_RATE},
                 TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": CHANGE_RATE},
+                TAG_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
             "reconstructor": {
                 TAG_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
-                TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
         }
         self.generator_tags = {
@@ -206,7 +206,7 @@ class ConfigManager:
         return {
             TAG_CONFIG_SAMPLE_RATE: sample_rate,
             TAG_CONFIG_CHANGE_RATE: change_rate,
-            TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA: transformation_gamma,
+            TAG_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
         }
 
     def load_config(self, config: Config) -> None:

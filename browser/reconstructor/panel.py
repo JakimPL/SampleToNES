@@ -22,17 +22,15 @@ from constants.browser import (
     LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
-    LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
-    TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
     TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
-from constants.general import MAX_MIXER, MAX_TRANSFORMATION_GAMMA, MIXER
+from constants.general import MAX_MIXER, MIXER
 from utils.serialization import SerializedData
 
 
@@ -56,6 +54,7 @@ class GUIReconstructorPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
+            auto_resize_y=True,
         ):
             dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
             dpg.add_separator()
@@ -83,13 +82,6 @@ class GUIReconstructorPanel(GUIPanel):
                 default_value=MIXER,
                 width=-1,
                 tag=TAG_RECONSTRUCTOR_MIXER,
-            )
-            dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_TRANSFORMATION_GAMMA)
-            dpg.add_slider_int(
-                min_value=0,
-                max_value=MAX_TRANSFORMATION_GAMMA,
-                width=-1,
-                tag=TAG_RECONSTRUCTOR_TRANSFORMATION_GAMMA,
             )
             dpg.add_separator()
 
