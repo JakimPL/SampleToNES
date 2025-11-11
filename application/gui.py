@@ -146,8 +146,9 @@ class GUI:
             on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
         )
 
-        self.reconstruction_details_panel.set_callback(
+        self.reconstruction_details_panel.set_callbacks(
             on_instrument_export=self.reconstruction_panel.export_reconstruction_fti_dialog,
+            on_instruments_export=self.reconstruction_panel.export_reconstruction_ftis_dialog,
         )
 
     def create_main_window(self) -> None:

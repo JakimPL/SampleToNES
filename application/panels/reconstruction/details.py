@@ -19,6 +19,7 @@ from constants.browser import (
     LBL_COPY_BUTTON,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
+    LBL_RECONSTRUCTION_EXPORT_FTIS,
     LBL_RECONSTRUCTION_INITIAL_PITCH,
     MSG_RECONSTRUCTION_NO_DATA,
     SUF_GRAPH_COPY_BUTTON,
@@ -31,6 +32,7 @@ from constants.browser import (
     TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
     TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
+    TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
     VAL_PLOT_WIDTH_FULL,
 )
 from constants.enums import FeatureKey, GeneratorName
@@ -48,6 +50,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.export_button_separator_tag = f"{TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON}{SUF_SEPARATOR}"
 
         self._on_instrument_export: Optional[Callable[[GeneratorName], None]] = None
+        self._on_instruments_export: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
@@ -57,6 +60,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
             dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
+            dpg.add_button(
+                tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
+                label=LBL_RECONSTRUCTION_EXPORT_FTIS,
+                width=-1,
+                callback=self._export_instruments,
+                enabled=False,
+                show=False,
+            )
             dpg.add_separator()
 
             dpg.add_separator(tag=self.export_button_separator_tag, show=False)
@@ -66,8 +77,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 show=True,
             )
 
-    def set_callback(self, on_instrument_export: Optional[Callable[[GeneratorName], None]] = None) -> None:
+    def set_callbacks(
+        self,
+        on_instrument_export: Optional[Callable[[GeneratorName], None]] = None,
+        on_instruments_export: Optional[Callable[[], None]] = None,
+    ) -> None:
         self._on_instrument_export = on_instrument_export
+        self._on_instruments_export = on_instruments_export
+
+    def _export_instruments(self) -> None:
+        if self._on_instruments_export is not None:
+            self._on_instruments_export()
 
     def _handle_export_button_clicked(self, generator_name: GeneratorName) -> None:
         if self._on_instrument_export is not None:
@@ -229,10 +249,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         if dpg.does_item_exist(self.no_data_message_tag):
             dpg.configure_item(self.no_data_message_tag, show=False)
 
+        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
         self._create_tabs_for_generators(feature_data)
 
     def clear_display(self) -> None:
         self.current_features = None
+        dpg.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
         self._clear_tabs()
 
         if dpg.does_item_exist(self.no_data_message_tag):
