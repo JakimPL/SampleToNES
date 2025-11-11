@@ -18,6 +18,8 @@ from constants.browser import (
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
+    MSG_RECONSTRUCTION_LOAD_FAILURE,
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
@@ -140,11 +142,11 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except (IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"Error while loading reconstruction data from {filepath}", exception)
-            show_error_dialog(exception)
+            show_error_dialog(exception, MSG_RECONSTRUCTION_LOAD_FAILURE)
             return
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(f"Invalid reconstruction file: {filepath}", exception)
-            show_error_dialog(exception)
+            show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
             return
 
         if self._on_reconstruction_selected:

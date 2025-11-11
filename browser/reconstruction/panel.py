@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -9,12 +9,10 @@ from browser.graphs.waveform import GUIWaveformDisplay
 from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
-from browser.reconstruction.feature import Feature
 from browser.utils import (
     file_dialog_handler,
     show_error_dialog,
     show_message_with_path_dialog,
-    show_modal_dialog,
 )
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -32,14 +30,14 @@ from constants.browser import (
     LBL_RECONSTRUCTION_EXPORT_WAV,
     LBL_RECONSTRUCTION_WAVEFORM,
     MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE,
+    MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
     MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE,
-    MSG_RECONSTRUCTION_EXPORT_SUCCESS,
+    MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
     MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
     MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
     SUF_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTION_PLOT,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
-    TAG_RECONSTRUCTION_EXPORT_STATUS,
     TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
     TAG_RECONSTRUCTION_PANEL,
@@ -71,7 +69,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.reconstruction_data: Optional[ReconstructionData] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
-        self._pending_fti_export: Optional[Tuple[GeneratorName, Feature]] = None
+        self._pending_generator_name: Optional[GeneratorName] = None
 
         self._on_export_wav: Optional[Callable[[], None]] = None
         self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
@@ -304,7 +302,7 @@ class GUIReconstructionPanel(GUIPanel):
         filename = Path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename} ({generator_name})"
 
-        self._pending_fti_export = (generator_name, generator_features)
+        self._pending_generator_name = generator_name
         with dpg.file_dialog(
             label=TITLE_DIALOG_EXPORT_FTI,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -317,19 +315,23 @@ class GUIReconstructionPanel(GUIPanel):
 
     @file_dialog_handler
     def _handle_fti_export_dialog_result(self, filepath: Path) -> None:
-        if not self.reconstruction_data or not self._pending_fti_export:
+        if not self.reconstruction_data or not self._pending_generator_name:
             logger.warning("No reconstruction data available for FTI export")
-            self._pending_fti_export = None
+            self._pending_generator_name = None
             return
 
-        generator_name, generator_features = self._pending_fti_export
+        generator_name = self._pending_generator_name
         instrument_name = self._get_instrument_name(generator_name)
-        self._pending_fti_export = None
+        self._pending_generator_name = None
 
         try:
             self.save_instrument_feature(filepath, instrument_name, generator_name)
             logger.info(f"Exported instrument feature to FTI: {filepath}")
-            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+            show_message_with_path_dialog(
+                TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
+                MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+                filepath,
+            )
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"File error while saving instrument: {filepath}", exception)
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
@@ -346,7 +348,11 @@ class GUIReconstructionPanel(GUIPanel):
         try:
             self.save_instrument_features(directory)
             logger.info(f"Exported instrument features to FTI: {directory}")
-            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+            show_message_with_path_dialog(
+                TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
+                MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
+                directory,
+            )
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"File error while saving instruments: {directory}", exception)
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
@@ -432,13 +438,3 @@ class GUIReconstructionPanel(GUIPanel):
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", exception)
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
-
-    def _show_export_status_dialog(self, message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(message, parent=parent)
-
-        show_modal_dialog(
-            tag=TAG_RECONSTRUCTION_EXPORT_STATUS,
-            title=TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
-            content=content,
-        )

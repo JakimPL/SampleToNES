@@ -256,7 +256,9 @@ class GUILibraryPanel(GUITreePanel):
         config = self.config_manager.get_config()
         window = self.config_manager.get_window()
         if not window:
-            show_error_dialog(WindowNotAvailableError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE), MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
+            exception = WindowNotAvailableError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
+            logger.info("No window available for library generation")
+            show_error_dialog(exception, MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
             return
 
         dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)

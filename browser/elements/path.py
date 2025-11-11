@@ -90,14 +90,15 @@ class GUIPathText:
             return
 
         path_to_open = self.path if self.path.is_dir() else self.path.parent
+        path_string = str(path_to_open)
 
         system = platform.system()
         if system == "Windows":
-            subprocess.run(["explorer", str(path_to_open)])
+            subprocess.run(["explorer", path_string])
         elif system == "Darwin":
-            subprocess.run(["open", str(path_to_open)])
+            subprocess.run(["open", path_string])
         else:
-            subprocess.run(["xdg-open", str(path_to_open)])
+            subprocess.run(["xdg-open", path_string])
 
     def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
         self.path = Path(path)
