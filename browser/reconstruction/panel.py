@@ -271,7 +271,19 @@ class GUIReconstructionPanel(GUIPanel):
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
 
-    def _handle_instrument_export(self, generator_name: GeneratorName) -> None:
+    def _get_instrument_name(self, generator_name: Optional[GeneratorName] = None) -> str:
+        if not self.reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be present")
+
+        reconstruction = self.reconstruction_data.reconstruction
+        filename = Path(reconstruction.audio_filepath).stem
+        if generator_name is None:
+            return filename
+
+        instrument_name = f"{filename}_{generator_name}"
+        return instrument_name
+
+    def export_reconstruction_fti_dialog(self, generator_name: GeneratorName) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
 
@@ -297,37 +309,46 @@ class GUIReconstructionPanel(GUIPanel):
 
     @file_dialog_handler
     def _handle_fti_export_dialog_result(self, filepath: Path) -> None:
-        if not self._pending_fti_export:
+        if not self.reconstruction_data or not self._pending_fti_export:
+            logger.warning("No reconstruction data available for FTI export")
             self._pending_fti_export = None
             return
 
         generator_name, generator_features = self._pending_fti_export
+        instrument_name = self._get_instrument_name(generator_name)
         self._pending_fti_export = None
 
-        if not self.reconstruction_data:
-            return
-
-        self.save_instrument_feature(filepath, generator_name)
+        try:
+            self.save_instrument_feature(filepath, instrument_name, generator_name)
+            logger.info(f"Exported instrument feature to FTI: {filepath}")
+            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+            logger.error_with_traceback(f"File error while saving instrument: {filepath}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to export instrument: {filepath}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
     @file_dialog_handler
     def _handle_ftis_export_dialog_result(self, directory: Path) -> None:
         if not self.reconstruction_data:
+            logger.warning("No reconstruction data available for FTIs export")
             return
 
-        reconstruction = self.reconstruction_data.reconstruction
-        filename = Path(reconstruction.audio_filepath).stem
+        try:
+            self.save_instrument_features(directory)
+            logger.info(f"Exported instrument features to FTI: {directory}")
+            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+            logger.error_with_traceback(f"File error while saving instruments: {directory}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to export instruments: {directory}", exception)
+            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
 
-        for generator_name in self.reconstruction_data.feature_data.generators.keys():
-            instrument_name = f"{filename} ({generator_name})"
-            filepath = directory / f"{instrument_name}{EXT_FILE_FTI}"
-            self.save_instrument_feature(filepath, generator_name)
-
-    def export_reconstruction_to_ftis(self) -> None:
+    def export_reconstruction_ftis_dialog(self) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
-
-        reconstruction = self.reconstruction_data.reconstruction
-        filename = Path(reconstruction.audio_filepath).stem
 
         with dpg.file_dialog(
             label=TITLE_DIALOG_EXPORT_FTI,
@@ -335,31 +356,38 @@ class GUIReconstructionPanel(GUIPanel):
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_ftis_export_dialog_result,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-            default_filename=filename,
-            directory_selector=True,
+            directory_selector=False,
+            default_filename=self._get_instrument_name(),
         ):
             pass
 
-    def save_instrument_feature(self, filepath: Path, generator_name: GeneratorName) -> None:
+    def save_instrument_features(self, directory: Path) -> None:
         if not self.reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
+            raise AssertionError("Expected reconstruction data to be loaded before exporting all FTI instruments")
 
-        reconstruction = self.reconstruction_data.reconstruction
-        filename = Path(reconstruction.audio_filepath).stem
-        instrument_name = f"{filename}_{generator_name}"
+        directory.mkdir(parents=True, exist_ok=True)
+        for generator_name in self.reconstruction_data.feature_data.generators.keys():
+            instrument_name = self._get_instrument_name(generator_name)
+            filepath = directory / f"{instrument_name}{EXT_FILE_FTI}"
+            self.save_instrument_feature(filepath, instrument_name, generator_name)
+
+    def save_instrument_feature(
+        self,
+        filepath: Path,
+        instrument_name: str,
+        generator_name: GeneratorName,
+    ) -> None:
+        if not self.reconstruction_data:
+            raise AssertionError("Expected reconstruction data to be loaded before exporting an FTI instrument")
+
         feature = self.reconstruction_data.feature_data[generator_name]
-
-        try:
-            feature.save(filepath, instrument_name)
-        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
-            logger.error_with_traceback(f"Failed to export instrument feature to FTI: {filepath}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+        feature.save(filepath, instrument_name)
 
     def _handle_export_wav_button_click(self) -> None:
         if self._on_export_wav:
             self._on_export_wav()
 
-    def export_reconstruction_to_wav(self) -> None:
+    def export_reconstruction_wav_dialog(self) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
@@ -387,6 +415,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             write_audio(filepath, partial_approximation, sample_rate)
+            logger.info(f"Exported reconstruction to WAV: {filepath}")
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", exception)

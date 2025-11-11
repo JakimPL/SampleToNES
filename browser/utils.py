@@ -58,8 +58,6 @@ def show_modal_dialog(
         label=title,
         tag=tag,
         modal=True,
-        width=width,
-        height=height,
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg.delete_item(tag),

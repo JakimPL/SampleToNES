@@ -36,7 +36,7 @@ from constants.browser import (
     EXT_FILE_WAV,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_EXIT,
-    LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
+    LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
     LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
     LBL_MENU_LOAD_CONFIG,
@@ -55,7 +55,7 @@ from constants.browser import (
     TAG_LIBRARY_PANEL_GROUP,
     TAG_MENU_RECONSTRUCT_DIRECTORY,
     TAG_MENU_RECONSTRUCT_FILE,
-    TAG_MENU_RECONSTRUCTION_EXPORT_FTI,
+    TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
     TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
@@ -63,7 +63,6 @@ from constants.browser import (
     TAG_TAB_RECONSTRUCTION,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
-    TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
     TITLE_DIALOG_LOAD_CONFIG,
     TITLE_DIALOG_LOAD_RECONSTRUCTION,
     TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
@@ -140,13 +139,13 @@ class GUI:
         )
 
         self.reconstruction_panel.set_callbacks(
-            on_export_wav=self._export_reconstruction_to_wav,
+            on_export_wav=self._export_reconstruction_wav_dialog,
             on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
             on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
         )
 
         self.reconstruction_details_panel.set_callback(
-            on_instrument_export=self.reconstruction_panel._handle_instrument_export,
+            on_instrument_export=self.reconstruction_panel.export_reconstruction_fti_dialog,
         )
 
     def create_main_window(self) -> None:
@@ -179,13 +178,13 @@ class GUI:
                 dpg.add_menu_item(
                     tag=TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
                     label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
-                    callback=self._export_reconstruction_to_wav,
+                    callback=self._export_reconstruction_wav_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_FTI,
-                    label=LBL_MENU_EXPORT_RECONSTRUCTION_FTI,
-                    callback=self._export_reconstruction_fti_dialog,
+                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
+                    label=LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
+                    callback=self._export_reconstruction_ftis_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_separator()
@@ -204,8 +203,8 @@ class GUI:
         if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_WAV):
             dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
 
-        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_FTI):
-            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTI, enabled=reconstruction_loaded)
+        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS):
+            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
@@ -374,18 +373,6 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
-    def _export_reconstruction_fti_dialog(self) -> None:
-        if not self._check_if_reconstruction_loaded():
-            return
-
-        dpg.add_file_dialog(
-            label=TITLE_DIALOG_EXPORT_FTI_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
-            directory_selector=True,
-            show=True,
-        )
-
     def _show_config_status_dialog(self, message: str) -> None:
         def content_builder(parent: str) -> None:
             dpg.add_text(message, parent=parent)
@@ -405,13 +392,13 @@ class GUI:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self.update_menu()
 
-    def _export_reconstruction_to_wav(self) -> None:
+    def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_reconstruction_to_wav()
+            self.reconstruction_panel.export_reconstruction_wav_dialog()
 
-    def _export_reconstruction_to_fti(self) -> None:
+    def _export_reconstruction_ftis_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_reconstruction_to_ftis()
+            self.reconstruction_panel.export_reconstruction_ftis_dialog()
 
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():
