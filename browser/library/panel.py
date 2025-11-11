@@ -23,10 +23,10 @@ from constants.browser import (
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_LIBRARY_LIBRARIES,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
-    MSG_LIBRARY_ERROR_GENERATING,
     MSG_LIBRARY_FILE_NOT_FOUND,
-    MSG_LIBRARY_GENERATED_SUCCESSFULLY,
     MSG_LIBRARY_GENERATING,
+    MSG_LIBRARY_GENERATION_FAILED,
+    MSG_LIBRARY_GENERATION_SUCCESS,
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
@@ -267,13 +267,6 @@ class GUILibraryPanel(GUITreePanel):
         dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
 
         self.library_manager.generate_library(config, window, overwrite=True)
-        if self.library_manager.creator:
-            self.library_manager.creator.set_callbacks(
-                on_progress=self._update_generation_progress,
-                on_complete=self._on_generation_complete,
-                on_error=self._on_generation_error,
-                on_cancelled=self._on_generation_cancelled,
-            )
 
     def _update_generation_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
@@ -304,13 +297,13 @@ class GUILibraryPanel(GUITreePanel):
 
     def _set_generation_completed(self) -> None:
         if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATED_SUCCESSFULLY)
+            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
         if dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
             dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:
         if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_ERROR_GENERATING)
+            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_FAILED)
 
     def _set_generation_cancelled(self) -> None:
         if dpg.does_item_exist(TAG_LIBRARY_STATUS):
@@ -339,7 +332,7 @@ class GUILibraryPanel(GUITreePanel):
         self.library_manager.cleanup_creator()
 
     def _finalize_generation_error(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_LIBRARY_ERROR_GENERATING)
+        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
         self._finalize_generation()
 
     def set_callbacks(

@@ -9,9 +9,12 @@ from browser.tree.node import (
     TreeNode,
 )
 from browser.tree.tree import Tree
+from browser.utils import show_error_dialog, show_info_dialog
 from configs.config import Config
 from constants.browser import (
     EXT_FILE_LIBRARY,
+    MSG_LIBRARY_GENERATION_CANCELLATION,
+    MSG_LIBRARY_GENERATION_FAILED,
     NOD_LABEL_LIBRARIES,
     NOD_LABEL_NOT_LOADED,
     NOD_TYPE_GENERATOR,
@@ -20,6 +23,7 @@ from constants.browser import (
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     NOD_TYPE_ROOT,
+    TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
 )
 from constants.enums import GeneratorClassName, LibraryGeneratorName
 from constants.general import NOISE_PERIODS
@@ -135,6 +139,7 @@ class LibraryManager:
             on_error=self._on_generation_error,
             on_cancelled=self._on_generation_cancelled,
         )
+
         self.creator.start(window, overwrite)
 
     def _on_generation_complete(self, result: Tuple[LibraryKey, LibraryData]) -> None:
@@ -142,11 +147,11 @@ class LibraryManager:
         self.library.save_data(key, library_data)
         self.current_library_key = key
 
-    def _on_generation_error(self, error_message: str) -> None:
-        pass
+    def _on_generation_error(self, exception: Exception) -> None:
+        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
 
     def _on_generation_cancelled(self) -> None:
-        pass
+        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED)
 
     def is_generating(self) -> bool:
         return self.creator is not None and self.creator.is_running()

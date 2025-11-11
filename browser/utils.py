@@ -18,6 +18,7 @@ from constants.browser import (
     SUF_PATH_TEXT,
     TAG_ERROR_DIALOG,
     TAG_FILE_NOT_FOUND_DIALOG,
+    TAG_INFO_DIALOG,
     TAG_LIBRARY_NOT_LOADED_DIALOG,
     TAG_PATH_MESSAGE_DIALOG,
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
@@ -73,6 +74,21 @@ def show_modal_dialog(
             callback=lambda: dpg.delete_item(tag),
             width=-1,
         )
+
+
+def show_info_dialog(message: str, title: str) -> None:
+    def content(parent: str) -> None:
+        dpg.add_text(
+            message,
+            parent=parent,
+            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+        )
+
+    show_modal_dialog(
+        tag=TAG_INFO_DIALOG,
+        title=title,
+        content=content,
+    )
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:

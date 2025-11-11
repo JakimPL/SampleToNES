@@ -134,6 +134,7 @@ TITLE_DIALOG_CONFIG_STATUS = "Configuration status"
 TITLE_DIALOG_CONVERTER = "Reconstruction progress"
 TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
 TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
+TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED = "Library generation cancelled"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -158,7 +159,7 @@ MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply
 MSG_LIBRARY_EXISTS = "Library exists."
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist."
 MSG_LIBRARY_GENERATING = "Generating library..."
-MSG_LIBRARY_GENERATED_SUCCESSFULLY = "Library generated successfully."
+MSG_LIBRARY_GENERATION_SUCCESS = "Library generated successfully."
 MSG_LIBRARY_NOT_LOADED = "Library is not loaded. Please load or generate a library."
 MSG_LIBRARY_LOADING = "Library is loading..."
 MSG_CONFIG_NOT_READY = "Configuration not ready."
@@ -169,7 +170,8 @@ LBL_LIBRARY_AVAILABLE_LIBRARIES = "Libraries"
 TPL_LIBRARY_NOT_EXISTS = "Library {} doesn't exist."
 MSG_LIBRARY_NO_VALID_INSTRUCTIONS = "No valid instructions found."
 MSG_GLOBAL_WINDOW_NOT_AVAILABLE = "Window not available."
-MSG_LIBRARY_ERROR_GENERATING = "Error generating library."
+MSG_LIBRARY_GENERATION_CANCELLATION = "Library generation cancelled."
+MSG_LIBRARY_GENERATION_FAILED = "Error generating library."
 MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
@@ -262,6 +264,7 @@ TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
 TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
 TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
+TAG_INFO_DIALOG = "info_dialog"
 TAG_ERROR_DIALOG = "error_dialog"
 
 
