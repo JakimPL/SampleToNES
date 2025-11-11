@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from application.config.manager import ConfigManager
 from application.elements.panel import GUIPanel
 from application.elements.path import GUIPathText
-from application.utils import file_dialog_handler
+from application.utils.file import file_dialog_handler
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,

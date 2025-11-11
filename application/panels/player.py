@@ -5,7 +5,8 @@ import dearpygui.dearpygui as dpg
 from application.elements.panel import GUIPanel
 from application.player.data import AudioData
 from application.player.player import AudioPlayer, PlaybackError
-from application.utils import show_error_dialog, show_modal_dialog
+from application.utils.buttons import GUIButton
+from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_PLAYER_BUTTON_WIDTH,
     DIM_PLAYER_PANEL_HEIGHT,
@@ -70,13 +71,20 @@ class GUIAudioPlayerPanel(GUIPanel):
             no_scrollbar=True,
         ):
             with dpg.group(tag=self.controls_group_tag, horizontal=True):
-                dpg.add_button(
-                    label=LBL_PLAYER_BUTTON_PLAY,
+                GUIButton(
                     tag=self.play_button_tag,
+                    label=LBL_PLAYER_BUTTON_PLAY,
                     callback=self._play_audio,
                     enabled=False,
                     width=DIM_PLAYER_BUTTON_WIDTH,
                 )
+                # dpg.add_button(
+                #     label=LBL_PLAYER_BUTTON_PLAY,
+                #     tag=self.play_button_tag,
+                #     callback=self._play_audio,
+                #     enabled=False,
+                #     width=DIM_PLAYER_BUTTON_WIDTH,
+                # )
                 dpg.add_button(
                     label=LBL_PLAYER_BUTTON_PAUSE,
                     tag=self.pause_button_tag,

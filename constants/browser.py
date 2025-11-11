@@ -435,6 +435,7 @@ SUF_SEPARATOR = "_separator"
 SUF_NO_DATA_MESSAGE = "_no_data_message"
 SUF_WINDOW = "_window"
 SUF_CENTER_PANEL = "_center_panel"
+SUF_BUTTON = "_button"
 
 # Spectrum display settings
 LBL_SPECTRUM_DISPLAY = "Spectrum display"

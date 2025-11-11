@@ -14,13 +14,13 @@ from application.panels.reconstruction.details import GUIReconstructionDetailsPa
 from application.panels.reconstruction.reconstruction import GUIReconstructionPanel
 from application.panels.reconstructor import GUIReconstructorPanel
 from application.reconstruction.data import ReconstructionData
-from application.utils import (
-    file_dialog_handler,
+from application.utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
 )
+from application.utils.file import file_dialog_handler
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,

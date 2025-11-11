@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from application.browser.manager import BrowserManager
 from application.config.manager import ConfigManager
 from application.elements.tree import GUITreePanel
-from application.utils import show_error_dialog, show_file_not_found_dialog
+from application.utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,

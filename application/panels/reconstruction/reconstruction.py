@@ -9,11 +9,8 @@ from application.elements.panel import GUIPanel
 from application.panels.player import GUIAudioPlayerPanel
 from application.player.data import AudioData
 from application.reconstruction.data import ReconstructionData
-from application.utils import (
-    file_dialog_handler,
-    show_error_dialog,
-    show_message_with_path_dialog,
-)
+from application.utils.dialogs import show_error_dialog, show_message_with_path_dialog
+from application.utils.file import file_dialog_handler
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,

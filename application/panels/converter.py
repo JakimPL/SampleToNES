@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from application.config.manager import ConfigManager
 from application.elements.path import GUIPathText
-from application.utils import show_error_dialog, show_modal_dialog
+from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,

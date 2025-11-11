@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from application.utils import show_error_dialog, show_info_dialog
+from application.utils.dialogs import show_error_dialog, show_info_dialog
 from configs.config import Config
 from constants.browser import (
     EXT_FILE_LIBRARY,

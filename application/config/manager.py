@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from application.utils import show_error_dialog
+from application.utils.dialogs import show_error_dialog
 from configs.config import Config
 from configs.general import GeneralConfig
 from configs.generation import GenerationConfig
