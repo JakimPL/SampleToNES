@@ -21,10 +21,13 @@ from constants.browser import (
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_PROCESSING,
     MSG_CONVERTER_SUCCESS,
+    MSG_INPUT_PATH_PREFIX,
+    MSG_OUTPUT_PATH_PREFIX,
     TAG_CONVERTER_CANCEL_BUTTON,
     TAG_CONVERTER_ERROR_DIALOG,
+    TAG_CONVERTER_INPUT_PATH_TEXT,
     TAG_CONVERTER_LOAD_BUTTON,
-    TAG_CONVERTER_PATH_TEXT,
+    TAG_CONVERTER_OUTPUT_PATH_TEXT,
     TAG_CONVERTER_PROGRESS,
     TAG_CONVERTER_STATUS,
     TAG_CONVERTER_SUCCESS_DIALOG,
@@ -36,6 +39,7 @@ from constants.browser import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from reconstructor.converter.converter import ReconstructionConverter
+from reconstructor.converter.paths import get_output_path
 from utils.parallelization.task import TaskProgress, TaskStatus
 
 
@@ -43,10 +47,11 @@ class GUIConverterWindow:
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.converter: Optional[ReconstructionConverter] = None
-        self.path: Optional[GUIPathText] = None
+        self.input_path_text: Optional[GUIPathText] = None
+        self.output_path_text: Optional[GUIPathText] = None
 
         self.is_file: bool = False
-        self.output_file_path: Optional[Path] = None
+        self.output_path: Optional[Path] = None
 
         self._on_load_file: Optional[Callable[[Path], None]] = None
         self._on_load_directory: Optional[Callable[[], None]] = None
@@ -55,9 +60,8 @@ class GUIConverterWindow:
         if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
             dpg.delete_item(TAG_CONVERTER_WINDOW)
 
-    def show(self, target_path: Path, is_file: bool = False) -> None:
+    def show(self, input_path: Path, is_file: bool = False) -> None:
         self.is_file = is_file
-        self.output_file_path = None
 
         config = self.config_manager.get_config()
         self.converter = ReconstructionConverter(config=config)
@@ -67,6 +71,8 @@ class GUIConverterWindow:
             on_cancelled=self._on_cancellation_complete,
             on_progress=self._update_status,
         )
+
+        self.output_path = get_output_path(config, input_path)
 
         self.hide()
         with dpg.window(
@@ -85,9 +91,17 @@ class GUIConverterWindow:
                 width=-1,
             )
 
-            self.path = GUIPathText(
-                tag=TAG_CONVERTER_PATH_TEXT,
-                path=target_path,
+            self.input_path_text = GUIPathText(
+                path=input_path,
+                prefix=MSG_INPUT_PATH_PREFIX,
+                tag=TAG_CONVERTER_INPUT_PATH_TEXT,
+                parent=TAG_CONVERTER_WINDOW,
+            )
+
+            self.output_path_text = GUIPathText(
+                path=self.output_path,
+                prefix=MSG_OUTPUT_PATH_PREFIX,
+                tag=TAG_CONVERTER_OUTPUT_PATH_TEXT,
                 parent=TAG_CONVERTER_WINDOW,
             )
 
@@ -117,7 +131,7 @@ class GUIConverterWindow:
                         callback=self._on_cancel_clicked,
                     )
 
-        self.converter.start(target_path, is_file)
+        self.converter.start(input_path, is_file)
 
     def _set_status_completed(self):
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
@@ -142,9 +156,9 @@ class GUIConverterWindow:
             dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
 
         current_file = task_progress.current_item
-        if self.path and current_file is not None:
+        if self.input_path_text and current_file is not None:
             current_file_path = Path(current_file)
-            self.path.set_path(current_file_path)
+            self.input_path_text.set_path(current_file_path)
 
         if dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(
@@ -173,8 +187,8 @@ class GUIConverterWindow:
             dpg.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
 
         if self.is_file:
-            if self.output_file_path and self._on_load_file is not None:
-                self._on_load_file(self.output_file_path)
+            if self.output_path and self._on_load_file is not None:
+                self._on_load_file(self.output_path)
         else:
             if self._on_load_directory is not None:
                 self._on_load_directory()
@@ -256,7 +270,7 @@ class GUIConverterWindow:
 
     def set_completed(self, output_path: Path) -> None:
         if output_path.exists():
-            self.output_file_path = output_path
+            self.output_path = output_path
 
         self._set_status_completed()
         if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):

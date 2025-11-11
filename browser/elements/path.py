@@ -5,7 +5,12 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import CLR_PATH_TEXT, CLR_PATH_TEXT_HOVER, SUF_CONVERTER_HANDLER
+from constants.browser import (
+    CLR_PATH_TEXT,
+    CLR_PATH_TEXT_HOVER,
+    SUF_CONVERTER_HANDLER,
+    SUF_GROUP,
+)
 from utils.common import shorten_path
 
 
@@ -14,25 +19,36 @@ class GUIPathText:
         self,
         tag: str,
         path: Path,
-        parent: Optional[str] = None,
+        parent: str,
+        prefix: Optional[str] = None,
         color: Tuple[int, int, int] = CLR_PATH_TEXT,
         hover_color: Tuple[int, int, int] = CLR_PATH_TEXT_HOVER,
     ) -> None:
         self.tag = tag
         self.path = path
         self.display_text = shorten_path(self.path)
+        self.prefix = prefix
+
         self.color = color
         self.hover_color = hover_color
-        self.handler_tag = f"{tag}{SUF_CONVERTER_HANDLER}"
 
-        self._create_text(parent)
+        self.parent = parent
+        self.handler_tag = f"{tag}{SUF_CONVERTER_HANDLER}"
+        self.group_tag = f"{tag}{SUF_GROUP}"
+
+        self._create_text()
         self._create_handler()
 
-    def _create_text(self, parent: Optional[str]) -> None:
+    def _create_text(self) -> None:
+        parent = self.group_tag if self.prefix is not None else self.parent
+        if self.prefix is not None:
+            dpg.add_group(horizontal=True, tag=self.group_tag, parent=self.parent)
+            dpg.add_text(self.prefix, parent=self.group_tag)
+
         kwargs = {
             "tag": self.tag,
             "color": self.color,
-            "parent": parent if parent is not None else 0,
+            "parent": parent,
         }
 
         dpg.add_text(

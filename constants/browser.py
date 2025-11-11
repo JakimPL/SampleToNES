@@ -28,7 +28,7 @@ DIM_DIALOG_ERROR_WIDTH = 350
 DIM_DIALOG_ERROR_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
 DIM_DIALOG_CONVERTER_WIDTH = 700
-DIM_DIALOG_CONVERTER_HEIGHT = 131
+DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
 DIM_BUTTON_DEFAULT_HEIGHT = 23
@@ -249,7 +249,8 @@ TAG_CONFIG_LOAD_ERROR_DIALOG = "config_load_error_dialog"
 TAG_CONVERTER_WINDOW = "converter_window"
 TAG_CONVERTER_PROGRESS = "converter_progress"
 TAG_CONVERTER_STATUS = "converter_status"
-TAG_CONVERTER_PATH_TEXT = "converter_path_text"
+TAG_CONVERTER_INPUT_PATH_TEXT = "converter_input_path_text"
+TAG_CONVERTER_OUTPUT_PATH_TEXT = "converter_output_path_text"
 TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
 TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
@@ -270,6 +271,8 @@ MSG_CONVERTER_IDLE = "Waiting to start..."
 MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_CONVERTER_CANCELLED = "Conversion cancelled."
 TPL_CONVERTER_STATUS = "Progress: {}/{} files"
+MSG_INPUT_PATH_PREFIX = "Input:"
+MSG_OUTPUT_PATH_PREFIX = "Output:"
 
 # Template strings
 TPL_RECONSTRUCTION_GEN_TAG = "gen_{}"
@@ -378,6 +381,7 @@ SUF_RECONSTRUCTION_AUDIO = "_audio"
 SUF_RECONSTRUCTION_PLOT = "_plot"
 SUF_SEARCH_BUTTON = "_search_button"
 SUF_SEARCH_INPUT = "_search_input"
+SUF_GROUP = "_group"
 LBL_COPY_BUTTON = "Copy"
 LBL_COPIED_TOOLTIP = "Copied!"
 LBL_RADIO_ORIGINAL_AUDIO = "Original audio"
