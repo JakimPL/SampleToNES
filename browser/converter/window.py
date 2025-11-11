@@ -5,12 +5,11 @@ import dearpygui.dearpygui as dpg
 
 from browser.config.manager import ConfigManager
 from browser.elements.path import GUIPathText
-from browser.utils import show_modal_dialog
+from browser.utils import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
-    DIM_DIALOG_ERROR_WIDTH_WRAP,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_LOAD,
@@ -24,7 +23,6 @@ from constants.browser import (
     MSG_INPUT_PATH_PREFIX,
     MSG_OUTPUT_PATH_PREFIX,
     TAG_CONVERTER_CANCEL_BUTTON,
-    TAG_CONVERTER_ERROR_DIALOG,
     TAG_CONVERTER_INPUT_PATH_TEXT,
     TAG_CONVERTER_LOAD_BUTTON,
     TAG_CONVERTER_OUTPUT_PATH_TEXT,
@@ -33,7 +31,6 @@ from constants.browser import (
     TAG_CONVERTER_SUCCESS_DIALOG,
     TAG_CONVERTER_WINDOW,
     TITLE_DIALOG_CONVERTER,
-    TITLE_DIALOG_ERROR,
     TPL_CONVERTER_STATUS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
@@ -231,25 +228,13 @@ class GUIConverterWindow:
         self._rename_cancel_to_close()
         self._show_success_dialog()
 
-    def _on_conversion_error(self, error_message: str) -> None:
+    def _on_conversion_error(self, exception: Exception) -> None:
         self._set_status_failed()
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(error_message))
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(exception))
 
-    def _finalize_error(self, error_message: str) -> None:
+    def _finalize_error(self, exception: Exception) -> None:
         self._rename_cancel_to_close()
-        self._show_error_dialog(error_message)
-
-    def _show_error_dialog(self, error_message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(MSG_CONVERTER_ERROR, parent=parent)
-            dpg.add_separator(parent=parent)
-            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH_WRAP, parent=parent)
-
-        show_modal_dialog(
-            tag=TAG_CONVERTER_ERROR_DIALOG,
-            title=TITLE_DIALOG_ERROR,
-            content=content,
-        )
+        show_error_dialog(exception, MSG_CONVERTER_ERROR)
 
     def _show_success_dialog(self) -> None:
         def content(parent: str) -> None:

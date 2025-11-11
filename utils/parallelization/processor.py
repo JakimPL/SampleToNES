@@ -32,7 +32,7 @@ class TaskProcessor(Generic[T]):
 
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self._on_complete: Optional[Callable[[T], None]] = None
-        self._on_error: Optional[Callable[[str], None]] = None
+        self._on_error: Optional[Callable[[Exception], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
 
     def start(self, *args, **kwargs) -> None:
@@ -143,7 +143,7 @@ class TaskProcessor(Generic[T]):
         self._notify_progress()
 
         if self._on_error:
-            self._on_error(str(exception))
+            self._on_error(exception)
 
     def cleanup(self) -> None:
         self.status = TaskStatus.CLEANING_UP
@@ -207,7 +207,7 @@ class TaskProcessor(Generic[T]):
         self,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_complete: Optional[Callable[[T], None]] = None,
-        on_error: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
     ) -> None:
         if on_progress is not None:

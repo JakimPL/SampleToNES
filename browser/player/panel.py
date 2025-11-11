@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 from browser.elements.panel import GUIPanel
 from browser.player.data import AudioData
 from browser.player.player import AudioPlayer, PlaybackError
-from browser.utils import show_modal_dialog
+from browser.utils import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_PLAYER_BUTTON_WIDTH,
     DIM_PLAYER_PANEL_HEIGHT,
@@ -26,7 +26,6 @@ from constants.browser import (
     SUF_PLAYER_SAMPLES,
     SUF_PLAYER_STOP,
     TITLE_DIALOG_NO_AUDIO,
-    TITLE_DIALOG_PLAYBACK_ERROR,
 )
 from utils.audio.manager import AudioDeviceManager
 
@@ -118,7 +117,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         try:
             self.audio_player.play()
         except PlaybackError as exception:
-            self._show_playback_error_dialog(str(exception))
+            show_error_dialog(exception, MSG_PLAYER_AUDIO_PLAYBACK_ERROR)
             return
 
         self._update_controls()
@@ -174,15 +173,5 @@ class GUIAudioPlayerPanel(GUIPanel):
         show_modal_dialog(
             tag=self.no_audio_popup_tag,
             title=TITLE_DIALOG_NO_AUDIO,
-            content=content,
-        )
-
-    def _show_playback_error_dialog(self, error_message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(f"{MSG_PLAYER_AUDIO_PLAYBACK_ERROR}:\n{error_message}", parent=parent)
-
-        show_modal_dialog(
-            tag=self.error_popup_tag,
-            title=TITLE_DIALOG_PLAYBACK_ERROR,
             content=content,
         )

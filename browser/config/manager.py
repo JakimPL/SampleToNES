@@ -1,24 +1,21 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-import dearpygui.dearpygui as dpg
-
-from browser.utils import show_modal_dialog
+from browser.utils import show_error_dialog
 from configs.config import Config
 from configs.general import GeneralConfig
 from configs.generation import GenerationConfig
 from configs.library import LibraryConfig
 from constants.browser import (
     MSG_CONFIG_LOAD_ERROR,
+    MSG_CONFIG_SAVE_ERROR,
     TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_LOAD_ERROR_DIALOG,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
     TAG_RECONSTRUCTOR_MIXER,
-    TITLE_DIALOG_ERROR,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from constants.enums import GeneratorName
@@ -73,33 +70,26 @@ class ConfigManager:
             try:
                 self.load_config_from_file(self.config_path)
             except Exception as exception:  # TODO: specify exception type
-                logger.error_with_traceback(f"Failed to load config from {self.config_path}", exception)
-                self._show_config_load_error(str(exception))
                 self.load_config(Config())
+                logger.error_with_traceback(f"Failed to load config from {self.config_path}", exception)
+                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
         else:
             logger.warning(f"Config file does not exist: {self.config_path}")
             self.load_config(Config())
-
-    def _show_config_load_error(self, error_message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(MSG_CONFIG_LOAD_ERROR, parent=parent)
-            dpg.add_separator(parent=parent)
-            dpg.add_text(error_message, wrap=400, parent=parent)
-
-        show_modal_dialog(
-            tag=TAG_CONFIG_LOAD_ERROR_DIALOG,
-            title=TITLE_DIALOG_ERROR,
-            content=content,
-        )
 
     def save_config(self) -> None:
         if not self.config:
             logger.warning("No configuration to save")
             return
 
-        self.config_path.parent.mkdir(parents=True, exist_ok=True)
         config_dict = self.config.model_dump()
-        save_json(self.config_path, config_dict)
+
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            save_json(self.config_path, config_dict)
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(f"Failed to save config to {self.config_path}", exception)
+            show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
         assert self.config is not None, "Config must be loaded before updating from GUI values"

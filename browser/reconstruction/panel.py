@@ -10,7 +10,12 @@ from browser.player.data import AudioData
 from browser.player.panel import GUIAudioPlayerPanel
 from browser.reconstruction.data import ReconstructionData
 from browser.reconstruction.feature import Feature
-from browser.utils import file_dialog_handler, show_modal_dialog
+from browser.utils import (
+    file_dialog_handler,
+    show_error_dialog,
+    show_message_with_path_dialog,
+    show_modal_dialog,
+)
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -26,12 +31,16 @@ from constants.browser import (
     LBL_RECONSTRUCTION_AUDIO_SOURCE,
     LBL_RECONSTRUCTION_EXPORT_WAV,
     LBL_RECONSTRUCTION_WAVEFORM,
+    MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE,
+    MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE,
     MSG_RECONSTRUCTION_EXPORT_SUCCESS,
+    MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
+    MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
     SUF_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTION_PLOT,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
+    TAG_RECONSTRUCTION_EXPORT_STATUS,
     TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
-    TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
     TAG_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTION_PANEL_GROUP,
@@ -41,7 +50,6 @@ from constants.browser import (
     TITLE_DIALOG_EXPORT_WAV,
     TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
     TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO,
-    TPL_RECONSTRUCTION_EXPORT_ERROR,
     TPL_RECONSTRUCTION_GENERATOR_CHECKBOX,
     VAL_AUDIO_SOURCE_SELECTOR,
     VAL_DIALOG_FILE_COUNT_SINGLE,
@@ -324,10 +332,10 @@ class GUIReconstructionPanel(GUIPanel):
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"File error while saving instrument: {filepath}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to export instrument: {filepath}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
 
     @file_dialog_handler
     def _handle_ftis_export_dialog_result(self, directory: Path) -> None:
@@ -341,10 +349,10 @@ class GUIReconstructionPanel(GUIPanel):
             self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(f"File error while saving instruments: {directory}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to export instruments: {directory}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
 
     def export_reconstruction_ftis_dialog(self) -> None:
         if not self.reconstruction_data:
@@ -416,17 +424,21 @@ class GUIReconstructionPanel(GUIPanel):
         try:
             write_audio(filepath, partial_approximation, sample_rate)
             logger.info(f"Exported reconstruction to WAV: {filepath}")
-            self._show_export_status_dialog(MSG_RECONSTRUCTION_EXPORT_SUCCESS)
+            show_message_with_path_dialog(
+                TITLE_DIALOG_EXPORT_WAV,
+                MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+                filepath,
+            )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", exception)
-            self._show_export_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
 
     def _show_export_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent)
 
         show_modal_dialog(
-            tag=TAG_RECONSTRUCTION_EXPORT_WAV_STATUS_POPUP,
+            tag=TAG_RECONSTRUCTION_EXPORT_STATUS,
             title=TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
             content=content,
         )

@@ -12,9 +12,9 @@ from browser.tree.node import (
     LibraryNode,
     TreeNode,
 )
-from browser.utils import show_file_not_found_dialog, show_modal_dialog
+from browser.utils import show_error_dialog, show_file_not_found_dialog
+from configs.library import LibraryConfig
 from constants.browser import (
-    DIM_DIALOG_ERROR_WIDTH_WRAP,
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
@@ -31,7 +31,6 @@ from constants.browser import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
-    TAG_DIALOG_ERROR_LIBRARY_GENERATION,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_CONTROLS_GROUP,
     TAG_LIBRARY_PANEL,
@@ -40,13 +39,16 @@ from constants.browser import (
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
-    TITLE_DIALOG_ERROR,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from constants.enums import GeneratorClassName
+from exceptions.window import WindowNotAvailableError
+from instructions.instruction import Instruction
+from library.data import LibraryFragment
 from library.key import LibraryKey
 from utils.logger import logger
 from utils.parallelization.task import TaskProgress, TaskStatus
@@ -58,8 +60,10 @@ class GUILibraryPanel(GUITreePanel):
         library_directory = config_manager.get_library_directory()
         self.library_manager = LibraryManager(library_directory)
 
-        self._on_instruction_selected: Optional[Callable] = None
-        self._on_apply_library_config: Optional[Callable] = None
+        self._on_instruction_selected: Optional[
+            Callable[[GeneratorClassName, Instruction, LibraryFragment, LibraryConfig], None]
+        ] = None
+        self._on_apply_library_config: Optional[Callable[[LibraryKey], None]] = None
 
         super().__init__(
             tree=self.library_manager.tree,
@@ -240,7 +244,7 @@ class GUILibraryPanel(GUITreePanel):
             user_data.generator_class_name,
             user_data.instruction,
             user_data.fragment,
-            library_config=config.library,
+            config.library,
         )
 
         self.update_status()
@@ -252,7 +256,7 @@ class GUILibraryPanel(GUITreePanel):
         config = self.config_manager.get_config()
         window = self.config_manager.get_window()
         if not window:
-            self._show_error_dialog(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
+            show_error_dialog(WindowNotAvailableError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE), MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
             return
 
         dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
@@ -313,8 +317,8 @@ class GUILibraryPanel(GUITreePanel):
     def _on_generation_complete(self, result: tuple) -> None:
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 
-    def _on_generation_error(self, error_message: str) -> None:
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation_error(error_message))
+    def _on_generation_error(self, exception: Exception) -> None:
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation_error(exception))
 
     def _on_generation_cancelled(self) -> None:
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
@@ -332,8 +336,8 @@ class GUILibraryPanel(GUITreePanel):
         self._rebuild_tree()
         self.library_manager.cleanup_creator()
 
-    def _finalize_generation_error(self, error_message: str) -> None:
-        self._show_error_dialog(error_message)
+    def _finalize_generation_error(self, exception: Exception) -> None:
+        show_error_dialog(exception, MSG_LIBRARY_ERROR_GENERATING)
         self._finalize_generation()
 
     def set_callbacks(
@@ -345,15 +349,3 @@ class GUILibraryPanel(GUITreePanel):
             self._on_instruction_selected = on_instruction_selected
         if on_apply_library_config is not None:
             self._on_apply_library_config = on_apply_library_config
-
-    def _show_error_dialog(self, error_message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(MSG_LIBRARY_ERROR_GENERATING, parent=parent)
-            dpg.add_separator(parent=parent)
-            dpg.add_text(error_message, wrap=DIM_DIALOG_ERROR_WIDTH_WRAP, parent=parent)
-
-        show_modal_dialog(
-            tag=TAG_DIALOG_ERROR_LIBRARY_GENERATION,
-            title=TITLE_DIALOG_ERROR,
-            content=content,
-        )

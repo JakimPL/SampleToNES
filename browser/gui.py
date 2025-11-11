@@ -16,6 +16,7 @@ from browser.reconstruction.panel import GUIReconstructionPanel
 from browser.reconstructor.panel import GUIReconstructorPanel
 from browser.utils import (
     file_dialog_handler,
+    show_error_dialog,
     show_library_not_loaded_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
@@ -47,7 +48,9 @@ from constants.browser import (
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
+    MSG_CONFIG_SAVE_FAILED,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
+    MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
     SUF_CENTER_PANEL,
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
@@ -69,7 +72,6 @@ from constants.browser import (
     TITLE_DIALOG_RECONSTRUCT_FILE,
     TITLE_DIALOG_SAVE_CONFIG,
     TITLE_WINDOW_MAIN,
-    TPL_RECONSTRUCTION_EXPORT_ERROR,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
@@ -316,7 +318,7 @@ class GUI:
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to save config to {filepath}", exception)
-            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -335,7 +337,7 @@ class GUI:
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(f"Failed to load config from {filepath}", exception)
-            self._show_config_status_dialog(TPL_RECONSTRUCTION_EXPORT_ERROR.format(str(exception)))
+            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
 
     def _reconstruct_file_dialog(self) -> None:
         if not self._check_if_library_loaded():
@@ -384,7 +386,11 @@ class GUI:
         )
 
     def _on_instruction_selected(
-        self, generator_class_name: str, instruction, fragment: LibraryFragment, library_config: LibraryConfig
+        self,
+        generator_class_name: str,
+        instruction,
+        fragment: LibraryFragment,
+        library_config: LibraryConfig,
     ) -> None:
         self.instruction_panel.display_instruction(generator_class_name, instruction, fragment, library_config)
 
