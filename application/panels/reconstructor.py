@@ -33,7 +33,7 @@ from constants.browser import (
 )
 from constants.enums import GeneratorName
 from constants.general import MAX_MIXER, MIXER
-from utils.serialization import SerializedData
+from typehints.general import SerializedData
 
 
 class GUIReconstructorPanel(GUIPanel):

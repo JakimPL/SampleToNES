@@ -4,9 +4,9 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from constants.enums import GeneratorName
+from instructions.typehints import InstructionUnion
 from library.fragment import Fragment
 from reconstructor.approximation import ApproximationData
-from typehints.instructions import InstructionUnion
 
 
 class FragmentReconstructionState(BaseModel):

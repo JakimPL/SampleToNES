@@ -6,7 +6,7 @@ from constants.enums import FeatureKey
 from constants.general import MIN_PITCH
 from exporters.exporter import Exporter
 from instructions.pulse import PulseInstruction
-from typehints.feature import FeatureValue
+from typehints.general import FeatureValue
 
 
 class PulseExporter(Exporter[PulseInstruction]):

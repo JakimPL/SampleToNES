@@ -33,8 +33,9 @@ from constants.general import (
 )
 from ffts.window import Window
 from library.key import LibraryKey
+from typehints.general import SerializedData
 from utils.logger import logger
-from utils.serialization import SerializedData, load_json, save_json
+from utils.serialization import load_json, save_json
 
 
 class ConfigManager:

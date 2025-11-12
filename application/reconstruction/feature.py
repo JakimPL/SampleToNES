@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
-from typehints.feature import FeatureValue
+from typehints.general import FeatureValue
 from utils.famitracker import write_fti
 
 

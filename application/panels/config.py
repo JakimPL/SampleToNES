@@ -49,7 +49,7 @@ from constants.general import (
     SAMPLE_RATE,
 )
 from library.key import LibraryKey
-from utils.serialization import SerializedData
+from typehints.general import SerializedData
 
 
 class GUIConfigPanel(GUIPanel):

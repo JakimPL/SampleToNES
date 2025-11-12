@@ -1,6 +1,7 @@
 from .lfsr import LFSRTimer
 from .phase import PhaseTimer
 from .timer import Timer
+from .typehints import TimerType
 from .utils import get_frequency_table
 
 __all__ = [
@@ -8,4 +9,5 @@ __all__ = [
     "PhaseTimer",
     "Timer",
     "get_frequency_table",
+    "TimerType",
 ]

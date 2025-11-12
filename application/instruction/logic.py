@@ -17,8 +17,8 @@ from constants.browser import (
     SUF_INSTRUCTION_SAMPLE_LENGTH,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
+from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
-from typehints.instructions import InstructionUnion
 
 
 class InstructionDetailsLogic:

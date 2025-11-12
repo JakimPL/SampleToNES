@@ -2,14 +2,14 @@ import base64
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 import numpy as np
 from pydantic import BaseModel
 
-JSON_INDENT = 2
+from typehints.general import SerializedData
 
-SerializedData = Dict[str, Any]
+JSON_INDENT = 2
 
 
 def dump(data: Any) -> str:

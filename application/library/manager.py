@@ -22,6 +22,7 @@ from constants.browser import (
 from constants.enums import GeneratorClassName, LibraryGeneratorName
 from constants.general import NOISE_PERIODS
 from ffts.window import Window
+from generators.maps import LIBRARY_GENERATOR_CLASS_MAP
 from instructions.instruction import Instruction
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
@@ -30,7 +31,6 @@ from library.creator.creator import LibraryCreator
 from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
-from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
 from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
 from tree.tree import Tree
 from utils.frequencies import pitch_to_name

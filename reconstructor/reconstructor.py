@@ -9,14 +9,14 @@ from constants.enums import GeneratorName
 from exceptions.library import NoLibraryDataError
 from ffts.window import Window
 from generators.generator import Generator
+from generators.maps import GENERATOR_CLASSES, MIXER_LEVELS
+from generators.typehints import GeneratorUnion
 from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
 from reconstructor.approximation import ApproximationData
-from reconstructor.maps import GENERATOR_CLASSES, MIXER_LEVELS
 from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
-from typehints.generators import GeneratorUnion
 
 
 def reconstruct(

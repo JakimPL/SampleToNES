@@ -11,7 +11,7 @@ from ffts.transformations.functions import (
     identity,
     log1p,
 )
-from typehints.transformations import BinaryTransformation, UnaryTransformation
+from ffts.transformations.typehints import BinaryTransformation, UnaryTransformation
 
 
 class Transformations(NamedTuple):

@@ -22,8 +22,8 @@ from constants.browser import (
     TAG_INSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
 )
+from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
-from typehints.instructions import InstructionUnion
 
 
 class GUIInstructionPanel(GUIPanel):

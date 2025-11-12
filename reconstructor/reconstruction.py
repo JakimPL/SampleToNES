@@ -8,19 +8,14 @@ from configs.config import Config
 from constants.enums import FeatureKey, GeneratorName, InstructionClassName
 from constants.general import SAMPLE_TO_NES_NAME, SAMPLE_TO_NES_VERSION
 from exceptions.reconstruction import InvalidReconstructionError
-from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
+from exporters.maps import INSTRUCTION_TO_EXPORTER_MAP
+from exporters.typehints import ExporterClass
+from instructions.maps import INSTRUCTION_CLASS_MAP
+from instructions.typehints import InstructionClass, InstructionUnion
 from reconstructor.state import ReconstructionState
-from typehints.exporters import ExporterClass
-from typehints.feature import FeatureValue
-from typehints.instructions import InstructionClass, InstructionUnion
+from typehints.general import FeatureValue, SerializedData
 from utils.logger import logger
-from utils.serialization import (
-    SerializedData,
-    deserialize_array,
-    load_json,
-    save_json,
-    serialize_array,
-)
+from utils.serialization import deserialize_array, load_json, save_json, serialize_array
 
 
 def default_metadata() -> SerializedData:

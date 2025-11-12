@@ -8,13 +8,13 @@ from tqdm.auto import tqdm
 from configs.config import Config
 from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
+from generators.typehints import GeneratorUnion
+from generators.utils import get_generator_by_instruction
+from instructions.typehints import InstructionUnion
 from library.fragment import Fragment, FragmentedAudio
 from library.library import LibraryData
 from reconstructor.approximation import ApproximationData
 from reconstructor.criterion import Criterion
-from reconstructor.maps import get_generator_by_instruction
-from typehints.generators import GeneratorUnion
-from typehints.instructions import InstructionUnion
 
 
 @dataclass(frozen=True)

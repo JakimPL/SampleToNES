@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict
 
 from constants.enums import GeneratorName
+from instructions.typehints import InstructionUnion
 from library.fragment import Fragment
-from typehints.instructions import InstructionUnion
 
 
 class ApproximationData(BaseModel):

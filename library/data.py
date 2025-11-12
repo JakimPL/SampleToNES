@@ -12,11 +12,11 @@ from configs.library import LibraryConfig
 from constants.enums import GeneratorClassName
 from ffts.transformations.transformer import FFTTransformer
 from ffts.window import Window
+from generators.maps import GENERATOR_CLASS_MAP
+from instructions.typehints import InstructionType, InstructionUnion
 from library.fragment import Fragment
-from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.general import Initials
-from typehints.instructions import InstructionType, InstructionUnion
-from utils.serialization import SerializedData, deserialize_array, dump, serialize_array
+from typehints.general import Initials, SerializedData
+from utils.serialization import deserialize_array, dump, serialize_array
 
 
 class LibraryFragment(BaseModel, Generic[InstructionType]):

@@ -5,10 +5,10 @@ import numpy as np
 from configs.config import Config
 from constants.enums import GeneratorClassName, GeneratorName
 from ffts.window import Window
+from instructions.typehints import InstructionType
+from timers.typehints import TimerType
 from timers.utils import get_frequency_table
 from typehints.general import Initials
-from typehints.instructions import InstructionType
-from typehints.timers import TimerType
 
 
 class Generator(Generic[InstructionType, TimerType]):

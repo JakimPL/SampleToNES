@@ -11,8 +11,8 @@ from constants.browser import (
     TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_PANEL,
 )
+from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
-from typehints.instructions import InstructionUnion
 
 
 class GUIInstructionDetailsPanel(GUIPanel):

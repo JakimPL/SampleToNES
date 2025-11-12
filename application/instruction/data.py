@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, computed_field
 
+from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
-from typehints.instructions import InstructionUnion
 
 
 class InstructionPanelData(BaseModel):

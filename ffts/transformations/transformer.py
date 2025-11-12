@@ -9,7 +9,7 @@ from ffts.transformations.transformations import (
     LinearExponentialMorpher,
     Transformations,
 )
-from typehints.transformations import (
+from ffts.transformations.typehints import (
     BinaryTransformation,
     MultaryTransformation,
     UnaryTransformation,

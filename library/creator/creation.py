@@ -7,10 +7,10 @@ from configs.library import LibraryConfig
 from constants.enums import GeneratorClassName
 from ffts.transformations.transformer import FFTTransformer
 from ffts.window import Window
+from generators.maps import GENERATOR_CLASS_MAP
+from generators.typehints import GeneratorUnion
+from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
-from reconstructor.maps import GENERATOR_CLASS_MAP
-from typehints.generators import GeneratorUnion
-from typehints.instructions import InstructionUnion
 
 
 def generate_instruction(

@@ -18,7 +18,7 @@ from constants.browser import (
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
-from utils.serialization import SerializedData
+from typehints.general import SerializedData
 
 
 class GUIGraphDisplay(GUIPanel):
