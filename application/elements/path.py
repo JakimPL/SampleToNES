@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
+from application.utils.common import dpg_delete_item
 from constants.browser import (
     CLR_PATH_TEXT,
     CLR_PATH_TEXT_HOVER,
@@ -57,8 +58,7 @@ class GUIPathText:
         )
 
     def _create_handler(self) -> None:
-        if dpg.does_item_exist(self.handler_tag):
-            dpg.delete_item(self.handler_tag)
+        dpg_delete_item(self.handler_tag)
 
         with dpg.item_handler_registry(tag=self.handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_clicked)
@@ -110,7 +110,5 @@ class GUIPathText:
         return self.path
 
     def destroy(self) -> None:
-        if dpg.does_item_exist(self.handler_tag):
-            dpg.delete_item(self.handler_tag)
-        if dpg.does_item_exist(self.tag):
-            dpg.delete_item(self.tag)
+        dpg_delete_item(self.handler_tag)
+        dpg_delete_item(self.tag)

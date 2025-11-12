@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Self, Union, cast
+from typing import Any, Dict, List, Optional, Self, Union, cast
 
 import numpy as np
 from pydantic import BaseModel, Field, field_serializer
@@ -13,6 +13,7 @@ from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
 from typehints.general import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
+from utils.logger import logger
 from utils.serialization import (
     SerializedData,
     deserialize_array,
@@ -68,7 +69,13 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Configuration, coefficient: float, path: Path) -> Self:
+    def from_results(
+        cls, state: ReconstructionState, config: Configuration, coefficient: float, path: Path
+    ) -> Optional[Self]:
+        if any(len(approximation) == 0 for approximation in state.approximations.values()):
+            logger.warning(f"Reconstruction for file: {path} is empty")
+            return None
+
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 

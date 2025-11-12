@@ -13,6 +13,7 @@ from application.reconstruction.config import (
     FeaturePlotConfig,
 )
 from application.reconstruction.feature import FeatureData
+from application.utils.common import dpg_delete_item
 from constants.browser import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_COPY_BUTTON_WIDTH,
@@ -95,8 +96,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self._on_instrument_export(generator_name)
 
     def _clear_tabs(self) -> None:
-        if dpg.does_item_exist(self.tab_bar_tag):
-            dpg.delete_item(self.tab_bar_tag)
+        dpg_delete_item(self.tab_bar_tag)
         self.generator_plots.clear()
 
     def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:

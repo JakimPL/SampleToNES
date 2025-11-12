@@ -8,6 +8,7 @@ from application.elements.graphs.graph import GUIGraphDisplay
 from application.elements.graphs.layers.array import ArrayLayer
 from application.elements.graphs.layers.waveform import WaveformLayer
 from application.reconstruction.data import ReconstructionData
+from application.utils.common import dpg_delete_children, dpg_delete_item
 from constants.browser import (
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
@@ -29,7 +30,6 @@ from constants.browser import (
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
-    VAL_WAVEFORM_AXIS_SLOT,
     VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
@@ -203,10 +203,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        children = dpg.get_item_children(self.y_axis_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)
-
+        dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
             dpg.add_line_series(
@@ -245,8 +242,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        if dpg.does_item_exist(self.position_indicator_tag):
-            dpg.delete_item(self.position_indicator_tag)
+        dpg_delete_item(self.position_indicator_tag)
 
         sample_length = self._get_sample_length_int()
         if self.current_position > 0 and self.current_position < sample_length:

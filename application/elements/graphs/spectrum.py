@@ -5,6 +5,7 @@ import numpy as np
 
 from application.elements.graphs.graph import GUIGraphDisplay
 from application.elements.graphs.layers.spectrum import SpectrumLayer
+from application.utils.common import dpg_delete_children
 from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -83,10 +84,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        children = dpg.get_item_children(self.y_axis_tag, slot=VAL_WAVEFORM_AXIS_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)
-
+        dpg_delete_children(self.y_axis_tag)
         self._update_axes_limits()
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):

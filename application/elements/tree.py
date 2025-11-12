@@ -4,6 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from application.elements.button import GUIButton
 from application.elements.panel import GUIPanel
+from application.utils.common import dpg_delete_children
 from constants.browser import (
     DIM_SEARCH_BUTTON_WIDTH,
     DIM_SEARCH_INPUT_WIDTH,
@@ -12,7 +13,6 @@ from constants.browser import (
     MSG_GLOBAL_NO_RESULTS_FOUND,
     SUF_SEARCH_BUTTON,
     SUF_SEARCH_INPUT,
-    VAL_GLOBAL_DEFAULT_SLOT,
 )
 from utils.tree.node import TreeNode
 from utils.tree.tree import Tree
@@ -121,9 +121,7 @@ class GUITreePanel(GUIPanel):
         self.tree.clear_filter()
 
     def _clear_children(self, tag: str) -> None:
-        children = dpg.get_item_children(tag, slot=VAL_GLOBAL_DEFAULT_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)
+        dpg_delete_children(tag)
 
     def set_tree_callbacks(self, on_node_selected: Optional[Callable] = None) -> None:
         self._on_node_selected = on_node_selected

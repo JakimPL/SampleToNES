@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from application.elements.button import GUIButton
 from application.elements.path import GUIPathText
+from application.utils.common import dpg_delete_item
 from constants.browser import (
     CLR_ERROR_TEXT,
     CLR_PATH_TEXT,
@@ -38,8 +39,7 @@ def show_modal_dialog(
     width: int = DIM_DIALOG_WIDTH,
     height: int = DIM_DIALOG_HEIGHT,
 ) -> None:
-    if dpg.does_item_exist(tag):
-        dpg.delete_item(tag)
+    dpg_delete_item(tag)
 
     with dpg.window(
         label=title,
@@ -47,14 +47,14 @@ def show_modal_dialog(
         modal=True,
         min_size=(width, height),
         no_resize=True,
-        on_close=lambda: dpg.delete_item(tag),
+        on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
         dpg.add_separator()
         GUIButton(
             tag=TAG_BUTTON_OK,
             label=LBL_BUTTON_OK,
-            callback=lambda: dpg.delete_item(tag),
+            callback=lambda: dpg_delete_item(tag),
             width=-1,
         )
 

@@ -54,7 +54,7 @@ class Reconstructor:
         self.window: Window = Window(config.library)
         self.library_data: LibraryData = self.load_library(library)
 
-    def __call__(self, path: Path) -> Reconstruction:
+    def __call__(self, path: Path) -> Optional[Reconstruction]:
         audio = self.load_audio(path)
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))

@@ -5,6 +5,7 @@ import numpy as np
 
 from application.elements.graphs.graph import GUIGraphDisplay
 from application.elements.graphs.layers.bar import BarLayer
+from application.utils.common import dpg_delete_children, dpg_delete_item
 from constants.browser import (
     CLR_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
@@ -12,7 +13,6 @@ from constants.browser import (
     LBL_BAR_PLOT_DISPLAY,
     LBL_BAR_PLOT_VALUE_LABEL,
     SUF_BAR_PLOT_ZERO_LINE,
-    VAL_BAR_PLOT_AXIS_SLOT,
     VAL_BAR_PLOT_DEFAULT_X_MIN,
     VAL_BAR_PLOT_DEFAULT_Y_MAX,
     VAL_BAR_PLOT_DEFAULT_Y_MIN,
@@ -81,10 +81,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        children = dpg.get_item_children(self.y_axis_tag, slot=VAL_BAR_PLOT_AXIS_SLOT) or []
-        for child in children:
-            dpg.delete_item(child)
-
+        dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
             dpg.add_bar_series(
@@ -109,8 +106,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        if dpg.does_item_exist(self.zero_line_tag):
-            dpg.delete_item(self.zero_line_tag)
+        dpg_delete_item(self.zero_line_tag)
 
         dpg.add_line_series(
             [self.x_min, self.x_max],

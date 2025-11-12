@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from application.config.manager import ConfigManager
 from application.elements.button import GUIButton
 from application.elements.path import GUIPathText
+from application.utils.common import dpg_delete_item
 from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_CONVERTER_BUTTON_WIDTH,
@@ -55,8 +56,7 @@ class GUIConverterWindow:
         self._on_load_directory: Optional[Callable[[], None]] = None
 
     def hide(self) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            dpg.delete_item(TAG_CONVERTER_WINDOW)
+        dpg_delete_item(TAG_CONVERTER_WINDOW)
 
     def show(self, input_path: Path, is_file: bool = False) -> None:
         self.is_file = is_file
