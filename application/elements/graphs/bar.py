@@ -3,9 +3,6 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from application.elements.graphs.graph import GUIGraphDisplay
-from application.elements.graphs.layers.bar import BarLayer
-from application.utils.common import dpg_delete_children, dpg_delete_item
 from constants.browser import (
     CLR_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
@@ -20,6 +17,10 @@ from constants.browser import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
+
+from ...utils.common import dpg_delete_children, dpg_delete_item
+from .graph import GUIGraphDisplay
+from .layers.bar import BarLayer
 
 
 class GUIBarPlotDisplay(GUIGraphDisplay):

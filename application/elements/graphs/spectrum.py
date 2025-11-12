@@ -3,9 +3,6 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from application.elements.graphs.graph import GUIGraphDisplay
-from application.elements.graphs.layers.spectrum import SpectrumLayer
-from application.utils.common import dpg_delete_children
 from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -14,10 +11,13 @@ from constants.browser import (
     LBL_SPECTRUM_Y_AXIS,
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
-    VAL_WAVEFORM_AXIS_SLOT,
 )
 from constants.general import MIN_FREQUENCY, SAMPLE_RATE
 from library.data import LibraryFragment
+
+from ...utils.common import dpg_delete_children
+from .graph import GUIGraphDisplay
+from .layers.spectrum import SpectrumLayer
 
 
 class GUISpectrumDisplay(GUIGraphDisplay):

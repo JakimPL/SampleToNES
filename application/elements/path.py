@@ -5,7 +5,6 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from application.utils.common import dpg_delete_item
 from constants.browser import (
     CLR_PATH_TEXT,
     CLR_PATH_TEXT_HOVER,
@@ -13,6 +12,8 @@ from constants.browser import (
     SUF_GROUP,
 )
 from utils.common import shorten_path
+
+from ..utils.common import dpg_delete_item
 
 
 class GUIPathText:

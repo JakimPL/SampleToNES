@@ -2,11 +2,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.config.manager import ConfigManager
-from application.elements.button import GUIButton
-from application.elements.tree import GUITreePanel
-from application.library.manager import LibraryManager
-from application.utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
@@ -48,6 +43,12 @@ from library.key import LibraryKey
 from parallelization.task import TaskProgress, TaskStatus
 from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
 from utils.logger import logger
+
+from ..config.manager import ConfigManager
+from ..elements.button import GUIButton
+from ..elements.tree import GUITreePanel
+from ..library.manager import LibraryManager
+from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
 
 
 class GUILibraryPanel(GUITreePanel):

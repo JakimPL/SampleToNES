@@ -3,12 +3,6 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from application.elements.button import GUIButton
-from application.elements.graphs.graph import GUIGraphDisplay
-from application.elements.graphs.layers.array import ArrayLayer
-from application.elements.graphs.layers.waveform import WaveformLayer
-from application.reconstruction.data import ReconstructionData
-from application.utils.common import dpg_delete_children, dpg_delete_item
 from constants.browser import (
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
@@ -37,6 +31,13 @@ from constants.browser import (
 )
 from constants.enums import GeneratorName
 from library.data import LibraryFragment
+
+from ...reconstruction.data import ReconstructionData
+from ...utils.common import dpg_delete_children, dpg_delete_item
+from ..button import GUIButton
+from .graph import GUIGraphDisplay
+from .layers.array import ArrayLayer
+from .layers.waveform import WaveformLayer
 
 
 class GUIWaveformDisplay(GUIGraphDisplay):

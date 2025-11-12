@@ -2,9 +2,6 @@ from typing import Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.button import GUIButton
-from application.elements.panel import GUIPanel
-from application.utils.common import dpg_delete_children
 from constants.browser import (
     DIM_SEARCH_BUTTON_WIDTH,
     DIM_SEARCH_INPUT_WIDTH,
@@ -16,6 +13,10 @@ from constants.browser import (
 )
 from tree.node import TreeNode
 from tree.tree import Tree
+
+from ..utils.common import dpg_delete_children
+from .button import GUIButton
+from .panel import GUIPanel
 
 
 class GUITreePanel(GUIPanel):

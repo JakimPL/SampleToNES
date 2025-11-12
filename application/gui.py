@@ -3,24 +3,6 @@ from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
-from application.config.manager import ConfigManager
-from application.panels.browser import GUIBrowserPanel
-from application.panels.config import GUIConfigPanel
-from application.panels.converter import GUIConverterWindow
-from application.panels.instruction.details import GUIInstructionDetailsPanel
-from application.panels.instruction.instruction import GUIInstructionPanel
-from application.panels.library import GUILibraryPanel
-from application.panels.reconstruction.details import GUIReconstructionDetailsPanel
-from application.panels.reconstruction.reconstruction import GUIReconstructionPanel
-from application.panels.reconstructor import GUIReconstructorPanel
-from application.reconstruction.data import ReconstructionData
-from application.utils.dialogs import (
-    show_error_dialog,
-    show_library_not_loaded_dialog,
-    show_modal_dialog,
-    show_reconstruction_not_loaded_dialog,
-)
-from application.utils.file import file_dialog_handler
 from audio.manager import AudioDeviceManager
 from configs.library import LibraryConfig
 from constants.browser import (
@@ -78,6 +60,25 @@ from constants.browser import (
 )
 from library.data import LibraryFragment
 from utils.logger import logger
+
+from .config.manager import ConfigManager
+from .panels.browser import GUIBrowserPanel
+from .panels.config import GUIConfigPanel
+from .panels.converter import GUIConverterWindow
+from .panels.instruction.details import GUIInstructionDetailsPanel
+from .panels.instruction.instruction import GUIInstructionPanel
+from .panels.library import GUILibraryPanel
+from .panels.reconstruction.details import GUIReconstructionDetailsPanel
+from .panels.reconstruction.reconstruction import GUIReconstructionPanel
+from .panels.reconstructor import GUIReconstructorPanel
+from .reconstruction.data import ReconstructionData
+from .utils.dialogs import (
+    show_error_dialog,
+    show_library_not_loaded_dialog,
+    show_modal_dialog,
+    show_reconstruction_not_loaded_dialog,
+)
+from .utils.file import file_dialog_handler
 
 
 class GUI:

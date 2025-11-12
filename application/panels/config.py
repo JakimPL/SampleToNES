@@ -3,11 +3,6 @@ from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from application.config.manager import ConfigManager
-from application.elements.button import GUIButton
-from application.elements.panel import GUIPanel
-from application.elements.path import GUIPathText
-from application.utils.file import file_dialog_handler
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -50,6 +45,12 @@ from constants.general import (
 )
 from library.key import LibraryKey
 from typehints.general import SerializedData
+
+from ..config.manager import ConfigManager
+from ..elements.button import GUIButton
+from ..elements.panel import GUIPanel
+from ..elements.path import GUIPathText
+from ..utils.file import file_dialog_handler
 
 
 class GUIConfigPanel(GUIPanel):

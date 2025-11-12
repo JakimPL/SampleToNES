@@ -3,9 +3,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.button import GUIButton
-from application.elements.path import GUIPathText
-from application.utils.common import dpg_delete_item
 from constants.browser import (
     CLR_ERROR_TEXT,
     CLR_PATH_TEXT,
@@ -30,6 +27,10 @@ from constants.browser import (
     TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
 )
 from library.key import LibraryKey
+
+from ..elements.button import GUIButton
+from ..elements.path import GUIPathText
+from .common import dpg_delete_item
 
 
 def show_modal_dialog(

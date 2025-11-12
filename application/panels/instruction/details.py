@@ -2,8 +2,6 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.panel import GUIPanel
-from application.instruction.logic import InstructionDetailsLogic
 from constants.browser import (
     MSG_INSTRUCTION_DETAILS,
     MSG_INSTRUCTION_NO_SELECTION,
@@ -13,6 +11,9 @@ from constants.browser import (
 )
 from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
+
+from ...elements.panel import GUIPanel
+from ...instruction.logic import InstructionDetailsLogic
 
 
 class GUIInstructionDetailsPanel(GUIPanel):

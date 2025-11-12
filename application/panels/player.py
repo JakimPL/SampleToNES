@@ -2,11 +2,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.button import GUIButton
-from application.elements.panel import GUIPanel
-from application.player.data import AudioData
-from application.player.player import AudioPlayer, PlaybackError
-from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from audio.manager import AudioDeviceManager
 from constants.browser import (
     DIM_PLAYER_BUTTON_WIDTH,
@@ -29,6 +24,12 @@ from constants.browser import (
     SUF_PLAYER_STOP,
     TITLE_DIALOG_NO_AUDIO,
 )
+
+from ..elements.button import GUIButton
+from ..elements.panel import GUIPanel
+from ..player.data import AudioData
+from ..player.player import AudioPlayer, PlaybackError
+from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
 class GUIAudioPlayerPanel(GUIPanel):

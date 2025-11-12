@@ -3,15 +3,6 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.config.manager import ConfigManager
-from application.elements.button import GUIButton
-from application.elements.graphs.waveform import GUIWaveformDisplay
-from application.elements.panel import GUIPanel
-from application.panels.player import GUIAudioPlayerPanel
-from application.player.data import AudioData
-from application.reconstruction.data import ReconstructionData
-from application.utils.dialogs import show_error_dialog, show_message_with_path_dialog
-from application.utils.file import file_dialog_handler
 from audio.manager import AudioDeviceManager
 from audio.processing import write_audio
 from constants.browser import (
@@ -56,6 +47,16 @@ from constants.browser import (
 from constants.enums import AudioSourceType, GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from utils.logger import logger
+
+from ...config.manager import ConfigManager
+from ...elements.button import GUIButton
+from ...elements.graphs.waveform import GUIWaveformDisplay
+from ...elements.panel import GUIPanel
+from ...player.data import AudioData
+from ...reconstruction.data import ReconstructionData
+from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
+from ...utils.file import file_dialog_handler
+from ..player import GUIAudioPlayerPanel
 
 
 class GUIReconstructionPanel(GUIPanel):

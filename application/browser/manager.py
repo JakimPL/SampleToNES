@@ -1,10 +1,11 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from application.reconstruction.data import ReconstructionData
 from constants.browser import EXT_FILE_JSON, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from tree.node import FileSystemNode
 from tree.tree import Tree
+
+from ..reconstruction.data import ReconstructionData
 
 
 class BrowserManager:

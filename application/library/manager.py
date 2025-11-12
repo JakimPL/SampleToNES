@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from application.utils.dialogs import show_error_dialog, show_info_dialog
 from configs.config import Config
 from constants.browser import (
     EXT_FILE_LIBRARY,
@@ -34,6 +33,8 @@ from library.library import Library
 from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
 from tree.tree import Tree
 from utils.frequencies import pitch_to_name
+
+from ..utils.dialogs import show_error_dialog, show_info_dialog
 
 
 class LibraryManager:

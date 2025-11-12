@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from application.utils.dialogs import show_error_dialog
 from configs.config import Config
 from configs.general import GeneralConfig
 from configs.generation import GenerationConfig
@@ -36,6 +35,8 @@ from library.key import LibraryKey
 from typehints.general import SerializedData
 from utils.logger import logger
 from utils.serialization import load_json, save_json
+
+from ..utils.dialogs import show_error_dialog
 
 
 class ConfigManager:

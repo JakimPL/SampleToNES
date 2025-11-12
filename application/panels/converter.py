@@ -3,11 +3,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.config.manager import ConfigManager
-from application.elements.button import GUIButton
-from application.elements.path import GUIPathText
-from application.utils.common import dpg_delete_item
-from application.utils.dialogs import show_error_dialog, show_modal_dialog
 from constants.browser import (
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
@@ -40,6 +35,12 @@ from constants.browser import (
 from parallelization.task import TaskProgress, TaskStatus
 from reconstructor.converter.converter import ReconstructionConverter
 from reconstructor.converter.paths import get_output_path
+
+from ..config.manager import ConfigManager
+from ..elements.button import GUIButton
+from ..elements.path import GUIPathText
+from ..utils.common import dpg_delete_item
+from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
 class GUIConverterWindow:

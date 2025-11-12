@@ -4,16 +4,6 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from application.elements.button import GUIButton
-from application.elements.graphs.bar import GUIBarPlotDisplay
-from application.elements.panel import GUIPanel
-from application.reconstruction.config import (
-    FEATURE_DISPLAY_ORDER,
-    FEATURE_PLOT_CONFIGS,
-    FeaturePlotConfig,
-)
-from application.reconstruction.feature import FeatureData
-from application.utils.common import dpg_delete_item
 from constants.browser import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_COPY_BUTTON_WIDTH,
@@ -40,6 +30,17 @@ from constants.browser import (
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
 from utils.frequencies import pitch_to_name
+
+from ...elements.button import GUIButton
+from ...elements.graphs.bar import GUIBarPlotDisplay
+from ...elements.panel import GUIPanel
+from ...reconstruction.config import (
+    FEATURE_DISPLAY_ORDER,
+    FEATURE_PLOT_CONFIGS,
+    FeaturePlotConfig,
+)
+from ...reconstruction.feature import FeatureData
+from ...utils.common import dpg_delete_item
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):

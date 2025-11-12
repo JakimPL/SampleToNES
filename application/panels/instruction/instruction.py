@@ -2,11 +2,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.graphs.spectrum import GUISpectrumDisplay
-from application.elements.graphs.waveform import GUIWaveformDisplay
-from application.elements.panel import GUIPanel
-from application.panels.player import GUIAudioPlayerPanel
-from application.player.data import AudioData
 from audio.manager import AudioDeviceManager
 from configs.library import LibraryConfig
 from constants.browser import (
@@ -24,6 +19,12 @@ from constants.browser import (
 )
 from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
+
+from ...elements.graphs.spectrum import GUISpectrumDisplay
+from ...elements.graphs.waveform import GUIWaveformDisplay
+from ...elements.panel import GUIPanel
+from ...player.data import AudioData
+from ..player import GUIAudioPlayerPanel
 
 
 class GUIInstructionPanel(GUIPanel):

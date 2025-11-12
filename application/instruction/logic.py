@@ -1,6 +1,5 @@
 from typing import Optional, Union
 
-from application.instruction.data import InstructionPanelData
 from constants.browser import (
     FMT_INSTRUCTION_FREQUENCY,
     LBL_GLOBAL_NO,
@@ -19,6 +18,8 @@ from constants.browser import (
 )
 from instructions.typehints import InstructionUnion
 from library.data import LibraryFragment
+
+from .data import InstructionPanelData
 
 
 class InstructionDetailsLogic:

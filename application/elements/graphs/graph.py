@@ -2,7 +2,6 @@ from typing import Any, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from application.elements.panel import GUIPanel
 from constants.browser import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -19,6 +18,8 @@ from constants.browser import (
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
 from typehints.general import SerializedData
+
+from ..panel import GUIPanel
 
 
 class GUIGraphDisplay(GUIPanel):

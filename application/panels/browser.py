@@ -3,11 +3,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from application.browser.manager import BrowserManager
-from application.config.manager import ConfigManager
-from application.elements.button import GUIButton
-from application.elements.tree import GUITreePanel
-from application.utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from constants.browser import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
@@ -33,6 +28,12 @@ from constants.browser import (
 from exceptions.reconstruction import InvalidReconstructionError
 from tree.node import FileSystemNode, TreeNode
 from utils.logger import logger
+
+from ..browser.manager import BrowserManager
+from ..config.manager import ConfigManager
+from ..elements.button import GUIButton
+from ..elements.tree import GUITreePanel
+from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
 
 
 class GUIBrowserPanel(GUITreePanel):
