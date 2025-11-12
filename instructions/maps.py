@@ -1,10 +1,11 @@
 from typing import Dict
 
 from constants.enums import InstructionClassName
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
-from instructions.typehints import InstructionClass
+
+from .noise import NoiseInstruction
+from .pulse import PulseInstruction
+from .triangle import TriangleInstruction
+from .typehints import InstructionClass
 
 INSTRUCTION_CLASS_MAP: Dict[InstructionClassName, InstructionClass] = {
     InstructionClassName.TRIANGLE_INSTRUCTION: TriangleInstruction,

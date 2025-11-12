@@ -1,10 +1,9 @@
-from typing import Self
-
 from pydantic import Field
 
 from constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
-from instructions.instruction import Instruction
 from utils.frequencies import pitch_to_name
+
+from .instruction import Instruction
 
 
 class TriangleInstruction(Instruction):

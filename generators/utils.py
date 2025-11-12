@@ -1,9 +1,10 @@
 from typing import Dict, cast
 
 from constants.enums import GeneratorClassName
-from generators.maps import INSTRUCTION_TO_GENERATOR_MAP
-from generators.typehints import GeneratorUnion
 from instructions.typehints import InstructionUnion
+
+from .maps import INSTRUCTION_TO_GENERATOR_MAP
+from .typehints import GeneratorUnion
 
 
 def get_remaining_generator_classes(

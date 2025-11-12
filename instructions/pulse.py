@@ -1,5 +1,3 @@
-from typing import Self
-
 from pydantic import Field
 
 from constants.general import (
@@ -10,8 +8,9 @@ from constants.general import (
     MIN_PITCH,
     PITCH_RANGE,
 )
-from instructions.instruction import Instruction
 from utils.frequencies import pitch_to_name
+
+from .instruction import Instruction
 
 
 class PulseInstruction(Instruction):

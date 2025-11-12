@@ -4,14 +4,11 @@ from typing import Any, Callable, List, Optional, Tuple
 from configs.config import Config
 from constants.browser import EXT_FILE_WAV
 from parallelization.processor import TaskProcessor
-from reconstructor.converter.conversion import reconstruct_file
-from reconstructor.converter.paths import (
-    filter_files,
-    get_output_path,
-    get_relative_path,
-)
-from reconstructor.reconstructor import Reconstructor
 from utils.logger import logger
+
+from ..reconstructor import Reconstructor
+from .conversion import reconstruct_file
+from .paths import filter_files, get_output_path, get_relative_path
 
 
 class ReconstructionConverter(TaskProcessor[Path]):

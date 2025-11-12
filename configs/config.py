@@ -1,8 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from configs.general import GeneralConfig
-from configs.generation import GenerationConfig
-from configs.library import LibraryConfig
+from .general import GeneralConfig
+from .generation import GenerationConfig
+from .library import LibraryConfig
 
 
 class Config(BaseModel):

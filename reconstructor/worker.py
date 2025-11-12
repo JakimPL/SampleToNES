@@ -13,8 +13,9 @@ from generators.utils import get_generator_by_instruction
 from instructions.typehints import InstructionUnion
 from library.fragment import Fragment, FragmentedAudio
 from library.library import LibraryData
-from reconstructor.approximation import ApproximationData
-from reconstructor.criterion import Criterion
+
+from .approximation import ApproximationData
+from .criterion import Criterion
 
 
 @dataclass(frozen=True)

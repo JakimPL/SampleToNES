@@ -11,8 +11,9 @@ from constants.general import (
     NOISE_PERIODS,
     RESET_PHASE,
 )
-from timers.timer import Timer
 from typehints.general import Initials
+
+from .timer import Timer
 
 
 @dataclass(frozen=True)

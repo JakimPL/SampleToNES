@@ -1,9 +1,9 @@
 from typing import Type, TypeVar, Union
 
-from instructions.instruction import Instruction
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
+from .instruction import Instruction
+from .noise import NoiseInstruction
+from .pulse import PulseInstruction
+from .triangle import TriangleInstruction
 
 InstructionType = TypeVar("InstructionType", bound=Instruction)
 InstructionClass = Type[InstructionType]

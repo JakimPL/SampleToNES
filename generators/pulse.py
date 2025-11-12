@@ -5,10 +5,11 @@ import numpy as np
 from configs.config import Config
 from constants.enums import GeneratorClassName, GeneratorName
 from constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
-from generators.generator import Generator
 from instructions.pulse import PulseInstruction
 from timers.phase import PhaseTimer
 from typehints.general import Initials
+
+from .generator import Generator
 
 
 class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):

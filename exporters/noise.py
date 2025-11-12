@@ -3,9 +3,10 @@ from typing import Dict, List, Tuple
 import numpy as np
 
 from constants.enums import FeatureKey
-from exporters.exporter import Exporter
 from instructions.noise import NoiseInstruction
 from typehints.general import FeatureValue
+
+from .exporter import Exporter
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):

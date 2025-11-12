@@ -5,10 +5,11 @@ import numpy as np
 from configs.config import Config
 from constants.enums import GeneratorClassName, GeneratorName
 from constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
-from generators.generator import Generator
 from instructions.noise import NoiseInstruction
 from timers.lfsr import LFSRTimer
 from typehints.general import Initials
+
+from .generator import Generator
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):

@@ -5,10 +5,11 @@ import numpy as np
 from configs.config import Config
 from constants.enums import GeneratorClassName, GeneratorName
 from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
-from generators.generator import Generator
 from instructions.triangle import TriangleInstruction
 from timers.phase import PhaseTimer
 from typehints.general import Initials
+
+from .generator import Generator
 
 
 class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):

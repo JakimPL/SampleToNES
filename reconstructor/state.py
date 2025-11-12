@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict
 from constants.enums import GeneratorName
 from instructions.typehints import InstructionUnion
 from library.fragment import Fragment
-from reconstructor.approximation import ApproximationData
+
+from .approximation import ApproximationData
 
 
 class FragmentReconstructionState(BaseModel):

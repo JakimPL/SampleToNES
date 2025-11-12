@@ -2,7 +2,7 @@ import gc
 from pathlib import Path
 from typing import Tuple
 
-from reconstructor.reconstructor import Reconstructor
+from ..reconstructor import Reconstructor
 
 
 def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:

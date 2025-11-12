@@ -13,10 +13,11 @@ from generators.maps import GENERATOR_CLASSES, MIXER_LEVELS
 from generators.typehints import GeneratorUnion
 from library.fragment import FragmentedAudio
 from library.library import Library, LibraryData
-from reconstructor.approximation import ApproximationData
-from reconstructor.reconstruction import Reconstruction
-from reconstructor.state import ReconstructionState
-from reconstructor.worker import ReconstructorWorker
+
+from .approximation import ApproximationData
+from .reconstruction import Reconstruction
+from .state import ReconstructionState
+from .worker import ReconstructorWorker
 
 
 def reconstruct(

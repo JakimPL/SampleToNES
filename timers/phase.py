@@ -3,8 +3,9 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from constants.general import APU_CLOCK, RESET_PHASE
-from timers.timer import Timer
 from typehints.general import Initials
+
+from .timer import Timer
 
 
 class PhaseTimer(Timer):

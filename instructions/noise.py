@@ -1,9 +1,8 @@
-from typing import Self
-
 from pydantic import Field
 
 from constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
-from instructions.instruction import Instruction
+
+from .instruction import Instruction
 
 
 class NoiseInstruction(Instruction):

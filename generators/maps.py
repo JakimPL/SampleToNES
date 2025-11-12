@@ -1,19 +1,16 @@
 from typing import Dict
 
-from constants.enums import (
-    GeneratorClassName,
-    GeneratorName,
-    LibraryGeneratorName,
-)
+from constants.enums import GeneratorClassName, GeneratorName, LibraryGeneratorName
 from constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
-from generators.noise import NoiseGenerator
-from generators.pulse import PulseGenerator
-from generators.triangle import TriangleGenerator
-from generators.typehints import GeneratorClass
 from instructions.noise import NoiseInstruction
 from instructions.pulse import PulseInstruction
 from instructions.triangle import TriangleInstruction
 from instructions.typehints import InstructionClass
+
+from .noise import NoiseGenerator
+from .pulse import PulseGenerator
+from .triangle import TriangleGenerator
+from .typehints import GeneratorClass
 
 LIBRARY_GENERATOR_CLASS_MAP: Dict[LibraryGeneratorName, GeneratorClassName] = {
     LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,

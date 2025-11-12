@@ -1,8 +1,9 @@
 from typing import Dict
 
 from configs.config import Config
-from timers.phase import PhaseTimer
 from utils.frequencies import pitch_to_frequency
+
+from .phase import PhaseTimer
 
 
 def get_frequency_table(config: Config) -> Dict[int, float]:

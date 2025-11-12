@@ -10,7 +10,8 @@ from ffts.window import Window
 from generators.maps import GENERATOR_CLASS_MAP
 from generators.typehints import GeneratorUnion
 from instructions.typehints import InstructionUnion
-from library.data import LibraryFragment
+
+from ..data import LibraryFragment
 
 
 def generate_instruction(

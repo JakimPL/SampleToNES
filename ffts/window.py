@@ -4,8 +4,9 @@ from typing import Optional, Tuple
 import numpy as np
 
 from configs.library import LibraryConfig
-from ffts.fft import calculate_weights
 from utils.common import pad
+
+from .fft import calculate_weights
 
 
 @dataclass(frozen=True)

@@ -14,9 +14,10 @@ from ffts.transformations.transformer import FFTTransformer
 from ffts.window import Window
 from generators.maps import GENERATOR_CLASS_MAP
 from instructions.typehints import InstructionType, InstructionUnion
-from library.fragment import Fragment
 from typehints.general import Initials, SerializedData
 from utils.serialization import deserialize_array, dump, serialize_array
+
+from .fragment import Fragment
 
 
 class LibraryFragment(BaseModel, Generic[InstructionType]):

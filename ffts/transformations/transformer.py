@@ -4,16 +4,10 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from constants.general import MAX_TRANSFORMATION_GAMMA
-from ffts.fft import calculate_fft
-from ffts.transformations.transformations import (
-    LinearExponentialMorpher,
-    Transformations,
-)
-from ffts.transformations.typehints import (
-    BinaryTransformation,
-    MultaryTransformation,
-    UnaryTransformation,
-)
+
+from ..fft import calculate_fft
+from .transformations import LinearExponentialMorpher, Transformations
+from .typehints import BinaryTransformation, MultaryTransformation, UnaryTransformation
 
 
 class FFTTransformer(BaseModel):
