@@ -70,7 +70,7 @@ def interpolate(data: np.ndarray, target_length: int) -> np.ndarray:
     return interpolated_data.astype(np.float32)
 
 
-def normalize_audio(audio: np.ndarray) -> np.ndarray:
+def normalize(audio: np.ndarray) -> np.ndarray:
     audio = np.nan_to_num(audio, nan=0.0, posinf=0.0, neginf=0.0)
     peak = float(np.max(np.abs(audio))) if audio.size > 0 else 0.0
     if peak > 0.0:
@@ -78,7 +78,7 @@ def normalize_audio(audio: np.ndarray) -> np.ndarray:
     return audio
 
 
-def quantize_audio(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray:
+def quantize(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray:
     n = levels // 2
     audio = np.round(audio * (n - 1)) / (n - 1)
     return audio
@@ -94,12 +94,12 @@ def load_audio(
     audio = stereo_to_mono(audio)
 
     if normalize:
-        audio = normalize_audio(audio)
+        audio = normalize(audio)
 
     target_sample_rate = target_sample_rate or sample_rate
     audio = resample(audio, original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
 
     if quantize:
-        audio = quantize_audio(audio, levels=QUANTIZATION_LEVELS)
+        audio = quantize(audio, levels=QUANTIZATION_LEVELS)
 
     return audio

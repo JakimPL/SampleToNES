@@ -4,7 +4,7 @@ import numpy as np
 
 from constants.enums import FeatureKey
 from timers.phase import PhaseTimer
-from typehints.general import FeatureValue
+from typehints.feature import FeatureValue
 from typehints.instructions import InstructionType
 from utils.frequencies import pitch_to_frequency
 

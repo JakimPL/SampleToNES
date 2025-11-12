@@ -5,10 +5,10 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from application.reconstruction.feature import FeatureData
+from audio.processing import load_audio
 from configs.config import Config
 from constants.enums import GeneratorName
 from reconstructor.reconstruction import Reconstruction
-from utils.audio.io import load_audio
 from utils.logger import logger
 
 

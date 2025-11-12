@@ -11,7 +11,7 @@ from exceptions.reconstruction import InvalidReconstructionError
 from reconstructor.maps import INSTRUCTION_CLASS_MAP, INSTRUCTION_TO_EXPORTER_MAP
 from reconstructor.state import ReconstructionState
 from typehints.exporters import ExporterClass
-from typehints.general import FeatureValue
+from typehints.feature import FeatureValue
 from typehints.instructions import InstructionClass, InstructionUnion
 from utils.logger import logger
 from utils.serialization import (

@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from audio.processing import load_audio
 from configs.config import Config
 from constants.enums import GeneratorName
 from exceptions.library import NoLibraryDataError
@@ -16,7 +17,6 @@ from reconstructor.reconstruction import Reconstruction
 from reconstructor.state import ReconstructionState
 from reconstructor.worker import ReconstructorWorker
 from typehints.generators import GeneratorUnion
-from utils.audio.io import load_audio
 
 
 def reconstruct(

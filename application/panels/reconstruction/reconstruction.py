@@ -12,6 +12,8 @@ from application.player.data import AudioData
 from application.reconstruction.data import ReconstructionData
 from application.utils.dialogs import show_error_dialog, show_message_with_path_dialog
 from application.utils.file import file_dialog_handler
+from audio.manager import AudioDeviceManager
+from audio.processing import write_audio
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -53,8 +55,6 @@ from constants.browser import (
 )
 from constants.enums import AudioSourceType, GeneratorName
 from reconstructor.reconstruction import Reconstruction
-from utils.audio.io import write_audio
-from utils.audio.manager import AudioDeviceManager
 from utils.logger import logger
 
 

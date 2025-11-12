@@ -4,14 +4,14 @@ from typing import NamedTuple
 
 import numpy as np
 
-from typehints.general import BinaryTransformation, UnaryTransformation
-from utils.functions import (
+from ffts.transformations.functions import (
     expm1,
     general_interpolation,
     general_inverse,
     identity,
     log1p,
 )
+from typehints.transformations import BinaryTransformation, UnaryTransformation
 
 
 class Transformations(NamedTuple):

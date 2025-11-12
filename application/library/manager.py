@@ -31,15 +31,9 @@ from library.data import LibraryData, LibraryFragment
 from library.key import LibraryKey
 from library.library import Library
 from reconstructor.maps import LIBRARY_GENERATOR_CLASS_MAP
+from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
+from tree.tree import Tree
 from utils.frequencies import pitch_to_name
-from utils.tree.node import (
-    GeneratorNode,
-    GroupNode,
-    InstructionNode,
-    LibraryNode,
-    TreeNode,
-)
-from utils.tree.tree import Tree
 
 
 class LibraryManager:

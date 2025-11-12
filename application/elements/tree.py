@@ -14,8 +14,8 @@ from constants.browser import (
     SUF_SEARCH_BUTTON,
     SUF_SEARCH_INPUT,
 )
-from utils.tree.node import TreeNode
-from utils.tree.tree import Tree
+from tree.node import TreeNode
+from tree.tree import Tree
 
 
 class GUITreePanel(GUIPanel):

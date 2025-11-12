@@ -6,8 +6,8 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from constants.general import MAX_WORKERS
+from parallelization.task import TaskProgress, TaskStatus
 from utils.logger import logger
-from utils.parallelization.task import TaskProgress, TaskStatus
 
 T = TypeVar("T")
 

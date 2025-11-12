@@ -6,8 +6,8 @@ from pydantic import BaseModel, ConfigDict
 
 from constants.enums import FeatureKey, GeneratorName
 from reconstructor.reconstruction import Reconstruction
-from typehints.general import FeatureValue
-from utils.fami import write_fti
+from typehints.feature import FeatureValue
+from utils.famitracker import write_fti
 
 
 class Feature(BaseModel):

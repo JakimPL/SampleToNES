@@ -21,6 +21,7 @@ from application.utils.dialogs import (
     show_reconstruction_not_loaded_dialog,
 )
 from application.utils.file import file_dialog_handler
+from audio.manager import AudioDeviceManager
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -76,7 +77,6 @@ from constants.browser import (
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
 from library.data import LibraryFragment
-from utils.audio.manager import AudioDeviceManager
 from utils.logger import logger
 
 

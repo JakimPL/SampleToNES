@@ -37,9 +37,9 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from parallelization.task import TaskProgress, TaskStatus
 from reconstructor.converter.converter import ReconstructionConverter
 from reconstructor.converter.paths import get_output_path
-from utils.parallelization.task import TaskProgress, TaskStatus
 
 
 class GUIConverterWindow:

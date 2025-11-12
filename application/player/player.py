@@ -3,10 +3,10 @@ from typing import Callable, Optional
 import numpy as np
 
 from application.player.data import AudioData
+from audio.manager import AudioDeviceManager
+from audio.processing import clip_audio, stereo_to_mono
 from constants.general import SAMPLE_RATE
 from exceptions.playback import PlaybackError
-from utils.audio.io import clip_audio, stereo_to_mono
-from utils.audio.manager import AudioDeviceManager
 from utils.logger import logger
 
 

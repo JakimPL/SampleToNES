@@ -1,10 +1,6 @@
-from typing import Dict
-
 import numpy as np
 
-from configs.config import Config
 from constants.general import A4_FREQUENCY, A4_PITCH, MAX_PITCH, MIN_PITCH, NOTE_NAMES
-from timers.phase import PhaseTimer
 
 
 def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> float:
@@ -22,17 +18,6 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     octave = (pitch // 12) - 1
     note_index = pitch % 12
     return f"{NOTE_NAMES[note_index]}{octave}"
-
-
-def get_frequency_table(config: Config) -> Dict[int, float]:
-    timer = PhaseTimer(sample_rate=config.library.sample_rate, change_rate=config.library.change_rate)
-    frequencies = {}
-    for note in range(config.general.min_pitch, config.general.max_pitch + 1):
-        frequency = pitch_to_frequency(note, config.library.a4_frequency, config.library.a4_pitch)
-        timer.frequency = frequency
-        frequencies[note] = timer.frequency
-
-    return frequencies
 
 
 MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)

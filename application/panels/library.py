@@ -45,15 +45,9 @@ from exceptions.window import WindowNotAvailableError
 from instructions.instruction import Instruction
 from library.data import LibraryFragment
 from library.key import LibraryKey
+from parallelization.task import TaskProgress, TaskStatus
+from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
 from utils.logger import logger
-from utils.parallelization.task import TaskProgress, TaskStatus
-from utils.tree.node import (
-    GeneratorNode,
-    GroupNode,
-    InstructionNode,
-    LibraryNode,
-    TreeNode,
-)
 
 
 class GUILibraryPanel(GUITreePanel):

@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from configs.config import Config
 from constants.browser import EXT_FILE_WAV
+from parallelization.processor import TaskProcessor
 from reconstructor.converter.conversion import reconstruct_file
 from reconstructor.converter.paths import (
     filter_files,
@@ -11,7 +12,6 @@ from reconstructor.converter.paths import (
 )
 from reconstructor.reconstructor import Reconstructor
 from utils.logger import logger
-from utils.parallelization.processor import TaskProcessor
 
 
 class ReconstructionConverter(TaskProcessor[Path]):

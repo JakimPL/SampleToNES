@@ -5,8 +5,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from constants.general import MAX_TRANSFORMATION_GAMMA
 from ffts.fft import calculate_fft
-from ffts.transformations.transformations import LinearExponentialMorpher, Transformations
-from typehints.general import (
+from ffts.transformations.transformations import (
+    LinearExponentialMorpher,
+    Transformations,
+)
+from typehints.transformations import (
     BinaryTransformation,
     MultaryTransformation,
     UnaryTransformation,

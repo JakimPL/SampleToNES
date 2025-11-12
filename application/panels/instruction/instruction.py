@@ -7,6 +7,7 @@ from application.elements.graphs.waveform import GUIWaveformDisplay
 from application.elements.panel import GUIPanel
 from application.panels.player import GUIAudioPlayerPanel
 from application.player.data import AudioData
+from audio.manager import AudioDeviceManager
 from configs.library import LibraryConfig
 from constants.browser import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
@@ -23,7 +24,6 @@ from constants.browser import (
 )
 from library.data import LibraryFragment
 from typehints.instructions import InstructionUnion
-from utils.audio.manager import AudioDeviceManager
 
 
 class GUIInstructionPanel(GUIPanel):

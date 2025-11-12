@@ -31,8 +31,8 @@ from constants.browser import (
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from exceptions.reconstruction import InvalidReconstructionError
+from tree.node import FileSystemNode, TreeNode
 from utils.logger import logger
-from utils.tree.node import FileSystemNode, TreeNode
 
 
 class GUIBrowserPanel(GUITreePanel):

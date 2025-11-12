@@ -3,7 +3,7 @@ from typing import Callable, Optional, Sequence, Set
 from anytree import PreOrderIter
 from anytree.search import findall
 
-from utils.tree.node import TreeNode
+from tree.node import TreeNode
 
 
 class Tree:

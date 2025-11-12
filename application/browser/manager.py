@@ -3,8 +3,8 @@ from typing import Dict, Optional
 
 from application.reconstruction.data import ReconstructionData
 from constants.browser import EXT_FILE_JSON, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
-from utils.tree.node import FileSystemNode
-from utils.tree.tree import Tree
+from tree.node import FileSystemNode
+from tree.tree import Tree
 
 
 class BrowserManager:
