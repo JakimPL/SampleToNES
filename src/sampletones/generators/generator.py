@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.instructions import InstructionType
 from sampletones.timers import TimerType, get_frequency_table
@@ -11,17 +11,17 @@ from sampletones.typehints import Initials
 
 
 class Generator(Generic[InstructionType, TimerType]):
-    def __init__(self, config: Config, name: GeneratorName) -> None:
+    def __init__(self, config: Config, name: str) -> None:
         if not isinstance(config, Config):
             raise TypeError("config must be an instance of Config")
 
-        if not isinstance(name, GeneratorName):
-            raise TypeError("name must be an instance of GeneratorName")
+        if not isinstance(name, str):
+            raise TypeError(f"name must be an instance of str, got {type(name)}")
 
         self.config: Config = config
         self.frequency_table: Dict[int, float] = get_frequency_table(config)
 
-        self.name: GeneratorName = name
+        self.name: str = name
         self.clock: Optional[float] = None
         self.previous_instruction: Optional[InstructionType] = None
 

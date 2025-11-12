@@ -100,7 +100,7 @@ class ReconstructorWorker:
             approximation = self.get_approximation(instruction, generator)
 
         return ApproximationData(
-            generator_name=generator.name,
+            generator_name=GeneratorName(generator.name),
             approximation=approximation,
             instruction=instruction,
             error=error,

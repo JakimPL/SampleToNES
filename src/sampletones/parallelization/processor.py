@@ -91,6 +91,8 @@ class TaskProcessor(Generic[T]):
                 self._notify_progress()
         except StopIteration:
             pass
+        except KeyboardInterrupt:
+            raise CancelledError()
         except CancelledError:
             self._finalize_cancellation()
             return

@@ -1,6 +1,7 @@
 from .configs import Config
 from .constants import GeneratorName
 from .constants.application import SAMPLE_TO_NES_VERSION
+from .ffts import Window
 from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
 from .instructions import (
     Instruction,
@@ -15,6 +16,7 @@ __version__ = SAMPLE_TO_NES_VERSION
 
 __all__ = [
     "Config",
+    "Window",
     "Library",
     "Reconstruction",
     "Reconstructor",
