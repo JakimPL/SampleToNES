@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 
-from utils.logger import logger
+from utils import logger
 
 
 def ensure_python():

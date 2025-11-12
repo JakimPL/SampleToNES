@@ -4,10 +4,10 @@ from typing import Optional, Tuple
 import numpy as np
 from sklearn.metrics import root_mean_squared_error
 
-from configs.config import Config
-from ffts.window import Window
-from instructions.instruction import Instruction
-from library.fragment import Fragment
+from configs import Config
+from ffts import Window
+from instructions import Instruction
+from library import Fragment
 
 
 @dataclass(frozen=True)

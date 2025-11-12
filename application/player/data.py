@@ -1,7 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from library.data import LibraryFragment
+from library import LibraryFragment
 
 
 class AudioData(BaseModel):

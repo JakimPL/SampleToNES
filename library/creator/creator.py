@@ -1,14 +1,13 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from configs.config import Config
-from constants.enums import GeneratorClassName
+from configs import Config
+from constants import GeneratorClassName
 from constants.general import BATCH_SIZE
-from ffts.window import Window
-from generators.maps import GENERATOR_CLASS_MAP
-from generators.typehints import GeneratorUnion
-from instructions.typehints import InstructionUnion
-from parallelization.processor import TaskProcessor
-from utils.logger import logger
+from ffts import Window
+from generators import GENERATOR_CLASS_MAP, GeneratorUnion
+from instructions import InstructionUnion
+from parallelization import TaskProcessor
+from utils import logger
 
 from ..data import LibraryData, LibraryFragment
 from ..key import LibraryKey

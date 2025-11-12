@@ -3,7 +3,12 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from constants import GeneratorName
+from constants.general import MAX_MIXER, MIXER
+from typehints import SerializedData
+
+from ..config.manager import ConfigManager
+from ..constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
@@ -26,11 +31,6 @@ from constants.browser import (
     TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
-from constants.enums import GeneratorName
-from constants.general import MAX_MIXER, MIXER
-from typehints.general import SerializedData
-
-from ..config.manager import ConfigManager
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..elements.path import GUIPathText

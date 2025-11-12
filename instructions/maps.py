@@ -1,6 +1,6 @@
 from typing import Dict
 
-from constants.enums import InstructionClassName
+from constants import InstructionClassName
 
 from .noise import NoiseInstruction
 from .pulse import PulseInstruction

@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from constants.enums import GeneratorName
+from constants import GeneratorName
 from constants.general import (
     CONTINUITY_LOSS_WEIGHT,
     FAST_DIFFERENCE,

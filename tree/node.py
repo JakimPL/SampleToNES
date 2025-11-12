@@ -3,10 +3,9 @@ from typing import Optional
 
 from anytree import Node
 
-from constants.enums import GeneratorClassName, LibraryGeneratorName
-from instructions.instruction import Instruction
-from library.data import LibraryFragment
-from library.key import LibraryKey
+from constants import GeneratorClassName, LibraryGeneratorName
+from instructions import Instruction
+from library import LibraryFragment, LibraryKey
 
 
 class TreeNode(Node):

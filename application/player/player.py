@@ -2,11 +2,11 @@ from typing import Callable, Optional
 
 import numpy as np
 
+from audio import clip_audio, stereo_to_mono
 from audio.manager import AudioDeviceManager
-from audio.processing import clip_audio, stereo_to_mono
 from constants.general import SAMPLE_RATE
 from exceptions.playback import PlaybackError
-from utils.logger import logger
+from utils import logger
 
 from .data import AudioData
 

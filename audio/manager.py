@@ -4,7 +4,7 @@ from typing import Any, Callable, List, Optional
 import numpy as np
 import sounddevice as sd
 
-from audio.device import AudioDevice
+from .device import AudioDevice
 
 
 class AudioDeviceManager:

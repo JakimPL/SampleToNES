@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import SUF_BUTTON
+from ..constants import SUF_BUTTON
 
 
 class GUIButton:

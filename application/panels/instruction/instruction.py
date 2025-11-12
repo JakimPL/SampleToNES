@@ -3,8 +3,11 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from audio.manager import AudioDeviceManager
-from configs.library import LibraryConfig
-from constants.browser import (
+from configs import LibraryConfig
+from instructions import InstructionUnion
+from library import LibraryFragment
+
+from ...constants import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTION_WAVEFORM,
@@ -17,9 +20,6 @@ from constants.browser import (
     TAG_INSTRUCTION_WAVEFORM_DISPLAY,
     VAL_PLOT_WIDTH_FULL,
 )
-from instructions.typehints import InstructionUnion
-from library.data import LibraryFragment
-
 from ...elements.graphs.spectrum import GUISpectrumDisplay
 from ...elements.graphs.waveform import GUIWaveformDisplay
 from ...elements.panel import GUIPanel

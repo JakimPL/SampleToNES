@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
-from configs.config import Config
-from constants.browser import EXT_FILE_WAV
-from parallelization.processor import TaskProcessor
-from utils.logger import logger
+from configs import Config
+from constants.general import EXT_FILE_WAV
+from parallelization import TaskProcessor
+from utils import logger
 
 from ..reconstructor import Reconstructor
 from .conversion import reconstruct_file

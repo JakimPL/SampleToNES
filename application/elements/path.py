@@ -5,14 +5,14 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from utils import shorten_path
+
+from ..constants import (
     CLR_PATH_TEXT,
     CLR_PATH_TEXT_HOVER,
     SUF_CONVERTER_HANDLER,
     SUF_GROUP,
 )
-from utils.common import shorten_path
-
 from ..utils.common import dpg_delete_item
 
 

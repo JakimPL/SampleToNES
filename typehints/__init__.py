@@ -1,6 +1,7 @@
-from .general import Initials, SerializedData
+from .general import FeatureValue, Initials, SerializedData
 
 __all__ = [
     "Initials",
+    "FeatureValue",
     "SerializedData",
 ]

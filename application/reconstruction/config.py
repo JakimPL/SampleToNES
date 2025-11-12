@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from constants.browser import (
+from constants import FeatureKey
+
+from ..constants import (
     CLR_BAR_PLOT_ARPEGGIO,
     CLR_BAR_PLOT_DUTY_CYCLE,
     CLR_BAR_PLOT_PITCH,
@@ -18,7 +20,6 @@ from constants.browser import (
     VAL_BAR_PLOT_VOLUME_Y_MAX,
     VAL_BAR_PLOT_VOLUME_Y_MIN,
 )
-from constants.enums import FeatureKey
 
 
 @dataclass(frozen=True)

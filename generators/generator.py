@@ -2,13 +2,12 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 
 import numpy as np
 
-from configs.config import Config
-from constants.enums import GeneratorClassName, GeneratorName
-from ffts.window import Window
-from instructions.typehints import InstructionType
-from timers.typehints import TimerType
-from timers.utils import get_frequency_table
-from typehints.general import Initials
+from configs import Config
+from constants import GeneratorClassName, GeneratorName
+from ffts import Window
+from instructions import InstructionType
+from timers import TimerType, get_frequency_table
+from typehints import Initials
 
 
 class Generator(Generic[InstructionType, TimerType]):

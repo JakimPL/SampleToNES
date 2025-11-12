@@ -2,11 +2,11 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from configs.config import Config as Config
-from configs.library import LibraryConfig
+from configs import Config as Config
+from configs import LibraryConfig
 from constants.general import MAX_SAMPLE_RATE, MAX_TRANSFORMATION_GAMMA, MIN_SAMPLE_RATE
-from ffts.window import Window
-from utils.serialization import hash_model
+from ffts import Window
+from utils import hash_model
 
 
 class LibraryKey(BaseModel):

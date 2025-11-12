@@ -2,12 +2,12 @@ from typing import List
 
 import numpy as np
 
-from configs.config import Config
-from constants.enums import GeneratorClassName, GeneratorName
+from configs import Config
+from constants import GeneratorClassName, GeneratorName
 from constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
-from instructions.triangle import TriangleInstruction
-from timers.phase import PhaseTimer
-from typehints.general import Initials
+from instructions import TriangleInstruction
+from timers import PhaseTimer
+from typehints import Initials
 
 from .generator import Generator
 

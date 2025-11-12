@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from constants.browser import (
+from ...constants import (
     CLR_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
@@ -17,7 +17,6 @@ from constants.browser import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
-
 from ...utils.common import dpg_delete_children, dpg_delete_item
 from .graph import GUIGraphDisplay
 from .layers.bar import BarLayer

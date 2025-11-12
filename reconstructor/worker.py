@@ -5,14 +5,12 @@ import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
-from configs.config import Config
-from constants.enums import GeneratorClassName, GeneratorName
-from ffts.window import Window
-from generators.typehints import GeneratorUnion
-from generators.utils import get_generator_by_instruction
-from instructions.typehints import InstructionUnion
-from library.fragment import Fragment, FragmentedAudio
-from library.library import LibraryData
+from configs import Config
+from constants import GeneratorClassName, GeneratorName
+from ffts import Window
+from generators import GeneratorUnion, get_generator_by_instruction
+from instructions import InstructionUnion
+from library import Fragment, FragmentedAudio, LibraryData
 
 from .approximation import ApproximationData
 from .criterion import Criterion

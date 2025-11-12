@@ -1,9 +1,11 @@
 from typing import Dict
 
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
-from instructions.typehints import InstructionClass
+from instructions import (
+    InstructionClass,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 
 from .noise import NoiseExporter
 from .pulse import PulseExporter

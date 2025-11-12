@@ -3,16 +3,13 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from audio.processing import load_audio
-from configs.config import Config
-from constants.enums import GeneratorName
+from audio import load_audio
+from configs import Config
+from constants import GeneratorName
 from exceptions.library import NoLibraryDataError
-from ffts.window import Window
-from generators.generator import Generator
-from generators.maps import GENERATOR_CLASSES, MIXER_LEVELS
-from generators.typehints import GeneratorUnion
-from library.fragment import FragmentedAudio
-from library.library import Library, LibraryData
+from ffts import Window
+from generators import GENERATOR_CLASSES, MIXER_LEVELS, Generator, GeneratorUnion
+from library import FragmentedAudio, Library, LibraryData
 
 from .approximation import ApproximationData
 from .reconstruction import Reconstruction

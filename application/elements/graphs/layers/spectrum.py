@@ -3,9 +3,10 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from constants.browser import VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_LOG_OFFSET
 from ffts.fft import calculate_frequencies
-from library.data import LibraryFragment
+from library import LibraryFragment
+
+from ....constants import VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_LOG_OFFSET
 
 
 @dataclass(frozen=True)

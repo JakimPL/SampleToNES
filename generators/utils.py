@@ -1,7 +1,7 @@
 from typing import Dict, cast
 
-from constants.enums import GeneratorClassName
-from instructions.typehints import InstructionUnion
+from constants import GeneratorClassName
+from instructions import InstructionUnion
 
 from .maps import INSTRUCTION_TO_GENERATOR_MAP
 from .typehints import GeneratorUnion

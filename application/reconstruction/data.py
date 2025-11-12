@@ -4,11 +4,11 @@ from typing import List, Self
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from audio.processing import load_audio
-from configs.config import Config
-from constants.enums import GeneratorName
-from reconstructor.reconstruction import Reconstruction
-from utils.logger import logger
+from audio import load_audio
+from configs import Config
+from constants import GeneratorName
+from reconstructor import Reconstruction
+from utils import logger
 
 from .feature import FeatureData
 

@@ -2,7 +2,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from typehints.general import SerializedData
+from typehints import SerializedData
 
 T = TypeVar("T")
 

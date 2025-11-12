@@ -1,6 +1,9 @@
 from typing import Optional, Union
 
-from constants.browser import (
+from instructions import InstructionUnion
+from library import LibraryFragment
+
+from ..constants import (
     FMT_INSTRUCTION_FREQUENCY,
     LBL_GLOBAL_NO,
     LBL_GLOBAL_YES,
@@ -16,9 +19,6 @@ from constants.browser import (
     SUF_INSTRUCTION_SAMPLE_LENGTH,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
-from instructions.typehints import InstructionUnion
-from library.data import LibraryFragment
-
 from .data import InstructionPanelData
 
 

@@ -7,15 +7,14 @@ import msgpack
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_serializer
 
-from configs.config import Config
-from configs.library import LibraryConfig
-from constants.enums import GeneratorClassName
-from ffts.transformations.transformer import FFTTransformer
-from ffts.window import Window
-from generators.maps import GENERATOR_CLASS_MAP
-from instructions.typehints import InstructionType, InstructionUnion
-from typehints.general import Initials, SerializedData
-from utils.serialization import deserialize_array, dump, serialize_array
+from configs import Config, LibraryConfig
+from constants import GeneratorClassName
+from ffts import Window
+from ffts.transformations import FFTTransformer
+from generators import GENERATOR_CLASS_MAP
+from instructions import InstructionType, InstructionUnion
+from typehints import Initials, SerializedData
+from utils import deserialize_array, dump, serialize_array
 
 from .fragment import Fragment
 

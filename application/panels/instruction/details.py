@@ -2,16 +2,16 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from instructions import InstructionUnion
+from library import LibraryFragment
+
+from ...constants import (
     MSG_INSTRUCTION_DETAILS,
     MSG_INSTRUCTION_NO_SELECTION,
     TAG_INSTRUCTION_DETAILS,
     TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_PANEL,
 )
-from instructions.typehints import InstructionUnion
-from library.data import LibraryFragment
-
 from ...elements.panel import GUIPanel
 from ...instruction.logic import InstructionDetailsLogic
 

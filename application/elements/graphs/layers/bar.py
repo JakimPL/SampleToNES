@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from constants.browser import CLR_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
+from ....constants import CLR_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
 
 
 @dataclass(frozen=True)

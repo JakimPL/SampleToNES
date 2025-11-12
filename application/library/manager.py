@@ -1,9 +1,24 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from configs.config import Config
-from constants.browser import (
-    EXT_FILE_LIBRARY,
+from configs import Config
+from constants import GeneratorClassName, LibraryGeneratorName
+from constants.general import EXT_FILE_LIBRARY, NOISE_PERIODS
+from ffts import Window
+from generators import LIBRARY_GENERATOR_CLASS_MAP
+from instructions import (
+    Instruction,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
+from library import Library, LibraryData, LibraryFragment, LibraryKey
+from library.creator.creator import LibraryCreator
+from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
+from tree.tree import Tree
+from utils import pitch_to_name
+
+from ..constants import (
     MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
     MSG_LIBRARY_GENERATION_SUCCESS,
@@ -18,22 +33,6 @@ from constants.browser import (
     TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
     TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS,
 )
-from constants.enums import GeneratorClassName, LibraryGeneratorName
-from constants.general import NOISE_PERIODS
-from ffts.window import Window
-from generators.maps import LIBRARY_GENERATOR_CLASS_MAP
-from instructions.instruction import Instruction
-from instructions.noise import NoiseInstruction
-from instructions.pulse import PulseInstruction
-from instructions.triangle import TriangleInstruction
-from library.creator.creator import LibraryCreator
-from library.data import LibraryData, LibraryFragment
-from library.key import LibraryKey
-from library.library import Library
-from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
-from tree.tree import Tree
-from utils.frequencies import pitch_to_name
-
 from ..utils.dialogs import show_error_dialog, show_info_dialog
 
 

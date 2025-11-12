@@ -1,23 +1,8 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
-from configs.config import Config
-from configs.general import GeneralConfig
-from configs.generation import GenerationConfig
-from configs.library import LibraryConfig
-from constants.browser import (
-    MSG_CONFIG_LOAD_ERROR,
-    MSG_CONFIG_SAVE_ERROR,
-    TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_MAX_WORKERS,
-    TAG_CONFIG_NORMALIZE,
-    TAG_CONFIG_QUANTIZE,
-    TAG_CONFIG_SAMPLE_RATE,
-    TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_RECONSTRUCTOR_MIXER,
-    TPL_RECONSTRUCTION_GEN_TAG,
-)
-from constants.enums import GeneratorName
+from configs import Config, GeneralConfig, GenerationConfig, LibraryConfig
+from constants import GeneratorName
 from constants.general import (
     CHANGE_RATE,
     CONFIG_PATH,
@@ -30,12 +15,23 @@ from constants.general import (
     SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
 )
-from ffts.window import Window
-from library.key import LibraryKey
-from typehints.general import SerializedData
-from utils.logger import logger
-from utils.serialization import load_json, save_json
+from ffts import Window
+from library import LibraryKey
+from typehints import SerializedData
+from utils import load_json, logger, save_json
 
+from ..constants import (
+    MSG_CONFIG_LOAD_ERROR,
+    MSG_CONFIG_SAVE_ERROR,
+    TAG_CONFIG_CHANGE_RATE,
+    TAG_CONFIG_MAX_WORKERS,
+    TAG_CONFIG_NORMALIZE,
+    TAG_CONFIG_QUANTIZE,
+    TAG_CONFIG_SAMPLE_RATE,
+    TAG_CONFIG_TRANSFORMATION_GAMMA,
+    TAG_RECONSTRUCTOR_MIXER,
+    TPL_RECONSTRUCTION_GEN_TAG,
+)
 from ..utils.dialogs import show_error_dialog
 
 

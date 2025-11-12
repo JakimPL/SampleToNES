@@ -1,6 +1,6 @@
 from application.gui import GUI
 from constants import SAMPLE_TO_NES_NAME, SAMPLE_TO_NES_VERSION
-from utils.logger import logger
+from utils import logger
 
 
 def run():

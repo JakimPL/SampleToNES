@@ -526,12 +526,6 @@ NOD_TYPE_FILE = "file"
 NOD_LABEL_NOT_LOADED = "Not loaded"
 NOD_LABEL_LIBRARIES = "Libraries"
 
-# File extensions
-EXT_FILE_JSON = ".json"
-EXT_FILE_LIBRARY = ".dat"
-EXT_FILE_FTI = ".fti"
-EXT_FILE_WAV = ".wav"
-
 # Bar plot display settings
 LBL_BAR_PLOT_DISPLAY = "Bar plot display"
 LBL_BAR_PLOT_VALUE_LABEL = "Value"

@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from constants.browser import EXT_FILE_JSON, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
-from tree.node import FileSystemNode
-from tree.tree import Tree
+from constants.general import EXT_FILE_JSON
+from tree import FileSystemNode, Tree
 
+from ..constants import NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
 from ..reconstruction.data import ReconstructionData
 
 

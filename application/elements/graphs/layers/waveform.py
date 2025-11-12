@@ -3,8 +3,9 @@ from typing import Tuple
 
 import numpy as np
 
-from constants.browser import CLR_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
-from library.data import LibraryFragment
+from library import LibraryFragment
+
+from ....constants import CLR_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 
 
 @dataclass(frozen=True)

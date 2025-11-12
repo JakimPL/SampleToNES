@@ -4,7 +4,11 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from constants.browser import (
+from constants import FeatureKey, GeneratorName
+from reconstructor import Reconstruction
+from utils import pitch_to_name
+
+from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_COPY_BUTTON_WIDTH,
     LBL_COPIED_TOOLTIP,
@@ -27,10 +31,6 @@ from constants.browser import (
     TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
     VAL_PLOT_WIDTH_FULL,
 )
-from constants.enums import FeatureKey, GeneratorName
-from reconstructor.reconstruction import Reconstruction
-from utils.frequencies import pitch_to_name
-
 from ...elements.button import GUIButton
 from ...elements.graphs.bar import GUIBarPlotDisplay
 from ...elements.panel import GUIPanel

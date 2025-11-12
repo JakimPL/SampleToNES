@@ -2,7 +2,9 @@ from typing import Any, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from typehints import SerializedData
+
+from ...constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_WAVEFORM_DISPLAY,
@@ -17,8 +19,6 @@ from constants.browser import (
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
-from typehints.general import SerializedData
-
 from ..panel import GUIPanel
 
 

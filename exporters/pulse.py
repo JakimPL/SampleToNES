@@ -2,10 +2,10 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from constants.enums import FeatureKey
+from constants import FeatureKey
 from constants.general import MIN_PITCH
-from instructions.pulse import PulseInstruction
-from typehints.general import FeatureValue
+from instructions import PulseInstruction
+from typehints import FeatureValue
 
 from .exporter import Exporter
 

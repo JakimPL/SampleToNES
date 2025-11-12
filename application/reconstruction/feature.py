@@ -4,9 +4,9 @@ from typing import Dict, List, Optional, cast
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from constants.enums import FeatureKey, GeneratorName
-from reconstructor.reconstruction import Reconstruction
-from typehints.general import FeatureValue
+from constants import FeatureKey, GeneratorName
+from reconstructor import Reconstruction
+from typehints import FeatureValue
 from utils.famitracker import write_fti
 
 

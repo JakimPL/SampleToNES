@@ -3,8 +3,8 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from constants.general import RESET_PHASE
-from ffts.window import Window
-from typehints.general import Initials
+from ffts import Window
+from typehints import Initials
 
 
 class Timer:

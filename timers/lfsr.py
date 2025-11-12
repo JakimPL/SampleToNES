@@ -11,7 +11,7 @@ from constants.general import (
     NOISE_PERIODS,
     RESET_PHASE,
 )
-from typehints.general import Initials
+from typehints import Initials
 
 from .timer import Timer
 

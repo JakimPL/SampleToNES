@@ -3,7 +3,12 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from parallelization.task import TaskProgress, TaskStatus
+from reconstructor.converter.converter import ReconstructionConverter
+from reconstructor.converter.paths import get_output_path
+
+from ..config.manager import ConfigManager
+from ..constants import (
     DIM_CONVERTER_BUTTON_WIDTH,
     DIM_DIALOG_CONVERTER_HEIGHT,
     DIM_DIALOG_CONVERTER_WIDTH,
@@ -32,11 +37,6 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from parallelization.task import TaskProgress, TaskStatus
-from reconstructor.converter.converter import ReconstructionConverter
-from reconstructor.converter.paths import get_output_path
-
-from ..config.manager import ConfigManager
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..utils.common import dpg_delete_item

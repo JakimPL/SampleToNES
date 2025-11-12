@@ -4,9 +4,9 @@ from typing import List, Self
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
-from configs.config import Config
-from ffts.transformations.transformer import FFTTransformer
-from ffts.window import Window
+from configs import Config
+from ffts import Window
+from ffts.transformations import FFTTransformer
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 from typing import Dict
 
-from configs.config import Config
-from utils.frequencies import pitch_to_frequency
+from configs import Config
+from utils import pitch_to_frequency
 
 from .phase import PhaseTimer
 

@@ -1,4 +1,5 @@
 from .common import first_key_for_value, next_power_of_two, pad, shorten_path
+from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
     MIN_AVAILABLE_FREQUENCY,
@@ -6,8 +7,19 @@ from .frequencies import (
     pitch_to_frequency,
     pitch_to_name,
 )
+from .logger import logger
+from .serialization import (
+    deserialize_array,
+    dump,
+    hash_model,
+    hash_models,
+    load_json,
+    save_json,
+    serialize_array,
+)
 
 __all__ = [
+    "logger",
     "next_power_of_two",
     "pad",
     "first_key_for_value",
@@ -15,6 +27,14 @@ __all__ = [
     "pitch_to_frequency",
     "frequency_to_pitch",
     "pitch_to_name",
+    "dump",
+    "save_json",
+    "load_json",
+    "serialize_array",
+    "deserialize_array",
+    "hash_model",
+    "hash_models",
     "MIN_AVAILABLE_FREQUENCY",
     "MAX_AVAILABLE_FREQUENCY",
+    "write_fti",
 ]

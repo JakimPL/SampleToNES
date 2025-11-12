@@ -7,7 +7,7 @@ from typing import Any, Union
 import numpy as np
 from pydantic import BaseModel
 
-from typehints.general import SerializedData
+from typehints import SerializedData
 
 JSON_INDENT = 2
 

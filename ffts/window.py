@@ -3,8 +3,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from configs.library import LibraryConfig
-from utils.common import pad
+from configs import LibraryConfig
+from utils import pad
 
 from .fft import calculate_weights
 

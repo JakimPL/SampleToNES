@@ -3,10 +3,10 @@ from typing import Dict, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from configs.config import Config
+from configs import Config
 from constants.general import LIBRARY_DIRECTORY
-from ffts.window import Window
-from utils.logger import logger
+from ffts import Window
+from utils import logger
 
 from .data import LibraryData
 from .key import LibraryKey

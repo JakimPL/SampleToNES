@@ -2,12 +2,12 @@ from typing import List
 
 import numpy as np
 
-from configs.config import Config
-from constants.enums import GeneratorClassName, GeneratorName
+from configs import Config
+from constants import GeneratorClassName, GeneratorName
 from constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
-from instructions.pulse import PulseInstruction
-from timers.phase import PhaseTimer
-from typehints.general import Initials
+from instructions import PulseInstruction
+from timers import PhaseTimer
+from typehints import Initials
 
 from .generator import Generator
 

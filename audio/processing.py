@@ -5,7 +5,7 @@ import numpy as np
 from scipy.io import wavfile
 
 from constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
-from utils.logger import logger
+from utils import logger
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:

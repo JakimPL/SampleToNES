@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import List
 
-from configs.config import Config
-from constants.browser import EXT_FILE_JSON
-from constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
-from utils.serialization import hash_models
+from configs import Config
+from constants import GENERATOR_ABBREVIATIONS, GeneratorName
+from constants.general import EXT_FILE_JSON
+from utils import hash_models
 
 
 def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:

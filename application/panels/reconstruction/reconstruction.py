@@ -3,14 +3,18 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from audio import write_audio
 from audio.manager import AudioDeviceManager
-from audio.processing import write_audio
-from constants.browser import (
+from constants import AudioSourceType, GeneratorName
+from constants.general import EXT_FILE_FTI, EXT_FILE_WAV
+from reconstructor import Reconstruction
+from utils import logger
+
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_WAVEFORM_DEFAULT_HEIGHT,
-    EXT_FILE_FTI,
-    EXT_FILE_WAV,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -44,11 +48,6 @@ from constants.browser import (
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_FULL,
 )
-from constants.enums import AudioSourceType, GeneratorName
-from reconstructor.reconstruction import Reconstruction
-from utils.logger import logger
-
-from ...config.manager import ConfigManager
 from ...elements.button import GUIButton
 from ...elements.graphs.waveform import GUIWaveformDisplay
 from ...elements.panel import GUIPanel

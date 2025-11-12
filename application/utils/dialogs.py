@@ -3,7 +3,9 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from library import LibraryKey
+
+from ..constants import (
     CLR_ERROR_TEXT,
     CLR_PATH_TEXT,
     DIM_DIALOG_ERROR_WIDTH_WRAP,
@@ -26,8 +28,6 @@ from constants.browser import (
     TITLE_DIALOG_LIBRARY_NOT_LOADED,
     TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
 )
-from library.key import LibraryKey
-
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from .common import dpg_delete_item

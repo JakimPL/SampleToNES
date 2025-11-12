@@ -4,8 +4,13 @@ from typing import Callable
 import dearpygui.dearpygui as dpg
 
 from audio.manager import AudioDeviceManager
-from configs.library import LibraryConfig
-from constants.browser import (
+from configs import LibraryConfig
+from constants.general import EXT_FILE_JSON, EXT_FILE_WAV
+from library import LibraryFragment
+from utils import logger
+
+from .config.manager import ConfigManager
+from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
@@ -16,8 +21,6 @@ from constants.browser import (
     DIM_PANEL_RIGHT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
-    EXT_FILE_JSON,
-    EXT_FILE_WAV,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_EXIT,
     LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
@@ -58,10 +61,6 @@ from constants.browser import (
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
-from library.data import LibraryFragment
-from utils.logger import logger
-
-from .config.manager import ConfigManager
 from .panels.browser import GUIBrowserPanel
 from .panels.config import GUIConfigPanel
 from .panels.converter import GUIConverterWindow

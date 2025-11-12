@@ -3,7 +3,10 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from constants.browser import (
+from constants.general import MIN_FREQUENCY, SAMPLE_RATE
+from library import LibraryFragment
+
+from ...constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_SPECTRUM_DISPLAY,
@@ -12,9 +15,6 @@ from constants.browser import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
-from constants.general import MIN_FREQUENCY, SAMPLE_RATE
-from library.data import LibraryFragment
-
 from ...utils.common import dpg_delete_children
 from .graph import GUIGraphDisplay
 from .layers.spectrum import SpectrumLayer

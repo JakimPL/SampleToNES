@@ -3,7 +3,10 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from constants.browser import (
+from constants import GeneratorName
+from library import LibraryFragment
+
+from ...constants import (
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
     CLR_WAVEFORM_LAYER_SAMPLE,
     CLR_WAVEFORM_POSITION_INDICATOR,
@@ -29,9 +32,6 @@ from constants.browser import (
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from constants.enums import GeneratorName
-from library.data import LibraryFragment
-
 from ...reconstruction.data import ReconstructionData
 from ...utils.common import dpg_delete_children, dpg_delete_item
 from ..button import GUIButton

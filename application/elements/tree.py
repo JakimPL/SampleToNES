@@ -2,7 +2,10 @@ from typing import Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from tree.node import TreeNode
+from tree.tree import Tree
+
+from ..constants import (
     DIM_SEARCH_BUTTON_WIDTH,
     DIM_SEARCH_INPUT_WIDTH,
     LBL_BUTTON_CLEAR_SEARCH,
@@ -11,9 +14,6 @@ from constants.browser import (
     SUF_SEARCH_BUTTON,
     SUF_SEARCH_INPUT,
 )
-from tree.node import TreeNode
-from tree.tree import Tree
-
 from ..utils.common import dpg_delete_children
 from .button import GUIButton
 from .panel import GUIPanel

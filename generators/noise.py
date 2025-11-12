@@ -2,12 +2,12 @@ from typing import List
 
 import numpy as np
 
-from configs.config import Config
-from constants.enums import GeneratorClassName, GeneratorName
+from configs import Config
+from constants import GeneratorClassName, GeneratorName
 from constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
-from instructions.noise import NoiseInstruction
-from timers.lfsr import LFSRTimer
-from typehints.general import Initials
+from instructions import NoiseInstruction
+from timers import LFSRTimer
+from typehints import Initials
 
 from .generator import Generator
 

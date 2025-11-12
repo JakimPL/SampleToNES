@@ -2,8 +2,17 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from configs.library import LibraryConfig
-from constants.browser import (
+from configs import LibraryConfig
+from constants import GeneratorClassName
+from exceptions.window import WindowNotAvailableError
+from instructions import Instruction
+from library import LibraryFragment, LibraryKey
+from parallelization.task import TaskProgress, TaskStatus
+from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
+from utils import logger
+
+from ..config.manager import ConfigManager
+from ..constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
@@ -35,16 +44,6 @@ from constants.browser import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from constants.enums import GeneratorClassName
-from exceptions.window import WindowNotAvailableError
-from instructions.instruction import Instruction
-from library.data import LibraryFragment
-from library.key import LibraryKey
-from parallelization.task import TaskProgress, TaskStatus
-from tree.node import GeneratorNode, GroupNode, InstructionNode, LibraryNode, TreeNode
-from utils.logger import logger
-
-from ..config.manager import ConfigManager
 from ..elements.button import GUIButton
 from ..elements.tree import GUITreePanel
 from ..library.manager import LibraryManager

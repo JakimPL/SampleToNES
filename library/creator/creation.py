@@ -2,14 +2,12 @@ from typing import Dict, List, Tuple
 
 from tqdm.auto import tqdm
 
-from configs.config import Config
-from configs.library import LibraryConfig
-from constants.enums import GeneratorClassName
-from ffts.transformations.transformer import FFTTransformer
-from ffts.window import Window
-from generators.maps import GENERATOR_CLASS_MAP
-from generators.typehints import GeneratorUnion
-from instructions.typehints import InstructionUnion
+from configs import Config, LibraryConfig
+from constants import GeneratorClassName
+from ffts import Window
+from ffts.transformations import FFTTransformer
+from generators import GENERATOR_CLASS_MAP, GeneratorUnion
+from instructions import InstructionUnion
 
 from ..data import LibraryFragment
 

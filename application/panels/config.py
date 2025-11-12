@@ -3,7 +3,23 @@ from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from constants.browser import (
+from constants.general import (
+    CHANGE_RATE,
+    MAX_CHANGE_RATE,
+    MAX_SAMPLE_RATE,
+    MAX_TRANSFORMATION_GAMMA,
+    MAX_WORKERS,
+    MIN_CHANGE_RATE,
+    MIN_SAMPLE_RATE,
+    NORMALIZE,
+    QUANTIZE,
+    SAMPLE_RATE,
+)
+from library import LibraryKey
+from typehints import SerializedData
+
+from ..config.manager import ConfigManager
+from ..constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
@@ -31,22 +47,6 @@ from constants.browser import (
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
-from constants.general import (
-    CHANGE_RATE,
-    MAX_CHANGE_RATE,
-    MAX_SAMPLE_RATE,
-    MAX_TRANSFORMATION_GAMMA,
-    MAX_WORKERS,
-    MIN_CHANGE_RATE,
-    MIN_SAMPLE_RATE,
-    NORMALIZE,
-    QUANTIZE,
-    SAMPLE_RATE,
-)
-from library.key import LibraryKey
-from typehints.general import SerializedData
-
-from ..config.manager import ConfigManager
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..elements.path import GUIPathText

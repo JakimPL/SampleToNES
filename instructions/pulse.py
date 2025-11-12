@@ -8,7 +8,7 @@ from constants.general import (
     MIN_PITCH,
     PITCH_RANGE,
 )
-from utils.frequencies import pitch_to_name
+from utils import pitch_to_name
 
 from .instruction import Instruction
 
