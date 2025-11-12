@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Self, Union, cast
 
 import numpy as np
-from pydantic import BaseModel, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
-from configs.config import Config as Configuration
+from configs.config import Config
 from constants.enums import FeatureKey, GeneratorName, InstructionClassName
 from constants.general import SAMPLE_TO_NES_NAME, SAMPLE_TO_NES_VERSION
 from exceptions.reconstruction import InvalidReconstructionError
@@ -32,11 +32,13 @@ def default_metadata() -> SerializedData:
 
 
 class Reconstruction(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
     instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
     errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
-    config: Configuration = Field(..., description="Configuration used for reconstruction")
+    config: Config = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
     metadata: SerializedData = Field(default_factory=default_metadata, description="Additional metadata")
@@ -69,9 +71,7 @@ class Reconstruction(BaseModel):
         )
 
     @classmethod
-    def from_results(
-        cls, state: ReconstructionState, config: Configuration, coefficient: float, path: Path
-    ) -> Optional[Self]:
+    def from_results(cls, state: ReconstructionState, config: Config, coefficient: float, path: Path) -> Optional[Self]:
         if any(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None
@@ -111,7 +111,7 @@ class Reconstruction(BaseModel):
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
         data["instructions"] = cls._parse_instructions(data["instructions"])
-        data["config"] = Configuration(**data["config"])
+        data["config"] = Config(**data["config"])
         data["coefficient"] = float(data["coefficient"])
         data["audio_filepath"] = Path(data["audio_filepath"])
         data["metadata"] = data.get("metadata", {})
@@ -169,12 +169,9 @@ class Reconstruction(BaseModel):
         }
 
     @field_serializer("config")
-    def _serialize_config(self, config: Configuration, _info) -> SerializedData:
+    def _serialize_config(self, config: Config, _info) -> SerializedData:
         return config.model_dump()
 
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
         return str(audio_filepath)
-
-    class Config:
-        arbitrary_types_allowed = True

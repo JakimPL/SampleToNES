@@ -1,7 +1,7 @@
 from typing import Dict, List, Self
 
 import numpy as np
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from constants.enums import GeneratorName
 from library.fragment import Fragment
@@ -10,15 +10,16 @@ from typehints.instructions import InstructionUnion
 
 
 class FragmentReconstructionState(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     fragment: Fragment
     instruction: InstructionUnion
     error: float
 
-    class Config:
-        arbitrary_types_allowed = True
-
 
 class ReconstructionState(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     generator_names: List[GeneratorName] = []
     instructions: Dict[GeneratorName, List[InstructionUnion]] = {}
     approximations: Dict[GeneratorName, List[np.ndarray]] = {}
@@ -42,6 +43,3 @@ class ReconstructionState(BaseModel):
     @property
     def total_error(self) -> float:
         return sum(sum(errors) for errors in self.errors.values())
-
-    class Config:
-        arbitrary_types_allowed = True

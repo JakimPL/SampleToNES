@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Iterator, List, Self
+from typing import List, Self
 
 import numpy as np
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from configs.config import Config as Configuration
+from configs.config import Config
 from ffts.fft import FFTTransformer
 from ffts.window import Window
 
@@ -14,7 +14,7 @@ class Fragment:
     audio: np.ndarray
     feature: np.ndarray
     windowed_audio: np.ndarray
-    config: Configuration
+    config: Config
 
     transformer: FFTTransformer = field(init=False)
 
@@ -22,7 +22,7 @@ class Fragment:
         object.__setattr__(self, "transformer", FFTTransformer.from_gamma(self.config.library.transformation_gamma))
 
     @classmethod
-    def create(cls, config: Configuration, windowed_audio: np.ndarray, window: Window) -> "Fragment":
+    def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> "Fragment":
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
         transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
         feature = transformer.calculate(windowed_audio, window.size)
@@ -69,18 +69,16 @@ class Fragment:
             config=self.config,
         )
 
-    class Config:
-        frozen = True
-        arbitrary_types_allowed = True
-
 
 class FragmentedAudio(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     audio: np.ndarray = Field(..., description="Original audio data")
     fragments: List[Fragment] = Field(..., description="List of audio fragments")
-    config: Configuration = Field(..., description="Configuration")
+    config: Config = Field(..., description="Configuration")
 
     @classmethod
-    def create(cls, audio: np.ndarray, config: Configuration, window: Window) -> "FragmentedAudio":
+    def create(cls, audio: np.ndarray, config: Config, window: Window) -> "FragmentedAudio":
         length = (audio.shape[0] // window.frame_length) * window.frame_length
         audio = audio[:length].copy()
         count = length // window.frame_length
@@ -107,6 +105,3 @@ class FragmentedAudio(BaseModel):
     @property
     def fragments_ids(self) -> List[int]:
         return list(range(len(self.fragments)))
-
-    class Config:
-        arbitrary_types_allowed = True

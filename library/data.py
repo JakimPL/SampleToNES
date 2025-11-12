@@ -5,9 +5,9 @@ from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, ConfigDict, field_serializer
 
-from configs.config import Config as Configuration
+from configs.config import Config
 from configs.library import LibraryConfig
 from constants.enums import GeneratorClassName
 from ffts.fft import FFTTransformer
@@ -20,6 +20,8 @@ from utils.serialization import SerializedData, deserialize_array, dump, seriali
 
 
 class LibraryFragment(BaseModel, Generic[InstructionType]):
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
+
     generator_class: GeneratorClassName
     instruction: InstructionType
     sample: np.ndarray
@@ -58,7 +60,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
             offset=offset,
         )
 
-    def get_fragment(self, shift: int, config: Configuration, window: Window) -> Fragment:
+    def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         offset = self.offset + shift
         windowed_audio = window.get_windowed_frame(self.sample, offset)
         audio = window.get_frame_from_window(windowed_audio)
@@ -72,7 +74,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
     def get(
         self,
         generator: Any,
-        config: Configuration,
+        config: Config,
         window: Window,
         initials: Initials = None,
     ) -> Fragment:
@@ -114,12 +116,10 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
             offset=dictionary["offset"],
         )
 
-    class Config:
-        arbitrary_types_allowed = True
-        use_enum_values = True
-
 
 class LibraryData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     config: LibraryConfig
     data: Dict[InstructionUnion, LibraryFragment]
 
@@ -217,6 +217,3 @@ class LibraryData(BaseModel):
                 config = library_data.config
 
         return cls(config=config, data=merged_data)
-
-    class Config:
-        arbitrary_types_allowed = True

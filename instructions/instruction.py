@@ -1,9 +1,11 @@
 from typing import Self
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class Instruction(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     on: bool
 
     @property
@@ -12,6 +14,3 @@ class Instruction(BaseModel):
 
     def distance(self, other: Self) -> float:
         raise NotImplementedError("Subclasses must implement distance method")
-
-    class Config:
-        frozen = True

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from constants.general import (
     LIBRARY_DIRECTORY,
@@ -12,6 +12,8 @@ from constants.general import (
 
 
 class GeneralConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     min_pitch: int = Field(default=MIN_PITCH, ge=1, le=127)
     max_pitch: int = Field(default=MAX_PITCH, ge=1, le=127)
     normalize: bool = Field(default=NORMALIZE)
@@ -20,7 +22,3 @@ class GeneralConfig(BaseModel):
 
     library_directory: str = Field(default=LIBRARY_DIRECTORY)
     output_directory: str = Field(default=OUTPUT_DIRECTORY)
-
-    class Config:
-        extra = "forbid"
-        frozen = True

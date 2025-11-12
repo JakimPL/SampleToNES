@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from configs.general import GeneralConfig
 from configs.generation import GenerationConfig
@@ -6,13 +6,10 @@ from configs.library import LibraryConfig
 
 
 class Config(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid", frozen=True)
+
     general: GeneralConfig = Field(default_factory=GeneralConfig, description="Base configuration for audio processing")
     library: LibraryConfig = Field(default_factory=LibraryConfig, description="Configuration for the audio library")
     generation: GenerationConfig = Field(
         default_factory=GenerationConfig, description="Configuration for generation processes"
     )
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "forbid"
-        frozen = True

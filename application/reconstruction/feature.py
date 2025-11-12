@@ -56,6 +56,8 @@ class Feature(BaseModel):
 
 
 class FeatureData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     generators: Dict[GeneratorName, Feature]
 
     def __getitem__(self, generator_name: GeneratorName) -> Feature:
@@ -106,6 +108,3 @@ class FeatureData(BaseModel):
             if features.get(feature_key) is not None:
                 return generator_name
         return None
-
-    class Config:
-        arbitrary_types_allowed = True

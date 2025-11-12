@@ -1,10 +1,12 @@
 import numpy as np
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field
 
 from library.data import LibraryFragment
 
 
 class AudioData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     sample: np.ndarray
     sample_rate: int
     current_position: int = 0
@@ -48,6 +50,3 @@ class AudioData(BaseModel):
 
     def reset_position(self) -> None:
         self.current_position = 0
-
-    class Config:
-        arbitrary_types_allowed = True

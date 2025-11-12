@@ -398,6 +398,7 @@ class GUI:
     def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self.update_menu()
+        self.audio_device_manager.stop()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
@@ -446,6 +447,7 @@ class GUI:
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        self.audio_device_manager.stop()
 
     def _exit_application(self) -> None:
         if self.converter_window and self.converter_window.converter:

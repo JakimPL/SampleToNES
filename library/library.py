@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from configs.config import Config as Configuration
+from configs.config import Config
 from constants.general import LIBRARY_DIRECTORY
 from ffts.window import Window
 from library.data import LibraryData
@@ -12,16 +12,18 @@ from utils.logger import logger
 
 
 class Library(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     directory: str = Field(default=LIBRARY_DIRECTORY, description="Path to the FFT library directory")
     data: Dict[LibraryKey, LibraryData] = Field(default_factory=dict, description="FFT library data")
 
     def __getitem__(self, key: LibraryKey) -> LibraryData:
         return self.data[key]
 
-    def create_key(self, config: Configuration, window: Window) -> LibraryKey:
+    def create_key(self, config: Config, window: Window) -> LibraryKey:
         return LibraryKey.create(config.library, window)
 
-    def get(self, config: Configuration, window: Window) -> Optional[LibraryData]:
+    def get(self, config: Config, window: Window) -> Optional[LibraryData]:
         key = self.create_key(config, window)
         if key in self.data:
             return self.data[key]
@@ -61,6 +63,3 @@ class Library(BaseModel):
         path = self.get_path(key)
         library_data = LibraryData.load(path)
         self.data[key] = library_data
-
-    class Config:
-        arbitrary_types_allowed = True
