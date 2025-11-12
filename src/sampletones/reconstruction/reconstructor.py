@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
@@ -15,6 +15,7 @@ from sampletones.generators import (
     GeneratorUnion,
 )
 from sampletones.library import FragmentedAudio, Library, LibraryData
+from sampletones.utils import to_path
 
 from .approximation import ApproximationData
 from .reconstruction import Reconstruction
@@ -57,7 +58,9 @@ class Reconstructor:
         self.window: Window = Window(config.library)
         self.library_data: LibraryData = self.load_library(library)
 
-    def __call__(self, path: Path) -> Optional[Reconstruction]:
+    def __call__(self, path: Union[str, Path]) -> Optional[Reconstruction]:
+        path = to_path(path)
+
         audio = self.load_audio(path)
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))

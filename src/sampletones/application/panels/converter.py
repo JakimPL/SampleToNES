@@ -4,7 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.parallelization import TaskProgress, TaskStatus
-from sampletones.reconstructor.converter import ReconstructionConverter, get_output_path
+from sampletones.reconstruction.converter import ReconstructionConverter, get_output_path
 
 from ..config.manager import ConfigManager
 from ..constants import (

@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager, write_audio
 from sampletones.constants import AudioSourceType, GeneratorName
 from sampletones.constants.general import EXT_FILE_FTI, EXT_FILE_WAV
-from sampletones.reconstructor import Reconstruction
+from sampletones.reconstruction import Reconstruction
 from sampletones.utils import logger
 
 from ...config.manager import ConfigManager

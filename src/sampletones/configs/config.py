@@ -1,4 +1,8 @@
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict, Field
+
+from sampletones.utils.serialization import load_json, save_json
 
 from .general import GeneralConfig
 from .generation import GenerationConfig
@@ -13,3 +17,12 @@ class Config(BaseModel):
     generation: GenerationConfig = Field(
         default_factory=GenerationConfig, description="Configuration for generation processes"
     )
+
+    @classmethod
+    def load(cls, path: Path) -> "Config":
+        config_dict = load_json(path)
+        return cls(**config_dict)
+
+    def save(self, path: Path) -> None:
+        config_dict = self.model_dump()
+        save_json(path, config_dict)

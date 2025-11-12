@@ -113,6 +113,7 @@ class Reconstruction(BaseModel):
 
     @classmethod
     def load(cls, filepath: Union[str, Path]) -> Self:
+
         data = load_json(filepath)
         cls.validate_json(data)
 

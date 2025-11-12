@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants import FeatureKey, GeneratorName
-from sampletones.reconstructor import Reconstruction
+from sampletones.reconstruction import Reconstruction
 from sampletones.utils import pitch_to_name
 
 from ...constants import (

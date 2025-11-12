@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants import GeneratorName
-from sampletones.reconstructor import Reconstruction
+from sampletones.reconstruction import Reconstruction
 from sampletones.utils import logger
 
 from .feature import FeatureData

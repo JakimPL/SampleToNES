@@ -1,4 +1,4 @@
-from .common import first_key_for_value, next_power_of_two, pad, shorten_path
+from .common import first_key_for_value, next_power_of_two, pad
 from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
@@ -8,6 +8,7 @@ from .frequencies import (
     pitch_to_name,
 )
 from .logger import logger
+from .paths import shorten_path, to_path
 from .serialization import (
     deserialize_array,
     dump,
@@ -23,7 +24,6 @@ __all__ = [
     "next_power_of_two",
     "pad",
     "first_key_for_value",
-    "shorten_path",
     "pitch_to_frequency",
     "frequency_to_pitch",
     "pitch_to_name",
@@ -37,4 +37,6 @@ __all__ = [
     "MIN_AVAILABLE_FREQUENCY",
     "MAX_AVAILABLE_FREQUENCY",
     "write_fti",
+    "shorten_path",
+    "to_path",
 ]

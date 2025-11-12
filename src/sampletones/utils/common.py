@@ -32,17 +32,3 @@ def first_key_for_value(dictionary: dict, target: Any) -> Any:
             return key
 
     return None
-
-
-def shorten_path(path: Path, levels: int = 5) -> str:
-    path = path.expanduser().resolve()
-    parts = path.parts
-
-    if len(parts) <= levels:
-        return str(path)
-
-    root = parts[0]
-    first_dir = parts[1]
-    last_parts = parts[-(levels - 2) :]
-
-    return os.sep.join([root.rstrip(os.sep), first_dir, "..."] + list(last_parts))

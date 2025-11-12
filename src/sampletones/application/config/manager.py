@@ -18,7 +18,7 @@ from sampletones.constants.general import (
 from sampletones.ffts import Window
 from sampletones.library import LibraryKey
 from sampletones.typehints import SerializedData
-from sampletones.utils import load_json, logger, save_json
+from sampletones.utils import logger, save_json
 
 from ..constants import (
     MSG_CONFIG_LOAD_ERROR,
@@ -209,10 +209,8 @@ class ConfigManager:
         if not self.config:
             raise ValueError("No configuration to save")
 
-        config_dict = self.config.model_dump()
-        save_json(filepath, config_dict)
+        self.config.save(filepath)
 
     def load_config_from_file(self, filepath: Path) -> None:
-        config_dict = load_json(filepath)
-        self.config = Config(**config_dict)
-        return self.load_config(self.config)
+        config = Config.load(filepath)
+        return self.load_config(config)
