@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from configs.config import Config
 from configs.library import LibraryConfig
 from constants.enums import GeneratorClassName
-from ffts.fft import FFTTransformer
+from ffts.transformations.transformer import FFTTransformer
 from ffts.window import Window
 from library.fragment import Fragment
 from reconstructor.maps import GENERATOR_CLASS_MAP

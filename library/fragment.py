@@ -5,7 +5,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from configs.config import Config
-from ffts.fft import FFTTransformer
+from ffts.transformations.transformer import FFTTransformer
 from ffts.window import Window
 
 
