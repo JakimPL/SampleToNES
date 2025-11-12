@@ -71,7 +71,7 @@ class Fragment:
 
 
 class FragmentedAudio(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     audio: np.ndarray = Field(..., description="Original audio data")
     fragments: List[Fragment] = Field(..., description="List of audio fragments")

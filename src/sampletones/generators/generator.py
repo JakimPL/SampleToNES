@@ -12,6 +12,12 @@ from sampletones.typehints import Initials
 
 class Generator(Generic[InstructionType, TimerType]):
     def __init__(self, config: Config, name: GeneratorName) -> None:
+        if not isinstance(config, Config):
+            raise TypeError("config must be an instance of Config")
+
+        if not isinstance(name, GeneratorName):
+            raise TypeError("name must be an instance of GeneratorName")
+
         self.config: Config = config
         self.frequency_table: Dict[int, float] = get_frequency_table(config)
 

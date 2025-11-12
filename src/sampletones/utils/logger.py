@@ -12,13 +12,13 @@ class Logger:
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self):
+    def __init__(self, level: int = logging.INFO):
         if not hasattr(self, "_initialized"):
             self._logger = logging.getLogger("SampleToNES")
-            self._logger.setLevel(logging.DEBUG)
+            self._logger.setLevel(level)
 
             handler = logging.StreamHandler(sys.stdout)
-            handler.setLevel(logging.DEBUG)
+            handler.setLevel(level)
 
             formatter = logging.Formatter("[%(levelname)s] %(message)s")
             handler.setFormatter(formatter)

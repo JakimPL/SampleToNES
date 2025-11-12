@@ -1,4 +1,5 @@
 from .configs import Config
+from .constants import GeneratorName
 from .constants.application import SAMPLE_TO_NES_VERSION
 from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
 from .instructions import (
@@ -25,5 +26,6 @@ __all__ = [
     "PulseInstruction",
     "TriangleInstruction",
     "NoiseInstruction",
+    "GeneratorName",
     "__version__",
 ]

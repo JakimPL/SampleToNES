@@ -33,6 +33,9 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         initials: Initials = None,
         save: bool = False,
     ) -> np.ndarray:
+        if not isinstance(pulse_instruction, PulseInstruction):
+            raise TypeError("instruction must be an instance of PulseInstruction")
+
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
 

@@ -31,6 +31,8 @@ class TaskProcessor(Generic[T]):
         self.completed_tasks = 0
         self.current_item: Optional[str] = None
 
+        self._pool_lock: threading.Lock = threading.Lock()
+
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self._on_complete: Optional[Callable[[T], None]] = None
         self._on_error: Optional[Callable[[Exception], None]] = None
@@ -220,19 +222,43 @@ class TaskProcessor(Generic[T]):
         if on_cancelled is not None:
             self._on_cancelled = on_cancelled
 
+    def _join_pool(self, timeout: Optional[Union[int, float]] = None) -> None:
+        try:
+            if self.pool is not None:
+                if timeout is not None:
+                    self.pool.join(timeout=timeout)
+                else:
+                    self.pool.join()
+        except OSError as exception:
+            logger.error_with_traceback(f"Error while joining the pool: {exception}", exception)
+
     def _cleanup_pool(self) -> None:
         self._notify_progress()
-        if self.pool is not None:
+        if self.pool is None:
+            return
+
+        with self._pool_lock:
             logger.info("Cleaning the task manager pool...")
-            self.pool.close()
-            self.pool.join()
+            try:
+                self.pool.close()
+            except RuntimeError as exception:
+                logger.error_with_traceback(f"Error while closing the pool: {exception}", exception)
+            finally:
+                self._join_pool()
 
     def _stop_pool(self, timeout: Union[int, float] = STOP_TIMEOUT) -> None:
         self._notify_progress()
-        if self.pool is not None:
+        if self.pool is None:
+            return
+
+        with self._pool_lock:
             logger.info("Stopping the task manager pool...")
-            self.pool.stop()
-            self.pool.join(timeout=timeout)
+            try:
+                self.pool.stop()
+            except RuntimeError as exception:
+                logger.error_with_traceback(f"Error while stopping the pool: {exception}", exception)
+            finally:
+                self.pool.join(timeout=timeout)
 
     def __enter__(self):
         return self
