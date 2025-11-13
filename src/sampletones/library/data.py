@@ -83,11 +83,11 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
 
     @property
     def empty(self) -> bool:
-        return len(self.sample.array) == 0
+        return self.sample.length == 0
 
     @property
-    def sample_length(self) -> int:
-        return len(self.sample.array)
+    def length(self) -> int:
+        return self.sample.length
 
     @staticmethod
     def load_instruction(data: SerializedData) -> InstructionType:

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
@@ -36,10 +36,13 @@ class CyclicArray(BaseModel):
 
         return round((phase * self.sample_rate) / self.frequency)
 
-    def get_fragment(self, phase: Union[int, float], length: int) -> np.ndarray:
+    def get_fragment(self, phase: Union[int, float] = 0, length: Optional[int] = None) -> np.ndarray:
         n = len(self.array)
         if n == 0:
             return np.empty(0, dtype=self.array.dtype)
+
+        if length is None:
+            length = n
 
         offset = self.get_offset(phase) if isinstance(phase, float) else phase
         idx = np.arange(offset, offset + length) % n
@@ -61,3 +64,7 @@ class CyclicArray(BaseModel):
         sample_rate = data["sample_rate"]
         frequency = data.get("frequency", 0.0)
         return cls(array=array, sample_rate=sample_rate, frequency=frequency)
+
+    @property
+    def length(self) -> int:
+        return len(self.array)

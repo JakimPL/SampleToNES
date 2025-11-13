@@ -72,11 +72,8 @@ class ReconstructorWorker:
 
     def find_best_phase(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
         library_fragment = self.library_data[instruction]
-        start = library_fragment.offset
-        length = library_fragment.sample.shape[0] // 3
-        end = start + length
+        array = library_fragment.sample.get_fragment(length=2 * library_fragment.sample.length)
 
-        array = library_fragment.sample[start:end] * self.config.generation.mixer
         windows = sliding_window_view(array, self.config.library.frame_length)
         remainder = fragment.audio - windows
 

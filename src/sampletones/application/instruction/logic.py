@@ -54,7 +54,7 @@ class InstructionDetailsLogic:
         lines = [
             f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class}",
             f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
-            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{fragment.sample_length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
             "",
             LBL_INSTRUCTION_PARAMETERS_HEADER,
         ]
