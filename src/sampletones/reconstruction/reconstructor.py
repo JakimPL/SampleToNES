@@ -9,10 +9,10 @@ from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import Window
 from sampletones.generators import (
-    GENERATOR_CLASSES,
     MIXER_LEVELS,
     Generator,
     GeneratorUnion,
+    get_generators_by_names,
 )
 from sampletones.library import FragmentedAudio, Library, LibraryData
 from sampletones.utils import to_path
@@ -51,9 +51,7 @@ class Reconstructor:
         self.state: ReconstructionState = ReconstructionState.create([])
 
         generator_names = self.config.generation.generators
-        self.generators: Dict[GeneratorName, GeneratorUnion] = {
-            name: GENERATOR_CLASSES[name](config, name) for name in generator_names
-        }
+        self.generators = get_generators_by_names(config, generator_names)
 
         self.window: Window = Window(config.library)
         self.library_data: LibraryData = self.load_library(library)
