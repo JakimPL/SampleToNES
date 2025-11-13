@@ -80,10 +80,9 @@ class GUIConverterWindow:
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
             tag=TAG_CONVERTER_WINDOW,
-            modal=True,
-            width=DIM_DIALOG_CONVERTER_WIDTH,
-            height=DIM_DIALOG_CONVERTER_HEIGHT,
-            no_resize=True,
+            modal=False,
+            min_size=(DIM_DIALOG_CONVERTER_WIDTH, DIM_DIALOG_CONVERTER_HEIGHT),
+            autosize=True,
             on_close=self._on_close,
         ):
             dpg.add_text(MSG_CONVERTER_IDLE, tag=TAG_CONVERTER_STATUS)
@@ -185,6 +184,7 @@ class GUIConverterWindow:
         if self.is_file:
             if self.output_path and self._on_load_file is not None:
                 self._on_load_file(self.output_path)
+                print("Loaded file:", self.output_path)
         else:
             if self._on_load_directory is not None:
                 self._on_load_directory()

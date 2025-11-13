@@ -136,11 +136,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     for key in FEATURE_DISPLAY_ORDER
                     if key in generator_features.keys() and key in FEATURE_PLOT_CONFIGS
                 ]
+
                 for feature_key in feature_keys:
                     dpg.add_separator(parent=window_tag)
                     feature_data_array = cast(np.ndarray, generator_features[feature_key])
                     plot = self._create_feature_plot(generator_name, feature_key, feature_data_array, window_tag)
-                    self.generator_plots[generator_name][feature_key] = plot
+                    if plot:
+                        self.generator_plots[generator_name][feature_key] = plot
 
     def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
         if generator_name == GeneratorName.NOISE:
@@ -154,10 +156,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
     def _create_feature_plot(
-        self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray, parent: str
-    ) -> GUIBarPlotDisplay:
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+        parent: str,
+    ) -> Optional[GUIBarPlotDisplay]:
         config = FEATURE_PLOT_CONFIGS[feature_key]
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
+
+        if data.size == 0:
+            return
 
         plot = self._add_bar_plot(plot_tag, parent, config, data, generator_name, feature_key)
         self._add_raw_data_text(plot_tag, parent, data)

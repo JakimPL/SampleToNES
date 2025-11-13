@@ -49,6 +49,7 @@ def show_modal_dialog(
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
+        popup=True,
     ):
         content(tag)
         dpg.add_separator()
