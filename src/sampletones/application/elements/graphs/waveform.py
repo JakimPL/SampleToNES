@@ -33,7 +33,12 @@ from ...constants import (
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...reconstruction.data import ReconstructionData
-from ...utils.common import dpg_configure_item, dpg_delete_children, dpg_delete_item
+from ...utils.common import (
+    dpg_bind_item_theme,
+    dpg_configure_item,
+    dpg_delete_children,
+    dpg_delete_item,
+)
 from ..button import GUIButton
 from .graph import GUIGraphDisplay
 from .layers.array import ArrayLayer
@@ -219,7 +224,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                 with dpg.theme_component(dpg.mvLineSeries):
                     dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
 
-            dpg.bind_item_theme(series_tag, series_theme)
+            dpg_bind_item_theme(series_tag, series_theme)
 
         self._update_axes_limits()
 
@@ -266,7 +271,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                         category=dpg.mvThemeCat_Plots,
                     )
 
-            dpg.bind_item_theme(self.position_indicator_tag, indicator_theme)
+            dpg_bind_item_theme(self.position_indicator_tag, indicator_theme)
 
     def _reset_x_axis(self) -> None:
         if self.layers:
