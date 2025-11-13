@@ -5,13 +5,8 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config
-from sampletones.constants import (
-    SAMPLE_TO_NES_NAME,
-    SAMPLE_TO_NES_VERSION,
-    FeatureKey,
-    GeneratorName,
-    InstructionClassName,
-)
+from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_VERSION
+from sampletones.constants.enums import FeatureKey, GeneratorName, InstructionClassName
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
@@ -33,8 +28,8 @@ from .state import ReconstructionState
 
 def default_metadata() -> SerializedData:
     return {
-        SAMPLE_TO_NES_NAME: {
-            "version": SAMPLE_TO_NES_VERSION,
+        SAMPLETONES_NAME: {
+            "version": SAMPLETONES_VERSION,
         }
     }
 
@@ -129,7 +124,7 @@ class Reconstruction(BaseModel):
 
     @staticmethod
     def validate_json(data: Dict[str, Any]) -> None:
-        if SAMPLE_TO_NES_NAME not in data.get("metadata", {}):
+        if SAMPLETONES_NAME not in data.get("metadata", {}):
             raise InvalidReconstructionError("Metadata is missing. Probably not a valid reconstruction file.")
 
         for field in [

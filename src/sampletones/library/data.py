@@ -1,17 +1,18 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
+from typing import Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
 from pydantic import BaseModel, ConfigDict, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
-from sampletones.constants import GeneratorClassName
-from sampletones.ffts import Window
+from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
+from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GENERATOR_CLASS_MAP
+from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import deserialize_array, dump, serialize_array
@@ -19,33 +20,29 @@ from sampletones.utils import deserialize_array, dump, serialize_array
 from .fragment import Fragment
 
 
-class LibraryFragment(BaseModel, Generic[InstructionType]):
+class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
     instruction: InstructionType
-    sample: np.ndarray
+    sample: CyclicArray
     feature: np.ndarray
     frequency: float
-    offset: int
 
     @classmethod
     def create(
         cls,
-        generator: Any,
+        generator: GeneratorType,
         instruction: InstructionType,
         window: Window,
         transformer: FFTTransformer,
     ) -> Self:
-        sample, offset = generator.generate_sample(instruction, window=window)
-        audio = generator.generate_frames(instruction)
-        frames_count = audio.shape[0] // generator.frame_length
-        start_id = int(np.ceil(0.5 * window.size / generator.frame_length))
-        end_id = frames_count - start_id
+        sample: CyclicArray = generator.generate_sample(instruction)
 
         features = []
-        for frame_id in range(start_id, end_id):
-            windowed_audio = window.get_windowed_frame(audio, frame_id * generator.frame_length)
+        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
+            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
+            windowed_audio = sample.get_window(phase, window)
             transformed_windowed_audio = transformer.calculate(windowed_audio)
             features.append(transformed_windowed_audio)
 
@@ -57,12 +54,10 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
             sample=sample,
             feature=feature,
             frequency=generator.timer.real_frequency,
-            offset=offset,
         )
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        offset = self.offset + shift
-        windowed_audio = window.get_windowed_frame(self.sample, offset)
+        windowed_audio = self.sample.get_window(shift, window)
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
             audio=audio,
@@ -73,7 +68,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
 
     def get(
         self,
-        generator: Any,
+        generator: GeneratorType,
         config: Config,
         window: Window,
         initials: Initials = None,
@@ -81,6 +76,18 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
         generator.set_timer(self.instruction)
         shift = generator.timer.calculate_offset(initials)
         return self.get_fragment(shift, config, window)
+
+    @property
+    def data(self) -> np.ndarray:
+        return self.sample.array
+
+    @property
+    def empty(self) -> bool:
+        return self.sample.length == 0
+
+    @property
+    def length(self) -> int:
+        return self.sample.length
 
     @staticmethod
     def load_instruction(data: SerializedData) -> InstructionType:
@@ -93,10 +100,6 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
     def serialize_instruction(self, instruction: InstructionType, _info) -> str:
         return dump(instruction.model_dump())
 
-    @field_serializer("sample")
-    def serialize_sample(self, sample: np.ndarray, _info) -> SerializedData:
-        return serialize_array(sample)
-
     @field_serializer("feature")
     def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
         return serialize_array(feature)
@@ -105,7 +108,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
     def deserialize(cls, dictionary: SerializedData) -> Self:
         instruction: InstructionType = cls.load_instruction(dictionary)
 
-        sample = deserialize_array(dictionary["sample"])
+        sample = CyclicArray.deserialize(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
         return cls(
             generator_class=dictionary["generator_class"],
@@ -113,7 +116,6 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
             sample=sample,
             feature=feature,
             frequency=dictionary["frequency"],
-            offset=dictionary["offset"],
         )
 
 

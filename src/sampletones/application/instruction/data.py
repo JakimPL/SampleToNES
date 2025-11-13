@@ -21,4 +21,4 @@ class InstructionPanelData(BaseModel):
     @computed_field
     @property
     def has_audio_data(self) -> bool:
-        return self.fragment is not None and len(self.fragment.sample) > 0
+        return self.fragment is not None and not self.fragment.empty

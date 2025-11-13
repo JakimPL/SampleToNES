@@ -1,10 +1,11 @@
-from typing import Any, Dict, Generic, List, Optional, Tuple, Union
+from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName
-from sampletones.ffts import Window
+from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.general import MIN_SAMPLE_LENGTH
+from sampletones.ffts import CyclicArray
 from sampletones.instructions import InstructionType
 from sampletones.timers import TimerType, get_frequency_table
 from sampletones.typehints import Initials
@@ -35,50 +36,32 @@ class Generator(Generic[InstructionType, TimerType]):
     ) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def generate(self, instruction: InstructionType, initials: Initials = None) -> np.ndarray:
+    def generate(
+        self,
+        instruction: InstructionType,
+        initials: Initials = None,
+        save: bool = True,
+    ) -> np.ndarray:
         self.set_timer(instruction)
-        output = self.timer(initials=initials)
+        output = self.timer(initials=initials, save=save)
         output = self.apply(output, instruction)
         return output
 
-    def generate_window(self, instruction: InstructionType, window: Window, initials: Initials = None) -> np.ndarray:
+    def generate_sample(self, instruction: InstructionType) -> CyclicArray:
         if not instruction.on:
-            return np.zeros(window.size, dtype=np.float32)
+            min_sample_length = round(MIN_SAMPLE_LENGTH * self.config.library.sample_rate)
+            return CyclicArray(
+                array=np.zeros(min_sample_length, dtype=np.float32),
+                sample_rate=self.config.library.sample_rate,
+            )
 
         self.set_timer(instruction)
-        output = self.timer.generate_window(window, initials)
-        return self.apply(output, instruction)
+        output = self.timer.generate_sample()
+        output.array = self.apply(output.array, instruction)
+        return output
 
-    def generate_sample(self, instruction: InstructionType, window: Window) -> Tuple[np.ndarray, int]:
-        if not instruction.on:
-            return np.zeros(window.size * 3, dtype=np.float32), 0
-
-        self.set_timer(instruction)
-        output, offset = self.timer.generate_sample(window)
-        return self.apply(output, instruction), offset
-
-    def generate_frames(
-        self, instruction: InstructionType, frames: Union[int, float] = 3.0, initials: Initials = None
-    ) -> np.ndarray:
-        previous_initials = self.timer.get()
-
-        self.timer.set(initials)
-        if isinstance(frames, float):
-            frames = round(frames * self.config.library.sample_rate / self.config.library.frame_length)
-
-        samples = round(frames * self.config.library.sample_rate)
-        output = []
-        for _ in range(frames):
-            frame = self(instruction, save=True)
-            output.append(frame)
-
-        self.timer.set(previous_initials)
-        return np.concatenate(output)[:samples]
-
-    def save_state(self, save: bool, instruction: InstructionType, initials: Initials) -> None:
-        if not save:
-            self.timer.set(initials)
-        else:
+    def save_state(self, save: bool, instruction: InstructionType) -> None:
+        if save:
             self.previous_instruction = instruction
 
     def set_timer(self, instruction: InstructionType) -> None:

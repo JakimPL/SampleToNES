@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.instructions import InstructionUnion
 from sampletones.library import Fragment
 

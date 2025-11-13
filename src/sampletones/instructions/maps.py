@@ -1,6 +1,6 @@
 from typing import Dict
 
-from sampletones.constants import InstructionClassName
+from sampletones.constants.enums import InstructionClassName
 
 from .noise import NoiseInstruction
 from .pulse import PulseInstruction

@@ -1,10 +1,10 @@
 from sampletones.application.gui import GUI
-from sampletones.constants import SAMPLE_TO_NES_NAME, SAMPLE_TO_NES_VERSION
+from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_VERSION
 from sampletones.utils import logger
 
 
 def main():
-    logger.info(f"{SAMPLE_TO_NES_NAME} v{SAMPLE_TO_NES_VERSION}")
+    logger.info(f"{SAMPLETONES_NAME} v{SAMPLETONES_VERSION}")
     application = GUI()
     try:
         application.run()

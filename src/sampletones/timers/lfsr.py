@@ -8,7 +8,9 @@ from sampletones.constants.general import (
     MAX_LFSR,
     MAX_LFSR_SHORT,
     MAX_PERIOD,
+    NOISE_LONG_PERIOD,
     NOISE_PERIODS,
+    NOISE_SHORT_PERIOD,
     RESET_PHASE,
 )
 from sampletones.typehints import Initials
@@ -19,8 +21,8 @@ from .timer import Timer
 @dataclass(frozen=True)
 class LFSRTTables:
     lfsr_to_index: np.ndarray
-    lfsrs: Dict[bool, np.ndarray]
-    cumsums: Dict[bool, np.ndarray]
+    lfsrs: np.ndarray
+    cumsums: np.ndarray
 
 
 class LFSRTimer(Timer):
@@ -44,6 +46,7 @@ class LFSRTimer(Timer):
     def __call__(
         self,
         initials: Initials = None,
+        save: bool = True,
     ) -> np.ndarray:
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         self.validate(initial_lfsr, initial_clock)
@@ -59,7 +62,7 @@ class LFSRTimer(Timer):
             frame.fill(2.0 * (self.lfsr & 1) - 1.0)
             return frame
 
-        return self.generate_frame()
+        return self.generate_frame(save=save)
 
     def calculate_offset(self, initials: Initials = None) -> int:
         lfsr, clock = initials if initials is not None else (1, 0.0)
@@ -70,13 +73,12 @@ class LFSRTimer(Timer):
 
         return int(np.ceil(end_index / self._clocks_per_sample - clock))
 
-    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
-        lfsrs = self.lfsr_tables[self.short].lfsrs[direction]
-        cumsum_table = self.lfsr_tables[self.short].cumsums[direction].astype(np.float32)
+    def generate_frame(self, save: bool = True) -> np.ndarray:
+        lfsrs = self.lfsr_tables[self.short].lfsrs
+        cumsum_table = self.lfsr_tables[self.short].cumsums.astype(np.float32)
 
         indices = np.arange(self.frame_length + 1)
-        sign = 1.0 if direction else -1.0
-        delta = self._clocks_per_sample * sign
+        delta = self._clocks_per_sample
         clock = indices * delta + self.clock
         changes = np.abs(np.diff(np.floor(clock)).astype(int))
         changes_cumsum = np.concatenate([[0], np.cumsum(changes)])
@@ -101,7 +103,7 @@ class LFSRTimer(Timer):
             self.lfsr = int(lfsrs[index + changes_cumsum[-1]])
             self.clock = float(clock[-1] % 1.0)
 
-        return frame if direction else frame[::-1]
+        return frame
 
     @property
     def initials(self) -> Tuple[Any, ...]:
@@ -115,8 +117,7 @@ class LFSRTimer(Timer):
     def period(self, value: int) -> None:
         self._period = value
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
-
-        self._period = (93.0 if self.short else 32767.0) / self._clocks_per_sample
+        self._period = (NOISE_SHORT_PERIOD if self.short else NOISE_LONG_PERIOD) / self._clocks_per_sample
         self._real_frequency = self.sample_rate / self._period
 
         if self.reset_phase:
@@ -176,7 +177,7 @@ class LFSRTimer(Timer):
         clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
         repeats = int(np.ceil(clocks_per_sample * self.frame_length / self.lfsr_period)) * 2 + 1
 
-        forward_lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
+        lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
         lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int16)
 
         lfsr = 1
@@ -187,18 +188,16 @@ class LFSRTimer(Timer):
             if i == MAX_LFSR - 1:
                 break
 
-            forward_lfsrs[i + 1] = forward_lfsr
+            lfsrs[i + 1] = forward_lfsr
             lfsr = forward_lfsr
 
-        forward_lfsrs = np.tile(forward_lfsrs, repeats)
-        backward_lfsrs = np.roll(np.flip(forward_lfsrs), 1)
-        forward_lfsrs_cumsums = np.concatenate([[0], np.cumsum(forward_lfsrs, dtype=np.int64)]) & 1
-        backward_lfsrs_cumsums = np.concatenate([[0], np.cumsum(backward_lfsrs, dtype=np.int64)]) & 1
+        lfsrs = np.tile(lfsrs, repeats)
+        cumsums = np.concatenate([[0], np.cumsum(lfsrs, dtype=np.int64)]) & 1
 
         return LFSRTTables(
-            lfsr_to_index=lfsr_to_index,
-            lfsrs={True: forward_lfsrs, False: backward_lfsrs},
-            cumsums={True: forward_lfsrs_cumsums, False: backward_lfsrs_cumsums},
+            lfsr_to_index,
+            lfsrs=lfsrs,
+            cumsums=cumsums,
         )
 
     @property

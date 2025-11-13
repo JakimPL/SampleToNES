@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from sampletones.instructions import NoiseInstruction
 from sampletones.timers import LFSRTimer
@@ -36,8 +36,13 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
         if not noise_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 
-        output = self.generate(noise_instruction, initials=initials)
-        self.save_state(save, noise_instruction, initials)
+        output = self.generate(
+            noise_instruction,
+            initials=initials,
+            save=save,
+        )
+
+        self.save_state(save, noise_instruction)
 
         return output
 

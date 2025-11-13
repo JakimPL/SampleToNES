@@ -2,19 +2,17 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
 from sampletones.configs import Config, GeneralConfig, GenerationConfig, LibraryConfig
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
     CHANGE_RATE,
-    CONFIG_PATH,
-    LIBRARY_DIRECTORY,
     MAX_WORKERS,
     MIXER,
     NORMALIZE,
-    OUTPUT_DIRECTORY,
     QUANTIZE,
     SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
 )
+from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.ffts import Window
 from sampletones.library import LibraryKey
 from sampletones.typehints import SerializedData

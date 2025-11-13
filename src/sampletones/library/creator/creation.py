@@ -1,9 +1,7 @@
 from typing import Dict, List, Tuple
 
-from tqdm.auto import tqdm
-
 from sampletones.configs import Config, LibraryConfig
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion
@@ -33,7 +31,7 @@ def generate_instructions(
     transformer = FFTTransformer.from_gamma(config.transformation_gamma)
     return [
         generate_instruction(generators, generator_class_name, instruction, window, transformer)
-        for generator_class_name, instruction in tqdm(instructions_batch)
+        for generator_class_name, instruction in instructions_batch
     ]
 
 

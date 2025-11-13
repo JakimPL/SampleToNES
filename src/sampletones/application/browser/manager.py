@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from sampletones.constants.general import EXT_FILE_JSON
+from sampletones.constants.paths import EXT_FILE_JSON
 from sampletones.tree import FileSystemNode, Tree
 
 from ..constants import NOD_TYPE_DIRECTORY, NOD_TYPE_FILE

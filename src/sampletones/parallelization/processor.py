@@ -34,7 +34,7 @@ class TaskProcessor(Generic[T]):
         self._pool_lock: threading.Lock = threading.Lock()
 
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
-        self._on_complete: Optional[Callable[[T], None]] = None
+        self._on_completed: Optional[Callable[[T], None]] = None
         self._on_error: Optional[Callable[[Exception], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
 
@@ -137,8 +137,8 @@ class TaskProcessor(Generic[T]):
         self._notify_progress()
 
         processed_result = self._process_results(results)
-        if self._on_complete:
-            self._on_complete(processed_result)
+        if self._on_completed:
+            self._on_completed(processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
         logger.error_with_traceback(f"Task failed: {exception}", exception)
@@ -211,14 +211,14 @@ class TaskProcessor(Generic[T]):
     def set_callbacks(
         self,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
-        on_complete: Optional[Callable[[T], None]] = None,
+        on_completed: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
     ) -> None:
         if on_progress is not None:
             self._on_progress = on_progress
-        if on_complete is not None:
-            self._on_complete = on_complete
+        if on_completed is not None:
+            self._on_completed = on_completed
         if on_error is not None:
             self._on_error = on_error
         if on_cancelled is not None:

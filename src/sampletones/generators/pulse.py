@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import (
     DUTY_CYCLES,
     MAX_VOLUME,
@@ -42,8 +42,13 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         if not pulse_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 
-        output = self.generate(pulse_instruction, initials=initials)
-        self.save_state(save, pulse_instruction, initials)
+        output = self.generate(
+            pulse_instruction,
+            initials=initials,
+            save=save,
+        )
+
+        self.save_state(save, pulse_instruction)
 
         return output
 

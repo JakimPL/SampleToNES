@@ -2,8 +2,9 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.common import dpg_set_value
 from sampletones.configs import LibraryConfig
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import WindowNotAvailableError
 from sampletones.instructions import Instruction
 from sampletones.library import LibraryFragment, LibraryKey
@@ -29,6 +30,7 @@ from ..constants import (
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
     MSG_LIBRARY_FILE_NOT_FOUND,
     MSG_LIBRARY_GENERATING,
+    MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
     MSG_LIBRARY_GENERATION_SUCCESS,
     MSG_LIBRARY_LOADING,
@@ -44,6 +46,8 @@ from ..constants import (
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
+    TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
+    TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
@@ -53,14 +57,24 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.tree import GUITreePanel
 from ..library.manager import LibraryManager
-from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
+from ..utils.dialogs import (
+    show_error_dialog,
+    show_file_not_found_dialog,
+    show_info_dialog,
+)
 
 
 class GUILibraryPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         library_directory = config_manager.get_library_directory()
-        self.library_manager = LibraryManager(library_directory)
+        self.library_manager = LibraryManager(
+            library_directory,
+            on_progress=self._update_status,
+            on_completed=self._on_generation_completed,
+            on_error=self._on_generation_error,
+            on_cancelled=self._on_generation_cancelled,
+        )
 
         self._on_instruction_selected: Optional[
             Callable[[GeneratorClassName, Instruction, LibraryFragment, LibraryConfig], None]
@@ -271,7 +285,7 @@ class GUILibraryPanel(GUITreePanel):
 
         self.library_manager.generate_library(config, window, overwrite=True)
 
-    def _update_generation_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
+    def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
             return
 
@@ -299,26 +313,25 @@ class GUILibraryPanel(GUITreePanel):
                 )
 
     def _set_generation_completed(self) -> None:
-        if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
-        if dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
-            dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
+        dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:
-        if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_FAILED)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_FAILED)
 
     def _set_generation_cancelled(self) -> None:
-        if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            dpg.set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
+        dpg_set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
 
-    def _on_generation_complete(self, result: tuple) -> None:
+    def _on_generation_completed(self) -> None:
+        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 
     def _on_generation_error(self, exception: Exception) -> None:
+        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation_error(exception))
 
     def _on_generation_cancelled(self) -> None:
+        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 
     def _finalize_generation(self) -> None:

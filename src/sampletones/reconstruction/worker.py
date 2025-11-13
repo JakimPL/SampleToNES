@@ -3,10 +3,9 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-from tqdm.auto import tqdm
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.ffts import Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import InstructionUnion
@@ -25,12 +24,11 @@ class ReconstructorWorker:
     criterion: Criterion = field(init=False)
 
     def __call__(
-        self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool = False
+        self,
+        fragmented_audio: FragmentedAudio,
+        fragment_ids: List[int],
     ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
-        return {
-            fragment_id: self.reconstruct(fragmented_audio[fragment_id])
-            for fragment_id in tqdm(fragment_ids, disable=not show_progress)
-        }
+        return {fragment_id: self.reconstruct(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}
 
     def __post_init__(self):
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
@@ -74,11 +72,8 @@ class ReconstructorWorker:
 
     def find_best_phase(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
         library_fragment = self.library_data[instruction]
-        start = library_fragment.offset
-        length = library_fragment.sample.shape[0] // 3
-        end = start + length
+        array = library_fragment.sample.get_fragment(length=2 * library_fragment.sample.length)
 
-        array = library_fragment.sample[start:end] * self.config.generation.mixer
         windows = sliding_window_view(array, self.config.library.frame_length)
         remainder = fragment.audio - windows
 
@@ -106,7 +101,7 @@ class ReconstructorWorker:
             error=error,
         )
 
-    def get_approximation(self, instruction: InstructionUnion, generator: Any) -> Fragment:
+    def get_approximation(self, instruction: InstructionUnion, generator: GeneratorUnion) -> Fragment:
         library_fragment = self.library_data[instruction]
         fragment = library_fragment.get(
             generator,

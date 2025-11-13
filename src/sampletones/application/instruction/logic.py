@@ -13,7 +13,6 @@ from ..constants import (
     PFX_INSTRUCTION_FREQUENCY,
     PFX_INSTRUCTION_GENERATOR,
     PFX_INSTRUCTION_NAME,
-    PFX_INSTRUCTION_OFFSET,
     PFX_INSTRUCTION_PARAMETER_INDENT,
     PFX_INSTRUCTION_SAMPLE_LENGTH,
     SUF_INSTRUCTION_SAMPLE_LENGTH,
@@ -55,8 +54,7 @@ class InstructionDetailsLogic:
         lines = [
             f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class}",
             f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
-            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{len(fragment.sample)}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
-            f"{PFX_INSTRUCTION_OFFSET}{fragment.offset}",
+            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
             "",
             LBL_INSTRUCTION_PARAMETERS_HEADER,
         ]

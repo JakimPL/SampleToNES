@@ -15,7 +15,7 @@ from ...constants import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
-from ...utils.common import dpg_delete_children
+from ...utils.common import dpg_bind_item_theme, dpg_delete_children
 from .graph import GUIGraphDisplay
 from .layers.spectrum import SpectrumLayer
 
@@ -106,7 +106,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                             category=dpg.mvThemeCat_Plots,
                         )
 
-                dpg.bind_item_theme(series_tag, bar_theme)
+                dpg_bind_item_theme(series_tag, bar_theme)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)

@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.library import LibraryFragment
 
 from ...constants import (
@@ -33,7 +33,12 @@ from ...constants import (
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...reconstruction.data import ReconstructionData
-from ...utils.common import dpg_delete_children, dpg_delete_item
+from ...utils.common import (
+    dpg_bind_item_theme,
+    dpg_configure_item,
+    dpg_delete_children,
+    dpg_delete_item,
+)
 from ..button import GUIButton
 from .graph import GUIGraphDisplay
 from .layers.array import ArrayLayer
@@ -79,17 +84,9 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         )
 
     @property
-    def sample_length(self) -> float:
+    def sample_length(self) -> int:
         if isinstance(self.current_data, LibraryFragment):
-            return float(len(self.current_data.sample))
-        elif isinstance(self.current_data, ReconstructionData):
-            return float(len(self.current_data.reconstruction.approximation))
-
-        return 0.0
-
-    def _get_sample_length_int(self) -> int:
-        if isinstance(self.current_data, LibraryFragment):
-            return len(self.current_data.sample)
+            return len(self.current_data.data)
         elif isinstance(self.current_data, ReconstructionData):
             return len(self.current_data.reconstruction.approximation)
 
@@ -150,7 +147,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         )
 
         self.x_min = VAL_GRAPH_DEFAULT_X_MIN
-        self.x_max = float(len(fragment.sample))
+        self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -219,7 +216,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                 with dpg.theme_component(dpg.mvLineSeries):
                     dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
 
-            dpg.bind_item_theme(series_tag, series_theme)
+            dpg_bind_item_theme(series_tag, series_theme)
 
         self._update_axes_limits()
 
@@ -227,13 +224,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
-        if dpg.does_item_exist(self.position_indicator_tag):
-            position_x = float(self.current_position)
-            dpg.configure_item(
-                self.position_indicator_tag,
-                x=[position_x, position_x],
-                y=[self.y_min, self.y_max],
-            )
+        position_x = float(self.current_position)
+        dpg_configure_item(
+            self.position_indicator_tag,
+            x=[position_x, position_x],
+            y=[self.y_min, self.y_max],
+        )
 
     def set_position(self, position: int) -> None:
         self.current_position = position
@@ -245,7 +241,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         dpg_delete_item(self.position_indicator_tag)
 
-        sample_length = self._get_sample_length_int()
+        sample_length = self.sample_length
         if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
 
@@ -267,7 +263,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                         category=dpg.mvThemeCat_Plots,
                     )
 
-            dpg.bind_item_theme(self.position_indicator_tag, indicator_theme)
+            dpg_bind_item_theme(self.position_indicator_tag, indicator_theme)
 
     def _reset_x_axis(self) -> None:
         if self.layers:

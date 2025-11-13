@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants import FeatureKey, GeneratorName
+from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.reconstruction import Reconstruction
 from sampletones.utils import pitch_to_name
 
@@ -40,7 +40,7 @@ from ...reconstruction.config import (
     FeaturePlotConfig,
 )
 from ...reconstruction.feature import FeatureData
-from ...utils.common import dpg_delete_item
+from ...utils.common import dpg_configure_item, dpg_delete_item
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -248,8 +248,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         feature_data = FeatureData.load(reconstruction)
         self.current_features = feature_data
 
-        if dpg.does_item_exist(self.no_data_message_tag):
-            dpg.configure_item(self.no_data_message_tag, show=False)
+        dpg_configure_item(self.no_data_message_tag, show=False)
 
         GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
         self._create_tabs_for_generators(feature_data)
@@ -259,8 +258,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
         self._clear_tabs()
 
-        if dpg.does_item_exist(self.no_data_message_tag):
-            dpg.configure_item(self.no_data_message_tag, show=True)
+        dpg_configure_item(self.no_data_message_tag, show=True)
 
         if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
             GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
