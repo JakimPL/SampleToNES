@@ -1,5 +1,4 @@
 from .common import first_key_for_value, next_power_of_two, pad
-from .cyclic import CyclicArray
 from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
@@ -40,5 +39,4 @@ __all__ = [
     "write_fti",
     "shorten_path",
     "to_path",
-    "CyclicArray",
 ]

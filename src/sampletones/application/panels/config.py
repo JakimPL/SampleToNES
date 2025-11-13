@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.common import dpg_set_value
 from sampletones.constants.general import (
     CHANGE_RATE,
     MAX_CHANGE_RATE,
@@ -189,7 +190,7 @@ class GUIConfigPanel(GUIPanel):
     def apply_library_config(self, library_key: LibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
         for tag, value in gui_updates.items():
-            dpg.set_value(tag, value)
+            dpg_set_value(tag, value)
 
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:

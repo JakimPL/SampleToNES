@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.common import dpg_set_value
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import SerializedData
@@ -175,7 +176,7 @@ class GUIReconstructorPanel(GUIPanel):
                 dpg.set_value(tag, getattr(section, tag))
 
         for generator_tag, generator in self.config_manager.generator_tags.items():
-            dpg.set_value(generator_tag, generator in config.generation.generators)
+            dpg_set_value(generator_tag, generator in config.generation.generators)
 
         output_directory = Path(config.general.output_directory)
         if self.output_path_text:

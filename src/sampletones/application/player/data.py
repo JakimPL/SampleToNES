@@ -19,7 +19,7 @@ class AudioData(BaseModel):
     @classmethod
     def from_library_fragment(cls, fragment: LibraryFragment, sample_rate: int) -> "AudioData":
         return cls(
-            sample=fragment.sample.copy(),
+            sample=fragment.data.copy(),
             sample_rate=sample_rate,
             current_position=0,
         )

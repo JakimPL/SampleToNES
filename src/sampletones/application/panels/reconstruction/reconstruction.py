@@ -3,7 +3,7 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.common import dpg_configure_item
+from sampletones.application.utils.common import dpg_configure_item, dpg_set_value
 from sampletones.audio import AudioDeviceManager, write_audio
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
@@ -242,7 +242,7 @@ class GUIReconstructionPanel(GUIPanel):
 
             dpg_configure_item(tag, enabled=is_available, default_value=is_available)
             if is_available:
-                dpg.set_value(tag, True)
+                dpg_set_value(tag, True)
 
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg_configure_item(radio_tag, enabled=True)

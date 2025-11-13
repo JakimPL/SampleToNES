@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
@@ -14,7 +14,8 @@ from sampletones.instructions import (
     TriangleInstruction,
 )
 from sampletones.library import Library, LibraryData, LibraryFragment, LibraryKey
-from sampletones.library.creator.creator import LibraryCreator
+from sampletones.library.creator import LibraryCreator
+from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.tree import (
     GeneratorNode,
     GroupNode,
@@ -26,9 +27,6 @@ from sampletones.tree import (
 from sampletones.utils import pitch_to_name
 
 from ..constants import (
-    MSG_LIBRARY_GENERATION_CANCELLATION,
-    MSG_LIBRARY_GENERATION_FAILED,
-    MSG_LIBRARY_GENERATION_SUCCESS,
     NOD_LABEL_LIBRARIES,
     NOD_LABEL_NOT_LOADED,
     NOD_TYPE_GENERATOR,
@@ -37,19 +35,28 @@ from ..constants import (
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     NOD_TYPE_ROOT,
-    TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
-    TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS,
 )
-from ..utils.dialogs import show_error_dialog, show_info_dialog
 
 
 class LibraryManager:
-    def __init__(self, library_directory: Path) -> None:
+    def __init__(
+        self,
+        library_directory: Path,
+        on_completed: Optional[Callable[[], None]] = None,
+        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
+        on_cancelled: Optional[Callable[[], None]] = None,
+    ) -> None:
         self.library = Library(directory=str(library_directory))
         self.library_files: Dict[LibraryKey, str] = {}
         self.current_library_key: Optional[LibraryKey] = None
         self.tree = Tree()
         self.creator: Optional[LibraryCreator] = None
+
+        self._on_generation_completed: Optional[Callable[[], None]] = on_completed
+        self._on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
+        self._on_generation_error: Optional[Callable[[Exception], None]] = on_error
+        self._on_generation_cancelled: Optional[Callable[[], None]] = on_cancelled
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = Library(directory=str(directory))
@@ -134,28 +141,24 @@ class LibraryManager:
         return self.library.exists(key)
 
     def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> None:
-        self.library.directory = config.general.library_directory
+        self.library = Library(directory=config.general.library_directory)
 
         self.creator = LibraryCreator(config)
         self.creator.set_callbacks(
-            on_complete=self._on_generation_complete,
+            on_completed=self._complete_generation,
             on_error=self._on_generation_error,
             on_cancelled=self._on_generation_cancelled,
+            on_progress=self._on_generation_progress,
         )
 
         self.creator.start(window, overwrite)
 
-    def _on_generation_complete(self, result: Tuple[LibraryKey, LibraryData]) -> None:
+    def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
         key, library_data = result
         self.library.save_data(key, library_data)
         self.current_library_key = key
-        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS)
-
-    def _on_generation_error(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
-
-    def _on_generation_cancelled(self) -> None:
-        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED)
+        if self._on_generation_completed is not None:
+            self._on_generation_completed()
 
     def is_generating(self) -> bool:
         return self.creator is not None and self.creator.is_running()

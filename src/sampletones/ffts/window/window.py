@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.configs import LibraryConfig
 from sampletones.utils import pad
 
-from .fft import calculate_weights
+from ..fft import calculate_weights
 
 
 @dataclass(frozen=True)

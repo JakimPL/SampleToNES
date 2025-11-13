@@ -41,7 +41,7 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..utils.common import dpg_delete_item
+from ..utils.common import dpg_delete_item, dpg_set_value
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
@@ -68,7 +68,7 @@ class GUIConverterWindow:
         config = self.config_manager.get_config()
         self.converter = ReconstructionConverter(config=config)
         self.converter.set_callbacks(
-            on_complete=self._on_conversion_complete,
+            on_completed=self._on_conversion_complete,
             on_error=self._on_conversion_error,
             on_cancelled=self._on_cancellation_complete,
             on_progress=self._update_status,
@@ -136,37 +136,31 @@ class GUIConverterWindow:
         self.converter.start(input_path, is_file)
 
     def _set_status_completed(self):
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
+        dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
 
     def _set_status_cancelling(self):
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
+        dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
 
     def _set_status_cancelled(self):
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
+        dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
 
     def _set_status_failed(self):
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
+        dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
 
     def _set_status_running(self, task_progress: TaskProgress):
         assert self.converter is not None, "Converter is not initialized"
         progress = task_progress.get_progress()
-        if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
-            dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
+        dpg_set_value(TAG_CONVERTER_PROGRESS, progress)
 
         current_file = task_progress.current_item
         if self.input_path_text and current_file is not None:
             current_file_path = Path(current_file)
             self.input_path_text.set_path(current_file_path)
 
-        if dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(
-                TAG_CONVERTER_STATUS,
-                TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
-            )
+        dpg_set_value(
+            TAG_CONVERTER_STATUS,
+            TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
+        )
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):

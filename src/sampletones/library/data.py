@@ -10,12 +10,12 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones.ffts import Window
+from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, SerializedData
-from sampletones.utils import CyclicArray, deserialize_array, dump, serialize_array
+from sampletones.utils import deserialize_array, dump, serialize_array
 
 from .fragment import Fragment
 
@@ -57,8 +57,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
         )
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        offset = self.offset + shift
-        windowed_audio = window.get_windowed_frame(self.sample, offset)
+        windowed_audio = self.sample.get_window(shift, window)
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
             audio=audio,
@@ -78,6 +77,18 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
         shift = generator.timer.calculate_offset(initials)
         return self.get_fragment(shift, config, window)
 
+    @property
+    def data(self) -> np.ndarray:
+        return self.sample.array
+
+    @property
+    def empty(self) -> bool:
+        return len(self.sample.array) == 0
+
+    @property
+    def sample_length(self) -> int:
+        return len(self.sample.array)
+
     @staticmethod
     def load_instruction(data: SerializedData) -> InstructionType:
         instruction_dictionary = json.loads(data["instruction"])
@@ -89,10 +100,6 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
     def serialize_instruction(self, instruction: InstructionType, _info) -> str:
         return dump(instruction.model_dump())
 
-    @field_serializer("sample")
-    def serialize_sample(self, sample: np.ndarray, _info) -> SerializedData:
-        return serialize_array(sample)
-
     @field_serializer("feature")
     def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
         return serialize_array(feature)
@@ -101,7 +108,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
     def deserialize(cls, dictionary: SerializedData) -> Self:
         instruction: InstructionType = cls.load_instruction(dictionary)
 
-        sample = deserialize_array(dictionary["sample"])
+        sample = CyclicArray.deserialize(dictionary["sample"])
         feature = deserialize_array(dictionary["feature"])
         return cls(
             generator_class=dictionary["generator_class"],

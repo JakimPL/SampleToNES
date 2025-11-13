@@ -13,7 +13,7 @@ from ..constants import (
     SUF_CONVERTER_HANDLER,
     SUF_GROUP,
 )
-from ..utils.common import dpg_delete_item
+from ..utils.common import dpg_delete_item, dpg_set_value
 
 
 class GUIPathText:
@@ -105,8 +105,7 @@ class GUIPathText:
     def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
         self.path = Path(path)
         self.display_text = shorten_path(self.path) if shorten else str(self.path)
-        if dpg.does_item_exist(self.tag):
-            dpg.set_value(self.tag, self.display_text)
+        dpg_set_value(self.tag, self.display_text)
 
     def get_path(self) -> Path:
         return self.path

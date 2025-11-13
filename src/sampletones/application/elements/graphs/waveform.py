@@ -84,17 +84,9 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         )
 
     @property
-    def sample_length(self) -> float:
+    def sample_length(self) -> int:
         if isinstance(self.current_data, LibraryFragment):
-            return float(len(self.current_data.sample))
-        elif isinstance(self.current_data, ReconstructionData):
-            return float(len(self.current_data.reconstruction.approximation))
-
-        return 0.0
-
-    def _get_sample_length_int(self) -> int:
-        if isinstance(self.current_data, LibraryFragment):
-            return len(self.current_data.sample)
+            return len(self.current_data.data)
         elif isinstance(self.current_data, ReconstructionData):
             return len(self.current_data.reconstruction.approximation)
 
@@ -155,7 +147,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         )
 
         self.x_min = VAL_GRAPH_DEFAULT_X_MIN
-        self.x_max = float(len(fragment.sample))
+        self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -249,7 +241,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         dpg_delete_item(self.position_indicator_tag)
 
-        sample_length = self._get_sample_length_int()
+        sample_length = self.sample_length
         if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
 

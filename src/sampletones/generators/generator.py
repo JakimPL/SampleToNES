@@ -5,10 +5,10 @@ import numpy as np
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import MIN_SAMPLE_LENGTH
+from sampletones.ffts import CyclicArray
 from sampletones.instructions import InstructionType
 from sampletones.timers import TimerType, get_frequency_table
 from sampletones.typehints import Initials
-from sampletones.utils import CyclicArray
 
 
 class Generator(Generic[InstructionType, TimerType]):
