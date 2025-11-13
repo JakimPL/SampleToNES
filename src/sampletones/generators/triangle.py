@@ -43,7 +43,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
             save=save,
         )
 
-        self.save_state(save, triangle_instruction, initials)
+        self.save_state(save, triangle_instruction)
 
         return output
 

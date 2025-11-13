@@ -9,12 +9,13 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, SerializedData
-from sampletones.utils import deserialize_array, dump, serialize_array
+from sampletones.utils import CyclicArray, deserialize_array, dump, serialize_array
 
 from .fragment import Fragment
 
@@ -24,10 +25,9 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
 
     generator_class: GeneratorClassName
     instruction: InstructionType
-    sample: np.ndarray
+    sample: CyclicArray
     feature: np.ndarray
     frequency: float
-    offset: int
 
     @classmethod
     def create(
@@ -37,11 +37,12 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
         window: Window,
         transformer: FFTTransformer,
     ) -> Self:
-        audio = generator.generate_sample(instruction, window=window)
+        sample: CyclicArray = generator.generate_sample(instruction)
 
         features = []
-        for frame_id in range(start_id, end_id):
-            windowed_audio = window.get_windowed_frame(audio, frame_id * generator.frame_length)
+        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
+            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
+            windowed_audio = sample.get_window(phase, window)
             transformed_windowed_audio = transformer.calculate(windowed_audio)
             features.append(transformed_windowed_audio)
 
@@ -50,10 +51,9 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
         return cls(
             generator_class=generator.class_name(),
             instruction=instruction,
-            sample=audio,
+            sample=sample,
             feature=feature,
             frequency=generator.timer.real_frequency,
-            offset=offset,
         )
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
@@ -109,7 +109,6 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
             sample=sample,
             feature=feature,
             frequency=dictionary["frequency"],
-            offset=dictionary["offset"],
         )
 
 

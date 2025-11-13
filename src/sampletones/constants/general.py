@@ -26,10 +26,17 @@ VOLUME_RANGE = range(0, MAX_VOLUME + 1)
 
 MAX_DUTY_CYCLE = 3
 
+# Audio import
+
 NORMALIZE = True
 QUANTIZE = True
 QUANTIZATION_LEVELS = 32
-MAX_SAMPLE_LENGTH = 220500  # 5 seconds at 44.1 kHz
+
+# Library creation
+
+MIN_SAMPLE_LENGTH = 0.05
+MAX_SAMPLE_LENGTH = 1.0
+LIBRARY_PHASES_PER_SAMPLE = 100
 
 # Calculation methods
 

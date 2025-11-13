@@ -42,7 +42,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
             save=save,
         )
 
-        self.save_state(save, noise_instruction, initials)
+        self.save_state(save, noise_instruction)
 
         return output
 

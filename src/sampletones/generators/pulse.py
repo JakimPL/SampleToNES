@@ -48,7 +48,7 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
             save=save,
         )
 
-        self.save_state(save, pulse_instruction, initials)
+        self.save_state(save, pulse_instruction)
 
         return output
 

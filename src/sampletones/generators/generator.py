@@ -4,10 +4,11 @@ import numpy as np
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
-from sampletones.ffts import Window
+from sampletones.constants.general import MIN_SAMPLE_LENGTH
 from sampletones.instructions import InstructionType
 from sampletones.timers import TimerType, get_frequency_table
 from sampletones.typehints import Initials
+from sampletones.utils import CyclicArray
 
 
 class Generator(Generic[InstructionType, TimerType]):
@@ -46,15 +47,20 @@ class Generator(Generic[InstructionType, TimerType]):
         output = self.apply(output, instruction)
         return output
 
-    def generate_sample(self, instruction: InstructionType, window: Window) -> np.ndarray:
+    def generate_sample(self, instruction: InstructionType) -> CyclicArray:
         if not instruction.on:
-            return np.zeros(window.size, dtype=np.float32)
+            min_sample_length = round(MIN_SAMPLE_LENGTH * self.config.library.sample_rate)
+            return CyclicArray(
+                array=np.zeros(min_sample_length, dtype=np.float32),
+                sample_rate=self.config.library.sample_rate,
+            )
 
         self.set_timer(instruction)
-        output = self.timer.generate_sample(window)
-        return self.apply(output, instruction)
+        output = self.timer.generate_sample()
+        output.array = self.apply(output.array, instruction)
+        return output
 
-    def save_state(self, save: bool, instruction: InstructionType, initials: Initials) -> None:
+    def save_state(self, save: bool, instruction: InstructionType) -> None:
         if save:
             self.previous_instruction = instruction
 

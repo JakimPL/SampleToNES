@@ -2,9 +2,14 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones.constants.general import MAX_SAMPLE_LENGTH, RESET_PHASE
+from sampletones.constants.general import (
+    MAX_SAMPLE_LENGTH,
+    MIN_SAMPLE_LENGTH,
+    RESET_PHASE,
+)
 from sampletones.ffts import Window
 from sampletones.typehints import Initials
+from sampletones.utils import CyclicArray
 
 
 class Timer:
@@ -38,16 +43,27 @@ class Timer:
         length = self.frame_length if window is None else window.size
         return np.zeros(length, dtype=np.float32)
 
-    def generate_sample(self, window: Window) -> np.ndarray:
-        base_length = int(np.ceil(max(self.sample_rate / self._real_frequency, window.size)))
+    def generate_sample(self) -> CyclicArray:
+        min_sample_length = round(MIN_SAMPLE_LENGTH * self.sample_rate)
+        max_sample_length = round(MAX_SAMPLE_LENGTH * self.sample_rate)
+        base_length = round(self.sample_rate / self._real_frequency)
+
+        if base_length < min_sample_length:
+            base_length = int(np.ceil(min_sample_length / base_length)) * base_length
+
         frames_count = int(np.ceil(base_length / self.frame_length))
-        frames = self.generate_frames(frames_count)
-        if frames.shape[0] > MAX_SAMPLE_LENGTH:
-            start = (frames.shape[0] - MAX_SAMPLE_LENGTH) // 2
-            end = start + MAX_SAMPLE_LENGTH
+        frames = self.generate_frames(frames_count)[:base_length]
+
+        if frames.shape[0] > max_sample_length:
+            start = (frames.shape[0] - max_sample_length) // 2
+            end = start + max_sample_length
             frames = frames[start:end]
 
-        return frames
+        return CyclicArray(
+            array=frames,
+            sample_rate=self.sample_rate,
+            frequency=self._real_frequency,
+        )
 
     def generate_frames(
         self,
