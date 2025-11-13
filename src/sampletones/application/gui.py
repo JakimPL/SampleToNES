@@ -70,6 +70,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
+from .utils.common import dpg_configure_item
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -197,17 +198,10 @@ class GUI:
         library_loaded = self._is_library_loaded()
         reconstruction_loaded = self._is_reconstruction_loaded()
 
-        if dpg.does_item_exist(TAG_MENU_RECONSTRUCT_FILE):
-            dpg.configure_item(TAG_MENU_RECONSTRUCT_FILE, enabled=library_loaded)
-
-        if dpg.does_item_exist(TAG_MENU_RECONSTRUCT_DIRECTORY):
-            dpg.configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
-
-        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_WAV):
-            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
-
-        if dpg.does_item_exist(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS):
-            dpg.configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_RECONSTRUCT_FILE, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):

@@ -33,7 +33,7 @@ from ...constants import (
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...reconstruction.data import ReconstructionData
-from ...utils.common import dpg_delete_children, dpg_delete_item
+from ...utils.common import dpg_configure_item, dpg_delete_children, dpg_delete_item
 from ..button import GUIButton
 from .graph import GUIGraphDisplay
 from .layers.array import ArrayLayer
@@ -227,13 +227,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
-        if dpg.does_item_exist(self.position_indicator_tag):
-            position_x = float(self.current_position)
-            dpg.configure_item(
-                self.position_indicator_tag,
-                x=[position_x, position_x],
-                y=[self.y_min, self.y_max],
-            )
+        position_x = float(self.current_position)
+        dpg_configure_item(
+            self.position_indicator_tag,
+            x=[position_x, position_x],
+            y=[self.y_min, self.y_max],
+        )
 
     def set_position(self, position: int) -> None:
         self.current_position = position

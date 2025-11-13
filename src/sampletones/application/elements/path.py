@@ -77,10 +77,11 @@ class GUIPathText:
         if not dpg.does_item_exist(self.tag):
             return
 
-        if dpg.is_item_hovered(self.tag):
-            dpg.set_frame_callback(dpg.get_frame_count() + 1, self._check_hover_state)
-        else:
-            dpg.configure_item(self.tag, color=self.color)
+        if dpg.does_item_exist(self.tag):
+            if dpg.is_item_hovered(self.tag):
+                dpg.set_frame_callback(dpg.get_frame_count() + 1, self._check_hover_state)
+            else:
+                dpg.configure_item(self.tag, color=self.color)
 
     def _on_visible(self) -> None:
         if dpg.does_item_exist(self.tag) and not dpg.is_item_hovered(self.tag):

@@ -2,6 +2,8 @@ from typing import Any, Callable, Dict
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.common import dpg_configure_item
+
 from ..constants import SUF_BUTTON
 
 
@@ -30,7 +32,7 @@ class GUIButton:
         GUIButton._REGISTRY[tag] = self
 
     def set_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(self._tag, enabled=enabled)
+        dpg_configure_item(self._tag, enabled=enabled)
 
     def is_enabled(self) -> bool:
         enabled = dpg.is_item_enabled(self._tag)
@@ -38,7 +40,7 @@ class GUIButton:
         return enabled
 
     def configure(self, **kwargs) -> None:
-        dpg.configure_item(self._button_tag, **kwargs)
+        dpg_configure_item(self._button_tag, **kwargs)
         if "enabled" in kwargs:
             self.set_enabled(kwargs["enabled"])
 
@@ -47,7 +49,7 @@ class GUIButton:
         if tag in cls._REGISTRY:
             cls._REGISTRY[tag].configure(**kwargs)
         else:
-            dpg.configure_item(tag, **kwargs)
+            dpg_configure_item(tag, **kwargs)
 
     @classmethod
     def set_item_label(cls, tag: str, label: str) -> None:

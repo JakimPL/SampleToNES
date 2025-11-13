@@ -3,6 +3,7 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.common import dpg_configure_item
 from sampletones.audio import AudioDeviceManager, write_audio
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
@@ -239,12 +240,12 @@ class GUIReconstructionPanel(GUIPanel):
             tag = TPL_RECONSTRUCTION_GENERATOR_CHECKBOX.format(generator_name)
             is_available = generator_name in available_generators
 
-            dpg.configure_item(tag, enabled=is_available, default_value=is_available)
+            dpg_configure_item(tag, enabled=is_available, default_value=is_available)
             if is_available:
                 dpg.set_value(tag, True)
 
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
-        dpg.configure_item(radio_tag, enabled=True)
+        dpg_configure_item(radio_tag, enabled=True)
         GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
     def clear_display(self) -> None:
@@ -262,14 +263,16 @@ class GUIReconstructionPanel(GUIPanel):
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:
             tag = TPL_RECONSTRUCTION_GENERATOR_CHECKBOX.format(generator_name)
-            dpg.configure_item(tag, enabled=False, default_value=False)
-            dpg.set_value(tag, False)
+            if dpg.does_item_exist(tag):
+                dpg.configure_item(tag, enabled=False, default_value=False)
+                dpg.set_value(tag, False)
 
     def _reset_audio_source_radio(self) -> None:
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
-        dpg.configure_item(radio_tag, enabled=False)
-        dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
-        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
+        if dpg.does_item_exist(radio_tag):
+            dpg.configure_item(radio_tag, enabled=False)
+            dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
+            GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)

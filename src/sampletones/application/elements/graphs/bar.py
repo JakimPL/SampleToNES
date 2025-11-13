@@ -17,7 +17,7 @@ from ...constants import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
-from ...utils.common import dpg_delete_children, dpg_delete_item
+from ...utils.common import dpg_configure_item, dpg_delete_children, dpg_delete_item
 from .graph import GUIGraphDisplay
 from .layers.bar import BarLayer
 
@@ -129,9 +129,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
         dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
-
-        if dpg.does_item_exist(self.zero_line_tag):
-            dpg.configure_item(self.zero_line_tag, x=[self.x_min, self.x_max], y=[0.0, 0.0])
+        dpg_configure_item(self.zero_line_tag, x=[self.x_min, self.x_max], y=[0.0, 0.0])
 
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
