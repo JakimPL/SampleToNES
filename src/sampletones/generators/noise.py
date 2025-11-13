@@ -36,7 +36,12 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
         if not noise_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 
-        output = self.generate(noise_instruction, initials=initials)
+        output = self.generate(
+            noise_instruction,
+            initials=initials,
+            save=save,
+        )
+
         self.save_state(save, noise_instruction, initials)
 
         return output

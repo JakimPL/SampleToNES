@@ -73,11 +73,19 @@ class Window:
 
         return window
 
-    def get_windowed_frame(self, audio: np.ndarray, offset: int, apply_window: bool = True) -> np.ndarray:
+    def get_windowed_frame(
+        self,
+        audio: np.ndarray,
+        offset: int,
+        apply_window: bool = True,
+    ) -> np.ndarray:
         return self.get_windowed_frame_with_bounds(audio, offset, apply_window=apply_window)[0]
 
     def get_windowed_frame_with_bounds(
-        self, audio: np.ndarray, offset: int, apply_window: bool = True
+        self,
+        audio: np.ndarray,
+        offset: int,
+        apply_window: bool = True,
     ) -> Tuple[np.ndarray, int, int]:
         left = self.left_offset + offset
         right = left + self.size

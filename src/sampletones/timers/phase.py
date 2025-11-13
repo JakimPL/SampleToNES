@@ -29,6 +29,7 @@ class PhaseTimer(Timer):
     def __call__(
         self,
         initials: Initials = None,
+        save: bool = True,
     ) -> np.ndarray:
         (initial_phase,) = initials if initials is not None else (None,)
         self.validate(initial_phase)
@@ -41,23 +42,22 @@ class PhaseTimer(Timer):
             frame.fill(self.phase)
             return frame
 
-        return self.generate_frame()
+        return self.generate_frame(save=save)
 
     def calculate_offset(self, initials: Initials = None) -> int:
         phase = initials[0] if initials is not None else 0.0
         return round(self.sample_rate / self._real_frequency * phase)
 
-    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
+    def generate_frame(self, save: bool = True) -> np.ndarray:
         indices = np.arange(self.frame_length) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
-        sign = 1.0 if direction else -1.0
         lower = np.ceil(1.0 + abs(delta * indices[-1]))
-        frame = np.fmod(lower + indices * delta * sign + self.phase, 1.0)
+        frame = np.fmod(lower + indices * delta + self.phase, 1.0)
 
         if save:
             self.phase = float(frame[-1])
 
-        return frame if direction > 0 else frame[::-1]
+        return frame
 
     @property
     def initials(self) -> Tuple[Any, ...]:

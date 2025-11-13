@@ -1,7 +1,7 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
+from typing import Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
@@ -11,7 +11,7 @@ from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GENERATOR_CLASS_MAP
+from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import deserialize_array, dump, serialize_array
@@ -19,7 +19,7 @@ from sampletones.utils import deserialize_array, dump, serialize_array
 from .fragment import Fragment
 
 
-class LibraryFragment(BaseModel, Generic[InstructionType]):
+class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
@@ -32,16 +32,12 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
     @classmethod
     def create(
         cls,
-        generator: Any,
+        generator: GeneratorType,
         instruction: InstructionType,
         window: Window,
         transformer: FFTTransformer,
     ) -> Self:
-        sample, offset = generator.generate_sample(instruction, window=window)
-        audio = generator.generate_frames(instruction)
-        frames_count = audio.shape[0] // generator.frame_length
-        start_id = int(np.ceil(0.5 * window.size / generator.frame_length))
-        end_id = frames_count - start_id
+        audio = generator.generate_sample(instruction, window=window)
 
         features = []
         for frame_id in range(start_id, end_id):
@@ -54,7 +50,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
         return cls(
             generator_class=generator.class_name(),
             instruction=instruction,
-            sample=sample,
+            sample=audio,
             feature=feature,
             frequency=generator.timer.real_frequency,
             offset=offset,
@@ -73,7 +69,7 @@ class LibraryFragment(BaseModel, Generic[InstructionType]):
 
     def get(
         self,
-        generator: Any,
+        generator: GeneratorType,
         config: Config,
         window: Window,
         initials: Initials = None,

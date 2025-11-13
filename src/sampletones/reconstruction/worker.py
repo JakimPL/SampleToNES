@@ -106,7 +106,7 @@ class ReconstructorWorker:
             error=error,
         )
 
-    def get_approximation(self, instruction: InstructionUnion, generator: Any) -> Fragment:
+    def get_approximation(self, instruction: InstructionUnion, generator: GeneratorUnion) -> Fragment:
         library_fragment = self.library_data[instruction]
         fragment = library_fragment.get(
             generator,

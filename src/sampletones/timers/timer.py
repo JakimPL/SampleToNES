@@ -2,7 +2,7 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones.constants.general import RESET_PHASE
+from sampletones.constants.general import MAX_SAMPLE_LENGTH, RESET_PHASE
 from sampletones.ffts import Window
 from sampletones.typehints import Initials
 
@@ -20,7 +20,11 @@ class Timer:
         self.change_rate: int = change_rate
         self.frame_length: int = round(self.sample_rate / self.change_rate)
 
-    def __call__(self, initials: Initials = None) -> np.ndarray:
+    def __call__(
+        self,
+        initials: Initials = None,
+        save: bool = True,
+    ) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     @property
@@ -34,40 +38,29 @@ class Timer:
         length = self.frame_length if window is None else window.size
         return np.zeros(length, dtype=np.float32)
 
-    def generate_sample(self, window: Window) -> Tuple[np.ndarray, int]:
+    def generate_sample(self, window: Window) -> np.ndarray:
         base_length = int(np.ceil(max(self.sample_rate / self._real_frequency, window.size)))
-        backward_frames = -(-(base_length) // self.frame_length)
-        forward_frames = -((-2 * base_length) // self.frame_length)
-        return self.generate_frames(backward_frames, forward_frames)
+        frames_count = int(np.ceil(base_length / self.frame_length))
+        frames = self.generate_frames(frames_count)
+        if frames.shape[0] > MAX_SAMPLE_LENGTH:
+            start = (frames.shape[0] - MAX_SAMPLE_LENGTH) // 2
+            end = start + MAX_SAMPLE_LENGTH
+            frames = frames[start:end]
 
-    def generate_window(self, window: Window, initials: Initials = None) -> np.ndarray:
-        sample, offset = self.generate_frames(window.backward_frames, window.forward_frames, initials)
-        start = offset + window.left_offset
-        end = start + window.size
-        return sample[start:end] * window.envelope
+        return frames
 
     def generate_frames(
-        self, backward_frames: int, forward_frames: int, initials: Initials = None, save: bool = False
-    ) -> Tuple[np.ndarray, int]:
+        self,
+        frames_count: int,
+        initials: Initials = None,
+    ) -> np.ndarray:
         previous_initials = self.get()
-        offset = backward_frames * self.frame_length
-
         self.set(initials)
-        frames = [self.generate_frame(False, save=True) for _ in range(backward_frames)][::-1]
-
-        self.set(initials)
-        for i in range(forward_frames):
-            frame = self.generate_frame(True, save=True)
-            if i == 0 and save:
-                previous_initials = self.get()
-
-            frames.append(frame)
-
+        frames = np.concatenate([self.generate_frame(save=True) for _ in range(frames_count)])
         self.set(previous_initials)
-        sample = np.concatenate(frames)
-        return sample, offset
+        return frames
 
-    def generate_frame(self, direction: bool = True, save: bool = True) -> np.ndarray:
+    def generate_frame(self, save: bool = True) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:
