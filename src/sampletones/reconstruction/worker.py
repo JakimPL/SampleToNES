@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
-from tqdm.auto import tqdm
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
@@ -25,12 +24,11 @@ class ReconstructorWorker:
     criterion: Criterion = field(init=False)
 
     def __call__(
-        self, fragmented_audio: FragmentedAudio, fragment_ids: List[int], show_progress: bool = False
+        self,
+        fragmented_audio: FragmentedAudio,
+        fragment_ids: List[int],
     ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
-        return {
-            fragment_id: self.reconstruct(fragmented_audio[fragment_id])
-            for fragment_id in tqdm(fragment_ids, disable=not show_progress)
-        }
+        return {fragment_id: self.reconstruct(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}
 
     def __post_init__(self):
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))

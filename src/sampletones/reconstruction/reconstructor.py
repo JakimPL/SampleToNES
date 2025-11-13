@@ -92,7 +92,7 @@ class Reconstructor:
             library_data=self.library_data,
         )
 
-        results = worker(fragmented_audio, fragments_ids, show_progress=False)
+        results = worker(fragmented_audio, fragments_ids)
         for fragment_approximations in results.values():
             for fragment_approximation in fragment_approximations.values():
                 self.update_state(fragment_approximation)

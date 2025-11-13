@@ -17,6 +17,7 @@ from .creation import generate_instruction_batch
 class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
     def __init__(self, config: Config) -> None:
         super().__init__(max_workers=config.general.max_workers)
+        print(self.max_workers)
         self.config = config.model_copy()
         self.window: Optional[Window] = None
         self.instructions: List[Tuple[GeneratorClassName, InstructionUnion]] = []
@@ -49,7 +50,7 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
             for instruction in generator.get_possible_instructions()
         ]
 
-        num_workers = min(self.max_workers, (len(self.instructions) + BATCH_SIZE - 1) // BATCH_SIZE)
+        num_workers = max(self.max_workers, (len(self.instructions) + BATCH_SIZE - 1) // BATCH_SIZE)
         self.batches = [self.instructions[i::num_workers] for i in range(num_workers)]
 
         tasks = [(batch, self.config, self.window) for batch in self.batches if batch]
