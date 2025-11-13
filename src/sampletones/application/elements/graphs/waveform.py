@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.library import LibraryFragment
 
 from ...constants import (

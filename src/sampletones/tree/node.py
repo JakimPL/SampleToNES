@@ -3,7 +3,7 @@ from typing import Optional
 
 from anytree import Node
 
-from sampletones.constants import GeneratorClassName, LibraryGeneratorName
+from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
 from sampletones.instructions import Instruction
 from sampletones.library import LibraryFragment, LibraryKey
 

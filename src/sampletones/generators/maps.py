@@ -1,6 +1,6 @@
 from typing import Dict
 
-from sampletones.constants import (
+from sampletones.constants.enums import (
     GeneratorClassName,
     GeneratorName,
     LibraryGeneratorName,

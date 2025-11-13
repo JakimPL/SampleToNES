@@ -6,7 +6,7 @@ from numpy.lib.stride_tricks import sliding_window_view
 from tqdm.auto import tqdm
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.ffts import Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import InstructionUnion

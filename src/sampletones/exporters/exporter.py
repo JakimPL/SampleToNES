@@ -2,7 +2,7 @@ from typing import Dict, Generic, List, Mapping, Union
 
 import numpy as np
 
-from sampletones.constants import FeatureKey
+from sampletones.constants.enums import FeatureKey
 from sampletones.instructions import InstructionType
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import FeatureValue

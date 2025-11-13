@@ -81,17 +81,3 @@ MAX_MIXER = 5.0
 MIXER_PULSE = 0.26395226395226395
 MIXER_TRIANGLE = 0.2987012987012987
 MIXER_NOISE = 0.1733941733941734
-
-
-# Paths
-
-LIBRARY_DIRECTORY = "data/library"
-OUTPUT_DIRECTORY = "data/output"
-CONFIG_PATH = "data/config.json"
-
-
-# File extensions
-EXT_FILE_JSON = ".json"
-EXT_FILE_LIBRARY = ".dat"
-EXT_FILE_FTI = ".fti"
-EXT_FILE_WAV = ".wav"

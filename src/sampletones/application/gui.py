@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from ..audio.manager import AudioDeviceManager
 from ..configs import LibraryConfig
-from ..constants.general import EXT_FILE_JSON, EXT_FILE_WAV
+from ..constants.paths import EXT_FILE_JSON, EXT_FILE_WAV
 from ..library import LibraryFragment
 from ..utils import logger
 from .config.manager import ConfigManager
@@ -132,6 +132,7 @@ class GUI:
         self.converter_window.set_callbacks(
             on_load_file=self._on_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
+            on_cancelled=self.browser_panel.refresh,
         )
 
         self.instruction_panel.set_callbacks(

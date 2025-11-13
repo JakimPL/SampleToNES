@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from sampletones.instructions import NoiseInstruction
 from sampletones.timers import LFSRTimer

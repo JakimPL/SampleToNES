@@ -4,8 +4,8 @@ from typing import Callable, List, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager, write_audio
-from sampletones.constants import AudioSourceType, GeneratorName
-from sampletones.constants.general import EXT_FILE_FTI, EXT_FILE_WAV
+from sampletones.constants.enums import AudioSourceType, GeneratorName
+from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
 from sampletones.reconstruction import Reconstruction
 from sampletones.utils import logger
 

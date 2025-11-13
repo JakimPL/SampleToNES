@@ -3,7 +3,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple, Union
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.instructions import InstructionType
 from sampletones.timers import TimerType, get_frequency_table

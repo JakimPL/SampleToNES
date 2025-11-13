@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import BATCH_SIZE
 from sampletones.ffts import Window
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion

@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP

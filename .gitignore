@@ -4,6 +4,7 @@ __pycache__/
 .idea/
 .vscode/
 .github/
+.venv
 
 **/*.idea
 **/*.vscode/**
@@ -18,7 +19,4 @@ __pycache__/
 *.dat
 *.fti
 *.lock
-
-data/
-output/
 

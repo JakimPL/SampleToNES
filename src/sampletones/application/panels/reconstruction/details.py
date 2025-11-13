@@ -4,7 +4,7 @@ from typing import Callable, Dict, Optional, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants import FeatureKey, GeneratorName
+from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.reconstruction import Reconstruction
 from sampletones.utils import pitch_to_name
 

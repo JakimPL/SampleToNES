@@ -4,7 +4,7 @@ from typing import Dict, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.configs import Config
-from sampletones.constants.general import LIBRARY_DIRECTORY
+from sampletones.constants.paths import LIBRARY_DIRECTORY
 from sampletones.ffts import Window
 from sampletones.utils import logger
 
@@ -15,7 +15,7 @@ from .key import LibraryKey
 class Library(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    directory: str = Field(default=LIBRARY_DIRECTORY, description="Path to the FFT library directory", frozen=True)
+    directory: str = Field(default=str(LIBRARY_DIRECTORY), description="Path to the FFT library directory", frozen=True)
     data: Dict[LibraryKey, LibraryData] = Field(default_factory=dict, description="FFT library data")
 
     def __getitem__(self, key: LibraryKey) -> LibraryData:

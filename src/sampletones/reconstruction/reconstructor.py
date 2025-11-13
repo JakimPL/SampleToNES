@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.audio import load_audio
 from sampletones.configs import Config
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import Window
 from sampletones.generators import (

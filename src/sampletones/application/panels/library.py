@@ -3,7 +3,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.configs import LibraryConfig
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import WindowNotAvailableError
 from sampletones.instructions import Instruction
 from sampletones.library import LibraryFragment, LibraryKey

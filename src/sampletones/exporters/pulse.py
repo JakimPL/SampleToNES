@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from sampletones.constants import FeatureKey
+from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MIN_PITCH
 from sampletones.instructions import PulseInstruction
 from sampletones.typehints import FeatureValue

@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, cast
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.constants import FeatureKey, GeneratorName
+from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.reconstruction import Reconstruction
 from sampletones.typehints import FeatureValue
 from sampletones.utils import write_fti

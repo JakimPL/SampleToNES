@@ -1,6 +1,6 @@
 from typing import Dict, cast
 
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.instructions import InstructionUnion
 
 from .maps import INSTRUCTION_TO_GENERATOR_MAP

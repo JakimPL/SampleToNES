@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import List
 
 from sampletones.configs import Config
-from sampletones.constants import GENERATOR_ABBREVIATIONS, GeneratorName
-from sampletones.constants.general import EXT_FILE_JSON
+from sampletones.constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
+from sampletones.constants.paths import EXT_FILE_JSON
 from sampletones.utils import hash_models
 
 

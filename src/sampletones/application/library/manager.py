@@ -2,8 +2,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, LibraryGeneratorName
-from sampletones.constants.general import EXT_FILE_LIBRARY, NOISE_PERIODS
+from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
+from sampletones.constants.general import NOISE_PERIODS
+from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.ffts import Window
 from sampletones.generators import LIBRARY_GENERATOR_CLASS_MAP
 from sampletones.instructions import (

@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from sampletones.configs import Config
-from sampletones.constants import GeneratorClassName, GeneratorName
+from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
 from sampletones.instructions import TriangleInstruction
 from sampletones.timers import PhaseTimer

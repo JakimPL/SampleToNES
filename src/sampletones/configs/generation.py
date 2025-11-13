@@ -2,7 +2,7 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.constants import GeneratorName
+from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
     CONTINUITY_LOSS_WEIGHT,
     FAST_DIFFERENCE,

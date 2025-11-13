@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 from tqdm.auto import tqdm
 
 from sampletones.configs import Config, LibraryConfig
-from sampletones.constants import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion

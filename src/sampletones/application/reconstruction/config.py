@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from sampletones.constants import FeatureKey
+from sampletones.constants.enums import FeatureKey
 
 from ..constants import (
     CLR_BAR_PLOT_ARPEGGIO,

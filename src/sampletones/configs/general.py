@@ -1,14 +1,13 @@
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import (
-    LIBRARY_DIRECTORY,
     MAX_PITCH,
     MAX_WORKERS,
     MIN_PITCH,
     NORMALIZE,
-    OUTPUT_DIRECTORY,
     QUANTIZE,
 )
+from sampletones.constants.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 
 
 class GeneralConfig(BaseModel):
@@ -20,5 +19,5 @@ class GeneralConfig(BaseModel):
     quantize: bool = Field(default=QUANTIZE)
     max_workers: int = Field(default=MAX_WORKERS, ge=1)
 
-    library_directory: str = Field(default=LIBRARY_DIRECTORY)
-    output_directory: str = Field(default=OUTPUT_DIRECTORY)
+    library_directory: str = Field(default=str(LIBRARY_DIRECTORY))
+    output_directory: str = Field(default=str(OUTPUT_DIRECTORY))

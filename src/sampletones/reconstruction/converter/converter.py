@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants.general import EXT_FILE_WAV
+from sampletones.constants.paths import EXT_FILE_WAV
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils import logger
 
