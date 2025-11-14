@@ -62,7 +62,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
             TriangleInstruction(
                 on=False,
                 pitch=MIN_PITCH,
-            )
+            ),
         ]
 
         for pitch in self.frequency_table:

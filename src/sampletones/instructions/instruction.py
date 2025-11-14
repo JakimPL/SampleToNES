@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class Instruction(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
     on: bool
 

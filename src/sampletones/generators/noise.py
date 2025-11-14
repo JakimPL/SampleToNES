@@ -65,7 +65,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
                 period=0,
                 volume=0,
                 short=False,
-            )
+            ),
         ]
 
         for period in range(len(NOISE_PERIODS)):
