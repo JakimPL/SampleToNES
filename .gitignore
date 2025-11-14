@@ -6,6 +6,10 @@ __pycache__/
 .github/
 .venv
 
+build/
+sampletones
+sampletones.exe
+
 **/*.idea
 **/*.vscode/**
 **/*.ipynb_checkpoints/**
@@ -19,4 +23,5 @@ __pycache__/
 *.dat
 *.fti
 *.lock
+*.spec
 
