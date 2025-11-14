@@ -25,18 +25,21 @@ class LibraryKey(BaseModel):
         description="Gamma value for transformation",
     )
     config_hash: str = Field(..., description="Hash of the configuration")
+    filename: str = Field(..., description="Filename representing the key")
 
     @classmethod
     def create(cls, config: LibraryConfig, window: Window) -> Self:
         config_hash = hash_model(config)
+        filename = cls.get_filename(config, window, config_hash)
         return cls(
             sample_rate=config.sample_rate,
             frame_length=window.frame_length,
             window_size=window.size,
             transformation_gamma=config.transformation_gamma,
             config_hash=config_hash,
+            filename=filename,
         )
 
-    @property
-    def filename(self) -> str:
-        return f"sr_{self.sample_rate}_fl_{self.frame_length}_ws_{self.window_size}_tg_{self.transformation_gamma}_ch_{self.config_hash}.dat"
+    @staticmethod
+    def get_filename(config: LibraryConfig, window: Window, config_hash: str) -> str:
+        return f"sr_{config.sample_rate}_cr_{config.frame_length}_ws_{window.size}_tg_{config.transformation_gamma}_ch_{config_hash}.dat"

@@ -74,7 +74,7 @@ class TaskProcessor(Generic[T]):
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
 
-        logger.info("Starting the conversion process")
+        logger.info("Starting processing tasks...")
 
         if self._on_start is not None:
             self._on_start()
