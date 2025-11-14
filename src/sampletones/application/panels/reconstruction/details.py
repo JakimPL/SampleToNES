@@ -240,7 +240,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(text, button_tag)
+        copy_to_clipboard(text, LBL_BUTTON_COPY, button_tag)
 
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)

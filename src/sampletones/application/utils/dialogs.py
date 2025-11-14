@@ -1,4 +1,3 @@
-import traceback
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -13,21 +12,15 @@ from ..constants import (
     DIM_DIALOG_ERROR_WIDTH,
     DIM_DIALOG_ERROR_WIDTH_WRAP,
     DIM_DIALOG_HEIGHT,
-    DIM_DIALOG_TRACEBACK_HEIGHT,
     DIM_DIALOG_WIDTH,
-    LBL_BUTTON_HIDE_TRACEBACK,
     LBL_BUTTON_OK,
     LBL_BUTTON_SHOW_TRACEBACK,
-    LBL_BUTTON_TRACEBACK_COPY,
     MSG_LIBRARY_NOT_LOADED,
     MSG_RECONSTRUCTION_NO_DATA,
-    SUF_BUTTON_COPY,
     SUF_BUTTON_OK,
+    SUF_BUTTON_SHOW_TRACEBACK,
     SUF_GROUP,
     SUF_PATH_TEXT,
-    SUF_SHOW_TRACEBACK_BUTTON,
-    SUF_TEXT,
-    SUF_TRACEBACK,
     TAG_BUTTON_OK,
     TAG_ERROR_DIALOG,
     TAG_FILE_NOT_FOUND_DIALOG,
@@ -42,8 +35,8 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from .clipboard import copy_to_clipboard
-from .dpg import dpg_configure_item, dpg_delete_item
+from ..elements.traceback import GUITraceback
+from .dpg import dpg_delete_item
 
 
 def show_modal_dialog(
@@ -96,7 +89,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
         tag=TAG_ERROR_DIALOG,
         modal=False,
         min_size=(DIM_DIALOG_ERROR_WIDTH, DIM_DIALOG_ERROR_HEIGHT),
-        no_resize=True,
+        autosize=True,
         on_close=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
     ):
         if message is not None:
@@ -120,28 +113,10 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
                 color=CLR_ERROR_TEXT,
             )
 
-        traceback_text = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
-        traceback_tag = f"{TAG_ERROR_DIALOG}{SUF_TRACEBACK}"
-        traceback_text_tag = f"{traceback_tag}{SUF_TEXT}"
-        traceback_copy_tag = f"{traceback_tag}{SUF_BUTTON_COPY}"
-
-        with dpg.group(tag=traceback_tag, parent=TAG_ERROR_DIALOG, show=False):
-            dpg.add_input_text(
-                tag=traceback_text_tag,
-                parent=traceback_tag,
-                default_value=traceback_text,
-                multiline=True,
-                readonly=True,
-                height=DIM_DIALOG_TRACEBACK_HEIGHT,
-                width=-1,
-            )
-
-            GUIButton(
-                tag=traceback_copy_tag,
-                label=LBL_BUTTON_TRACEBACK_COPY,
-                callback=lambda: copy_to_clipboard(traceback_text, traceback_copy_tag),
-                width=-1,
-            )
+        traceback = GUITraceback(
+            parent=TAG_ERROR_DIALOG,
+            exception=exception,
+        )
 
         dpg.add_separator()
 
@@ -150,21 +125,16 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             policy=dpg.mvTable_SizingStretchProp,
             resizable=False,
             width=-1,
+            height=-1,
         ):
             dpg.add_table_column()
             dpg.add_table_column()
 
             with dpg.table_row():
-                show_button_tag = f"{TAG_ERROR_DIALOG}{SUF_SHOW_TRACEBACK_BUTTON}"
-                visible = {"val": False}
+                show_button_tag = f"{TAG_ERROR_DIALOG}{SUF_BUTTON_SHOW_TRACEBACK}"
 
                 def toggle_traceback() -> None:
-                    visible["val"] = not visible["val"]
-                    dpg_configure_item(traceback_tag, show=visible["val"])
-                    dpg_configure_item(
-                        show_button_tag,
-                        label=(LBL_BUTTON_HIDE_TRACEBACK if visible["val"] else LBL_BUTTON_SHOW_TRACEBACK),
-                    )
+                    traceback.toggle_visibility()
 
                 GUIButton(
                     tag=show_button_tag,

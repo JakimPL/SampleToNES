@@ -29,6 +29,13 @@ class GUIButton:
 
         GUIButton.REGISTRY[tag] = self
 
+    @classmethod
+    def delete(cls, tag: str) -> None:
+        if tag in cls.REGISTRY:
+            if dpg.does_item_exist(tag):
+                dpg.delete_item(tag)
+            del cls.REGISTRY[tag]
+
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(self._tag, enabled=enabled)
 

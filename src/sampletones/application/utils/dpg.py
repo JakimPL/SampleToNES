@@ -11,7 +11,11 @@ def dpg_wrapper(button_function: Optional[Callable] = None) -> Callable:
         @functools.wraps(function)
         def wrapper(tag: str, *args, **kwargs) -> Any:
             if button_function is not None and tag in GUIButton.REGISTRY:
-                button_function(GUIButton.REGISTRY[tag], *args, **kwargs)
+                if dpg.does_item_exist(tag):
+                    button_function(GUIButton.REGISTRY[tag], *args, **kwargs)
+                else:
+                    GUIButton.delete(tag)
+
             elif dpg.does_item_exist(tag):
                 return function(tag, *args, **kwargs)
 
