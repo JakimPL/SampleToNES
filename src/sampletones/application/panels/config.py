@@ -16,7 +16,7 @@ from sampletones.constants.general import (
     SAMPLE_RATE,
 )
 from sampletones.library import LibraryKey
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Sender, SerializedData
 
 from ..config.manager import ConfigManager
 from ..constants import (
@@ -136,7 +136,7 @@ class GUIConfigPanel(GUIPanel):
         for tag in self.config_manager.config_parameters["config"].keys():
             dpg.set_item_callback(tag, self._on_parameter_change)
 
-    def _on_parameter_change(self, sender: Any, app_data: Any) -> None:
+    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 

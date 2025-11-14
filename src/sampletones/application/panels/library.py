@@ -15,6 +15,7 @@ from sampletones.tree import (
     LibraryNode,
     TreeNode,
 )
+from sampletones.typehints import Sender
 from sampletones.utils import logger
 
 from ..config.manager import ConfigManager
@@ -45,9 +46,9 @@ from ..constants import (
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
-    TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED,
-    TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS,
+    TITLE_DIALOG_LIBRARY_GENERATION_STATUS,
     TPL_LIBRARY_EXISTS,
+    TPL_LIBRARY_GENERATION_PROGRESS,
     TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
     VAL_GLOBAL_DEFAULT_FLOAT,
@@ -238,7 +239,7 @@ class GUILibraryPanel(GUITreePanel):
             current = current.parent
         return None
 
-    def _on_load_library_clicked(self, sender: int, app_data: bool, user_data: LibraryKey) -> None:
+    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: LibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
@@ -247,7 +248,7 @@ class GUILibraryPanel(GUITreePanel):
         self._rebuild_tree()
         dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
-    def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
+    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
         if not self._on_instruction_selected:
@@ -274,15 +275,15 @@ class GUILibraryPanel(GUITreePanel):
         window = self.config_manager.get_window()
         if not window:
             exception = WindowNotAvailableError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
-            logger.info("No window available for library generation")
+            logger.info("No FFT window available for library generation")
             show_error_dialog(exception, MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
             return
 
-        dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
-        dpg.set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATING)
-        dpg.configure_item(TAG_LIBRARY_PROGRESS, show=True)
-        dpg.set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
-
+        dpg_configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATING)
+        dpg_configure_item(TAG_LIBRARY_PROGRESS, show=True)
+        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=False)
+        dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
         self.library_manager.generate_library(config, window, overwrite=True)
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
@@ -301,16 +302,14 @@ class GUILibraryPanel(GUITreePanel):
 
     def _set_generation_running(self, task_progress: TaskProgress) -> None:
         progress = task_progress.get_progress()
-        if dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
-            dpg.set_value(TAG_LIBRARY_PROGRESS, progress)
+        dpg_set_value(TAG_LIBRARY_PROGRESS, progress)
 
-        if dpg.does_item_exist(TAG_LIBRARY_STATUS):
-            creator = self.library_manager.creator
-            if creator:
-                dpg.set_value(
-                    TAG_LIBRARY_STATUS,
-                    f"Generating: {creator.completed_instructions}/{creator.total_instructions} instructions",
-                )
+        creator = self.library_manager.creator
+        if creator:
+            dpg_set_value(
+                TAG_LIBRARY_STATUS,
+                TPL_LIBRARY_GENERATION_PROGRESS.format(creator.completed_instructions, creator.total_instructions),
+            )
 
     def _set_generation_completed(self) -> None:
         dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
@@ -323,7 +322,7 @@ class GUILibraryPanel(GUITreePanel):
         dpg_set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
 
     def _on_generation_completed(self) -> None:
-        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_SUCCESS)
+        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 
     def _on_generation_error(self, exception: Exception) -> None:
@@ -331,14 +330,10 @@ class GUILibraryPanel(GUITreePanel):
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation_error(exception))
 
     def _on_generation_cancelled(self) -> None:
-        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_CANCELLED)
+        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 
     def _finalize_generation(self) -> None:
-        dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
-        dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
-
         self._set_current_library(
             self.config_manager.key,
             load_if_needed=True,
@@ -346,6 +341,13 @@ class GUILibraryPanel(GUITreePanel):
         )
         self._rebuild_tree()
         self.library_manager.cleanup_creator()
+        self._restore_generation_panel()
+
+    def _restore_generation_panel(self) -> None:
+        dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
+        dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=True)
+        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
+        dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
         show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)

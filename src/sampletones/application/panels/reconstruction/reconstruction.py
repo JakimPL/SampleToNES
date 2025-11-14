@@ -7,6 +7,7 @@ from sampletones.audio import AudioDeviceManager, write_audio
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
 from sampletones.reconstruction import Reconstruction
+from sampletones.typehints import Sender
 from sampletones.utils import logger
 
 from ...config.manager import ConfigManager
@@ -211,7 +212,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
 
-    def _on_audio_source_changed(self, sender, app_data) -> None:
+    def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
         if app_data == LBL_RADIO_ORIGINAL_AUDIO:
             self.current_audio_source = AudioSourceType.ORIGINAL
         else:
@@ -263,9 +264,8 @@ class GUIReconstructionPanel(GUIPanel):
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:
             tag = TPL_RECONSTRUCTION_GENERATOR_CHECKBOX.format(generator_name)
-            if dpg.does_item_exist(tag):
-                dpg.configure_item(tag, enabled=False, default_value=False)
-                dpg.set_value(tag, False)
+            dpg_configure_item(tag, enabled=False, default_value=False)
+            dpg_set_value(tag, False)
 
     def _reset_audio_source_radio(self) -> None:
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)

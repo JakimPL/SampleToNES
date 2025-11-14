@@ -70,7 +70,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
-from .utils.common import dpg_configure_item
+from .utils.common import dpg_configure_item, dpg_set_value
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -441,11 +441,11 @@ class GUI:
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg.set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
         self.audio_device_manager.stop()
 
     def _exit_application(self) -> None:

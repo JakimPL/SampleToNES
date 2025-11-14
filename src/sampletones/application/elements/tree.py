@@ -3,6 +3,7 @@ from typing import Callable, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones.tree import Tree, TreeNode
+from sampletones.typehints import Sender
 
 from ..constants import (
     DIM_SEARCH_BUTTON_WIDTH,
@@ -80,7 +81,7 @@ class GUITreePanel(GUIPanel):
         path_parts = [ancestor.name for ancestor in node.path]
         return f"{self.tag}_node_{'_'.join(path_parts)}"
 
-    def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
+    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         if self._selected_node_tag and dpg.does_item_exist(self._selected_node_tag):
             dpg.set_value(self._selected_node_tag, False)
 
@@ -95,7 +96,7 @@ class GUITreePanel(GUIPanel):
             dpg.set_value(self._selected_node_tag, False)
         self._selected_node_tag = None
 
-    def _on_search_changed(self, sender: int, query: str) -> None:
+    def _on_search_changed(self, sender: Sender, query: str) -> None:
         if query:
             self.apply_filter(query, self._default_search_predicate)
         else:

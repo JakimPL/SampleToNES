@@ -14,6 +14,7 @@ from ...constants import (
 )
 from ...elements.panel import GUIPanel
 from ...instruction.logic import InstructionDetailsLogic
+from ...utils.common import dpg_set_value
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
@@ -43,4 +44,4 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def _update_display(self) -> None:
         display_text = self.logic.get_display_text()
-        dpg.set_value(TAG_INSTRUCTION_DETAILS_INFO, display_text)
+        dpg_set_value(TAG_INSTRUCTION_DETAILS_INFO, display_text)

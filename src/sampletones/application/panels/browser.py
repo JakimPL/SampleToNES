@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.tree import FileSystemNode, TreeNode
+from sampletones.typehints import Sender
 from sampletones.utils import logger
 
 from ..browser.manager import BrowserManager
@@ -119,7 +120,7 @@ class GUIBrowserPanel(GUITreePanel):
         self._rebuild_tree()
         dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
 
-    def _on_selectable_clicked(self, sender: int, app_data: bool, user_data: TreeNode) -> None:
+    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
         if isinstance(user_data, FileSystemNode):

@@ -2,14 +2,14 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Sender, SerializedData
 
 T = TypeVar("T")
 
 
 def file_dialog_handler(func: Callable[[T, Path], None]) -> Callable[[T, int, SerializedData], None]:
     @wraps(func)
-    def wrapper(self: T, sender: int, app_data: SerializedData) -> None:
+    def wrapper(self: T, sender: Sender, app_data: SerializedData) -> None:
         if not app_data or "file_path_name" not in app_data:
             return
 

@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.library import LibraryFragment
+from sampletones.typehints import Sender
 
 from ...constants import (
     CLR_WAVEFORM_LAYER_RECONSTRUCTION,
@@ -283,7 +284,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self._reset_x_axis()
         self._reset_y_axis()
 
-    def _plot_callback(self, sender: str, app_data: Any) -> None:
+    def _plot_callback(self, sender: Sender, app_data: Any) -> None:
         pass
 
     def _clamp_zoom_bounds(
@@ -306,7 +307,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         return clamped_min, clamped_max
 
-    def _mouse_wheel_callback(self, sender: str, app_data: float) -> None:
+    def _mouse_wheel_callback(self, sender: Sender, app_data: float) -> None:
         if not dpg.is_item_hovered(self.plot_tag) or not self.current_data:
             return
 
@@ -344,7 +345,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         return self._clamp_zoom_bounds(new_min, new_max, bound_min, bound_max)
 
-    def _mouse_drag_callback(self, sender: str, app_data: List[Union[int, float]]) -> None:
+    def _mouse_drag_callback(self, sender: Sender, app_data: List[Union[int, float]]) -> None:
         if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
             return
 
@@ -381,6 +382,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
             self.last_mouse_position = x_position, y_position
 
-    def _mouse_release_callback(self, sender: str, app_data: int) -> None:
+    def _mouse_release_callback(self, sender: Sender, app_data: int) -> None:
         if app_data == dpg.mvMouseButton_Left:
             self.is_dragging = False

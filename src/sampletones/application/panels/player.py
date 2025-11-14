@@ -29,7 +29,12 @@ from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..player.data import AudioData
 from ..player.player import AudioPlayer, PlaybackError
-from ..utils.common import dpg_configure_item, dpg_set_item_callback, dpg_set_item_label
+from ..utils.common import (
+    dpg_configure_item,
+    dpg_set_item_callback,
+    dpg_set_item_label,
+    dpg_set_value,
+)
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
@@ -170,10 +175,10 @@ class GUIAudioPlayerPanel(GUIPanel):
 
     def _update_position_display(self) -> None:
         if not self.audio_player.audio_data:
-            dpg.set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
+            dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
             position_text = f"{PFX_PLAYER_POSITION}{self.audio_player.audio_data.current_position}/{self.audio_player.audio_data.samples}{SUF_PLAYER_SAMPLES}"
-            dpg.set_value(self.position_text_tag, position_text)
+            dpg_set_value(self.position_text_tag, position_text)
 
     def _show_no_audio_dialog(self) -> None:
         def content(parent: str) -> None:

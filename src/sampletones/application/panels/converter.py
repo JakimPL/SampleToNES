@@ -249,8 +249,7 @@ class GUIConverterWindow:
         )
 
     def update_progress(self, progress: float, current_file: Optional[str] = None) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
-            dpg.set_value(TAG_CONVERTER_PROGRESS, progress)
+        dpg_set_value(TAG_CONVERTER_PROGRESS, progress)
 
         if current_file and dpg.does_item_exist(TAG_CONVERTER_STATUS):
             dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_PROCESSING.format(current_file))

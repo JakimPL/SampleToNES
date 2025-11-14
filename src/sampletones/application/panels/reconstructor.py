@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER, MIXER
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Sender, SerializedData
 
 from ..config.manager import ConfigManager
 from ..constants import (
@@ -121,11 +121,11 @@ class GUIReconstructorPanel(GUIPanel):
         for generator_tag in self.config_manager.generator_tags.keys():
             dpg.set_item_callback(generator_tag, self._on_generator_change)
 
-    def _on_parameter_change(self, sender: Any, app_data: Any) -> None:
+    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
-    def _on_generator_change(self, sender: Any, app_data: bool) -> None:
+    def _on_generator_change(self, sender: Sender, app_data: bool) -> None:
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 
