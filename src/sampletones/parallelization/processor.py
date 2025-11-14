@@ -33,6 +33,7 @@ class TaskProcessor(Generic[T]):
 
         self._pool_lock: threading.Lock = threading.Lock()
 
+        self._on_start: Optional[Callable[[], None]] = None
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self._on_completed: Optional[Callable[[T], None]] = None
         self._on_error: Optional[Callable[[Exception], None]] = None
@@ -74,6 +75,10 @@ class TaskProcessor(Generic[T]):
         self.future = self.pool.map(task_function, tasks, timeout=None)
 
         logger.info("Starting the conversion process")
+
+        if self._on_start is not None:
+            self._on_start()
+
         results = []
         try:
             self.running = True
@@ -210,11 +215,14 @@ class TaskProcessor(Generic[T]):
 
     def set_callbacks(
         self,
+        on_start: Optional[Callable[[], None]] = None,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_completed: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
     ) -> None:
+        if on_start is not None:
+            self._on_start = on_start
         if on_progress is not None:
             self._on_progress = on_progress
         if on_completed is not None:

@@ -1,0 +1,61 @@
+from collections import deque
+from time import monotonic
+from typing import Deque, Optional, Tuple
+
+ESTIMATION_MEASUREMENTS_SAMPLE = 25
+
+
+class ETAEstimator:
+    def __init__(self, total: int) -> None:
+        self.total_steps = total
+        self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=ESTIMATION_MEASUREMENTS_SAMPLE)
+
+    def update(self, current_items: int) -> str:
+        now = monotonic()
+        completed_items = current_items
+        self._samples_window.append((now, completed_items))
+
+        if completed_items >= self.total_steps:
+            return "0s"
+        if len(self._samples_window) < 2:
+            return "?"
+
+        eta_seconds = self._estimate_remaining_seconds(completed_items, now)
+        if eta_seconds is None:
+            return "?"
+        if eta_seconds <= 0:
+            return "0s"
+
+        return self._format_duration(eta_seconds)
+
+    def _estimate_remaining_seconds(self, completed_items: int, current_time: float) -> Optional[float]:
+        if completed_items >= self.total_steps:
+            return 0.0
+        if len(self._samples_window) < 2:
+            return None
+
+        first_time, first_completed = self._samples_window[0]
+        delta_completed = completed_items - first_completed
+        delta_time = current_time - first_time
+
+        if delta_time <= 0 or delta_completed <= 0:
+            return None
+
+        rate = delta_completed / delta_time
+        remaining = self.total_steps - completed_items
+        return remaining / rate
+
+    def _format_duration(self, seconds: float) -> str:
+        secs = int(seconds)
+        if secs <= 0:
+            return "0s"
+
+        minutes, seconds_remaining = divmod(secs, 60)
+        hours, minutes = divmod(minutes, 60)
+
+        if hours:
+            return f"{hours}h {minutes:02d}m {seconds_remaining:02d}s"
+        if minutes:
+            return f"{minutes}m {seconds_remaining:02d}s"
+
+        return f"{seconds_remaining}s"

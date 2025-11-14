@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.parallelization import TaskProgress, TaskStatus
+from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.reconstruction.converter import (
     ReconstructionConverter,
     get_output_path,
@@ -22,7 +22,6 @@ from ..constants import (
     MSG_CONVERTER_COMPLETED,
     MSG_CONVERTER_ERROR,
     MSG_CONVERTER_IDLE,
-    MSG_CONVERTER_PROCESSING,
     MSG_CONVERTER_SUCCESS,
     MSG_INPUT_PATH_PREFIX,
     MSG_OUTPUT_PATH_PREFIX,
@@ -36,6 +35,7 @@ from ..constants import (
     TAG_CONVERTER_WINDOW,
     TITLE_DIALOG_CONVERTER,
     TPL_CONVERTER_STATUS,
+    TPL_TIME_ESTIMATION,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
@@ -57,6 +57,8 @@ class GUIConverterWindow:
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
+        self.eta_estimator: Optional[ETAEstimator] = None
+
         self.is_file: bool = False
         self.output_path: Optional[Path] = None
 
@@ -73,6 +75,7 @@ class GUIConverterWindow:
         config = self.config_manager.get_config()
         self.converter = ReconstructionConverter(config=config)
         self.converter.set_callbacks(
+            on_start=self._on_start,
             on_completed=self._on_conversion_complete,
             on_error=self._on_conversion_error,
             on_cancelled=self._on_cancellation_complete,
@@ -154,17 +157,12 @@ class GUIConverterWindow:
     def _set_status_running(self, task_progress: TaskProgress):
         assert self.converter is not None, "Converter is not initialized"
         progress = task_progress.get_progress()
-        dpg_set_value(TAG_CONVERTER_PROGRESS, progress)
+        self._update_progress(progress)
 
         current_file = task_progress.current_item
         if self.input_path_text and current_file is not None:
             current_file_path = Path(current_file)
             self.input_path_text.set_path(current_file_path)
-
-        dpg_set_value(
-            TAG_CONVERTER_STATUS,
-            TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files),
-        )
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
@@ -193,6 +191,10 @@ class GUIConverterWindow:
                 self._on_load_directory()
 
         self._on_close()
+
+    def _on_start(self) -> None:
+        assert self.converter is not None, "Converter is not initialized"
+        self.eta_estimator = ETAEstimator(total=self.converter.total_tasks)
 
     def _on_cancel_clicked(self) -> None:
         self._cancel()
@@ -248,11 +250,19 @@ class GUIConverterWindow:
             content=content,
         )
 
-    def update_progress(self, progress: float, current_file: Optional[str] = None) -> None:
+    def _update_progress(self, progress: float) -> None:
+        assert self.converter is not None, "Converter is not initialized"
+        assert self.eta_estimator is not None, "ETA Estimator is not initialized"
+
         dpg_set_value(TAG_CONVERTER_PROGRESS, progress)
 
-        if current_file and dpg.does_item_exist(TAG_CONVERTER_STATUS):
-            dpg.set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_PROCESSING.format(current_file))
+        status_text = TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files)
+
+        eta_string = self.eta_estimator.update(self.converter.completed_files)
+        if eta_string:
+            status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
+
+        dpg_set_value(TAG_CONVERTER_STATUS, status_text)
 
     def set_completed(self, output_path: Path) -> None:
         if output_path.exists():
