@@ -51,8 +51,6 @@ class AudioPlayer:
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, "Audio playback failed")
             raise PlaybackError(str(exception)) from exception
-        finally:
-            pass
 
     def pause(self) -> None:
         self.audio_device_manager.pause()

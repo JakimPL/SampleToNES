@@ -339,7 +339,7 @@ class GUILibraryPanel(GUITreePanel):
             load_if_needed=True,
             apply_config=False,
         )
-        self._rebuild_tree()
+        self._refresh_libraries()
         self.library_manager.cleanup_creator()
         self._restore_generation_panel()
 

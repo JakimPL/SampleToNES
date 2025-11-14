@@ -260,7 +260,7 @@ class TaskProcessor(Generic[T]):
             except RuntimeError as exception:
                 logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
             finally:
-                self.pool.join(timeout=timeout)
+                self._join_pool(timeout=timeout)
 
     def __enter__(self):
         return self
