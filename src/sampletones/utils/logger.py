@@ -1,6 +1,9 @@
 import logging
-import sys
 from typing import Optional
+
+from rich.logging import RichHandler
+
+from sampletones.constants.application import SAMPLETONES_NAME
 
 
 class Logger:
@@ -14,15 +17,18 @@ class Logger:
 
     def __init__(self, level: int = logging.INFO):
         if not hasattr(self, "_initialized"):
-            self._logger = logging.getLogger("SampleToNES")
+            self._logger = logging.getLogger(SAMPLETONES_NAME)
             self._logger.setLevel(level)
 
-            handler = logging.StreamHandler(sys.stdout)
+            handler = RichHandler(
+                markup=False,
+                show_time=False,
+                show_level=True,
+                show_path=False,
+                rich_tracebacks=False,
+            )
             handler.setLevel(level)
-
-            formatter = logging.Formatter("[%(levelname)s] %(message)s")
-            handler.setFormatter(formatter)
-
+            self._handler = handler
             self._logger.addHandler(handler)
             self._initialized = True
 
@@ -38,13 +44,14 @@ class Logger:
     def error(self, message: str) -> None:
         self._logger.error(message)
 
-    def error_with_traceback(self, exception: Exception, message: Optional[str] = None) -> None:
-        if not message:
-            message = f"{str(type(exception).__name__)}"
-        self._logger.error(message, exc_info=exception, stack_info=True)
-
     def critical(self, message: str) -> None:
         self._logger.critical(message)
+
+    def error_with_traceback(self, exception: BaseException, message: Optional[str] = None) -> None:
+        if not message:
+            message = f"{str(type(exception).__name__)}"
+
+        self._logger.error(message, exc_info=exception, stack_info=True)
 
 
 logger = Logger()
