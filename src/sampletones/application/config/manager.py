@@ -67,7 +67,7 @@ class ConfigManager:
                 self.load_config_from_file(self.config_path)
             except Exception as exception:  # TODO: specify exception type
                 self.load_config(Config())
-                logger.error_with_traceback(f"Failed to load config from {self.config_path}", exception)
+                logger.error_with_traceback(exception, f"Failed to load config from {self.config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
         else:
             logger.warning(f"Config file does not exist: {self.config_path}")
@@ -84,7 +84,7 @@ class ConfigManager:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             save_json(self.config_path, config_dict)
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to save config to {self.config_path}", exception)
+            logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:

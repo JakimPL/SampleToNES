@@ -9,7 +9,7 @@ from ..elements.button import GUIButton
 def dpg_wrapper(button_function: Optional[Callable] = None) -> Callable:
     def decorator(function: Callable) -> Callable:
         @functools.wraps(function)
-        def wrapper(tag: str, *args, **kwargs) -> None:
+        def wrapper(tag: str, *args, **kwargs) -> Any:
             if button_function is not None and tag in GUIButton.REGISTRY:
                 button_function(GUIButton.REGISTRY[tag], *args, **kwargs)
             elif dpg.does_item_exist(tag):
@@ -47,6 +47,11 @@ def dpg_set_item_callback(tag: str, callback: Callable) -> None:
 @dpg_wrapper(button_function=GUIButton.set_item_label)
 def dpg_set_item_label(tag: str, label: str) -> None:
     return dpg.set_item_label(tag, label=label)
+
+
+@dpg_wrapper(button_function=GUIButton.get_item_label)
+def dpg_get_item_label(tag: str) -> Optional[str]:
+    return dpg.get_item_label(tag)
 
 
 @dpg_wrapper(button_function=GUIButton.set_value)

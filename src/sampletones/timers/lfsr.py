@@ -92,6 +92,8 @@ class LFSRTimer(Timer):
         mask = pairs[:, 0] > pairs[:, 1]
         pairs[mask, 1] += self.lfsr_period
 
+        raise ValueError("Debugging")
+
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
         means = np.array([np.mean(cumsum_table[start:end]) for start, end in nonzero_pairs])

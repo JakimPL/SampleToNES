@@ -38,7 +38,9 @@ class Logger:
     def error(self, message: str) -> None:
         self._logger.error(message)
 
-    def error_with_traceback(self, message: str, exception: Exception) -> None:
+    def error_with_traceback(self, exception: Exception, message: Optional[str] = None) -> None:
+        if not message:
+            message = f"{str(type(exception).__name__)}"
         self._logger.error(message, exc_info=exception, stack_info=True)
 
     def critical(self, message: str) -> None:

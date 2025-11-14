@@ -53,8 +53,8 @@ from ...elements.graphs.waveform import GUIWaveformDisplay
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
-from ...utils.common import dpg_configure_item, dpg_set_value
 from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
+from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
 from ..player import GUIAudioPlayerPanel
 
@@ -332,10 +332,10 @@ class GUIReconstructionPanel(GUIPanel):
                 filepath,
             )
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
-            logger.error_with_traceback(f"File error while saving instrument: {filepath}", exception)
+            logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to export instrument: {filepath}", exception)
+            logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
 
     @file_dialog_handler
@@ -353,10 +353,10 @@ class GUIReconstructionPanel(GUIPanel):
                 directory,
             )
         except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
-            logger.error_with_traceback(f"File error while saving instruments: {directory}", exception)
+            logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to export instruments: {directory}", exception)
+            logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
 
     def export_reconstruction_ftis_dialog(self) -> None:
@@ -435,5 +435,5 @@ class GUIReconstructionPanel(GUIPanel):
                 filepath,
             )
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to export reconstruction to WAV: {filepath}", exception)
+            logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)

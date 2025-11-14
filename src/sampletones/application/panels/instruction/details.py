@@ -14,7 +14,7 @@ from ...constants import (
 )
 from ...elements.panel import GUIPanel
 from ...instruction.logic import InstructionDetailsLogic
-from ...utils.common import dpg_set_value
+from ...utils.dpg import dpg_set_value
 
 
 class GUIInstructionDetailsPanel(GUIPanel):

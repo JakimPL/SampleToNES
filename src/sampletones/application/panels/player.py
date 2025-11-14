@@ -28,13 +28,13 @@ from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..player.data import AudioData
 from ..player.player import AudioPlayer
-from ..utils.common import (
+from ..utils.dialogs import show_modal_dialog
+from ..utils.dpg import (
     dpg_configure_item,
     dpg_set_item_callback,
     dpg_set_item_label,
     dpg_set_value,
 )
-from ..utils.dialogs import show_modal_dialog
 
 
 class GUIAudioPlayerPanel(GUIPanel):

@@ -141,7 +141,7 @@ class TaskProcessor(Generic[T]):
             self._on_completed(processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
-        logger.error_with_traceback(f"Task failed: {exception}", exception)
+        logger.error_with_traceback(exception, f"Task failed: {exception}")
 
         self.status = TaskStatus.FAILED
         self.running = False
@@ -232,7 +232,7 @@ class TaskProcessor(Generic[T]):
                 else:
                     self.pool.join()
         except OSError as exception:
-            logger.error_with_traceback(f"Error while joining the pool: {exception}", exception)
+            logger.error_with_traceback(exception, f"Error while joining the pool: {exception}")
 
     def _cleanup_pool(self) -> None:
         self._notify_progress()
@@ -244,7 +244,7 @@ class TaskProcessor(Generic[T]):
             try:
                 self.pool.close()
             except RuntimeError as exception:
-                logger.error_with_traceback(f"Error while closing the pool: {exception}", exception)
+                logger.error_with_traceback(exception, f"Error while closing the pool: {exception}")
             finally:
                 self._join_pool()
 
@@ -258,7 +258,7 @@ class TaskProcessor(Generic[T]):
             try:
                 self.pool.stop()
             except RuntimeError as exception:
-                logger.error_with_traceback(f"Error while stopping the pool: {exception}", exception)
+                logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
             finally:
                 self.pool.join(timeout=timeout)
 

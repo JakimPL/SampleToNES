@@ -41,13 +41,13 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..utils.common import (
+from ..utils.dialogs import show_error_dialog, show_modal_dialog
+from ..utils.dpg import (
     dpg_configure_item,
     dpg_delete_item,
     dpg_set_item_callback,
     dpg_set_value,
 )
-from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
 class GUIConverterWindow:

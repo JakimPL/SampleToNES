@@ -137,16 +137,16 @@ class GUIBrowserPanel(GUITreePanel):
     def load_and_display_reconstruction(self, filepath: Path) -> None:
         try:
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
-        except FileNotFoundError as error:
-            logger.error_with_traceback(f"Failed to load reconstruction data from {filepath}", error)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
             return
         except (IsADirectoryError, OSError, PermissionError) as exception:
-            logger.error_with_traceback(f"Error while loading reconstruction data from {filepath}", exception)
+            logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_LOAD_FAILURE)
             return
         except InvalidReconstructionError as exception:
-            logger.error_with_traceback(f"Invalid reconstruction file: {filepath}", exception)
+            logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
             return
 

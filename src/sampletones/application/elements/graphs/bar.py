@@ -17,7 +17,7 @@ from ...constants import (
     VAL_GRAPH_DEFAULT_X_MAX,
     VAL_GRAPH_DEFAULT_X_MIN,
 )
-from ...utils.common import (
+from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_children,

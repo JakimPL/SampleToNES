@@ -1,4 +1,3 @@
-import threading
 from typing import Callable, Dict, Optional, cast
 
 import dearpygui.dearpygui as dpg
@@ -11,7 +10,6 @@ from sampletones.utils import hash_model, pitch_to_name
 from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_COPY_BUTTON_WIDTH,
-    LBL_COPIED_TOOLTIP,
     LBL_COPY_BUTTON,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
@@ -40,7 +38,8 @@ from ...reconstruction.config import (
     FeaturePlotConfig,
 )
 from ...reconstruction.feature import FeatureData
-from ...utils.common import dpg_configure_item, dpg_delete_item
+from ...utils.clipboard import copy_to_clipboard
+from ...utils.dpg import dpg_configure_item, dpg_delete_item
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -241,17 +240,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        dpg.set_clipboard_text(text)
-
-        if dpg.does_item_exist(button_tag):
-            original_label = dpg.get_item_label(button_tag)
-            dpg_configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
-
-            def restore_label():
-                dpg_configure_item(button_tag, label=original_label)
-
-            timer = threading.Timer(1.0, restore_label)
-            timer.start()
+        copy_to_clipboard(text, button_tag)
 
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)

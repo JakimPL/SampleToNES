@@ -57,12 +57,12 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.tree import GUITreePanel
 from ..library.manager import LibraryManager
-from ..utils.common import dpg_configure_item, dpg_set_value
 from ..utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
     show_info_dialog,
 )
+from ..utils.dpg import dpg_configure_item, dpg_set_value
 
 
 class GUILibraryPanel(GUITreePanel):
@@ -186,8 +186,8 @@ class GUILibraryPanel(GUITreePanel):
     def _load_library(self, library_key: LibraryKey) -> None:
         try:
             self.library_manager.load_library(library_key)
-        except FileNotFoundError as error:
-            logger.error_with_traceback(f"Failed to load library for key {library_key}", error)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"Failed to load library for key {library_key}")
             show_file_not_found_dialog(
                 self.library_manager.get_path(library_key),
                 MSG_LIBRARY_FILE_NOT_FOUND,

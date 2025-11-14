@@ -30,7 +30,7 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from .common import dpg_delete_item
+from .dpg import dpg_delete_item
 
 
 def show_modal_dialog(

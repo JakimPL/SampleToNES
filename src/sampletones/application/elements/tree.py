@@ -14,7 +14,7 @@ from ..constants import (
     SUF_SEARCH_BUTTON,
     SUF_SEARCH_INPUT,
 )
-from ..utils.common import dpg_delete_children
+from ..utils.dpg import dpg_delete_children
 from .button import GUIButton
 from .panel import GUIPanel
 

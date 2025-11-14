@@ -70,13 +70,13 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
-from .utils.common import dpg_configure_item, dpg_set_value
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
 )
+from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
 
 
@@ -312,7 +312,7 @@ class GUI:
             self.config_manager.save_config_to_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to save config to {filepath}", exception)
+            logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
 
     def _load_config_dialog(self) -> None:
@@ -331,7 +331,7 @@ class GUI:
             self.config_manager.load_config_from_file(filepath)
             self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(f"Failed to load config from {filepath}", exception)
+            logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
 
     def _reconstruct_file_dialog(self) -> None:

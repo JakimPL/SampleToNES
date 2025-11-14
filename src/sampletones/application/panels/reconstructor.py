@@ -34,7 +34,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..elements.path import GUIPathText
-from ..utils.common import dpg_set_value
+from ..utils.dpg import dpg_set_value
 from ..utils.file import file_dialog_handler
 
 

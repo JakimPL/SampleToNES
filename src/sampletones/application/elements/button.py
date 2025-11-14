@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -42,14 +42,17 @@ class GUIButton:
         if "enabled" in kwargs:
             self.set_enabled(kwargs["enabled"])
 
+    def get_item_label(self) -> Optional[str]:
+        return dpg.get_item_label(self._button_tag)
+
     def set_item_label(self, label: str) -> None:
-        dpg.set_item_label(self._button_tag, label)
+        return dpg.set_item_label(self._button_tag, label)
 
     def set_item_callback(self, callback: Callable) -> None:
-        dpg.set_item_callback(self._button_tag, callback)
+        return dpg.set_item_callback(self._button_tag, callback)
 
     def set_value(self, value: Any) -> None:
-        dpg.set_value(self._button_tag, value)
+        return dpg.set_value(self._button_tag, value)
 
     def delete_item(self) -> None:
         dpg.delete_item(self._button_tag)

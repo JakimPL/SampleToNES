@@ -13,7 +13,7 @@ from ..constants import (
     SUF_CONVERTER_HANDLER,
     SUF_GROUP,
 )
-from ..utils.common import dpg_delete_item, dpg_set_value
+from ..utils.dpg import dpg_delete_item, dpg_set_value
 
 
 class GUIPathText:

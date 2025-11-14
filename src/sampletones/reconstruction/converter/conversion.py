@@ -16,7 +16,7 @@ def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:
         logger.info("Reconstruction interrupted by user.")
         raise exception
     except Exception as exception:  # TODO: specify exception type
-        logger.error_with_traceback(str(type(exception).__name__), exception)
+        logger.error_with_traceback(exception)
 
     if reconstruction is not None:
         reconstruction.save(output_path)

@@ -34,7 +34,7 @@ from ...constants import (
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...reconstruction.data import ReconstructionData
-from ...utils.common import (
+from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_children,
