@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-# --- Check for Python 3.13 ---
+# --- Check for Python 3.12 ---
 PYVER=$(python3 --version 2>&1 | awk '{print $2}')
 echo "Detected Python version: $PYVER"
-if [[ $PYVER != 3.13.* ]]; then
+if [[ $PYVER != 3.12.* ]]; then
     echo
-    echo "ERROR: Python 3.13 is required."
-    echo "Please install Python 3.13 from https://www.python.org/downloads/"
+    echo "ERROR: Python 3.12 is required."
+    echo "Please install Python 3.12 from https://www.python.org/downloads/"
     exit 1
 fi
 

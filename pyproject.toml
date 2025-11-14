@@ -3,7 +3,7 @@ name = "sampletones"
 version = "0.2.0"
 description = "SampleToNES - Convert audio samples to FamiTracker instruments"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 authors = [{ name = "Jakim / Stage Magician" }]
 
 dependencies = [
