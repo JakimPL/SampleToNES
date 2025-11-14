@@ -10,13 +10,13 @@ from sampletones.utils import hash_model, pitch_to_name
 from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_COPY_BUTTON_WIDTH,
-    LBL_COPY_BUTTON,
+    LBL_BUTTON_COPY,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
     LBL_RECONSTRUCTION_EXPORT_FTIS,
     LBL_RECONSTRUCTION_INITIAL_PITCH,
     MSG_RECONSTRUCTION_NO_DATA,
-    SUF_GRAPH_COPY_BUTTON,
+    SUF_BUTTON_COPY,
     SUF_GRAPH_RAW_DATA,
     SUF_GRAPH_RAW_DATA_GROUP,
     SUF_NO_DATA_MESSAGE,
@@ -220,13 +220,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _add_raw_data_text(self, plot_tag: str, parent: str, data: np.ndarray) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
-        copy_button_tag = f"{plot_tag}{SUF_GRAPH_COPY_BUTTON}"
+        copy_button_tag = f"{plot_tag}{SUF_BUTTON_COPY}"
         group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
 
         with dpg.group(tag=group_tag, parent=parent, horizontal=True):
             GUIButton(
                 tag=copy_button_tag,
-                label=LBL_COPY_BUTTON,
+                label=LBL_BUTTON_COPY,
                 width=DIM_COPY_BUTTON_WIDTH,
                 callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
             )

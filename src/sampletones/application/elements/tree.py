@@ -11,7 +11,7 @@ from ..constants import (
     LBL_BUTTON_CLEAR_SEARCH,
     LBL_INPUT_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
-    SUF_SEARCH_BUTTON,
+    SUF_BUTTON_SEARCH,
     SUF_SEARCH_INPUT,
 )
 from ..utils.dpg import dpg_delete_children
@@ -48,7 +48,7 @@ class GUITreePanel(GUIPanel):
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_SEARCH_INPUT}"
-        self._search_button_tag = f"{self.tag}{SUF_SEARCH_BUTTON}"
+        self._search_button_tag = f"{self.tag}{SUF_BUTTON_SEARCH}"
 
         with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
