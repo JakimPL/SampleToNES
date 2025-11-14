@@ -41,7 +41,12 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..utils.common import dpg_configure_item, dpg_delete_item, dpg_set_value
+from ..utils.common import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_set_item_callback,
+    dpg_set_value,
+)
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
@@ -199,9 +204,8 @@ class GUIConverterWindow:
             self._on_cancelled()
 
     def _rename_cancel_to_close(self) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
-            dpg_configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
-            GUIButton.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
+        dpg_configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
+        dpg_set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
     def _cancel(self) -> None:
         if self.converter and self.converter.is_running():

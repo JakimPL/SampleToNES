@@ -51,6 +51,12 @@ class GUIButton:
     def set_value(self, value: Any) -> None:
         dpg.set_value(self._button_tag, value)
 
+    def delete_item(self) -> None:
+        dpg.delete_item(self._button_tag)
+        dpg.delete_item(self._tag)
+        if self._tag in GUIButton.REGISTRY:
+            del GUIButton.REGISTRY[self._tag]
+
     @property
     def tag(self) -> str:
         return self._tag

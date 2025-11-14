@@ -30,9 +30,9 @@ from ..player import GUIAudioPlayerPanel
 class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
         self.audio_device_manager = audio_device_manager
+        self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformDisplay
         self.spectrum_display: GUISpectrumDisplay
-        self.player_panel: GUIAudioPlayerPanel
         self.library_config: Optional[LibraryConfig] = None
 
         self._on_display_instruction_details: Optional[
@@ -112,6 +112,8 @@ class GUIInstructionPanel(GUIPanel):
     ) -> None:
         self.library_config = library_config
 
+        self.player_panel.disable()
+
         if self._on_display_instruction_details:
             self._on_display_instruction_details(generator_class_name, instruction, fragment)
 
@@ -125,6 +127,8 @@ class GUIInstructionPanel(GUIPanel):
         else:
             if self._on_clear_instruction_details:
                 self._on_clear_instruction_details()
+
+        self.player_panel.enable()
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)

@@ -387,7 +387,12 @@ class GUI:
         fragment: LibraryFragment,
         library_config: LibraryConfig,
     ) -> None:
-        self.instruction_panel.display_instruction(generator_class_name, instruction, fragment, library_config)
+        self.instruction_panel.display_instruction(
+            generator_class_name,
+            instruction,
+            fragment,
+            library_config,
+        )
 
     def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)

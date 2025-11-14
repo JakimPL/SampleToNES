@@ -96,6 +96,12 @@ class GUIAudioPlayerPanel(GUIPanel):
                 )
             dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
 
+    def disable(self) -> None:
+        dpg_configure_item(self.controls_group_tag, enabled=False)
+
+    def enable(self) -> None:
+        dpg_configure_item(self.controls_group_tag, enabled=True)
+
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_player.load_audio_data(audio_data)
         self._update_controls()

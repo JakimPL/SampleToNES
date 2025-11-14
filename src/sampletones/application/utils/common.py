@@ -20,14 +20,13 @@ def dpg_wrapper(button_function: Optional[Callable] = None) -> Callable:
     return decorator
 
 
-def dpg_delete_item(tag: str) -> None:
-    if dpg.does_item_exist(tag):
-        dpg.delete_item(tag)
+@dpg_wrapper(button_function=GUIButton.delete_item)
+def dpg_delete_item(tag: str, **kwargs) -> None:
+    dpg.delete_item(tag, **kwargs)
 
 
 def dpg_delete_children(tag: str) -> None:
-    if dpg.does_item_exist(tag):
-        dpg.delete_item(tag, children_only=True)
+    dpg_delete_item(tag, children_only=True)
 
 
 def dpg_bind_item_theme(tag: str, theme_tag: str) -> None:
