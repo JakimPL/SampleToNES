@@ -5,7 +5,7 @@ import numpy as np
 from sampletones.instructions import InstructionType
 from sampletones.timers import PhaseTimer
 from sampletones.typehints.general import FeatureMap
-from sampletones.utils import pitch_to_frequency
+from sampletones.utils import pitch_to_frequency, trim
 
 from .feature import Features
 
@@ -22,13 +22,13 @@ class Exporter(Generic[InstructionType]):
         features = Features.from_feature_map(feature_map)
         last_nonzero_volume_index: Optional[int] = None
         try:
-            last_nonzero_volume_index = features.volume.nonzero()[0][-1] + 1
+            last_nonzero_volume_index = features.volume.nonzero()[0][-1] + 2
         except IndexError:
             pass
 
         for key, value in features.items():
             if isinstance(value, np.ndarray):
-                trimmed_value = np.trim_zeros(value[:last_nonzero_volume_index], "b")
+                trimmed_value = trim(value[:last_nonzero_volume_index])
                 features[key] = trimmed_value
 
         return features

@@ -1,5 +1,3 @@
-import os
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -24,6 +22,19 @@ def pad(audio: np.ndarray, left: int, right: int) -> np.ndarray:
         output[insert_left:insert_right] = audio[valid_left:valid_right]
 
     return output
+
+
+def trim(array: np.ndarray) -> np.ndarray:
+    diff = np.diff(array)
+    ends = np.where(diff != 0)[0]
+
+    if len(ends) == 0:
+        return array[:1]
+
+    last_end = ends[-1]
+    last_value = array[last_end + 1]
+
+    return np.concatenate([array[: last_end + 1], [last_value]])
 
 
 def first_key_for_value(dictionary: dict, target: Any) -> Any:

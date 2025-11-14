@@ -1,4 +1,4 @@
-from .common import first_key_for_value, next_power_of_two, pad
+from .common import first_key_for_value, next_power_of_two, pad, trim
 from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
@@ -23,6 +23,7 @@ __all__ = [
     "logger",
     "next_power_of_two",
     "pad",
+    "trim",
     "first_key_for_value",
     "pitch_to_frequency",
     "frequency_to_pitch",

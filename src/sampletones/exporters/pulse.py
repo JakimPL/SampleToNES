@@ -13,9 +13,8 @@ from .exporter import Exporter
 class PulseExporter(Exporter[PulseInstruction]):
     def extract_data(self, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
-        initial_timer = None
 
-        timer_value = 0
+        pitch = MIN_PITCH
         volume = 0
         duty_cycle = 0
 
@@ -25,18 +24,18 @@ class PulseExporter(Exporter[PulseInstruction]):
 
         for instruction in instructions:
             if instruction.on:
-                if initial_timer is None:
+                if initial_pitch is None:
                     initial_pitch = instruction.pitch
-                    initial_timer = self.pitch_to_timer(initial_pitch)
-                    timer_value = initial_timer
-                    pitches.append(timer_value)
+                    for index in range(len(pitches)):
+                        pitches[index] = initial_pitch
 
+                pitch = instruction.pitch
                 volume = instruction.volume
                 duty_cycle = instruction.duty_cycle
             else:
                 volume = 0
 
-            pitches.append(timer_value)
+            pitches.append(pitch)
             volumes.append(volume)
             duty_cycles.append(duty_cycle)
 
@@ -47,7 +46,7 @@ class PulseExporter(Exporter[PulseInstruction]):
 
     def get_feature_map(self, instructions: List[PulseInstruction]) -> FeatureMap:
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
-        arpeggio = np.array(np.diff(np.array(pitches)))
+        arpeggio = np.array(pitches) - initial_pitch
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,

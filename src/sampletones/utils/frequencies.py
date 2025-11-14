@@ -21,7 +21,7 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
 
 def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     pitch += transpose
-    octave = (pitch // 12) - 1
+    octave = (pitch // 12) - 2
     note_index = pitch % 12
     return f"{NOTE_NAMES[note_index]}{octave}"
 
