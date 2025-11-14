@@ -6,7 +6,7 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.reconstruction import Reconstruction
-from sampletones.utils import pitch_to_name
+from sampletones.utils import hash_model, pitch_to_name
 
 from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
@@ -45,6 +45,7 @@ from ...utils.common import dpg_configure_item, dpg_delete_item
 
 class GUIReconstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
+        self.reconstruction_hash: str = ""
         self.current_features: Optional[FeatureData] = None
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
 
@@ -163,7 +164,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         parent: str,
     ) -> Optional[GUIBarPlotDisplay]:
         config = FEATURE_PLOT_CONFIGS[feature_key]
-        plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{generator_name}_{feature_key}"
+        plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
 
         if data.size == 0:
             return
@@ -256,6 +257,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)
         self.current_features = feature_data
+        self.reconstruction_hash = hash_model(reconstruction)
 
         dpg_configure_item(self.no_data_message_tag, show=False)
 

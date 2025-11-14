@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 from sampletones.instructions import InstructionUnion
 from sampletones.library import LibraryFragment
+from sampletones.utils import hash_model
 
 from ..constants import (
     FMT_INSTRUCTION_FREQUENCY,
@@ -24,13 +25,20 @@ from .data import InstructionPanelData
 class InstructionDetailsLogic:
     def __init__(self) -> None:
         self.current_data: Optional[InstructionPanelData] = None
+        self.current_hash: str = ""
 
     def set_instruction_data(
-        self, generator_class_name: str, instruction: InstructionUnion, fragment: Optional[LibraryFragment] = None
+        self,
+        generator_class_name: str,
+        instruction: InstructionUnion,
+        fragment: Optional[LibraryFragment] = None,
     ) -> InstructionPanelData:
         self.current_data = InstructionPanelData(
-            generator_class_name=generator_class_name, instruction=instruction, fragment=fragment
+            generator_class_name=generator_class_name,
+            instruction=instruction,
+            fragment=fragment,
         )
+        self.current_hash = hash_model(self.current_data)
         return self.current_data
 
     def clear_data(self) -> None:
