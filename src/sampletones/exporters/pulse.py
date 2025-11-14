@@ -48,11 +48,13 @@ class PulseExporter(Exporter[PulseInstruction]):
 
     def get_features(self, instructions: List[PulseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
+        arpeggio = np.array(np.diff(np.array(pitches)) % 16)
+        hi_pitch = np.array(np.diff(np.array(pitches)) // 16)
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes),
-            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16),
-            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16),
-            FeatureKey.DUTY_CYCLE: np.array(duty_cycles),
+            FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
+            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
+            FeatureKey.HI_PITCH: hi_pitch.astype(np.int8),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }

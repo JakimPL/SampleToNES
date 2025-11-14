@@ -44,10 +44,12 @@ class TriangleExporter(Exporter[TriangleInstruction]):
 
     def get_features(self, instructions: List[TriangleInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_pitch, pitches, volumes = self.extract_data(instructions)
+        arpeggio = np.array(np.diff(np.array(pitches)) % 16)
+        hi_pitch = np.array(np.diff(np.array(pitches)) // 16)
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes),
-            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16),
-            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16),
+            FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
+            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
+            FeatureKey.HI_PITCH: hi_pitch.astype(np.int8),
         }

@@ -19,6 +19,6 @@ class WaveformLayer:
     y_data: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        data = self.fragment.data
+        data = self.fragment.data.astype(np.float32)
         object.__setattr__(self, "x_data", np.arange(len(data)).astype(np.float32))
-        object.__setattr__(self, "y_data", data.astype(np.float32))
+        object.__setattr__(self, "y_data", data)

@@ -17,5 +17,6 @@ class BarLayer:
     y_data: np.ndarray = field(init=False)
 
     def __post_init__(self):
-        object.__setattr__(self, "x_data", np.arange(len(self.data)) + 0.5)
+        object.__setattr__(self, "data", self.data.astype(np.int64))
+        object.__setattr__(self, "x_data", np.arange(len(self.data)).astype(np.float32) + 0.5)
         object.__setattr__(self, "y_data", self.data.tolist())
