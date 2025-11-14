@@ -8,6 +8,7 @@ from sampletones.exceptions import WindowNotAvailableError
 from sampletones.instructions import Instruction
 from sampletones.library import LibraryFragment, LibraryKey
 from sampletones.parallelization import TaskProgress, TaskStatus
+from sampletones.parallelization.progress import ETAEstimator
 from sampletones.tree import (
     GeneratorNode,
     GroupNode,
@@ -53,6 +54,7 @@ from ..constants import (
     TPL_LIBRARY_GENERATION_PROGRESS,
     TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
+    TPL_TIME_ESTIMATION,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
@@ -73,11 +75,14 @@ class GUILibraryPanel(GUITreePanel):
         library_directory = config_manager.get_library_directory()
         self.library_manager = LibraryManager(
             library_directory,
+            on_generation_start=self._on_generation_start,
             on_progress=self._update_status,
             on_completed=self._on_generation_completed,
             on_error=self._on_generation_error,
             on_cancelled=self._on_generation_cancelled,
         )
+
+        self.eta_estimator: Optional[ETAEstimator] = None
 
         self._on_instruction_selected: Optional[
             Callable[[GeneratorClassName, Instruction, LibraryFragment, LibraryConfig], None]
@@ -306,18 +311,26 @@ class GUILibraryPanel(GUITreePanel):
             case TaskStatus.CANCELLED:
                 self._set_generation_cancelled()
             case TaskStatus.RUNNING:
-                self._set_generation_running(task_progress)
+                self._update_progress(task_progress)
 
     def _set_generation_running(self, task_progress: TaskProgress) -> None:
-        progress = task_progress.get_progress()
-        dpg_set_value(TAG_LIBRARY_PROGRESS, progress)
+        self._update_progress(task_progress)
 
+    def _update_progress(self, task_progress: TaskProgress) -> None:
         creator = self.library_manager.creator
-        if creator:
-            dpg_set_value(
-                TAG_LIBRARY_STATUS,
-                TPL_LIBRARY_GENERATION_PROGRESS.format(creator.completed_instructions, creator.total_instructions),
-            )
+        assert creator is not None, "Library manager creator is not initialized"
+        assert self.eta_estimator is not None, "ETA Estimator is not initialized"
+
+        dpg_set_value(TAG_LIBRARY_PROGRESS, task_progress.get_progress())
+        eta_string = self.eta_estimator.update(creator.completed_instructions)
+        percent_string = self.eta_estimator.get_percent_string()
+        dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay=percent_string)
+
+        status_text = TPL_LIBRARY_GENERATION_PROGRESS.format(creator.completed_instructions, creator.total_instructions)
+        if eta_string:
+            status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
+
+        dpg_set_value(TAG_LIBRARY_STATUS, status_text)
 
     def _set_generation_completed(self) -> None:
         dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
@@ -329,7 +342,12 @@ class GUILibraryPanel(GUITreePanel):
     def _set_generation_cancelled(self) -> None:
         dpg_set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
 
+    def _on_generation_start(self) -> None:
+        assert self.library_manager.creator is not None, "Library manager creator is not initialized"
+        self.eta_estimator = ETAEstimator(self.library_manager.creator.total_instructions)
+
     def _on_generation_completed(self) -> None:
+        dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
         show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
 

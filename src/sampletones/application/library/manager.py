@@ -42,6 +42,7 @@ class LibraryManager:
     def __init__(
         self,
         library_directory: Path,
+        on_generation_start: Optional[Callable[[], None]] = None,
         on_completed: Optional[Callable[[], None]] = None,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
@@ -53,6 +54,7 @@ class LibraryManager:
         self.tree = Tree()
         self.creator: Optional[LibraryCreator] = None
 
+        self._on_generation_start: Optional[Callable[[], None]] = on_generation_start
         self._on_generation_completed: Optional[Callable[[], None]] = on_completed
         self._on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
         self._on_generation_error: Optional[Callable[[Exception], None]] = on_error
@@ -146,6 +148,7 @@ class LibraryManager:
 
         self.creator = LibraryCreator(config)
         self.creator.set_callbacks(
+            on_start=self._on_generation_start,
             on_completed=self._complete_generation,
             on_error=self._on_generation_error,
             on_cancelled=self._on_generation_cancelled,

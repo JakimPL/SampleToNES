@@ -98,6 +98,7 @@ class GUIConverterWindow:
                 tag=TAG_CONVERTER_PROGRESS,
                 default_value=VAL_GLOBAL_DEFAULT_FLOAT,
                 width=-1,
+                overlay="0%",
             )
 
             self.input_path_text = GUIPathText(
@@ -156,8 +157,7 @@ class GUIConverterWindow:
 
     def _set_status_running(self, task_progress: TaskProgress):
         assert self.converter is not None, "Converter is not initialized"
-        progress = task_progress.get_progress()
-        self._update_progress(progress)
+        self._update_progress(task_progress)
 
         current_file = task_progress.current_item
         if self.input_path_text and current_file is not None:
@@ -250,15 +250,16 @@ class GUIConverterWindow:
             content=content,
         )
 
-    def _update_progress(self, progress: float) -> None:
+    def _update_progress(self, task_progress: TaskProgress) -> None:
         assert self.converter is not None, "Converter is not initialized"
         assert self.eta_estimator is not None, "ETA Estimator is not initialized"
 
-        dpg_set_value(TAG_CONVERTER_PROGRESS, progress)
+        dpg_set_value(TAG_CONVERTER_PROGRESS, task_progress.get_progress())
+        eta_string = self.eta_estimator.update(task_progress.completed)
+        percent_string = self.eta_estimator.get_percent_string()
+        dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay=percent_string)
 
         status_text = TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files)
-
-        eta_string = self.eta_estimator.update(self.converter.completed_files)
         if eta_string:
             status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
 
@@ -270,6 +271,7 @@ class GUIConverterWindow:
 
         self._set_status_completed()
         dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
+        dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay="100%")
         dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
 
     def set_callbacks(

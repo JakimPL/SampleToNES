@@ -9,10 +9,12 @@ class ETAEstimator:
     def __init__(self, total: int) -> None:
         self.total_steps = total
         self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=ESTIMATION_MEASUREMENTS_SAMPLE)
+        self.processed_items: int = 0
 
     def update(self, current_items: int) -> str:
         now = monotonic()
         completed_items = current_items
+        self.processed_items = completed_items
         self._samples_window.append((now, completed_items))
 
         if completed_items >= self.total_steps:
@@ -27,6 +29,14 @@ class ETAEstimator:
             return "0s"
 
         return self._format_duration(eta_seconds)
+
+    def get_percent_string(self) -> str:
+        percent = int(self.processed_items * 100 / self.total_steps)
+        if percent < 0:
+            percent = 0
+        if percent > 100:
+            percent = 100
+        return f"{percent}%"
 
     def _estimate_remaining_seconds(self, completed_items: int, current_time: float) -> Optional[float]:
         if completed_items >= self.total_steps:
