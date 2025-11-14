@@ -20,5 +20,5 @@ class WaveformLayer:
 
     def __post_init__(self):
         data = self.fragment.data
-        object.__setattr__(self, "x_data", np.arange(len(data)))
-        object.__setattr__(self, "y_data", data.tolist())
+        object.__setattr__(self, "x_data", np.arange(len(data)).astype(np.float32))
+        object.__setattr__(self, "y_data", data.astype(np.float32))

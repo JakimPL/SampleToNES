@@ -28,11 +28,13 @@ from ..constants import (
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_LIBRARY_LIBRARIES,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
+    MSG_LIBRARY_FILE_ERROR,
     MSG_LIBRARY_FILE_NOT_FOUND,
     MSG_LIBRARY_GENERATING,
     MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
     MSG_LIBRARY_GENERATION_SUCCESS,
+    MSG_LIBRARY_LOAD_ERROR,
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
@@ -187,11 +189,17 @@ class GUILibraryPanel(GUITreePanel):
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
-            logger.error_with_traceback(exception, f"Failed to load library for key {library_key}")
+            logger.error_with_traceback(exception, f"Library file not found for key {library_key}")
             show_file_not_found_dialog(
                 self.library_manager.get_path(library_key),
                 MSG_LIBRARY_FILE_NOT_FOUND,
             )
+        except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
+            logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
+            show_error_dialog(exception, MSG_LIBRARY_FILE_ERROR)
+        except Exception as exception:
+            logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
+            show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)

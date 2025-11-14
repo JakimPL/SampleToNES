@@ -3,11 +3,13 @@ from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
-from ..audio.manager import AudioDeviceManager
-from ..configs import LibraryConfig
-from ..constants.paths import EXT_FILE_JSON, EXT_FILE_WAV
-from ..library import LibraryFragment
-from ..utils import logger
+from sampletones.audio import AudioDeviceManager
+from sampletones.configs import LibraryConfig
+from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAV
+from sampletones.exceptions import LibraryDisplayError
+from sampletones.library import LibraryFragment
+from sampletones.utils import logger
+
 from .config.manager import ConfigManager
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -35,6 +37,7 @@ from .constants import (
     MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVE_FAILED,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
+    MSG_LIBRARY_DISPLAY_ERROR,
     MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
     SUF_CENTER_PANEL,
     TAG_BROWSER_PANEL_GROUP,
@@ -387,12 +390,15 @@ class GUI:
         fragment: LibraryFragment,
         library_config: LibraryConfig,
     ) -> None:
-        self.instruction_panel.display_instruction(
-            generator_class_name,
-            instruction,
-            fragment,
-            library_config,
-        )
+        try:
+            self.instruction_panel.display_instruction(
+                generator_class_name,
+                instruction,
+                fragment,
+                library_config,
+            )
+        except LibraryDisplayError as exception:
+            show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 
     def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.display_reconstruction(reconstruction_data)

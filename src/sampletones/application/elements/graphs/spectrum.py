@@ -9,6 +9,7 @@ from sampletones.library import LibraryFragment
 from ...constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
+    LBL_PLOT_SPECTRUM,
     LBL_SPECTRUM_DISPLAY,
     LBL_SPECTRUM_X_AXIS,
     LBL_SPECTRUM_Y_AXIS,
@@ -74,7 +75,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         self.add_layer(
             SpectrumLayer(
                 fragment=fragment,
-                name="Spectrum Layer",
+                name=LBL_PLOT_SPECTRUM,
                 sample_rate=sample_rate,
                 frame_length=frame_length,
             )

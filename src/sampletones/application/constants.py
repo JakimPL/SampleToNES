@@ -168,6 +168,7 @@ MSG_CONFIG_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIG_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
 MSG_CONFIG_SAVE_ERROR = "Error saving configuration:"
 MSG_CONFIG_LOAD_ERROR = "Error loading configuration:"
+MSG_LIBRARY_DISPLAY_ERROR = "Error while displaying data:"
 TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
 TPL_LIBRARY_GENERATION_PROGRESS = "Generating: {}/{} instructions"
 MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first."
@@ -191,6 +192,8 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
 MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
+MSG_LIBRARY_FILE_ERROR = "Error while loading the library file."
+MSG_LIBRARY_LOAD_ERROR = "Error while loading library data."
 MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
 
@@ -462,6 +465,7 @@ VAL_SPECTRUM_LOG_OFFSET = 1e-2
 VAL_SPECTRUM_GRAYSCALE_MAX = 255
 LBL_SPECTRUM_X_AXIS = ""
 LBL_SPECTRUM_Y_AXIS = "Frequency"
+LBL_PLOT_SPECTRUM = "Spectrum"
 
 DIM_GRAPH_DEFAULT_WIDTH = -1
 DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT = 300

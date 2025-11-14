@@ -2,10 +2,12 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio.manager import AudioDeviceManager
+from sampletones.audio import AudioDeviceManager
 from sampletones.configs import LibraryConfig
+from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import LibraryFragment
+from sampletones.utils import logger
 
 from ...constants import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
@@ -120,8 +122,14 @@ class GUIInstructionPanel(GUIPanel):
         if fragment:
             sample_rate = library_config.sample_rate
             frame_length = library_config.window_size
-            self.waveform_display.load_library_fragment(fragment)
-            self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
+            try:
+                self.waveform_display.load_library_fragment(fragment)
+                self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
+            except Exception as exception:
+                logger.error_with_traceback(exception, "Error while plotting library data")
+                self.player_panel.enable()
+                raise LibraryDisplayError("Could not display library data") from exception
+
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:

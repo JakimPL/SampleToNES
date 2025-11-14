@@ -121,7 +121,8 @@ class LibraryManager:
         return self._parse_instructions_by_generator(library_data, generator_class_name)
 
     def get_all_generator_instructions(
-        self, library_key: LibraryKey
+        self,
+        library_key: LibraryKey,
     ) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
         result = {}
         for generator_name in LibraryGeneratorName:
