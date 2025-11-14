@@ -2,7 +2,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.common import dpg_set_value
 from sampletones.configs import LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import WindowNotAvailableError
@@ -57,6 +56,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.tree import GUITreePanel
 from ..library.manager import LibraryManager
+from ..utils.common import dpg_configure_item, dpg_set_value
 from ..utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
@@ -142,25 +142,25 @@ class GUILibraryPanel(GUITreePanel):
         library_name = self.library_manager._get_display_name_from_key(key)
 
         if self.library_manager.is_library_loaded(key):
-            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
-            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_REGENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_REGENERATE_LIBRARY)
         elif self.library_manager.library_exists_for_key(key):
-            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
-            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
         else:
-            dpg.set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_NOT_EXISTS.format(library_name))
-            GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_NOT_EXISTS.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
 
         is_generating = self.library_manager.is_generating()
-        GUIButton.configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not is_generating)
+        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
+        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not is_generating)
 
     def _refresh_libraries(self) -> None:
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
+        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
         self.library_manager.gather_available_libraries()
         self._sync_with_config_key()
         self._rebuild_tree()
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
+        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
 
     def _sync_with_config_key(self) -> None:
         config_key = self.config_manager.key

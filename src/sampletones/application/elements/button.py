@@ -2,13 +2,11 @@ from typing import Any, Callable, Dict
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.common import dpg_configure_item
-
 from ..constants import SUF_BUTTON
 
 
 class GUIButton:
-    _REGISTRY: Dict[str, "GUIButton"] = {}
+    REGISTRY: Dict[str, "GUIButton"] = {}
 
     def __init__(
         self,
@@ -29,41 +27,29 @@ class GUIButton:
                 **kwargs,
             )
 
-        GUIButton._REGISTRY[tag] = self
+        GUIButton.REGISTRY[tag] = self
 
     def set_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(self._tag, enabled=enabled)
+        dpg.configure_item(self._tag, enabled=enabled)
 
     def is_enabled(self) -> bool:
         enabled = dpg.is_item_enabled(self._tag)
         assert enabled is not None
         return enabled
 
-    def configure(self, **kwargs) -> None:
-        dpg_configure_item(self._button_tag, **kwargs)
+    def configure_item(self, **kwargs) -> None:
+        dpg.configure_item(self._button_tag, **kwargs)
         if "enabled" in kwargs:
             self.set_enabled(kwargs["enabled"])
 
-    @classmethod
-    def configure_item(cls, tag: str, **kwargs) -> None:
-        if tag in cls._REGISTRY:
-            cls._REGISTRY[tag].configure(**kwargs)
-        else:
-            dpg_configure_item(tag, **kwargs)
+    def set_item_label(self, label: str) -> None:
+        dpg.set_item_label(self._button_tag, label)
 
-    @classmethod
-    def set_item_label(cls, tag: str, label: str) -> None:
-        if tag in cls._REGISTRY:
-            dpg.set_item_label(cls._REGISTRY[tag]._button_tag, label)
-        else:
-            dpg.set_item_label(tag, label)
+    def set_item_callback(self, callback: Callable) -> None:
+        dpg.set_item_callback(self._button_tag, callback)
 
-    @classmethod
-    def set_item_callback(cls, tag: str, callback: Callable[..., Any]) -> None:
-        if tag in cls._REGISTRY:
-            dpg.set_item_callback(cls._REGISTRY[tag]._button_tag, callback)
-        else:
-            dpg.set_item_callback(tag, callback)
+    def set_value(self, value: Any) -> None:
+        dpg.set_value(self._button_tag, value)
 
     @property
     def tag(self) -> str:

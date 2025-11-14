@@ -41,7 +41,7 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..utils.common import dpg_delete_item, dpg_set_value
+from ..utils.common import dpg_configure_item, dpg_delete_item, dpg_set_value
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 
 
@@ -178,13 +178,11 @@ class GUIConverterWindow:
                 self._set_status_running(task_progress)
 
     def _on_load_clicked(self) -> None:
-        if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
-            GUIButton.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
+        dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
 
         if self.is_file:
             if self.output_path and self._on_load_file is not None:
                 self._on_load_file(self.output_path)
-                print("Loaded file:", self.output_path)
         else:
             if self._on_load_directory is not None:
                 self._on_load_directory()
@@ -202,7 +200,7 @@ class GUIConverterWindow:
 
     def _rename_cancel_to_close(self) -> None:
         if dpg.does_item_exist(TAG_CONVERTER_CANCEL_BUTTON):
-            GUIButton.configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
+            dpg_configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
             GUIButton.set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
 
     def _cancel(self) -> None:
@@ -258,11 +256,8 @@ class GUIConverterWindow:
             self.output_path = output_path
 
         self._set_status_completed()
-        if dpg.does_item_exist(TAG_CONVERTER_PROGRESS):
-            dpg.set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
-
-        if dpg.does_item_exist(TAG_CONVERTER_LOAD_BUTTON):
-            GUIButton.configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
+        dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
+        dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
 
     def set_callbacks(
         self,

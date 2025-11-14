@@ -3,7 +3,6 @@ from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.common import dpg_set_value
 from sampletones.constants.general import (
     CHANGE_RATE,
     MAX_CHANGE_RATE,
@@ -51,6 +50,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..elements.path import GUIPathText
+from ..utils.common import dpg_set_value
 from ..utils.file import file_dialog_handler
 
 

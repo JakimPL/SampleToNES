@@ -245,11 +245,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         if dpg.does_item_exist(button_tag):
             original_label = dpg.get_item_label(button_tag)
-            GUIButton.configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
+            dpg_configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
 
             def restore_label():
-                if dpg.does_item_exist(button_tag):
-                    GUIButton.configure_item(button_tag, label=original_label)
+                dpg_configure_item(button_tag, label=original_label)
 
             timer = threading.Timer(1.0, restore_label)
             timer.start()
@@ -260,17 +259,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.reconstruction_hash = hash_model(reconstruction)
 
         dpg_configure_item(self.no_data_message_tag, show=False)
-
-        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
+        dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=True, enabled=True)
         self._create_tabs_for_generators(feature_data)
 
     def clear_display(self) -> None:
         self.current_features = None
-        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
+        dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
         self._clear_tabs()
 
         dpg_configure_item(self.no_data_message_tag, show=True)
 
-        if dpg.does_item_exist(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON):
-            GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
-            dpg.configure_item(self.export_button_separator_tag, show=False)
+        dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
+        dpg_configure_item(self.export_button_separator_tag, show=False)

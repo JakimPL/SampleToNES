@@ -3,7 +3,6 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.common import dpg_configure_item, dpg_set_value
 from sampletones.audio import AudioDeviceManager, write_audio
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
@@ -53,6 +52,7 @@ from ...elements.graphs.waveform import GUIWaveformDisplay
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
+from ...utils.common import dpg_configure_item, dpg_set_value
 from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
 from ...utils.file import file_dialog_handler
 from ..player import GUIAudioPlayerPanel
@@ -246,7 +246,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
         dpg_configure_item(radio_tag, enabled=True)
-        GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
+        dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
     def clear_display(self) -> None:
         self.reconstruction_data = None
@@ -269,10 +269,9 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _reset_audio_source_radio(self) -> None:
         radio_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
-        if dpg.does_item_exist(radio_tag):
-            dpg.configure_item(radio_tag, enabled=False)
-            dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
-            GUIButton.configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
+        dpg_configure_item(radio_tag, enabled=False)
+        dpg_set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
+        dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
