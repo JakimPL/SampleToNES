@@ -9,7 +9,9 @@ def main():
     try:
         application.run()
     except KeyboardInterrupt:
-        pass
+        logger.info("Application terminated")
+    else:
+        logger.info("Application closed")
 
 
 if __name__ == "__main__":

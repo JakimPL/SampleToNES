@@ -1,10 +1,10 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.instructions import NoiseInstruction
-from sampletones.typehints import FeatureValue
+from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
 
@@ -41,7 +41,7 @@ class NoiseExporter(Exporter[NoiseInstruction]):
 
         return initial_period or 0, periods, volumes, duty_cycles
 
-    def get_features(self, instructions: List[NoiseInstruction]) -> Dict[FeatureKey, FeatureValue]:
+    def get_feature_map(self, instructions: List[NoiseInstruction]) -> FeatureMap:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
         arpeggio = (np.array(periods) - initial_period) % 16
 

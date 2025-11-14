@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config
 from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_VERSION
-from sampletones.constants.enums import FeatureKey, GeneratorName, InstructionClassName
+from sampletones.constants.enums import GeneratorName, InstructionClassName
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
@@ -14,7 +14,8 @@ from sampletones.instructions import (
     InstructionClass,
     InstructionUnion,
 )
-from sampletones.typehints import FeatureValue, SerializedData
+from sampletones.typehints import SerializedData
+from sampletones.typehints.general import FeatureMap
 from sampletones.utils import (
     deserialize_array,
     load_json,
@@ -139,7 +140,7 @@ class Reconstruction(BaseModel):
             if field not in data:
                 raise InvalidReconstructionError(f"Reconstruction data is missing '{field}' field.")
 
-    def export(self, as_string: bool = False) -> Dict[GeneratorName, Dict[FeatureKey, Union[str, FeatureValue]]]:
+    def export(self) -> Dict[GeneratorName, FeatureMap]:
         features = {}
         for name, instructions in self.instructions.items():
             if not instructions:
@@ -147,7 +148,7 @@ class Reconstruction(BaseModel):
 
             exporter_class = self._get_exporter_class(instructions[0])
             exporter = exporter_class()
-            features[name] = exporter(instructions, as_string=as_string)
+            features[name] = exporter(instructions)
 
         return features
 

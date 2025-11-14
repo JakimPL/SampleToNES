@@ -1,11 +1,11 @@
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MAX_VOLUME, MIN_PITCH
 from sampletones.instructions import TriangleInstruction
-from sampletones.typehints import FeatureValue
+from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
 
@@ -29,7 +29,6 @@ class TriangleExporter(Exporter[TriangleInstruction]):
                     timer_value = initial_timer
                     pitches.append(timer_value)
 
-                timer_value = self.pitch_to_timer(instruction.pitch)
                 volume = MAX_VOLUME
             else:
                 volume = 0
@@ -42,14 +41,12 @@ class TriangleExporter(Exporter[TriangleInstruction]):
 
         return initial_pitch or MIN_PITCH, pitches, volumes
 
-    def get_features(self, instructions: List[TriangleInstruction]) -> Dict[FeatureKey, FeatureValue]:
+    def get_feature_map(self, instructions: List[TriangleInstruction]) -> FeatureMap:
         initial_pitch, pitches, volumes = self.extract_data(instructions)
-        arpeggio = np.array(np.diff(np.array(pitches)) % 16)
-        hi_pitch = np.array(np.diff(np.array(pitches)) // 16)
+        arpeggio = np.array(np.diff(np.array(pitches)))
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,
             FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
-            FeatureKey.HI_PITCH: hi_pitch.astype(np.int8),
         }
