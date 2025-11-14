@@ -43,11 +43,11 @@ class NoiseExporter(Exporter[NoiseInstruction]):
 
     def get_features(self, instructions: List[NoiseInstruction]) -> Dict[FeatureKey, FeatureValue]:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
-        arpeggio = (np.array(periods, dtype=np.int16) - initial_period) % 16
+        arpeggio = (np.array(periods) - initial_period) % 16
 
         return {
             FeatureKey.INITIAL_PITCH: initial_period,
-            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
-            FeatureKey.ARPEGGIO: np.array(arpeggio, dtype=np.int8),
-            FeatureKey.DUTY_CYCLE: np.array(duty_cycles, dtype=np.int8),
+            FeatureKey.VOLUME: np.array(volumes),
+            FeatureKey.ARPEGGIO: np.array(arpeggio),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles),
         }

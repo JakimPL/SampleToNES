@@ -1,8 +1,6 @@
 from typing import Callable, Optional
 
-import numpy as np
-
-from sampletones.audio import AudioDeviceManager, clip_audio, stereo_to_mono
+from sampletones.audio import AudioDeviceManager
 from sampletones.constants.general import SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import logger
@@ -45,16 +43,16 @@ class AudioPlayer:
         if not self.audio_data.is_loaded():
             raise PlaybackError("No audio loaded")
 
+        self.audio_device_manager.set_position_callback(self._on_device_position_changed)
+        audio = self.audio_data.sample
+
         try:
-            self.audio_device_manager.set_position_callback(self._on_device_position_changed)
-            audio = self.audio_data.sample
-            audio = stereo_to_mono(audio)
-            audio = clip_audio(audio)
-            audio = audio.astype(np.float32)
             self.audio_device_manager.play(audio)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback("Audio playback failed", exception)
             raise PlaybackError(str(exception)) from exception
+        finally:
+            pass
 
     def pause(self) -> None:
         self.audio_device_manager.pause()

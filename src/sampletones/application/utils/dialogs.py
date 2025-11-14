@@ -45,11 +45,10 @@ def show_modal_dialog(
     with dpg.window(
         label=title,
         tag=tag,
-        modal=True,
+        modal=False,  # changed to False to allow interaction with other windows
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
-        popup=True,
     ):
         content(tag)
         dpg.add_separator()
@@ -84,12 +83,19 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
                 parent=parent,
                 wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
             )
-        dpg.add_text(
-            str(exception),
-            parent=parent,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
-            color=CLR_ERROR_TEXT,
-        )
+        with dpg.group(horizontal=True, parent=parent):
+            group_tag = f"{parent}{SUF_GROUP}"
+            dpg.add_text(
+                f"{str(type(exception).__name__)}: ",
+                parent=group_tag,
+                color=CLR_ERROR_TEXT,
+            )
+            dpg.add_text(
+                str(exception),
+                parent=group_tag,
+                wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+                color=CLR_ERROR_TEXT,
+            )
 
     show_modal_dialog(
         tag=TAG_ERROR_DIALOG,

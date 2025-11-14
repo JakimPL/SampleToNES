@@ -94,7 +94,7 @@ class LFSRTimer(Timer):
 
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
-        means = np.array([np.mean(cumsum_table[pair[0] : pair[1]]) for pair in nonzero_pairs])
+        means = np.array([np.mean(cumsum_table[start:end]) for start, end in nonzero_pairs])
 
         differences[mask] = np.diff(np.concatenate([[0], means]))
         frame = 2.0 * np.cumsum(differences) - 1.0
@@ -177,8 +177,8 @@ class LFSRTimer(Timer):
         clocks_per_sample = self.calculate_clocks_per_sample(MAX_PERIOD)
         repeats = int(np.ceil(clocks_per_sample * self.frame_length / self.lfsr_period)) * 2 + 1
 
-        lfsrs = np.ones(MAX_LFSR, dtype=np.int16)
-        lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int16)
+        lfsrs = np.ones(MAX_LFSR, dtype=np.int64)
+        lfsr_to_index = -np.ones(MAX_LFSR + 1, dtype=np.int64)
 
         lfsr = 1
         for i in range(MAX_LFSR):

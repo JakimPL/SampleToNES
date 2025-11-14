@@ -1,14 +1,14 @@
-from .library import LibraryException, NoLibraryDataError
+from .library import LibraryError, NoLibraryDataError
 from .playback import PlaybackError
-from .reconstruction import BaseReconstructionError, InvalidReconstructionError
-from .window import BaseWindowError, WindowNotAvailableError
+from .reconstruction import InvalidReconstructionError, ReconstructionError
+from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
-    "LibraryException",
+    "LibraryError",
     "NoLibraryDataError",
     "PlaybackError",
-    "BaseReconstructionError",
+    "ReconstructionError",
     "InvalidReconstructionError",
-    "BaseWindowError",
+    "WindowError",
     "WindowNotAvailableError",
 ]

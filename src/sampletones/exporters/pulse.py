@@ -51,8 +51,8 @@ class PulseExporter(Exporter[PulseInstruction]):
 
         return {
             FeatureKey.INITIAL_PITCH: initial_pitch,
-            FeatureKey.VOLUME: np.array(volumes, dtype=np.int8),
-            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16, dtype=np.int8),
-            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16, dtype=np.int8),
-            FeatureKey.DUTY_CYCLE: np.array(duty_cycles, dtype=np.int8),
+            FeatureKey.VOLUME: np.array(volumes),
+            FeatureKey.ARPEGGIO: np.array(np.diff(np.array(pitches)) % 16),
+            FeatureKey.HI_PITCH: np.array(np.diff(np.array(pitches)) // 16),
+            FeatureKey.DUTY_CYCLE: np.array(duty_cycles),
         }

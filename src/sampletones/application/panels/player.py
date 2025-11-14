@@ -12,7 +12,6 @@ from ..constants import (
     LBL_PLAYER_BUTTON_PLAY,
     LBL_PLAYER_BUTTON_RESUME,
     LBL_PLAYER_BUTTON_STOP,
-    MSG_PLAYER_AUDIO_PLAYBACK_ERROR,
     MSG_PLAYER_NO_AUDIO_LOADED,
     PFX_PLAYER_POSITION,
     SUF_PLAYER_CONTROLS_GROUP,
@@ -28,14 +27,14 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..player.data import AudioData
-from ..player.player import AudioPlayer, PlaybackError
+from ..player.player import AudioPlayer
 from ..utils.common import (
     dpg_configure_item,
     dpg_set_item_callback,
     dpg_set_item_label,
     dpg_set_value,
 )
-from ..utils.dialogs import show_error_dialog, show_modal_dialog
+from ..utils.dialogs import show_modal_dialog
 
 
 class GUIAudioPlayerPanel(GUIPanel):
@@ -128,11 +127,14 @@ class GUIAudioPlayerPanel(GUIPanel):
             self.on_position_changed(position)
 
     def _play_audio(self) -> None:
+        self.audio_player.play()
         try:
-            self.audio_player.play()
-        except PlaybackError as exception:
-            show_error_dialog(exception, MSG_PLAYER_AUDIO_PLAYBACK_ERROR)
-            return
+            pass
+        finally:
+            pass
+        # except PlaybackError as exception:
+        #     show_error_dialog(exception, MSG_PLAYER_AUDIO_PLAYBACK_ERROR)
+        #     return
 
         self._update_controls()
 

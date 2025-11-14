@@ -344,14 +344,15 @@ class GUILibraryPanel(GUITreePanel):
         self._restore_generation_panel()
 
     def _restore_generation_panel(self) -> None:
-        dpg.configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
-        dpg.configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=True)
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
-        dpg.configure_item(TAG_LIBRARY_PROGRESS, show=False)
+        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=True)
+        dpg_configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
+        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
+        dpg_configure_item(TAG_LIBRARY_PROGRESS, show=False)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
         show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
-        self._finalize_generation()
+        self.library_manager.cleanup_creator()
+        self._restore_generation_panel()
 
     def set_callbacks(
         self,
