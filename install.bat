@@ -38,7 +38,7 @@ echo Building executable...
 pyinstaller --name sampletones --onefile --distpath . src/sampletones/__main__.py
 
 if exist sampletones (
-    echo Build complete: .\sampletones
+    echo Build complete: .\sampletones.exe
 ) else (
     echo Build failed.
 )
