@@ -2,22 +2,22 @@
 
 ## Overview
 
-_SampleToNES_ (`sampletones`) is a WAV converter that transforms audio signals to 2A03 NES music chip basic oscillators instructions:
+_SampleToNES_ (`sampletones`) is a WAV converter that transforms audio signals into basic oscillator instructions for the 2A03 NES audio chip:
 * 2x pulse
 * triangle
 * noise
 
 without using any DPCM samples.
 
-_SampleToNES_ allows exporting reconstructed audio files as [_FamiTracker_](http://famitracker.com/) `.fti` instruments
+_SampleToNES_ allows exporting reconstructed audio as [_FamiTracker_](http://famitracker.com/) `.fti` instruments
 
-It supports also:
+It also supports:
 
-* wide range of NES frequencies, from 15 Hz to 600 Hz, including two most common standards:
+* a wide range of NES frequencies, from 15 Hz to 600 Hz, including the two most common standards:
     * NTSC (60 Hz)
     * PAL (50 Hz)
 * various sample rates, from 8000 Hz to 192,000 Hz
-* reconstruction limited to only selected oscillator:
+* reconstruction limited to a selected oscillator:
     * `pulse1`
     * `pulse2`
     * `triangle`
@@ -62,7 +62,7 @@ If you already have a Python 3.12 environment set up (for example, using `venv` 
 
 ### Libraries
 
-To optimize sample reconstruction, all single oscillator instruction are prerendered as samples within spectral information.
+To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
 
 The library depends on the following configuration properties:
 * `change_rate` (frequency, usually NTSC or PAL)
@@ -72,13 +72,13 @@ The library depends on the following configuration properties:
     * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
     Intermediate values interpolate between these two.
 
-Each set of parameters correspond to a different library, encoded by a library configuration key.
+Each set of parameters corresponds to a different library, encoded by a library configuration key.
 
-Libraries are generated using library generator present in the application. They can be generated from the _Library_ tab of the application, and explored using the application.
+Libraries are generated using the library generator included in the application. They can be generated from the _Library_ tab of the application and explored using the application.
 
 #### Library data
 
-For each key, library data consists of instructions. Each instruction data contains:
+For each key, library data consists of instructions. Each instruction contains:
 * metadata
 * instruction data
 * a single waveform frame
@@ -86,19 +86,19 @@ For each key, library data consists of instructions. Each instruction data conta
 
 ##### Instructions
 
-Libraries contain instructions within the following data:
+Libraries contain the following instruction data:
 * generator class (`pulse`/`triangle`/`noise`)
-* instruction data  (`on`/`pitch`/`period`/`volume`/`duty_cycle`/`short`)
+* instruction data (`on`/`pitch`/`period`/`volume`/`duty_cycle`/`short`)
 
 Instructions contain basic information for all 2A03 oscillators:
-* **on** (0-1) whether a generator is on or off
-* **pitch** (33-119) for pulse and triangle generators and **period** (0-15) for noise generator
+* **on** (0-1): whether a generator is on (1) or off (0)
+* **pitch** (33-119) for pulse and triangle generators, and **period** (0-15) for the noise generator
 * **volume** (0-15) for pulse and noise generators
-* **duty_cycle** (0-3) for pulse generators and **short** (0-1) flag for noise generator
+* **duty_cycle** (0-3) for pulse generators, and the **short** (0-1) flag for the noise generator
 
 ##### Waveform
 
-Each instruction is prerendered as a sample, containing the entire period of a wave (excluding the longest noise sample which are trimmed to 1 second).
+Each instruction is prerendered as a sample containing the entire period of a wave (excluding the longest noise samples, which are trimmed to 1 second).
 
 ##### Spectrum
 
@@ -106,7 +106,7 @@ Within each waveform, each instruction data contains spectral information on the
 
 #### File format
 
-Libraries are stored as `.dat` files in the user documents folder, e.g.:
+Libraries are stored as `.dat` files in the user's documents folder, e.g.:
 
 ```
 sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.dat
@@ -121,7 +121,7 @@ The library configuration is embedded in the file name:
 
 ### Reconstructions
 
-...
+(To be updated)
 
 #### Generators
 
@@ -189,11 +189,11 @@ _SampleToNES_ supports CLI arguments also for library generation. To generate a 
 sampletones --generate --config <config-path>
 ```
 
-If config path is not provided, the default one is being loaded.
+If the config path is not provided, the default one is loaded.
 
 ### Sample reconstruction
 
-Similarly, you can reconstruct a single WAV file or a directory, using:
+Similarly, you can reconstruct a single WAV file or a directory using:
 
 ```bash
 sampletones <path> --config <config-path>
@@ -205,7 +205,7 @@ You can also specify the output file via `--output` (`-o`):
 sampletones <path> --config <config-path> --output <output-path>
 ```
 
-However, this approach is discouraged, since the reconstruction files won't appear in the program reconstructions library.
+However, this approach is discouraged, since the reconstruction files won't appear in the program's reconstructions library.
 
 ### Help
 
@@ -263,9 +263,9 @@ sample_rate = config.sample_rate
 write_wave("pulse.wav", sample_rate, audio)
 ```
 
-The output will be a single `G2` square wave of the lenght of one frame.
+The output will be a single `G2` square wave with a length of one frame.
 
-By default, the generator stores the internal state after generation for continuing the process. To disable that behavior, pass `save=False` to the generator flag:
+By default, the generator stores the internal state after generation to continue the process. To disable that behavior, pass `save=False` when calling the generator:
 ```python
 audio = generator(instruction, save=False)  # doesn't change the generator state
 ```
@@ -282,11 +282,11 @@ config = Config.load("config.json")
 # Load data and prepare the reconstructor
 reconstructor = Reconstructor(config)
 
-# Reconstruct an audio and save to a file
+# Reconstruct an audio file and save the reconstruction to a file
 reconstruction = reconstructor("sample.wav")
 reconstruction.save("reconstruction.json")
 
-# Save reconstruction waveform
+# Save the reconstruction waveform
 sample_rate = config.sample_rate
 write_wave("reconstruction.wav", sample_rate, reconstruction.approximation)
 ```
