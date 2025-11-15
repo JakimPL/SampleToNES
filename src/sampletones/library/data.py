@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, field_serializer
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
+from sampletones.exceptions import InvalidLibraryDataError
 from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
@@ -180,7 +181,12 @@ class LibraryData(BaseModel):
         with open(path_object, "rb") as file:
             binary = file.read()
 
-        data = msgpack.unpackb(binary)
+        try:
+            data = msgpack.unpackb(binary)
+        except msgpack.ExtraData as exception:
+            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
+        except ValueError as exception:
+            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
         return LibraryData.deserialize(data)
 
     @field_serializer("data")

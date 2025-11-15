@@ -1,4 +1,5 @@
 from .library import (
+    InvalidLibraryDataError,
     LibraryDisplayError,
     LibraryError,
     LoadLibraryError,
@@ -12,6 +13,7 @@ __all__ = [
     "LibraryError",
     "NoLibraryDataError",
     "LoadLibraryError",
+    "InvalidLibraryDataError",
     "LibraryDisplayError",
     "PlaybackError",
     "ReconstructionError",

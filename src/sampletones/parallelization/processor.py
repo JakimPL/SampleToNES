@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.utils import logger
+from sampletones.utils.logger import BaseLogger, logger
 
 from .task import TaskProgress, TaskStatus
 
@@ -18,11 +18,12 @@ STOP_TIMEOUT = 2
 
 
 class TaskProcessor(Generic[T]):
-    def __init__(self, max_workers: Optional[int] = None) -> None:
+    def __init__(self, max_workers: Optional[int] = None, logger: BaseLogger = logger) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
         self.future: Optional[ProcessMapFuture] = None
         self.monitor_thread: Optional[threading.Thread] = None
+        self.logger = logger
 
         self.status: TaskStatus = TaskStatus.PENDING
         self.running = False
@@ -133,7 +134,7 @@ class TaskProcessor(Generic[T]):
         self.total_tasks = len(tasks)
         self.completed_tasks = 0
 
-        logger.info("Starting processing tasks...")
+        self.logger.info("Starting processing tasks...")
         self._notify_progress()
 
         workers = self.max_workers
@@ -186,13 +187,13 @@ class TaskProcessor(Generic[T]):
         )
 
         self._on_progress(self.status, progress)
-        logger.debug(f"Status: {self.status}; progress: {progress}")
+        self.logger.debug(f"Status: {self.status}; progress: {progress}")
 
     def _finalize_cancellation(self) -> None:
         if not self.cancelling:
             return
 
-        logger.info("Task processing was cancelled.")
+        self.logger.info("Task processing was cancelled.")
         self.status = TaskStatus.CANCELLED
         self.cancelling = False
         self.running = False
@@ -202,7 +203,7 @@ class TaskProcessor(Generic[T]):
             self._on_cancelled()
 
     def _finalize_completion(self, results: List[T]) -> None:
-        logger.info("Conversion completed successfully")
+        self.logger.info("Conversion completed successfully")
 
         self.status = TaskStatus.COMPLETED
         self.running = False
@@ -213,7 +214,7 @@ class TaskProcessor(Generic[T]):
             self._on_completed(processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
-        logger.error_with_traceback(exception, f"Task failed: {exception}")
+        self.logger.error_with_traceback(exception, f"Task failed: {exception}")
 
         self._exception = exception
         self.status = TaskStatus.FAILED
@@ -256,7 +257,7 @@ class TaskProcessor(Generic[T]):
                 else:
                     self.pool.join()
         except OSError as exception:
-            logger.error_with_traceback(exception, f"Error while joining the pool: {exception}")
+            self.logger.error_with_traceback(exception, f"Error while joining the pool: {exception}")
 
     def _cleanup_pool(self) -> None:
         self._notify_progress()
@@ -264,11 +265,11 @@ class TaskProcessor(Generic[T]):
             return
 
         with self._pool_lock:
-            logger.info("Cleaning the task manager pool...")
+            self.logger.info("Cleaning the task manager pool...")
             try:
                 self.pool.close()
             except RuntimeError as exception:
-                logger.error_with_traceback(exception, f"Error while closing the pool: {exception}")
+                self.logger.error_with_traceback(exception, f"Error while closing the pool: {exception}")
             finally:
                 self._join_pool()
 
@@ -278,10 +279,10 @@ class TaskProcessor(Generic[T]):
             return
 
         with self._pool_lock:
-            logger.info("Stopping the task manager pool...")
+            self.logger.info("Stopping the task manager pool...")
             try:
                 self.pool.stop()
             except RuntimeError as exception:
-                logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
+                self.logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
             finally:
                 self._join_pool(timeout=timeout)

@@ -16,13 +16,8 @@ from sampletones.instructions import (
 )
 from sampletones.typehints import SerializedData
 from sampletones.typehints.general import FeatureMap
-from sampletones.utils import (
-    deserialize_array,
-    load_json,
-    logger,
-    save_json,
-    serialize_array,
-)
+from sampletones.utils import deserialize_array, load_json, save_json, serialize_array
+from sampletones.utils.logger import logger
 
 from .state import ReconstructionState
 

@@ -17,7 +17,7 @@ from sampletones.tree import (
     TreeNode,
 )
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ..config.manager import ConfigManager
 from ..constants import (

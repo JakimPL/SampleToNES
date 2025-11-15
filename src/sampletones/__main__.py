@@ -62,7 +62,7 @@ def main() -> None:
         EXT_FILE_LIBRARY,
         EXT_FILE_WAVE,
     )
-    from sampletones.utils import logger
+    from sampletones.utils.logger import logger
 
     config = Config.load(config_path) if config_path else Config.default()
 

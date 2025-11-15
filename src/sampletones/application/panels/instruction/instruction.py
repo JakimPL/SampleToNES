@@ -7,7 +7,7 @@ from sampletones.configs import LibraryConfig
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import LibraryFragment
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ...constants import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,

@@ -8,7 +8,7 @@ from sampletones.configs import LibraryConfig
 from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAVE
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.library import LibraryFragment
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from .config.manager import ConfigManager
 from .constants import (

@@ -16,7 +16,8 @@ from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_D
 from sampletones.ffts import Window
 from sampletones.library import LibraryKey
 from sampletones.typehints import SerializedData
-from sampletones.utils import logger, save_json
+from sampletones.utils import save_json
+from sampletones.utils.logger import logger
 
 from ..constants import (
     MSG_CONFIG_LOAD_ERROR,

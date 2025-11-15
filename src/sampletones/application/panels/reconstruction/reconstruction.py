@@ -8,7 +8,7 @@ from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones.reconstruction import Reconstruction
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
 from ...constants import (

@@ -8,7 +8,7 @@ from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.reconstruction import Reconstruction
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from .feature import FeatureData
 

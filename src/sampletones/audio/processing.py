@@ -1,7 +1,7 @@
 import numpy as np
 
 from sampletones.constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:

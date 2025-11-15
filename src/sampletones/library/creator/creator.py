@@ -7,7 +7,7 @@ from sampletones.ffts import Window
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils import logger
+from sampletones.utils.logger import BaseLogger, logger
 
 from ..data import LibraryData, LibraryFragment
 from ..key import LibraryKey
@@ -15,8 +15,8 @@ from .creation import generate_instruction_batch
 
 
 class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
-    def __init__(self, config: Config) -> None:
-        super().__init__(max_workers=config.general.max_workers)
+    def __init__(self, config: Config, logger: BaseLogger = logger) -> None:
+        super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()
         self.window: Optional[Window] = None
         self.instructions: List[Tuple[GeneratorClassName, InstructionUnion]] = []

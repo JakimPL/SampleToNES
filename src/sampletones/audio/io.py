@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Optional, Tuple, Union
 
@@ -18,7 +19,10 @@ def write_wave(path: Union[str, Path], sample_rate: int, audio: np.ndarray) -> N
 
 
 def read_wave(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
-    sample_rate, audio = wavfile.read(path)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", wavfile.WavFileWarning)
+        sample_rate, audio = wavfile.read(path)
+
     if audio.dtype == np.uint8:
         audio = (audio - 128) / 128.0
     elif audio.dtype == np.int16:

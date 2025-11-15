@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ..browser.manager import BrowserManager
 from ..config.manager import ConfigManager
