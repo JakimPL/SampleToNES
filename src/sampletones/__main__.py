@@ -10,10 +10,10 @@ HELP_PATH = f"""Path to either:
 HELP_OUTPUT = """Output path for reconstruction."""
 
 HELP_CONFIG = """Path to a configuration .json file
-(if not provided, default configuration will be used)"""
+    (if not provided, default configuration will be used)"""
 
 HELP_GENERATE = """Generate library data for given configuration
-(using default one if not provided)"""
+    (using default one if not provided)"""
 
 HELP_HELP = """Show this help message and exit"""
 

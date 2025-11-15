@@ -32,6 +32,7 @@ class TaskProcessor(Generic[T]):
         self.current_item: Optional[str] = None
 
         self._pool_lock: threading.Lock = threading.Lock()
+        self._exception: Optional[Exception] = None
 
         self._on_start: Optional[Callable[[], None]] = None
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
@@ -42,6 +43,68 @@ class TaskProcessor(Generic[T]):
     def start(self, *args, **kwargs) -> None:
         self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
         self.monitor_thread.start()
+
+    def wait(self, timeout: Optional[float] = None) -> None:
+        if self.monitor_thread is None:
+            return
+
+        try:
+            if self._exception is not None:
+                raise self._exception
+        finally:
+            self.monitor_thread.join(timeout=timeout)
+
+    def cleanup(self) -> None:
+        self.status = TaskStatus.CLEANING_UP
+        self.running = False
+        self.cancelling = True
+
+        self._notify_progress()
+        self._cleanup()
+
+    def cancel(self) -> None:
+        self.status = TaskStatus.CANCELLING
+        self.cancelling = True
+
+        self._notify_progress()
+        self._cleanup()
+
+    def is_running(self) -> bool:
+        return self.running
+
+    def is_completed(self) -> bool:
+        return self.status == TaskStatus.COMPLETED
+
+    def is_cancelled(self) -> bool:
+        return self.status == TaskStatus.CANCELLED
+
+    def is_cancelling(self) -> bool:
+        return self.status == TaskStatus.CANCELLING
+
+    def is_failed(self) -> bool:
+        return self.status == TaskStatus.FAILED
+
+    def get_status(self) -> TaskStatus:
+        return self.status
+
+    def set_callbacks(
+        self,
+        on_start: Optional[Callable[[], None]] = None,
+        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
+        on_completed: Optional[Callable[[T], None]] = None,
+        on_error: Optional[Callable[[Exception], None]] = None,
+        on_cancelled: Optional[Callable[[], None]] = None,
+    ) -> None:
+        if on_start is not None:
+            self._on_start = on_start
+        if on_progress is not None:
+            self._on_progress = on_progress
+        if on_completed is not None:
+            self._on_completed = on_completed
+        if on_error is not None:
+            self._on_error = on_error
+        if on_cancelled is not None:
+            self._on_cancelled = on_cancelled
 
     def _create_tasks(self) -> List[Any]:
         raise NotImplementedError
@@ -61,9 +124,13 @@ class TaskProcessor(Generic[T]):
         self.current_item = None
 
     def _run_tasks(self) -> None:
-        self._reset_status()
-        tasks = self._create_tasks()
-        self._notify_progress()
+        try:
+            self._reset_status()
+            tasks = self._create_tasks()
+            self._notify_progress()
+        except Exception as exception:
+            self._stop_with_error(exception)
+            return
 
         self.total_tasks = len(tasks)
         self.completed_tasks = 0
@@ -131,7 +198,7 @@ class TaskProcessor(Generic[T]):
         self.running = False
         self._notify_progress()
 
-        if self._on_cancelled:
+        if self._on_cancelled is not None:
             self._on_cancelled()
 
     def _finalize_completion(self, results: List[T]) -> None:
@@ -142,33 +209,19 @@ class TaskProcessor(Generic[T]):
         self._notify_progress()
 
         processed_result = self._process_results(results)
-        if self._on_completed:
+        if self._on_completed is not None:
             self._on_completed(processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, f"Task failed: {exception}")
 
+        self._exception = exception
         self.status = TaskStatus.FAILED
         self.running = False
         self._notify_progress()
 
-        if self._on_error:
+        if self._on_error is not None:
             self._on_error(exception)
-
-    def cleanup(self) -> None:
-        self.status = TaskStatus.CLEANING_UP
-        self.running = False
-        self.cancelling = True
-
-        self._notify_progress()
-        self._cleanup()
-
-    def cancel(self) -> None:
-        self.status = TaskStatus.CANCELLING
-        self.cancelling = True
-
-        self._notify_progress()
-        self._cleanup()
 
     def _cleanup(self) -> None:
         if self.future:
@@ -194,43 +247,6 @@ class TaskProcessor(Generic[T]):
         self._finalize_completion(results)
         self._cleanup_pool()
         self._reset_status()
-
-    def is_running(self) -> bool:
-        return self.running
-
-    def is_completed(self) -> bool:
-        return self.status == TaskStatus.COMPLETED
-
-    def is_cancelled(self) -> bool:
-        return self.status == TaskStatus.CANCELLED
-
-    def is_cancelling(self) -> bool:
-        return self.status == TaskStatus.CANCELLING
-
-    def is_failed(self) -> bool:
-        return self.status == TaskStatus.FAILED
-
-    def get_status(self) -> TaskStatus:
-        return self.status
-
-    def set_callbacks(
-        self,
-        on_start: Optional[Callable[[], None]] = None,
-        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
-        on_completed: Optional[Callable[[T], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
-    ) -> None:
-        if on_start is not None:
-            self._on_start = on_start
-        if on_progress is not None:
-            self._on_progress = on_progress
-        if on_completed is not None:
-            self._on_completed = on_completed
-        if on_error is not None:
-            self._on_error = on_error
-        if on_cancelled is not None:
-            self._on_cancelled = on_cancelled
 
     def _join_pool(self, timeout: Optional[Union[int, float]] = None) -> None:
         try:
@@ -269,13 +285,3 @@ class TaskProcessor(Generic[T]):
                 logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
             finally:
                 self._join_pool(timeout=timeout)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cleanup()
-        return False
-
-    def __del__(self):
-        self.cleanup()

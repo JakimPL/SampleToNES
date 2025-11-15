@@ -102,8 +102,11 @@ class Reconstructor:
     def load_library(self, library: Optional[Library] = None) -> LibraryData:
         library = library or Library(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
+        key = library.create_key(self.config, self.window)
         if not library_data:
-            raise NoLibraryDataError("No library data found for the given configuration and window.")
+            raise NoLibraryDataError(
+                f"No library data found for the given configuration and window: {library.get_path(key)}"
+            )
 
         return LibraryData(
             config=self.config.library,
