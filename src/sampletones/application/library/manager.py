@@ -187,7 +187,7 @@ class LibraryManager:
             return False
         if not file_parts[0] == "sr" or not file_parts[1].isdigit():
             return False
-        if not file_parts[2] == "fl" or not file_parts[3].isdigit():
+        if not file_parts[2] == "cr" or not file_parts[3].isdigit():
             return False
         if not file_parts[4] == "ws" or not file_parts[5].isdigit():
             return False
@@ -198,16 +198,18 @@ class LibraryManager:
 
         return True
 
+    # TODO: change; relying on the filename is error-prone
     def _create_key_from_filename(self, filename: str) -> LibraryKey:
         file_parts = filename.split("_")
         if len(file_parts) != 10:
             raise ValueError(f"Invalid library file name format: {filename}")
 
         sample_rate = int(file_parts[1])
-        frame_length = int(file_parts[3])
+        change_rate = int(file_parts[3])
         window_size = int(file_parts[5])
         transformation_gamma = int(file_parts[7])
         config_hash = file_parts[9]
+        frame_length = round(sample_rate / change_rate)
 
         return LibraryKey(
             sample_rate=sample_rate,
@@ -215,6 +217,7 @@ class LibraryManager:
             window_size=window_size,
             transformation_gamma=transformation_gamma,
             config_hash=config_hash,
+            filename=filename,
         )
 
     def _get_display_name_from_key(self, key: LibraryKey) -> str:

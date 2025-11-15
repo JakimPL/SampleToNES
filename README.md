@@ -58,8 +58,7 @@ If you already have a Python 3.12 environment set up (for example, using `venv` 
     sampletones
     ```
 
-
-## Workflow
+## Data structures
 
 ### Libraries
 
@@ -75,11 +74,41 @@ The library depends on the following configuration properties:
 
 Each set of parameters correspond to a different library. Libraries are generated using library generator present in the application.
 
+Libraries can be generated from the _Library_ tab of the application.
+
+#### Instructions
+
+Libraries (`LibraryFragment`) contain instructions within the following data:
+* generator class (`pulse`/`triangle`/`noise`)
+* instruction data ()
+
+Instructions (`Instruction`) contains basic information for oscillators:
+* **pitch** (33-119) for pulse and triangle generators and **period** (0-15) for noise generator
+* **volume** (0-15) for pulse and noise generators
+* **duty_cycle** (0-3) for pulse generators and **short** (0-1) flag for noise generator
+
+#### File format
+
 Libraries are stored as `.dat` files in the user documents folder, e.g.:
+
 ```
-sr_44100_fl_1470_ws_1615_tg_0_ch_3dffb3e16110e06d75730c1e14053371.dat
+sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.dat
 ```
 
+The library configuration is embedded in the file name:
+* `sr_44100` corresponds to the sample rate 44100 Hz
+* `cr_30` describes change rate of 30 Hz
+* `ws_1615` is the size of the FFT transformation (1615 samples)
+* `tg_0` encodes `transformation_gamma = 0`
+* `ch_283a31a50176c14faf36949913117e49` is the config hash.
+
+### Reconstructions
+
+#### Generators
+
+#### Reconstructor
+
+#### Reconstruction
 
 ## Application files
 
@@ -88,20 +117,25 @@ All local files, that is:
 * libraries (`.dat`)
 * reconstructions (`.json`)
 
-are stored in the default application directory. The path depends on the operating system.
+are stored in the default documents directory. The path depends on the operating system.
 
 ### Windows
 
 The default path of the library is:
 ```
-C:\Users\<user>\AppData\Local\Stage Magician\SampleToNES\library
+C:\Users\<user>\Documents\SampleToNES
 ```
 
 ### Linux
 
 Local files can be found in the following directory:
 ```
-/home/<user>/.local/share/SampleToNES/library
+/home/<user>/Documents/SampleToNES
 ```
 
-## Reconstructions
+### macOS
+
+Similarly, the default directory for macOS is:
+```
+/Users/<user>/Documents/SampleToNES
+```

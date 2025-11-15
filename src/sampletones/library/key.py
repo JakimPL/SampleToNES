@@ -42,4 +42,4 @@ class LibraryKey(BaseModel):
 
     @staticmethod
     def get_filename(config: LibraryConfig, window: Window, config_hash: str) -> str:
-        return f"sr_{config.sample_rate}_cr_{config.frame_length}_ws_{window.size}_tg_{config.transformation_gamma}_ch_{config_hash}.dat"
+        return f"sr_{config.sample_rate}_cr_{config.change_rate}_ws_{window.size}_tg_{config.transformation_gamma}_ch_{config_hash}.dat"
