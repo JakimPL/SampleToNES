@@ -1,8 +1,4 @@
-from pathlib import Path
-from typing import Tuple, Union
-
 import numpy as np
-from scipy.io import wavfile
 
 from sampletones.constants.general import QUANTIZATION_LEVELS, SAMPLE_RATE
 from sampletones.utils import logger
@@ -10,21 +6,6 @@ from sampletones.utils import logger
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
     return np.clip(audio, -1.0, 1.0)
-
-
-def read_wav_file(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
-    sample_rate, audio = wavfile.read(path)
-    if audio.dtype == np.uint8:
-        audio = (audio - 128) / 128.0
-    elif audio.dtype == np.int16:
-        audio = audio / 32768.0
-    elif audio.dtype == np.int32:
-        audio = audio / 2147483648.0
-    elif not np.issubdtype(audio.dtype, np.floating):
-        raise ValueError(f"Unsupported audio data type: {audio.dtype}")
-
-    audio = np.asarray(audio).astype(np.float32)
-    return audio, sample_rate
 
 
 def stereo_to_mono(audio: np.ndarray) -> np.ndarray:

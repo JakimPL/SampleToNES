@@ -103,7 +103,7 @@ class ConfigManager:
             library=LibraryConfig(**library_config_data),
             generation=GenerationConfig(**generation_config_data),
         )
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(self.config)
         self.update_gui()
 
     def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
@@ -187,7 +187,7 @@ class ConfigManager:
         new_config = self.config.model_copy(update={"library": new_library_config})
 
         self.config = new_config
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(self.config)
 
         return {
             TAG_CONFIG_SAMPLE_RATE: sample_rate,
@@ -197,7 +197,7 @@ class ConfigManager:
 
     def load_config(self, config: Config) -> None:
         self.config = config
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(config)
         self.library_directory = Path(config.general.library_directory)
         self.output_directory = Path(config.general.output_directory)
         self.generators = list(config.generation.generators)

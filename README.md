@@ -60,9 +60,11 @@ If you already have a Python 3.12 environment set up (for example, using `venv` 
 
 ## Data structures
 
+To convert an audio signal, _SampleToNES_ uses precalculated oscillator instructions data, called a library.
+
 ### Libraries
 
-To optimize sample reconstruction, all single oscillator instruction are precalculated within their waveforms and spectral information.
+To optimize sample reconstruction, all single oscillator instruction are prerendered as samples within spectral information.
 
 The library depends on the following configuration properties:
 * `change_rate` (frequency, usually NTSC or PAL)
@@ -72,13 +74,13 @@ The library depends on the following configuration properties:
     * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
     Intermediate values interpolate between these two.
 
-Each set of parameters correspond to a different library. Libraries are generated using library generator present in the application.
+Each set of parameters correspond to a different library.
 
-Libraries can be generated from the _Library_ tab of the application.
+Libraries are generated using library generator present in the application. They can be generated from the _Library_ tab of the application.
 
 #### Instructions
 
-Libraries (`LibraryFragment`) contain instructions within the following data:
+Libraries contain instructions within the following data:
 * generator class (`pulse`/`triangle`/`noise`)
 * instruction data ()
 
@@ -139,3 +141,90 @@ Similarly, the default directory for macOS is:
 ```
 /Users/<user>/Documents/SampleToNES
 ```
+
+## Scripts
+
+_SampleToNES_ supports CLI arguments for library generation and audio reconstruction.
+
+`--config`
+
+## Source code
+
+Single elements of the `sampletones` Python package can be used as well.
+
+SampleToNES exposes a variety of classes:
+
+```python
+from sampletones import (
+    Config,  # generation configuration
+    Window,  # FFT window
+    Library,  # library
+    Reconstruction,  # reconstruction data
+    Reconstructor,  # object reconstructing an audio
+    # Generators
+    PulseGenerator,
+    TriangleGenerator,
+    NoiseGenerator,
+    # Instructions
+    PulseInstruction,
+    TriangleInstruction,
+    NoiseInstruction,
+)
+```
+Currently, the API is not well documented. I hope that this will change in time.
+
+
+### Code examples
+
+#### Instruction waveform
+
+```python
+from sampletones import Config, PulseGenerator, PulseInstruction
+from sampletones.audio import write_wave
+
+# Load configuration
+config = Config.load("config.json")
+
+# Prepare generator and instruction
+generator = PulseGenerator(config)
+instruction = PulseInstruction(on=True, pitch=55, volume=7, duty_cycle=2)
+
+# Generate waveform
+audio = generator(instruction)
+
+# Save audio file
+sample_rate = config.sample_rate
+write_wave("pulse.wav", sample_rate, audio)
+```
+
+The output will be a single `G2` square wave of the lenght of one frame.
+
+By default, the generator stores the internal state after generation for continuing the process. To disable that behavior, pass `save=False` to the generator flag:
+```python
+audio = generator(instruction, save=False)  # doesn't change the generator state
+```
+
+### Sample reconstruction
+
+```python
+from sampletones import Config, Reconstructor
+from sampletones.audio import write_wave
+
+# Load configuration
+config = Config.load("config.json")
+
+# Load data and prepare the reconstructor
+reconstructor = Reconstructor(config)
+
+# Reconstruct an audio and save to a file
+reconstruction = reconstructor("sample.wav")
+reconstruction.save("reconstruction.json")
+
+# Save reconstruction waveform
+sample_rate = config.sample_rate
+write_wave("reconstruction.wav", sample_rate, reconstruction.approximation)
+```
+
+## Dependencies
+
+...

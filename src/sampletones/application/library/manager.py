@@ -217,7 +217,7 @@ class LibraryManager:
             window_size=window_size,
             transformation_gamma=transformation_gamma,
             config_hash=config_hash,
-            filename=filename,
+            filename=f"{filename}{EXT_FILE_LIBRARY}",
         )
 
     def _get_display_name_from_key(self, key: LibraryKey) -> str:

@@ -3,7 +3,7 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager, write_audio
+from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
 from sampletones.reconstruction import Reconstruction
@@ -427,7 +427,7 @@ class GUIReconstructionPanel(GUIPanel):
         sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
 
         try:
-            write_audio(filepath, partial_approximation, sample_rate)
+            write_wave(filepath, sample_rate, partial_approximation)
             logger.info(f"Exported reconstruction to WAV: {filepath}")
             show_message_with_path_dialog(
                 TITLE_DIALOG_EXPORT_WAV,
