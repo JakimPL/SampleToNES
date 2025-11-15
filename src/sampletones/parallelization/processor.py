@@ -48,11 +48,9 @@ class TaskProcessor(Generic[T]):
         if self.monitor_thread is None:
             return
 
-        try:
-            if self._exception is not None:
-                raise self._exception
-        finally:
-            self.monitor_thread.join(timeout=timeout)
+        self.monitor_thread.join(timeout=timeout)
+        if self._exception is not None:
+            raise self._exception
 
     def cleanup(self) -> None:
         self.status = TaskStatus.CLEANING_UP
@@ -124,10 +122,11 @@ class TaskProcessor(Generic[T]):
         self.current_item = None
 
     def _run_tasks(self) -> None:
+        self._reset_status()
+        self._notify_progress()
+
         try:
-            self._reset_status()
             tasks = self._create_tasks()
-            self._notify_progress()
         except Exception as exception:
             self._stop_with_error(exception)
             return

@@ -144,8 +144,7 @@ class LibraryManager:
         return self.library.exists(key)
 
     def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> None:
-        self.library = Library(directory=config.general.library_directory)
-
+        self.library = Library.from_config(config)
         self.creator = LibraryCreator(config)
         self.creator.set_callbacks(
             on_start=self._on_generation_start,
