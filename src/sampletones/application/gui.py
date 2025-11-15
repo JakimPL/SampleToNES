@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import LibraryConfig
-from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAV
+from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAVE
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.library import LibraryFragment
 from sampletones.utils import logger
@@ -84,9 +84,9 @@ from .utils.file import file_dialog_handler
 
 
 class GUI:
-    def __init__(self) -> None:
+    def __init__(self, config_path: Optional[Path] = None) -> None:
         self.audio_device_manager = AudioDeviceManager()
-        self.config_manager = ConfigManager()
+        self.config_manager = ConfigManager(config_path)
 
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
         self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
@@ -348,7 +348,7 @@ class GUI:
             callback=self._handle_reconstruct_file,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
-            dpg.add_file_extension(EXT_FILE_WAV)
+            dpg.add_file_extension(EXT_FILE_WAVE)
 
     def _reconstruct_directory_dialog(self) -> None:
         if not self._check_if_library_loaded():

@@ -60,8 +60,6 @@ If you already have a Python 3.12 environment set up (for example, using `venv` 
 
 ## Data structures
 
-To convert an audio signal, _SampleToNES_ uses precalculated oscillator instructions data, called a library.
-
 ### Libraries
 
 To optimize sample reconstruction, all single oscillator instruction are prerendered as samples within spectral information.
@@ -74,20 +72,37 @@ The library depends on the following configuration properties:
     * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
     Intermediate values interpolate between these two.
 
-Each set of parameters correspond to a different library.
+Each set of parameters correspond to a different library, encoded by a library configuration key.
 
-Libraries are generated using library generator present in the application. They can be generated from the _Library_ tab of the application.
+Libraries are generated using library generator present in the application. They can be generated from the _Library_ tab of the application, and explored using the application.
 
-#### Instructions
+#### Library data
+
+For each key, library data consists of instructions. Each instruction data contains:
+* metadata
+* instruction data
+* a single waveform frame
+* spectrum
+
+##### Instructions
 
 Libraries contain instructions within the following data:
 * generator class (`pulse`/`triangle`/`noise`)
-* instruction data ()
+* instruction data  (`on`/`pitch`/`period`/`volume`/`duty_cycle`/`short`)
 
-Instructions (`Instruction`) contains basic information for oscillators:
+Instructions contain basic information for all 2A03 oscillators:
+* **on** (0-1) whether a generator is on or off
 * **pitch** (33-119) for pulse and triangle generators and **period** (0-15) for noise generator
 * **volume** (0-15) for pulse and noise generators
 * **duty_cycle** (0-3) for pulse generators and **short** (0-1) flag for noise generator
+
+##### Waveform
+
+Each instruction is prerendered as a sample, containing the entire period of a wave (excluding the longest noise sample which are trimmed to 1 second).
+
+##### Spectrum
+
+Within each waveform, each instruction data contains spectral information on the frequency distribution in the waveform, precalculated using Fast Fourier Transform.
 
 #### File format
 

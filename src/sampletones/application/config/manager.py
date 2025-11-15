@@ -34,7 +34,7 @@ from ..utils.dialogs import show_error_dialog
 
 
 class ConfigManager:
-    def __init__(self) -> None:
+    def __init__(self, config_path: Optional[Path] = None) -> None:
         self.config: Optional[Config] = None
         self.window: Optional[Window] = None
         self.library_directory: Optional[Path] = None
@@ -59,19 +59,30 @@ class ConfigManager:
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
 
-        self.initialize()
+        self.initialize(config_path)
 
-    def initialize(self) -> None:
-        if self.config_path.exists():
+    def initialize(self, config_path: Optional[Path] = None) -> None:
+        if config_path is None:
+            config_path = self.config_path
+
+        if config_path.exists():
             try:
-                self.load_config_from_file(self.config_path)
+                self.load_config_from_file(config_path)
+            except FileNotFoundError as exception:
+                self.load_default_config()
+                logger.error(f"Config file not found: {config_path}")
+                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+            except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+                self.load_default_config()
+                logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
+                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
             except Exception as exception:  # TODO: specify exception type
-                self.load_config(Config())
-                logger.error_with_traceback(exception, f"Failed to load config from {self.config_path}")
+                self.load_default_config()
+                logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
         else:
-            logger.warning(f"Config file does not exist: {self.config_path}")
-            self.load_config(Config())
+            self.load_default_config()
+            logger.warning(f"Config file does not exist: {config_path}")
 
     def save_config(self) -> None:
         if not self.config:
@@ -83,6 +94,9 @@ class ConfigManager:
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             save_json(self.config_path, config_dict)
+        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+            logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
+            show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
@@ -194,6 +208,9 @@ class ConfigManager:
             TAG_CONFIG_CHANGE_RATE: change_rate,
             TAG_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
         }
+
+    def load_default_config(self) -> None:
+        self.load_config(Config())
 
     def load_config(self, config: Config) -> None:
         self.config = config

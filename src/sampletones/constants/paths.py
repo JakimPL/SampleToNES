@@ -15,5 +15,5 @@ CONFIG_PATH = USER_PATH_DOCUMENTS / "config.json"
 # File extensions
 EXT_FILE_JSON = ".json"
 EXT_FILE_LIBRARY = ".dat"
-EXT_FILE_FTI = ".fti"
-EXT_FILE_WAV = ".wav"
+EXT_FILE_INSTRUMENT = ".fti"
+EXT_FILE_WAVE = ".wav"
