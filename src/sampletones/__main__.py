@@ -1,10 +1,26 @@
 import argparse
+from argparse import RawTextHelpFormatter
 from pathlib import Path
 from typing import Optional
 
-from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_VERSION
+from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_NAME_VERSION
 from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_LIBRARY, EXT_FILE_WAVE
 from sampletones.utils import logger
+
+HELP_PATH = f"""Path to either:
+    * audio file path/directory to reconstruct
+    * reconstruction {EXT_FILE_JSON} file to load a reconstruction
+    * library {EXT_FILE_LIBRARY} file to load a library"""
+
+HELP_CONFIG = """Path to a configuration {EXT_FILE_JSON} file
+(if not provided, default configuration will be used)"""
+
+HELP_GENERATE = """Generate library data for given configuration
+(using default one if not provided)"""
+
+HELP_HELP = """Show this help message and exit"""
+
+HELP_VERSION = f"Show {SAMPLETONES_NAME} version information"
 
 
 def reconstruct_file(path: Path, config_path: Optional[Path] = None) -> None:
@@ -30,7 +46,7 @@ def generate_library(config_path: Optional[Path] = None) -> None:
 def run_application(config_path: Optional[Path] = None) -> None:
     from sampletones.application.gui import GUI
 
-    logger.info(f"{SAMPLETONES_NAME} v{SAMPLETONES_VERSION}")
+    logger.info(SAMPLETONES_NAME_VERSION)
     application = GUI(config_path)
     try:
         application.run()
@@ -41,12 +57,23 @@ def run_application(config_path: Optional[Path] = None) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog=SAMPLETONES_NAME, add_help=False)
-    parser.add_argument("path", nargs="?", default=None)
-    parser.add_argument("--config", type=str, default=None)
-    parser.add_argument("--generate", action="store_true")
-    parser.add_argument("--help", action="store_true")
-    parser.add_argument("--version", action="store_true")
+    parser = argparse.ArgumentParser(prog=SAMPLETONES_NAME, add_help=False, formatter_class=RawTextHelpFormatter)
+    parser.add_argument(
+        "path",
+        nargs="?",
+        default=None,
+        help=HELP_PATH,
+    )
+    parser.add_argument("--config", "-c", type=str, default=None, help=HELP_CONFIG)
+    parser.add_argument(
+        "--generate",
+        "-g",
+        action="store_true",
+        help=HELP_GENERATE,
+    )
+    parser.add_argument("--help", "-h", action="store_true", help=HELP_HELP)
+    parser.add_argument("--version", "-v", action="store_true", help=HELP_VERSION)
+
     args = parser.parse_args()
     config_path = Path(args.config) if args.config else None
 
@@ -55,7 +82,7 @@ def main() -> None:
         return
 
     if args.version:
-        logger.info(f"{SAMPLETONES_NAME} v{SAMPLETONES_VERSION}")
+        logger.info(SAMPLETONES_NAME_VERSION)
         return
 
     if args.path and args.generate:
