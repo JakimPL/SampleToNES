@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from sampletones.configs import LibraryConfig
+from sampletones.configs import Config, LibraryConfig
 from sampletones.utils import pad
 
 from ..fft import calculate_weights
@@ -39,6 +39,17 @@ class Window:
 
         weights = calculate_weights(size, self.config.sample_rate)
         object.__setattr__(self, "weights", weights)
+
+    @classmethod
+    def from_config(
+        cls, config: Union[Config, LibraryConfig], on: bool = True, custom_size: Optional[int] = None
+    ) -> "Window":
+        if isinstance(config, LibraryConfig):
+            return cls(config=config, on=on, custom_size=custom_size)
+        elif isinstance(config, Config):
+            return cls(config=config.library, on=on, custom_size=custom_size)
+
+        raise TypeError("config must be an instance of Config or LibraryConfig")
 
     def create_window(self) -> np.ndarray:
         frame_length = self.frame_length

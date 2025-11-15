@@ -16,6 +16,12 @@ class LoadLibraryError(LibraryError):
     pass
 
 
+class InvalidLibraryDataError(LibraryError):
+    """Exception raised when the library data is invalid or corrupted."""
+
+    pass
+
+
 class LibraryDisplayError(LibraryError):
     """Exception raised when there is an error loading library data."""
 

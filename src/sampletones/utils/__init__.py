@@ -7,7 +7,6 @@ from .frequencies import (
     pitch_to_frequency,
     pitch_to_name,
 )
-from .logger import logger
 from .paths import shorten_path, to_path
 from .serialization import (
     deserialize_array,
@@ -20,7 +19,6 @@ from .serialization import (
 )
 
 __all__ = [
-    "logger",
     "next_power_of_two",
     "pad",
     "trim",

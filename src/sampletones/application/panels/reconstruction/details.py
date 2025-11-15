@@ -4,6 +4,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
+from sampletones.constants.general import NOISE_PERIODS
 from sampletones.reconstruction import Reconstruction
 from sampletones.utils import hash_model, pitch_to_name
 
@@ -147,11 +148,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
         if generator_name == GeneratorName.NOISE:
             pitch_display = f"{initial_pitch:X}"
+            display_value = f"p{NOISE_PERIODS[initial_pitch]}"
         else:
             pitch_display = pitch_to_name(initial_pitch)
+            display_value = str(initial_pitch)
 
         dpg.add_text(
-            default_value=LBL_RECONSTRUCTION_INITIAL_PITCH.format(pitch_display),
+            default_value=LBL_RECONSTRUCTION_INITIAL_PITCH.format(pitch_display, display_value),
             parent=parent,
         )
 

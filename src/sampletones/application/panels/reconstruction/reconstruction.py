@@ -3,12 +3,12 @@ from typing import Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager, write_audio
+from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
-from sampletones.constants.paths import EXT_FILE_FTI, EXT_FILE_WAV
+from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones.reconstruction import Reconstruction
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
 from ...constants import (
@@ -310,7 +310,7 @@ class GUIReconstructionPanel(GUIPanel):
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=instrument_name,
         ):
-            dpg.add_file_extension(EXT_FILE_FTI)
+            dpg.add_file_extension(EXT_FILE_INSTRUMENT)
 
     @file_dialog_handler
     def _handle_fti_export_dialog_result(self, filepath: Path) -> None:
@@ -331,7 +331,7 @@ class GUIReconstructionPanel(GUIPanel):
                 MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
                 filepath,
             )
-        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+        except (IOError, IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
         except Exception as exception:  # TODO: specify exception type
@@ -352,7 +352,7 @@ class GUIReconstructionPanel(GUIPanel):
                 MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
                 directory,
             )
-        except (IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+        except (IOError, IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
         except Exception as exception:  # TODO: specify exception type
@@ -381,7 +381,7 @@ class GUIReconstructionPanel(GUIPanel):
         directory.mkdir(parents=True, exist_ok=True)
         for generator_name in self.reconstruction_data.feature_data.generators.keys():
             instrument_name = self._get_instrument_name(generator_name)
-            filepath = directory / f"{instrument_name}{EXT_FILE_FTI}"
+            filepath = directory / f"{instrument_name}{EXT_FILE_INSTRUMENT}"
             self.save_instrument_feature(filepath, instrument_name, generator_name)
 
     def save_instrument_feature(
@@ -415,7 +415,7 @@ class GUIReconstructionPanel(GUIPanel):
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=filename,
         ):
-            dpg.add_file_extension(EXT_FILE_WAV)
+            dpg.add_file_extension(EXT_FILE_WAVE)
 
     @file_dialog_handler
     def _handle_wav_export_dialog_result(self, filepath: Path) -> None:
@@ -427,7 +427,7 @@ class GUIReconstructionPanel(GUIPanel):
         sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
 
         try:
-            write_audio(filepath, partial_approximation, sample_rate)
+            write_wave(filepath, sample_rate, partial_approximation)
             logger.info(f"Exported reconstruction to WAV: {filepath}")
             show_message_with_path_dialog(
                 TITLE_DIALOG_EXPORT_WAV,

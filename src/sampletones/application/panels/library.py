@@ -17,7 +17,7 @@ from sampletones.tree import (
     TreeNode,
 )
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ..config.manager import ConfigManager
 from ..constants import (
@@ -297,7 +297,7 @@ class GUILibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_LIBRARY_PROGRESS, show=True)
         dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=False)
         dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
-        self.library_manager.generate_library(config, window, overwrite=True)
+        self.library_manager.generate_library(config, window)
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_LIBRARY_PROGRESS):

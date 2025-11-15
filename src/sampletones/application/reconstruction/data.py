@@ -8,7 +8,7 @@ from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.reconstruction import Reconstruction
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from .feature import FeatureData
 
@@ -36,7 +36,7 @@ class ReconstructionData(BaseModel):
                 normalize=normalize,
                 quantize=quantize,
             )
-        except (FileNotFoundError, IsADirectoryError, OSError, PermissionError):
+        except (IOError, FileNotFoundError, IsADirectoryError, OSError, PermissionError):
             logger.warning(f"Could not load original audio from {audio_filepath}. Using silent audio instead.")
             original_audio = np.zeros_like(reconstruction.approximation)
 

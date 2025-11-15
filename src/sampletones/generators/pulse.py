@@ -65,13 +65,25 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         return output * MIXER_PULSE
 
     def get_possible_instructions(self) -> List[PulseInstruction]:
-        pulse_instructions = [PulseInstruction(on=False, pitch=MIN_PITCH, volume=0, duty_cycle=0)]
+        pulse_instructions = [
+            PulseInstruction(
+                on=False,
+                pitch=MIN_PITCH,
+                volume=0,
+                duty_cycle=0,
+            ),
+        ]
 
         for pitch in self.frequency_table:
             for volume in range(1, MAX_VOLUME + 1):
                 for duty_cycle in range(len(DUTY_CYCLES)):
                     pulse_instructions.append(
-                        PulseInstruction(on=True, pitch=pitch, volume=volume, duty_cycle=duty_cycle)
+                        PulseInstruction(
+                            on=True,
+                            pitch=pitch,
+                            volume=volume,
+                            duty_cycle=duty_cycle,
+                        )
                     )
 
         return pulse_instructions

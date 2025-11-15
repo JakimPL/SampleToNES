@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from ..browser.manager import BrowserManager
 from ..config.manager import ConfigManager
@@ -141,7 +141,7 @@ class GUIBrowserPanel(GUITreePanel):
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
             return
-        except (IsADirectoryError, OSError, PermissionError) as exception:
+        except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_LOAD_FAILURE)
             return

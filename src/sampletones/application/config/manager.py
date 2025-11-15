@@ -16,7 +16,8 @@ from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_D
 from sampletones.ffts import Window
 from sampletones.library import LibraryKey
 from sampletones.typehints import SerializedData
-from sampletones.utils import logger, save_json
+from sampletones.utils import save_json
+from sampletones.utils.logger import logger
 
 from ..constants import (
     MSG_CONFIG_LOAD_ERROR,
@@ -34,7 +35,7 @@ from ..utils.dialogs import show_error_dialog
 
 
 class ConfigManager:
-    def __init__(self) -> None:
+    def __init__(self, config_path: Optional[Path] = None) -> None:
         self.config: Optional[Config] = None
         self.window: Optional[Window] = None
         self.library_directory: Optional[Path] = None
@@ -59,19 +60,30 @@ class ConfigManager:
             TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
         }
 
-        self.initialize()
+        self.initialize(config_path)
 
-    def initialize(self) -> None:
-        if self.config_path.exists():
+    def initialize(self, config_path: Optional[Path] = None) -> None:
+        if config_path is None:
+            config_path = self.config_path
+
+        if config_path.exists():
             try:
-                self.load_config_from_file(self.config_path)
+                self.load_config_from_file(config_path)
+            except FileNotFoundError as exception:
+                self.load_default_config()
+                logger.error(f"Config file not found: {config_path}")
+                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+            except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+                self.load_default_config()
+                logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
+                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
             except Exception as exception:  # TODO: specify exception type
-                self.load_config(Config())
-                logger.error_with_traceback(exception, f"Failed to load config from {self.config_path}")
+                self.load_default_config()
+                logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
         else:
-            logger.warning(f"Config file does not exist: {self.config_path}")
-            self.load_config(Config())
+            self.load_default_config()
+            logger.warning(f"Config file does not exist: {config_path}")
 
     def save_config(self) -> None:
         if not self.config:
@@ -83,6 +95,9 @@ class ConfigManager:
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             save_json(self.config_path, config_dict)
+        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+            logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
+            show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
@@ -103,7 +118,7 @@ class ConfigManager:
             library=LibraryConfig(**library_config_data),
             generation=GenerationConfig(**generation_config_data),
         )
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(self.config)
         self.update_gui()
 
     def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
@@ -187,7 +202,7 @@ class ConfigManager:
         new_config = self.config.model_copy(update={"library": new_library_config})
 
         self.config = new_config
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(self.config)
 
         return {
             TAG_CONFIG_SAMPLE_RATE: sample_rate,
@@ -195,9 +210,12 @@ class ConfigManager:
             TAG_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
         }
 
+    def load_default_config(self) -> None:
+        self.load_config(Config())
+
     def load_config(self, config: Config) -> None:
         self.config = config
-        self.window = Window(self.config.library)
+        self.window = Window.from_config(config)
         self.library_directory = Path(config.general.library_directory)
         self.output_directory = Path(config.general.output_directory)
         self.generators = list(config.generation.generators)

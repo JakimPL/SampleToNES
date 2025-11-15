@@ -3,7 +3,7 @@ from typing import Callable, Optional
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.general import SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
-from sampletones.utils import logger
+from sampletones.utils.logger import logger
 
 from .data import AudioData
 

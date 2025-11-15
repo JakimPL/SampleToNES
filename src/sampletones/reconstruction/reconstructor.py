@@ -53,12 +53,14 @@ class Reconstructor:
         generator_names = self.config.generation.generators
         self.generators = get_generators_by_names(config, generator_names)
 
-        self.window: Window = Window(config.library)
+        self.window: Window = Window.from_config(self.config)
         self.library_data: LibraryData = self.load_library(library)
 
     def __call__(self, path: Union[str, Path]) -> Optional[Reconstruction]:
-        path = to_path(path)
+        if not isinstance(path, (str, Path)):
+            raise TypeError("Input must be a path to an audio file.")
 
+        path = to_path(path)
         audio = self.load_audio(path)
         self.reset_generators()
         self.state = ReconstructionState.create(list(self.generators.keys()))
@@ -100,8 +102,11 @@ class Reconstructor:
     def load_library(self, library: Optional[Library] = None) -> LibraryData:
         library = library or Library(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
+        key = library.create_key(self.config, self.window)
         if not library_data:
-            raise NoLibraryDataError("No library data found for the given configuration and window.")
+            raise NoLibraryDataError(
+                f"No library data found for the given configuration and window: {library.get_path(key)}"
+            )
 
         return LibraryData(
             config=self.config.library,

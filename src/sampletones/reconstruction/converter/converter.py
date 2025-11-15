@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants.paths import EXT_FILE_WAV
+from sampletones.constants.paths import EXT_FILE_WAVE
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils import logger
+from sampletones.utils.logger import BaseLogger, logger
 
 from ..reconstructor import Reconstructor
 from .conversion import reconstruct_file
@@ -12,8 +12,8 @@ from .paths import filter_files, get_output_path, get_relative_path
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
-    def __init__(self, config: Config) -> None:
-        super().__init__(max_workers=config.general.max_workers)
+    def __init__(self, config: Config, logger: BaseLogger = logger) -> None:
+        super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()
         self.input_path: Optional[Path] = None
         self.is_file: bool = False
@@ -25,7 +25,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
     def start(self, target_path: Path, is_file: bool) -> None:
         if self.running:
-            logger.warning("Reconstruction is already running")
+            self.logger.warning("Reconstruction is already running")
             return
 
         self.input_path = target_path
@@ -41,7 +41,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
         if self.is_file:
             return [(reconstructor, self.input_path, output_path)]
 
-        self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAV}"))
+        self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAVE}"))
         self.wav_files = filter_files(self.wav_files, self.input_path, output_path)
 
         arguments: List[Tuple[Reconstructor, Path, Path]] = []

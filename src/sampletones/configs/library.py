@@ -21,9 +21,9 @@ class LibraryConfig(BaseModel):
 
     change_rate: int = Field(default=CHANGE_RATE, ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
     sample_rate: int = Field(default=SAMPLE_RATE, ge=MIN_SAMPLE_RATE, le=MAX_SAMPLE_RATE)
+    transformation_gamma: int = Field(default=TRANSFORMATION_GAMMA, ge=0, le=MAX_TRANSFORMATION_GAMMA)
     a4_frequency: float = Field(default=A4_FREQUENCY, gt=20.0, lt=20000.0)
     a4_pitch: int = Field(default=A4_PITCH, ge=1, le=127)
-    transformation_gamma: int = Field(default=TRANSFORMATION_GAMMA, ge=0, le=MAX_TRANSFORMATION_GAMMA)
 
     @property
     def frame_length(self) -> int:
