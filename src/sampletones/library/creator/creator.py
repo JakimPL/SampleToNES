@@ -26,7 +26,7 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
         self.completed_instructions = 0
         self.current_instruction: Optional[str] = None
 
-    def start(self, window: Window, overwrite: bool = False) -> None:
+    def start(self, window: Window) -> None:
         if self.running:
             logger.warning("Library creation is already running")
             return

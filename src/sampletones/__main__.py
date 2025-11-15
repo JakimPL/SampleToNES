@@ -64,12 +64,15 @@ def main() -> None:
     )
     from sampletones.utils import logger
 
-    config = Config.load(config_path) if config_path else Config()
+    config = Config.load(config_path) if config_path else Config.default()
 
     if args.generate:
         from sampletones.scripts import generate_library
 
-        return generate_library(config, output_path)
+        if output_path is not None:
+            logger.warning("Output path is ignored when generating a library.")
+
+        return generate_library(config)
 
     if args.path:
         path = Path(args.path)
@@ -82,13 +85,13 @@ def main() -> None:
             elif suffix == EXT_FILE_JSON:
                 from sampletones.scripts import load_reconstruction
 
-                return load_reconstruction(path, config, output_path)
+                return load_reconstruction(path, config_path)
             elif suffix == EXT_FILE_LIBRARY:
                 if output_path is not None:
                     logger.warning("Output path is ignored when loading a library.")
                 from sampletones.scripts import load_library
 
-                return load_library(path, config)
+                return load_library(path, config_path)
             else:
                 raise RuntimeError(
                     f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_JSON}, "

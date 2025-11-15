@@ -4,6 +4,7 @@ from typing import List
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
+from sampletones.constants.paths import CONFIG_PATH
 from sampletones.utils.serialization import load_json, save_json
 
 from .general import GeneralConfig
@@ -19,6 +20,13 @@ class Config(BaseModel):
     generation: GenerationConfig = Field(
         default_factory=GenerationConfig, description="Configuration for generation processes"
     )
+
+    @classmethod
+    def default(cls) -> "Config":
+        if not CONFIG_PATH.exists():
+            return cls()
+
+        return cls.load(CONFIG_PATH)
 
     @classmethod
     def load(cls, path: Path) -> "Config":

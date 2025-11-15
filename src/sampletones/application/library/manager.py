@@ -143,7 +143,7 @@ class LibraryManager:
     def library_exists_for_key(self, key: LibraryKey) -> bool:
         return self.library.exists(key)
 
-    def generate_library(self, config: Config, window: Window, overwrite: bool = False) -> None:
+    def generate_library(self, config: Config, window: Window) -> None:
         self.library = Library.from_config(config)
         self.creator = LibraryCreator(config)
         self.creator.set_callbacks(
@@ -154,7 +154,7 @@ class LibraryManager:
             on_progress=self._on_generation_progress,
         )
 
-        self.creator.start(window, overwrite)
+        self.creator.start(window)
 
     def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
         key, library_data = result

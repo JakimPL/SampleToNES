@@ -123,7 +123,6 @@ class TaskProcessor(Generic[T]):
 
     def _run_tasks(self) -> None:
         self._reset_status()
-        self._notify_progress()
 
         try:
             tasks = self._create_tasks()
@@ -134,13 +133,14 @@ class TaskProcessor(Generic[T]):
         self.total_tasks = len(tasks)
         self.completed_tasks = 0
 
+        logger.info("Starting processing tasks...")
+        self._notify_progress()
+
         workers = self.max_workers
         context = multiprocessing.get_context("spawn")
         self.pool = ProcessPool(max_workers=workers, context=context)
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
-
-        logger.info("Starting processing tasks...")
 
         if self._on_start is not None:
             self._on_start()
@@ -184,6 +184,7 @@ class TaskProcessor(Generic[T]):
             completed=self.completed_tasks,
             current_item=self.current_item,
         )
+
         self._on_progress(self.status, progress)
         logger.debug(f"Status: {self.status}; progress: {progress}")
 

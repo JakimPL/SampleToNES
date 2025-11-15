@@ -1,8 +1,7 @@
-from typing import Self
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.configs import LibraryConfig
+from sampletones.configs.config import Config
 from sampletones.constants.general import (
     MAX_SAMPLE_RATE,
     MAX_TRANSFORMATION_GAMMA,
@@ -28,7 +27,12 @@ class LibraryKey(BaseModel):
     filename: str = Field(..., description="Filename representing the key")
 
     @classmethod
-    def create(cls, config: LibraryConfig, window: Window) -> Self:
+    def from_config(cls, config: Config) -> "LibraryKey":
+        window = Window.from_config(config)
+        return cls.create(config.library, window)
+
+    @classmethod
+    def create(cls, config: LibraryConfig, window: Window) -> "LibraryKey":
         config_hash = hash_model(config)
         filename = cls.get_filename(config, window, config_hash)
         return cls(
