@@ -42,3 +42,5 @@ if exist sampletones (
 ) else (
     echo Build failed.
 )
+
+pause

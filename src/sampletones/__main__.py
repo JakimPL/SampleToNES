@@ -1,4 +1,5 @@
 import argparse
+import multiprocessing
 from argparse import RawTextHelpFormatter
 from pathlib import Path
 
@@ -110,4 +111,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     main()
