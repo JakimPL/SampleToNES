@@ -9,11 +9,13 @@ __pycache__/
 build/
 sampletones
 sampletones.exe
+!src/sampletones
 
 **/*.idea
 **/*.vscode/**
 **/*.ipynb_checkpoints/**
 **/*__pycache__/**
+
 *.ipynb
 *.wav
 *.json

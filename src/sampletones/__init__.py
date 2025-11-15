@@ -2,7 +2,6 @@ import importlib
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    # These imports are never executed at runtime
     from .configs import Config
     from .constants.application import SAMPLETONES_VERSION as __version__
     from .constants.enums import GeneratorName
