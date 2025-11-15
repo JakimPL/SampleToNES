@@ -121,11 +121,19 @@ The library configuration is embedded in the file name:
 
 ### Reconstructions
 
+...
+
 #### Generators
+
+...
 
 #### Reconstructor
 
+...
+
 #### Reconstruction
+
+...
 
 ## Application files
 
@@ -157,11 +165,54 @@ Similarly, the default directory for macOS is:
 /Users/<user>/Documents/SampleToNES
 ```
 
-## Scripts
+## CLI arguments
 
-_SampleToNES_ supports CLI arguments for library generation and audio reconstruction.
+### Custom config
 
-`--config`
+You can run the application with a custom config via:
+
+```bash
+sampletones --config <config-path>
+```
+
+or, shortly:
+
+```bash
+sampletones -c <config-path>
+```
+
+### Library generation
+
+_SampleToNES_ supports CLI arguments also for library generation. To generate a library for a given config, run:
+
+```bash
+sampletones --generate --config <config-path>
+```
+
+If config path is not provided, the default one is being loaded.
+
+### Sample reconstruction
+
+Similarly, you can reconstruct a single WAV file or a directory, using:
+
+```bash
+sampletones <path> --config <config-path>
+```
+
+You can also specify the output file via `--output` (`-o`):
+
+```bash
+sampletones <path> --config <config-path> --output <output-path>
+```
+
+However, this approach is discouraged, since the reconstruction files won't appear in the program reconstructions library.
+
+### Help
+
+For more information, run:
+```bash
+sampletones --help
+```
 
 ## Source code
 
