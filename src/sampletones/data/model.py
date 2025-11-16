@@ -96,13 +96,49 @@ class DataModel(BaseModel):
     def _deserialize_inner(cls, fb_obj) -> Self:
         field_values = {}
 
-        for field_name in cls.model_fields.keys():
-            print(field_name)
+        for field_name, field_info in cls.model_fields.items():
             camel = snake_to_camel(field_name)
 
             getter = getattr(fb_obj, camel, None)
             if getter is None:
                 raise AttributeError(f"{fb_obj.__class__.__name__} missing getter '{camel}'")
+
+            if field_info.annotation == np.ndarray:
+                as_numpy_function = getattr(fb_obj, f"{camel}AsNumpy", None)
+                length_function = getattr(fb_obj, f"{camel}Length", None)
+                if as_numpy_function is None or length_function is None:
+                    raise AttributeError(f"{fb_obj.__class__.__name__} missing AsNumpy or Length for '{camel}'")
+
+                if not callable(as_numpy_function) or not callable(length_function):
+                    raise TypeError(f"AsNumpy or Length for '{camel}' is not callable")
+
+                if callable(as_numpy_function):
+                    arr = as_numpy_function()
+                    field_values[field_name] = np.array(arr, copy=True)
+                    continue
+
+                if callable(length_function):
+                    length = length_function()
+                    assert isinstance(length, int), f"Length for '{camel}' did not return an int"
+
+                    if length == 0:
+                        field_values[field_name] = np.empty(0, dtype=float)
+                        continue
+
+                    first = getter(0)
+                    if isinstance(first, float):
+                        dtype = np.float64
+                    else:
+                        dtype = np.int64
+
+                    out = np.empty(length, dtype=dtype)
+                    for i in range(length):
+                        out[i] = getter(i)
+
+                    field_values[field_name] = out
+                    continue
+
+                raise TypeError(f"Cannot retrieve ndarray for field '{field_name}'")
 
             value = getter()
             field_values[field_name] = value
