@@ -2,12 +2,11 @@ include "arrays.fbs";
 include "instruction.fbs";
 include "configs.fbs";
 include "general.fbs";
-include "generators.fbs";
 
 namespace schemas.library;
 
 table LibraryFragment {
-	generator_class: schemas.generators.GeneratorClassName;
+	generator_class: string;
 	instruction: schemas.instructions.Instruction;
 	feature: [double];
 	sample: schemas.arrays.CyclicArray;

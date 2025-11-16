@@ -1,3 +1,4 @@
+from enum import StrEnum
 from types import ModuleType
 from typing import Self
 
@@ -68,7 +69,7 @@ class DataModel(BaseModel):
                 else:
                     raise TypeError(f"Unsupported list element type for {field_name}")
 
-            elif isinstance(value, str):
+            elif isinstance(value, (StrEnum, str)):
                 offsets[field_name] = builder.CreateString(value)
 
             elif isinstance(value, (int, float, bool)):
@@ -96,21 +97,28 @@ class DataModel(BaseModel):
                 raise AttributeError(f"{fb_obj.__class__.__name__} missing getter '{camel}'")
 
             annotation = field_info.annotation
-            print(annotation)
             assert annotation is not None, f"Field '{field_name}' has no annotation"
+
             if annotation == np.ndarray:
                 value = cls._deserialize_array(fb_obj, field_name)
 
-            elif isinstance(annotation, type) and issubclass(annotation, DataModel):
+            elif not isinstance(annotation, type):
+                # TODO
+                value = getter()
+                pass
+
+            elif issubclass(annotation, DataModel):
                 fb_child = getter()
                 value = annotation._deserialize_inner(fb_child)
+
+            elif issubclass(annotation, StrEnum):
+                string = getter().decode("utf-8")
+                value = annotation(string)
 
             else:
                 value = getter()
 
             field_values[field_name] = value
-
-        print(field_values)
 
         return cls(**field_values)
 

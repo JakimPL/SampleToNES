@@ -113,6 +113,23 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
 
         return FBLibraryFragment.LibraryFragment
 
+    @classmethod
+    def deserialize_union(cls, dictionary: Dict[str, Any]) -> InstructionType:
+        instruction_data = dictionary.get("instruction")
+        generator_class_name = dictionary.get("generator_class")
+
+        if instruction_data is None or generator_class_name is None:
+            raise InvalidLibraryDataError("Instruction data or generator class is missing in the library fragment.")
+
+        from sampletones.instructions.factory import InstructionFactory
+
+        instruction: InstructionType = InstructionFactory.create_instruction_from_data(
+            instruction_data,
+            GeneratorClassName(generator_class_name),
+        )
+
+        return instruction
+
 
 class LibraryData(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
