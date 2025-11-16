@@ -1,3 +1,4 @@
+include "arrays.fbs";
 include "instruction.fbs";
 include "configs.fbs";
 include "general.fbs";
@@ -5,23 +6,11 @@ include "generators.fbs";
 
 namespace library;
 
-table BlobArray {
-	data:[ubyte];
-	shape:[int];
-	dtype:string;
-}
-
-table CyclicArray {
-	array: BlobArray;
-	sample_rate: int;
-	frequency: double;
-}
-
 table LibraryFragment {
 	generator_class: generators.GeneratorClassName;
 	instruction: instructions.Instruction;
 	feature: [double];
-	sample: CyclicArray;
+	sample: arrays.CyclicArray;
 	frequency: double;
 }
 

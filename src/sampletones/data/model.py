@@ -46,7 +46,7 @@ class DataModel(BaseModel):
 
             elif isinstance(value, np.ndarray):
                 element_size = 8 if value.dtype == np.float64 else 4
-                builder.StartVector(len(value), element_size, element_size)
+                builder.StartVector(element_size, len(value), element_size)
                 for x in reversed(value):
                     if value.dtype == np.float64:
                         builder.PrependFloat64(x)
@@ -62,7 +62,7 @@ class DataModel(BaseModel):
                 if len(value) == 0:
                     offsets[field_name] = 0
                 elif all(isinstance(x, (int, float)) for x in value):
-                    builder.StartVector(len(value), 8, 8)
+                    builder.StartVector(8, len(value), 8)
                     for x in reversed(value):
                         if isinstance(x, float):
                             builder.PrependFloat64(x)
@@ -71,7 +71,7 @@ class DataModel(BaseModel):
                     offsets[field_name] = builder.EndVector(len(value))
                 elif all(isinstance(model, DataModel) for model in value):
                     child_offsets = [model._serialize_inner(builder) for model in value]
-                    builder.StartVector(len(child_offsets), 4, 4)
+                    builder.StartVector(4, len(child_offsets), 4)
                     for o in reversed(child_offsets):
                         builder.PrependUOffsetTRelative(o)
                     offsets[field_name] = builder.EndVector(len(child_offsets))
@@ -96,7 +96,8 @@ class DataModel(BaseModel):
     def _deserialize_inner(cls, fb_obj) -> Self:
         field_values = {}
 
-        for field_name in cls.model_json_schema()["properties"].keys():
+        for field_name in cls.model_fields.keys():
+            print(field_name)
             camel = snake_to_camel(field_name)
 
             getter = getattr(fb_obj, camel, None)

@@ -1,0 +1,7 @@
+namespace arrays;
+
+table CyclicArray {
+	array: [float];
+	sample_rate: int;
+	frequency: double;
+}

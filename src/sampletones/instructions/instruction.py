@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import ConfigDict
 
-from sampletones.data.model import DataModel
+from sampletones.data import DataModel
 
 
 class Instruction(DataModel):
