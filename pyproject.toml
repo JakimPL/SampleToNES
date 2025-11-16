@@ -9,6 +9,7 @@ authors = [{ name = "Jakim / Stage Magician" }]
 dependencies = [
     "anytree==2.13.0",
     "dearpygui==2.1.0",
+    "flatbuffers==25.9.23",
     "librosa==0.11.0",
     "msgpack==1.1.2",
     "numpy==2.3.4",

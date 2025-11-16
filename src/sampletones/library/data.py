@@ -130,14 +130,14 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
 class LibraryData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    metadata: Metadata = Field(
+        default_factory=lambda: default_metadata(include_library_version=True),
+        description="Library metadata",
+    )
     config: LibraryConfig = Field(..., description="Configuration of the library data")
     data: Dict[InstructionUnion, LibraryFragment] = Field(
         ...,
         description="Library data mapping instructions to fragments",
-    )
-    metadata: Metadata = Field(
-        default_factory=lambda: default_metadata(include_library_version=True),
-        description="Library metadata",
     )
 
     @cached_property

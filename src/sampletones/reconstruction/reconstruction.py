@@ -33,17 +33,17 @@ from .state import ReconstructionState
 class Reconstruction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
-    errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
-    config: Config = Field(..., description="Configuration used for reconstruction")
-    coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
-    audio_filepath: Path = Field(..., description="Path to the original audio file")
     metadata: Metadata = Field(
         default_factory=lambda: default_metadata(include_reconstruction_version=True),
         description="Reconstruction metadata",
     )
+    audio_filepath: Path = Field(..., description="Path to the original audio file")
+    config: Config = Field(..., description="Configuration used for reconstruction")
+    approximation: np.ndarray = Field(..., description="Audio approximation")
+    approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
+    instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
+    errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
+    coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:

@@ -9,7 +9,9 @@ __pycache__/
 build/
 sampletones
 sampletones.exe
+
 !src/sampletones
+src/sampletones/schemas/**/*.py
 
 **/*.idea
 **/*.vscode/**

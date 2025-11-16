@@ -1,0 +1,68 @@
+namespace library;
+
+table BlobArray {
+	data:[ubyte];
+	shape:[int];
+	dtype:string;
+}
+
+table CyclicArray {
+	array: BlobArray;
+	sample_rate: int;
+	frequency: double;
+}
+
+table PulseInstruction {
+	on:bool;
+	pitch:int;
+	volume:int;
+	duty_cycle:int;
+}
+
+table TriangleInstruction {
+	on:bool;
+	pitch:int;
+}
+
+table NoiseInstruction {
+	on:bool;
+	period:int;
+	volume:int;
+	short:bool;
+}
+
+union Instruction { PulseInstruction, TriangleInstruction, NoiseInstruction }
+
+enum GeneratorClassName: int {
+	PULSE_GENERATOR = 0,
+	TRIANGLE_GENERATOR = 1,
+	NOISE_GENERATOR = 2
+}
+
+table LibraryConfig {
+	change_rate: int;
+	sample_rate: int;
+	transformation_gamma: int;
+	a4_frequency: double;
+	a4_pitch: int;
+}
+
+table KeyValue { key:string; value:string; }
+table Metadata { namespace:string; entries:[KeyValue]; }
+
+table LibraryFragment {
+	generator_class: GeneratorClassName;
+	instruction: Instruction;
+	feature: [double];
+	sample: CyclicArray;
+	frequency: double;
+}
+
+table LibraryData {
+	metadata: [Metadata];
+	config: LibraryConfig;
+	data: [LibraryFragment];
+}
+
+root_type LibraryData;
+
