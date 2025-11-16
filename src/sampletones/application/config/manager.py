@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Callable, Dict, List, Optional
 
+from pydantic import ValidationError
+
 from sampletones.configs import Config, GeneralConfig, GenerationConfig, LibraryConfig
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
@@ -20,6 +22,7 @@ from sampletones.utils import save_json
 from sampletones.utils.logger import logger
 
 from ..constants import (
+    MSG_CONFIG_INVALID_ERROR,
     MSG_CONFIG_LOAD_ERROR,
     MSG_CONFIG_SAVE_ERROR,
     TAG_CONFIG_CHANGE_RATE,
@@ -77,6 +80,10 @@ class ConfigManager:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+            except ValidationError as exception:
+                self.load_default_config()
+                logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
+                show_error_dialog(exception, MSG_CONFIG_INVALID_ERROR)
             except Exception as exception:  # TODO: specify exception type
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
