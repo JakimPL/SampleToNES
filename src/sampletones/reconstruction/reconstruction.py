@@ -5,7 +5,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config
-from sampletones.constants.application import SAMPLETONES_NAME, SAMPLETONES_VERSION
+from sampletones.constants.application import SAMPLETONES_NAME, default_metadata
 from sampletones.constants.enums import GeneratorName, InstructionClassName
 from sampletones.exceptions import InvalidReconstructionError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
@@ -22,14 +22,6 @@ from sampletones.utils.logger import logger
 from .state import ReconstructionState
 
 
-def default_metadata() -> SerializedData:
-    return {
-        SAMPLETONES_NAME: {
-            "version": SAMPLETONES_VERSION,
-        }
-    }
-
-
 class Reconstruction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -40,7 +32,10 @@ class Reconstruction(BaseModel):
     config: Config = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
-    metadata: SerializedData = Field(default_factory=default_metadata, description="Additional metadata")
+    metadata: SerializedData = Field(
+        default_factory=lambda: default_metadata(include_reconstruction_version=True),
+        description="Reconstruction metadata",
+    )
 
     @staticmethod
     def _get_instruction_class(name: InstructionClassName) -> InstructionClass:

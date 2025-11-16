@@ -1,4 +1,4 @@
-# SampleToNES v0.2.0
+# SampleToNES v0.2.1
 
 ## Overview
 

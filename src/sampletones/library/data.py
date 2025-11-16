@@ -5,9 +5,10 @@ from typing import Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
+from sampletones.constants.application import default_metadata
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.exceptions import InvalidLibraryDataError
@@ -15,7 +16,7 @@ from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
-from sampletones.typehints import Initials, SerializedData
+from sampletones.typehints import Initials, Metadata, SerializedData
 from sampletones.utils import deserialize_array, dump, serialize_array
 
 from .fragment import Fragment
@@ -123,8 +124,15 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
 class LibraryData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    config: LibraryConfig
-    data: Dict[InstructionUnion, LibraryFragment]
+    config: LibraryConfig = Field(..., description="Configuration of the library data")
+    data: Dict[InstructionUnion, LibraryFragment] = Field(
+        ...,
+        description="Library data mapping instructions to fragments",
+    )
+    metadata: Metadata = Field(
+        default_factory=lambda: default_metadata(include_library_version=True),
+        description="Library metadata",
+    )
 
     @cached_property
     def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
