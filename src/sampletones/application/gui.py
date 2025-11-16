@@ -1,8 +1,10 @@
+import sys
 from pathlib import Path
 from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones._resources import get_icon_path
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import LibraryConfig
 from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAVE
@@ -107,12 +109,28 @@ class GUI:
     def setup_gui(self) -> None:
         dpg.create_context()
         self.create_main_window()
-        dpg.create_viewport(title=TITLE_WINDOW_MAIN, width=DIM_WINDOW_MAIN_WIDTH, height=DIM_WINDOW_MAIN_HEIGHT)
+        self.set_viewport()
         dpg.setup_dearpygui()
         dpg.show_viewport()
         self.set_callbacks()
         self.config_manager.update_gui()
         self.update_menu()
+
+    def set_viewport(self) -> None:
+        if sys.platform.startswith("win"):
+            icon_filename = "sampletones.ico"
+        else:
+            icon_filename = "sampletones.png"
+
+        icon_file_path = get_icon_path(icon_filename)
+
+        dpg.create_viewport(
+            title=TITLE_WINDOW_MAIN,
+            width=DIM_WINDOW_MAIN_WIDTH,
+            height=DIM_WINDOW_MAIN_HEIGHT,
+            small_icon=str(icon_file_path),
+            large_icon=str(icon_file_path),
+        )
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)

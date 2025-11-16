@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-# --- Check for Python 3.12 or newer ---
 PYVER=$(python3 --version 2>&1 | awk '{print $2}')
 echo "Detected Python version: $PYVER"
 MAJOR=$(echo $PYVER | cut -d. -f1)
@@ -13,20 +12,17 @@ if [ "$MAJOR" -lt 3 ] || { [ "$MAJOR" -eq 3 ] && [ "$MINOR" -lt 12 ]; }; then
     exit 1
 fi
 
-# --- Create venv ---
 echo "Creating virtual environment..."
 python3 -m venv .venv
 source .venv/bin/activate
 
-# --- Install dependencies ---
 echo "Installing dependencies..."
 pip install --upgrade pip
 pip install .
 pip install pyinstaller
 
-# --- Build executable ---
 echo "Building executable..."
-pyinstaller --name sampletones --onefile --distpath . --icon src/sampletones/icons/icon-256.png --add-data "src/sampletones/icons:sampletones/icons" src/sampletones/__main__.py
+pyinstaller --name sampletones --onefile --distpath . --icon src/sampletones/icons/sampletones.png --add-data "src/sampletones/icons:sampletones/icons" src/sampletones/__main__.py
 
 echo
 if [[ -f sampletones ]]; then
