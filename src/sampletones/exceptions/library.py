@@ -21,7 +21,7 @@ class LoadLibraryError(LibraryError):
     pass
 
 
-class InvalidLibraryDataError(LibraryError):
+class InvalidLibraryDataError(LoadLibraryError):
     """Exception raised when the library data is invalid or corrupted."""
 
     pass
@@ -33,7 +33,7 @@ class InvalidLibraryDataValuesError(InvalidValuesError, InvalidLibraryDataError)
     pass
 
 
-class IncompatibleLibraryDataVersionError(IncompatibleVersionError, LibraryError):
+class IncompatibleLibraryDataVersionError(IncompatibleVersionError, LoadLibraryError):
     """Raised when the library data version is incompatible."""
 
     pass
