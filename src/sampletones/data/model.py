@@ -45,18 +45,7 @@ class DataModel(BaseModel):
                 offsets[field_name] = value._serialize_inner(builder)
 
             elif isinstance(value, np.ndarray):
-                element_size = 8 if value.dtype == np.float64 else 4
-                builder.StartVector(element_size, len(value), element_size)
-                for x in reversed(value):
-                    if value.dtype == np.float64:
-                        builder.PrependFloat64(x)
-                    elif value.dtype == np.float32:
-                        builder.PrependFloat32(x)
-                    elif np.issubdtype(value.dtype, np.integer):
-                        builder.PrependInt32(int(x))
-                    else:
-                        raise TypeError(f"Unsupported ndarray dtype {value.dtype}")
-                offsets[field_name] = builder.EndVector(len(value))
+                offsets[field_name] = self._serialize_array(builder, value)
 
             elif isinstance(value, list):
                 if len(value) == 0:
@@ -98,49 +87,40 @@ class DataModel(BaseModel):
 
         for field_name, field_info in cls.model_fields.items():
             camel = snake_to_camel(field_name)
-
             getter = getattr(fb_obj, camel, None)
             if getter is None:
                 raise AttributeError(f"{fb_obj.__class__.__name__} missing getter '{camel}'")
 
             if field_info.annotation == np.ndarray:
-                as_numpy_function = getattr(fb_obj, f"{camel}AsNumpy", None)
-                length_function = getattr(fb_obj, f"{camel}Length", None)
-                if as_numpy_function is None or length_function is None:
-                    raise AttributeError(f"{fb_obj.__class__.__name__} missing AsNumpy or Length for '{camel}'")
+                value = cls._deserialize_array(fb_obj, field_name)
+            else:
+                value = getter()
 
-                if not callable(as_numpy_function) or not callable(length_function):
-                    raise TypeError(f"AsNumpy or Length for '{camel}' is not callable")
-
-                if callable(as_numpy_function):
-                    arr = as_numpy_function()
-                    field_values[field_name] = np.array(arr, copy=True)
-                    continue
-
-                if callable(length_function):
-                    length = length_function()
-                    assert isinstance(length, int), f"Length for '{camel}' did not return an int"
-
-                    if length == 0:
-                        field_values[field_name] = np.empty(0, dtype=float)
-                        continue
-
-                    first = getter(0)
-                    if isinstance(first, float):
-                        dtype = np.float64
-                    else:
-                        dtype = np.int64
-
-                    out = np.empty(length, dtype=dtype)
-                    for i in range(length):
-                        out[i] = getter(i)
-
-                    field_values[field_name] = out
-                    continue
-
-                raise TypeError(f"Cannot retrieve ndarray for field '{field_name}'")
-
-            value = getter()
             field_values[field_name] = value
 
         return cls(**field_values)
+
+    def _serialize_array(self, builder: flatbuffers.Builder, array: np.ndarray) -> int:
+        element_size = 4
+        builder.StartVector(element_size, len(array), element_size)
+        for x in reversed(array):
+            builder.PrependFloat32(float(x))
+        return builder.EndVector(len(array))
+
+    @classmethod
+    def _deserialize_array(cls, fb_obj, field_name: str) -> np.ndarray:
+        camel = snake_to_camel(field_name)
+        getter = getattr(fb_obj, camel, None)
+        assert getter is not None, f"{fb_obj.__class__.__name__} missing getter '{camel}'"
+
+        length_function = getattr(fb_obj, f"{camel}Length", None)
+        if length_function is None or not callable(getter):
+            raise AttributeError(f"{fb_obj.__class__.__name__} missing getter or Length for field '{field_name}'")
+
+        length = length_function()
+        assert isinstance(length, int)
+
+        if length == 0:
+            return np.empty(0)
+
+        return np.array([getter(i) for i in range(length)])
