@@ -130,11 +130,16 @@ class Reconstruction(BaseModel):
         metadata = metadata[SAMPLETONES_NAME]
         reconstruction_version = metadata.get("reconstruction_data_version")
 
+        if reconstruction_version is None:
+            raise InvalidReconstructionError("Reconstruction data version is missing in metadata.")
+
         # TODO: handle older versions
         if compare_versions(reconstruction_version, SAMPLETONES_RECONSTRUCTION_DATA_VERSION) != 0:
             raise IncompatibleReconstructionVersionError(
                 f"Reconstruction data version mismatch: expected "
-                f"{SAMPLETONES_RECONSTRUCTION_DATA_VERSION}, got {reconstruction_version}."
+                f"{SAMPLETONES_RECONSTRUCTION_DATA_VERSION}, got {reconstruction_version}.",
+                expected_version=SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
+                actual_version=reconstruction_version,
             )
 
         for field in [

@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.exceptions import InvalidReconstructionError
+from sampletones.exceptions.reconstruction import IncompatibleReconstructionVersionError
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
@@ -20,6 +21,7 @@ from ..constants import (
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_LOAD_FAILURE,
     NOD_TYPE_DIRECTORY,
@@ -148,6 +150,19 @@ class GUIBrowserPanel(GUITreePanel):
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
+            return
+        except IncompatibleReconstructionVersionError as exception:
+            logger.error_with_traceback(
+                exception,
+                f"Incompatible reconstruction version: {exception.actual_version} != expected {exception.expected_version}",
+            )
+            show_error_dialog(
+                exception,
+                MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                    exception.expected_version,
+                    exception.actual_version,
+                ),
+            )
             return
 
         if not reconstruction_data.reconstruction.audio_filepath.exists():
