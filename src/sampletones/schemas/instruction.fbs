@@ -1,0 +1,11 @@
+include "instructions/pulse.fbs";
+include "instructions/triangle.fbs";
+include "instructions/noise.fbs";
+
+namespace instructions;
+
+union Instruction {
+    instructions.pulse.PulseInstruction,
+    instructions.triangle.TriangleInstruction,
+    instructions.noise.NoiseInstruction
+}

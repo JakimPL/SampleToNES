@@ -1,9 +1,11 @@
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import ConfigDict
+
+from sampletones.data.model import DataModel
 
 
-class Instruction(BaseModel):
+class Instruction(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     on: bool

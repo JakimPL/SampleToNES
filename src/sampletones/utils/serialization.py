@@ -48,3 +48,8 @@ def hash_models(*models: BaseModel, length: int = 32) -> str:
 
 def hash_model(model: BaseModel, length: int = 32) -> str:
     return hash_models(model, length=length)
+
+
+def snake_to_camel(snake_str: str) -> str:
+    parts = snake_str.split("_")
+    return "".join(word.capitalize() for word in parts)

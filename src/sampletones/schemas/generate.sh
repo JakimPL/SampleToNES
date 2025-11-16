@@ -18,9 +18,12 @@ fi
 
 echo "Generating Python bindings for all .fbs files in: $SCRIPT_DIR"
 
-while IFS= read -r -d '' f; do
-	echo "-> $f"
-	flatc --python -o . "$f"
-done < <(find . -type f -name '*.fbs' -print0)
+mapfile -t FBS_FILES < <(find . -type f -name '*.fbs' | sort)
+if [ "${#FBS_FILES[@]}" -eq 0 ]; then
+  echo "no .fbs files found" >&2
+  exit 0
+fi
+echo "Found ${#FBS_FILES[@]} .fbs files."
+flatc --python -o . "${FBS_FILES[@]}"
 
 echo "Generation finished."

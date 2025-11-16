@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from pydantic import Field
 
 from sampletones.constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
@@ -57,3 +59,15 @@ class NoiseInstruction(Instruction):
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - period_differences)
 
         return period_distance + volume_distance
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import sampletones.schemas.instructions.noise.NoiseInstruction as FBNoiseInstruction
+
+        return FBNoiseInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import sampletones.schemas.instructions.noise.NoiseInstruction as FBNoiseInstruction
+
+        return FBNoiseInstruction.NoiseInstruction

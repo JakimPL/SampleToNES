@@ -1,4 +1,4 @@
-include "instructions.fbs";
+include "instruction.fbs";
 include "configs.fbs";
 include "general.fbs";
 include "generators.fbs";

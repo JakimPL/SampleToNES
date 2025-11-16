@@ -16,6 +16,7 @@ from .serialization import (
     load_json,
     save_json,
     serialize_array,
+    snake_to_camel,
 )
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "load_json",
     "serialize_array",
     "deserialize_array",
+    "snake_to_camel",
     "hash_model",
     "hash_models",
     "MIN_AVAILABLE_FREQUENCY",

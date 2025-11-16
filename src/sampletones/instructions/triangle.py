@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from pydantic import Field
 
 from sampletones.constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
@@ -36,3 +38,15 @@ class TriangleInstruction(Instruction):
             pitch_difference = abs(pitch1 - pitch2) / PITCH_RANGE
 
         return pitch_difference
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import sampletones.schemas.instructions.triangle.TriangleInstruction as FBTriangleInstruction
+
+        return FBTriangleInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import sampletones.schemas.instructions.triangle.TriangleInstruction as FBTriangleInstruction
+
+        return FBTriangleInstruction.TriangleInstruction

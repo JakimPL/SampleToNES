@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from pydantic import Field
 
 from sampletones.constants.general import (
@@ -62,3 +64,15 @@ class PulseInstruction(Instruction):
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - pitch_difference)
 
         return pitch_distance + volume_distance
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import sampletones.schemas.instructions.pulse.PulseInstruction as FBPulseInstruction
+
+        return FBPulseInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import sampletones.schemas.instructions.pulse.PulseInstruction as FBPulseInstruction
+
+        return FBPulseInstruction.PulseInstruction

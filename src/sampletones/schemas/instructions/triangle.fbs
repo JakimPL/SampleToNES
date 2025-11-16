@@ -1,0 +1,8 @@
+namespace instructions.triangle;
+
+table TriangleInstruction {
+	on:bool;
+	pitch:int;
+}
+
+root_type TriangleInstruction;

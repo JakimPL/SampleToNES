@@ -1,0 +1,10 @@
+namespace instructions.noise;
+
+table NoiseInstruction {
+	on:bool;
+	period:int;
+	volume:int;
+	short:bool;
+}
+
+root_type NoiseInstruction;

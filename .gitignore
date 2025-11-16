@@ -28,4 +28,4 @@ src/sampletones/schemas/**/*.py
 *.fti
 *.lock
 *.spec
-
+*.fb
