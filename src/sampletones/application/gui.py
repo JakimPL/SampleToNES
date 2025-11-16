@@ -468,6 +468,7 @@ class GUI:
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
+        self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
         self.audio_device_manager.stop()
