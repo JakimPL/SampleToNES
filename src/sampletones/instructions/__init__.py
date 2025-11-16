@@ -4,6 +4,7 @@ from .noise import NoiseInstruction
 from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
 from .typehints import InstructionClass, InstructionType, InstructionUnion
+from .utils import get_instruction_by_type
 
 __all__ = [
     "Instruction",
@@ -14,4 +15,5 @@ __all__ = [
     "InstructionType",
     "InstructionClass",
     "InstructionUnion",
+    "get_instruction_by_type",
 ]
