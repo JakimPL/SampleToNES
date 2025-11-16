@@ -1,7 +1,9 @@
+from .base import SampleToNESError
+from .validation import InvalidValuesError
 from .version import IncompatibleVersionError
 
 
-class LibraryError(Exception):
+class LibraryError(SampleToNESError):
     """Base class for exceptions raised by the library."""
 
     pass
@@ -21,6 +23,12 @@ class LoadLibraryError(LibraryError):
 
 class InvalidLibraryDataError(LibraryError):
     """Exception raised when the library data is invalid or corrupted."""
+
+    pass
+
+
+class InvalidLibraryDataValuesError(InvalidValuesError, InvalidLibraryDataError):
+    """Raised when library data contains invalid values."""
 
     pass
 

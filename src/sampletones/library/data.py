@@ -5,7 +5,7 @@ from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.application import (
@@ -16,8 +16,11 @@ from sampletones.constants.application import (
 )
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones.exceptions import InvalidLibraryDataError
-from sampletones.exceptions.library import IncompatibleLibraryDataVersionError
+from sampletones.exceptions import (
+    IncompatibleLibraryDataVersionError,
+    InvalidLibraryDataError,
+    InvalidLibraryDataValuesError,
+)
 from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
@@ -203,7 +206,14 @@ class LibraryData(BaseModel):
             raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
 
         cls.validate_library_data(data)
-        return LibraryData.deserialize(data)
+
+        try:
+            return LibraryData.deserialize(data)
+        except ValidationError as exception:
+            raise InvalidLibraryDataValuesError(
+                f"Failed to deserialize LibraryData from {path_object}",
+                exception,
+            ) from exception
 
     @staticmethod
     def validate_library_data(data: Dict[str, Any]) -> None:

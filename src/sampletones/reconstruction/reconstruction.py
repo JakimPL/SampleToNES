@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Self, Union, cast
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config
 from sampletones.constants.application import (
@@ -15,6 +15,7 @@ from sampletones.constants.enums import GeneratorName, InstructionClassName
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
+    InvalidReconstructionValuesError,
 )
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
@@ -111,13 +112,19 @@ class Reconstruction(BaseModel):
         data = load_json(filepath)
         cls.validate_reconstruction(data)
 
-        data["approximation"] = deserialize_array(data["approximation"])
-        data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
-        data["instructions"] = cls._parse_instructions(data["instructions"])
-        data["config"] = Config(**data["config"])
-        data["coefficient"] = float(data["coefficient"])
-        data["audio_filepath"] = Path(data["audio_filepath"])
-        data["metadata"] = data.get("metadata", {})
+        try:
+            data["approximation"] = deserialize_array(data["approximation"])
+            data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
+            data["instructions"] = cls._parse_instructions(data["instructions"])
+            data["config"] = Config(**data["config"])
+            data["coefficient"] = float(data["coefficient"])
+            data["audio_filepath"] = Path(data["audio_filepath"])
+            data["metadata"] = data.get("metadata", {})
+        except ValidationError as exception:
+            raise InvalidReconstructionValuesError(
+                f"Invalid data values for reconstruction file {filepath}",
+                exception,
+            ) from exception
 
         return cls(**data)
 

@@ -1,4 +1,7 @@
-class WindowError(Exception):
+from .base import SampleToNESError
+
+
+class WindowError(SampleToNESError):
     """Base exception for window-related errors."""
 
     pass
