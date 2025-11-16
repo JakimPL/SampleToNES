@@ -1,0 +1,11 @@
+include "instructions/pulse.fbs";
+include "instructions/triangle.fbs";
+include "instructions/noise.fbs";
+
+namespace schemas.instructions;
+
+union Instruction {
+    schemas.instructions.pulse.PulseInstruction,
+    schemas.instructions.triangle.TriangleInstruction,
+    schemas.instructions.noise.NoiseInstruction
+}

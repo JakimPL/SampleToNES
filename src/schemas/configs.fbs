@@ -1,4 +1,4 @@
-namespace sampletones.schemas.configs;
+namespace schemas.configs;
 
 table LibraryConfig {
 	change_rate: int;

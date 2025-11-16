@@ -25,6 +25,6 @@ if [ "${#FBS_FILES[@]}" -eq 0 ]; then
   exit 0
 fi
 echo "Found ${#FBS_FILES[@]} .fbs files."
-flatc --python -o . "${FBS_FILES[@]}"
+flatc --python -o .. "${FBS_FILES[@]}"
 
 echo "Generation finished."

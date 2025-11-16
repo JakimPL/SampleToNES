@@ -1,4 +1,4 @@
-namespace sampletones.schemas.general;
+namespace schemas.general;
 
 table KeyValue {
     key:string;

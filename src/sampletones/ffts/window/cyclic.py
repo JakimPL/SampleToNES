@@ -59,12 +59,12 @@ class CyclicArray(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import sampletones.schemas.arrays.CyclicArray as FBCyclicArray
+        import schemas.arrays.CyclicArray as FBCyclicArray
 
         return FBCyclicArray
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import sampletones.schemas.arrays.CyclicArray as FBCyclicArray
+        import schemas.arrays.CyclicArray as FBCyclicArray
 
         return FBCyclicArray.CyclicArray

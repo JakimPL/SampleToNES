@@ -4,19 +4,19 @@ include "configs.fbs";
 include "general.fbs";
 include "generators.fbs";
 
-namespace sampletones.schemas.library;
+namespace schemas.library;
 
 table LibraryFragment {
-	generator_class: generators.GeneratorClassName;
-	instruction: instructions.Instruction;
+	generator_class: schemas.generators.GeneratorClassName;
+	instruction: schemas.instructions.Instruction;
 	feature: [double];
-	sample: sampletones.schemas.arrays.CyclicArray;
+	sample: schemas.arrays.CyclicArray;
 	frequency: double;
 }
 
 table LibraryData {
-	metadata: [general.Metadata];
-	config: configs.LibraryConfig;
+	metadata: [schemas.general.Metadata];
+	config: schemas.configs.LibraryConfig;
 	data: [LibraryFragment];
 }
 

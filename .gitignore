@@ -11,7 +11,7 @@ sampletones
 sampletones.exe
 
 !src/sampletones
-src/sampletones/schemas/**/*.py
+src/schemas/**/*.py
 
 **/*.idea
 **/*.vscode/**
