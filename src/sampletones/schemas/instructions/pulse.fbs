@@ -1,4 +1,4 @@
-namespace instructions.pulse;
+namespace sampletones.schemas.instructions.pulse;
 
 table PulseInstruction {
 	on:bool;

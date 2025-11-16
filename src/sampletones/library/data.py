@@ -1,11 +1,12 @@
 import json
 from functools import cached_property
 from pathlib import Path
+from types import ModuleType
 from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.application import (
@@ -16,6 +17,7 @@ from sampletones.constants.application import (
 )
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
+from sampletones.data import DataModel
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,
@@ -26,12 +28,12 @@ from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, Metadata, SerializedData
-from sampletones.utils import deserialize_array, dump, serialize_array
+from sampletones.utils import dump
 
 from .fragment import Fragment
 
 
-class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
+class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
@@ -107,30 +109,20 @@ class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
         instruction = instruction_class(**instruction_dictionary)
         return instruction
 
-    @field_serializer("instruction")
-    def serialize_instruction(self, instruction: InstructionType, _info) -> str:
-        return dump(instruction.model_dump())
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import sampletones.schemas.library.LibraryFragment as FBLibraryFragment
 
-    @field_serializer("feature")
-    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
-        return serialize_array(feature)
+        return FBLibraryFragment
 
     @classmethod
-    def deserialize(cls, dictionary: SerializedData) -> Self:
-        instruction: InstructionType = cls.load_instruction(dictionary)
+    def buffer_reader(cls) -> type:
+        import sampletones.schemas.library.LibraryFragment as FBLibraryFragment
 
-        sample = CyclicArray.deserialize(dictionary["sample"])
-        feature = deserialize_array(dictionary["feature"])
-        return cls(
-            generator_class=dictionary["generator_class"],
-            instruction=instruction,
-            sample=sample,
-            feature=feature,
-            frequency=dictionary["frequency"],
-        )
+        return FBLibraryFragment.LibraryFragment
 
 
-class LibraryData(BaseModel):
+class LibraryData(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(

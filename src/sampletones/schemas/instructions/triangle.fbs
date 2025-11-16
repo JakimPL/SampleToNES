@@ -1,4 +1,4 @@
-namespace instructions.triangle;
+namespace sampletones.schemas.instructions.triangle;
 
 table TriangleInstruction {
 	on:bool;

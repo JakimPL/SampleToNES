@@ -1,4 +1,4 @@
-namespace arrays;
+namespace sampletones.schemas.arrays;
 
 table CyclicArray {
 	array: [float];

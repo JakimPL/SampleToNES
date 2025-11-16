@@ -33,7 +33,8 @@ class DataModel(BaseModel):
         fb_builder = self.buffer_builder()
         offsets = {}
 
-        for field_name, value in self.model_dump().items():
+        for field_name in type(self).model_fields.keys():
+            value = getattr(self, field_name)
             camel = snake_to_camel(field_name)
             add_method = f"Add{camel}"
 
@@ -66,6 +67,9 @@ class DataModel(BaseModel):
                     offsets[field_name] = builder.EndVector(len(child_offsets))
                 else:
                     raise TypeError(f"Unsupported list element type for {field_name}")
+
+            elif isinstance(value, str):
+                offsets[field_name] = builder.CreateString(value)
 
             elif isinstance(value, (int, float, bool)):
                 offsets[field_name] = value

@@ -4,13 +4,13 @@ include "configs.fbs";
 include "general.fbs";
 include "generators.fbs";
 
-namespace library;
+namespace sampletones.schemas.library;
 
 table LibraryFragment {
 	generator_class: generators.GeneratorClassName;
 	instruction: instructions.Instruction;
 	feature: [double];
-	sample: arrays.CyclicArray;
+	sample: sampletones.schemas.arrays.CyclicArray;
 	frequency: double;
 }
 

@@ -20,6 +20,7 @@ echo "Generating Python bindings for all .fbs files in: $SCRIPT_DIR"
 
 mapfile -t FBS_FILES < <(find . -type f -name '*.fbs' | sort)
 if [ "${#FBS_FILES[@]}" -eq 0 ]; then
+# echo filename path
   echo "no .fbs files found" >&2
   exit 0
 fi

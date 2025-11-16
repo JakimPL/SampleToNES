@@ -1,4 +1,4 @@
-namespace instructions.noise;
+namespace sampletones.schemas.instructions.noise;
 
 table NoiseInstruction {
 	on:bool;

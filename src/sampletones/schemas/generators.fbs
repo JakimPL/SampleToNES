@@ -1,4 +1,4 @@
-namespace generators;
+namespace sampletones.schemas.generators;
 
 enum GeneratorClassName: int {
 	PULSE_GENERATOR = 0,

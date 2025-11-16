@@ -2,10 +2,10 @@ include "instructions/pulse.fbs";
 include "instructions/triangle.fbs";
 include "instructions/noise.fbs";
 
-namespace instructions;
+namespace sampletones.schemas.instructions;
 
 union Instruction {
-    instructions.pulse.PulseInstruction,
-    instructions.triangle.TriangleInstruction,
-    instructions.noise.NoiseInstruction
+    sampletones.schemas.instructions.pulse.PulseInstruction,
+    sampletones.schemas.instructions.triangle.TriangleInstruction,
+    sampletones.schemas.instructions.noise.NoiseInstruction
 }
