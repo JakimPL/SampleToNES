@@ -26,7 +26,7 @@ pip install pyinstaller
 
 # --- Build executable ---
 echo "Building executable..."
-pyinstaller --name sampletones --onefile --distpath . src/sampletones/__main__.py
+pyinstaller --name sampletones --onefile --distpath . --icon src/sampletones/icons/icon-256.png --add-data "src/sampletones/icons:sampletones/icons" src/sampletones/__main__.py
 
 echo
 if [[ -f sampletones ]]; then

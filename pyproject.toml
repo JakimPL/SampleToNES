@@ -30,3 +30,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sampletones"]
+
+[tool.hatch.build]
+include = ["src/sampletones/icons/*"]
