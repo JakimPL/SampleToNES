@@ -194,6 +194,8 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
 MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
 MSG_LIBRARY_FILE_ERROR = "Error while loading the library file."
 MSG_LIBRARY_LOAD_ERROR = "Error while loading library data."
+MSG_LIBRARY_INVALID_DATA_ERROR = "Invalid library data file."
+MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR = "Incompatible library data version: {}, expected {}."
 MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
 

@@ -1,3 +1,6 @@
+from .version import IncompatibleVersionError
+
+
 class LibraryError(Exception):
     """Base class for exceptions raised by the library."""
 
@@ -18,6 +21,12 @@ class LoadLibraryError(LibraryError):
 
 class InvalidLibraryDataError(LibraryError):
     """Exception raised when the library data is invalid or corrupted."""
+
+    pass
+
+
+class IncompatibleLibraryDataVersionError(IncompatibleVersionError, LibraryError):
+    """Raised when the library data version is incompatible."""
 
     pass
 

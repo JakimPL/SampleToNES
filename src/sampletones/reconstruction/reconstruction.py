@@ -109,7 +109,7 @@ class Reconstruction(BaseModel):
     def load(cls, filepath: Union[str, Path]) -> Self:
 
         data = load_json(filepath)
-        cls.validate_json(data)
+        cls.validate_reconstruction(data)
 
         data["approximation"] = deserialize_array(data["approximation"])
         data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
@@ -122,7 +122,7 @@ class Reconstruction(BaseModel):
         return cls(**data)
 
     @staticmethod
-    def validate_json(data: Dict[str, Any]) -> None:
+    def validate_reconstruction(data: Dict[str, Any]) -> None:
         metadata = data.get("metadata", {})
         if SAMPLETONES_NAME not in metadata:
             raise InvalidReconstructionError("Metadata is missing. Probably not a valid reconstruction file.")

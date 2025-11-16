@@ -1,17 +1,23 @@
 import json
 from functools import cached_property
 from pathlib import Path
-from typing import Collection, Dict, Generic, List, Self, Type, Union
+from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
 
 import msgpack
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
-from sampletones.constants.application import default_metadata
+from sampletones.constants.application import (
+    SAMPLETONES_LIBRARY_DATA_VERSION,
+    SAMPLETONES_NAME,
+    compare_versions,
+    default_metadata,
+)
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.exceptions import InvalidLibraryDataError
+from sampletones.exceptions.library import IncompatibleLibraryDataVersionError
 from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
@@ -195,7 +201,29 @@ class LibraryData(BaseModel):
             raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
         except ValueError as exception:
             raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
+
+        cls.validate_library_data(data)
         return LibraryData.deserialize(data)
+
+    @staticmethod
+    def validate_library_data(data: Dict[str, Any]) -> None:
+        metadata = data.get("metadata", {})
+        if SAMPLETONES_NAME not in metadata:
+            raise InvalidLibraryDataError("Metadata is missing. Probably not a valid library data file.")
+
+        metadata = metadata[SAMPLETONES_NAME]
+        library_version = metadata.get("library_data_version")
+
+        if library_version is None:
+            raise InvalidLibraryDataError("Library data version is missing in metadata.")
+
+        if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:
+            raise IncompatibleLibraryDataVersionError(
+                f"Library data version mismatch: expected "
+                f"{SAMPLETONES_LIBRARY_DATA_VERSION}, got {library_version}.",
+                expected_version=SAMPLETONES_LIBRARY_DATA_VERSION,
+                actual_version=library_version,
+            )
 
     @field_serializer("data")
     def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> SerializedData:

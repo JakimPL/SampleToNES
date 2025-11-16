@@ -1,3 +1,6 @@
+from .version import IncompatibleVersionError
+
+
 class ReconstructionError(Exception):
     """Base class for reconstruction errors."""
 
@@ -10,10 +13,7 @@ class InvalidReconstructionError(ReconstructionError):
     pass
 
 
-class IncompatibleReconstructionVersionError(ReconstructionError):
+class IncompatibleReconstructionVersionError(IncompatibleVersionError, ReconstructionError):
     """Raised when the reconstruction data version is incompatible."""
 
-    def __init__(self, message: str, expected_version: str, actual_version: str) -> None:
-        self.expected_version = expected_version
-        self.actual_version = actual_version
-        super().__init__(message)
+    pass

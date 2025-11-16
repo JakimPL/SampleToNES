@@ -5,6 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones.configs import LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import WindowNotAvailableError
+from sampletones.exceptions.library import (
+    IncompatibleLibraryDataVersionError,
+    InvalidLibraryDataError,
+)
 from sampletones.instructions import Instruction
 from sampletones.library import LibraryFragment, LibraryKey
 from sampletones.parallelization import TaskProgress, TaskStatus
@@ -35,6 +39,8 @@ from ..constants import (
     MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
     MSG_LIBRARY_GENERATION_SUCCESS,
+    MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
+    MSG_LIBRARY_INVALID_DATA_ERROR,
     MSG_LIBRARY_LOAD_ERROR,
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NOT_LOADED,
@@ -202,6 +208,22 @@ class GUILibraryPanel(GUITreePanel):
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_FILE_ERROR)
+        except InvalidLibraryDataError as exception:
+            logger.error_with_traceback(exception, f"Invalid library data file for {library_key}")
+            show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_ERROR)
+        except IncompatibleLibraryDataVersionError as exception:
+            logger.error_with_traceback(
+                exception,
+                f"Incompatible library data version for key {library_key}: "
+                f"{exception.actual_version} != expected {exception.expected_version}",
+            )
+            show_error_dialog(
+                exception,
+                MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR.format(
+                    exception.actual_version,
+                    exception.expected_version,
+                ),
+            )
         except Exception as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
