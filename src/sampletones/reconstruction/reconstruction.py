@@ -5,16 +5,24 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config
-from sampletones.constants.application import SAMPLETONES_NAME, default_metadata
+from sampletones.constants.application import (
+    SAMPLETONES_NAME,
+    SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
+    compare_versions,
+    default_metadata,
+)
 from sampletones.constants.enums import GeneratorName, InstructionClassName
-from sampletones.exceptions import InvalidReconstructionError
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidReconstructionError,
+)
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionClass,
     InstructionUnion,
 )
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Metadata, SerializedData
 from sampletones.typehints.general import FeatureMap
 from sampletones.utils import deserialize_array, load_json, save_json, serialize_array
 from sampletones.utils.logger import logger
@@ -32,7 +40,7 @@ class Reconstruction(BaseModel):
     config: Config = Field(..., description="Configuration used for reconstruction")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
-    metadata: SerializedData = Field(
+    metadata: Metadata = Field(
         default_factory=lambda: default_metadata(include_reconstruction_version=True),
         description="Reconstruction metadata",
     )
@@ -115,8 +123,19 @@ class Reconstruction(BaseModel):
 
     @staticmethod
     def validate_json(data: Dict[str, Any]) -> None:
-        if SAMPLETONES_NAME not in data.get("metadata", {}):
+        metadata = data.get("metadata", {})
+        if SAMPLETONES_NAME not in metadata:
             raise InvalidReconstructionError("Metadata is missing. Probably not a valid reconstruction file.")
+
+        metadata = metadata[SAMPLETONES_NAME]
+        reconstruction_version = metadata.get("reconstruction_data_version")
+
+        # TODO: handle older versions
+        if compare_versions(reconstruction_version, SAMPLETONES_RECONSTRUCTION_DATA_VERSION) != 0:
+            raise IncompatibleReconstructionVersionError(
+                f"Reconstruction data version mismatch: expected "
+                f"{SAMPLETONES_RECONSTRUCTION_DATA_VERSION}, got {reconstruction_version}."
+            )
 
         for field in [
             "approximation",

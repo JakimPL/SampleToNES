@@ -6,7 +6,11 @@ from .library import (
     NoLibraryDataError,
 )
 from .playback import PlaybackError
-from .reconstruction import InvalidReconstructionError, ReconstructionError
+from .reconstruction import (
+    IncompatibleReconstructionVersionError,
+    InvalidReconstructionError,
+    ReconstructionError,
+)
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
@@ -18,6 +22,7 @@ __all__ = [
     "PlaybackError",
     "ReconstructionError",
     "InvalidReconstructionError",
+    "IncompatibleReconstructionVersionError",
     "WindowError",
     "WindowNotAvailableError",
 ]
