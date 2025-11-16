@@ -1,8 +1,7 @@
-import json
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Collection, Dict, Generic, List, Self, Type, Union
+from typing import Any, Collection, Dict, Generic, List, Self, Union
 
 import msgpack
 import numpy as np
@@ -25,7 +24,7 @@ from sampletones.exceptions import (
 )
 from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
+from sampletones.generators import GeneratorType
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, Metadata, SerializedData
 from sampletones.utils import dump
@@ -101,13 +100,6 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
     @property
     def length(self) -> int:
         return self.sample.length
-
-    @staticmethod
-    def load_instruction(data: SerializedData) -> InstructionType:
-        instruction_dictionary = json.loads(data["instruction"])
-        instruction_class: Type[InstructionType] = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
-        instruction = instruction_class(**instruction_dictionary)
-        return instruction
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

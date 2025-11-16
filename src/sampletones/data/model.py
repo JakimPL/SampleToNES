@@ -95,12 +95,22 @@ class DataModel(BaseModel):
             if getter is None:
                 raise AttributeError(f"{fb_obj.__class__.__name__} missing getter '{camel}'")
 
-            if field_info.annotation == np.ndarray:
+            annotation = field_info.annotation
+            print(annotation)
+            assert annotation is not None, f"Field '{field_name}' has no annotation"
+            if annotation == np.ndarray:
                 value = cls._deserialize_array(fb_obj, field_name)
+
+            elif isinstance(annotation, type) and issubclass(annotation, DataModel):
+                fb_child = getter()
+                value = annotation._deserialize_inner(fb_child)
+
             else:
                 value = getter()
 
             field_values[field_name] = value
+
+        print(field_values)
 
         return cls(**field_values)
 
