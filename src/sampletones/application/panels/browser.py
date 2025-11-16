@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
+    InvalidReconstructionValuesError,
 )
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
@@ -22,10 +23,11 @@ from ..constants import (
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTION_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTION_LOAD_FAILURE,
+    MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
@@ -147,7 +149,11 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_LOAD_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            return
+        except InvalidReconstructionValuesError as exception:
+            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE)
             return
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")

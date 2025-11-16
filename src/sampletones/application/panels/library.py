@@ -7,6 +7,7 @@ from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,
+    InvalidLibraryDataValuesError,
     WindowNotAvailableError,
 )
 from sampletones.instructions import Instruction
@@ -33,7 +34,7 @@ from ..constants import (
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_LIBRARY_LIBRARIES,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
-    MSG_LIBRARY_FILE_ERROR,
+    MSG_LIBRARY_FILE_LOAD_ERROR,
     MSG_LIBRARY_FILE_NOT_FOUND,
     MSG_LIBRARY_GENERATING,
     MSG_LIBRARY_GENERATION_CANCELLATION,
@@ -41,6 +42,7 @@ from ..constants import (
     MSG_LIBRARY_GENERATION_SUCCESS,
     MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
     MSG_LIBRARY_INVALID_DATA_ERROR,
+    MSG_LIBRARY_INVALID_DATA_VALUES_ERROR,
     MSG_LIBRARY_LOAD_ERROR,
     MSG_LIBRARY_LOADING,
     MSG_LIBRARY_NOT_LOADED,
@@ -207,7 +209,10 @@ class GUILibraryPanel(GUITreePanel):
             )
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
-            show_error_dialog(exception, MSG_LIBRARY_FILE_ERROR)
+            show_error_dialog(exception, MSG_LIBRARY_FILE_LOAD_ERROR)
+        except InvalidLibraryDataValuesError as exception:
+            logger.error_with_traceback(exception, f"Library data contains invalid values for key {library_key}")
+            show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_VALUES_ERROR)
         except InvalidLibraryDataError as exception:
             logger.error_with_traceback(exception, f"Invalid library data file for {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_ERROR)
