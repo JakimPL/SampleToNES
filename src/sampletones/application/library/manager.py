@@ -157,9 +157,14 @@ class LibraryManager:
         self.creator.start(window)
 
     def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
-        key, library_data = result
-        self.library.save_data(key, library_data)
-        self.current_library_key = key
+        try:
+            key, library_data = result
+            self.library.save_data(key, library_data)
+            self.current_library_key = key
+        except Exception as exception:
+            if self._on_generation_error is not None:
+                self._on_generation_error(exception)
+            raise exception
         if self._on_generation_completed is not None:
             self._on_generation_completed()
 

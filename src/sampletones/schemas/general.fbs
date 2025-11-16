@@ -1,0 +1,4 @@
+namespace general;
+
+table KeyValue { key:string; value:string; }
+table Metadata { namespace:string; entries:[KeyValue]; }

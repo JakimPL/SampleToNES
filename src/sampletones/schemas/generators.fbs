@@ -1,0 +1,7 @@
+namespace generators;
+
+enum GeneratorClassName: int {
+	PULSE_GENERATOR = 0,
+	TRIANGLE_GENERATOR = 1,
+	NOISE_GENERATOR = 2
+}
