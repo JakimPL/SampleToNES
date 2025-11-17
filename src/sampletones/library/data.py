@@ -12,14 +12,12 @@ from sampletones.constants.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
     compare_versions,
-    default_metadata,
 )
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones.data import DataModel
+from sampletones.data import DataModel, Metadata, default_metadata
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
-    InvalidLibraryDataError,
     InvalidLibraryDataValuesError,
 )
 from sampletones.ffts import CyclicArray, Window
@@ -30,7 +28,7 @@ from sampletones.generators import (
     GeneratorType,
 )
 from sampletones.instructions import InstructionType, InstructionUnion
-from sampletones.typehints import Initials, Metadata, SerializedData
+from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import load_binary, save_binary
 
 from .fragment import Fragment
@@ -128,7 +126,7 @@ class LibraryData(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(
-        default_factory=lambda: default_metadata(include_library_version=True),
+        default_factory=default_metadata,
         description="Library metadata",
     )
     config: LibraryConfig = Field(..., description="Configuration of the library data")
@@ -198,15 +196,10 @@ class LibraryData(DataModel):
 
     @staticmethod
     def validate_library_data(metadata: Metadata) -> None:
-        if SAMPLETONES_NAME not in metadata:
-            raise InvalidLibraryDataError("Metadata is missing. Probably not a valid library data file.")
+        application_metadata = metadata.application_name
+        assert application_metadata == SAMPLETONES_NAME, "Metadata application name mismatch."
 
-        application_metadata = metadata[SAMPLETONES_NAME]
-        library_version = application_metadata.get("library_data_version")
-
-        if library_version is None:
-            raise InvalidLibraryDataError("Library data version is missing in metadata.")
-
+        library_version = metadata.library_data_version
         if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:
             raise IncompatibleLibraryDataVersionError(
                 f"Library data version mismatch: expected "

@@ -9,9 +9,9 @@ from sampletones.constants.application import (
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
     compare_versions,
-    default_metadata,
 )
 from sampletones.constants.enums import GeneratorName
+from sampletones.data import Metadata, default_metadata
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
@@ -23,8 +23,7 @@ from sampletones.instructions import (
     InstructionUnion,
     get_instruction_by_type,
 )
-from sampletones.typehints import Metadata, SerializedData
-from sampletones.typehints.general import FeatureMap
+from sampletones.typehints import FeatureMap, SerializedData
 from sampletones.utils import deserialize_array, load_json, save_json, serialize_array
 from sampletones.utils.logger import logger
 
@@ -35,7 +34,7 @@ class Reconstruction(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(
-        default_factory=lambda: default_metadata(include_reconstruction_version=True),
+        default_factory=default_metadata,
         description="Reconstruction metadata",
     )
     audio_filepath: Path = Field(..., description="Path to the original audio file")
