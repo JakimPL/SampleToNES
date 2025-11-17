@@ -1,0 +1,18 @@
+include "metadata.fbs";
+include "configs/config.fbs";
+include "reconstruction/approximations.fbs";
+include "reconstruction/errors.fbs";
+include "reconstruction/instructions.fbs";
+
+namespace schemas.reconstruction;
+
+table FBReconstruction {
+    metadata: schemas.metadata.FBMetadata;
+    audio_filepath: string;
+    config: schemas.configs.FBConfig;
+    approximation: [float];
+    approximations: [FBApproximationsItem];
+    instructions: [FBInstructionsItem];
+    errors: [FBErrors];
+    coefficient: float;
+}

@@ -23,7 +23,7 @@ from sampletones.typehints import FeatureMap, SerializedData
 from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
 
-from .state import ReconstructionState
+from ..reconstructor.state import ReconstructionState
 
 
 class Reconstruction(DataModel):

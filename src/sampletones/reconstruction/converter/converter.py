@@ -6,7 +6,7 @@ from sampletones.constants.paths import EXT_FILE_WAVE
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger, logger
 
-from ..reconstructor import Reconstructor
+from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file
 from .paths import filter_files, get_output_path, get_relative_path
 

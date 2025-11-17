@@ -17,8 +17,8 @@ from sampletones.generators import (
 from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
+from ..reconstruction.reconstruction import Reconstruction
 from .approximation import ApproximationData
-from .reconstruction import Reconstruction
 from .state import ReconstructionState
 from .worker import ReconstructorWorker
 

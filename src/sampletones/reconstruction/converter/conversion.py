@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Tuple
 
 from ...utils.logger import logger
-from ..reconstructor import Reconstructor
+from ..reconstructor.reconstructor import Reconstructor
 
 
 def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:

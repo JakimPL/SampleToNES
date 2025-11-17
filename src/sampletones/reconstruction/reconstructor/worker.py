@@ -11,8 +11,8 @@ from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import InstructionUnion
 from sampletones.library import LibraryData
 
+from ..criterion import Criterion
 from .approximation import ApproximationData
-from .criterion import Criterion
 
 
 @dataclass(frozen=True)

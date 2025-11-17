@@ -1,0 +1,8 @@
+namespace schemas.reconstruction;
+
+table FBApproximationsItem {
+    name: string;
+    approximation: [float];
+}
+
+root_type FBApproximationsItem;
