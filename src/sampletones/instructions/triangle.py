@@ -42,12 +42,12 @@ class TriangleInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.instructions.triangle.TriangleInstruction as FBTriangleInstruction
+        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
 
         return FBTriangleInstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.instructions.triangle.TriangleInstruction as FBTriangleInstruction
+        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
 
-        return FBTriangleInstruction.TriangleInstruction
+        return FBTriangleInstruction.FBTriangleInstruction

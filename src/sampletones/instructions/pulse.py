@@ -72,12 +72,12 @@ class PulseInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.instructions.pulse.PulseInstruction as FBPulseInstruction
+        import schemas.instructions.pulse.FBPulseInstruction as FBPulseInstruction
 
         return FBPulseInstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.instructions.pulse.PulseInstruction as FBPulseInstruction
+        import schemas.instructions.pulse.FBPulseInstruction as FBPulseInstruction
 
-        return FBPulseInstruction.PulseInstruction
+        return FBPulseInstruction.FBPulseInstruction

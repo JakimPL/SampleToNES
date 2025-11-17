@@ -107,15 +107,15 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.library.LibraryFragment as FBLibraryFragment
+        import schemas.library.FBLibraryFragment as FBLibraryFragment
 
         return FBLibraryFragment
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.library.LibraryFragment as FBLibraryFragment
+        import schemas.library.FBLibraryFragment as FBLibraryFragment
 
-        return FBLibraryFragment.LibraryFragment
+        return FBLibraryFragment.FBLibraryFragment
 
     @classmethod
     def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
@@ -217,12 +217,12 @@ class LibraryData(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.library.LibraryData as FBLibraryData
+        import schemas.library.FBLibraryData as FBLibraryData
 
         return FBLibraryData
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.library.LibraryData as FBLibraryData
+        import schemas.library.FBLibraryData as FBLibraryData
 
-        return FBLibraryData.LibraryData
+        return FBLibraryData.FBLibraryData
