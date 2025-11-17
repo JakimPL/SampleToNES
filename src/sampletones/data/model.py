@@ -49,7 +49,7 @@ class DataModel(BaseModel):
                 offsets[field_name] = value._serialize_inner(builder)
 
             elif isinstance(value, np.ndarray):
-                offsets[field_name] = self._serialize_array(builder, value)
+                offsets[field_name] = self._serialize_numpy_array(builder, value)
 
             elif isinstance(value, list):
                 offsets[field_name] = self._serialize_list(builder, value)
@@ -85,7 +85,7 @@ class DataModel(BaseModel):
             assert annotation is not None, f"Field '{field_name}' has no annotation"
 
             if annotation is np.ndarray:
-                value = cls._deserialize_array(fb_obj, field_name, np.float32)
+                value = cls._deserialize_numpy_array(fb_obj, field_name)
 
             elif isinstance(annotation, TypeVar):
                 table = getter()
@@ -152,10 +152,50 @@ class DataModel(BaseModel):
         raise TypeError(f"Unsupported list element type {type(collection[0])} or mixed types for serialization")
 
     @classmethod
-    def _deserialize_list(cls, fb_obj: Any, field_name: str, list_class: type) -> list:
-        return list(cls._deserialize_array(fb_obj, field_name, list_class))
+    def _deserialize_list(cls, fb_obj: Any, field_name: str, element_class: type) -> np.ndarray | list:
+        camel = snake_to_camel(field_name)
+        getter = getattr(fb_obj, camel, None)
+        length_fn = getattr(fb_obj, f"{camel}Length", None)
 
-    def _serialize_array(self, builder: Builder, array: np.ndarray) -> int:
+        if getter is None or length_fn is None:
+            raise AttributeError(f"{fb_obj.__class__.__name__} missing getter or Length method for field '{camel}'")
+
+        length = length_fn()
+        if length == 0:
+            return []
+
+        origin = get_origin(element_class)
+        assert origin is None, f"Generics are not supported for field '{field_name}'"
+
+        if issubclass(element_class, DataModel):
+            items = []
+            for i in range(length):
+                items.append(element_class._deserialize_inner(getter(i)))
+            return items
+
+        if issubclass(element_class, StrEnum):
+            items = []
+            for i in range(length):
+                raw = getter(i)
+                items.append(element_class(raw.decode("utf-8")))
+            return items
+
+        if element_class is str:
+            items = []
+            for i in range(length):
+                raw = getter(i)
+                items.append(raw.decode("utf-8"))
+            return items
+
+        if element_class in (int, float, bool):
+            arr = []
+            for i in range(length):
+                arr.append(getter(i))
+            return np.array(arr)
+
+        raise TypeError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
+
+    def _serialize_numpy_array(self, builder: Builder, array: np.ndarray) -> int:
         element_size = 4
         builder.StartVector(element_size, len(array), element_size)
         for value in reversed(array):
@@ -164,34 +204,24 @@ class DataModel(BaseModel):
         return builder.EndVector(len(array))
 
     @classmethod
-    def _deserialize_array(cls, fb_obj: Any, field_name: str, list_class: type) -> np.ndarray:
+    def _deserialize_numpy_array(cls, fb_obj: Any, field_name: str) -> np.ndarray:
         camel = snake_to_camel(field_name)
-        getter = getattr(fb_obj, camel, None)
-        assert getter is not None, f"{fb_obj.__class__.__name__} missing getter '{camel}'"
+        length_fn = getattr(fb_obj, camel + "Length")
 
-        length_function = getattr(fb_obj, f"{camel}Length", None)
-        if length_function is None or not callable(getter):
-            raise AttributeError(f"{fb_obj.__class__.__name__} missing getter or Length for field '{field_name}'")
-
-        length = length_function()
-        assert isinstance(length, int)
-
+        length = length_fn()
         if length == 0:
-            return np.empty(0)
+            return np.empty(0, dtype=np.float32)
 
-        array = []
-        for i in range(length):
-            value = getter(i)
-            if issubclass(list_class, DataModel):
-                table = value
-                deserialized_value = list_class._deserialize_inner(table)
-                array.append(deserialized_value)
-            if issubclass(list_class, StrEnum):
-                string = value.decode("utf-8")
-                array.append(list_class(string))
-            else:
-                array.append(value)
-        return np.array(array)
+        tab = fb_obj._tab
+        field_offset = tab.Offset(fb_obj.__class__.__dict__[camel].__code__.co_consts[1])
+
+        if field_offset == 0:
+            return np.empty(0, dtype=np.float32)
+
+        start = tab.Pos + field_offset
+        buf = memoryview(tab.Bytes)[start : start + length * 4]  # float32 = 4 bytes
+
+        return np.frombuffer(buf, dtype=np.float32)
 
     @staticmethod
     def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[str, object]:
