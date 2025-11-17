@@ -5,7 +5,7 @@ namespace schemas.library;
 
 table FBLibraryItem {
 	instruction_class: string;
-    instruction: schemas.instructions.FBInstruction;
+    instruction: schemas.instructions.FBInstructionUnion;
     fragment: FBLibraryFragment;
 }
 

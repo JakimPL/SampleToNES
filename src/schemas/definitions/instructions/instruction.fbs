@@ -4,8 +4,15 @@ include "instructions/noise.fbs";
 
 namespace schemas.instructions;
 
-union FBInstruction {
+union FBInstructionUnion {
     schemas.instructions.FBPulseInstruction,
     schemas.instructions.FBTriangleInstruction,
     schemas.instructions.FBNoiseInstruction
 }
+
+table FBInstructionData {
+    instruction_class: string;
+    instruction: FBInstructionUnion;
+}
+
+root_type FBInstructionData;

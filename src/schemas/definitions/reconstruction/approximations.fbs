@@ -1,7 +1,7 @@
 namespace schemas.reconstruction;
 
 table FBApproximationsItem {
-    name: string;
+    generator_name: string;
     approximation: [float];
 }
 

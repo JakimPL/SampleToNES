@@ -4,7 +4,7 @@ namespace schemas.reconstruction;
 
 table FBInstructionsItem {
     generator_name: string;
-    instruction: schemas.instructions.FBInstruction;
+    instructions: [schemas.instructions.FBInstructionData];
 }
 
 root_type FBInstructionsItem;

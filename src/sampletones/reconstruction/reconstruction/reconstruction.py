@@ -24,10 +24,13 @@ from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
 
 from ..reconstructor.state import ReconstructionState
+from .approximations import ApproximationsItem
+from .errors import Errors
+from .instructions import InstructionsItem
 
 
 class Reconstruction(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
         default_factory=default_metadata,
@@ -36,9 +39,9 @@ class Reconstruction(DataModel):
     audio_filepath: Path = Field(..., description="Path to the original audio file")
     config: Config = Field(..., description="Configuration used for reconstruction")
     approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations: Dict[GeneratorName, np.ndarray] = Field(..., description="Approximations per generator")
-    instructions: Dict[GeneratorName, List[InstructionUnion]] = Field(..., description="Instructions per generator")
-    errors: Dict[GeneratorName, List[float]] = Field(..., description="Reconstruction errors per generator")
+    approximations: List[ApproximationsItem] = Field(..., description="Approximations per generator")
+    instructions: List[InstructionsItem] = Field(..., description="Instructions per generator")
+    errors: List[Errors] = Field(..., description="Reconstruction errors per generator")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
 
     @staticmethod
