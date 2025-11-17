@@ -1,0 +1,13 @@
+include "configs/library.fbs";
+include "library/item.fbs";
+include "metadata.fbs";
+
+namespace schemas.library;
+
+table FBLibraryData {
+	metadata: schemas.metadata.FBMetadata;
+	config: schemas.configs.FBLibraryConfig;
+	items: [FBLibraryItem];
+}
+
+root_type FBLibraryData;

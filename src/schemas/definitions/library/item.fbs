@@ -1,0 +1,12 @@
+include "instructions/instruction.fbs";
+include "library/fragment.fbs";
+
+namespace schemas.library;
+
+table FBLibraryItem {
+	instruction_class: string;
+    instruction: schemas.instructions.FBInstruction;
+    fragment: FBLibraryFragment;
+}
+
+root_type FBLibraryItem;
