@@ -25,6 +25,7 @@ src/schemas/**/*.py
 *.log
 *.npy
 *.dat
+*.stn
 *.fti
 *.lock
 *.spec

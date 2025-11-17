@@ -13,10 +13,15 @@ table FBLibraryFragment {
 	frequency: float;
 }
 
+table FBLibraryItem {
+    key: schemas.instructions.FBInstruction;
+    value: FBLibraryFragment;
+}
+
 table FBLibraryData {
 	metadata: [schemas.metadata.FBMetadata];
 	config: schemas.configs.FBLibraryConfig;
-	data: [FBLibraryFragment];
+	data: [FBLibraryItem];
 }
 
 root_type FBLibraryData;
