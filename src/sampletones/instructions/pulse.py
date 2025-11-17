@@ -2,6 +2,7 @@ from types import ModuleType
 
 from pydantic import Field
 
+from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import (
     DUTY_CYCLES,
     MAX_DUTY_CYCLE,
@@ -69,6 +70,10 @@ class PulseInstruction(Instruction):
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - pitch_difference)
 
         return pitch_distance + volume_distance
+
+    @classmethod
+    def class_name(cls) -> InstructionClassName:
+        return InstructionClassName.PULSE_INSTRUCTION
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

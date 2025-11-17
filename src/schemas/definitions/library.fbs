@@ -14,14 +14,15 @@ table FBLibraryFragment {
 }
 
 table FBLibraryItem {
-    key: schemas.instructions.FBInstruction;
-    value: FBLibraryFragment;
+	instruction_class: string;
+    instruction: schemas.instructions.FBInstruction;
+    fragment: FBLibraryFragment;
 }
 
 table FBLibraryData {
-	metadata: [schemas.metadata.FBMetadata];
+	metadata: schemas.metadata.FBMetadata;
 	config: schemas.configs.FBLibraryConfig;
-	data: [FBLibraryItem];
+	items: [FBLibraryItem];
 }
 
 root_type FBLibraryData;

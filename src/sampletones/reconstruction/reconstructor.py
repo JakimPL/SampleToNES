@@ -108,8 +108,8 @@ class Reconstructor:
                 f"No library data found for the given configuration and window: {library.get_path(key)}"
             )
 
-        return LibraryData(
-            config=self.config.library,
+        return LibraryData.create(
+            config=self.config,
             data=library_data.filter({generator.class_name() for generator in self.generators.values()}),
         )
 

@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Collection, Dict, Generic, Self, Union
+from typing import Collection, Dict, Generic, List, Self, Union
 
 import numpy as np
 from flatbuffers.table import Table
@@ -13,7 +13,7 @@ from sampletones.constants.application import (
     SAMPLETONES_NAME,
     compare_versions,
 )
-from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName, InstructionClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel, Metadata, default_metadata
 from sampletones.exceptions import (
@@ -27,7 +27,11 @@ from sampletones.generators import (
     GENERATOR_TO_INSTRUCTION_MAP,
     GeneratorType,
 )
-from sampletones.instructions import InstructionType, InstructionUnion
+from sampletones.instructions import (
+    INSTRUCTION_CLASS_MAP,
+    InstructionType,
+    InstructionUnion,
+)
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import load_binary, save_binary
 
@@ -122,18 +126,51 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         return instruction_class._deserialize_from_table(table)
 
 
+class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
+
+    instruction_class: InstructionClassName = Field(..., description="Class name of the instruction")
+    instruction: InstructionType = Field(..., description="Instruction instance")
+    fragment: LibraryFragment[InstructionType, GeneratorType] = Field(
+        ...,
+        description="Library fragment associated with the instruction",
+    )
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.library.FBLibraryItem as FBLibraryItem
+
+        return FBLibraryItem
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.library.FBLibraryItem as FBLibraryItem
+
+        return FBLibraryItem.FBLibraryItem
+
+    @classmethod
+    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+        instruction_class = InstructionClassName(field_values["instruction_class"])
+        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class]
+        return instruction_class._deserialize_from_table(table)
+
+
 class LibraryData(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
         default_factory=default_metadata,
         description="Library metadata",
     )
     config: LibraryConfig = Field(..., description="Configuration of the library data")
-    data: Dict[InstructionUnion, LibraryFragment] = Field(
+    items: List[LibraryItem] = Field(
         ...,
         description="Library data mapping instructions to fragments",
     )
+
+    @cached_property
+    def data(self) -> Dict[InstructionUnion, LibraryFragment]:
+        return {item.instruction: item.fragment for item in self.items}
 
     @cached_property
     def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
@@ -149,6 +186,19 @@ class LibraryData(DataModel):
 
     def __getitem__(self, key: InstructionUnion) -> LibraryFragment:
         return self.data[key]
+
+    @classmethod
+    def create(cls, config: Union[Config, LibraryConfig], data: Dict[InstructionUnion, LibraryFragment]) -> Self:
+        library_config = config.library if isinstance(config, Config) else config
+        items = [
+            LibraryItem(
+                instruction_class=instruction.class_name(),
+                instruction=instruction,
+                fragment=fragment,
+            )
+            for instruction, fragment in data.items()
+        ]
+        return cls(config=library_config, items=items)
 
     def filter(
         self, generator_classes: Union[GeneratorClassName, Collection[GeneratorClassName]]
@@ -168,9 +218,6 @@ class LibraryData(DataModel):
 
     def keys(self):
         return self.data.keys()
-
-    def items(self):
-        return self.data.items()
 
     def values(self):
         return self.data.values()

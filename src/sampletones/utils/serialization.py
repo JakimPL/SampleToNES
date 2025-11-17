@@ -2,9 +2,8 @@ import base64
 import hashlib
 import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Union
 
-import flatbuffers
 import numpy as np
 from pydantic import BaseModel
 
@@ -64,17 +63,3 @@ def hash_model(model: BaseModel, length: int = 32) -> str:
 def snake_to_camel(snake_str: str) -> str:
     parts = snake_str.split("_")
     return "".join(word.capitalize() for word in parts)
-
-
-def read_string_from_table(table_object: flatbuffers.table.Table, field_index: int) -> Optional[str]:
-    buffer = table_object.Bytes
-    position = table_object.Pos
-    relative_offset = table_object.Offset(field_index)
-    if relative_offset == 0:
-        return None
-
-    string_object_position = relative_offset + position
-    string_length = int.from_bytes(buffer[string_object_position : string_object_position + 4], "little")
-    print(string_length)
-
-    return buffer[string_object_position + 4 : string_object_position + 4 + string_length].decode("utf-8")

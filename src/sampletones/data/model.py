@@ -1,6 +1,6 @@
 from enum import StrEnum
 from types import ModuleType
-from typing import Any, List, Self, Tuple, TypeVar
+from typing import Any, List, Self, Tuple, TypeVar, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -54,9 +54,6 @@ class DataModel(BaseModel):
             elif isinstance(value, list):
                 offsets[field_name] = self._serialize_list(builder, value)
 
-            elif isinstance(value, dict):
-                offsets[field_name] = self._serialize_dict(builder, value)
-
             elif isinstance(value, (StrEnum, str)):
                 offsets[field_name] = builder.CreateString(value)
 
@@ -79,7 +76,6 @@ class DataModel(BaseModel):
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
-            print(field_name, field_info.annotation)
             camel = snake_to_camel(field_name)
             getter = getattr(fb_obj, camel, None)
             if getter is None:
@@ -88,18 +84,16 @@ class DataModel(BaseModel):
             annotation = field_info.annotation
             assert annotation is not None, f"Field '{field_name}' has no annotation"
 
-            if annotation == np.ndarray:
-                value = cls._deserialize_array(fb_obj, field_name)
-
-            elif annotation == list:
-                value = cls._deserialize_list(fb_obj, field_name)
-
-            elif annotation == dict:
-                value = cls._deserialize_dict(fb_obj, field_name)
+            if annotation is np.ndarray:
+                value = cls._deserialize_array(fb_obj, field_name, np.float32)
 
             elif isinstance(annotation, TypeVar):
                 table = getter()
                 value = cls.deserialize_union(table, field_values)
+
+            elif get_origin(annotation) is list:
+                list_class = get_args(annotation)[0]
+                value = cls._deserialize_list(fb_obj, field_name, list_class)
 
             elif issubclass(annotation, DataModel):
                 fb_child = getter()
@@ -145,25 +139,8 @@ class DataModel(BaseModel):
                 second_kind, second_payload = self._prepare_value_for_slot(builder, second_element)
 
                 builder.StartObject(2)
-
-                if first_kind == "uoffset":
-                    builder.PrependUOffsetTRelativeSlot(0, first_payload, 0)
-                elif first_kind == "float64":
-                    builder.PrependFloat64Slot(0, first_payload, 0.0)
-                elif first_kind == "int32":
-                    builder.PrependInt32Slot(0, first_payload, 0)
-                elif first_kind == "bool":
-                    builder.PrependBoolSlot(0, first_payload, False)
-
-                if second_kind == "uoffset":
-                    builder.PrependUOffsetTRelativeSlot(1, second_payload, 0)
-                elif second_kind == "float64":
-                    builder.PrependFloat64Slot(1, second_payload, 0.0)
-                elif second_kind == "int32":
-                    builder.PrependInt32Slot(1, second_payload, 0)
-                elif second_kind == "bool":
-                    builder.PrependBoolSlot(1, second_payload, False)
-
+                self._write_slot_to_builder(builder, 0, first_kind, first_payload)
+                self._write_slot_to_builder(builder, 1, second_kind, second_payload)
                 entry_offsets.append(builder.EndObject())
 
             builder.StartVector(4, len(entry_offsets), 4)
@@ -175,18 +152,8 @@ class DataModel(BaseModel):
         raise TypeError(f"Unsupported list element type {type(collection[0])} or mixed types for serialization")
 
     @classmethod
-    def _deserialize_list(cls, fb_obj: Any, field_name: str) -> list:
-        return list(cls._deserialize_array(fb_obj, field_name))
-
-    def _serialize_dict(self, builder: Builder, dictionary: dict) -> int:
-        items = list(dictionary.items())
-        return self._serialize_list(builder, items)
-
-    @classmethod
-    def _deserialize_dict(cls, fb_obj: Any, field_name: str) -> dict:
-        keys = cls._deserialize_list(fb_obj, f"{field_name}_keys")
-        values = cls._deserialize_list(fb_obj, f"{field_name}_values")
-        return dict(zip(keys, values))
+    def _deserialize_list(cls, fb_obj: Any, field_name: str, list_class: type) -> list:
+        return list(cls._deserialize_array(fb_obj, field_name, list_class))
 
     def _serialize_array(self, builder: Builder, array: np.ndarray) -> int:
         element_size = 4
@@ -197,7 +164,7 @@ class DataModel(BaseModel):
         return builder.EndVector(len(array))
 
     @classmethod
-    def _deserialize_array(cls, fb_obj: Any, field_name: str) -> np.ndarray:
+    def _deserialize_array(cls, fb_obj: Any, field_name: str, list_class: type) -> np.ndarray:
         camel = snake_to_camel(field_name)
         getter = getattr(fb_obj, camel, None)
         assert getter is not None, f"{fb_obj.__class__.__name__} missing getter '{camel}'"
@@ -212,7 +179,19 @@ class DataModel(BaseModel):
         if length == 0:
             return np.empty(0)
 
-        return np.array([getter(i) for i in range(length)])
+        array = []
+        for i in range(length):
+            value = getter(i)
+            if issubclass(list_class, DataModel):
+                table = value
+                deserialized_value = list_class._deserialize_inner(table)
+                array.append(deserialized_value)
+            if issubclass(list_class, StrEnum):
+                string = value.decode("utf-8")
+                array.append(list_class(string))
+            else:
+                array.append(value)
+        return np.array(array)
 
     @staticmethod
     def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[str, object]:
@@ -227,6 +206,18 @@ class DataModel(BaseModel):
         if isinstance(value, bool):
             return "bool", bool(value)
         raise TypeError(f"Unsupported tuple element type {type(value)}")
+
+    @staticmethod
+    def _write_slot_to_builder(builder: Builder, slot_index: int, value_kind: str, value_payload: object) -> None:
+        if value_kind == "uoffset":
+            return builder.PrependUOffsetTRelativeSlot(slot_index, value_payload, 0)
+        if value_kind == "float64":
+            return builder.PrependFloat64Slot(slot_index, value_payload, 0.0)
+        if value_kind == "int32":
+            return builder.PrependInt32Slot(slot_index, value_payload, 0)
+        if value_kind == "bool":
+            return builder.PrependBoolSlot(slot_index, value_payload, False)
+        raise TypeError(f"Unsupported slot kind {value_kind}")
 
     @classmethod
     def _deserialize_from_table(cls, table: Table) -> Self:
