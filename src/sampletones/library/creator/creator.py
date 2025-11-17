@@ -4,7 +4,10 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import BATCH_SIZE
 from sampletones.ffts import Window
-from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion, get_generators_map
+from sampletones.generators import (
+    GeneratorUnion,
+    get_generators_map,
+)
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger, logger

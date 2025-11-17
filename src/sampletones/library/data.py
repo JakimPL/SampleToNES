@@ -1,12 +1,11 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Collection, Dict, Generic, List, Self, Union
+from typing import Collection, Dict, Generic, Self, Union
 
-import msgpack
 import numpy as np
 from flatbuffers.table import Table
-from pydantic import ConfigDict, Field, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.application import (
@@ -32,7 +31,7 @@ from sampletones.generators import (
 )
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, Metadata, SerializedData
-from sampletones.utils import dump
+from sampletones.utils import load_binary, save_binary
 
 from .fragment import Fragment
 
@@ -179,45 +178,31 @@ class LibraryData(DataModel):
         return self.data.values()
 
     def save(self, path: Union[str, Path]) -> None:
-        dump = self.model_dump()
-        binary = msgpack.packb(dump)
-        assert binary is not None, "Failed to serialize LibraryData"
-        path_object = Path(path)
-        path_object.parent.mkdir(parents=True, exist_ok=True)
-        with open(path_object, "wb") as file:
-            file.write(binary)
+        binary = self.serialize()
+        save_binary(path, binary)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> "LibraryData":
-        path_object = Path(path)
-        with open(path_object, "rb") as file:
-            binary = file.read()
+        binary = load_binary(path)
 
         try:
-            data = msgpack.unpackb(binary)
-        except msgpack.ExtraData as exception:
-            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
-        except ValueError as exception:
-            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
-
-        cls.validate_library_data(data)
-
-        try:
-            data = LibraryData.deserialize(data)
+            library_data = LibraryData.deserialize(binary)
         except ValidationError as exception:
             raise InvalidLibraryDataValuesError(
-                f"Failed to deserialize LibraryData from {path_object}",
+                f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
                 exception,
             ) from exception
 
+        cls.validate_library_data(library_data.metadata)
+        return library_data
+
     @staticmethod
-    def validate_library_data(data: Dict[str, Any]) -> None:
-        metadata = data.get("metadata", {})
+    def validate_library_data(metadata: Metadata) -> None:
         if SAMPLETONES_NAME not in metadata:
             raise InvalidLibraryDataError("Metadata is missing. Probably not a valid library data file.")
 
-        metadata = metadata[SAMPLETONES_NAME]
-        library_version = metadata.get("library_data_version")
+        application_metadata = metadata[SAMPLETONES_NAME]
+        library_version = application_metadata.get("library_data_version")
 
         if library_version is None:
             raise InvalidLibraryDataError("Library data version is missing in metadata.")
@@ -230,39 +215,14 @@ class LibraryData(DataModel):
                 actual_version=library_version,
             )
 
-    @field_serializer("data")
-    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> SerializedData:
-        return {dump(instruction.model_dump()): fragment.model_dump() for instruction, fragment in data.items()}
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.library.LibraryData as FBLibraryData
+
+        return FBLibraryData
 
     @classmethod
-    def deserialize(cls, dictionary: SerializedData) -> Self:
-        config = LibraryConfig(**dictionary["config"])
+    def buffer_reader(cls) -> type:
+        import schemas.library.LibraryData as FBLibraryData
 
-        data = {}
-        for key, value in dictionary["data"].items():
-            instruction: InstructionUnion = LibraryFragment.load_instruction(
-                {
-                    "instruction": key,
-                    "generator_class": value["generator_class"],
-                }
-            )
-
-            fragment: LibraryFragment = LibraryFragment.deserialize(value)
-            data[instruction] = fragment
-
-        return cls(config=config, data=data)
-
-    @classmethod
-    def merge(cls, library_data_list: List[Self]) -> Self:
-        if not library_data_list:
-            raise ValueError("Cannot merge an empty list of LibraryData")
-
-        config: LibraryConfig = library_data_list[0].config
-        merged_data: Dict[InstructionUnion, LibraryFragment] = {}
-        for library_data in library_data_list:
-            assert config == library_data.config
-            merged_data.update(library_data.data)
-            if config is None:
-                config = library_data.config
-
-        return cls(config=config, data=merged_data)
+        return FBLibraryData.LibraryData

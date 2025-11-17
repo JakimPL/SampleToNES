@@ -5,19 +5,19 @@ include "general.fbs";
 
 namespace schemas.library;
 
-table LibraryFragment {
+table FBLibraryFragment {
 	generator_class: string;
-	instruction: schemas.instructions.Instruction;
-	feature: [double];
-	sample: schemas.arrays.CyclicArray;
-	frequency: double;
+	instruction: schemas.instructions.FBInstruction;
+	feature: [float];
+	sample: schemas.arrays.FBCyclicArray;
+	frequency: float;
 }
 
-table LibraryData {
-	metadata: [schemas.general.Metadata];
-	config: schemas.configs.LibraryConfig;
-	data: [LibraryFragment];
+table FBLibraryData {
+	metadata: [schemas.general.FBMetadata];
+	config: schemas.configs.FBLibraryConfig;
+	data: [FBLibraryFragment];
 }
 
-root_type LibraryData;
+root_type FBLibraryData;
 

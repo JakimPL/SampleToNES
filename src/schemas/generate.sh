@@ -16,6 +16,12 @@ if ! flatc --help 2>&1 | grep -q -- '--python'; then
 	exit 3
 fi
 
+TARGET_DIR=".."
+
+echo "Removing existing .py files under $TARGET_DIR"
+find "$TARGET_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
+
+
 echo "Generating Python bindings for all .fbs files in: $SCRIPT_DIR"
 
 mapfile -t FBS_FILES < <(find . -type f -name '*.fbs' | sort)
@@ -25,6 +31,7 @@ if [ "${#FBS_FILES[@]}" -eq 0 ]; then
   exit 0
 fi
 echo "Found ${#FBS_FILES[@]} .fbs files."
-flatc --python -o .. "${FBS_FILES[@]}"
+flatc --python -o . "${FBS_FILES[@]}"
+
 
 echo "Generation finished."

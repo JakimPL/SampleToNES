@@ -1,10 +1,10 @@
 namespace schemas.instructions.noise;
 
-table NoiseInstruction {
+table FBNoiseInstruction {
 	on:bool;
 	period:int;
 	volume:int;
 	short:bool;
 }
 
-root_type NoiseInstruction;
+root_type FBNoiseInstruction;

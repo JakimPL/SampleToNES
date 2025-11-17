@@ -1,10 +1,10 @@
 namespace schemas.instructions.pulse;
 
-table PulseInstruction {
+table FBPulseInstruction {
 	on:bool;
 	pitch:int;
 	volume:int;
 	duty_cycle:int;
 }
 
-root_type PulseInstruction;
+root_type FBPulseInstruction;

@@ -1,11 +1,11 @@
 namespace schemas.general;
 
-table KeyValue {
+table FBKeyValue {
     key:string;
     value:string;
 }
 
-table Metadata {
+table FBMetadata {
     namespace:string;
-    entries:[KeyValue];
+    entries:[FBKeyValue];
 }

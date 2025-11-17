@@ -1,7 +1,7 @@
 namespace schemas.arrays;
 
-table CyclicArray {
+table FBCyclicArray {
 	array: [float];
 	sample_rate: int;
-	frequency: double;
+	frequency: float;
 }
