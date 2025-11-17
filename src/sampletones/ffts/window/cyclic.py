@@ -2,10 +2,12 @@ from types import ModuleType
 from typing import Optional, Union
 
 import numpy as np
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.data import DataModel
+from sampletones.typehints import SerializedData
+from sampletones.utils import serialize_array
 
 from .window import Window
 
@@ -56,6 +58,10 @@ class CyclicArray(DataModel):
     @property
     def length(self) -> int:
         return len(self.array)
+
+    @field_serializer("array")
+    def serialize_array(self, array: np.ndarray, _info) -> SerializedData:
+        return serialize_array(array)
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

@@ -5,7 +5,7 @@ from typing import Collection, Dict, Generic, List, Self, Union
 
 import numpy as np
 from flatbuffers.table import Table
-from pydantic import ConfigDict, Field, ValidationError
+from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.application import (
@@ -33,7 +33,7 @@ from sampletones.instructions import (
     InstructionUnion,
 )
 from sampletones.typehints import Initials, SerializedData
-from sampletones.utils import load_binary, save_binary
+from sampletones.utils import load_binary, save_binary, serialize_array
 
 from .fragment import Fragment
 
@@ -106,6 +106,10 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
     @property
     def length(self) -> int:
         return self.sample.length
+
+    @field_serializer("feature")
+    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
+        return serialize_array(feature)
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

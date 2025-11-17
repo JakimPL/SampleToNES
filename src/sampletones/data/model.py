@@ -206,9 +206,9 @@ class DataModel(BaseModel):
     @classmethod
     def _deserialize_numpy_array(cls, fb_obj: Any, field_name: str) -> np.ndarray:
         camel = snake_to_camel(field_name)
-        length_fn = getattr(fb_obj, camel + "Length")
+        length_function = getattr(fb_obj, f"{camel}Length")
 
-        length = length_fn()
+        length = length_function()
         if length == 0:
             return np.empty(0, dtype=np.float32)
 
@@ -219,9 +219,9 @@ class DataModel(BaseModel):
             return np.empty(0, dtype=np.float32)
 
         start = tab.Pos + field_offset
-        buf = memoryview(tab.Bytes)[start : start + length * 4]  # float32 = 4 bytes
+        buffer = memoryview(tab.Bytes)[start : start + length * 4]
 
-        return np.frombuffer(buf, dtype=np.float32)
+        return np.frombuffer(buffer, dtype=np.float32)
 
     @staticmethod
     def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[str, object]:
