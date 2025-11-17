@@ -5,6 +5,7 @@ from typing import Any, Collection, Dict, Generic, List, Self, Union
 
 import msgpack
 import numpy as np
+from flatbuffers.table import Table
 from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config, LibraryConfig
@@ -24,7 +25,11 @@ from sampletones.exceptions import (
 )
 from sampletones.ffts import CyclicArray, Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GeneratorType
+from sampletones.generators import (
+    GENERATOR_CLASS_MAP,
+    GENERATOR_TO_INSTRUCTION_MAP,
+    GeneratorType,
+)
 from sampletones.instructions import InstructionType, InstructionUnion
 from sampletones.typehints import Initials, Metadata, SerializedData
 from sampletones.utils import dump
@@ -114,21 +119,10 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         return FBLibraryFragment.LibraryFragment
 
     @classmethod
-    def deserialize_union(cls, dictionary: Dict[str, Any]) -> InstructionType:
-        instruction_data = dictionary.get("instruction")
-        generator_class_name = dictionary.get("generator_class")
-
-        if instruction_data is None or generator_class_name is None:
-            raise InvalidLibraryDataError("Instruction data or generator class is missing in the library fragment.")
-
-        from sampletones.instructions.factory import InstructionFactory
-
-        instruction: InstructionType = InstructionFactory.create_instruction_from_data(
-            instruction_data,
-            GeneratorClassName(generator_class_name),
-        )
-
-        return instruction
+    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+        generator_class_name = GeneratorClassName(field_values["generator_class"])
+        instruction_class = GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[generator_class_name]]
+        return instruction_class._deserialize_from_table(table)
 
 
 class LibraryData(DataModel):
@@ -209,7 +203,7 @@ class LibraryData(DataModel):
         cls.validate_library_data(data)
 
         try:
-            return LibraryData.deserialize(data)
+            data = LibraryData.deserialize(data)
         except ValidationError as exception:
             raise InvalidLibraryDataValuesError(
                 f"Failed to deserialize LibraryData from {path_object}",

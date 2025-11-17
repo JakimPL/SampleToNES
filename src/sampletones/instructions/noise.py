@@ -19,9 +19,10 @@ class NoiseInstruction(Instruction):
         short = "s" if self.short else "l"
         return f"N {period} {volume} {short}"
 
-    def __lt__(self, other: "NoiseInstruction") -> bool:
+    def __lt__(self, other: Instruction) -> bool:
         if not isinstance(other, NoiseInstruction):
-            return TypeError("Cannot compare NoiseInstruction with different type")
+            raise TypeError("Cannot compare NoiseInstruction with different type")
+
         return (NOISE_PERIODS[self.period], -self.volume, self.short) < (
             NOISE_PERIODS[other.period],
             -other.volume,

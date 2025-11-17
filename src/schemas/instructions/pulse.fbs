@@ -1,7 +1,6 @@
 namespace schemas.instructions.pulse;
 
 table PulseInstruction {
-	type:string;
 	on:bool;
 	pitch:int;
 	volume:int;

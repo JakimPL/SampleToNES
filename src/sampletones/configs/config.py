@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
-from sampletones.utils.serialization import load_json, save_json
+from sampletones.utils import load_json, save_json
 
 from .general import GeneralConfig
 from .generation import GenerationConfig

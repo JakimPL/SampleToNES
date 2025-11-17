@@ -1,7 +1,6 @@
 namespace schemas.instructions.noise;
 
 table NoiseInstruction {
-	type:string;
 	on:bool;
 	period:int;
 	volume:int;

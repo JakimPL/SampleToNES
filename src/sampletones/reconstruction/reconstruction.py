@@ -11,7 +11,7 @@ from sampletones.constants.application import (
     compare_versions,
     default_metadata,
 )
-from sampletones.constants.enums import GeneratorName, InstructionClassName
+from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
@@ -19,9 +19,9 @@ from sampletones.exceptions import (
 )
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
-    INSTRUCTION_CLASS_MAP,
     InstructionClass,
     InstructionUnion,
+    get_instruction_by_type,
 )
 from sampletones.typehints import Metadata, SerializedData
 from sampletones.typehints.general import FeatureMap
@@ -47,10 +47,6 @@ class Reconstruction(BaseModel):
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
 
     @staticmethod
-    def _get_instruction_class(name: InstructionClassName) -> InstructionClass:
-        return INSTRUCTION_CLASS_MAP[name]
-
-    @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterClass:
         instruction_type = cast(InstructionClass, type(instruction))
         return INSTRUCTION_TO_EXPORTER_MAP[instruction_type]
@@ -59,7 +55,7 @@ class Reconstruction(BaseModel):
     def _parse_instructions(cls, data: Dict[str, SerializedData]) -> Dict[str, List[InstructionUnion]]:
         parsed_instructions = {}
         for name, instructions_data in data.items():
-            instruction_class = cls._get_instruction_class(instructions_data["type"])
+            instruction_class = get_instruction_by_type(instructions_data["type"])
             parsed_instructions[name] = [
                 instruction_class(**instruction) for instruction in instructions_data["instructions"]
             ]

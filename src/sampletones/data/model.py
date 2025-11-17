@@ -1,11 +1,13 @@
 from enum import StrEnum
 from types import ModuleType
-from typing import Self
+from typing import Self, TypeVar
 
 import flatbuffers
 import numpy as np
+from flatbuffers.table import Table
 from pydantic import BaseModel
 
+from sampletones.typehints import SerializedData
 from sampletones.utils import snake_to_camel
 
 
@@ -25,7 +27,7 @@ class DataModel(BaseModel):
         return bytes(builder.Output())
 
     @classmethod
-    def deserialize(cls, buffer: bytes) -> "DataModel":
+    def deserialize(cls, buffer: bytes) -> Self:
         fb_reader = cls.buffer_reader()
         root = fb_reader.GetRootAs(buffer, 0)
         return cls._deserialize_inner(root)
@@ -88,7 +90,7 @@ class DataModel(BaseModel):
 
     @classmethod
     def _deserialize_inner(cls, fb_obj) -> Self:
-        field_values = {}
+        field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
             camel = snake_to_camel(field_name)
@@ -102,10 +104,9 @@ class DataModel(BaseModel):
             if annotation == np.ndarray:
                 value = cls._deserialize_array(fb_obj, field_name)
 
-            elif not isinstance(annotation, type):
-                # TODO
-                value = getter()
-                pass
+            elif isinstance(annotation, TypeVar):
+                table = getter()
+                value = cls.deserialize_union(table, field_values)
 
             elif issubclass(annotation, DataModel):
                 fb_child = getter()
@@ -146,3 +147,14 @@ class DataModel(BaseModel):
             return np.empty(0)
 
         return np.array([getter(i) for i in range(length)])
+
+    @classmethod
+    def _deserialize_from_table(cls, table: Table) -> Self:
+        fb_cls = cls.buffer_reader()
+        wrapper = fb_cls()
+        wrapper.Init(table.Bytes, table.Pos)
+        return cls._deserialize_inner(wrapper)
+
+    @classmethod
+    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+        raise NotImplementedError("Subclasses must implement _deserialize_union method")

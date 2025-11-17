@@ -16,3 +16,6 @@ class Instruction(DataModel):
 
     def distance(self, other: Self) -> float:
         raise NotImplementedError("Subclasses must implement distance method")
+
+    def __lt__(self, other: Self) -> bool:
+        raise NotImplementedError("Subclasses must implement __lt__ method")

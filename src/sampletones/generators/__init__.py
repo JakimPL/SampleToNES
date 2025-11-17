@@ -2,6 +2,7 @@ from .generator import Generator
 from .maps import (
     GENERATOR_CLASS_MAP,
     GENERATOR_CLASSES,
+    GENERATOR_TO_INSTRUCTION_MAP,
     INSTRUCTION_TO_GENERATOR_MAP,
     LIBRARY_GENERATOR_CLASS_MAP,
     MIXER_LEVELS,
@@ -30,6 +31,7 @@ __all__ = [
     "GENERATOR_CLASSES",
     "GENERATOR_CLASS_MAP",
     "INSTRUCTION_TO_GENERATOR_MAP",
+    "GENERATOR_TO_INSTRUCTION_MAP",
     "MIXER_LEVELS",
     "GeneratorType",
     "GeneratorClass",

@@ -1,7 +1,6 @@
 namespace schemas.instructions.triangle;
 
 table TriangleInstruction {
-	type:string;
 	on:bool;
 	pitch:int;
 }

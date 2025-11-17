@@ -16,9 +16,10 @@ class TriangleInstruction(Instruction):
         pitch = pitch_to_name(self.pitch)
         return f"T {pitch}"
 
-    def __lt__(self, other: "TriangleInstruction") -> bool:
+    def __lt__(self, other: Instruction) -> bool:
         if not isinstance(other, TriangleInstruction):
-            return TypeError("Cannot compare TriangleInstruction with different type")
+            raise TypeError("Cannot compare TriangleInstruction with different type")
+
         return self.pitch < other.pitch
 
     def distance(self, other: Instruction) -> float:
