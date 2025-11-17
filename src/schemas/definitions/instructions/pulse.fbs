@@ -1,4 +1,4 @@
-namespace schemas.instructions.pulse;
+namespace schemas.instructions;
 
 table FBPulseInstruction {
 	on:bool;

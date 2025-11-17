@@ -1,4 +1,4 @@
-namespace schemas.instructions.noise;
+namespace schemas.instructions;
 
 table FBNoiseInstruction {
 	on:bool;

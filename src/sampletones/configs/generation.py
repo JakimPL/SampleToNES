@@ -1,6 +1,7 @@
+from types import ModuleType
 from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
@@ -13,24 +14,49 @@ from sampletones.constants.general import (
     SPECTRAL_LOSS_WEIGHT,
     TEMPORAL_LOSS_WEIGHT,
 )
+from sampletones.data import DataModel
 
 
-class CalculationConfig(BaseModel):
+class CalculationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     find_best_phase: bool = Field(default=FIND_BEST_PHASE)
     fast_difference: bool = Field(default=FAST_DIFFERENCE)
 
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBCalculationConfig as FBCalculationConfig
 
-class WeightsConfig(BaseModel):
+        return FBCalculationConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBCalculationConfig as FBCalculationConfig
+
+        return FBCalculationConfig.FBCalculationConfig
+
+
+class WeightsConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    spectral_loss_weight: float = Field(default=SPECTRAL_LOSS_WEIGHT, ge=0.0, le=1.0)
-    temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0, le=1.0)
-    continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0, le=1.0)
+    spectral_loss_weight: float = Field(default=SPECTRAL_LOSS_WEIGHT, ge=0.0)
+    temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0)
+    continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBWeightsConfig as FBWeightsConfig
+
+        return FBWeightsConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBWeightsConfig as FBWeightsConfig
+
+        return FBWeightsConfig.FBWeightsConfig
 
 
-class GenerationConfig(BaseModel):
+class GenerationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     mixer: float = Field(default=MIXER, ge=0.0, le=MAX_MIXER)
@@ -38,3 +64,15 @@ class GenerationConfig(BaseModel):
     generators: List[GeneratorName] = Field(default_factory=lambda: list(GeneratorName))
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBGenerationConfig as FBGenerationConfig
+
+        return FBGenerationConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBGenerationConfig as FBGenerationConfig
+
+        return FBGenerationConfig.FBGenerationConfig

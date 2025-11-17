@@ -5,3 +5,5 @@ table FBCyclicArray {
 	sample_rate: int;
 	frequency: float;
 }
+
+root_type FBCyclicArray;

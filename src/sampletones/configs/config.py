@@ -1,10 +1,12 @@
 from pathlib import Path
+from types import ModuleType
 from typing import List
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
+from sampletones.data import DataModel
 from sampletones.utils import load_json, save_json
 
 from .general import GeneralConfig
@@ -12,7 +14,7 @@ from .generation import GenerationConfig
 from .library import LibraryConfig
 
 
-class Config(BaseModel):
+class Config(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid", frozen=True)
 
     general: GeneralConfig = Field(default_factory=GeneralConfig, description="Base configuration for audio processing")
@@ -76,3 +78,15 @@ class Config(BaseModel):
     @property
     def transformation_gamma(self) -> int:
         return self.library.transformation_gamma
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBConfig as FBConfig
+
+        return FBConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBConfig as FBConfig
+
+        return FBConfig.FBConfig

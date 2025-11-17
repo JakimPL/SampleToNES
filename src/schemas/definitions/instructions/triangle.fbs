@@ -1,4 +1,4 @@
-namespace schemas.instructions.triangle;
+namespace schemas.instructions;
 
 table FBTriangleInstruction {
 	on:bool;

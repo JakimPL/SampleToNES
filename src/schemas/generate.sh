@@ -16,19 +16,19 @@ if ! flatc --help 2>&1 | grep -q -- '--python'; then
 	exit 3
 fi
 
-echo "Removing existing .py files under $SCRIPT_DIR"
-find "$SCRIPT_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
+DEFINITIONS_DIR="$SCRIPT_DIR/definitions"
+echo "Removing existing .py files under $DEFINITIONS_DIR"
+find "$DEFINITIONS_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
 
-echo "Generating Python bindings for all .fbs files in: $SCRIPT_DIR"
-
+echo "Generating Python bindings for all .fbs files in: $DEFINITIONS_DIR"
 TARGET_DIR=".."
-mapfile -t FBS_FILES < <(find . -type f -name '*.fbs' | sort)
+mapfile -t FBS_FILES < <(find "$DEFINITIONS_DIR" -type f -name '*.fbs' | sort)
 if [ "${#FBS_FILES[@]}" -eq 0 ]; then
 # echo filename path
   echo "no .fbs files found" >&2
   exit 0
 fi
 echo "Found ${#FBS_FILES[@]} .fbs files."
-flatc --python -o "$TARGET_DIR" "${FBS_FILES[@]}"
+flatc --python -I "$DEFINITIONS_DIR" -o "$TARGET_DIR" "${FBS_FILES[@]}"
 
 echo "Generation finished."

@@ -1,0 +1,10 @@
+namespace schemas.metadata;
+
+table FBMetadata {
+    application_name: string;
+    version: string;
+    library_data_version: string;
+    reconstruction_data_version: string;
+}
+
+root_type FBMetadata;

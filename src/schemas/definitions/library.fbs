@@ -1,7 +1,7 @@
 include "arrays.fbs";
-include "instruction.fbs";
-include "configs.fbs";
-include "general.fbs";
+include "instructions/instruction.fbs";
+include "configs/library.fbs";
+include "metadata.fbs";
 
 namespace schemas.library;
 
@@ -14,10 +14,9 @@ table FBLibraryFragment {
 }
 
 table FBLibraryData {
-	metadata: [schemas.general.FBMetadata];
+	metadata: [schemas.metadata.FBMetadata];
 	config: schemas.configs.FBLibraryConfig;
 	data: [FBLibraryFragment];
 }
 
 root_type FBLibraryData;
-

@@ -1,3 +1,5 @@
+from types import ModuleType
+
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.application import (
@@ -17,6 +19,18 @@ class Metadata(DataModel):
     version: str = Field(default=SAMPLETONES_VERSION)
     library_data_version: str = Field(default=SAMPLETONES_LIBRARY_DATA_VERSION)
     reconstruction_data_version: str = Field(default=SAMPLETONES_RECONSTRUCTION_DATA_VERSION)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.metadata.FBMetadata as FBMetadata
+
+        return FBMetadata
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.metadata.FBMetadata as FBMetadata
+
+        return FBMetadata.FBMetadata
 
 
 def default_metadata() -> Metadata:

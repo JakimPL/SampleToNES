@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field
+from types import ModuleType
+
+from pydantic import ConfigDict, Field
 
 from sampletones.constants.general import (
     MAX_PITCH,
@@ -8,9 +10,10 @@ from sampletones.constants.general import (
     QUANTIZE,
 )
 from sampletones.constants.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
+from sampletones.data import DataModel
 
 
-class GeneralConfig(BaseModel):
+class GeneralConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     min_pitch: int = Field(default=MIN_PITCH, ge=1, le=127)
@@ -21,3 +24,15 @@ class GeneralConfig(BaseModel):
 
     library_directory: str = Field(default=str(LIBRARY_DIRECTORY))
     output_directory: str = Field(default=str(OUTPUT_DIRECTORY))
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBGeneralConfig as FBGeneralConfig
+
+        return FBGeneralConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBGeneralConfig as FBGeneralConfig
+
+        return FBGeneralConfig.FBGeneralConfig

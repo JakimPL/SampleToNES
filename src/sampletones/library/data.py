@@ -185,7 +185,7 @@ class LibraryData(DataModel):
 
         try:
             library_data = LibraryData.deserialize(binary)
-        except ValidationError as exception:
+        except (ValidationError, TypeError) as exception:
             raise InvalidLibraryDataValuesError(
                 f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
                 exception,
