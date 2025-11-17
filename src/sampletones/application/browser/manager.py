@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Optional
 
-from sampletones.constants.paths import EXT_FILE_JSON
+from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
 from sampletones.tree import FileSystemNode, Tree
 
 from ..constants import NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
@@ -31,7 +31,7 @@ class BrowserManager:
             return None
 
         if path.is_file():
-            if path.suffix == EXT_FILE_JSON:
+            if path.suffix == EXT_FILE_RECONSTRUCTION:
                 return FileSystemNode(path.stem, filepath=path, node_type=NOD_TYPE_FILE)
             return None
 

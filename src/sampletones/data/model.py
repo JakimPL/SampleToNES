@@ -1,6 +1,7 @@
 from enum import StrEnum
+from pathlib import Path
 from types import ModuleType
-from typing import Any, List, Self, Tuple, TypeVar, get_args, get_origin
+from typing import Any, List, Self, Tuple, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -8,7 +9,7 @@ from flatbuffers.table import Table
 from pydantic import BaseModel
 
 from sampletones.typehints import SerializedData
-from sampletones.utils import snake_to_camel
+from sampletones.utils import load_binary, save_binary, snake_to_camel
 
 
 class DataModel(BaseModel):
@@ -31,6 +32,15 @@ class DataModel(BaseModel):
         fb_reader = cls.buffer_reader()
         root = fb_reader.GetRootAs(buffer, 0)
         return cls._deserialize_inner(root)
+
+    def save(self, path: Union[str, Path]) -> None:
+        binary = self.serialize()
+        save_binary(path, binary)
+
+    @classmethod
+    def load(cls, path: Union[str, Path]) -> Self:
+        binary = load_binary(path)
+        return cls.deserialize(binary)
 
     def _serialize_inner(self, builder: Builder) -> int:
         fb_builder = self.buffer_builder()
@@ -89,7 +99,7 @@ class DataModel(BaseModel):
 
             elif isinstance(annotation, TypeVar):
                 table = getter()
-                value = cls.deserialize_union(table, field_values)
+                value = cls._deserialize_union(table, field_values)
 
             elif get_origin(annotation) is list:
                 list_class = get_args(annotation)[0]
@@ -257,5 +267,5 @@ class DataModel(BaseModel):
         return cls._deserialize_inner(wrapper)
 
     @classmethod
-    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
         raise NotImplementedError("Subclasses must implement _deserialize_union method")

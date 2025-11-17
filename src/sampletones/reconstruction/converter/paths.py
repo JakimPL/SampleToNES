@@ -3,7 +3,7 @@ from typing import List
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
-from sampletones.constants.paths import EXT_FILE_JSON
+from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
 from sampletones.utils import hash_models
 
 
@@ -20,14 +20,19 @@ def generate_config_directory_name(config: Config) -> str:
     return config_directory
 
 
-def get_relative_path(base_directory: Path, wav_file: Path, output_path: Path, suffix: str = EXT_FILE_JSON) -> Path:
+def get_relative_path(
+    base_directory: Path,
+    wav_file: Path,
+    output_path: Path,
+    suffix: str = EXT_FILE_RECONSTRUCTION,
+) -> Path:
     relative_path = wav_file.relative_to(base_directory)
     output_path = output_path / relative_path
     output_path = output_path.with_suffix(suffix)
     return Path(output_path.absolute())
 
 
-def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_JSON) -> Path:
+def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_RECONSTRUCTION) -> Path:
     config_directory = generate_config_directory_name(config)
     output_directory = Path(config.general.output_directory) / config_directory
     if input_path.is_dir():

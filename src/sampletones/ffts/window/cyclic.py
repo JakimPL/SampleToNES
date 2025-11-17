@@ -60,7 +60,7 @@ class CyclicArray(DataModel):
         return len(self.array)
 
     @field_serializer("array")
-    def serialize_array(self, array: np.ndarray, _info) -> SerializedData:
+    def _serialize_array(self, array: np.ndarray, _info) -> SerializedData:
         return serialize_array(array)
 
     @classmethod

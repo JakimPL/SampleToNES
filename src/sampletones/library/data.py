@@ -33,7 +33,7 @@ from sampletones.instructions import (
     InstructionUnion,
 )
 from sampletones.typehints import Initials, SerializedData
-from sampletones.utils import load_binary, save_binary, serialize_array
+from sampletones.utils import load_binary, serialize_array
 
 from .fragment import Fragment
 
@@ -108,7 +108,7 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         return self.sample.length
 
     @field_serializer("feature")
-    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
+    def _serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
         return serialize_array(feature)
 
     @classmethod
@@ -124,7 +124,7 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         return FBLibraryFragment.FBLibraryFragment
 
     @classmethod
-    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
         generator_class_name = GeneratorClassName(field_values["generator_class"])
         instruction_class = GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[generator_class_name]]
         return instruction_class._deserialize_from_table(table)
@@ -153,7 +153,7 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
         return FBLibraryItem.FBLibraryItem
 
     @classmethod
-    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
         instruction_class = InstructionClassName(field_values["instruction_class"])
         instruction_class = INSTRUCTION_CLASS_MAP[instruction_class]
         return instruction_class._deserialize_from_table(table)
@@ -225,10 +225,6 @@ class LibraryData(DataModel):
 
     def values(self):
         return self.data.values()
-
-    def save(self, path: Union[str, Path]) -> None:
-        binary = self.serialize()
-        save_binary(path, binary)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> "LibraryData":

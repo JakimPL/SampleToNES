@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Self, Union, cast
+from typing import Dict, List, Optional, Self, Union, cast
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_serializer
+from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.configs import Config
 from sampletones.constants.application import (
@@ -11,12 +11,8 @@ from sampletones.constants.application import (
     compare_versions,
 )
 from sampletones.constants.enums import GeneratorName
-from sampletones.data import Metadata, default_metadata
-from sampletones.exceptions import (
-    IncompatibleReconstructionVersionError,
-    InvalidReconstructionError,
-    InvalidReconstructionValuesError,
-)
+from sampletones.data import DataModel, Metadata, default_metadata
+from sampletones.exceptions import IncompatibleReconstructionVersionError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
     InstructionClass,
@@ -24,13 +20,13 @@ from sampletones.instructions import (
     get_instruction_by_type,
 )
 from sampletones.typehints import FeatureMap, SerializedData
-from sampletones.utils import deserialize_array, load_json, save_json, serialize_array
+from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
 
 from .state import ReconstructionState
 
 
-class Reconstruction(BaseModel):
+class Reconstruction(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(
@@ -93,49 +89,22 @@ class Reconstruction(BaseModel):
     def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
 
-    def save(self, filepath: Union[str, Path]) -> None:
-        data = self.model_dump()
-        save_json(filepath, data)
-
     @property
     def total_error(self) -> float:
         return sum(sum(errors) for errors in self.errors.values())
 
     @classmethod
-    def load(cls, filepath: Union[str, Path]) -> Self:
-
-        data = load_json(filepath)
-        cls.validate_reconstruction(data)
-
-        try:
-            data["approximation"] = deserialize_array(data["approximation"])
-            data["approximations"] = {name: deserialize_array(array) for name, array in data["approximations"].items()}
-            data["instructions"] = cls._parse_instructions(data["instructions"])
-            data["config"] = Config(**data["config"])
-            data["coefficient"] = float(data["coefficient"])
-            data["audio_filepath"] = Path(data["audio_filepath"])
-            data["metadata"] = data.get("metadata", {})
-        except ValidationError as exception:
-            raise InvalidReconstructionValuesError(
-                f"Invalid data values for reconstruction file {filepath}",
-                exception,
-            ) from exception
-
-        return cls(**data)
+    def load_and_validate(cls, path: Union[str, Path]) -> "Reconstruction":
+        reconstruction = cls.load(path)
+        cls.validate_reconstruction(reconstruction.metadata)
+        return reconstruction
 
     @staticmethod
-    def validate_reconstruction(data: Dict[str, Any]) -> None:
-        metadata = data.get("metadata", {})
-        if SAMPLETONES_NAME not in metadata:
-            raise InvalidReconstructionError("Metadata is missing. Probably not a valid reconstruction file.")
+    def validate_reconstruction(metadata: Metadata) -> None:
+        application_metadata = metadata.application_name
+        assert application_metadata == SAMPLETONES_NAME, "Metadata application name mismatch."
 
-        metadata = metadata[SAMPLETONES_NAME]
-        reconstruction_version = metadata.get("reconstruction_data_version")
-
-        if reconstruction_version is None:
-            raise InvalidReconstructionError("Reconstruction data version is missing in metadata.")
-
-        # TODO: handle older versions
+        reconstruction_version = metadata.reconstruction_data_version
         if compare_versions(reconstruction_version, SAMPLETONES_RECONSTRUCTION_DATA_VERSION) != 0:
             raise IncompatibleReconstructionVersionError(
                 f"Reconstruction data version mismatch: expected "
@@ -143,18 +112,6 @@ class Reconstruction(BaseModel):
                 expected_version=SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
                 actual_version=reconstruction_version,
             )
-
-        for field in [
-            "approximation",
-            "approximations",
-            "instructions",
-            "config",
-            "coefficient",
-            "audio_filepath",
-            "metadata",
-        ]:
-            if field not in data:
-                raise InvalidReconstructionError(f"Reconstruction data is missing '{field}' field.")
 
     def export(self) -> Dict[GeneratorName, FeatureMap]:
         features = {}

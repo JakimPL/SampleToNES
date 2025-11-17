@@ -41,5 +41,5 @@ class Instruction(DataModel):
         return FBInstruction.FBInstruction
 
     @classmethod
-    def deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
         pass
