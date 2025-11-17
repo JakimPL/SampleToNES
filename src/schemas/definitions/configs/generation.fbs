@@ -1,12 +1,5 @@
 namespace schemas.configs;
 
-enum FBGeneratorName:byte {
-	pulse1,
-	pulse2,
-	triangle,
-	noise,
-}
-
 table FBCalculationConfig {
 	find_best_phase: bool;
 	fast_difference: bool;
@@ -21,7 +14,7 @@ table FBWeightsConfig {
 table FBGenerationConfig {
 	mixer: float;
 	reset_phase: bool;
-    generators: [FBGeneratorName];
+    generators: [string];
     calculation: FBCalculationConfig;
     weights: FBWeightsConfig;
 }

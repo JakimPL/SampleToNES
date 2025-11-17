@@ -1,9 +1,12 @@
 from types import ModuleType
+from typing import Self
 
+from flatbuffers.table import Table
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
+from sampletones.typehints import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
 from .typehints import InstructionUnion
@@ -30,3 +33,14 @@ class InstructionData(DataModel):
         import schemas.instructions.FBInstructionData as FBInstructionData
 
         return FBInstructionData.FBInstructionData
+
+    @classmethod
+    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
+        instruction_class_value = field_values["instruction_class"]
+        instruction_class = InstructionClassName(instruction_class_value)
+        instruction = cls._deserialize_from_table(table).instruction
+
+        return cls(
+            instruction_class=instruction_class,
+            instruction=instruction,
+        )

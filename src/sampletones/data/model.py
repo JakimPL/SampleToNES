@@ -67,7 +67,7 @@ class DataModel(BaseModel):
             elif isinstance(value, list):
                 offsets[field_name] = self._serialize_list(builder, value)
 
-            elif isinstance(value, (StrEnum, str)):
+            elif isinstance(value, (str, StrEnum)):
                 offsets[field_name] = builder.CreateString(value)
 
             elif isinstance(value, (int, float, bool)):
@@ -96,6 +96,7 @@ class DataModel(BaseModel):
 
             annotation = field_info.annotation
             assert annotation is not None, f"Field '{field_name}' has no annotation"
+            print(field_name, annotation)
 
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_obj, field_name)
@@ -104,7 +105,7 @@ class DataModel(BaseModel):
                 raw = getter().decode("utf-8")
                 value = Path(raw)
 
-            elif isinstance(annotation, TypeVar):
+            elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
                 table = getter()
                 value = cls._deserialize_union(table, field_values)
 
@@ -116,9 +117,12 @@ class DataModel(BaseModel):
                 fb_child = getter()
                 value = annotation._deserialize_inner(fb_child)
 
-            elif issubclass(annotation, StrEnum):
+            elif issubclass(annotation, (str, StrEnum)):
                 string = getter().decode("utf-8")
-                value = annotation(string)
+                if issubclass(annotation, StrEnum):
+                    value = annotation(string)
+                else:
+                    value = string
 
             else:
                 value = getter()
@@ -140,6 +144,19 @@ class DataModel(BaseModel):
                     builder.PrependInt32(value)
 
             return builder.EndVector(len(collection))
+
+        elif all(isinstance(value, (str, StrEnum)) for value in collection):
+            string_offsets = []
+            for value in collection:
+                if isinstance(value, StrEnum):
+                    value = value.value
+                string_offsets.append(builder.CreateString(value))
+
+            builder.StartVector(4, len(string_offsets), 4)
+            for offset in reversed(string_offsets):
+                builder.PrependUOffsetTRelative(offset)
+
+            return builder.EndVector(len(string_offsets))
 
         elif all(isinstance(model, DataModel) for model in collection):
             child_offsets = [model._serialize_inner(builder) for model in collection]
@@ -172,12 +189,12 @@ class DataModel(BaseModel):
     def _deserialize_list(cls, fb_obj: Any, field_name: str, element_class: type) -> np.ndarray | list:
         camel = snake_to_camel(field_name)
         getter = getattr(fb_obj, camel, None)
-        length_fn = getattr(fb_obj, f"{camel}Length", None)
+        length_function = getattr(fb_obj, f"{camel}Length", None)
 
-        if getter is None or length_fn is None:
+        if getter is None or length_function is None:
             raise AttributeError(f"{fb_obj.__class__.__name__} missing getter or Length method for field '{camel}'")
 
-        length = length_fn()
+        length = length_function()
         if length == 0:
             return []
 
@@ -190,18 +207,14 @@ class DataModel(BaseModel):
                 items.append(element_class._deserialize_inner(getter(i)))
             return items
 
-        if issubclass(element_class, StrEnum):
-            items = []
+        if issubclass(element_class, (str, StrEnum)):
+            items: List = []
             for i in range(length):
                 raw = getter(i)
-                items.append(element_class(raw.decode("utf-8")))
-            return items
-
-        if element_class is str:
-            items = []
-            for i in range(length):
-                raw = getter(i)
-                items.append(raw.decode("utf-8"))
+                string = raw.decode("utf-8")
+                if issubclass(element_class, StrEnum):
+                    string = element_class(string)
+                items.append(string)
             return items
 
         if element_class in (int, float, bool):

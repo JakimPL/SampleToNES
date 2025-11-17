@@ -11,8 +11,8 @@ table FBReconstruction {
     audio_filepath: string;
     config: schemas.configs.FBConfig;
     approximation: [float];
-    approximations: [FBApproximationsItem];
-    instructions: [FBInstructionsItem];
-    errors: [FBErrors];
+    approximations_data: [FBApproximationsItem];
+    instructions_data: [FBInstructionsItem];
+    errors_data: [FBErrors];
     coefficient: float;
 }
