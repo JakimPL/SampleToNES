@@ -1,4 +1,6 @@
+from functools import cached_property
 from pathlib import Path
+from types import ModuleType
 from typing import Dict, List, Optional, Self, Union, cast
 
 import numpy as np
@@ -19,6 +21,7 @@ from sampletones.instructions import (
     InstructionUnion,
     get_instruction_by_type,
 )
+from sampletones.instructions.data import InstructionData
 from sampletones.typehints import FeatureMap, SerializedData
 from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
@@ -39,10 +42,25 @@ class Reconstruction(DataModel):
     audio_filepath: Path = Field(..., description="Path to the original audio file")
     config: Config = Field(..., description="Configuration used for reconstruction")
     approximation: np.ndarray = Field(..., description="Audio approximation")
-    approximations: List[ApproximationsItem] = Field(..., description="Approximations per generator")
-    instructions: List[InstructionsItem] = Field(..., description="Instructions per generator")
-    errors: List[Errors] = Field(..., description="Reconstruction errors per generator")
+    approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
+    instructions_data: List[InstructionsItem] = Field(..., description="Instructions per generator")
+    errors_data: List[Errors] = Field(..., description="Reconstruction errors per generator")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
+
+    @cached_property
+    def approximations(self) -> Dict[GeneratorName, np.ndarray]:
+        return {item.generator_name: item.approximation for item in self.approximations_data}
+
+    @cached_property
+    def instructions(self) -> Dict[GeneratorName, List[InstructionUnion]]:
+        return {
+            item.generator_name: [instruction.instruction for instruction in item.instructions]
+            for item in self.instructions_data
+        }
+
+    @cached_property
+    def errors(self) -> Dict[GeneratorName, List[float]]:
+        return {item.generator_name: list(item.errors) for item in self.errors_data}
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterClass:
@@ -60,11 +78,56 @@ class Reconstruction(DataModel):
 
         return parsed_instructions
 
-    def __repr__(self) -> str:
-        return (
-            f"Reconstruction(audio_shape={self.approximation.shape}, "
-            f"total_error={self.total_error}, "
-            f"generators={list(self.instructions.keys())})"
+    @classmethod
+    def create(
+        cls,
+        approximation: np.ndarray,
+        approximations: Dict[GeneratorName, np.ndarray],
+        instructions: Dict[GeneratorName, List[InstructionUnion]],
+        errors: Dict[GeneratorName, List[float]],
+        config: Config,
+        coefficient: float,
+        audio_filepath: Path,
+    ) -> Self:
+        approximations_data: List[ApproximationsItem] = [
+            ApproximationsItem(generator_name=name, approximation=approximation)
+            for name, approximation in approximations.items()
+        ]
+
+        instructions_data: List[InstructionsItem] = []
+        for generator_name, instructions_list in instructions.items():
+            instructions_data.append(
+                InstructionsItem(
+                    generator_name=generator_name,
+                    instructions=[
+                        InstructionData(
+                            instruction_class=instruction.class_name(),
+                            instruction=instruction,
+                        )
+                        for instruction in instructions_list
+                    ],
+                )
+            )
+
+        errors_data: List[Errors] = []
+        for name, errors_list in errors.items():
+            total_error = sum(errors_list)
+            errors_data.append(
+                Errors(
+                    generator_name=name,
+                    errors=np.array(errors_list),
+                    total_error=total_error,
+                )
+            )
+
+        return cls(
+            approximation=approximation,
+            approximations_data=approximations_data,
+            instructions_data=instructions_data,
+            errors_data=errors_data,
+            config=config,
+            coefficient=coefficient,
+            audio_filepath=audio_filepath,
         )
 
     @classmethod
@@ -76,7 +139,7 @@ class Reconstruction(DataModel):
         approximations = {name: np.concatenate(state.approximations[name]) for name in state.approximations}
         approximation = np.sum(np.array(list(approximations.values())), axis=0)
 
-        return cls(
+        return cls.create(
             approximation=approximation,
             approximations=approximations,
             instructions=state.instructions,
@@ -132,27 +195,18 @@ class Reconstruction(DataModel):
     def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
         return serialize_array(approximation)
 
-    @field_serializer("approximations")
-    def _serialize_approximations(self, approximations: Dict[str, np.ndarray], _info) -> SerializedData:
-        return {name: serialize_array(array) for name, array in approximations.items()}
-
-    @field_serializer("instructions")
-    def _serialize_instructions(
-        self, instructions: Dict[str, List[InstructionUnion]], _info
-    ) -> Dict[str, SerializedData]:
-        return {
-            name: {
-                "instructions": [instruction.model_dump() for instruction in instructions],
-                "type": type(instructions[0]).__name__,
-            }
-            for name, instructions in instructions.items()
-            if instructions
-        }
-
-    @field_serializer("config")
-    def _serialize_config(self, config: Config, _info) -> SerializedData:
-        return config.model_dump()
-
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
         return str(audio_filepath)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.reconstruction.FBReconstruction as FBReconstruction
+
+        return FBReconstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.reconstruction.FBReconstruction as FBReconstruction
+
+        return FBReconstruction.FBReconstruction

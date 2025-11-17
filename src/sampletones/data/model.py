@@ -61,6 +61,9 @@ class DataModel(BaseModel):
             elif isinstance(value, np.ndarray):
                 offsets[field_name] = self._serialize_numpy_array(builder, value)
 
+            elif isinstance(value, Path):
+                offsets[field_name] = builder.CreateString(str(value))
+
             elif isinstance(value, list):
                 offsets[field_name] = self._serialize_list(builder, value)
 
@@ -96,6 +99,10 @@ class DataModel(BaseModel):
 
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_obj, field_name)
+
+            elif annotation is Path:
+                raw = getter().decode("utf-8")
+                value = Path(raw)
 
             elif isinstance(annotation, TypeVar):
                 table = getter()

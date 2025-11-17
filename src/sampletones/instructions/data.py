@@ -5,6 +5,7 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
 
+from .maps import INSTRUCTION_CLASS_MAP
 from .typehints import InstructionUnion
 
 
@@ -13,6 +14,10 @@ class InstructionData(DataModel):
 
     instruction_class: InstructionClassName = Field(..., description="Name of the generator")
     instruction: InstructionUnion = Field(..., description="Instruction instance")
+
+    @property
+    def instruction_type(self) -> type:
+        return INSTRUCTION_CLASS_MAP[self.instruction_class]
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
