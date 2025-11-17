@@ -7,14 +7,14 @@ from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
-from sampletones.ffts import Window
+from sampletones.ffts import FragmentedAudio, Window
 from sampletones.generators import (
     MIXER_LEVELS,
     Generator,
     GeneratorUnion,
     get_generators_by_names,
 )
-from sampletones.library import FragmentedAudio, Library, LibraryData
+from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
 from .approximation import ApproximationData

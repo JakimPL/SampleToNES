@@ -5,9 +5,8 @@ import numpy as np
 from sklearn.metrics import root_mean_squared_error
 
 from sampletones.configs import Config
-from sampletones.ffts import Window
+from sampletones.ffts import Fragment, Window
 from sampletones.instructions import Instruction
-from sampletones.library import Fragment
 
 
 @dataclass(frozen=True)

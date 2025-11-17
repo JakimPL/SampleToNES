@@ -35,7 +35,7 @@ from sampletones.instructions import (
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import load_binary, serialize_array
 
-from .fragment import Fragment
+from ..ffts.fragment.fragment import Fragment
 
 
 class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):

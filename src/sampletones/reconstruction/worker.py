@@ -6,10 +6,10 @@ from numpy.lib.stride_tricks import sliding_window_view
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
-from sampletones.ffts import Window
+from sampletones.ffts import Fragment, FragmentedAudio, Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import InstructionUnion
-from sampletones.library import Fragment, FragmentedAudio, LibraryData
+from sampletones.library import LibraryData
 
 from .approximation import ApproximationData
 from .criterion import Criterion

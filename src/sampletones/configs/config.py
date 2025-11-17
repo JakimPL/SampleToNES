@@ -1,6 +1,6 @@
 from pathlib import Path
 from types import ModuleType
-from typing import List
+from typing import List, Union
 
 from pydantic import ConfigDict, Field
 
@@ -31,11 +31,13 @@ class Config(DataModel):
         return cls.load(CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Path) -> "Config":
+    def load(cls, path: Union[str, Path]) -> "Config":
+        path = Path(path)
         config_dict = load_json(path)
         return cls(**config_dict)
 
-    def save(self, path: Path) -> None:
+    def save(self, path: Union[str, Path]) -> None:
+        path = Path(path)
         config_dict = self.model_dump()
         save_json(path, config_dict)
 
