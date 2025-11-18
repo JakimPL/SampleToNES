@@ -1,8 +1,10 @@
 import sys
+import tkinter
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, List, Optional
 
 import dearpygui.dearpygui as dpg
+from screeninfo import get_monitors
 
 from sampletones._resources import get_icon_path
 from sampletones.audio import AudioDeviceManager
@@ -11,9 +13,12 @@ from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
+    ICON_UNIX_FILENAME,
+    ICON_WIN_FILENAME,
 )
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.library import LibraryFragment
+from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from .config.manager import ConfigManager
@@ -33,11 +38,13 @@ from .constants import (
     LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
     LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
+    LBL_MENU_FULLSCREEN,
     LBL_MENU_LOAD_CONFIG,
     LBL_MENU_LOAD_RECONSTRUCTION,
     LBL_MENU_RECONSTRUCT_DIRECTORY,
     LBL_MENU_RECONSTRUCT_FILE,
     LBL_MENU_SAVE_CONFIG,
+    LBL_MENU_VIEW,
     LBL_TAB_LIBRARY,
     LBL_TAB_RECONSTRUCTION,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
@@ -54,6 +61,7 @@ from .constants import (
     TAG_MENU_RECONSTRUCT_FILE,
     TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
     TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
+    TAG_MENU_VIEW_FULLSCREEN,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
     TAG_TAB_LIBRARY,
@@ -68,6 +76,8 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
+    VAL_WINDOW_X_POS,
+    VAL_WINDOW_Y_POS,
 )
 from .panels.browser import GUIBrowserPanel
 from .panels.config import GUIConfigPanel
@@ -107,6 +117,10 @@ class GUI:
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
+        self._is_fullscreen: bool = False
+        self._previous_viewport_decorated: Optional[bool] = None
+        self._previous_viewport_position: Optional[list[float]] = None
+        self._previous_viewport_size: Optional[tuple[int, int]] = None
 
         self.setup_gui()
 
@@ -122,9 +136,9 @@ class GUI:
 
     def set_viewport(self) -> None:
         if sys.platform.startswith("win"):
-            icon_filename = "sampletones.ico"
+            icon_filename = ICON_WIN_FILENAME
         else:
-            icon_filename = "sampletones.png"
+            icon_filename = ICON_UNIX_FILENAME
 
         icon_file_path = get_icon_path(icon_filename)
 
@@ -134,7 +148,13 @@ class GUI:
             height=DIM_WINDOW_MAIN_HEIGHT,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
+            x_pos=VAL_WINDOW_X_POS,
+            y_pos=VAL_WINDOW_Y_POS,
+            decorated=True,
         )
+
+        self._is_fullscreen = False
+        self._previous_viewport_decorated = dpg.is_viewport_decorated()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
@@ -181,6 +201,8 @@ class GUI:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
             self.create_menu_bar()
             self.create_tabs()
+            # dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=self._on_key_escape)
+            # dpg.add_key_press_handler(key=dpg.mvKey_F11, callback=self._on_toggle_fullscreen)
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
@@ -218,6 +240,13 @@ class GUI:
                 )
                 dpg.add_separator()
                 dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
+            with dpg.menu(label=LBL_MENU_VIEW):
+                dpg.add_menu_item(
+                    tag=TAG_MENU_VIEW_FULLSCREEN,
+                    label=LBL_MENU_FULLSCREEN,
+                    callback=self._toggle_fullscreen,
+                    check=True,
+                )
 
     def update_menu(self) -> None:
         library_loaded = self._is_library_loaded()
@@ -227,6 +256,8 @@ class GUI:
         dpg_configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
         dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
+        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
+        dpg_configure_item(TAG_MENU_VIEW_FULLSCREEN, check=self._is_fullscreen)
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
@@ -443,6 +474,54 @@ class GUI:
 
         return True
 
+    @staticmethod
+    def _get_monitors() -> List[Dict]:
+        monitors: List[Dict] = []
+        for monitor in get_monitors():
+            monitors.append(
+                {
+                    "x": int(monitor.x),
+                    "y": int(monitor.y),
+                    "width": int(monitor.width),
+                    "height": int(monitor.height),
+                }
+            )
+
+        return monitors
+
+    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict]:
+        monitors = self._get_monitors()
+        px = float(x)
+        py = float(y)
+
+        for monitor in monitors:
+            if (
+                px >= monitor["x"]
+                and px < (monitor["x"] + monitor["width"])
+                and py >= monitor["y"]
+                and py < (monitor["y"] + monitor["height"])
+            ):
+                return monitor
+
+        return monitors[0] if monitors else None
+
+    def _on_key_escape(
+        self,
+        sender: Sender,
+        app_data: Optional[object] = None,
+        user_data: Optional[object] = None,
+    ) -> None:
+        if self._is_fullscreen:
+            self._toggle_fullscreen(sender, app_data, user_data)
+
+    def _on_toggle_fullscreen(
+        self,
+        sender: Sender,
+        app_data: Optional[object] = None,
+        user_data: Optional[object] = None,
+    ) -> None:
+        self._toggle_fullscreen(sender, app_data, user_data)
+
     def _is_reconstruction_loaded(self) -> bool:
         return self.reconstruction_panel.is_loaded()
 
@@ -481,6 +560,83 @@ class GUI:
         if self.converter_window and self.converter_window.converter:
             self.converter_window.converter.cleanup()
         dpg.stop_dearpygui()
+
+    def _enable_fullscreen(self) -> None:
+        previous_decorated = dpg.is_viewport_decorated()
+        dpg.set_viewport_decorated(False)
+        self._previous_viewport_decorated = previous_decorated
+        self._previous_viewport_position = list(dpg.get_viewport_pos())
+        self._previous_viewport_size = (int(dpg.get_viewport_width()), int(dpg.get_viewport_height()))
+
+        monitor_x = VAL_WINDOW_X_POS
+        monitor_y = VAL_WINDOW_Y_POS
+        monitor_width = None
+        monitor_height = None
+
+        monitor = None
+        if self._previous_viewport_position is not None:
+            monitor = self._monitor_for_position(
+                self._previous_viewport_position[0], self._previous_viewport_position[1]
+            )
+
+        if monitor is not None:
+            monitor_x = int(monitor.get("x", VAL_WINDOW_X_POS))
+            monitor_y = int(monitor.get("y", VAL_WINDOW_Y_POS))
+            monitor_width = int(
+                monitor.get(
+                    "width",
+                    self._previous_viewport_size[0] if self._previous_viewport_size else DIM_WINDOW_MAIN_WIDTH,
+                )
+            )
+            monitor_height = int(
+                monitor.get(
+                    "height",
+                    self._previous_viewport_size[1] if self._previous_viewport_size else DIM_WINDOW_MAIN_HEIGHT,
+                )
+            )
+        else:
+            _root = tkinter.Tk()
+            _root.withdraw()
+            monitor_width = int(_root.winfo_screenwidth())
+            monitor_height = int(_root.winfo_screenheight())
+            _root.destroy()
+
+        dpg.set_viewport_pos([monitor_x, monitor_y])
+        dpg.set_viewport_width(monitor_width)
+        dpg.set_viewport_height(monitor_height)
+        self._is_fullscreen = True
+
+    def _disable_fullscreen(self) -> None:
+        if self._previous_viewport_size is not None:
+            width, height = self._previous_viewport_size
+            dpg.set_viewport_width(width)
+            dpg.set_viewport_height(height)
+        else:
+            dpg.set_viewport_width(DIM_WINDOW_MAIN_WIDTH)
+            dpg.set_viewport_height(DIM_WINDOW_MAIN_HEIGHT)
+
+        if self._previous_viewport_position is not None:
+            dpg.set_viewport_pos(list(self._previous_viewport_position))
+        else:
+            dpg.set_viewport_pos([VAL_WINDOW_X_POS, VAL_WINDOW_Y_POS])
+
+        dpg.set_viewport_decorated(True)
+        self._is_fullscreen = False
+        self._update_fullscreen_menu_item()
+
+    def _toggle_fullscreen(
+        self,
+        sender: Sender,
+        app_data: Optional[object] = None,
+        user_data: Optional[object] = None,
+    ) -> None:
+        if not self._is_fullscreen:
+            self._enable_fullscreen()
+        else:
+            self._disable_fullscreen()
+
+    def _update_fullscreen_menu_item(self) -> None:
+        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
 
     def run(self) -> None:
         try:

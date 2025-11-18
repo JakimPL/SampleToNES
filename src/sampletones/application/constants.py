@@ -67,6 +67,8 @@ LBL_MENU_EXPORT_RECONSTRUCTION_FTI = "Export instrument as FTI"
 LBL_MENU_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
 LBL_MENU_LOAD_AUDIO = "Load audio"
 LBL_MENU_EXIT = "Exit"
+LBL_MENU_VIEW = "View"
+LBL_MENU_FULLSCREEN = "Fullscreen"
 
 # Tab labels
 LBL_TAB_LIBRARY = "Library"
@@ -244,6 +246,7 @@ TAG_MENU_RECONSTRUCT_FILE = "menu_reconstruct_file"
 TAG_MENU_RECONSTRUCT_DIRECTORY = "menu_reconstruct_directory"
 TAG_MENU_RECONSTRUCTION_EXPORT_WAV = "menu_reconstruction_export_wav"
 TAG_MENU_RECONSTRUCTION_EXPORT_FTIS = "menu_reconstruction_export_ftis"
+TAG_MENU_VIEW_FULLSCREEN = "menu_view_fullscreen"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0
@@ -577,3 +580,6 @@ DIM_BAR_PLOT_DEFAULT_HEIGHT = 200
 
 CLR_ERROR_TEXT = (255, 100, 100, 255)
 CLR_TRACEBACK_TEXT = (192, 192, 192, 255)
+
+VAL_WINDOW_X_POS = 200
+VAL_WINDOW_Y_POS = 200
