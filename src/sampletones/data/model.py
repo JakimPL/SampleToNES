@@ -3,7 +3,6 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Self, TypeVar, Union, get_args, get_origin
 
-import flatbuffers
 import numpy as np
 from flatbuffers.builder import Builder
 from flatbuffers.table import Table
@@ -92,7 +91,7 @@ class DataModel(BaseModel):
     def _deserialize_inner(cls, fb_object: Any) -> Self:
         field_values: SerializedData = {}
 
-        for field_index, (field_name, field_info) in enumerate(cls.model_fields.items()):
+        for field_name, field_info in cls.model_fields.items():
             camel = snake_to_camel(field_name)
             getter = getattr(fb_object, camel, None)
             if getter is None:
@@ -103,7 +102,7 @@ class DataModel(BaseModel):
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
             if annotation is np.ndarray:
-                value = cls._deserialize_numpy_array(fb_object, field_name, field_index)
+                value = cls._deserialize_numpy_array(fb_object, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
                 value = cls._deserialize_union(fb_object, getter)
@@ -214,31 +213,17 @@ class DataModel(BaseModel):
         for value in reversed(array):
             builder.PrependFloat32(float(value))
 
-        return builder.EndVector(len(array))
+        return builder.EndVector()
 
     @classmethod
-    def _deserialize_numpy_array(cls, fb_object: Any, field_name: str, field_index: int) -> np.ndarray:
+    def _deserialize_numpy_array(cls, fb_object: Any, field_name: str) -> np.ndarray:
         camel = snake_to_camel(field_name)
-        length_function = getattr(fb_object, f"{camel}Length")
+        getter = getattr(fb_object, f"{camel}AsNumpy")
 
-        tab = fb_object._tab
-        field_offset = tab.Offset(fb_object.__class__.__dict__[camel].__code__.co_consts[1])
+        if getter is None:
+            raise DeserializationError(f"{fb_object.__class__.__name__} missing getter '{camel}AsNumpy'")
 
-        length = length_function()
-        if length == 0 or field_offset == 0:
-            return np.empty(0, dtype=np.float32)
-
-        vtable_offset = FLOAT32_SIZE + 2 * field_index
-        uoffset = flatbuffers.number_types.UOffsetTFlags.py_type(tab.Offset(vtable_offset))
-        if uoffset == 0:
-            return np.empty(0, dtype=np.float32)
-
-        vector_start = tab.Vector(uoffset)
-        byte_start = vector_start
-        byte_length = length * FLOAT32_SIZE
-
-        buf = memoryview(tab.Bytes)[byte_start : byte_start + byte_length]
-        array = np.frombuffer(buf, dtype=np.float32).copy()
+        array = getter()
 
         if np.isnan(array).any():
             raise DeserializationError(f"Deserialized array for '{field_name}' contains NaN values")
