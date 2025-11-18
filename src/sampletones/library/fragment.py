@@ -91,7 +91,7 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         return self.sample.length
 
     @field_serializer("feature")
-    def _serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
+    def _serialize_feature(self, feature: np.ndarray) -> SerializedData:
         return serialize_array(feature)
 
     @classmethod

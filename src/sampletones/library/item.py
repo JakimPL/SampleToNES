@@ -6,13 +6,8 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
-from sampletones.generators import (
-    GeneratorType,
-)
-from sampletones.instructions import (
-    INSTRUCTION_CLASS_MAP,
-    InstructionType,
-)
+from sampletones.generators import GeneratorType
+from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionType
 from sampletones.typehints import SerializedData
 
 from .fragment import LibraryFragment
@@ -42,6 +37,6 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
 
     @classmethod
     def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        instruction_class = InstructionClassName(field_values["instruction_class"])
-        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class]
+        instruction_class_name = InstructionClassName(field_values["instruction_class"])
+        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
         return instruction_class._deserialize_from_table(table)

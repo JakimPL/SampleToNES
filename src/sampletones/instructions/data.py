@@ -36,11 +36,6 @@ class InstructionData(DataModel):
 
     @classmethod
     def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        instruction_class_value = field_values["instruction_class"]
-        instruction_class = InstructionClassName(instruction_class_value)
-        instruction = cls._deserialize_from_table(table).instruction
-
-        return cls(
-            instruction_class=instruction_class,
-            instruction=instruction,
-        )
+        instruction_class_name = InstructionClassName(field_values["instruction_class"])
+        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
+        return instruction_class._deserialize_from_table(table)

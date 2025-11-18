@@ -11,6 +11,8 @@ from pydantic import BaseModel
 from sampletones.typehints import SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
 
+from .types import DataType
+
 
 class DataModel(BaseModel):
     @classmethod
@@ -96,7 +98,6 @@ class DataModel(BaseModel):
 
             annotation = field_info.annotation
             assert annotation is not None, f"Field '{field_name}' has no annotation"
-            print(field_name, annotation)
 
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_obj, field_name)
@@ -254,35 +255,35 @@ class DataModel(BaseModel):
         return np.frombuffer(buffer, dtype=np.float32)
 
     @staticmethod
-    def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[str, object]:
+    def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[DataType, object]:
         if isinstance(value, DataModel):
-            return "uoffset", value._serialize_inner(builder)
+            return DataType.UOFFSET, value._serialize_inner(builder)
         if isinstance(value, str):
-            return "uoffset", builder.CreateString(value)
+            return DataType.UOFFSET, builder.CreateString(value)
         if isinstance(value, float):
-            return "float64", float(value)
+            return DataType.FLOAT64, float(value)
         if isinstance(value, int):
-            return "int32", int(value)
+            return DataType.INT32, int(value)
         if isinstance(value, bool):
-            return "bool", bool(value)
+            return DataType.BOOL, bool(value)
         raise TypeError(f"Unsupported tuple element type {type(value)}")
 
     @staticmethod
-    def _write_slot_to_builder(builder: Builder, slot_index: int, value_kind: str, value_payload: object) -> None:
-        if value_kind == "uoffset":
+    def _write_slot_to_builder(builder: Builder, slot_index: int, value_kind: DataType, value_payload: object) -> None:
+        if value_kind == DataType.UOFFSET:
             return builder.PrependUOffsetTRelativeSlot(slot_index, value_payload, 0)
-        if value_kind == "float64":
+        if value_kind == DataType.FLOAT64:
             return builder.PrependFloat64Slot(slot_index, value_payload, 0.0)
-        if value_kind == "int32":
+        if value_kind == DataType.INT32:
             return builder.PrependInt32Slot(slot_index, value_payload, 0)
-        if value_kind == "bool":
+        if value_kind == DataType.BOOL:
             return builder.PrependBoolSlot(slot_index, value_payload, False)
         raise TypeError(f"Unsupported slot kind {value_kind}")
 
     @classmethod
     def _deserialize_from_table(cls, table: Table) -> Self:
-        fb_cls = cls.buffer_reader()
-        wrapper = fb_cls()
+        fb_class = cls.buffer_reader()
+        wrapper = fb_class()
         wrapper.Init(table.Bytes, table.Pos)
         return cls._deserialize_inner(wrapper)
 
