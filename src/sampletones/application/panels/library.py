@@ -292,11 +292,13 @@ class GUILibraryPanel(GUITreePanel):
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: LibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
-        self._load_library(library_key)
-        self._set_current_library(library_key, load_if_needed=False, apply_config=True)
-        self._rebuild_tree()
-        dpg.configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
+        try:
+            self._set_library_tree_enabled(False)
+            self._load_library(library_key)
+            self._set_current_library(library_key, load_if_needed=False, apply_config=True)
+            self._rebuild_tree()
+        finally:
+            self._set_library_tree_enabled(True)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)

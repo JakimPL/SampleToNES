@@ -121,12 +121,15 @@ class GUIBrowserPanel(GUITreePanel):
     def initialize_tree(self) -> None:
         self._refresh_tree()
 
+    def _set_browser_tree_enabled(self, enabled: bool) -> None:
+        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=enabled)
+
     def _refresh_tree(self) -> None:
-        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
+        self._set_browser_tree_enabled(False)
         output_directory = self.config_manager.get_output_directory()
         self.browser_manager.set_output_directory(output_directory)
         self._rebuild_tree()
-        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
+        self._set_browser_tree_enabled(True)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -178,6 +181,12 @@ class GUIBrowserPanel(GUITreePanel):
                 ),
             )
             return
+        except Exception as exception:
+            logger.error_with_traceback(
+                exception, f"Unexpected error while loading reconstruction data from {filepath}"
+            )
+            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            return
 
         if not reconstruction_data.reconstruction.audio_filepath.exists():
             show_file_not_found_dialog(
@@ -186,6 +195,7 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
         if self._on_reconstruction_selected:
+            self._set_browser_tree_enabled(False)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
             self._on_reconstruction_selected(reconstruction_data)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)

@@ -26,6 +26,7 @@ from sampletones.instructions import (
 )
 from sampletones.instructions.data import InstructionData
 from sampletones.typehints import FeatureMap, SerializedData
+from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
 
 from ..reconstructor.state import ReconstructionState
@@ -196,9 +197,9 @@ class Reconstruction(DataModel):
 
         return features
 
-    # @field_serializer("approximation")
-    # def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
-    #     return serialize_array(approximation)
+    @field_serializer("approximation")
+    def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
+        return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
