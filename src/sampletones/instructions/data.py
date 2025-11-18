@@ -1,12 +1,10 @@
 from types import ModuleType
-from typing import Generic, Self
+from typing import Dict, Generic, Self
 
-from flatbuffers.table import Table
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
-from sampletones.typehints import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
 from .typehints import InstructionType
@@ -45,7 +43,20 @@ class InstructionData(DataModel, Generic[InstructionType]):
         return FBInstructionData.FBInstructionData
 
     @classmethod
-    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        instruction_class_name = InstructionClassName(field_values["instruction_class"])
-        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
-        return instruction_class._deserialize_from_table(table)
+    def buffer_union_builder(cls) -> ModuleType:
+        import schemas.instructions.FBInstructionUnion as FBInstructionData
+
+        return FBInstructionData
+
+    @classmethod
+    def buffer_union_reader(cls) -> type:
+        import schemas.instructions.FBInstructionUnion as FBInstructionData
+
+        return FBInstructionData.FBInstructionUnion
+
+    @classmethod
+    def buffer_union_map(cls) -> Dict[int, type]:
+        return {
+            index + 1: INSTRUCTION_CLASS_MAP[instruction_class]
+            for index, instruction_class in enumerate(InstructionClassName)
+        }

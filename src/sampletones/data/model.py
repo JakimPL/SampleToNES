@@ -1,7 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Self, TypeVar, Union, get_args, get_origin
+from typing import Any, Callable, Dict, List, Self, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -16,13 +16,6 @@ FLOAT32_SIZE = 4
 
 
 class DataModel(BaseModel):
-    @classmethod
-    def buffer_reader(cls) -> type:
-        raise NotImplementedError("Subclasses must implement buffer_reader method")
-
-    @classmethod
-    def buffer_builder(cls) -> ModuleType:
-        raise NotImplementedError("Subclasses must implement buffer_builder method")
 
     def serialize(self) -> bytes:
         builder = Builder(1024)
@@ -49,7 +42,7 @@ class DataModel(BaseModel):
         fb_builder = self.buffer_builder()
         offsets = {}
 
-        for field_name in type(self).model_fields.keys():
+        for field_name, field_info in type(self).model_fields.items():
             value = getattr(self, field_name)
             camel = snake_to_camel(field_name)
             add_method = f"Add{camel}"
@@ -58,22 +51,30 @@ class DataModel(BaseModel):
             if fb_add is None:
                 raise AttributeError(f"{fb_builder.__name__} missing '{add_method}' for field '{field_name}'")
 
-            if isinstance(value, DataModel):
-                offsets[field_name] = value._serialize_inner(builder)
+            annotation = field_info.annotation
+            if annotation is None:
+                raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            elif isinstance(value, np.ndarray):
+            if annotation is np.ndarray:
                 offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
 
-            elif isinstance(value, Path):
-                offsets[field_name] = builder.CreateString(str(value))
+            elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
+                union_offsets = self._serialize_union(builder, value, field_name)
+                offsets.update(union_offsets)
 
-            elif isinstance(value, list):
+            elif get_origin(annotation) is list:
                 offsets[field_name] = self._serialize_list(builder, value, field_name)
 
-            elif isinstance(value, (str, StrEnum)):
+            elif issubclass(annotation, DataModel):
+                offsets[field_name] = value._serialize_inner(builder)
+
+            elif issubclass(annotation, (str, StrEnum)):
                 offsets[field_name] = self._serialize_string(builder, value)
 
-            elif isinstance(value, (int, float, bool)):
+            elif annotation is Path:
+                offsets[field_name] = builder.CreateString(str(value))
+
+            elif issubclass(annotation, (int, float, bool)):
                 offsets[field_name] = value
 
             else:
@@ -104,13 +105,8 @@ class DataModel(BaseModel):
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_object, field_name)
 
-            elif annotation is Path:
-                raw = getter().decode("utf-8")
-                value = Path(raw)
-
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
-                table = getter()
-                value = cls._deserialize_union(table, field_values)
+                value = cls._deserialize_union(fb_object, getter)
 
             elif get_origin(annotation) is list:
                 list_class = get_args(annotation)[0]
@@ -123,8 +119,15 @@ class DataModel(BaseModel):
             elif issubclass(annotation, (str, StrEnum)):
                 value = cls._deserialize_string(getter(), annotation)
 
-            else:
+            elif annotation is Path:
+                raw = getter().decode("utf-8")
+                value = Path(raw)
+
+            elif issubclass(annotation, (int, float, bool)):
                 value = annotation(getter())
+
+            else:
+                raise DeserializationError(f"Unsupported field type {annotation} for field '{field_name}'")
 
             field_values[field_name] = value
 
@@ -241,14 +244,66 @@ class DataModel(BaseModel):
         wrapper.Init(table.Bytes, table.Pos)
         return cls._deserialize_inner(wrapper)
 
+    def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> dict:
+        union_map = type(self).buffer_union_map()
+
+        tag = None
+        for tag_type, cls in union_map.items():
+            if isinstance(value, cls):
+                tag = tag_type
+                break
+
+        if tag is None:
+            raise SerializationError(f"No union tag for value {type(value).__name__} in {type(self).__name__}")
+
+        child_offset = value._serialize_inner(builder)
+        return {field_name: child_offset, f"{field_name}_type": tag}
+
     @classmethod
-    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        raise NotImplementedError("Subclasses must implement _deserialize_union method")
+    def _deserialize_union(cls, fb_parent: Any, getter: Callable) -> Any:
+        union_map = cls.buffer_union_map()
+        type_accessor_name = f"{getter.__name__}Type"
+        type_accessor = getattr(fb_parent, type_accessor_name, None)
+        if type_accessor is None:
+            raise DeserializationError(
+                f"Missing union type accessor '{type_accessor_name}' on {fb_parent.__class__.__name__}"
+            )
+
+        tag = type_accessor()
+        if tag == 0:
+            raise DeserializationError(f"Union tag is 0 (null) for {cls.__name__}")
+
+        target_cls = union_map.get(tag)
+        if target_cls is None:
+            raise DeserializationError(f"Unknown union tag {tag} for {cls.__name__}")
+
+        table = getter()
+        return target_cls._deserialize_from_table(table)
 
     @staticmethod
-    def _prepend_offsets(builder: Builder, offsets: list[int]) -> int:
+    def _prepend_offsets(builder: Builder, offsets: List[int]) -> int:
         builder.StartVector(FLOAT32_SIZE, len(offsets), FLOAT32_SIZE)
         for offset in reversed(offsets):
             builder.PrependUOffsetTRelative(offset)
 
         return builder.EndVector(len(offsets))
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        raise NotImplementedError("Subclasses must implement buffer_reader method")
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        raise NotImplementedError("Subclasses must implement buffer_builder method")
+
+    @classmethod
+    def buffer_union_builder(cls) -> ModuleType:
+        raise NotImplementedError("Subclasses must implement buffer_union_builder method")
+
+    @classmethod
+    def buffer_union_reader(cls) -> type:
+        raise NotImplementedError("Subclasses must implement buffer_union_reader method")
+
+    @classmethod
+    def buffer_union_map(cls) -> Dict[int, type]:
+        raise NotImplementedError("Subclasses must implement buffer_union_map method")

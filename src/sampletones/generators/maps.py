@@ -40,20 +40,20 @@ GENERATOR_CLASS_MAP: Dict[GeneratorClassName, GeneratorClass] = {
 
 
 INSTRUCTION_TO_GENERATOR_MAP: Dict[InstructionClass, GeneratorClass] = {
-    TriangleInstruction: TriangleGenerator,
     PulseInstruction: PulseGenerator,
+    TriangleInstruction: TriangleGenerator,
     NoiseInstruction: NoiseGenerator,
 }
 
 GENERATOR_TO_INSTRUCTION_MAP: Dict[GeneratorClass, InstructionClass] = {
-    TriangleGenerator: TriangleInstruction,
     PulseGenerator: PulseInstruction,
+    TriangleGenerator: TriangleInstruction,
     NoiseGenerator: NoiseInstruction,
 }
 
 
 MIXER_LEVELS: Dict[GeneratorClassName, float] = {
     GeneratorClassName.PULSE_GENERATOR: MIXER_PULSE,
-    GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,
     GeneratorClassName.TRIANGLE_GENERATOR: MIXER_TRIANGLE,
+    GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,
 }

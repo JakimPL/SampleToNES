@@ -3,7 +3,6 @@ from types import ModuleType
 from typing import Generic, Self, cast
 
 import numpy as np
-from flatbuffers.table import Table
 from pydantic import ConfigDict, field_serializer
 
 from sampletones.configs import Config
@@ -116,9 +115,3 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         import schemas.library.FBLibraryFragment as FBLibraryFragment
 
         return FBLibraryFragment.FBLibraryFragment
-
-    @classmethod
-    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        generator_class_name = GeneratorClassName(field_values["generator_class"])
-        instruction_class = GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[generator_class_name]]
-        return instruction_class._deserialize_from_table(table)

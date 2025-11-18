@@ -2,7 +2,6 @@ from functools import cached_property
 from types import ModuleType
 from typing import Generic, Self, cast
 
-from flatbuffers.table import Table
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
@@ -14,7 +13,6 @@ from sampletones.instructions import (
     InstructionData,
     InstructionType,
 )
-from sampletones.typehints import SerializedData
 
 from .fragment import LibraryFragment
 
@@ -63,9 +61,3 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
         import schemas.library.FBLibraryItem as FBLibraryItem
 
         return FBLibraryItem.FBLibraryItem
-
-    @classmethod
-    def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
-        instruction_class_name = InstructionClassName(field_values["instruction_class"])
-        instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
-        return instruction_class._deserialize_from_table(table)
