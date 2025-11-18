@@ -48,6 +48,6 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         return {
             FeatureKey.INITIAL_PITCH: initial_period,
             FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
-            FeatureKey.ARPEGGIO: np.array(arpeggio).astype(np.int8),
+            FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }

@@ -33,7 +33,6 @@ def general_derivative(x: np.ndarray, a: float) -> np.ndarray:
 
 
 def general_inverse(x: np.ndarray, a: float) -> np.ndarray:
-    x = np.asarray(x, dtype=float)
     z = np.log1p(x)
 
     for _ in range(ITERATIONS):

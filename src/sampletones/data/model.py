@@ -87,20 +87,20 @@ class DataModel(BaseModel):
         return fb_builder.End(builder)
 
     @classmethod
-    def _deserialize_inner(cls, fb_obj: Any) -> Self:
+    def _deserialize_inner(cls, fb_object: Any) -> Self:
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
             camel = snake_to_camel(field_name)
-            getter = getattr(fb_obj, camel, None)
+            getter = getattr(fb_object, camel, None)
             if getter is None:
-                raise AttributeError(f"{fb_obj.__class__.__name__} missing getter '{camel}'")
+                raise AttributeError(f"{fb_object.__class__.__name__} missing getter '{camel}'")
 
             annotation = field_info.annotation
             assert annotation is not None, f"Field '{field_name}' has no annotation"
 
             if annotation is np.ndarray:
-                value = cls._deserialize_numpy_array(fb_obj, field_name)
+                value = cls._deserialize_numpy_array(fb_object, field_name)
 
             elif annotation is Path:
                 raw = getter().decode("utf-8")
@@ -112,7 +112,7 @@ class DataModel(BaseModel):
 
             elif get_origin(annotation) is list:
                 list_class = get_args(annotation)[0]
-                value = cls._deserialize_list(fb_obj, field_name, list_class)
+                value = cls._deserialize_list(fb_object, field_name, list_class)
 
             elif issubclass(annotation, DataModel):
                 fb_child = getter()
@@ -187,13 +187,13 @@ class DataModel(BaseModel):
         raise TypeError(f"Unsupported list element type {type(collection[0])} or mixed types for serialization")
 
     @classmethod
-    def _deserialize_list(cls, fb_obj: Any, field_name: str, element_class: type) -> np.ndarray | list:
+    def _deserialize_list(cls, fb_object: Any, field_name: str, element_class: type) -> np.ndarray | list:
         camel = snake_to_camel(field_name)
-        getter = getattr(fb_obj, camel, None)
-        length_function = getattr(fb_obj, f"{camel}Length", None)
+        getter = getattr(fb_object, camel, None)
+        length_function = getattr(fb_object, f"{camel}Length", None)
 
         if getter is None or length_function is None:
-            raise AttributeError(f"{fb_obj.__class__.__name__} missing getter or Length method for field '{camel}'")
+            raise AttributeError(f"{fb_object.__class__.__name__} missing getter or Length method for field '{camel}'")
 
         length = length_function()
         if length == 0:
@@ -219,14 +219,13 @@ class DataModel(BaseModel):
             return items
 
         if element_class in (int, float, bool):
-            arr = []
-            for i in range(length):
-                arr.append(getter(i))
-            return np.array(arr)
+            raise TypeError("Primitive lists should be deserialized using _deserialize_numpy_array method")
 
         raise TypeError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
 
     def _serialize_numpy_array(self, builder: Builder, array: np.ndarray) -> int:
+        assert array.dtype == np.float32, f"Only np.float32 arrays are supported for serialization, got {array.dtype}"
+
         element_size = 4
         builder.StartVector(element_size, len(array), element_size)
         for value in reversed(array):
@@ -235,16 +234,16 @@ class DataModel(BaseModel):
         return builder.EndVector(len(array))
 
     @classmethod
-    def _deserialize_numpy_array(cls, fb_obj: Any, field_name: str) -> np.ndarray:
+    def _deserialize_numpy_array(cls, fb_object: Any, field_name: str) -> np.ndarray:
         camel = snake_to_camel(field_name)
-        length_function = getattr(fb_obj, f"{camel}Length")
+        length_function = getattr(fb_object, f"{camel}Length")
 
         length = length_function()
         if length == 0:
             return np.empty(0, dtype=np.float32)
 
-        tab = fb_obj._tab
-        field_offset = tab.Offset(fb_obj.__class__.__dict__[camel].__code__.co_consts[1])
+        tab = fb_object._tab
+        field_offset = tab.Offset(fb_object.__class__.__dict__[camel].__code__.co_consts[1])
 
         if field_offset == 0:
             return np.empty(0, dtype=np.float32)

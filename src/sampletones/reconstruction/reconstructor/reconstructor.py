@@ -67,7 +67,7 @@ class Reconstructor:
         coefficient = self.get_coefficient(audio)
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
-        return Reconstruction.from_results(self.state, self.config, coefficient, path)
+        return Reconstruction.from_state(self.state, self.config, coefficient, path)
 
     def load_audio(self, path: Path) -> np.ndarray:
         return load_audio(

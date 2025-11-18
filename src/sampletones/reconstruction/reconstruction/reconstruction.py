@@ -131,7 +131,7 @@ class Reconstruction(DataModel):
         )
 
     @classmethod
-    def from_results(cls, state: ReconstructionState, config: Config, coefficient: float, path: Path) -> Optional[Self]:
+    def from_state(cls, state: ReconstructionState, config: Config, coefficient: float, path: Path) -> Optional[Self]:
         if any(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None
@@ -150,7 +150,7 @@ class Reconstruction(DataModel):
         )
 
     def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
-        return self.approximations.get(generator_name, np.array([]))
+        return self.approximations.get(generator_name, np.array([], dtype=np.float32))
 
     def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])

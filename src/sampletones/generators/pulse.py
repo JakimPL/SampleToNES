@@ -60,9 +60,9 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
     def apply(self, output: np.ndarray, instruction: PulseInstruction) -> np.ndarray:
         duty_cycle = DUTY_CYCLES[instruction.duty_cycle]
-        output = np.where(output < duty_cycle, 1.0, -1.0)
-        output *= instruction.volume / MAX_VOLUME
-        return output * MIXER_PULSE
+        output = np.where(output < duty_cycle, 1.0, -1.0).astype(np.float32)
+        output *= np.float32(MIXER_PULSE * instruction.volume / MAX_VOLUME)
+        return output
 
     def get_possible_instructions(self) -> List[PulseInstruction]:
         pulse_instructions = [

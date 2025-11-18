@@ -49,7 +49,7 @@ class PhaseTimer(Timer):
         return round(self.sample_rate / self._real_frequency * phase)
 
     def generate_frame(self, save: bool = True) -> np.ndarray:
-        indices = np.arange(self.frame_length) + 1
+        indices = np.arange(self.frame_length, dtype=np.float32) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
         lower = np.ceil(1.0 + abs(delta * indices[-1]))
         frame = np.fmod(lower + indices * delta + self.phase, 1.0)

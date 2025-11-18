@@ -55,8 +55,8 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
             self.timer.period = 0
 
     def apply(self, output: np.ndarray, instruction: NoiseInstruction) -> np.ndarray:
-        volume = 0.5 * float(instruction.volume) / float(MAX_VOLUME)
-        return volume * output * MIXER_NOISE
+        volume = np.float32(MIXER_NOISE * 0.5 * float(instruction.volume) / float(MAX_VOLUME))
+        return volume * output
 
     def get_possible_instructions(self) -> List[NoiseInstruction]:
         noise_instructions = [
