@@ -205,7 +205,6 @@ class GUIReconstructionPanel(GUIPanel):
             return
 
         selected_generators = self._get_selected_generators()
-
         self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
         self._update_audio_player()
 

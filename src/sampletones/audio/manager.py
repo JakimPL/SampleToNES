@@ -45,7 +45,7 @@ class AudioDeviceManager:
         callback = None
         position = 0
         chunk_size = 0
-        chunk_data = np.array([])
+        chunk_data = np.array([], dtype=np.float32)
 
         with self._lock:
             if self._audio_data is None or not self._is_playing:

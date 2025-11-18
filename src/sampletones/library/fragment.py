@@ -1,107 +1,117 @@
-from dataclasses import dataclass, field
-from typing import List, Self
+from functools import cached_property
+from types import ModuleType
+from typing import Generic, Self, cast
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, field_serializer
 
 from sampletones.configs import Config
-from sampletones.ffts import Window
+from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
+from sampletones.data import DataModel
+from sampletones.exceptions import InstructionTypeMismatchError
+from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
+from sampletones.generators import (
+    GENERATOR_CLASS_MAP,
+    GENERATOR_TO_INSTRUCTION_MAP,
+    GeneratorType,
+)
+from sampletones.instructions import InstructionData, InstructionType
+from sampletones.typehints import Initials, SerializedData
+from sampletones.utils import serialize_array
 
 
-@dataclass(frozen=True)
-class Fragment:
-    audio: np.ndarray
+class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
+
+    generator_class: GeneratorClassName
+    instruction_data: InstructionData
+    sample: CyclicArray
     feature: np.ndarray
-    windowed_audio: np.ndarray
-    config: Config
-
-    transformer: FFTTransformer = field(init=False)
-
-    def __post_init__(self):
-        object.__setattr__(self, "transformer", FFTTransformer.from_gamma(self.config.library.transformation_gamma))
+    frequency: float
 
     @classmethod
-    def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> "Fragment":
-        assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
-        transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
-        feature = transformer.calculate(windowed_audio, window.size)
+    def create(
+        cls,
+        generator: GeneratorType,
+        instruction: InstructionType,
+        window: Window,
+        transformer: FFTTransformer,
+    ) -> Self:
+        sample: CyclicArray = generator.generate_sample(instruction)
+
+        features = []
+        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
+            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
+            windowed_audio = sample.get_window(phase, window)
+            transformed_windowed_audio = transformer.calculate(windowed_audio)
+            features.append(transformed_windowed_audio)
+
+        feature = transformer.inverse(np.mean(features, axis=0))
+
         return cls(
-            audio=window.get_frame_from_window(windowed_audio),
+            generator_class=generator.class_name(),
+            instruction_data=InstructionData.create(instruction),
+            sample=sample,
             feature=feature,
+            frequency=generator.timer.real_frequency,
+        )
+
+    @cached_property
+    def instruction(self) -> InstructionType:
+        if not isinstance(
+            self.instruction_data.instruction,
+            GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[self.generator_class]],
+        ):
+            raise InstructionTypeMismatchError("Instruction type does not match generator class")
+        return cast(InstructionType, self.instruction_data.instruction)
+
+    def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
+        windowed_audio = self.sample.get_window(shift, window)
+        audio = window.get_frame_from_window(windowed_audio)
+        return Fragment(
+            audio=audio,
+            feature=self.feature,
             windowed_audio=windowed_audio,
             config=config,
         )
 
-    def __sub__(self, other: Self) -> "Fragment":
-        if self.audio.shape != other.audio.shape:
-            raise ValueError("Fragments must have the same shape to be subtracted.")
-
-        if (
-            self.config.library != other.config.library
-            or self.config.generation.calculation != other.config.generation.calculation
-        ):
-            raise ValueError("Both fragments must have the same config to be subtracted.")
-
-        windowed_audio = self.windowed_audio - other.windowed_audio
-        audio = self.audio - other.audio
-
-        if self.config.generation.calculation.fast_difference:
-            feature = self.transformer.subtract(self.feature, other.feature)
-        else:
-            feature = self.transformer.calculate(windowed_audio)
-
-        return Fragment(
-            audio=audio,
-            feature=feature,
-            windowed_audio=windowed_audio,
-            config=self.config,
-        )
-
-    def __mul__(self, scalar: float) -> "Fragment":
-        audio = self.audio * scalar
-        windowed_audio = self.windowed_audio * scalar
-        feature = self.transformer.multiply(self.feature, scalar)
-        return Fragment(
-            audio=audio,
-            feature=feature,
-            windowed_audio=windowed_audio,
-            config=self.config,
-        )
-
-
-class FragmentedAudio(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
-
-    audio: np.ndarray = Field(..., description="Original audio data")
-    fragments: List[Fragment] = Field(..., description="List of audio fragments")
-    config: Config = Field(..., description="Configuration")
-
-    @classmethod
-    def create(cls, audio: np.ndarray, config: Config, window: Window) -> "FragmentedAudio":
-        length = (audio.shape[0] // window.frame_length) * window.frame_length
-        audio = audio[:length].copy()
-        count = length // window.frame_length
-        fragments = [
-            Fragment.create(
-                config,
-                window.get_windowed_frame(audio, fragment_id * window.frame_length),
-                window,
-            )
-            for fragment_id in range(count)
-        ]
-
-        return cls(audio=audio, fragments=fragments, config=config)
-
-    def __getitem__(self, index: int) -> Fragment:
-        return self.fragments[index]
-
-    def __setitem__(self, index: int, value: Fragment) -> None:
-        self.fragments[index] = value
-
-    def __len__(self) -> int:
-        return len(self.fragments)
+    def get(
+        self,
+        generator: GeneratorType,
+        config: Config,
+        window: Window,
+        initials: Initials = None,
+    ) -> Fragment:
+        generator.set_timer(self.instruction)
+        shift = generator.timer.calculate_offset(initials)
+        return self.get_fragment(shift, config, window)
 
     @property
-    def fragments_ids(self) -> List[int]:
-        return list(range(len(self.fragments)))
+    def data(self) -> np.ndarray:
+        return self.sample.array
+
+    @property
+    def empty(self) -> bool:
+        return self.sample.length == 0
+
+    @property
+    def length(self) -> int:
+        return self.sample.length
+
+    @field_serializer("feature")
+    def _serialize_feature(self, feature: np.ndarray) -> SerializedData:
+        return serialize_array(feature)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.library.FBLibraryFragment as FBLibraryFragment
+
+        return FBLibraryFragment
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.library.FBLibraryFragment as FBLibraryFragment
+
+        return FBLibraryFragment.FBLibraryFragment

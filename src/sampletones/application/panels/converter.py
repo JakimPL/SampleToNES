@@ -8,6 +8,7 @@ from sampletones.reconstruction.converter import (
     ReconstructionConverter,
     get_output_path,
 )
+from sampletones.utils.logger import logger
 
 from ..config.manager import ConfigManager
 from ..constants import (
@@ -70,9 +71,35 @@ class GUIConverterWindow:
         dpg_delete_item(TAG_CONVERTER_WINDOW)
 
     def show(self, input_path: Path, is_file: bool = False) -> None:
-        self.is_file = is_file
+        self.hide()
 
-        config = self.config_manager.get_config()
+        try:
+            config = self.config_manager.get_config()
+        except RuntimeError as exception:
+            logger.error(f"Config not initialized")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return
+        except Exception as exception:
+            logger.error(f"Failed to get config")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return
+
+        try:
+            self.output_path = get_output_path(config, input_path)
+        except FileNotFoundError as exception:
+            logger.error(f"Input file does not exist")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return
+        except OSError as exception:
+            logger.error(f"Invalid path")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return
+        except Exception as exception:
+            logger.error(f"Failed to determine output path")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return
+
+        self.is_file = is_file
         self.converter = ReconstructionConverter(config=config)
         self.converter.set_callbacks(
             on_start=self._on_start,
@@ -82,9 +109,6 @@ class GUIConverterWindow:
             on_progress=self._update_status,
         )
 
-        self.output_path = get_output_path(config, input_path)
-
-        self.hide()
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
             tag=TAG_CONVERTER_WINDOW,

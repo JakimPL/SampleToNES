@@ -55,7 +55,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
     def apply(self, output: np.ndarray, instruction: TriangleInstruction) -> np.ndarray:
         triangle = 1.0 - np.round(np.abs(((output + TRIANGLE_OFFSET) % 1.0) - 0.5) * 30.0) / 7.5
-        return triangle * MIXER_TRIANGLE
+        return (triangle * MIXER_TRIANGLE).astype(np.float32)
 
     def get_possible_instructions(self) -> List[TriangleInstruction]:
         triangle_instructions = [

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -e
 
 PYVER=$(python3 --version 2>&1 | awk '{print $2}')

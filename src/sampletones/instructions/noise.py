@@ -1,5 +1,8 @@
+from types import ModuleType
+
 from pydantic import Field
 
+from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
 
 from .instruction import Instruction
@@ -17,9 +20,10 @@ class NoiseInstruction(Instruction):
         short = "s" if self.short else "l"
         return f"N {period} {volume} {short}"
 
-    def __lt__(self, other: "NoiseInstruction") -> bool:
+    def __lt__(self, other: Instruction) -> bool:
         if not isinstance(other, NoiseInstruction):
-            return TypeError("Cannot compare NoiseInstruction with different type")
+            raise TypeError("Cannot compare NoiseInstruction with different type")
+
         return (NOISE_PERIODS[self.period], -self.volume, self.short) < (
             NOISE_PERIODS[other.period],
             -other.volume,
@@ -57,3 +61,19 @@ class NoiseInstruction(Instruction):
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - period_differences)
 
         return period_distance + volume_distance
+
+    @classmethod
+    def class_name(cls) -> InstructionClassName:
+        return InstructionClassName.NOISE_INSTRUCTION
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.instructions.noise.FBNoiseInstruction as FBNoiseInstruction
+
+        return FBNoiseInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.instructions.noise.FBNoiseInstruction as FBNoiseInstruction
+
+        return FBNoiseInstruction.FBNoiseInstruction

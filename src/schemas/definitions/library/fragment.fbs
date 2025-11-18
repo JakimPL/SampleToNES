@@ -1,0 +1,14 @@
+include "arrays.fbs";
+include "instructions/instruction.fbs";
+
+namespace schemas.library;
+
+table FBLibraryFragment {
+	generator_class: string;
+	instruction_data: schemas.instructions.FBInstructionData;
+	feature: [float];
+	sample: schemas.arrays.FBCyclicArray;
+	frequency: float;
+}
+
+root_type FBLibraryFragment;

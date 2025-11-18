@@ -1,0 +1,10 @@
+include "instructions/instruction.fbs";
+
+namespace schemas.reconstruction;
+
+table FBInstructionsItem {
+    generator_name: string;
+    instructions: [schemas.instructions.FBInstructionData];
+}
+
+root_type FBInstructionsItem;

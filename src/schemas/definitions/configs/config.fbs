@@ -1,0 +1,13 @@
+include "configs/library.fbs";
+include "configs/general.fbs";
+include "configs/generation.fbs";
+
+namespace schemas.configs;
+
+table FBConfig {
+	general: schemas.configs.FBGeneralConfig;
+	library: schemas.configs.FBLibraryConfig;
+	generation: schemas.configs.FBGenerationConfig;
+}
+
+root_type FBConfig;

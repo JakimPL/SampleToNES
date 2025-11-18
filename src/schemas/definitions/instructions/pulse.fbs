@@ -1,0 +1,10 @@
+namespace schemas.instructions;
+
+table FBPulseInstruction {
+	on:bool;
+	pitch:int;
+	volume:int;
+	duty_cycle:int;
+}
+
+root_type FBPulseInstruction;

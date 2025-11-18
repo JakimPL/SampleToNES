@@ -1,5 +1,7 @@
+from types import ModuleType
+
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from sampletones.constants.general import (
     A4_FREQUENCY,
@@ -14,9 +16,10 @@ from sampletones.constants.general import (
     SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
 )
+from sampletones.data import DataModel
 
 
-class LibraryConfig(BaseModel):
+class LibraryConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     change_rate: int = Field(default=CHANGE_RATE, ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
@@ -33,3 +36,15 @@ class LibraryConfig(BaseModel):
     def window_size(self) -> int:
         lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
         return max(self.frame_length, lower_bound)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.configs.FBLibraryConfig as FBLibraryConfig
+
+        return FBLibraryConfig
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.configs.FBLibraryConfig as FBLibraryConfig
+
+        return FBLibraryConfig.FBLibraryConfig

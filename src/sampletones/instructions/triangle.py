@@ -1,5 +1,8 @@
+from types import ModuleType
+
 from pydantic import Field
 
+from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
 from sampletones.utils import pitch_to_name
 
@@ -14,9 +17,10 @@ class TriangleInstruction(Instruction):
         pitch = pitch_to_name(self.pitch)
         return f"T {pitch}"
 
-    def __lt__(self, other: "TriangleInstruction") -> bool:
+    def __lt__(self, other: Instruction) -> bool:
         if not isinstance(other, TriangleInstruction):
-            return TypeError("Cannot compare TriangleInstruction with different type")
+            raise TypeError("Cannot compare TriangleInstruction with different type")
+
         return self.pitch < other.pitch
 
     def distance(self, other: Instruction) -> float:
@@ -36,3 +40,19 @@ class TriangleInstruction(Instruction):
             pitch_difference = abs(pitch1 - pitch2) / PITCH_RANGE
 
         return pitch_difference
+
+    @classmethod
+    def class_name(cls) -> InstructionClassName:
+        return InstructionClassName.TRIANGLE_INSTRUCTION
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
+
+        return FBTriangleInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
+
+        return FBTriangleInstruction.FBTriangleInstruction

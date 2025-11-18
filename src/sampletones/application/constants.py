@@ -29,8 +29,8 @@ DIM_DIALOG_WIDTH = 350
 DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH = 600
 DIM_DIALOG_ERROR_HEIGHT = 120
-DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_WIDTH - 10
-DIM_DIALOG_CONVERTER_WIDTH = 700
+DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
+DIM_DIALOG_CONVERTER_WIDTH = 800
 DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
@@ -166,15 +166,17 @@ MSG_RECONSTRUCTION_SELECT_TO_VIEW = "Select a reconstruction to view details."
 MSG_CONFIG_APPLIED_SUCCESSFULLY = "Configuration applied successfully."
 MSG_CONFIG_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIG_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
-MSG_CONFIG_SAVE_ERROR = "Error saving configuration:"
-MSG_CONFIG_LOAD_ERROR = "Error loading configuration:"
-MSG_LIBRARY_DISPLAY_ERROR = "Error while displaying data:"
+MSG_CONFIG_SAVE_ERROR = "Error saving configuration."
+MSG_CONFIG_LOAD_ERROR = "Error loading configuration."
+MSG_CONFIG_INVALID_ERROR = "Invalid configuration file."
+MSG_LIBRARY_DISPLAY_ERROR = "Error while displaying data."
 TPL_RECONSTRUCTION_COMPLETE = "Reconstruction complete. Total error: {:.4f}"
 TPL_LIBRARY_GENERATION_PROGRESS = "Generating: {}/{} "
 MSG_RECONSTRUCTION_SELECT_AUDIO_AND_CONFIG = "Please select audio file and apply configuration first."
 MSG_LIBRARY_EXISTS = "Library exists."
 MSG_LIBRARY_NOT_EXISTS = "Library does not exist."
 MSG_LIBRARY_GENERATING = "Generating library..."
+MSG_LIBRARY_GENERATION_SAVING = "Saving generated library..."
 MSG_LIBRARY_GENERATION_SUCCESS = "Library generated successfully."
 MSG_LIBRARY_NOT_LOADED = "Library is not loaded. Please load or generate a library."
 MSG_LIBRARY_LOADING = "Library is loading..."
@@ -192,10 +194,14 @@ MSG_WAVEFORM_NO_RECONSTRUCTION = (
     "No reconstruction loaded. Select a reconstruction from the list to display its waveform."
 )
 MSG_LIBRARY_FILE_NOT_FOUND = "The library file could not be found."
-MSG_LIBRARY_FILE_ERROR = "Error while loading the library file."
+MSG_LIBRARY_FILE_LOAD_ERROR = "Error while loading the library file."
 MSG_LIBRARY_LOAD_ERROR = "Error while loading library data."
+MSG_LIBRARY_INVALID_DATA_ERROR = "Invalid library data file."
+MSG_LIBRARY_INVALID_DATA_VALUES_ERROR = "Library data contains invalid values."
+MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR = "Incompatible library data version: {}, expected {}."
 MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
+MSG_INVALID_METADATA_ERROR = "Invalid file metadata."
 
 # Template strings
 TPL_LIBRARY_EXISTS = "Library {} exists."
@@ -370,7 +376,7 @@ LBL_PLAYER_BUTTON_PAUSE = "Pause"
 LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
-MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error:"
+MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error."
 TITLE_DIALOG_NO_AUDIO = "No Audio"
 TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
 
@@ -430,13 +436,15 @@ MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS = "Reconstruction rendered successfully."
 MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS = "Instrument saved successfully."
 MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instruments saved successfully."
 MSG_RECONSTRUCTION_EXPORT_NO_DATA = "No reconstruction loaded."
-MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE = "Reconstruction failed to save:"
-MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE = "Failed to export instrument as FTI:"
-MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE = "Failed to export reconstruction as FTIs:"
-MSG_RECONSTRUCTION_LOAD_FAILURE = "Failed to load reconstruction:"
+MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE = "Reconstruction failed to save."
+MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE = "Failed to export instrument as FTI."
+MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE = "Failed to export reconstruction as FTIs."
+MSG_RECONSTRUCTION_FILE_LOAD_ERROR = "Failed to load reconstruction."
+MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE = "Reconstruction contains invalid values."
 MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
-MSG_CONFIG_SAVE_FAILED = "Failed to save configuration:"
-MSG_CONFIG_LOAD_FAILED = "Failed to load configuration:"
+MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE = "Incompatible reconstruction version: {}, expected {}."
+MSG_CONFIG_SAVE_FAILED = "Failed to save configuration."
+MSG_CONFIG_LOAD_FAILED = "Failed to load configuration."
 TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
 TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
@@ -568,3 +576,4 @@ VAL_BAR_PLOT_ZERO_LINE_THICKNESS = 1.0
 DIM_BAR_PLOT_DEFAULT_HEIGHT = 200
 
 CLR_ERROR_TEXT = (255, 100, 100, 255)
+CLR_TRACEBACK_TEXT = (192, 192, 192, 255)

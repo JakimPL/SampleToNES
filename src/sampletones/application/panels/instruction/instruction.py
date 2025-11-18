@@ -115,7 +115,6 @@ class GUIInstructionPanel(GUIPanel):
         self.library_config = library_config
 
         self.player_panel.disable()
-
         if self._on_display_instruction_details:
             self._on_display_instruction_details(generator_class_name, instruction, fragment)
 

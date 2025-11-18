@@ -59,8 +59,8 @@ def main() -> None:
 
     from sampletones.configs import Config
     from sampletones.constants.paths import (
-        EXT_FILE_JSON,
         EXT_FILE_LIBRARY,
+        EXT_FILE_RECONSTRUCTION,
         EXT_FILE_WAVE,
     )
     from sampletones.utils.logger import logger
@@ -83,7 +83,7 @@ def main() -> None:
                 from sampletones.scripts import reconstruct_file
 
                 return reconstruct_file(path, config, output_path)
-            elif suffix == EXT_FILE_JSON:
+            elif suffix == EXT_FILE_RECONSTRUCTION:
                 from sampletones.scripts import load_reconstruction
 
                 return load_reconstruction(path, config_path)
@@ -95,7 +95,7 @@ def main() -> None:
                 return load_library(path, config_path)
             else:
                 raise RuntimeError(
-                    f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_JSON}, "
+                    f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_RECONSTRUCTION}, "
                     f"and {EXT_FILE_LIBRARY} are supported."
                 )
         elif path.is_dir():

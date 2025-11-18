@@ -9,6 +9,7 @@ __pycache__/
 build/
 sampletones
 sampletones.exe
+
 !src/sampletones
 
 **/*.idea
@@ -23,7 +24,8 @@ sampletones.exe
 *.log
 *.npy
 *.dat
+*.stn
 *.fti
 *.lock
 *.spec
-
+*.fb

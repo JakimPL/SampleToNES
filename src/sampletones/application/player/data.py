@@ -35,7 +35,7 @@ class AudioData(BaseModel):
 
     @classmethod
     def empty(cls, sample_rate: int) -> "AudioData":
-        return cls(sample=np.array([]), sample_rate=sample_rate, current_position=0)
+        return cls(sample=np.array([], dtype=np.float32), sample_rate=sample_rate, current_position=0)
 
     def is_loaded(self) -> bool:
         return len(self.sample) > 0

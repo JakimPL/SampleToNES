@@ -23,7 +23,7 @@ class ReconstructionData(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> Self:
-        reconstruction = Reconstruction.load(path)
+        reconstruction = Reconstruction.load_and_validate(path)
         audio_filepath = reconstruction.audio_filepath
         sample_rate = reconstruction.config.library.sample_rate
         normalize = reconstruction.config.general.normalize

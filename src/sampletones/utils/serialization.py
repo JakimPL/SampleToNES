@@ -26,6 +26,16 @@ def load_json(filepath: Union[str, Path]) -> SerializedData:
         return json.load(file)
 
 
+def save_binary(filepath: Union[str, Path], data: bytes) -> None:
+    with open(filepath, "wb") as file:
+        file.write(data)
+
+
+def load_binary(filepath: Union[str, Path]) -> bytes:
+    with open(filepath, "rb") as file:
+        return file.read()
+
+
 def serialize_array(array: np.ndarray) -> SerializedData:
     return {
         "data": base64.b64encode(array.tobytes()).decode("utf-8"),
@@ -48,3 +58,8 @@ def hash_models(*models: BaseModel, length: int = 32) -> str:
 
 def hash_model(model: BaseModel, length: int = 32) -> str:
     return hash_models(model, length=length)
+
+
+def snake_to_camel(snake_str: str) -> str:
+    parts = snake_str.split("_")
+    return "".join(word.capitalize() for word in parts)

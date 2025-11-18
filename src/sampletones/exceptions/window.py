@@ -1,10 +1,9 @@
-class WindowError(Exception):
-    """Base exception for window-related errors."""
+from .base import SampleToNESError
 
-    pass
+
+class WindowError(SampleToNESError):
+    """Base exception for window-related errors."""
 
 
 class WindowNotAvailableError(WindowError):
     """Exception raised when the application window is not available."""
-
-    pass

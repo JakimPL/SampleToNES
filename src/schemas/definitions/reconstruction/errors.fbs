@@ -1,0 +1,9 @@
+namespace schemas.reconstruction;
+
+table FBErrors {
+    generator_name: string;
+    errors: [float];
+    total_error: float;
+}
+
+root_type FBErrors;

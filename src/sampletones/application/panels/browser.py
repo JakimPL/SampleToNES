@@ -3,7 +3,12 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.exceptions import InvalidReconstructionError
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+)
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
@@ -18,10 +23,13 @@ from ..constants import (
     LBL_BUTTON_RECONSTRUCT_FILE,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
+    MSG_INVALID_METADATA_ERROR,
     MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTION_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTION_LOAD_FAILURE,
+    MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
     NOD_TYPE_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
@@ -113,12 +121,15 @@ class GUIBrowserPanel(GUITreePanel):
     def initialize_tree(self) -> None:
         self._refresh_tree()
 
+    def _set_browser_tree_enabled(self, enabled: bool) -> None:
+        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=enabled)
+
     def _refresh_tree(self) -> None:
-        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
+        self._set_browser_tree_enabled(False)
         output_directory = self.config_manager.get_output_directory()
         self.browser_manager.set_output_directory(output_directory)
         self._rebuild_tree()
-        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
+        self._set_browser_tree_enabled(True)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -143,11 +154,38 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_LOAD_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            return
+        except InvalidMetadataError as exception:
+            logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
+            show_error_dialog(exception, MSG_INVALID_METADATA_ERROR)
+            return
+        except InvalidReconstructionValuesError as exception:
+            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE)
             return
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
+            return
+        except IncompatibleReconstructionVersionError as exception:
+            logger.error_with_traceback(
+                exception,
+                f"Incompatible reconstruction version: {exception.actual_version} != expected {exception.expected_version}",
+            )
+            show_error_dialog(
+                exception,
+                MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                    exception.expected_version,
+                    exception.actual_version,
+                ),
+            )
+            return
+        except Exception as exception:
+            logger.error_with_traceback(
+                exception, f"Unexpected error while loading reconstruction data from {filepath}"
+            )
+            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
             return
 
         if not reconstruction_data.reconstruction.audio_filepath.exists():
@@ -157,6 +195,7 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
         if self._on_reconstruction_selected:
+            self._set_browser_tree_enabled(False)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
             self._on_reconstruction_selected(reconstruction_data)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)

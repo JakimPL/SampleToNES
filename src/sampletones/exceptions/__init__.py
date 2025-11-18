@@ -1,12 +1,21 @@
 from .library import (
+    IncompatibleLibraryDataVersionError,
+    InstructionTypeMismatchError,
     InvalidLibraryDataError,
+    InvalidLibraryDataValuesError,
     LibraryDisplayError,
     LibraryError,
     LoadLibraryError,
     NoLibraryDataError,
 )
 from .playback import PlaybackError
-from .reconstruction import InvalidReconstructionError, ReconstructionError
+from .reconstruction import (
+    IncompatibleReconstructionVersionError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+    ReconstructionError,
+)
+from .validation import DeserializationError, InvalidMetadataError, SerializationError
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [
@@ -14,10 +23,18 @@ __all__ = [
     "NoLibraryDataError",
     "LoadLibraryError",
     "InvalidLibraryDataError",
+    "InstructionTypeMismatchError",
+    "InvalidLibraryDataValuesError",
+    "IncompatibleLibraryDataVersionError",
     "LibraryDisplayError",
     "PlaybackError",
     "ReconstructionError",
     "InvalidReconstructionError",
+    "InvalidReconstructionValuesError",
+    "IncompatibleReconstructionVersionError",
     "WindowError",
     "WindowNotAvailableError",
+    "SerializationError",
+    "DeserializationError",
+    "InvalidMetadataError",
 ]

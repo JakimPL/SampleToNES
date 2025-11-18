@@ -4,7 +4,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import BATCH_SIZE
 from sampletones.ffts import Window
-from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion
+from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger, logger
@@ -39,9 +39,7 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
     ) -> List[Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window]]:
         assert self.window is not None, "Window must be set before creating tasks"
 
-        generators: Dict[GeneratorClassName, GeneratorUnion] = {
-            name: GENERATOR_CLASS_MAP[name](self.config, name) for name in GENERATOR_CLASS_MAP
-        }
+        generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(self.config)
 
         self.instructions = [
             (generator.class_name(), instruction)
@@ -67,7 +65,7 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
             all_fragments.extend(batch_results)
 
         data: Dict[InstructionUnion, LibraryFragment] = dict(all_fragments)
-        library_data = LibraryData(config=self.config.library, data=data)
+        library_data = LibraryData.create(self.config, data)
 
         key = LibraryKey.create(self.config.library, self.window)
         return key, library_data

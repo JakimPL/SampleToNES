@@ -1,0 +1,9 @@
+namespace schemas.arrays;
+
+table FBCyclicArray {
+	array: [float];
+	sample_rate: int;
+	frequency: float;
+}
+
+root_type FBCyclicArray;

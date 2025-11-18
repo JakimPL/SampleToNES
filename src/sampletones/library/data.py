@@ -1,130 +1,46 @@
-import json
 from functools import cached_property
 from pathlib import Path
-from typing import Collection, Dict, Generic, List, Self, Type, Union
+from types import ModuleType
+from typing import Collection, Dict, List, Self, Union
 
-import msgpack
-import numpy as np
-from pydantic import BaseModel, ConfigDict, field_serializer
+from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones.configs import Config, LibraryConfig
+from sampletones.constants.application import (
+    SAMPLETONES_LIBRARY_DATA_VERSION,
+    SAMPLETONES_NAME,
+    compare_versions,
+)
 from sampletones.constants.enums import GeneratorClassName
-from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones.exceptions import InvalidLibraryDataError
-from sampletones.ffts import CyclicArray, Window
-from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorType
-from sampletones.instructions import InstructionType, InstructionUnion
-from sampletones.typehints import Initials, SerializedData
-from sampletones.utils import deserialize_array, dump, serialize_array
+from sampletones.data import DataModel, Metadata, default_metadata
+from sampletones.exceptions import (
+    IncompatibleLibraryDataVersionError,
+    InvalidLibraryDataValuesError,
+    InvalidMetadataError,
+)
+from sampletones.instructions import InstructionUnion
+from sampletones.utils import load_binary
 
-from .fragment import Fragment
-
-
-class LibraryFragment(BaseModel, Generic[InstructionType, GeneratorType]):
-    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
-
-    generator_class: GeneratorClassName
-    instruction: InstructionType
-    sample: CyclicArray
-    feature: np.ndarray
-    frequency: float
-
-    @classmethod
-    def create(
-        cls,
-        generator: GeneratorType,
-        instruction: InstructionType,
-        window: Window,
-        transformer: FFTTransformer,
-    ) -> Self:
-        sample: CyclicArray = generator.generate_sample(instruction)
-
-        features = []
-        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
-            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
-            windowed_audio = sample.get_window(phase, window)
-            transformed_windowed_audio = transformer.calculate(windowed_audio)
-            features.append(transformed_windowed_audio)
-
-        feature = transformer.inverse(np.mean(features, axis=0))
-
-        return cls(
-            generator_class=generator.class_name(),
-            instruction=instruction,
-            sample=sample,
-            feature=feature,
-            frequency=generator.timer.real_frequency,
-        )
-
-    def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        windowed_audio = self.sample.get_window(shift, window)
-        audio = window.get_frame_from_window(windowed_audio)
-        return Fragment(
-            audio=audio,
-            feature=self.feature,
-            windowed_audio=windowed_audio,
-            config=config,
-        )
-
-    def get(
-        self,
-        generator: GeneratorType,
-        config: Config,
-        window: Window,
-        initials: Initials = None,
-    ) -> Fragment:
-        generator.set_timer(self.instruction)
-        shift = generator.timer.calculate_offset(initials)
-        return self.get_fragment(shift, config, window)
-
-    @property
-    def data(self) -> np.ndarray:
-        return self.sample.array
-
-    @property
-    def empty(self) -> bool:
-        return self.sample.length == 0
-
-    @property
-    def length(self) -> int:
-        return self.sample.length
-
-    @staticmethod
-    def load_instruction(data: SerializedData) -> InstructionType:
-        instruction_dictionary = json.loads(data["instruction"])
-        instruction_class: Type[InstructionType] = GENERATOR_CLASS_MAP[data["generator_class"]].get_instruction_type()
-        instruction = instruction_class(**instruction_dictionary)
-        return instruction
-
-    @field_serializer("instruction")
-    def serialize_instruction(self, instruction: InstructionType, _info) -> str:
-        return dump(instruction.model_dump())
-
-    @field_serializer("feature")
-    def serialize_feature(self, feature: np.ndarray, _info) -> SerializedData:
-        return serialize_array(feature)
-
-    @classmethod
-    def deserialize(cls, dictionary: SerializedData) -> Self:
-        instruction: InstructionType = cls.load_instruction(dictionary)
-
-        sample = CyclicArray.deserialize(dictionary["sample"])
-        feature = deserialize_array(dictionary["feature"])
-        return cls(
-            generator_class=dictionary["generator_class"],
-            instruction=instruction,
-            sample=sample,
-            feature=feature,
-            frequency=dictionary["frequency"],
-        )
+from .fragment import LibraryFragment
+from .item import LibraryItem
 
 
-class LibraryData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+class LibraryData(DataModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    config: LibraryConfig
-    data: Dict[InstructionUnion, LibraryFragment]
+    metadata: Metadata = Field(
+        default_factory=default_metadata,
+        description="Library metadata",
+    )
+    config: LibraryConfig = Field(..., description="Configuration of the library data")
+    items: List[LibraryItem] = Field(
+        ...,
+        description="Library data mapping instructions to fragments",
+    )
+
+    @cached_property
+    def data(self) -> Dict[InstructionUnion, LibraryFragment]:
+        return {item.instruction: item.fragment for item in self.items}
 
     @cached_property
     def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
@@ -140,6 +56,18 @@ class LibraryData(BaseModel):
 
     def __getitem__(self, key: InstructionUnion) -> LibraryFragment:
         return self.data[key]
+
+    @classmethod
+    def create(cls, config: Union[Config, LibraryConfig], data: Dict[InstructionUnion, LibraryFragment]) -> Self:
+        library_config = config.library if isinstance(config, Config) else config
+        items = [
+            LibraryItem.create(
+                instruction=instruction,
+                fragment=fragment,
+            )
+            for instruction, fragment in data.items()
+        ]
+        return cls(config=library_config, items=items)
 
     def filter(
         self, generator_classes: Union[GeneratorClassName, Collection[GeneratorClassName]]
@@ -160,68 +88,49 @@ class LibraryData(BaseModel):
     def keys(self):
         return self.data.keys()
 
-    def items(self):
-        return self.data.items()
-
     def values(self):
         return self.data.values()
 
-    def save(self, path: Union[str, Path]) -> None:
-        dump = self.model_dump()
-        binary = msgpack.packb(dump)
-        assert binary is not None, "Failed to serialize LibraryData"
-        path_object = Path(path)
-        path_object.parent.mkdir(parents=True, exist_ok=True)
-        with open(path_object, "wb") as file:
-            file.write(binary)
-
     @classmethod
     def load(cls, path: Union[str, Path]) -> "LibraryData":
-        path_object = Path(path)
-        with open(path_object, "rb") as file:
-            binary = file.read()
+        binary = load_binary(path)
 
         try:
-            data = msgpack.unpackb(binary)
-        except msgpack.ExtraData as exception:
-            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
-        except ValueError as exception:
-            raise InvalidLibraryDataError(f"Failed to deserialize LibraryData from {path_object}") from exception
-        return LibraryData.deserialize(data)
+            library_data = LibraryData.deserialize(binary)
+        except (ValidationError, TypeError) as exception:
+            raise InvalidLibraryDataValuesError(
+                f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
+                exception,
+            ) from exception
 
-    @field_serializer("data")
-    def serialize_data(self, data: Dict[InstructionUnion, LibraryFragment], _info) -> SerializedData:
-        return {dump(instruction.model_dump()): fragment.model_dump() for instruction, fragment in data.items()}
+        cls.validate_metadata(library_data.metadata)
+        return library_data
 
-    @classmethod
-    def deserialize(cls, dictionary: SerializedData) -> Self:
-        config = LibraryConfig(**dictionary["config"])
-
-        data = {}
-        for key, value in dictionary["data"].items():
-            instruction: InstructionUnion = LibraryFragment.load_instruction(
-                {
-                    "instruction": key,
-                    "generator_class": value["generator_class"],
-                }
+    @staticmethod
+    def validate_metadata(metadata: Metadata) -> None:
+        application_metadata = metadata.application_name
+        if application_metadata != SAMPLETONES_NAME:
+            raise InvalidMetadataError(
+                f"Metadata application name mismatch: expected " f"{SAMPLETONES_NAME}, got {application_metadata}."
             )
 
-            fragment: LibraryFragment = LibraryFragment.deserialize(value)
-            data[instruction] = fragment
-
-        return cls(config=config, data=data)
+        library_version = metadata.library_data_version
+        if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:
+            raise IncompatibleLibraryDataVersionError(
+                f"Library data version mismatch: expected "
+                f"{SAMPLETONES_LIBRARY_DATA_VERSION}, got {library_version}.",
+                expected_version=SAMPLETONES_LIBRARY_DATA_VERSION,
+                actual_version=library_version,
+            )
 
     @classmethod
-    def merge(cls, library_data_list: List[Self]) -> Self:
-        if not library_data_list:
-            raise ValueError("Cannot merge an empty list of LibraryData")
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.library.FBLibraryData as FBLibraryData
 
-        config: LibraryConfig = library_data_list[0].config
-        merged_data: Dict[InstructionUnion, LibraryFragment] = {}
-        for library_data in library_data_list:
-            assert config == library_data.config
-            merged_data.update(library_data.data)
-            if config is None:
-                config = library_data.config
+        return FBLibraryData
 
-        return cls(config=config, data=merged_data)
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.library.FBLibraryData as FBLibraryData
+
+        return FBLibraryData.FBLibraryData

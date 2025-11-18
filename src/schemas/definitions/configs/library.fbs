@@ -1,0 +1,11 @@
+namespace schemas.configs;
+
+table FBLibraryConfig {
+	change_rate: int;
+	sample_rate: int;
+	transformation_gamma: int;
+	a4_frequency: float;
+	a4_pitch: int;
+}
+
+root_type FBLibraryConfig;

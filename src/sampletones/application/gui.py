@@ -7,7 +7,11 @@ import dearpygui.dearpygui as dpg
 from sampletones._resources import get_icon_path
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import LibraryConfig
-from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_WAVE
+from sampletones.constants.paths import (
+    EXT_FILE_JSON,
+    EXT_FILE_RECONSTRUCTION,
+    EXT_FILE_WAVE,
+)
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.library import LibraryFragment
 from sampletones.utils.logger import logger
@@ -389,7 +393,7 @@ class GUI:
             callback=self._handle_load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
         ):
-            dpg.add_file_extension(EXT_FILE_JSON)
+            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
     def _show_config_status_dialog(self, message: str) -> None:
         def content_builder(parent: str) -> None:
@@ -468,6 +472,7 @@ class GUI:
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
+        self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
         self.audio_device_manager.stop()

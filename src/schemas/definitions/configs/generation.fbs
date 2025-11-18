@@ -1,0 +1,22 @@
+namespace schemas.configs;
+
+table FBCalculationConfig {
+	find_best_phase: bool;
+	fast_difference: bool;
+}
+
+table FBWeightsConfig {
+	spectral_loss_weight: float;
+	temporal_loss_weight: float;
+	continuity_loss_weight: float;
+}
+
+table FBGenerationConfig {
+	mixer: float;
+	reset_phase: bool;
+    generators: [string];
+    calculation: FBCalculationConfig;
+    weights: FBWeightsConfig;
+}
+
+root_type FBGenerationConfig;

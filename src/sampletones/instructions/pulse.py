@@ -1,5 +1,8 @@
+from types import ModuleType
+
 from pydantic import Field
 
+from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import (
     DUTY_CYCLES,
     MAX_DUTY_CYCLE,
@@ -25,10 +28,15 @@ class PulseInstruction(Instruction):
         duty = f"D{DUTY_CYCLES[self.duty_cycle]*100:.0f}"
         return f"P {pitch} {volume} {duty}"
 
-    def __lt__(self, other: "PulseInstruction") -> bool:
+    def __lt__(self, other: Instruction) -> bool:
         if not isinstance(other, PulseInstruction):
-            return TypeError("Cannot compare PulseInstruction with different type")
-        return (self.pitch, -self.volume, self.duty_cycle) < (other.pitch, -other.volume, other.duty_cycle)
+            raise TypeError("Cannot compare PulseInstruction with different type")
+
+        return (self.pitch, -self.volume, self.duty_cycle) < (
+            other.pitch,
+            -other.volume,
+            other.duty_cycle,
+        )
 
     def distance(self, other: Instruction) -> float:
         if not isinstance(other, PulseInstruction):
@@ -62,3 +70,19 @@ class PulseInstruction(Instruction):
         volume_distance = abs(volume1_normalized - volume2_normalized) * 0.25 * (1 - pitch_difference)
 
         return pitch_distance + volume_distance
+
+    @classmethod
+    def class_name(cls) -> InstructionClassName:
+        return InstructionClassName.PULSE_INSTRUCTION
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.instructions.pulse.FBPulseInstruction as FBPulseInstruction
+
+        return FBPulseInstruction
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.instructions.pulse.FBPulseInstruction as FBPulseInstruction
+
+        return FBPulseInstruction.FBPulseInstruction

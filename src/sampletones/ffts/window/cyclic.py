@@ -1,17 +1,18 @@
+from types import ModuleType
 from typing import Optional, Union
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones.data import DataModel
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
-from sampletones.utils.serialization import deserialize_array
 
 from .window import Window
 
 
-class CyclicArray(BaseModel):
+class CyclicArray(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     array: np.ndarray
@@ -54,17 +55,22 @@ class CyclicArray(BaseModel):
         fragment = self.get_fragment(offset, window.size)
         return fragment * window.envelope
 
-    @field_serializer("array")
-    def serialize_array(self, array: np.ndarray, _info) -> SerializedData:
-        return serialize_array(array)
-
-    @classmethod
-    def deserialize(cls, data: SerializedData) -> "CyclicArray":
-        array = deserialize_array(data["array"])
-        sample_rate = data["sample_rate"]
-        frequency = data.get("frequency", 0.0)
-        return cls(array=array, sample_rate=sample_rate, frequency=frequency)
-
     @property
     def length(self) -> int:
         return len(self.array)
+
+    @field_serializer("array")
+    def _serialize_array(self, array: np.ndarray) -> SerializedData:
+        return serialize_array(array)
+
+    @classmethod
+    def buffer_builder(cls) -> ModuleType:
+        import schemas.arrays.FBCyclicArray as FBCyclicArray
+
+        return FBCyclicArray
+
+    @classmethod
+    def buffer_reader(cls) -> type:
+        import schemas.arrays.FBCyclicArray as FBCyclicArray
+
+        return FBCyclicArray.FBCyclicArray

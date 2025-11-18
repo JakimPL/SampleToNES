@@ -13,9 +13,12 @@ from .serialization import (
     dump,
     hash_model,
     hash_models,
+    load_binary,
     load_json,
+    save_binary,
     save_json,
     serialize_array,
+    snake_to_camel,
 )
 
 __all__ = [
@@ -29,8 +32,11 @@ __all__ = [
     "dump",
     "save_json",
     "load_json",
+    "save_binary",
+    "load_binary",
     "serialize_array",
     "deserialize_array",
+    "snake_to_camel",
     "hash_model",
     "hash_models",
     "MIN_AVAILABLE_FREQUENCY",

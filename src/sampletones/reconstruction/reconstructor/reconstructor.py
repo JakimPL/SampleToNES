@@ -7,18 +7,18 @@ from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
-from sampletones.ffts import Window
+from sampletones.ffts import FragmentedAudio, Window
 from sampletones.generators import (
     MIXER_LEVELS,
     Generator,
     GeneratorUnion,
     get_generators_by_names,
 )
-from sampletones.library import FragmentedAudio, Library, LibraryData
+from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
+from ..reconstruction.reconstruction import Reconstruction
 from .approximation import ApproximationData
-from .reconstruction import Reconstruction
 from .state import ReconstructionState
 from .worker import ReconstructorWorker
 
@@ -67,7 +67,7 @@ class Reconstructor:
         coefficient = self.get_coefficient(audio)
         fragmented_audio = self.get_fragments(audio / coefficient)
         self.reconstruct(fragmented_audio)
-        return Reconstruction.from_results(self.state, self.config, coefficient, path)
+        return Reconstruction.from_state(self.state, self.config, coefficient, path)
 
     def load_audio(self, path: Path) -> np.ndarray:
         return load_audio(
@@ -108,8 +108,8 @@ class Reconstructor:
                 f"No library data found for the given configuration and window: {library.get_path(key)}"
             )
 
-        return LibraryData(
-            config=self.config.library,
+        return LibraryData.create(
+            config=self.config,
             data=library_data.filter({generator.class_name() for generator in self.generators.values()}),
         )
 

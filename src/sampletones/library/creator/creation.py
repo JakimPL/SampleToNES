@@ -4,7 +4,7 @@ from sampletones.configs import Config, LibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import GENERATOR_CLASS_MAP, GeneratorUnion
+from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 
 from ..data import LibraryFragment
@@ -40,8 +40,5 @@ def generate_instruction_batch(
 ) -> List[Tuple[InstructionUnion, LibraryFragment]]:
     instructions_batch, config, window = task
 
-    generators: Dict[GeneratorClassName, GeneratorUnion] = {
-        name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP
-    }
-
+    generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(config)
     return generate_instructions(instructions_batch, config.library, window, generators)

@@ -1,0 +1,18 @@
+include "instructions/pulse.fbs";
+include "instructions/triangle.fbs";
+include "instructions/noise.fbs";
+
+namespace schemas.instructions;
+
+union FBInstructionUnion {
+    schemas.instructions.FBPulseInstruction,
+    schemas.instructions.FBTriangleInstruction,
+    schemas.instructions.FBNoiseInstruction
+}
+
+table FBInstructionData {
+    instruction_class: string;
+    instruction: FBInstructionUnion;
+}
+
+root_type FBInstructionData;

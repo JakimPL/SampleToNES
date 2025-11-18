@@ -4,7 +4,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.instructions import InstructionUnion
 
-from .maps import GENERATOR_CLASSES, INSTRUCTION_TO_GENERATOR_MAP
+from .maps import GENERATOR_CLASS_MAP, GENERATOR_CLASSES, INSTRUCTION_TO_GENERATOR_MAP
 from .typehints import GeneratorUnion
 
 
@@ -18,6 +18,10 @@ def get_generators_by_names(
         names.insert(0, GeneratorName.PULSE1)
 
     return {name: GENERATOR_CLASSES[name](config, name) for name in names}
+
+
+def get_generators_map(config: Config) -> Dict[GeneratorClassName, GeneratorUnion]:
+    return {name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP}
 
 
 def get_remaining_generator_classes(
