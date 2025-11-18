@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
 )
@@ -22,6 +23,7 @@ from ..constants import (
     LBL_BUTTON_RECONSTRUCT_FILE,
     LBL_BUTTON_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
+    MSG_INVALID_METADATA_ERROR,
     MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTION_FILE_NOT_FOUND,
@@ -150,6 +152,10 @@ class GUIBrowserPanel(GUITreePanel):
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            return
+        except InvalidMetadataError as exception:
+            logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
+            show_error_dialog(exception, MSG_INVALID_METADATA_ERROR)
             return
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")

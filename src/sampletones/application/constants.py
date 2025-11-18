@@ -200,6 +200,7 @@ MSG_LIBRARY_INVALID_DATA_VALUES_ERROR = "Library data contains invalid values."
 MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR = "Incompatible library data version: {}, expected {}."
 MSG_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = "The audio file of this reconstruction could not be found."
+MSG_INVALID_METADATA_ERROR = "Invalid file metadata."
 
 # Template strings
 TPL_LIBRARY_EXISTS = "Library {} exists."

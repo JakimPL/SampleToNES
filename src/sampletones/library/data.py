@@ -16,10 +16,9 @@ from sampletones.data import DataModel, Metadata, default_metadata
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,
+    InvalidMetadataError,
 )
-from sampletones.instructions import (
-    InstructionUnion,
-)
+from sampletones.instructions import InstructionUnion
 from sampletones.utils import load_binary
 
 from .fragment import LibraryFragment
@@ -111,7 +110,10 @@ class LibraryData(DataModel):
     @staticmethod
     def validate_library_data(metadata: Metadata) -> None:
         application_metadata = metadata.application_name
-        assert application_metadata == SAMPLETONES_NAME, "Metadata application name mismatch."
+        if application_metadata != SAMPLETONES_NAME:
+            raise InvalidMetadataError(
+                f"Metadata application name mismatch: expected " f"{SAMPLETONES_NAME}, got {application_metadata}."
+            )
 
         library_version = metadata.library_data_version
         if compare_versions(library_version, SAMPLETONES_LIBRARY_DATA_VERSION) != 0:

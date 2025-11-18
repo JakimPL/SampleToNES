@@ -8,6 +8,7 @@ from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,
     InvalidLibraryDataValuesError,
+    InvalidMetadataError,
     WindowNotAvailableError,
 )
 from sampletones.instructions import Instruction
@@ -34,6 +35,7 @@ from ..constants import (
     LBL_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_LIBRARY_LIBRARIES,
     MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
+    MSG_INVALID_METADATA_ERROR,
     MSG_LIBRARY_FILE_LOAD_ERROR,
     MSG_LIBRARY_FILE_NOT_FOUND,
     MSG_LIBRARY_GENERATING,
@@ -215,6 +217,9 @@ class GUILibraryPanel(GUITreePanel):
         except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_FILE_LOAD_ERROR)
+        except InvalidMetadataError as exception:
+            logger.error_with_traceback(exception, f"Invalid metadata in library file for key {library_key}")
+            show_error_dialog(exception, MSG_INVALID_METADATA_ERROR)
         except InvalidLibraryDataValuesError as exception:
             logger.error_with_traceback(exception, f"Library data contains invalid values for key {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_VALUES_ERROR)

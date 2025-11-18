@@ -7,6 +7,7 @@ from .library import (
     LoadLibraryError,
     NoLibraryDataError,
 )
+from .metadata import InvalidMetadataError
 from .playback import PlaybackError
 from .reconstruction import (
     IncompatibleReconstructionVersionError,
@@ -31,4 +32,5 @@ __all__ = [
     "IncompatibleReconstructionVersionError",
     "WindowError",
     "WindowNotAvailableError",
+    "InvalidMetadataError",
 ]

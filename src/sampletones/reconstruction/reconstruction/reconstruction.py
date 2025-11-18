@@ -14,7 +14,10 @@ from sampletones.constants.application import (
 )
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, Metadata, default_metadata
-from sampletones.exceptions import IncompatibleReconstructionVersionError
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+)
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
 from sampletones.instructions import (
     InstructionClass,
@@ -168,7 +171,10 @@ class Reconstruction(DataModel):
     @staticmethod
     def validate_reconstruction(metadata: Metadata) -> None:
         application_metadata = metadata.application_name
-        assert application_metadata == SAMPLETONES_NAME, "Metadata application name mismatch."
+        if application_metadata != SAMPLETONES_NAME:
+            raise InvalidMetadataError(
+                f"Metadata application name mismatch: expected {SAMPLETONES_NAME}, got {application_metadata}"
+            )
 
         reconstruction_version = metadata.reconstruction_data_version
         if compare_versions(reconstruction_version, SAMPLETONES_RECONSTRUCTION_DATA_VERSION) != 0:
