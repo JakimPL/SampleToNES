@@ -171,12 +171,17 @@ class GUILibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
         dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not is_generating)
 
+    def _set_library_tree_enabled(self, enabled: bool) -> None:
+        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=enabled)
+
     def _refresh_libraries(self) -> None:
-        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=False)
-        self.library_manager.gather_available_libraries()
-        self._sync_with_config_key()
-        self._rebuild_tree()
-        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
+        self._set_library_tree_enabled(False)
+        try:
+            self.library_manager.gather_available_libraries()
+            self._sync_with_config_key()
+            self._rebuild_tree()
+        finally:
+            self._set_library_tree_enabled(True)
 
     def _sync_with_config_key(self) -> None:
         config_key = self.config_manager.key
@@ -297,15 +302,19 @@ class GUILibraryPanel(GUITreePanel):
         if not isinstance(user_data, InstructionNode):
             return
 
-        config = self.config_manager.get_config()
-        self._on_instruction_selected(
-            user_data.generator_class_name,
-            user_data.instruction,
-            user_data.fragment,
-            config.library,
-        )
+        self._set_library_tree_enabled(False)
+        try:
+            config = self.config_manager.get_config()
+            self._on_instruction_selected(
+                user_data.generator_class_name,
+                user_data.instruction,
+                user_data.fragment,
+                config.library,
+            )
 
-        self.update_status()
+            self.update_status()
+        finally:
+            self._set_library_tree_enabled(True)
 
     def _generate_library(self) -> None:
         if self.library_manager.is_generating():

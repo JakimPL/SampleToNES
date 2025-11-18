@@ -115,7 +115,7 @@ class Reconstruction(DataModel):
             errors_data.append(
                 Errors(
                     generator_name=name,
-                    errors=np.array(errors_list),
+                    errors=np.array(errors_list, dtype=np.float32),
                     total_error=total_error,
                 )
             )
@@ -157,7 +157,7 @@ class Reconstruction(DataModel):
 
     @property
     def total_error(self) -> float:
-        return sum(sum(errors) for errors in self.errors.values())
+        return sum(error.total_error for error in self.errors_data)
 
     @classmethod
     def load_and_validate(cls, path: Union[str, Path]) -> "Reconstruction":

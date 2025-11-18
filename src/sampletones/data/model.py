@@ -137,10 +137,11 @@ class DataModel(BaseModel):
             return 0
 
         elif all(isinstance(value, (int, float)) for value in collection):
-            builder.StartVector(8, len(collection), 8)
+            element_size = 4
+            builder.StartVector(element_size, len(collection), element_size)
             for value in reversed(collection):
                 if isinstance(value, float):
-                    builder.PrependFloat64(value)
+                    builder.PrependFloat32(value)
                 else:
                     builder.PrependInt32(value)
 
@@ -225,6 +226,8 @@ class DataModel(BaseModel):
 
     def _serialize_numpy_array(self, builder: Builder, array: np.ndarray) -> int:
         assert array.dtype == np.float32, f"Only np.float32 arrays are supported for serialization, got {array.dtype}"
+        assert array.ndim == 1, f"Only 1D numpy arrays are supported for serialization, got {array.ndim}D array"
+        assert not np.isnan(array).any(), "Array contains NaN values, which are not supported for serialization"
 
         element_size = 4
         builder.StartVector(element_size, len(array), element_size)
@@ -260,7 +263,7 @@ class DataModel(BaseModel):
         if isinstance(value, str):
             return DataType.UOFFSET, builder.CreateString(value)
         if isinstance(value, float):
-            return DataType.FLOAT64, float(value)
+            return DataType.FLOAT32, float(value)
         if isinstance(value, int):
             return DataType.INT32, int(value)
         if isinstance(value, bool):
@@ -271,8 +274,8 @@ class DataModel(BaseModel):
     def _write_slot_to_builder(builder: Builder, slot_index: int, value_kind: DataType, value_payload: object) -> None:
         if value_kind == DataType.UOFFSET:
             return builder.PrependUOffsetTRelativeSlot(slot_index, value_payload, 0)
-        if value_kind == DataType.FLOAT64:
-            return builder.PrependFloat64Slot(slot_index, value_payload, 0.0)
+        if value_kind == DataType.FLOAT32:
+            return builder.PrependFloat32Slot(slot_index, value_payload, 0.0)
         if value_kind == DataType.INT32:
             return builder.PrependInt32Slot(slot_index, value_payload, 0)
         if value_kind == DataType.BOOL:
