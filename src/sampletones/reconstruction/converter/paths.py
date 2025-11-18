@@ -37,10 +37,12 @@ def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_REC
     output_directory = Path(config.general.output_directory) / config_directory
     if input_path.is_dir():
         return output_directory / input_path.name
-    elif input_path.is_file():
+    if input_path.is_file():
         return output_directory / input_path.with_suffix(suffix).name
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
-    raise OSError(f"Input path is neither a file nor a directory: {input_path}")
+    raise OSError(f"Invalid path: {input_path}")
 
 
 def filter_files(

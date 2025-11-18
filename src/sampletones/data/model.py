@@ -230,7 +230,6 @@ class DataModel(BaseModel):
 
         start = tab.Pos + field_offset
         buffer = memoryview(tab.Bytes)[start : start + length * 4]
-
         return np.frombuffer(buffer, dtype=np.float32)
 
     @classmethod
