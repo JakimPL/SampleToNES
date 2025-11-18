@@ -1,7 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import Any, List, Self, Tuple, TypeVar, Union, get_args, get_origin
+from typing import Any, Self, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -10,8 +10,6 @@ from pydantic import BaseModel
 
 from sampletones.typehints import SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
-
-from .types import DataType
 
 
 class DataModel(BaseModel):
@@ -70,7 +68,7 @@ class DataModel(BaseModel):
                 offsets[field_name] = self._serialize_list(builder, value)
 
             elif isinstance(value, (str, StrEnum)):
-                offsets[field_name] = builder.CreateString(value)
+                offsets[field_name] = self._serialize_string(builder, value)
 
             elif isinstance(value, (int, float, bool)):
                 offsets[field_name] = value
@@ -119,11 +117,7 @@ class DataModel(BaseModel):
                 value = annotation._deserialize_inner(fb_child)
 
             elif issubclass(annotation, (str, StrEnum)):
-                string = getter().decode("utf-8")
-                if issubclass(annotation, StrEnum):
-                    value = annotation(string)
-                else:
-                    value = string
+                value = cls._deserialize_string(getter(), annotation)
 
             else:
                 value = getter()
@@ -150,9 +144,7 @@ class DataModel(BaseModel):
         elif all(isinstance(value, (str, StrEnum)) for value in collection):
             string_offsets = []
             for value in collection:
-                if isinstance(value, StrEnum):
-                    value = value.value
-                string_offsets.append(builder.CreateString(value))
+                string_offsets.append(self._serialize_string(builder, value))
 
             builder.StartVector(4, len(string_offsets), 4)
             for offset in reversed(string_offsets):
@@ -168,24 +160,19 @@ class DataModel(BaseModel):
 
             return builder.EndVector(len(child_offsets))
 
-        elif all(isinstance(item, tuple) and len(item) == 2 for item in collection):
-            entry_offsets: List[int] = []
-            for first_element, second_element in collection:
-                first_kind, first_payload = self._prepare_value_for_slot(builder, first_element)
-                second_kind, second_payload = self._prepare_value_for_slot(builder, second_element)
-
-                builder.StartObject(2)
-                self._write_slot_to_builder(builder, 0, first_kind, first_payload)
-                self._write_slot_to_builder(builder, 1, second_kind, second_payload)
-                entry_offsets.append(builder.EndObject())
-
-            builder.StartVector(4, len(entry_offsets), 4)
-            for offset in reversed(entry_offsets):
-                builder.PrependUOffsetTRelative(offset)
-
-            return builder.EndVector(len(entry_offsets))
-
         raise TypeError(f"Unsupported list element type {type(collection[0])} or mixed types for serialization")
+
+    def _serialize_string(self, builder: Builder, value: Union[str, StrEnum]) -> int:
+        if isinstance(value, StrEnum):
+            value = value.value
+        return builder.CreateString(value)
+
+    @classmethod
+    def _deserialize_string(cls, raw: bytes, annotation: type) -> Union[str, StrEnum]:
+        string = raw.decode("utf-8")
+        if issubclass(annotation, StrEnum):
+            return annotation(string)
+        return string
 
     @classmethod
     def _deserialize_list(cls, fb_object: Any, field_name: str, element_class: type) -> np.ndarray | list:
@@ -196,28 +183,18 @@ class DataModel(BaseModel):
         if getter is None or length_function is None:
             raise AttributeError(f"{fb_object.__class__.__name__} missing getter or Length method for field '{camel}'")
 
+        origin = get_origin(element_class)
+        assert origin is None, f"Generics are not supported for field '{field_name}'"
+
         length = length_function()
         if length == 0:
             return []
 
-        origin = get_origin(element_class)
-        assert origin is None, f"Generics are not supported for field '{field_name}'"
-
         if issubclass(element_class, DataModel):
-            items = []
-            for i in range(length):
-                items.append(element_class._deserialize_inner(getter(i)))
-            return items
+            return [element_class._deserialize_inner(getter(i)) for i in range(length)]
 
         if issubclass(element_class, (str, StrEnum)):
-            items: List = []
-            for i in range(length):
-                raw = getter(i)
-                string = raw.decode("utf-8")
-                if issubclass(element_class, StrEnum):
-                    string = element_class(string)
-                items.append(string)
-            return items
+            return [cls._deserialize_string(getter(i), element_class) for i in range(length)]
 
         if element_class in (int, float, bool):
             raise TypeError("Primitive lists should be deserialized using _deserialize_numpy_array method")
@@ -255,32 +232,6 @@ class DataModel(BaseModel):
         buffer = memoryview(tab.Bytes)[start : start + length * 4]
 
         return np.frombuffer(buffer, dtype=np.float32)
-
-    @staticmethod
-    def _prepare_value_for_slot(builder: Builder, value: Any) -> Tuple[DataType, object]:
-        if isinstance(value, DataModel):
-            return DataType.UOFFSET, value._serialize_inner(builder)
-        if isinstance(value, str):
-            return DataType.UOFFSET, builder.CreateString(value)
-        if isinstance(value, float):
-            return DataType.FLOAT32, float(value)
-        if isinstance(value, int):
-            return DataType.INT32, int(value)
-        if isinstance(value, bool):
-            return DataType.BOOL, bool(value)
-        raise TypeError(f"Unsupported tuple element type {type(value)}")
-
-    @staticmethod
-    def _write_slot_to_builder(builder: Builder, slot_index: int, value_kind: DataType, value_payload: object) -> None:
-        if value_kind == DataType.UOFFSET:
-            return builder.PrependUOffsetTRelativeSlot(slot_index, value_payload, 0)
-        if value_kind == DataType.FLOAT32:
-            return builder.PrependFloat32Slot(slot_index, value_payload, 0.0)
-        if value_kind == DataType.INT32:
-            return builder.PrependInt32Slot(slot_index, value_payload, 0)
-        if value_kind == DataType.BOOL:
-            return builder.PrependBoolSlot(slot_index, value_payload, False)
-        raise TypeError(f"Unsupported slot kind {value_kind}")
 
     @classmethod
     def _deserialize_from_table(cls, table: Table) -> Self:

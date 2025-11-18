@@ -46,3 +46,10 @@ GENERATOR_ABBREVIATIONS = {
     GeneratorName.TRIANGLE: "T",
     GeneratorName.NOISE: "N",
 }
+
+
+DEFAULT_GENERATORS = [
+    GeneratorName.PULSE1,
+    GeneratorName.TRIANGLE,
+    GeneratorName.NOISE,
+]

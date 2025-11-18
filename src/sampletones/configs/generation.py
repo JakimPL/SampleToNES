@@ -3,7 +3,7 @@ from typing import List
 
 from pydantic import ConfigDict, Field
 
-from sampletones.constants.enums import GeneratorName
+from sampletones.constants.enums import DEFAULT_GENERATORS, GeneratorName
 from sampletones.constants.general import (
     CONTINUITY_LOSS_WEIGHT,
     FAST_DIFFERENCE,
@@ -61,7 +61,7 @@ class GenerationConfig(DataModel):
 
     mixer: float = Field(default=MIXER, ge=0.0, le=MAX_MIXER)
     reset_phase: bool = Field(default=RESET_PHASE)
-    generators: List[GeneratorName] = Field(default_factory=lambda: list(GeneratorName))
+    generators: List[GeneratorName] = Field(default_factory=lambda: DEFAULT_GENERATORS.copy())
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
 
