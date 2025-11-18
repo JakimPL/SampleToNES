@@ -28,37 +28,8 @@ class FBReconstruction(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # FBReconstruction
-    def Approximation(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        if o != 0:
-            a = self._tab.Vector(o)
-            return self._tab.Get(
-                flatbuffers.number_types.Float32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4)
-            )
-        return 0
-
-    # FBReconstruction
-    def ApproximationAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        if o != 0:
-            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float32Flags, o)
-        return 0
-
-    # FBReconstruction
-    def ApproximationLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        if o != 0:
-            return self._tab.VectorLen(o)
-        return 0
-
-    # FBReconstruction
-    def ApproximationIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
-        return o == 0
-
-    # FBReconstruction
     def Metadata(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.metadata.FBMetadata import FBMetadata
@@ -70,14 +41,14 @@ class FBReconstruction(object):
 
     # FBReconstruction
     def AudioFilepath(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
     # FBReconstruction
     def Config(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.configs.FBConfig import FBConfig
@@ -86,6 +57,35 @@ class FBReconstruction(object):
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
+
+    # FBReconstruction
+    def Approximation(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            a = self._tab.Vector(o)
+            return self._tab.Get(
+                flatbuffers.number_types.Float32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4)
+            )
+        return 0
+
+    # FBReconstruction
+    def ApproximationAsNumpy(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float32Flags, o)
+        return 0
+
+    # FBReconstruction
+    def ApproximationLength(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            return self._tab.VectorLen(o)
+        return 0
+
+    # FBReconstruction
+    def ApproximationIsNone(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        return o == 0
 
     # FBReconstruction
     def ApproximationsData(self, j):
@@ -181,8 +181,32 @@ def Start(builder):
     return FBReconstructionStart(builder)
 
 
+def FBReconstructionAddMetadata(builder, metadata):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(metadata), 0)
+
+
+def AddMetadata(builder, metadata):
+    return FBReconstructionAddMetadata(builder, metadata)
+
+
+def FBReconstructionAddAudioFilepath(builder, audioFilepath):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(audioFilepath), 0)
+
+
+def AddAudioFilepath(builder, audioFilepath):
+    return FBReconstructionAddAudioFilepath(builder, audioFilepath)
+
+
+def FBReconstructionAddConfig(builder, config):
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(config), 0)
+
+
+def AddConfig(builder, config):
+    return FBReconstructionAddConfig(builder, config)
+
+
 def FBReconstructionAddApproximation(builder, approximation):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(approximation), 0)
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(approximation), 0)
 
 
 def AddApproximation(builder, approximation):
@@ -195,30 +219,6 @@ def FBReconstructionStartApproximationVector(builder, numElems):
 
 def StartApproximationVector(builder, numElems):
     return FBReconstructionStartApproximationVector(builder, numElems)
-
-
-def FBReconstructionAddMetadata(builder, metadata):
-    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(metadata), 0)
-
-
-def AddMetadata(builder, metadata):
-    return FBReconstructionAddMetadata(builder, metadata)
-
-
-def FBReconstructionAddAudioFilepath(builder, audioFilepath):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(audioFilepath), 0)
-
-
-def AddAudioFilepath(builder, audioFilepath):
-    return FBReconstructionAddAudioFilepath(builder, audioFilepath)
-
-
-def FBReconstructionAddConfig(builder, config):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(config), 0)
-
-
-def AddConfig(builder, config):
-    return FBReconstructionAddConfig(builder, config)
 
 
 def FBReconstructionAddApproximationsData(builder, approximationsData):

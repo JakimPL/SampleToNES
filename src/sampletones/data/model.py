@@ -8,8 +8,11 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
+from sampletones.exceptions import DeserializationError, SerializationError
 from sampletones.typehints import SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
+
+FLOAT32_SIZE = 4
 
 
 class DataModel(BaseModel):
@@ -59,13 +62,13 @@ class DataModel(BaseModel):
                 offsets[field_name] = value._serialize_inner(builder)
 
             elif isinstance(value, np.ndarray):
-                offsets[field_name] = self._serialize_numpy_array(builder, value)
+                offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
 
             elif isinstance(value, Path):
                 offsets[field_name] = builder.CreateString(str(value))
 
             elif isinstance(value, list):
-                offsets[field_name] = self._serialize_list(builder, value)
+                offsets[field_name] = self._serialize_list(builder, value, field_name)
 
             elif isinstance(value, (str, StrEnum)):
                 offsets[field_name] = self._serialize_string(builder, value)
@@ -74,7 +77,7 @@ class DataModel(BaseModel):
                 offsets[field_name] = value
 
             else:
-                raise TypeError(f"Unsupported field type {type(value)} for {field_name}")
+                raise SerializationError(f"Unsupported field type {type(value)} for {field_name}")
 
         fb_builder.Start(builder)
         for field_name, val in offsets.items():
@@ -92,10 +95,11 @@ class DataModel(BaseModel):
             camel = snake_to_camel(field_name)
             getter = getattr(fb_object, camel, None)
             if getter is None:
-                raise AttributeError(f"{fb_object.__class__.__name__} missing getter '{camel}'")
+                raise DeserializationError(f"{fb_object.__class__.__name__} missing getter '{camel}'")
 
             annotation = field_info.annotation
-            assert annotation is not None, f"Field '{field_name}' has no annotation"
+            if annotation is None:
+                raise DeserializationError(f"Field '{field_name}' has no annotation")
 
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_object, field_name)
@@ -120,47 +124,30 @@ class DataModel(BaseModel):
                 value = cls._deserialize_string(getter(), annotation)
 
             else:
-                value = getter()
+                value = annotation(getter())
 
             field_values[field_name] = value
 
         return cls(**field_values)
 
-    def _serialize_list(self, builder: Builder, collection: list) -> int:
+    def _serialize_list(self, builder: Builder, collection: list, field_name: str) -> int:
         if len(collection) == 0:
             return 0
 
         elif all(isinstance(value, (int, float)) for value in collection):
-            element_size = 4
-            builder.StartVector(element_size, len(collection), element_size)
-            for value in reversed(collection):
-                if isinstance(value, float):
-                    builder.PrependFloat32(value)
-                else:
-                    builder.PrependInt32(value)
-
-            return builder.EndVector(len(collection))
+            return self._serialize_numpy_array(builder, np.array(collection, dtype=np.float32), field_name)
 
         elif all(isinstance(value, (str, StrEnum)) for value in collection):
-            string_offsets = []
-            for value in collection:
-                string_offsets.append(self._serialize_string(builder, value))
-
-            builder.StartVector(4, len(string_offsets), 4)
-            for offset in reversed(string_offsets):
-                builder.PrependUOffsetTRelative(offset)
-
-            return builder.EndVector(len(string_offsets))
+            string_offsets = [self._serialize_string(builder, value) for value in collection]
+            return self._prepend_offsets(builder, string_offsets)
 
         elif all(isinstance(model, DataModel) for model in collection):
             child_offsets = [model._serialize_inner(builder) for model in collection]
-            builder.StartVector(4, len(child_offsets), 4)
-            for offset in reversed(child_offsets):
-                builder.PrependUOffsetTRelative(offset)
+            return self._prepend_offsets(builder, child_offsets)
 
-            return builder.EndVector(len(child_offsets))
-
-        raise TypeError(f"Unsupported list element type {type(collection[0])} or mixed types for serialization")
+        raise SerializationError(
+            f"Unsupported list element type {type(collection[0])} or mixed types for field '{field_name}'"
+        )
 
     def _serialize_string(self, builder: Builder, value: Union[str, StrEnum]) -> int:
         if isinstance(value, StrEnum):
@@ -168,10 +155,10 @@ class DataModel(BaseModel):
         return builder.CreateString(value)
 
     @classmethod
-    def _deserialize_string(cls, raw: bytes, annotation: type) -> Union[str, StrEnum]:
+    def _deserialize_string(cls, raw: bytes, string_class: type) -> Union[str, StrEnum]:
         string = raw.decode("utf-8")
-        if issubclass(annotation, StrEnum):
-            return annotation(string)
+        if issubclass(string_class, StrEnum):
+            return string_class(string)
         return string
 
     @classmethod
@@ -180,11 +167,14 @@ class DataModel(BaseModel):
         getter = getattr(fb_object, camel, None)
         length_function = getattr(fb_object, f"{camel}Length", None)
 
-        if getter is None or length_function is None:
-            raise AttributeError(f"{fb_object.__class__.__name__} missing getter or Length method for field '{camel}'")
-
         origin = get_origin(element_class)
-        assert origin is None, f"Generics are not supported for field '{field_name}'"
+        if origin is not None:
+            raise DeserializationError(f"Generics are not supported for field '{field_name}'")
+
+        if getter is None or length_function is None:
+            raise DeserializationError(
+                f"{fb_object.__class__.__name__} missing getter or Length method for field '{camel}'"
+            )
 
         length = length_function()
         if length == 0:
@@ -197,17 +187,27 @@ class DataModel(BaseModel):
             return [cls._deserialize_string(getter(i), element_class) for i in range(length)]
 
         if element_class in (int, float, bool):
-            raise TypeError("Primitive lists should be deserialized using _deserialize_numpy_array method")
+            raise DeserializationError("Primitive lists should be deserialized using _deserialize_numpy_array method")
 
-        raise TypeError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
+        raise DeserializationError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
 
-    def _serialize_numpy_array(self, builder: Builder, array: np.ndarray) -> int:
-        assert array.dtype == np.float32, f"Only np.float32 arrays are supported for serialization, got {array.dtype}"
-        assert array.ndim == 1, f"Only 1D numpy arrays are supported for serialization, got {array.ndim}D array"
-        assert not np.isnan(array).any(), "Array contains NaN values, which are not supported for serialization"
+    def _serialize_numpy_array(self, builder: Builder, array: np.ndarray, field_name: str) -> int:
+        if array.dtype != np.float32:
+            raise SerializationError(
+                f"Only np.float32 arrays are supported for serialization, got {array.dtype} for field '{field_name}'"
+            )
 
-        element_size = 4
-        builder.StartVector(element_size, len(array), element_size)
+        if array.ndim != 1:
+            raise SerializationError(
+                f"Only 1D numpy arrays are supported for serialization, got {array.ndim}D array for field '{field_name}'"
+            )
+
+        if np.isnan(array).any():
+            raise SerializationError(
+                f"Array contains NaN values, which are not supported for serialization for field '{field_name}'"
+            )
+
+        builder.StartVector(FLOAT32_SIZE, len(array), FLOAT32_SIZE)
         for value in reversed(array):
             builder.PrependFloat32(float(value))
 
@@ -218,19 +218,21 @@ class DataModel(BaseModel):
         camel = snake_to_camel(field_name)
         length_function = getattr(fb_object, f"{camel}Length")
 
-        length = length_function()
-        if length == 0:
-            return np.empty(0, dtype=np.float32)
-
         tab = fb_object._tab
         field_offset = tab.Offset(fb_object.__class__.__dict__[camel].__code__.co_consts[1])
 
-        if field_offset == 0:
+        length = length_function()
+        if length == 0 or field_offset == 0:
             return np.empty(0, dtype=np.float32)
 
         start = tab.Pos + field_offset
-        buffer = memoryview(tab.Bytes)[start : start + length * 4]
-        return np.frombuffer(buffer, dtype=np.float32)
+        buffer = memoryview(tab.Bytes)[start : start + length * FLOAT32_SIZE]
+        array = np.frombuffer(buffer, dtype=np.float32)
+
+        if np.isnan(array).any():
+            raise DeserializationError(f"Deserialized array for '{field_name}' contains NaN values")
+
+        return array
 
     @classmethod
     def _deserialize_from_table(cls, table: Table) -> Self:
@@ -242,3 +244,11 @@ class DataModel(BaseModel):
     @classmethod
     def _deserialize_union(cls, table: Table, field_values: SerializedData) -> Self:
         raise NotImplementedError("Subclasses must implement _deserialize_union method")
+
+    @staticmethod
+    def _prepend_offsets(builder: Builder, offsets: list[int]) -> int:
+        builder.StartVector(FLOAT32_SIZE, len(offsets), FLOAT32_SIZE)
+        for offset in reversed(offsets):
+            builder.PrependUOffsetTRelative(offset)
+
+        return builder.EndVector(len(offsets))

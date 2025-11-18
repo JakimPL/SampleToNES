@@ -4,8 +4,7 @@ include "library/fragment.fbs";
 namespace schemas.library;
 
 table FBLibraryItem {
-	instruction_class: string;
-    instruction: schemas.instructions.FBInstructionUnion;
+    instruction_data: schemas.instructions.FBInstructionData;
     fragment: FBLibraryFragment;
 }
 

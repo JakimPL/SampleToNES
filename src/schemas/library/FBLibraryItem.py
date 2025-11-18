@@ -28,33 +28,20 @@ class FBLibraryItem(object):
         self._tab = flatbuffers.table.Table(buf, pos)
 
     # FBLibraryItem
-    def InstructionClass(self):
+    def InstructionData(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.String(o + self._tab.Pos)
-        return None
+            x = self._tab.Indirect(o + self._tab.Pos)
+            from schemas.instructions.FBInstructionData import FBInstructionData
 
-    # FBLibraryItem
-    def InstructionType(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
-        return 0
-
-    # FBLibraryItem
-    def Instruction(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            from flatbuffers.table import Table
-
-            obj = Table(bytearray(), 0)
-            self._tab.Union(obj, o)
+            obj = FBInstructionData()
+            obj.Init(self._tab.Bytes, x)
             return obj
         return None
 
     # FBLibraryItem
     def Fragment(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.library.FBLibraryFragment import FBLibraryFragment
@@ -66,39 +53,23 @@ class FBLibraryItem(object):
 
 
 def FBLibraryItemStart(builder):
-    builder.StartObject(4)
+    builder.StartObject(2)
 
 
 def Start(builder):
     return FBLibraryItemStart(builder)
 
 
-def FBLibraryItemAddInstructionClass(builder, instructionClass):
-    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(instructionClass), 0)
+def FBLibraryItemAddInstructionData(builder, instructionData):
+    builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(instructionData), 0)
 
 
-def AddInstructionClass(builder, instructionClass):
-    return FBLibraryItemAddInstructionClass(builder, instructionClass)
-
-
-def FBLibraryItemAddInstructionType(builder, instructionType):
-    builder.PrependUint8Slot(1, instructionType, 0)
-
-
-def AddInstructionType(builder, instructionType):
-    return FBLibraryItemAddInstructionType(builder, instructionType)
-
-
-def FBLibraryItemAddInstruction(builder, instruction):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(instruction), 0)
-
-
-def AddInstruction(builder, instruction):
-    return FBLibraryItemAddInstruction(builder, instruction)
+def AddInstructionData(builder, instructionData):
+    return FBLibraryItemAddInstructionData(builder, instructionData)
 
 
 def FBLibraryItemAddFragment(builder, fragment):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(fragment), 0)
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(fragment), 0)
 
 
 def AddFragment(builder, fragment):

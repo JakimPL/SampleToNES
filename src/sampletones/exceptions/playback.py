@@ -2,4 +2,4 @@ from .base import SampleToNESError
 
 
 class PlaybackError(SampleToNESError):
-    pass
+    """Base class for exceptions raised during playback."""

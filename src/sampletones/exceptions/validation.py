@@ -1,7 +1,11 @@
 from .base import SampleToNESError
 
 
-class InvalidValuesError(SampleToNESError):
+class InvalidDataError(SampleToNESError):
+    """Base class for invalid data errors."""
+
+
+class InvalidValuesError(InvalidDataError):
     """Raised when data contains invalid values."""
 
     def __init__(self, message: str, validation_error: Exception) -> None:
@@ -11,3 +15,15 @@ class InvalidValuesError(SampleToNESError):
 
     def __str__(self) -> str:
         return f"{self.message}:\n{self.validation_error}"
+
+
+class InvalidMetadataError(InvalidDataError):
+    """Exception raised for invalid metadata."""
+
+
+class SerializationError(InvalidDataError):
+    """Raised when serialization fails."""
+
+
+class DeserializationError(InvalidDataError):
+    """Raised when deserialization fails."""

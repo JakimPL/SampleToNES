@@ -41,6 +41,7 @@ from ..constants import (
     MSG_LIBRARY_GENERATING,
     MSG_LIBRARY_GENERATION_CANCELLATION,
     MSG_LIBRARY_GENERATION_FAILED,
+    MSG_LIBRARY_GENERATION_SAVING,
     MSG_LIBRARY_GENERATION_SUCCESS,
     MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
     MSG_LIBRARY_INVALID_DATA_ERROR,
@@ -376,7 +377,7 @@ class GUILibraryPanel(GUITreePanel):
         dpg_set_value(TAG_LIBRARY_STATUS, status_text)
 
     def _set_generation_completed(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SUCCESS)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SAVING)
         dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:

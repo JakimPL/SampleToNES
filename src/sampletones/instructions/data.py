@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Self
+from typing import Generic, Self
 
 from flatbuffers.table import Table
 from pydantic import ConfigDict, Field
@@ -9,14 +9,24 @@ from sampletones.data import DataModel
 from sampletones.typehints import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
-from .typehints import InstructionUnion
+from .typehints import InstructionType
 
 
-class InstructionData(DataModel):
+class InstructionData(DataModel, Generic[InstructionType]):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     instruction_class: InstructionClassName = Field(..., description="Name of the generator")
-    instruction: InstructionUnion = Field(..., description="Instruction instance")
+    instruction: InstructionType = Field(..., description="Instruction instance")
+
+    @classmethod
+    def create(
+        cls,
+        instruction: InstructionType,
+    ) -> Self:
+        return cls(
+            instruction_class=instruction.class_name(),
+            instruction=instruction,
+        )
 
     @property
     def instruction_type(self) -> type:

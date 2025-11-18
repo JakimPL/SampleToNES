@@ -5,7 +5,7 @@ namespace schemas.library;
 
 table FBLibraryFragment {
 	generator_class: string;
-	instruction: schemas.instructions.FBInstructionUnion;
+	instruction_data: schemas.instructions.FBInstructionData;
 	feature: [float];
 	sample: schemas.arrays.FBCyclicArray;
 	frequency: float;

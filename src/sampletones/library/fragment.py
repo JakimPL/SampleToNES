@@ -1,5 +1,6 @@
+from functools import cached_property
 from types import ModuleType
-from typing import Generic, Self
+from typing import Generic, Self, cast
 
 import numpy as np
 from flatbuffers.table import Table
@@ -9,6 +10,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel
+from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import (
@@ -16,7 +18,7 @@ from sampletones.generators import (
     GENERATOR_TO_INSTRUCTION_MAP,
     GeneratorType,
 )
-from sampletones.instructions import InstructionType
+from sampletones.instructions import InstructionData, InstructionType
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import serialize_array
 
@@ -25,7 +27,7 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
-    instruction: InstructionType
+    instruction_data: InstructionData
     sample: CyclicArray
     feature: np.ndarray
     frequency: float
@@ -51,11 +53,20 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
 
         return cls(
             generator_class=generator.class_name(),
-            instruction=instruction,
+            instruction_data=InstructionData.create(instruction),
             sample=sample,
             feature=feature,
             frequency=generator.timer.real_frequency,
         )
+
+    @cached_property
+    def instruction(self) -> InstructionType:
+        if not isinstance(
+            self.instruction_data.instruction,
+            GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[self.generator_class]],
+        ):
+            raise InstructionTypeMismatchError("Instruction type does not match generator class")
+        return cast(InstructionType, self.instruction_data.instruction)
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         windowed_audio = self.sample.get_window(shift, window)

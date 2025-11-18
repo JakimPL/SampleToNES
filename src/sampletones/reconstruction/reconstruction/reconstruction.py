@@ -165,11 +165,11 @@ class Reconstruction(DataModel):
     @classmethod
     def load_and_validate(cls, path: Union[str, Path]) -> "Reconstruction":
         reconstruction = cls.load(path)
-        cls.validate_reconstruction(reconstruction.metadata)
+        cls.validate_metadata(reconstruction.metadata)
         return reconstruction
 
     @staticmethod
-    def validate_reconstruction(metadata: Metadata) -> None:
+    def validate_metadata(metadata: Metadata) -> None:
         application_metadata = metadata.application_name
         if application_metadata != SAMPLETONES_NAME:
             raise InvalidMetadataError(

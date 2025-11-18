@@ -61,8 +61,7 @@ class LibraryData(DataModel):
     def create(cls, config: Union[Config, LibraryConfig], data: Dict[InstructionUnion, LibraryFragment]) -> Self:
         library_config = config.library if isinstance(config, Config) else config
         items = [
-            LibraryItem(
-                instruction_class=instruction.class_name(),
+            LibraryItem.create(
                 instruction=instruction,
                 fragment=fragment,
             )
@@ -104,11 +103,11 @@ class LibraryData(DataModel):
                 exception,
             ) from exception
 
-        cls.validate_library_data(library_data.metadata)
+        cls.validate_metadata(library_data.metadata)
         return library_data
 
     @staticmethod
-    def validate_library_data(metadata: Metadata) -> None:
+    def validate_metadata(metadata: Metadata) -> None:
         application_metadata = metadata.application_name
         if application_metadata != SAMPLETONES_NAME:
             raise InvalidMetadataError(

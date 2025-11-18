@@ -35,26 +35,20 @@ class FBLibraryFragment(object):
         return None
 
     # FBLibraryFragment
-    def InstructionType(self):
+    def InstructionData(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
-        return 0
+            x = self._tab.Indirect(o + self._tab.Pos)
+            from schemas.instructions.FBInstructionData import FBInstructionData
 
-    # FBLibraryFragment
-    def Instruction(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            from flatbuffers.table import Table
-
-            obj = Table(bytearray(), 0)
-            self._tab.Union(obj, o)
+            obj = FBInstructionData()
+            obj.Init(self._tab.Bytes, x)
             return obj
         return None
 
     # FBLibraryFragment
     def Feature(self, j):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(
@@ -64,26 +58,26 @@ class FBLibraryFragment(object):
 
     # FBLibraryFragment
     def FeatureAsNumpy(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float32Flags, o)
         return 0
 
     # FBLibraryFragment
     def FeatureLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # FBLibraryFragment
     def FeatureIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         return o == 0
 
     # FBLibraryFragment
     def Sample(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.arrays.FBCyclicArray import FBCyclicArray
@@ -95,14 +89,14 @@ class FBLibraryFragment(object):
 
     # FBLibraryFragment
     def Frequency(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
 
 def FBLibraryFragmentStart(builder):
-    builder.StartObject(6)
+    builder.StartObject(5)
 
 
 def Start(builder):
@@ -117,24 +111,16 @@ def AddGeneratorClass(builder, generatorClass):
     return FBLibraryFragmentAddGeneratorClass(builder, generatorClass)
 
 
-def FBLibraryFragmentAddInstructionType(builder, instructionType):
-    builder.PrependUint8Slot(1, instructionType, 0)
+def FBLibraryFragmentAddInstructionData(builder, instructionData):
+    builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(instructionData), 0)
 
 
-def AddInstructionType(builder, instructionType):
-    return FBLibraryFragmentAddInstructionType(builder, instructionType)
-
-
-def FBLibraryFragmentAddInstruction(builder, instruction):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(instruction), 0)
-
-
-def AddInstruction(builder, instruction):
-    return FBLibraryFragmentAddInstruction(builder, instruction)
+def AddInstructionData(builder, instructionData):
+    return FBLibraryFragmentAddInstructionData(builder, instructionData)
 
 
 def FBLibraryFragmentAddFeature(builder, feature):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(feature), 0)
+    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(feature), 0)
 
 
 def AddFeature(builder, feature):
@@ -150,7 +136,7 @@ def StartFeatureVector(builder, numElems):
 
 
 def FBLibraryFragmentAddSample(builder, sample):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(sample), 0)
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(sample), 0)
 
 
 def AddSample(builder, sample):
@@ -158,7 +144,7 @@ def AddSample(builder, sample):
 
 
 def FBLibraryFragmentAddFrequency(builder, frequency):
-    builder.PrependFloat32Slot(5, frequency, 0.0)
+    builder.PrependFloat32Slot(4, frequency, 0.0)
 
 
 def AddFrequency(builder, frequency):
