@@ -78,6 +78,10 @@ class Config(DataModel):
         return self.library.sample_rate
 
     @property
+    def frame_length(self) -> int:
+        return self.library.frame_length
+
+    @property
     def transformation_gamma(self) -> int:
         return self.library.transformation_gamma
 

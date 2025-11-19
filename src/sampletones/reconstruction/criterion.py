@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
-import numpy as np
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 
 from sampletones.configs import Config
 from sampletones.ffts import Fragment, Window
@@ -14,40 +17,62 @@ class Criterion:
 
     alpha: float = field(init=False)
     beta: float = field(init=False)
+    weights: xp.ndarray = field(init=False)
+    no_weights: xp.ndarray = field(init=False)
 
     def __post_init__(self):
         alpha, beta = self.get_loss_weights()
         object.__setattr__(self, "alpha", alpha)
         object.__setattr__(self, "beta", beta)
 
+        no_weights = xp.ones(self.config.frame_length, dtype=xp.float32)
+        weights = xp.asarray(self.window.weights)
+        weights = len(weights) * weights / xp.sum(weights)
+        object.__setattr__(self, "weights", weights)
+        object.__setattr__(self, "no_weights", no_weights)
+
     def __call__(
         self,
         fragment: Fragment,
         approximation: Fragment,
-    ) -> np.ndarray:
+    ) -> xp.ndarray:
         temporal_loss = self.temporal_loss(fragment.audio, approximation.audio)
         spectral_loss = self.spectral_loss(fragment.feature, approximation.feature)
         return self.combine_losses(spectral_loss, temporal_loss)
 
-    def rmse(self, array1: np.ndarray, array2: np.ndarray, weights: Optional[np.ndarray] = None) -> np.ndarray:
-        if weights is None:
-            weights = np.ones_like(array1)
-        else:
-            weights = len(weights) * weights / np.sum(weights)
+    def rmse(self, reference: xp.ndarray, candidates: xp.ndarray, with_weights: bool = True) -> xp.ndarray:
+        if reference.ndim != 1:
+            raise ValueError("reference must be 1D")
 
-        return np.sqrt(np.mean(weights * np.square(array1 - array2), axis=-1))
+        if candidates.ndim == 1:
+            candidates = candidates[None, :]
+        elif candidates.shape[1] != reference.shape[0]:
+            raise ValueError(
+                f"candidate width {candidates.shape[1]} does not match reference length {reference.shape[0]}"
+            )
 
-    def temporal_loss(self, audio: np.ndarray, approximation: np.ndarray) -> np.ndarray:
-        return self.rmse(audio, approximation, weights=None)
+        weights = self.weights if with_weights else self.no_weights
+        if weights.ndim == 1:
+            weights = weights.reshape((1, -1))
+
+        difference = xp.empty_like(candidates)
+        xp.subtract(candidates, reference, out=difference)
+        xp.square(difference, out=difference)
+        xp.multiply(difference, weights, out=difference)
+        mean = xp.mean(difference, axis=-1)
+        return xp.sqrt(mean)
+
+    def temporal_loss(self, audio: xp.ndarray, approximation: xp.ndarray) -> xp.ndarray:
+        return self.rmse(audio, approximation, with_weights=False)
 
     def spectral_loss(
         self,
-        fragment_feature: np.ndarray,
-        approximation_feature: np.ndarray,
-    ) -> np.ndarray:
-        return self.rmse(fragment_feature, approximation_feature, weights=self.window.weights)
+        feature: xp.ndarray,
+        approximation_feature: xp.ndarray,
+    ) -> xp.ndarray:
+        return self.rmse(feature, approximation_feature, with_weights=True)
 
-    def combine_losses(self, spectral_loss: np.ndarray, temporal_loss: np.ndarray) -> np.ndarray:
+    def combine_losses(self, spectral_loss: xp.ndarray, temporal_loss: xp.ndarray) -> xp.ndarray:
         return self.alpha * spectral_loss + self.beta * temporal_loss
 
     def get_loss_weights(self) -> Tuple[float, float]:

@@ -2,6 +2,14 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Callable, Dict, List, Tuple
 
+CUPY_AVAILABLE = False
+try:
+    import cupy as xp
+
+    CUPY_AVAILABLE = True
+except ImportError:
+    import numpy as xp
+
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
@@ -66,7 +74,7 @@ class ReconstructorWorker:
                     approximation = self.get_approximation(instruction, generator)
                     approximations.append(approximation)
 
-                return Fragment.stack(approximations)
+                return Fragment.stack(approximations).to_cupy()
 
             return _cached
 
@@ -104,10 +112,21 @@ class ReconstructorWorker:
             remaining_generator_classes,
         )
 
-        errors = self.criterion(fragment, approximations)
-        index = int(np.argmin(errors))
-        error = float(errors[index])
-        instruction = valid_instructions[index]
+        errors = None
+        fragment_gpu = None
+        try:
+            fragment_gpu = fragment.to_cupy()
+            errors = self.criterion(fragment_gpu, approximations)
+            index = int(np.argmin(errors))
+            error = float(errors[index])
+            instruction = valid_instructions[index]
+        finally:
+            del errors, approximations, fragment_gpu
+            if CUPY_AVAILABLE:
+                import cupy
+
+                cupy.get_default_memory_pool().free_all_blocks()
+
         return instruction, error
 
     def find_best_phase(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
