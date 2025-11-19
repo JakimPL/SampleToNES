@@ -29,7 +29,11 @@ pip install .
 pip install pyinstaller
 
 echo Building executable...
-pyinstaller --name sampletones --onefile --distpath . --icon src\sampletones\icons\sampletones.ico --add-data "src\sampletones\icons;sampletones\icons" src\sampletones\__main__.py
+pyinstaller --name sampletones \
+    --onefile \
+    --distpath . \
+    --icon src\sampletones\icons\sampletones.ico \
+    --add-data "src\sampletones\icons;sampletones\icons" src\sampletones\__main__.py
 
 if exist sampletones.exe (
     echo Build complete: .\sampletones.exe
