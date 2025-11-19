@@ -13,6 +13,7 @@ table FBWeightsConfig {
 table FBGenerationConfig {
 	mixer: float;
 	reset_phase: bool;
+    final_regeneration: bool;
     generators: [string];
     calculation: FBCalculationConfig;
     weights: FBWeightsConfig;

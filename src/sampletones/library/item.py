@@ -52,12 +52,12 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.library.FBLibraryItem as FBLibraryItem
+        from schemas.library import FBLibraryItem
 
         return FBLibraryItem
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.library.FBLibraryItem as FBLibraryItem
+        from schemas.library import FBLibraryItem
 
         return FBLibraryItem.FBLibraryItem

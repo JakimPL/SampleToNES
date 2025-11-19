@@ -22,12 +22,12 @@ class Errors(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.reconstruction.FBErrors as FBErrors
+        from schemas.reconstruction import FBErrors
 
         return FBErrors
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.reconstruction.FBErrors as FBErrors
+        from schemas.reconstruction import FBErrors
 
         return FBErrors.FBErrors

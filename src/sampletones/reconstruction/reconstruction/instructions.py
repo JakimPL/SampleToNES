@@ -16,12 +16,12 @@ class InstructionsItem(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.reconstruction.FBInstructionsItem as FBInstructionsItem
+        from schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.reconstruction.FBInstructionsItem as FBInstructionsItem
+        from schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem.FBInstructionsItem

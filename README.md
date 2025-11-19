@@ -158,8 +158,8 @@ Reconstruction is an object containing all conversion information. The most impo
 
 _SampleToNES_, besides the library settings, offers additional generation settings:
 
-* `mixer`: For amplifying the NES waveforms. Too-low values may result in clamped dynamics; too-high values may cause quiet samples to be lost.
-* `find_best_phase`: Tries to find the best phase for a sample to fit the frame. True by default. Allows ignoring phase shifts while searching for the best approximation.
+* `mixer`: For amplifying the NES waveforms. Too low values may result in clamped dynamics; too high values may cause quiet samples to be lost.
+* `find_best_phase`: Tries to find the best phase for a sample to fit the frame. `True` by default. Allows ignoring phase shifts while searching for the best approximation.
 * `fast_difference`: Instead of calculating the FFT of the audio remainder after finding partial approximations in a frame, it calculates the difference between spectral features only. Disabled by default, as it may lead to inaccurate approximations.
 * `reset_phase`: Resets phases within each instruction. Not recommended.
 

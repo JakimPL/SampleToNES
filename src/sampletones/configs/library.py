@@ -39,12 +39,12 @@ class LibraryConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBLibraryConfig as FBLibraryConfig
+        from schemas.configs import FBLibraryConfig
 
         return FBLibraryConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBLibraryConfig as FBLibraryConfig
+        from schemas.configs import FBLibraryConfig
 
         return FBLibraryConfig.FBLibraryConfig

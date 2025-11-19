@@ -79,7 +79,8 @@ class LibraryData(DataModel):
 
         if isinstance(generator_classes, GeneratorClassName):
             return self.subdata.get(generator_classes, {})
-        elif isinstance(generator_classes, tuple):
+
+        if isinstance(generator_classes, tuple):
             result: Dict[InstructionUnion, LibraryFragment] = {}
             for generator_class_name in generator_classes:
                 result |= self.subdata[generator_class_name]
@@ -130,12 +131,12 @@ class LibraryData(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.library.FBLibraryData as FBLibraryData
+        from schemas.library import FBLibraryData
 
         return FBLibraryData
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.library.FBLibraryData as FBLibraryData
+        from schemas.library import FBLibraryData
 
         return FBLibraryData.FBLibraryData

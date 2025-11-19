@@ -106,12 +106,12 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.library.FBLibraryFragment as FBLibraryFragment
+        from schemas.library import FBLibraryFragment
 
         return FBLibraryFragment
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.library.FBLibraryFragment as FBLibraryFragment
+        from schemas.library import FBLibraryFragment
 
         return FBLibraryFragment.FBLibraryFragment

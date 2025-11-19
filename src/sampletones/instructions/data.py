@@ -32,27 +32,27 @@ class InstructionData(DataModel, Generic[InstructionType]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.instructions.FBInstructionData as FBInstructionData
+        from schemas.instructions import FBInstructionData
 
         return FBInstructionData
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.instructions.FBInstructionData as FBInstructionData
+        from schemas.instructions import FBInstructionData
 
         return FBInstructionData.FBInstructionData
 
     @classmethod
     def buffer_union_builder(cls) -> ModuleType:
-        import schemas.instructions.FBInstructionUnion as FBInstructionData
+        from schemas.instructions import FBInstructionUnion
 
-        return FBInstructionData
+        return FBInstructionUnion
 
     @classmethod
     def buffer_union_reader(cls) -> type:
-        import schemas.instructions.FBInstructionUnion as FBInstructionData
+        from schemas.instructions import FBInstructionUnion
 
-        return FBInstructionData.FBInstructionUnion
+        return FBInstructionUnion.FBInstructionUnion
 
     @classmethod
     def buffer_union_map(cls) -> Dict[int, type]:

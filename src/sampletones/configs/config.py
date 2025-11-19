@@ -87,12 +87,12 @@ class Config(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBConfig as FBConfig
+        from schemas.configs import FBConfig
 
         return FBConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBConfig as FBConfig
+        from schemas.configs import FBConfig
 
         return FBConfig.FBConfig

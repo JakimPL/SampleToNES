@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 
@@ -9,11 +9,12 @@ from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import FragmentedAudio, Window
 from sampletones.generators import (
+    INSTRUCTION_TO_GENERATOR_MAP,
     MIXER_LEVELS,
-    Generator,
     GeneratorUnion,
     get_generators_by_names,
 )
+from sampletones.instructions import INSTRUCTION_CLASS_MAP
 from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
@@ -116,10 +117,17 @@ class Reconstructor:
         )
 
     def update_state(self, fragment_approximation: ApproximationData) -> None:
-        generator: Generator[Any, Any] = self.generators[fragment_approximation.generator_name]
-        instruction: Any = fragment_approximation.instruction
-        initials = generator.initials
-        approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
+        generator: GeneratorUnion = self.generators[fragment_approximation.generator_name]
+        if self.config.generation.final_regeneration:
+            instruction_class = INSTRUCTION_TO_GENERATOR_MAP[
+                INSTRUCTION_CLASS_MAP[fragment_approximation.instruction.class_name()]
+            ]
+            instruction: instruction_class = fragment_approximation.instruction
+            initials = generator.initials
+            approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
+        else:
+            approximation = fragment_approximation.approximation.audio * self.config.generation.mixer
+
         self.state.append(fragment_approximation, approximation)
 
     def reset_generators(self) -> None:

@@ -22,13 +22,13 @@ class Metadata(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.metadata.FBMetadata as FBMetadata
+        from schemas.metadata import FBMetadata
 
         return FBMetadata
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.metadata.FBMetadata as FBMetadata
+        from schemas.metadata import FBMetadata
 
         return FBMetadata.FBMetadata
 
