@@ -1,7 +1,18 @@
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Self, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Self,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -18,7 +29,7 @@ FLOAT32_SIZE = 4
 class DataModel(BaseModel):
     def serialize(self) -> bytes:
         builder = Builder(1024)
-        offset = self._serialize_inner(builder)
+        offset = self.serialize_inner(builder)
         builder.Finish(offset)
         return bytes(builder.Output())
 
@@ -26,7 +37,7 @@ class DataModel(BaseModel):
     def deserialize(cls, buffer: bytes) -> Self:
         fb_reader = cls.buffer_reader()
         root = fb_reader.GetRootAs(buffer, 0)
-        return cls._deserialize_inner(root)
+        return cls.deserialize_inner(root)
 
     def save(self, path: Union[str, Path]) -> None:
         binary = self.serialize()
@@ -37,7 +48,7 @@ class DataModel(BaseModel):
         binary = load_binary(path)
         return cls.deserialize(binary)
 
-    def _serialize_inner(self, builder: Builder) -> int:
+    def serialize_inner(self, builder: Builder) -> int:
         fb_builder = self.buffer_builder()
         offsets = {}
 
@@ -65,7 +76,7 @@ class DataModel(BaseModel):
                 offsets[field_name] = self._serialize_list(builder, value, field_name)
 
             elif issubclass(annotation, DataModel):
-                offsets[field_name] = value._serialize_inner(builder)
+                offsets[field_name] = value.serialize_inner(builder)
 
             elif issubclass(annotation, (str, StrEnum)):
                 offsets[field_name] = self._serialize_string(builder, value)
@@ -88,7 +99,7 @@ class DataModel(BaseModel):
         return fb_builder.End(builder)
 
     @classmethod
-    def _deserialize_inner(cls, fb_object: Any) -> Self:
+    def deserialize_inner(cls, fb_object: Any) -> Self:
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
@@ -113,7 +124,7 @@ class DataModel(BaseModel):
 
             elif issubclass(annotation, DataModel):
                 fb_child = getter()
-                value = annotation._deserialize_inner(fb_child)
+                value = annotation.deserialize_inner(fb_child)
 
             elif issubclass(annotation, (str, StrEnum)):
                 value = cls._deserialize_string(getter(), annotation)
@@ -136,15 +147,15 @@ class DataModel(BaseModel):
         if len(collection) == 0:
             return 0
 
-        elif all(isinstance(value, (int, float)) for value in collection):
+        if all(isinstance(value, (int, float)) for value in collection):
             return self._serialize_numpy_array(builder, np.array(collection, dtype=np.float32), field_name)
 
-        elif all(isinstance(value, (str, StrEnum)) for value in collection):
+        if all(isinstance(value, (str, StrEnum)) for value in collection):
             string_offsets = [self._serialize_string(builder, value) for value in collection]
             return self._prepend_offsets(builder, string_offsets)
 
-        elif all(isinstance(model, DataModel) for model in collection):
-            child_offsets = [model._serialize_inner(builder) for model in collection]
+        if all(isinstance(model, DataModel) for model in collection):
+            child_offsets = [model.serialize_inner(builder) for model in collection]
             return self._prepend_offsets(builder, child_offsets)
 
         raise SerializationError(
@@ -183,7 +194,7 @@ class DataModel(BaseModel):
             return []
 
         if issubclass(element_class, DataModel):
-            return [element_class._deserialize_inner(getter(i)) for i in range(length)]
+            return [element_class.deserialize_inner(getter(i)) for i in range(length)]
 
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(getter(i), element_class) for i in range(length)]
@@ -196,12 +207,14 @@ class DataModel(BaseModel):
     def _serialize_numpy_array(self, builder: Builder, array: np.ndarray, field_name: str) -> int:
         if array.dtype != np.float32:
             raise SerializationError(
-                f"Only np.float32 arrays are supported for serialization, got {array.dtype} for field '{field_name}'"
+                f"Only np.float32 arrays are supported for serialization, "
+                f"got {array.dtype} for field '{field_name}'"
             )
 
         if array.ndim != 1:
             raise SerializationError(
-                f"Only 1D numpy arrays are supported for serialization, got {array.ndim}D array for field '{field_name}'"
+                f"Only 1D numpy arrays are supported for serialization, got "
+                f"{array.ndim}D array for field '{field_name}'"
             )
 
         if np.isnan(array).any():
@@ -231,14 +244,16 @@ class DataModel(BaseModel):
         return array
 
     @classmethod
-    def _deserialize_from_table(cls, table: Table) -> Self:
+    def deserialize_from_table(cls, table: Table) -> Self:
         fb_class = cls.buffer_reader()
         wrapper = fb_class()
         wrapper.Init(table.Bytes, table.Pos)
-        return cls._deserialize_inner(wrapper)
+        return cls.deserialize_inner(wrapper)
 
     def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> dict:
         union_map = type(self).buffer_union_map()
+        if union_map is None:
+            raise SerializationError(f"No union map defined for {type(self).__name__}")
 
         tag = None
         for tag_type, cls in union_map.items():
@@ -249,12 +264,15 @@ class DataModel(BaseModel):
         if tag is None:
             raise SerializationError(f"No union tag for value {type(value).__name__} in {type(self).__name__}")
 
-        child_offset = value._serialize_inner(builder)
+        child_offset = value.serialize_inner(builder)
         return {field_name: child_offset, f"{field_name}_type": tag}
 
     @classmethod
     def _deserialize_union(cls, fb_parent: Any, getter: Callable) -> Any:
         union_map = cls.buffer_union_map()
+        if union_map is None:
+            raise DeserializationError(f"No union map defined for {cls.__name__}")
+
         type_accessor_name = f"{getter.__name__}Type"
         type_accessor = getattr(fb_parent, type_accessor_name, None)
         if type_accessor is None:
@@ -271,7 +289,7 @@ class DataModel(BaseModel):
             raise DeserializationError(f"Unknown union tag {tag} for {cls.__name__}")
 
         table = getter()
-        return target_cls._deserialize_from_table(table)
+        return target_cls.deserialize_from_table(table)
 
     @staticmethod
     def _prepend_offsets(builder: Builder, offsets: List[int]) -> int:
@@ -290,13 +308,13 @@ class DataModel(BaseModel):
         raise NotImplementedError("Subclasses must implement buffer_builder method")
 
     @classmethod
-    def buffer_union_builder(cls) -> ModuleType:
-        raise NotImplementedError("Subclasses must implement buffer_union_builder method")
+    def buffer_union_builder(cls) -> Optional[ModuleType]:
+        return None
 
     @classmethod
-    def buffer_union_reader(cls) -> type:
-        raise NotImplementedError("Subclasses must implement buffer_union_reader method")
+    def buffer_union_reader(cls) -> Optional[type]:
+        return None
 
     @classmethod
-    def buffer_union_map(cls) -> Dict[int, type]:
-        raise NotImplementedError("Subclasses must implement buffer_union_map method")
+    def buffer_union_map(cls) -> Optional[Dict[int, type]]:
+        return None

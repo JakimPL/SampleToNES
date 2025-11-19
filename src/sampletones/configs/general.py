@@ -27,12 +27,12 @@ class GeneralConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBGeneralConfig as FBGeneralConfig
+        from schemas.configs import FBGeneralConfig
 
         return FBGeneralConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBGeneralConfig as FBGeneralConfig
+        from schemas.configs import FBGeneralConfig
 
         return FBGeneralConfig.FBGeneralConfig

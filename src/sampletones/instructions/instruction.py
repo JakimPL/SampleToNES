@@ -28,12 +28,12 @@ class Instruction(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.instructions.FBInstruction as FBInstruction
+        from schemas.instructions import FBInstruction
 
         return FBInstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.instructions.FBInstruction as FBInstruction
+        from schemas.instructions import FBInstruction
 
         return FBInstruction.FBInstruction

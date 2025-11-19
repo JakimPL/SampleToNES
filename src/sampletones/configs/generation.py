@@ -6,6 +6,7 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import DEFAULT_GENERATORS, GeneratorName
 from sampletones.constants.general import (
     FAST_DIFFERENCE,
+    FINAL_REGENERATION,
     FIND_BEST_PHASE,
     MAX_MIXER,
     MIXER,
@@ -24,13 +25,13 @@ class CalculationConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBCalculationConfig as FBCalculationConfig
+        from schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBCalculationConfig as FBCalculationConfig
+        from schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig.FBCalculationConfig
 
@@ -43,13 +44,13 @@ class WeightsConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBWeightsConfig as FBWeightsConfig
+        from schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBWeightsConfig as FBWeightsConfig
+        from schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig.FBWeightsConfig
 
@@ -59,18 +60,20 @@ class GenerationConfig(DataModel):
 
     mixer: float = Field(default=MIXER, ge=0.0, le=MAX_MIXER)
     reset_phase: bool = Field(default=RESET_PHASE)
-    generators: List[GeneratorName] = Field(default_factory=lambda: DEFAULT_GENERATORS.copy())
+    final_regeneration: bool = Field(default=FINAL_REGENERATION)
+
+    generators: List[GeneratorName] = Field(default_factory=DEFAULT_GENERATORS.copy)
     calculation: CalculationConfig = Field(default_factory=CalculationConfig)
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.configs.FBGenerationConfig as FBGenerationConfig
+        from schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.configs.FBGenerationConfig as FBGenerationConfig
+        from schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig.FBGenerationConfig

@@ -32,14 +32,13 @@ class TriangleInstruction(Instruction):
 
         if both_silent:
             return 0.0
-        elif one_silent:
-            return 0.5
-        else:
-            pitch1 = self.pitch
-            pitch2 = other.pitch
-            pitch_difference = abs(pitch1 - pitch2) / PITCH_RANGE
 
-        return pitch_difference
+        if one_silent:
+            return 0.5
+
+        pitch1 = self.pitch
+        pitch2 = other.pitch
+        return abs(pitch1 - pitch2) / PITCH_RANGE
 
     @classmethod
     def class_name(cls) -> InstructionClassName:
@@ -47,12 +46,12 @@ class TriangleInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
+        from schemas.instructions.triangle import FBTriangleInstruction
 
         return FBTriangleInstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.instructions.triangle.FBTriangleInstruction as FBTriangleInstruction
+        from schemas.instructions.triangle import FBTriangleInstruction
 
         return FBTriangleInstruction.FBTriangleInstruction

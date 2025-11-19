@@ -207,12 +207,12 @@ class Reconstruction(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.reconstruction.FBReconstruction as FBReconstruction
+        from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.reconstruction.FBReconstruction as FBReconstruction
+        from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction.FBReconstruction

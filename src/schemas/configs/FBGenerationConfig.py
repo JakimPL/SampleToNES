@@ -42,8 +42,15 @@ class FBGenerationConfig(object):
         return False
 
     # FBGenerationConfig
-    def Generators(self, j):
+    def FinalRegeneration(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        if o != 0:
+            return bool(self._tab.Get(flatbuffers.number_types.BoolFlags, o + self._tab.Pos))
+        return False
+
+    # FBGenerationConfig
+    def Generators(self, j):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.String(a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4))
@@ -51,19 +58,19 @@ class FBGenerationConfig(object):
 
     # FBGenerationConfig
     def GeneratorsLength(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
     # FBGenerationConfig
     def GeneratorsIsNone(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         return o == 0
 
     # FBGenerationConfig
     def Calculation(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.configs.FBCalculationConfig import FBCalculationConfig
@@ -75,7 +82,7 @@ class FBGenerationConfig(object):
 
     # FBGenerationConfig
     def Weights(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(14))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
             from schemas.configs.FBWeightsConfig import FBWeightsConfig
@@ -87,7 +94,7 @@ class FBGenerationConfig(object):
 
 
 def FBGenerationConfigStart(builder):
-    builder.StartObject(5)
+    builder.StartObject(6)
 
 
 def Start(builder):
@@ -110,8 +117,16 @@ def AddResetPhase(builder, resetPhase):
     return FBGenerationConfigAddResetPhase(builder, resetPhase)
 
 
+def FBGenerationConfigAddFinalRegeneration(builder, finalRegeneration):
+    builder.PrependBoolSlot(2, finalRegeneration, 0)
+
+
+def AddFinalRegeneration(builder, finalRegeneration):
+    return FBGenerationConfigAddFinalRegeneration(builder, finalRegeneration)
+
+
 def FBGenerationConfigAddGenerators(builder, generators):
-    builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(generators), 0)
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(generators), 0)
 
 
 def AddGenerators(builder, generators):
@@ -127,7 +142,7 @@ def StartGeneratorsVector(builder, numElems):
 
 
 def FBGenerationConfigAddCalculation(builder, calculation):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(calculation), 0)
+    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(calculation), 0)
 
 
 def AddCalculation(builder, calculation):
@@ -135,7 +150,7 @@ def AddCalculation(builder, calculation):
 
 
 def FBGenerationConfigAddWeights(builder, weights):
-    builder.PrependUOffsetTRelativeSlot(4, flatbuffers.number_types.UOffsetTFlags.py_type(weights), 0)
+    builder.PrependUOffsetTRelativeSlot(5, flatbuffers.number_types.UOffsetTFlags.py_type(weights), 0)
 
 
 def AddWeights(builder, weights):

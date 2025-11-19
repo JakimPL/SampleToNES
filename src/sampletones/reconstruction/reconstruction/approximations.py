@@ -21,12 +21,12 @@ class ApproximationsItem(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        import schemas.reconstruction.FBApproximationsItem as FBApproximationsItem
+        from schemas.reconstruction import FBApproximationsItem
 
         return FBApproximationsItem
 
     @classmethod
     def buffer_reader(cls) -> type:
-        import schemas.reconstruction.FBApproximationsItem as FBApproximationsItem
+        from schemas.reconstruction import FBApproximationsItem
 
         return FBApproximationsItem.FBApproximationsItem
