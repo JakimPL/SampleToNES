@@ -29,4 +29,5 @@ def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
     frequencies = calculate_frequencies(fragment_length, sample_rate)
     density_weights = 1.0 / frequencies
     perceptual_weights = a_weighting(frequencies)
-    return density_weights * perceptual_weights
+    weights = density_weights * perceptual_weights
+    return weights / np.sum(weights)

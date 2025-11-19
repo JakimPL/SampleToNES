@@ -3,7 +3,7 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.general import MIN_FREQUENCY, SAMPLE_RATE
+from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
 from sampletones.library import LibraryFragment
 
 from ...constants import (
@@ -32,7 +32,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
         x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
         y_min: float = MIN_FREQUENCY,
-        y_max: float = SAMPLE_RATE / 2,
+        y_max: float = DEFAULT_SAMPLE_RATE / 2,
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None

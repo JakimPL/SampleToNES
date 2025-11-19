@@ -8,7 +8,6 @@ table FBCalculationConfig {
 table FBWeightsConfig {
 	spectral_loss_weight: float;
 	temporal_loss_weight: float;
-	continuity_loss_weight: float;
 }
 
 table FBGenerationConfig {

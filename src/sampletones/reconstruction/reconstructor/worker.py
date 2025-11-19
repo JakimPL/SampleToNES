@@ -72,21 +72,23 @@ class ReconstructorWorker:
 
         object.__setattr__(self, "_get_cached_approximations", _build_get_cached_approximations())
 
-    def get_remaining_generators(self) -> Dict[GeneratorName, Any]:
+    def get_remaining_generators(self) -> Dict[GeneratorName, GeneratorUnion]:
         return {name: generator for name, generator in self.generators.items()}
+
+    def get_remaining_generator_classes(
+        self,
+        remaining_generators: Dict[GeneratorName, GeneratorUnion],
+    ) -> Dict[GeneratorClassName, GeneratorUnion]:
+        return {generator.class_name(): generator for generator in reversed(remaining_generators.values())}
 
     def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
         approximations: Dict[GeneratorName, ApproximationData] = {}
         remaining_generators = self.get_remaining_generators()
         while remaining_generators:
-            remaining_generator_classes = {
-                generator.class_name(): generator for generator in reversed(remaining_generators.values())
-            }
-
+            remaining_generator_classes = self.get_remaining_generator_classes(remaining_generators)
             fragment_approximation = self.find_best_approximation(fragment, remaining_generator_classes)
             fragment -= fragment_approximation.approximation
             approximations[fragment_approximation.generator_name] = fragment_approximation
-
             del remaining_generators[fragment_approximation.generator_name]
 
         return approximations
@@ -101,7 +103,8 @@ class ReconstructorWorker:
             valid_instructions,
             remaining_generator_classes,
         )
-        errors = np.average(np.square(fragment.feature - approximations.feature), weights=self.window.weights, axis=1)
+
+        errors = self.criterion(fragment, approximations)
         index = int(np.argmin(errors))
         error = float(errors[index])
         instruction = valid_instructions[index]
