@@ -236,7 +236,9 @@ class LibraryManager:
         return self._get_display_name_from_key(key)
 
     def _parse_instructions_by_generator(
-        self, library_data: LibraryData, generator_class_name: GeneratorClassName
+        self,
+        library_data: LibraryData,
+        generator_class_name: GeneratorClassName,
     ) -> Dict[str, List[Tuple]]:
         generator_data = library_data.filter(generator_class_name)
         if not generator_data:

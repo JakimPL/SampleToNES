@@ -18,3 +18,6 @@ EXT_FILE_LIBRARY = ".dat"
 EXT_FILE_INSTRUMENT = ".fti"
 EXT_FILE_WAVE = ".wav"
 EXT_FILE_RECONSTRUCTION = ".stn"
+
+ICON_WIN_FILENAME = "sampletones.ico"
+ICON_UNIX_FILENAME = "sampletones.png"

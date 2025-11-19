@@ -1,4 +1,4 @@
-# SampleToNES v0.2.1
+# SampleToNES v0.2.2
 
 ## Overview
 
@@ -57,6 +57,11 @@ If you already have a Python 3.12 environment set up (for example, using `venv` 
     ```sh
     sampletones
     ```
+
+_SampleToNES_ supports CUDA. To install with the GPU mode, run:
+```sh
+pip install ".[gpu]"
+```
 
 ## Data structures
 
@@ -263,7 +268,6 @@ from sampletones import (
 )
 ```
 Currently, the API is not well documented. I hope that this will change in time.
-
 
 ### Code examples
 

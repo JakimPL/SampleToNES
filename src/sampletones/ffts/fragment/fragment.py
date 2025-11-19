@@ -1,5 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Self
+from typing import List, Self, Union
+
+CUPY_AVAILABLE = False
+try:
+    import cupy as xp
+
+    CUPY_AVAILABLE = True
+except ImportError:
+    import numpy as xp
 
 import numpy as np
 
@@ -11,9 +19,9 @@ from ..window.window import Window
 
 @dataclass(frozen=True)
 class Fragment:
-    audio: np.ndarray
-    feature: np.ndarray
-    windowed_audio: np.ndarray
+    audio: Union[np.ndarray, xp.ndarray]
+    feature: Union[np.ndarray, xp.ndarray]
+    windowed_audio: Union[np.ndarray, xp.ndarray]
     config: Config
 
     transformer: FFTTransformer = field(init=False)
@@ -26,11 +34,49 @@ class Fragment:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
         transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
         feature = transformer.calculate(windowed_audio, window.size)
+
         return cls(
             audio=window.get_frame_from_window(windowed_audio),
             feature=feature,
             windowed_audio=windowed_audio,
             config=config,
+        )
+
+    @classmethod
+    def stack(cls, fragments: List[Self]) -> Self:
+        if not fragments:
+            raise ValueError("The fragments list cannot be empty.")
+
+        first_fragment = fragments[0]
+        assert all(
+            fragment.config.library == first_fragment.config.library
+            and fragment.config.generation.calculation == first_fragment.config.generation.calculation
+            for fragment in fragments
+        ), "All fragments must have the same config to be concatenated."
+
+        assert all(
+            fragment.ndim == first_fragment.ndim for fragment in fragments
+        ), "All fragments must have the same number of dimensions to be concatenated."
+
+        if isinstance(first_fragment.audio, np.ndarray):
+            concatenated_audio = np.stack([fragment.audio for fragment in fragments])
+            concatenated_windowed_audio = np.stack([fragment.windowed_audio for fragment in fragments])
+            concatenated_feature = np.stack([fragment.feature for fragment in fragments])
+        else:
+            concatenated_audio = xp.stack([fragment.audio for fragment in fragments])
+            concatenated_windowed_audio = xp.stack([fragment.windowed_audio for fragment in fragments])
+            concatenated_feature = xp.stack([fragment.feature for fragment in fragments])
+
+        dimensions = map(
+            lambda array: array.ndim, [concatenated_audio, concatenated_windowed_audio, concatenated_feature]
+        )
+        assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional."
+
+        return cls(
+            audio=concatenated_audio,
+            feature=concatenated_feature,
+            windowed_audio=concatenated_windowed_audio,
+            config=first_fragment.config,
         )
 
     def __sub__(self, other: Self) -> "Fragment":
@@ -68,3 +114,21 @@ class Fragment:
             windowed_audio=windowed_audio,
             config=self.config,
         )
+
+    def to_cupy(self) -> "Fragment":
+        if not CUPY_AVAILABLE:
+            raise ImportError("CuPy is not available. Please install CuPy to use this method.")
+
+        audio = xp.asarray(self.audio)
+        windowed_audio = xp.asarray(self.windowed_audio)
+        feature = xp.asarray(self.feature)
+        return Fragment(
+            audio=audio,
+            feature=feature,
+            windowed_audio=windowed_audio,
+            config=self.config,
+        )
+
+    @property
+    def ndim(self) -> int:
+        return int(self.audio.ndim)

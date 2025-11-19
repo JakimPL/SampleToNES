@@ -4,7 +4,8 @@ from typing import Any, Callable, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import (
-    CHANGE_RATE,
+    DEFAULT_CHANGE_RATE,
+    DEFAULT_SAMPLE_RATE,
     MAX_CHANGE_RATE,
     MAX_SAMPLE_RATE,
     MAX_TRANSFORMATION_GAMMA,
@@ -13,7 +14,6 @@ from sampletones.constants.general import (
     MIN_SAMPLE_RATE,
     NORMALIZE,
     QUANTIZE,
-    SAMPLE_RATE,
 )
 from sampletones.library import LibraryKey
 from sampletones.typehints import Sender, SerializedData
@@ -110,14 +110,14 @@ class GUIConfigPanel(GUIPanel):
 
             dpg.add_input_int(
                 label=LBL_INPUT_SAMPLE_RATE,
-                default_value=SAMPLE_RATE,
+                default_value=DEFAULT_SAMPLE_RATE,
                 tag=TAG_CONFIG_SAMPLE_RATE,
                 min_value=MIN_SAMPLE_RATE,
                 max_value=MAX_SAMPLE_RATE,
             )
             dpg.add_input_int(
                 label=LBL_INPUT_CHANGE_RATE,
-                default_value=CHANGE_RATE,
+                default_value=DEFAULT_CHANGE_RATE,
                 tag=TAG_CONFIG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,

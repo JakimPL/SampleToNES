@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
-import numpy as np
-from sklearn.metrics import root_mean_squared_error
+try:
+    import cupy as xp
+except ImportError:
+    import numpy as xp
 
 from sampletones.configs import Config
 from sampletones.ffts import Fragment, Window
-from sampletones.instructions import Instruction
 
 
 @dataclass(frozen=True)
@@ -16,47 +17,68 @@ class Criterion:
 
     alpha: float = field(init=False)
     beta: float = field(init=False)
-    gamma: float = field(init=False)
+    weights: xp.ndarray = field(init=False)
+    no_weights: xp.ndarray = field(init=False)
 
     def __post_init__(self):
-        alpha, beta, gamma = self.get_loss_weights()
+        alpha, beta = self.get_loss_weights()
         object.__setattr__(self, "alpha", alpha)
         object.__setattr__(self, "beta", beta)
-        object.__setattr__(self, "gamma", gamma)
+
+        no_weights = xp.ones(self.config.frame_length, dtype=xp.float32)
+        weights = xp.asarray(self.window.weights)
+        weights = len(weights) * weights / xp.sum(weights)
+        object.__setattr__(self, "weights", weights)
+        object.__setattr__(self, "no_weights", no_weights)
 
     def __call__(
         self,
         fragment: Fragment,
         approximation: Fragment,
-        instruction: Instruction,
-        previous_instruction: Optional[Instruction] = None,
-    ) -> float:
+    ) -> xp.ndarray:
         temporal_loss = self.temporal_loss(fragment.audio, approximation.audio)
         spectral_loss = self.spectral_loss(fragment.feature, approximation.feature)
-        continuity_loss = self.continuity_loss(instruction, previous_instruction)
-        return self.combine_losses(spectral_loss, temporal_loss, continuity_loss)
+        return self.combine_losses(spectral_loss, temporal_loss)
 
-    def temporal_loss(self, audio: np.ndarray, approximation: np.ndarray) -> float:
-        return root_mean_squared_error(audio, approximation)
+    def rmse(self, reference: xp.ndarray, candidates: xp.ndarray, with_weights: bool = True) -> xp.ndarray:
+        if reference.ndim != 1:
+            raise ValueError("reference must be 1D")
 
-    def continuity_loss(self, instruction: Instruction, previous_instruction: Optional[Instruction]) -> float:
-        return 0.0 if previous_instruction is None else instruction.distance(previous_instruction)
+        if candidates.ndim == 1:
+            candidates = candidates[None, :]
+        elif candidates.shape[1] != reference.shape[0]:
+            raise ValueError(
+                f"candidate width {candidates.shape[1]} does not match reference length {reference.shape[0]}"
+            )
+
+        weights = self.weights if with_weights else self.no_weights
+        if weights.ndim == 1:
+            weights = weights.reshape((1, -1))
+
+        difference = xp.empty_like(candidates)
+        xp.subtract(candidates, reference, out=difference)
+        xp.square(difference, out=difference)
+        xp.multiply(difference, weights, out=difference)
+        mean = xp.mean(difference, axis=-1)
+        return xp.sqrt(mean)
+
+    def temporal_loss(self, audio: xp.ndarray, approximation: xp.ndarray) -> xp.ndarray:
+        return self.rmse(audio, approximation, with_weights=False)
 
     def spectral_loss(
         self,
-        fragment_feature: np.ndarray,
-        approximation_feature: np.ndarray,
-    ) -> float:
-        return float(np.average(np.square(fragment_feature - approximation_feature), weights=self.window.weights))
+        feature: xp.ndarray,
+        approximation_feature: xp.ndarray,
+    ) -> xp.ndarray:
+        return self.rmse(feature, approximation_feature, with_weights=True)
 
-    def combine_losses(self, spectral_loss: float, temporal_loss: float, continuity_loss: float) -> float:
-        return self.alpha * spectral_loss + self.beta * temporal_loss + self.gamma * continuity_loss
+    def combine_losses(self, spectral_loss: xp.ndarray, temporal_loss: xp.ndarray) -> xp.ndarray:
+        return self.alpha * spectral_loss + self.beta * temporal_loss
 
-    def get_loss_weights(self) -> Tuple[float, float, float]:
+    def get_loss_weights(self) -> Tuple[float, float]:
         alpha = self.config.generation.weights.spectral_loss_weight
         beta = self.config.generation.weights.temporal_loss_weight
-        gamma = self.config.generation.weights.continuity_loss_weight
-        weights = alpha, beta, gamma
+        weights = alpha, beta
 
         assert all(
             isinstance(weight, float) and weight >= 0.0 for weight in weights
@@ -65,4 +87,4 @@ class Criterion:
         if total == 0:
             raise ValueError("At least one of the loss weights must be greater than zero.")
 
-        return alpha / total, beta / total, gamma / total
+        return alpha / total, beta / total

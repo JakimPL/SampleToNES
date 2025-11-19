@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Collection, Dict, List, Self, Union
+from typing import Dict, List, Self, Union
 
 from pydantic import ConfigDict, Field, ValidationError
 
@@ -18,6 +18,7 @@ from sampletones.exceptions import (
     InvalidLibraryDataValuesError,
     InvalidMetadataError,
 )
+from sampletones.generators import GeneratorClassNames
 from sampletones.instructions import InstructionUnion
 from sampletones.utils import load_binary
 
@@ -70,20 +71,24 @@ class LibraryData(DataModel):
         return cls(config=library_config, items=items)
 
     def filter(
-        self, generator_classes: Union[GeneratorClassName, Collection[GeneratorClassName]]
+        self,
+        generator_classes: GeneratorClassNames,
     ) -> Dict[InstructionUnion, LibraryFragment]:
         if not generator_classes:
             return {}
 
         if isinstance(generator_classes, GeneratorClassName):
             return self.subdata.get(generator_classes, {})
-        elif isinstance(generator_classes, Collection):
+        elif isinstance(generator_classes, tuple):
             result: Dict[InstructionUnion, LibraryFragment] = {}
             for generator_class_name in generator_classes:
                 result |= self.subdata[generator_class_name]
             return result
 
-        raise ValueError("Incorrect type of generator class provided")
+        raise ValueError(
+            f"Incorrect type {type(generator_classes)} of generator class provided, "
+            f"expected GeneratorClassName or a tuple of GeneratorClassName."
+        )
 
     def keys(self):
         return self.data.keys()

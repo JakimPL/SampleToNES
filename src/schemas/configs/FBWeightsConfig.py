@@ -41,16 +41,9 @@ class FBWeightsConfig(object):
             return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
-    # FBWeightsConfig
-    def ContinuityLossWeight(self):
-        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
-        if o != 0:
-            return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
-        return 0.0
-
 
 def FBWeightsConfigStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(2)
 
 
 def Start(builder):
@@ -71,14 +64,6 @@ def FBWeightsConfigAddTemporalLossWeight(builder, temporalLossWeight):
 
 def AddTemporalLossWeight(builder, temporalLossWeight):
     return FBWeightsConfigAddTemporalLossWeight(builder, temporalLossWeight)
-
-
-def FBWeightsConfigAddContinuityLossWeight(builder, continuityLossWeight):
-    builder.PrependFloat32Slot(2, continuityLossWeight, 0.0)
-
-
-def AddContinuityLossWeight(builder, continuityLossWeight):
-    return FBWeightsConfigAddContinuityLossWeight(builder, continuityLossWeight)
 
 
 def FBWeightsConfigEnd(builder):

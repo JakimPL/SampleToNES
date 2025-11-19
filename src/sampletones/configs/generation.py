@@ -5,7 +5,6 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import DEFAULT_GENERATORS, GeneratorName
 from sampletones.constants.general import (
-    CONTINUITY_LOSS_WEIGHT,
     FAST_DIFFERENCE,
     FIND_BEST_PHASE,
     MAX_MIXER,
@@ -41,7 +40,6 @@ class WeightsConfig(DataModel):
 
     spectral_loss_weight: float = Field(default=SPECTRAL_LOSS_WEIGHT, ge=0.0)
     temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0)
-    continuity_loss_weight: float = Field(default=CONTINUITY_LOSS_WEIGHT, ge=0.0)
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

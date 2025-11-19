@@ -1,12 +1,14 @@
 # Global constants
 
-SAMPLE_RATE = 44100
+DEFAULT_SAMPLE_RATE = 44100
 MIN_SAMPLE_RATE = 8000
 MAX_SAMPLE_RATE = 192000
 
-CHANGE_RATE = 60  # NTSC frame rate
+DEFAULT_CHANGE_RATE = 60  # NTSC frame rate
 MIN_CHANGE_RATE = 15
 MAX_CHANGE_RATE = 600
+
+# Pitches and frequencies
 
 APU_CLOCK = 1789773.0
 MIN_PITCH = 33
@@ -20,10 +22,11 @@ A4_FREQUENCY = 440.0
 A4_PITCH = 69
 NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
 
+# Instruction parameters ranges
+
 MIN_VOLUME = 1
 MAX_VOLUME = 15
 VOLUME_RANGE = range(0, MAX_VOLUME + 1)
-
 MAX_DUTY_CYCLE = 3
 
 # Audio import
@@ -46,19 +49,24 @@ FIND_BEST_PHASE = True
 FAST_DIFFERENCE = False
 
 RESET_PHASE = False
-SPECTRAL_LOSS_WEIGHT = 0.60
+SPECTRAL_LOSS_WEIGHT = 0.80
 TEMPORAL_LOSS_WEIGHT = 0.20
-CONTINUITY_LOSS_WEIGHT = 0.20
 
 BATCH_SIZE = 1024
 MAX_WORKERS = 6
 
 # Channel-specific constants
 
+## Pulse channel
+
 DUTY_CYCLES = [0.125, 0.25, 0.5, 0.75]
 DUTY_CYCLES_MAX_DEVIATION = 0.375
 
+## Triangle channel
+
 TRIANGLE_OFFSET = 0.5
+
+## Noise channel
 
 NOISE_PERIODS = [
     4068,
@@ -85,6 +93,8 @@ NOISE_LONG_PERIOD = 32767.0
 
 MAX_LFSR = 0x7FFF
 MAX_LFSR_SHORT = 0x5D
+
+# Mixer constants
 
 MIXER = 1.8
 MAX_MIXER = 5.0

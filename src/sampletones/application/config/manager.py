@@ -6,12 +6,12 @@ from pydantic import ValidationError
 from sampletones.configs import Config, GeneralConfig, GenerationConfig, LibraryConfig
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
-    CHANGE_RATE,
+    DEFAULT_CHANGE_RATE,
+    DEFAULT_SAMPLE_RATE,
     MAX_WORKERS,
     MIXER,
     NORMALIZE,
     QUANTIZE,
-    SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
 )
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
@@ -51,8 +51,8 @@ class ConfigManager:
                 TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
                 TAG_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
                 TAG_CONFIG_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
-                TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": SAMPLE_RATE},
-                TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": CHANGE_RATE},
+                TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
+                TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
                 TAG_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
             "reconstructor": {
