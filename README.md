@@ -34,7 +34,7 @@ It also supports:
 2. Double-click `install.bat` in this folder. It will build a standalone `sampletones.exe` in the same directory.
 3. Run `sampletones.exe` to start the application.
 
-### macOS / Linux
+### Linux
 1. Make sure Python 3.12 is installed and available as `python3` in your PATH.
 2. Open a terminal in this folder and run:
 	```sh
@@ -42,6 +42,8 @@ It also supports:
 	```
 	This will build a standalone `sampletones` executable in the same directory.
 3. Run `./sampletones` to start the application.
+
+For now, the installation script is adjusted to Debian-based distrubtions only.
 
 ### Alternative: Install as a Python Package
 
@@ -322,4 +324,36 @@ write_wave("reconstruction.wav", sample_rate, reconstruction.approximation)
 
 ## Dependencies
 
-...
+### Graphical interface
+
+The graphical user interface is implemented with _DearPyGui_, a Python wrapper for _ImGui_ (https://www.dearimgui.com/).
+
+### Core
+
+The core depends on common Python packages:
+* `numpy`
+* `cupy` (optional; required for GPU mode)
+
+If you have CUDA and want GPU acceleration, install the package with the GPU extras:
+```sh
+pip install ".[gpu]"
+```
+
+### Serialization
+
+Serialization uses _FlatBuffers_. You do not need the `flatc` compiler to run the application; the compiler is required only for development. On Debian/Ubuntu, install it with:
+
+```sh
+sudo apt-get install flatbuffers-compiler
+```
+
+Alternatively, build the compiler from source: https://github.com/google/flatbuffers
+
+### Linux (standalone executable)
+
+To build a standalone executable on Linux, additional `tkinter` development packages are required:
+* `python3-tk`
+* `tk-dev`
+* `tcl-dev`
+
+The `install.sh` script will prompt to install these packages during installation.
