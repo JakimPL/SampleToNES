@@ -1,6 +1,6 @@
-import importlib.resources as resources
 import sys
 import tempfile
+from importlib import resources
 from pathlib import Path
 from typing import Optional
 
@@ -17,6 +17,8 @@ def meipass_icon_path(icon_name: str) -> Optional[Path]:
         for candidate in candidate_paths:
             if candidate.exists():
                 return candidate
+
+    return None
 
 
 def get_icon_path(icon_name: str) -> str:

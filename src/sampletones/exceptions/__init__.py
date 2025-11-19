@@ -13,6 +13,7 @@ from .reconstruction import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
+    NoFilesToProcessError,
     ReconstructionError,
 )
 from .validation import DeserializationError, InvalidMetadataError, SerializationError
@@ -32,6 +33,7 @@ __all__ = [
     "InvalidReconstructionError",
     "InvalidReconstructionValuesError",
     "IncompatibleReconstructionVersionError",
+    "NoFilesToProcessError",
     "WindowError",
     "WindowNotAvailableError",
     "SerializationError",

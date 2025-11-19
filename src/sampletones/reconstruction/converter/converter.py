@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.paths import EXT_FILE_WAVE
+from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger, logger
 
@@ -48,6 +49,9 @@ class ReconstructionConverter(TaskProcessor[Path]):
         for wav_file in self.wav_files:
             target_path = get_relative_path(self.input_path, wav_file, output_path)
             arguments.append((reconstructor, wav_file, target_path))
+
+        if not arguments:
+            raise NoFilesToProcessError(f"No WAV files found in {self.input_path}")
 
         return arguments
 

@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.reconstruction.converter import (
     ReconstructionConverter,
@@ -23,9 +24,11 @@ from ..constants import (
     MSG_CONVERTER_COMPLETED,
     MSG_CONVERTER_ERROR,
     MSG_CONVERTER_IDLE,
+    MSG_CONVERTER_NO_FILES_TO_PROCESS,
     MSG_CONVERTER_SUCCESS,
     MSG_INPUT_PATH_PREFIX,
     MSG_OUTPUT_PATH_PREFIX,
+    TAG_BROWSER_CONTROLS_GROUP,
     TAG_CONVERTER_CANCEL_BUTTON,
     TAG_CONVERTER_INPUT_PATH_TEXT,
     TAG_CONVERTER_LOAD_BUTTON,
@@ -42,7 +45,7 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..utils.dialogs import show_error_dialog, show_modal_dialog
+from ..utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
 from ..utils.dpg import (
     dpg_configure_item,
     dpg_delete_item,
@@ -76,26 +79,26 @@ class GUIConverterWindow:
         try:
             config = self.config_manager.get_config()
         except RuntimeError as exception:
-            logger.error(f"Config not initialized")
+            logger.error("Config not initialized")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return
         except Exception as exception:
-            logger.error(f"Failed to get config")
+            logger.error("Failed to get config")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return
 
         try:
             self.output_path = get_output_path(config, input_path)
         except FileNotFoundError as exception:
-            logger.error(f"Input file does not exist")
+            logger.error("Input file does not exist")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return
         except OSError as exception:
-            logger.error(f"Invalid path")
+            logger.error("Invalid path")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return
         except Exception as exception:
-            logger.error(f"Failed to determine output path")
+            logger.error("Failed to determine output path")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return
 
@@ -109,6 +112,7 @@ class GUIConverterWindow:
             on_progress=self._update_status,
         )
 
+        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=False)
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
             tag=TAG_CONVERTER_WINDOW,
@@ -169,15 +173,18 @@ class GUIConverterWindow:
 
     def _set_status_completed(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
+        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
     def _set_status_cancelling(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
 
     def _set_status_cancelled(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
+        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
     def _set_status_failed(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
+        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
     def _set_status_running(self, task_progress: TaskProgress):
         assert self.converter is not None, "Converter is not initialized"
@@ -257,6 +264,14 @@ class GUIConverterWindow:
         self._show_success_dialog()
 
     def _on_conversion_error(self, exception: Exception) -> None:
+        if type(exception) is NoFilesToProcessError:
+            dpg.set_frame_callback(
+                dpg.get_frame_count() + 1,
+                lambda: show_info_dialog(MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),
+            )
+            self._rename_cancel_to_close()
+            return
+
         self._set_status_failed()
         dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(exception))
 

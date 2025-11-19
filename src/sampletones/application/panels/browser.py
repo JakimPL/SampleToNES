@@ -171,7 +171,8 @@ class GUIBrowserPanel(GUITreePanel):
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(
                 exception,
-                f"Incompatible reconstruction version: {exception.actual_version} != expected {exception.expected_version}",
+                f"Incompatible reconstruction version: {exception.actual_version}"
+                f" != expected {exception.expected_version}",
             )
             show_error_dialog(
                 exception,

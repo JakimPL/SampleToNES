@@ -76,9 +76,11 @@ class InstructionDetailsLogic:
     def _format_parameter_value(self, value: Union[float, bool, list, tuple, str, int]) -> str:
         if isinstance(value, float):
             return f"{value:.{VAL_INSTRUCTION_FLOAT_PRECISION}f}"
-        elif isinstance(value, bool):
+
+        if isinstance(value, bool):
             return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO
-        elif isinstance(value, (list, tuple)):
+
+        if isinstance(value, (list, tuple)):
             return f"[{', '.join(str(v) for v in value)}]"
-        else:
-            return str(value)
+
+        return str(value)

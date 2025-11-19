@@ -96,11 +96,11 @@ class GUIPathText:
 
         system = platform.system()
         if system == "Windows":
-            subprocess.run(["explorer", path_string])
+            subprocess.run(["explorer", path_string], check=True)
         elif system == "Darwin":
-            subprocess.run(["open", path_string])
+            subprocess.run(["open", path_string], check=True)
         else:
-            subprocess.run(["xdg-open", path_string])
+            subprocess.run(["xdg-open", path_string], check=True)
 
     def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
         self.path = Path(path)

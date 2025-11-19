@@ -21,7 +21,8 @@ def compare_versions(version1: str, version2: str) -> int:
     for part1, part2 in zip(v1_parts, v2_parts):
         if part1 < part2:
             return -1
-        elif part1 > part2:
+
+        if part1 > part2:
             return 1
 
     return 0

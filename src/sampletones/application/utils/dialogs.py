@@ -35,7 +35,7 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
-from ..elements.traceback import GUITraceback
+from ..elements.trace import GUITraceback
 from .dpg import dpg_delete_item
 
 
