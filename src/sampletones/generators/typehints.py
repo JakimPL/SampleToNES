@@ -1,4 +1,6 @@
-from typing import Type, TypeAlias, TypeVar, Union
+from typing import Tuple, Type, TypeAlias, TypeVar, Union
+
+from sampletones.constants.enums import GeneratorClassName
 
 from .generator import Generator
 from .noise import NoiseGenerator
@@ -12,3 +14,5 @@ GeneratorUnion = Union[
     TriangleGenerator,
     NoiseGenerator,
 ]
+
+GeneratorClassNames = Union[GeneratorClassName, Tuple[GeneratorClassName, ...]]

@@ -1,8 +1,8 @@
-from typing import Dict, List, cast
+from typing import Dict, List
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
-from sampletones.instructions import InstructionUnion
+from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
 
 from .maps import GENERATOR_CLASS_MAP, GENERATOR_CLASSES, INSTRUCTION_TO_GENERATOR_MAP
 from .typehints import GeneratorUnion
@@ -34,6 +34,7 @@ def get_generator_by_instruction(
     instruction: InstructionUnion,
     remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
 ) -> GeneratorUnion:
-    generator_class = INSTRUCTION_TO_GENERATOR_MAP[type(instruction)].__name__
-    generator_class_literal = cast(GeneratorClassName, generator_class)
-    return remaining_generator_classes[generator_class_literal]
+    instruction_class_name = instruction.class_name()
+    instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
+    generator_class = INSTRUCTION_TO_GENERATOR_MAP[instruction_class]
+    return remaining_generator_classes[generator_class.class_name()]

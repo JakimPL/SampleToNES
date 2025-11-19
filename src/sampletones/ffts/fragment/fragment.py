@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Self
+from typing import List, Self
 
 import numpy as np
 
@@ -31,6 +31,38 @@ class Fragment:
             feature=feature,
             windowed_audio=windowed_audio,
             config=config,
+        )
+
+    @classmethod
+    def stack(cls, fragments: List[Self]) -> Self:
+        if not fragments:
+            raise ValueError("The fragments list cannot be empty.")
+
+        first_fragment = fragments[0]
+        assert all(
+            fragment.config.library == first_fragment.config.library
+            and fragment.config.generation.calculation == first_fragment.config.generation.calculation
+            for fragment in fragments
+        ), "All fragments must have the same config to be concatenated."
+
+        assert all(
+            fragment.dimension == first_fragment.dimension for fragment in fragments
+        ), "All fragments must have the same number of dimensions to be concatenated."
+
+        concatenated_audio = np.stack([fragment.audio for fragment in fragments])
+        concatenated_windowed_audio = np.stack([fragment.windowed_audio for fragment in fragments])
+        concatenated_feature = np.stack([fragment.feature for fragment in fragments])
+
+        dimensions = map(
+            lambda array: len(array.shape), [concatenated_audio, concatenated_windowed_audio, concatenated_feature]
+        )
+        assert all(dimension == 2 for dimension in dimensions), "All concatenated arrays must be 2-dimensional."
+
+        return cls(
+            audio=concatenated_audio,
+            feature=concatenated_feature,
+            windowed_audio=concatenated_windowed_audio,
+            config=first_fragment.config,
         )
 
     def __sub__(self, other: Self) -> "Fragment":
@@ -68,3 +100,7 @@ class Fragment:
             windowed_audio=windowed_audio,
             config=self.config,
         )
+
+    @property
+    def dimension(self) -> int:
+        return len(self.audio.shape)

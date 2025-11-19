@@ -12,16 +12,13 @@ def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:
     reconstruction = None
     try:
         reconstruction = reconstructor(input_path)
+        if reconstruction is not None:
+            reconstruction.save(output_path)
+        del reconstruction
     except KeyboardInterrupt as exception:
         logger.info("Reconstruction interrupted by user.")
         raise exception
-    except Exception as exception:  # TODO: specify exception type
-        logger.error_with_traceback(exception)
-
-    if reconstruction is not None:
-        reconstruction.save(output_path)
-
-    del reconstruction
-    gc.collect()
+    finally:
+        gc.collect()
 
     return output_path

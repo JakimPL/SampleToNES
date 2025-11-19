@@ -110,7 +110,9 @@ class Reconstructor:
 
         return LibraryData.create(
             config=self.config,
-            data=library_data.filter({generator.class_name() for generator in self.generators.values()}),
+            data=library_data.filter(
+                tuple(generator.class_name() for generator in self.generators.values()),
+            ),
         )
 
     def update_state(self, fragment_approximation: ApproximationData) -> None:
