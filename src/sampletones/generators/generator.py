@@ -74,8 +74,8 @@ class Generator(Generic[InstructionT, TimerT]):
         self.previous_instruction = None
         self.timer.reset()
 
-    def validate(self, *initials: Any) -> None:
-        self.timer.validate(*initials)
+    def validate(self, initials: Initials) -> None:
+        self.timer.validate(initials)
 
     @property
     def initials(self) -> Tuple[Any, ...]:
