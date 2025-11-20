@@ -22,7 +22,6 @@ dependencies = [
     "tqdm==4.67.1",
     "pytaskbar; platform_system == 'Windows'",
     "pywin32; platform_system == 'Windows'",
-    "pydbus; platform_system == 'Linux'",
 ]
 
 [project.scripts]
@@ -36,7 +35,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sampletones"]
+packages = ["src/sampletones", "src/schemas"]
 
 [tool.hatch.build]
 include = ["src/sampletones/icons/*"]

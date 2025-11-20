@@ -52,7 +52,7 @@ from ..utils.dpg import (
     dpg_set_item_callback,
     dpg_set_value,
 )
-from ..utils.status import SystemProgress
+from ..utils.progress import SystemProgress
 
 
 class GUIConverterWindow:
