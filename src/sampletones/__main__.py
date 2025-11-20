@@ -3,7 +3,7 @@ import multiprocessing
 from argparse import RawTextHelpFormatter
 from pathlib import Path
 
-HELP_PATH = f"""Path to either:
+HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
     * reconstruction .json file to load a reconstruction
     * library .dat file to load a library"""
@@ -18,7 +18,7 @@ HELP_GENERATE = """Generate library data for given configuration
 
 HELP_HELP = """Show this help message and exit"""
 
-HELP_VERSION = f"Show application version information"
+HELP_VERSION = "Show application version information"
 
 
 def main() -> None:
@@ -43,13 +43,13 @@ def main() -> None:
 
     if args.help:
         parser.print_help()
-        return
+        return None
 
     if args.version:
         from sampletones.constants.application import SAMPLETONES_NAME_VERSION
 
         print(SAMPLETONES_NAME_VERSION)
-        return
+        return None
 
     if args.path and args.generate:
         raise RuntimeError("Only one action can be called at once.")
@@ -71,7 +71,7 @@ def main() -> None:
         from sampletones.scripts import generate_library
 
         if output_path is not None:
-            logger.warning("Output path is ignored when generating a library.")
+            logger.warning("Output path is ignored when generating a library")
 
         return generate_library(config)
 
@@ -83,31 +83,34 @@ def main() -> None:
                 from sampletones.scripts import reconstruct_file
 
                 return reconstruct_file(path, config, output_path)
-            elif suffix == EXT_FILE_RECONSTRUCTION:
+
+            if suffix == EXT_FILE_RECONSTRUCTION:
                 from sampletones.scripts import load_reconstruction
 
                 return load_reconstruction(path, config_path)
-            elif suffix == EXT_FILE_LIBRARY:
+
+            if suffix == EXT_FILE_LIBRARY:
                 if output_path is not None:
-                    logger.warning("Output path is ignored when loading a library.")
+                    logger.warning("Output path is ignored when loading a library")
                 from sampletones.scripts import load_library
 
                 return load_library(path, config_path)
-            else:
-                raise RuntimeError(
-                    f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_RECONSTRUCTION}, "
-                    f"and {EXT_FILE_LIBRARY} are supported."
-                )
-        elif path.is_dir():
+
+            raise RuntimeError(
+                f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_RECONSTRUCTION}, "
+                f"and {EXT_FILE_LIBRARY} are supported."
+            )
+
+        if path.is_dir():
             from sampletones.scripts import reconstruct_directory
 
             return reconstruct_directory(path, config)
-        else:
-            raise RuntimeError("Unsupported path type or file extension.")
+
+        raise RuntimeError("Unsupported path type or file extension.")
 
     from sampletones.scripts import run_application
 
-    run_application(config_path)
+    return run_application(config_path)
 
 
 if __name__ == "__main__":

@@ -145,7 +145,7 @@ class LibraryManager:
 
     def generate_library(self, config: Config, window: Window) -> None:
         self.library = Library.from_config(config)
-        self.creator = LibraryCreator(config)
+        self.creator = LibraryCreator(config, window)
         self.creator.set_callbacks(
             on_start=self._on_generation_start,
             on_completed=self._complete_generation,
@@ -154,7 +154,7 @@ class LibraryManager:
             on_progress=self._on_generation_progress,
         )
 
-        self.creator.start(window)
+        self.creator.start()
 
     def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
         try:
@@ -224,7 +224,7 @@ class LibraryManager:
             filename=f"{filename}{EXT_FILE_LIBRARY}",
         )
 
-    def _get_display_name_from_key(self, key: LibraryKey) -> str:
+    def get_display_name_from_key(self, key: LibraryKey) -> str:
         sample_rate = key.sample_rate
         change_rate = round(sample_rate / key.frame_length)
         transformation_gamma = key.transformation_gamma
@@ -233,7 +233,7 @@ class LibraryManager:
 
     def _get_display_name(self, filename: str) -> str:
         key = self._create_key_from_filename(filename)
-        return self._get_display_name_from_key(key)
+        return self.get_display_name_from_key(key)
 
     def _parse_instructions_by_generator(
         self,
@@ -267,13 +267,13 @@ class LibraryManager:
     def rebuild_tree(self) -> None:
         root = TreeNode(NOD_LABEL_LIBRARIES, node_type=NOD_TYPE_ROOT)
 
-        for library_key in sorted(self.library_files.keys(), key=lambda k: self._get_display_name_from_key(k)):
+        for library_key in sorted(self.library_files.keys(), key=self.get_display_name_from_key):
             self._build_library_node(library_key, root)
 
         self.tree.set_root(root)
 
     def _build_library_node(self, library_key: LibraryKey, parent: TreeNode) -> LibraryNode:
-        display_name = self._get_display_name_from_key(library_key)
+        display_name = self.get_display_name_from_key(library_key)
         library_node = LibraryNode(display_name, node_type=NOD_TYPE_LIBRARY, library_key=library_key, parent=parent)
 
         if self.is_library_loaded(library_key):

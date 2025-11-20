@@ -22,6 +22,16 @@ from .layers.spectrum import SpectrumLayer
 
 
 class GUISpectrumDisplay(GUIGraphDisplay):
+    tag: str
+    parent: str
+    width: int
+    height: int
+    label: str
+    x_min: float
+    x_max: float
+    y_min: float
+    y_max: float
+
     def __init__(
         self,
         tag: str,

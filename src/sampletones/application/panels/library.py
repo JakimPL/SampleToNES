@@ -158,7 +158,7 @@ class GUILibraryPanel(GUITreePanel):
 
     def update_status(self) -> None:
         key = self.config_manager.key
-        library_name = self.library_manager._get_display_name_from_key(key)
+        library_name = self.library_manager.get_display_name_from_key(key)
 
         if self.library_manager.is_library_loaded(key):
             dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
@@ -393,7 +393,7 @@ class GUILibraryPanel(GUITreePanel):
     def _on_generation_completed(self) -> None:
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
         show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._finalize_generation)
 
     def _on_generation_error(self, exception: Exception) -> None:
         show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
@@ -401,7 +401,7 @@ class GUILibraryPanel(GUITreePanel):
 
     def _on_generation_cancelled(self) -> None:
         show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_generation())
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, self._finalize_generation)
 
     def _finalize_generation(self) -> None:
         self._set_current_library(

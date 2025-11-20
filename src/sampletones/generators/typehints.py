@@ -7,8 +7,8 @@ from .noise import NoiseGenerator
 from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
 
-GeneratorType = TypeVar("GeneratorType", bound=Generator)
-GeneratorClass: TypeAlias = Type[GeneratorType]
+GeneratorT = TypeVar("GeneratorT", bound=Generator)
+GeneratorClass: TypeAlias = Type[GeneratorT]
 GeneratorUnion = Union[
     PulseGenerator,
     TriangleGenerator,

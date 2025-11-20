@@ -19,6 +19,8 @@ def dpg_wrapper(button_function: Optional[Callable] = None) -> Callable:
             elif dpg.does_item_exist(tag):
                 return function(tag, *args, **kwargs)
 
+            return None
+
         return wrapper
 
     return decorator

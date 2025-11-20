@@ -316,8 +316,8 @@ class GUI:
             label=LBL_TAB_LIBRARY,
             tab_tag=TAG_TAB_LIBRARY,
             left_content_builder=self._create_library_left_panel,
-            center_content_builder=lambda: self.instruction_panel.create_panel(),
-            right_content_builder=lambda: self.instruction_details_panel.create_panel(),
+            center_content_builder=self.instruction_panel.create_panel,
+            right_content_builder=self.instruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
@@ -329,8 +329,8 @@ class GUI:
             label=LBL_TAB_RECONSTRUCTION,
             tab_tag=TAG_TAB_RECONSTRUCTION,
             left_content_builder=self._create_reconstruction_left_panel,
-            center_content_builder=lambda: self.reconstruction_panel.create_panel(),
-            right_content_builder=lambda: self.reconstruction_details_panel.create_panel(),
+            center_content_builder=self.reconstruction_panel.create_panel,
+            right_content_builder=self.reconstruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
@@ -391,6 +391,10 @@ class GUI:
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
 
     def _reconstruct_file_dialog(self) -> None:
+        if self.converter_window.converter is not None and self.converter_window.converter.is_running():
+            logger.warning("A conversion is already in progress; cannot start a new one")
+            return
+
         if not self._check_if_library_loaded():
             return
 
@@ -404,6 +408,10 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_WAVE)
 
     def _reconstruct_directory_dialog(self) -> None:
+        if self.converter_window.converter is not None and self.converter_window.converter.is_running():
+            logger.warning("A conversion is already in progress; cannot start a new one")
+            return
+
         if not self._check_if_library_loaded():
             return
 
@@ -495,11 +503,8 @@ class GUI:
         py = float(y)
 
         for monitor in monitors:
-            if (
-                px >= monitor["x"]
-                and px < (monitor["x"] + monitor["width"])
-                and py >= monitor["y"]
-                and py < (monitor["y"] + monitor["height"])
+            if monitor["x"] <= px < (monitor["x"] + monitor["width"]) and monitor["y"] <= py < (
+                monitor["y"] + monitor["height"]
             ):
                 return monitor
 

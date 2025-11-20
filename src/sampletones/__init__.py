@@ -17,6 +17,27 @@ if TYPE_CHECKING:
     from .reconstruction import Reconstruction, Reconstructor
 
 
+CUPY_AVAILABLE = False  # pylint: disable=invalid-name
+try:
+    import cupy as xp
+
+    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
+except ImportError:
+    import warnings
+
+    from sampletones.exceptions import CuPyNotInstalledWarning
+    from sampletones.utils.logger import logger
+
+    def _format_warning_no_location(message, category, filename, lineno, line=None):
+        return f"{category.__name__}: {message}\n"
+
+    warnings.formatwarning = _format_warning_no_location
+    warnings.warn("CuPy is not available, falling back to NumPy.", CuPyNotInstalledWarning)
+    logger.warning("CuPy is not available, falling back to NumPy.")
+
+    import numpy as xp
+
+
 def __getattr__(name):
     if name == "Config":
         from .configs import Config
@@ -74,6 +95,8 @@ __all__ = [
     "NoiseInstruction",
     "GeneratorName",
     "__version__",
+    "xp",
+    "CUPY_AVAILABLE",
 ]
 
 

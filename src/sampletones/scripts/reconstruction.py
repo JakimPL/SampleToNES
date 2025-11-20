@@ -44,13 +44,8 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
 
     library = Library.from_config(config)
     if not library.exists(config):
-        logger.warning(f"Library does not exist for the given configuration, generating a new library")
+        logger.warning("Library does not exist for the given configuration, generating a new library")
         generate_library(config)
-
-    converter = ReconstructionConverter(
-        config,
-        logger=null_logger,
-    )
 
     progress_bar = tqdm(total=0, desc=f"Reconstructing {input_path.name}", unit="file")
 
@@ -86,6 +81,13 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
     def on_error(exception: Exception) -> None:
         progress_bar.close()
 
+    converter = ReconstructionConverter(
+        config,
+        input_path=input_path,
+        is_file=False,
+        logger=null_logger,
+    )
+
     converter.set_callbacks(
         on_start=on_start,
         on_completed=on_completed,
@@ -95,7 +97,7 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
     )
 
     try:
-        converter.start(input_path, is_file=False)
+        converter.start()
         converter.wait()
     except KeyboardInterrupt:
         logger.info("Reconstruction interrupted by user")

@@ -1,3 +1,4 @@
+from .cupy import CuPyNotInstalledWarning
 from .library import (
     IncompatibleLibraryDataVersionError,
     InstructionTypeMismatchError,
@@ -13,6 +14,7 @@ from .reconstruction import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
+    NoFilesToProcessError,
     ReconstructionError,
 )
 from .validation import DeserializationError, InvalidMetadataError, SerializationError
@@ -32,9 +34,11 @@ __all__ = [
     "InvalidReconstructionError",
     "InvalidReconstructionValuesError",
     "IncompatibleReconstructionVersionError",
+    "NoFilesToProcessError",
     "WindowError",
     "WindowNotAvailableError",
     "SerializationError",
     "DeserializationError",
     "InvalidMetadataError",
+    "CuPyNotInstalledWarning",
 ]

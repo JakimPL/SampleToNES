@@ -46,7 +46,8 @@ class Window:
     ) -> "Window":
         if isinstance(config, LibraryConfig):
             return cls(config=config, on=on, custom_size=custom_size)
-        elif isinstance(config, Config):
+
+        if isinstance(config, Config):
             return cls(config=config.library, on=on, custom_size=custom_size)
 
         raise TypeError("config must be an instance of Config or LibraryConfig")

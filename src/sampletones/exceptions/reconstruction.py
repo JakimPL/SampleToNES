@@ -21,3 +21,7 @@ class InvalidReconstructionValuesError(InvalidValuesError, InvalidReconstruction
 
 class IncompatibleReconstructionVersionError(IncompatibleVersionError, LoadReconstructionError):
     """Raised when the reconstruction data version is incompatible."""
+
+
+class NoFilesToProcessError(ReconstructionError):
+    """Raised when there are no files to process during reconstruction."""

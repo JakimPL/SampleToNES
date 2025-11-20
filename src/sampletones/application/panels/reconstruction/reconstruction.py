@@ -296,7 +296,6 @@ class GUIReconstructionPanel(GUIPanel):
         if generator_name not in feature_data.generators:
             return
 
-        generator_features = feature_data[generator_name]
         filename = Path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename} ({generator_name})"
 

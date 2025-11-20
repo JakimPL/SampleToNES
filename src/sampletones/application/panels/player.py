@@ -178,7 +178,10 @@ class GUIAudioPlayerPanel(GUIPanel):
         if not self.audio_player.audio_data:
             dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
-            position_text = f"{PFX_PLAYER_POSITION}{self.audio_player.audio_data.current_position}/{self.audio_player.audio_data.samples}{SUF_PLAYER_SAMPLES}"
+            position_text = (
+                f"{PFX_PLAYER_POSITION}{self.audio_player.audio_data.current_position}"
+                f"/{self.audio_player.audio_data.samples}{SUF_PLAYER_SAMPLES}"
+            )
             dpg_set_value(self.position_text_tag, position_text)
 
     def _show_no_audio_dialog(self) -> None:

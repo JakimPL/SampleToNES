@@ -26,8 +26,7 @@ class PulseExporter(Exporter[PulseInstruction]):
             if instruction.on:
                 if initial_pitch is None:
                     initial_pitch = instruction.pitch
-                    for index in range(len(pitches)):
-                        pitches[index] = initial_pitch
+                    pitches = [initial_pitch for _ in range(len(pitches))]
 
                 pitch = instruction.pitch
                 volume = instruction.volume

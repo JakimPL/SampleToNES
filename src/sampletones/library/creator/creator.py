@@ -7,7 +7,8 @@ from sampletones.ffts import Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils.logger import BaseLogger, logger
+from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import logger as default_logger
 
 from ..data import LibraryData, LibraryFragment
 from ..key import LibraryKey
@@ -15,10 +16,15 @@ from .creation import generate_instruction_batch
 
 
 class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
-    def __init__(self, config: Config, logger: BaseLogger = logger) -> None:
+    def __init__(
+        self,
+        config: Config,
+        window: Window,
+        logger: BaseLogger = default_logger,
+    ) -> None:
         super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()
-        self.window: Optional[Window] = None
+        self.window: Window = window
         self.instructions: List[Tuple[GeneratorClassName, InstructionUnion]] = []
         self.batches: List[List[Tuple[GeneratorClassName, InstructionUnion]]] = []
 
@@ -26,19 +32,16 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
         self.completed_instructions = 0
         self.current_instruction: Optional[str] = None
 
-    def start(self, window: Window) -> None:
+    def start(self) -> None:
         if self.running:
-            logger.warning("Library creation is already running")
+            self.logger.warning("Library creation is already running")
             return
 
-        self.window = window
         super().start()
 
     def _create_tasks(
         self,
     ) -> List[Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window]]:
-        assert self.window is not None, "Window must be set before creating tasks"
-
         generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(self.config)
 
         self.instructions = [
@@ -58,8 +61,6 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
         return generate_instruction_batch
 
     def _process_results(self, results: List[Any]) -> Tuple[LibraryKey, LibraryData]:
-        assert self.window is not None, "Window must be set before processing results"
-
         all_fragments = []
         for batch_results in results:
             all_fragments.extend(batch_results)
@@ -74,7 +75,7 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
         self.total_instructions = len(self.instructions)
 
         completed_batches = self.completed_tasks
-        if completed_batches > 0 and completed_batches <= len(self.batches):
+        if 0 < completed_batches <= len(self.batches):
             self.completed_instructions = sum(len(self.batches[i]) for i in range(completed_batches))
 
             if self.completed_instructions > 0 and self.completed_instructions <= len(self.instructions):

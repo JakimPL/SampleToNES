@@ -153,12 +153,12 @@ class GUIConfigPanel(GUIPanel):
 
         min_v = cfg.get("min_value")
         max_v = cfg.get("max_value")
-        if min_v is not None and isinstance(value, (int, float)):
-            if value < min_v:
-                value = min_v
-        if max_v is not None and isinstance(value, (int, float)):
-            if value > max_v:
-                value = max_v
+
+        if isinstance(value, (int, float)):
+            if min_v is not None:
+                value = max(value, min_v)
+            if max_v is not None:
+                value = min(value, max_v)
 
         return value
 

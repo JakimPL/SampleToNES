@@ -1,16 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Self, Union
 
-CUPY_AVAILABLE = False
-try:
-    import cupy as xp
-
-    CUPY_AVAILABLE = True
-except ImportError:
-    import numpy as xp
-
 import numpy as np
 
+from sampletones import xp
 from sampletones.configs import Config
 
 from ..transformations.transformer import FFTTransformer
@@ -116,9 +109,6 @@ class Fragment:
         )
 
     def to_cupy(self) -> "Fragment":
-        if not CUPY_AVAILABLE:
-            raise ImportError("CuPy is not available. Please install CuPy to use this method.")
-
         audio = xp.asarray(self.audio)
         windowed_audio = xp.asarray(self.windowed_audio)
         feature = xp.asarray(self.feature)

@@ -169,7 +169,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot_tag = f"{TAG_RECONSTRUCTION_DETAILS_PANEL}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
 
         if data.size == 0:
-            return
+            return None
 
         plot = self._add_bar_plot(plot_tag, parent, config, data, generator_name, feature_key)
         self._add_raw_data_text(plot_tag, parent, data)
