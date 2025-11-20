@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
 CUPY_AVAILABLE = False  # pylint: disable=invalid-name
 try:
-    raise ImportError
     import cupy as xp
 
     CUPY_AVAILABLE = True  # pylint: disable=invalid-name
