@@ -6,7 +6,6 @@ from typing import Callable, Dict, List, Optional
 import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
 
-from sampletones._resources import get_icon_path
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import LibraryConfig
 from sampletones.constants.paths import (
@@ -89,6 +88,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
+from .resources import get_icon_path
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -117,6 +117,7 @@ class GUI:
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
+
         self._is_fullscreen: bool = False
         self._previous_viewport_decorated: Optional[bool] = None
         self._previous_viewport_position: Optional[list[float]] = None

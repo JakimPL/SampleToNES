@@ -20,6 +20,9 @@ dependencies = [
     "screeninfo==0.8.1",
     "sounddevice==0.5.3",
     "tqdm==4.67.1",
+    "pytaskbar; platform_system == 'Windows'",
+    "pywin32; platform_system == 'Windows'",
+    "pydbus; platform_system == 'Linux'",
 ]
 
 [project.scripts]

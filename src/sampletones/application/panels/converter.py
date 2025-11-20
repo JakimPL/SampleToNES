@@ -52,12 +52,15 @@ from ..utils.dpg import (
     dpg_set_item_callback,
     dpg_set_value,
 )
+from ..utils.status import SystemProgress
 
 
 class GUIConverterWindow:
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.converter: Optional[ReconstructionConverter] = None
+        self.system_progress = SystemProgress()
+
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
@@ -174,6 +177,7 @@ class GUIConverterWindow:
                     )
 
         self.converter.start()
+        self.system_progress.initialize()
 
     def _set_status_completed(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
@@ -229,7 +233,9 @@ class GUIConverterWindow:
 
     def _on_start(self) -> None:
         assert self.converter is not None, "Converter is not initialized"
-        self.eta_estimator = ETAEstimator(total=self.converter.total_tasks)
+        tasks = self.converter.total_tasks
+        self.eta_estimator = ETAEstimator(total=tasks)
+        self.system_progress.start(tasks)
 
     def _on_cancel_clicked(self) -> None:
         self._cancel()
@@ -247,6 +253,7 @@ class GUIConverterWindow:
     def _cancel(self) -> None:
         if self.converter and self.converter.is_running():
             self._set_status_cancelling()
+            self.system_progress.error()
             self.converter.cancel()
 
     def _on_close(self) -> None:
@@ -257,30 +264,25 @@ class GUIConverterWindow:
             if self.converter:
                 self.converter.cleanup()
         finally:
+            self.system_progress.clear()
             self.hide()
 
     def _on_conversion_complete(self, output_path: Path) -> None:
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_complete(output_path))
-
-    def _finalize_complete(self, output_path: Path) -> None:
         self.set_completed(output_path)
         self._rename_cancel_to_close()
         self._show_success_dialog()
 
     def _on_conversion_error(self, exception: Exception) -> None:
+        self.system_progress.error()
+        self._rename_cancel_to_close()
         if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
                 lambda: show_info_dialog(MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),
             )
-            self._rename_cancel_to_close()
             return
 
         self._set_status_failed()
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self._finalize_error(exception))
-
-    def _finalize_error(self, exception: Exception) -> None:
-        self._rename_cancel_to_close()
         show_error_dialog(exception, MSG_CONVERTER_ERROR)
 
     def _show_success_dialog(self) -> None:
@@ -301,6 +303,7 @@ class GUIConverterWindow:
         eta_string = self.eta_estimator.update(task_progress.completed)
         percent_string = self.eta_estimator.get_percent_string()
         dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay=percent_string)
+        self.system_progress.set(task_progress.completed, task_progress.total)
 
         status_text = TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files)
         if eta_string:
