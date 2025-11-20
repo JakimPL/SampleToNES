@@ -36,9 +36,7 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         if not isinstance(pulse_instruction, PulseInstruction):
             raise TypeError("instruction must be an instance of PulseInstruction")
 
-        (initial_phase,) = initials if initials is not None else (None,)
-        self.validate(initial_phase)
-
+        self.validate(initials)
         if not pulse_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 

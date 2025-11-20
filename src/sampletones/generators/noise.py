@@ -30,9 +30,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
         if not isinstance(noise_instruction, NoiseInstruction):
             raise TypeError("instruction must be an instance of NoiseInstruction")
 
-        initial_lfsr, initial_clock = initials if initials is not None else (None, None)
-        self.validate(initial_lfsr, initial_clock)
-
+        self.validate(initials)
         if not noise_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 

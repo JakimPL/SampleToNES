@@ -31,9 +31,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
         if not isinstance(triangle_instruction, TriangleInstruction):
             raise TypeError("instruction must be an instance of TriangleInstruction")
 
-        (initial_phase,) = initials if initials is not None else (None,)
-        self.validate(initial_phase)
-
+        self.validate(initials)
         if not triangle_instruction.on:
             return np.zeros(self.frame_length, dtype=np.float32)
 
