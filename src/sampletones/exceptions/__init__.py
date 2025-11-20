@@ -1,3 +1,4 @@
+from .cupy import CuPyNotInstalledWarning
 from .library import (
     IncompatibleLibraryDataVersionError,
     InstructionTypeMismatchError,
@@ -39,4 +40,5 @@ __all__ = [
     "SerializationError",
     "DeserializationError",
     "InvalidMetadataError",
+    "CuPyNotInstalledWarning",
 ]

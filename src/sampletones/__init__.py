@@ -1,15 +1,6 @@
 import importlib
 from typing import TYPE_CHECKING
 
-CUPY_AVAILABLE = False  # pylint: disable=invalid-name
-try:
-    import cupy as xp
-
-    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
-except ImportError:
-    import numpy as xp  # pylint: disable=reimported,ungrouped-imports
-
-
 if TYPE_CHECKING:
     from .configs import Config
     from .constants.application import SAMPLETONES_VERSION as __version__
@@ -24,6 +15,28 @@ if TYPE_CHECKING:
     )
     from .library import Library
     from .reconstruction import Reconstruction, Reconstructor
+
+
+CUPY_AVAILABLE = False  # pylint: disable=invalid-name
+try:
+    raise ImportError
+    import cupy as xp
+
+    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
+except ImportError:
+    import warnings
+
+    from sampletones.exceptions import CuPyNotInstalledWarning
+    from sampletones.utils.logger import logger
+
+    def _format_warning_no_location(message, category, filename, lineno, line=None):
+        return f"{category.__name__}: {message}\n"
+
+    warnings.formatwarning = _format_warning_no_location
+    warnings.warn("CuPy is not available, falling back to NumPy.", CuPyNotInstalledWarning)
+    logger.warning("CuPy is not available, falling back to NumPy.")
+
+    import numpy as xp
 
 
 def __getattr__(name):
