@@ -2,17 +2,10 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Callable, Dict, List, Tuple
 
-CUPY_AVAILABLE = False
-try:
-    import cupy as xp
-
-    CUPY_AVAILABLE = True
-except ImportError:
-    import numpy as xp
-
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
+from sampletones import CUPY_AVAILABLE, xp
 from sampletones.configs import Config
 from sampletones.constants.enums import (
     GeneratorClassName,
@@ -81,7 +74,7 @@ class ReconstructorWorker:
         object.__setattr__(self, "_get_cached_approximations", _build_get_cached_approximations())
 
     def get_remaining_generators(self) -> Dict[GeneratorName, GeneratorUnion]:
-        return {name: generator for name, generator in self.generators.items()}
+        return dict(self.generators.items())
 
     def get_remaining_generator_classes(
         self,
@@ -123,9 +116,7 @@ class ReconstructorWorker:
         finally:
             del errors, approximations, fragment_gpu
             if CUPY_AVAILABLE:
-                import cupy
-
-                cupy.get_default_memory_pool().free_all_blocks()
+                xp.get_default_memory_pool().free_all_blocks()
 
         return instruction, error
 

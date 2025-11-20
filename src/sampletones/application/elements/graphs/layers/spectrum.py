@@ -40,8 +40,10 @@ class SpectrumLayer:
         object.__setattr__(self, "brightness_values", brightness_values)
 
     def __iter__(self):
-        for index in range(len(self.frequencies)):
-            yield (self.frequencies[index], self.frequency_bands[index], self.brightness_values[index])
+        for frequency, band_width, brightness in zip(
+            self.frequencies, self.frequency_bands.values(), self.brightness_values.values()
+        ):
+            yield frequency, band_width, brightness
 
     def get_frequency_band_width(self, index: int) -> float:
         frequency: float = self.frequencies[index]

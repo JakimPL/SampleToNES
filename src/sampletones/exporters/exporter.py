@@ -2,7 +2,7 @@ from typing import Generic, List, Optional
 
 import numpy as np
 
-from sampletones.instructions import InstructionType
+from sampletones.instructions import InstructionT
 from sampletones.timers import PhaseTimer
 from sampletones.typehints.general import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
@@ -10,10 +10,10 @@ from sampletones.utils import pitch_to_frequency, trim
 from .feature import Features
 
 
-class Exporter(Generic[InstructionType]):
+class Exporter(Generic[InstructionT]):
     def __call__(
         self,
-        instructions: List[InstructionType],
+        instructions: List[InstructionT],
     ) -> Features:
         feature_map = self.get_feature_map(instructions)
         return self.to_features(feature_map)
@@ -33,7 +33,7 @@ class Exporter(Generic[InstructionType]):
 
         return features
 
-    def get_feature_map(self, instructions: List[InstructionType]) -> FeatureMap:
+    def get_feature_map(self, instructions: List[InstructionT]) -> FeatureMap:
         raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod

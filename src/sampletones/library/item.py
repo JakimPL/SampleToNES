@@ -7,21 +7,21 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
 from sampletones.exceptions import InstructionTypeMismatchError
-from sampletones.generators import GeneratorType
+from sampletones.generators import GeneratorT
 from sampletones.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionData,
-    InstructionType,
+    InstructionT,
 )
 
 from .fragment import LibraryFragment
 
 
-class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
+class LibraryItem(DataModel, Generic[InstructionT, GeneratorT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
 
     instruction_data: InstructionData = Field(..., description="Instruction data")
-    fragment: LibraryFragment[InstructionType, GeneratorType] = Field(
+    fragment: LibraryFragment[InstructionT, GeneratorT] = Field(
         ...,
         description="Library fragment associated with the instruction",
     )
@@ -29,8 +29,8 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
     @classmethod
     def create(
         cls,
-        instruction: InstructionType,
-        fragment: LibraryFragment[InstructionType, GeneratorType],
+        instruction: InstructionT,
+        fragment: LibraryFragment[InstructionT, GeneratorT],
     ) -> Self:
         return cls(
             instruction_data=InstructionData.create(instruction),
@@ -42,13 +42,13 @@ class LibraryItem(DataModel, Generic[InstructionType, GeneratorType]):
         return self.instruction_data.instruction_class
 
     @cached_property
-    def instruction(self) -> InstructionType:
+    def instruction(self) -> InstructionT:
         if not isinstance(
             self.instruction_data.instruction,
             INSTRUCTION_CLASS_MAP[self.instruction_class],
         ):
             raise InstructionTypeMismatchError("Instruction type does not match the expected class")
-        return cast(InstructionType, self.instruction_data.instruction)
+        return cast(InstructionT, self.instruction_data.instruction)
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

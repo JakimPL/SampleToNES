@@ -2,5 +2,5 @@ from typing import Type, TypeVar
 
 from .exporter import Exporter
 
-ExporterType = TypeVar("ExporterType", bound=Exporter)
-ExporterClass = Type[ExporterType]
+ExporterT = TypeVar("ExporterT", bound=Exporter)
+ExporterClass = Type[ExporterT]

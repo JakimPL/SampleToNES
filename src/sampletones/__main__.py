@@ -71,7 +71,7 @@ def main() -> None:
         from sampletones.scripts import generate_library
 
         if output_path is not None:
-            logger.warning("Output path is ignored when generating a library.")
+            logger.warning("Output path is ignored when generating a library")
 
         return generate_library(config)
 
@@ -91,7 +91,7 @@ def main() -> None:
 
             if suffix == EXT_FILE_LIBRARY:
                 if output_path is not None:
-                    logger.warning("Output path is ignored when loading a library.")
+                    logger.warning("Output path is ignored when loading a library")
                 from sampletones.scripts import load_library
 
                 return load_library(path, config_path)
@@ -110,7 +110,7 @@ def main() -> None:
 
     from sampletones.scripts import run_application
 
-    run_application(config_path)
+    return run_application(config_path)
 
 
 if __name__ == "__main__":

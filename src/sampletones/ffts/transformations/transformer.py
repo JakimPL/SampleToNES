@@ -26,9 +26,9 @@ class FFTTransformer(BaseModel):
         transformations = morpher.transformations
         return cls(transformations=transformations)
 
-    def compose(self, callable: MultaryTransformation) -> MultaryTransformation:
+    def compose(self, operation: MultaryTransformation) -> MultaryTransformation:
         def composition(*args: np.ndarray) -> np.ndarray:
-            return self.base_operation(callable(*args))
+            return self.base_operation(operation(*args))
 
         return composition
 
@@ -45,9 +45,9 @@ class FFTTransformer(BaseModel):
         self,
         fft1: np.ndarray,
         fft2: np.ndarray,
-        callable: BinaryTransformation,
+        operation: BinaryTransformation,
     ) -> np.ndarray:
-        binary_operation = self.compose(callable)
+        binary_operation = self.compose(operation)
         return self.transformations.binary(fft1, fft2, binary_operation)
 
     def calculate(

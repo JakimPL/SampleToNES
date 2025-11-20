@@ -1,11 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
-try:
-    import cupy as xp
-except ImportError:
-    import numpy as xp
-
+from sampletones import xp
 from sampletones.configs import Config
 from sampletones.ffts import Fragment, Window
 

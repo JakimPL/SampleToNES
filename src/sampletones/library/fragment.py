@@ -15,14 +15,14 @@ from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import (
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
-    GeneratorType,
+    GeneratorT,
 )
-from sampletones.instructions import InstructionData, InstructionType
+from sampletones.instructions import InstructionData, InstructionT
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import serialize_array
 
 
-class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
+class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
@@ -34,8 +34,8 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
     @classmethod
     def create(
         cls,
-        generator: GeneratorType,
-        instruction: InstructionType,
+        generator: GeneratorT,
+        instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
     ) -> Self:
@@ -59,13 +59,13 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
         )
 
     @cached_property
-    def instruction(self) -> InstructionType:
+    def instruction(self) -> InstructionT:
         if not isinstance(
             self.instruction_data.instruction,
             GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[self.generator_class]],
         ):
             raise InstructionTypeMismatchError("Instruction type does not match generator class")
-        return cast(InstructionType, self.instruction_data.instruction)
+        return cast(InstructionT, self.instruction_data.instruction)
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         windowed_audio = self.sample.get_window(shift, window)
@@ -79,7 +79,7 @@ class LibraryFragment(DataModel, Generic[InstructionType, GeneratorType]):
 
     def get(
         self,
-        generator: GeneratorType,
+        generator: GeneratorT,
         config: Config,
         window: Window,
         initials: Initials = None,

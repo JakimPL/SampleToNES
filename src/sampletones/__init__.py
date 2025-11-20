@@ -1,6 +1,15 @@
 import importlib
 from typing import TYPE_CHECKING
 
+CUPY_AVAILABLE = False  # pylint: disable=invalid-name
+try:
+    import cupy as xp
+
+    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
+except ImportError:
+    import numpy as xp  # pylint: disable=reimported,ungrouped-imports
+
+
 if TYPE_CHECKING:
     from .configs import Config
     from .constants.application import SAMPLETONES_VERSION as __version__
@@ -74,6 +83,8 @@ __all__ = [
     "NoiseInstruction",
     "GeneratorName",
     "__version__",
+    "xp",
+    "CUPY_AVAILABLE",
 ]
 
 

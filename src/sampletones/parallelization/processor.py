@@ -6,7 +6,8 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.utils.logger import BaseLogger, logger
+from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import logger as default_logger
 
 from .task import TaskProgress, TaskStatus
 
@@ -18,7 +19,7 @@ STOP_TIMEOUT = 2
 
 
 class TaskProcessor(Generic[T]):
-    def __init__(self, max_workers: Optional[int] = None, logger: BaseLogger = logger) -> None:
+    def __init__(self, max_workers: Optional[int] = None, logger: BaseLogger = default_logger) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
         self.future: Optional[ProcessMapFuture] = None
@@ -41,7 +42,7 @@ class TaskProcessor(Generic[T]):
         self._on_error: Optional[Callable[[Exception], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
 
-    def start(self, *args, **kwargs) -> None:
+    def start(self) -> None:
         self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
         self.monitor_thread.start()
 
@@ -163,8 +164,8 @@ class TaskProcessor(Generic[T]):
                 self._notify_progress()
         except StopIteration:
             pass
-        except KeyboardInterrupt:
-            raise CancelledError()
+        except KeyboardInterrupt as exception:
+            raise CancelledError() from exception
         except CancelledError:
             self._finalize_cancellation()
             return

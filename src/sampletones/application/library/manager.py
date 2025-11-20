@@ -145,7 +145,7 @@ class LibraryManager:
 
     def generate_library(self, config: Config, window: Window) -> None:
         self.library = Library.from_config(config)
-        self.creator = LibraryCreator(config)
+        self.creator = LibraryCreator(config, window)
         self.creator.set_callbacks(
             on_start=self._on_generation_start,
             on_completed=self._complete_generation,
@@ -154,7 +154,7 @@ class LibraryManager:
             on_progress=self._on_generation_progress,
         )
 
-        self.creator.start(window)
+        self.creator.start()
 
     def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
         try:

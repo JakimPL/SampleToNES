@@ -103,7 +103,11 @@ class GUIConverterWindow:
             return
 
         self.is_file = is_file
-        self.converter = ReconstructionConverter(config=config)
+        self.converter = ReconstructionConverter(
+            config=config,
+            input_path=input_path,
+            is_file=is_file,
+        )
         self.converter.set_callbacks(
             on_start=self._on_start,
             on_completed=self._on_conversion_complete,
@@ -169,7 +173,7 @@ class GUIConverterWindow:
                         callback=self._on_cancel_clicked,
                     )
 
-        self.converter.start(input_path, is_file)
+        self.converter.start()
 
     def _set_status_completed(self):
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
@@ -264,7 +268,7 @@ class GUIConverterWindow:
         self._show_success_dialog()
 
     def _on_conversion_error(self, exception: Exception) -> None:
-        if type(exception) is NoFilesToProcessError:
+        if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
                 lambda: show_info_dialog(MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),

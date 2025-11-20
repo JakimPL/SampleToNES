@@ -21,7 +21,7 @@ def get_generators_by_names(
 
 
 def get_generators_map(config: Config) -> Dict[GeneratorClassName, GeneratorUnion]:
-    return {name: GENERATOR_CLASS_MAP[name](config, name) for name in GENERATOR_CLASS_MAP}
+    return {name: generator_class(config, name) for name, generator_class in GENERATOR_CLASS_MAP.items()}
 
 
 def get_remaining_generator_classes(

@@ -7,19 +7,19 @@ from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
 
 from .maps import INSTRUCTION_CLASS_MAP
-from .typehints import InstructionType
+from .typehints import InstructionT
 
 
-class InstructionData(DataModel, Generic[InstructionType]):
+class InstructionData(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     instruction_class: InstructionClassName = Field(..., description="Name of the generator")
-    instruction: InstructionType = Field(..., description="Instruction instance")
+    instruction: InstructionT = Field(..., description="Instruction instance")
 
     @classmethod
     def create(
         cls,
-        instruction: InstructionType,
+        instruction: InstructionT,
     ) -> Self:
         return cls(
             instruction_class=instruction.class_name(),

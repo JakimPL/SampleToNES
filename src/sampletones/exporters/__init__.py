@@ -4,7 +4,7 @@ from .maps import INSTRUCTION_TO_EXPORTER_MAP
 from .noise import NoiseExporter
 from .pulse import PulseExporter
 from .triangle import TriangleExporter
-from .typehints import ExporterClass, ExporterType
+from .typehints import ExporterClass, ExporterT
 
 __all__ = [
     "Exporter",
@@ -12,7 +12,7 @@ __all__ = [
     "TriangleExporter",
     "NoiseExporter",
     "INSTRUCTION_TO_EXPORTER_MAP",
-    "ExporterType",
+    "ExporterT",
     "ExporterClass",
     "Features",
 ]

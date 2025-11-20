@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.special import gamma, gammaincc
+from scipy.special import gamma, gammaincc  # pylint: disable=no-name-in-module
 
 ITERATIONS = 6
 

@@ -5,7 +5,8 @@ from sampletones.configs import Config
 from sampletones.constants.paths import EXT_FILE_WAVE
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils.logger import BaseLogger, logger
+from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file
@@ -13,29 +14,31 @@ from .paths import filter_files, get_output_path, get_relative_path
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
-    def __init__(self, config: Config, logger: BaseLogger = logger) -> None:
+    def __init__(
+        self,
+        config: Config,
+        input_path: Path,
+        is_file: bool,
+        logger: BaseLogger = default_logger,
+    ) -> None:
         super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()
-        self.input_path: Optional[Path] = None
-        self.is_file: bool = False
+        self.input_path: Path = input_path
+        self.is_file: bool = is_file
         self.wav_files: List[Path] = []
 
         self.total_files = 0
         self.completed_files = 0
         self.current_file: Optional[str] = None
 
-    def start(self, target_path: Path, is_file: bool) -> None:
+    def start(self) -> None:
         if self.running:
             self.logger.warning("Reconstruction is already running")
             return
 
-        self.input_path = target_path
-        self.is_file = is_file
         super().start()
 
     def _create_tasks(self) -> List[Any]:
-        assert self.input_path is not None, "Input path must be set before creating tasks"
-
         reconstructor = Reconstructor(self.config)
         output_path = get_output_path(self.config, self.input_path)
 
@@ -59,9 +62,6 @@ class ReconstructionConverter(TaskProcessor[Path]):
         return reconstruct_file
 
     def _process_results(self, results: List[Any]) -> Path:
-        if not self.input_path:
-            raise ValueError("Target path not set")
-
         if self.is_file:
             return results[0]
 

@@ -31,8 +31,8 @@ class PhaseTimer(Timer):
         initials: Initials = None,
         save: bool = True,
     ) -> np.ndarray:
+        self.validate(initials)
         (initial_phase,) = initials if initials is not None else (None,)
-        self.validate(initial_phase)
 
         if initial_phase is not None:
             self.phase = initial_phase
@@ -103,7 +103,8 @@ class PhaseTimer(Timer):
     def reset(self) -> None:
         self.phase = 0.0
 
-    def validate(self, initial_phase: Optional[float]) -> None:
+    def validate(self, initials: Initials) -> None:
+        (initial_phase,) = initials if initials is not None else (None,)
         if initial_phase is not None:
             if not isinstance(initial_phase, float) or (initial_phase < 0.0 or initial_phase >= 1.0):
                 raise ValueError("Initial phase for PhaseTimer must be between 0.0 and 1.0")

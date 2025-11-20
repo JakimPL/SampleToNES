@@ -25,8 +25,9 @@ def generate_library(config: Config) -> None:
     library = Library.from_config(config)
     key = library.create_key(config, window)
 
-    creator = LibraryCreator(config, logger=null_logger)
-    progress_bar = tqdm(total=0, desc=f"Generating library", unit="instruction", disable=False)
+    creator = LibraryCreator(config, window=window, logger=null_logger)
+
+    progress_bar = tqdm(total=0, desc="Generating library", unit="instruction", disable=False)
 
     def on_start() -> None:
         progress_bar.disable = False
@@ -35,7 +36,7 @@ def generate_library(config: Config) -> None:
     def on_completed(result: Tuple[LibraryKey, LibraryData]) -> None:
         key, library_data = result
         library.save_data(key, library_data)
-        logger.info(f"Library successfully generated")
+        logger.info("Library successfully generated")
         progress_bar.close()
 
     def on_progress(task_status: TaskStatus, task_progress: TaskProgress) -> None:
@@ -67,7 +68,7 @@ def generate_library(config: Config) -> None:
     )
 
     try:
-        creator.start(window=window)
+        creator.start()
         creator.wait()
     except KeyboardInterrupt:
         logger.info("Reconstruction interrupted by user")

@@ -48,8 +48,8 @@ class LFSRTimer(Timer):
         initials: Initials = None,
         save: bool = True,
     ) -> np.ndarray:
+        self.validate(initials)
         initial_lfsr, initial_clock = initials if initials is not None else (None, None)
-        self.validate(initial_lfsr, initial_clock)
 
         if initial_lfsr is not None:
             self.lfsr = initial_lfsr
@@ -129,9 +129,9 @@ class LFSRTimer(Timer):
         return 2.0 * lfsr_clock_hz / float(self.sample_rate)
 
     def forward(self, lfsr: int) -> int:
-        bit0 = lfsr & 1
-        bitX = (lfsr >> (6 if self.short else 1)) & 1
-        feedback = bit0 ^ bitX
+        bit_0 = lfsr & 1
+        bit_x = (lfsr >> (6 if self.short else 1)) & 1
+        feedback = bit_0 ^ bit_x
         lfsr = (lfsr >> 1) | (feedback << 14)
         lfsr &= MAX_LFSR
         return lfsr
@@ -139,9 +139,9 @@ class LFSRTimer(Timer):
     def backward(self, lfsr: int) -> int:
         msb = (lfsr >> 14) & 1
         partial = (lfsr & 0x3FFF) << 1
-        bitX = (partial >> (6 if self.short else 1)) & 1
-        bit0 = msb ^ bitX
-        lfsr = partial | bit0
+        bit_x = (partial >> (6 if self.short else 1)) & 1
+        bit_0 = msb ^ bit_x
+        lfsr = partial | bit_0
         lfsr &= MAX_LFSR
         return lfsr
 
@@ -149,14 +149,15 @@ class LFSRTimer(Timer):
         self.lfsr = 1
         self.clock = 0.0
 
-    def validate(self, initial_lfsr: Optional[int], initial_clock: Optional[float]) -> None:
+    def validate(self, initials: Initials) -> None:
+        initial_lfsr, initial_clock = initials if initials is not None else (None, None)
         if initial_lfsr is not None:
             if not isinstance(initial_lfsr, int) or (initial_lfsr < 1 or initial_lfsr > 0x7FFF):
-                raise ValueError(f"Initial LFSR for LFSRTimer must be between 1 and 0x7FFF")
+                raise ValueError("Initial LFSR for LFSRTimer must be between 1 and 0x7FFF")
 
         if initial_clock is not None:
             if not isinstance(initial_clock, float) or (initial_clock < 0.0 or initial_clock >= 1.0):
-                raise ValueError(f"Initial clock for LFSRTimer must be between 0.0 and 1.0")
+                raise ValueError("Initial clock for LFSRTimer must be between 0.0 and 1.0")
 
     def get(self) -> Tuple[int, float]:
         return self.lfsr, self.clock

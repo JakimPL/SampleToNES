@@ -5,6 +5,6 @@ from .noise import NoiseInstruction
 from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
 
-InstructionType = TypeVar("InstructionType", bound=Instruction)
-InstructionClass = Type[InstructionType]
+InstructionT = TypeVar("InstructionT", bound=Instruction)
+InstructionClass = Type[InstructionT]
 InstructionUnion = Union[PulseInstruction, TriangleInstruction, NoiseInstruction]

@@ -6,12 +6,12 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import MIN_SAMPLE_LENGTH
 from sampletones.ffts import CyclicArray
-from sampletones.instructions import InstructionType
-from sampletones.timers import TimerType, get_frequency_table
+from sampletones.instructions import InstructionT
+from sampletones.timers import TimerT, get_frequency_table
 from sampletones.typehints import Initials
 
 
-class Generator(Generic[InstructionType, TimerType]):
+class Generator(Generic[InstructionT, TimerT]):
     def __init__(self, config: Config, name: str) -> None:
         if not isinstance(config, Config):
             raise TypeError("config must be an instance of Config")
@@ -24,13 +24,13 @@ class Generator(Generic[InstructionType, TimerType]):
 
         self.name: str = name
         self.clock: Optional[float] = None
-        self.previous_instruction: Optional[InstructionType] = None
+        self.previous_instruction: Optional[InstructionT] = None
 
-        self.timer: TimerType
+        self.timer: TimerT
 
     def __call__(
         self,
-        instruction: InstructionType,
+        instruction: InstructionT,
         initials: Initials = None,
         save: bool = False,
     ) -> np.ndarray:
@@ -38,7 +38,7 @@ class Generator(Generic[InstructionType, TimerType]):
 
     def generate(
         self,
-        instruction: InstructionType,
+        instruction: InstructionT,
         initials: Initials = None,
         save: bool = True,
     ) -> np.ndarray:
@@ -47,7 +47,7 @@ class Generator(Generic[InstructionType, TimerType]):
         output = self.apply(output, instruction)
         return output
 
-    def generate_sample(self, instruction: InstructionType) -> CyclicArray:
+    def generate_sample(self, instruction: InstructionT) -> CyclicArray:
         if not instruction.on:
             min_sample_length = round(MIN_SAMPLE_LENGTH * self.config.library.sample_rate)
             return CyclicArray(
@@ -60,14 +60,14 @@ class Generator(Generic[InstructionType, TimerType]):
         output.array = self.apply(output.array, instruction)
         return output
 
-    def save_state(self, save: bool, instruction: InstructionType) -> None:
+    def save_state(self, save: bool, instruction: InstructionT) -> None:
         if save:
             self.previous_instruction = instruction
 
-    def set_timer(self, instruction: InstructionType) -> None:
+    def set_timer(self, instruction: InstructionT) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def apply(self, output: np.ndarray, instruction: InstructionType) -> np.ndarray:
+    def apply(self, output: np.ndarray, instruction: InstructionT) -> np.ndarray:
         raise NotImplementedError("Subclasses must implement this method")
 
     def reset(self) -> None:
@@ -84,7 +84,7 @@ class Generator(Generic[InstructionType, TimerType]):
     def get_frequency(self, pitch: int) -> float:
         return self.frequency_table[pitch]
 
-    def get_possible_instructions(self) -> List[InstructionType]:
+    def get_possible_instructions(self) -> List[InstructionT]:
         raise NotImplementedError("Subclasses must implement this method")
 
     @property

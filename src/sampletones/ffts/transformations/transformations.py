@@ -12,24 +12,24 @@ class Transformations(NamedTuple):
     operation: UnaryTransformation
     inverse: UnaryTransformation
 
-    def unary(self, audio: np.ndarray, callable: UnaryTransformation) -> np.ndarray:
-        return self.inverse(callable(self.operation(audio)))
+    def unary(self, audio: np.ndarray, operation: UnaryTransformation) -> np.ndarray:
+        return self.inverse(operation(self.operation(audio)))
 
     def binary(
         self,
         audio1: np.ndarray,
         audio2: np.ndarray,
-        callable: BinaryTransformation,
+        operation: BinaryTransformation,
     ) -> np.ndarray:
-        return self.inverse(callable(self.operation(audio1), self.operation(audio2)))
+        return self.inverse(operation(self.operation(audio1), self.operation(audio2)))
 
     def multiply(
         self,
         audio: np.ndarray,
         scalar: float,
-        callable: UnaryTransformation,
+        operation: UnaryTransformation,
     ) -> np.ndarray:
-        return self.inverse(callable(self.operation(audio) * scalar))
+        return self.inverse(operation(self.operation(audio) * scalar))
 
 
 @dataclass(frozen=True)

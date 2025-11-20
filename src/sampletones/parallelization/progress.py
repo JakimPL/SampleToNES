@@ -34,10 +34,7 @@ class ETAEstimator:
             return "100%"
 
         percent = int(self._processed_items * 100 / self._total)
-        if percent < 0:
-            percent = 0
-        if percent > 100:
-            percent = 100
+        percent = max(0, min(100, percent))
         return f"{percent}%"
 
     def _estimate_remaining_seconds(self, completed_items: int, current_time: float) -> Optional[float]:

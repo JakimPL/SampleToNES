@@ -17,12 +17,12 @@ def dump(data: Any) -> str:
 
 
 def save_json(filepath: Union[str, Path], data: SerializedData) -> None:
-    with open(filepath, "w") as file:
+    with open(filepath, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=JSON_INDENT)
 
 
 def load_json(filepath: Union[str, Path]) -> SerializedData:
-    with open(filepath, "r") as file:
+    with open(filepath, "r", encoding="utf-8") as file:
         return json.load(file)
 
 

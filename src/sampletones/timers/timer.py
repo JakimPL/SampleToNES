@@ -81,7 +81,7 @@ class Timer:
     def reset(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def validate(self, *args, **kwargs) -> None:
+    def validate(self, initials: Initials) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def get(self) -> Initials:
