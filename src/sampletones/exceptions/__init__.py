@@ -1,3 +1,4 @@
+from .audio import PlaybackError, UnsupportedAudioFormatError
 from .cupy import CuPyNotInstalledWarning
 from .library import (
     IncompatibleLibraryDataVersionError,
@@ -9,7 +10,6 @@ from .library import (
     LoadLibraryError,
     NoLibraryDataError,
 )
-from .playback import PlaybackError
 from .reconstruction import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
@@ -29,6 +29,7 @@ __all__ = [
     "InvalidLibraryDataValuesError",
     "IncompatibleLibraryDataVersionError",
     "LibraryDisplayError",
+    "UnsupportedAudioFormatError",
     "PlaybackError",
     "ReconstructionError",
     "InvalidReconstructionError",

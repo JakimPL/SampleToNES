@@ -41,7 +41,8 @@ class PulseExporter(Exporter[PulseInstruction]):
         if volume > 0:
             volumes.append(0)
 
-        return initial_pitch or MIN_PITCH, pitches, volumes, duty_cycles
+        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
+        return initial_pitch, pitches, volumes, duty_cycles
 
     def get_feature_map(self, instructions: List[PulseInstruction]) -> FeatureMap:
         initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)

@@ -2,6 +2,7 @@ import gc
 from pathlib import Path
 from typing import Tuple
 
+from ...exceptions import UnsupportedAudioFormatError
 from ...utils.logger import logger
 from ..reconstructor.reconstructor import Reconstructor
 
@@ -18,6 +19,8 @@ def reconstruct_file(arguments: Tuple[Reconstructor, Path, Path]) -> Path:
     except KeyboardInterrupt as exception:
         logger.info("Reconstruction interrupted by user.")
         raise exception
+    except UnsupportedAudioFormatError:
+        logger.warning(f"Skipping file due to unsupported audio format: {input_path}")
     finally:
         gc.collect()
 
