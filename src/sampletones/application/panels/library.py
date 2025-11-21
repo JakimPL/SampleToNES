@@ -60,6 +60,7 @@ from ..constants import (
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
+    TAG_LIBRARY_TREE_WINDOW,
     TITLE_DIALOG_LIBRARY_GENERATION_STATUS,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_GENERATION_PROGRESS,
@@ -136,10 +137,10 @@ class GUILibraryPanel(GUITreePanel):
 
             dpg.add_separator()
             self.create_search(self.tag)
-            dpg.add_separator()
-            with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
-                with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
-                    pass
+            with dpg.child_window(tag=TAG_LIBRARY_TREE_WINDOW):
+                with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
+                    with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
+                        pass
 
     def refresh(self) -> None:
         self.library_manager.set_library_directory(self.config_manager.get_library_directory())
