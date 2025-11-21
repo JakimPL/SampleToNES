@@ -38,6 +38,7 @@ from ..constants import (
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
+    TAG_BROWSER_TREE_WINDOW,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from ..elements.button import GUIButton
@@ -90,9 +91,12 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             self.create_search(self.tag)
             dpg.add_separator()
-            with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
-                with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
-                    pass
+            with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
+                with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
+                    with dpg.tree_node(
+                        label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True
+                    ):
+                        pass
 
     def refresh(self) -> None:
         self._refresh_tree()
