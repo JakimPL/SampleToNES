@@ -6,6 +6,7 @@ import numpy as np
 from scipy.io import wavfile
 
 from sampletones.constants.general import QUANTIZATION_LEVELS
+from sampletones.exceptions import UnsupportedAudioFormatError
 
 from .processing import clip_audio
 from .processing import normalize as normalize_audio
@@ -21,7 +22,10 @@ def write_wave(path: Union[str, Path], sample_rate: int, audio: np.ndarray) -> N
 def read_wave(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", wavfile.WavFileWarning)
-        sample_rate, audio = wavfile.read(path)
+        try:
+            sample_rate, audio = wavfile.read(path, mmap=False)
+        except ValueError as exception:
+            raise UnsupportedAudioFormatError(f"Could not read WAV file: {path}") from exception
 
     if audio.dtype == np.uint8:
         audio = (audio - 128) / 128.0
