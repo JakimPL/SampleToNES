@@ -126,7 +126,7 @@ class LFSRTimer(Timer):
     def calculate_clocks_per_sample(self, period: int) -> float:
         apu_period = NOISE_PERIODS[period]
         lfsr_clock_hz = APU_CLOCK / float(apu_period)
-        return 2.0 * lfsr_clock_hz / float(self.sample_rate)
+        return lfsr_clock_hz / float(self.sample_rate)
 
     def forward(self, lfsr: int) -> int:
         bit_0 = lfsr & 1

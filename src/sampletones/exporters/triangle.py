@@ -37,7 +37,8 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         if volume > 0:
             volumes.append(0)
 
-        return initial_pitch or MIN_PITCH, pitches, volumes
+        initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
+        return initial_pitch, pitches, volumes
 
     def get_feature_map(self, instructions: List[TriangleInstruction]) -> FeatureMap:
         initial_pitch, pitches, volumes = self.extract_data(instructions)

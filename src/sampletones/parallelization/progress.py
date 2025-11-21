@@ -1,14 +1,15 @@
 from collections import deque
 from time import monotonic
-from typing import Deque, Optional, Tuple
+from typing import Deque, Optional, Tuple, Union
 
-ESTIMATION_MEASUREMENTS_SAMPLE = 25
+ESTIMATION_MEASUREMENTS_SAMPLES = 0.05
 
 
 class ETAEstimator:
-    def __init__(self, total: int) -> None:
+    def __init__(self, total: int, ems: Union[float, int] = ESTIMATION_MEASUREMENTS_SAMPLES) -> None:
         self._total = total
-        self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=ESTIMATION_MEASUREMENTS_SAMPLE)
+        self._ems = self._get_estimation_measurements_samples(ems)
+        self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=self._ems)
         self._processed_items: int = 0
 
     def update(self, completed_items: int) -> str:
@@ -36,6 +37,12 @@ class ETAEstimator:
         percent = int(self._processed_items * 100 / self._total)
         percent = max(0, min(100, percent))
         return f"{percent}%"
+
+    def _get_estimation_measurements_samples(self, ems: Union[float, int]) -> int:
+        if isinstance(ems, float):
+            ems = round(ems * self._total)
+
+        return max(3, int(ems))
 
     def _estimate_remaining_seconds(self, completed_items: int, current_time: float) -> Optional[float]:
         if completed_items >= self._total:

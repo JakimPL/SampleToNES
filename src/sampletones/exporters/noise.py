@@ -25,6 +25,7 @@ class NoiseExporter(Exporter[NoiseInstruction]):
             if instruction.on:
                 if initial_period is None:
                     initial_period = instruction.period
+                    periods = [initial_period for _ in range(len(periods))]
 
                 period = instruction.period
                 volume = instruction.volume
@@ -39,7 +40,8 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         if volume > 0:
             volumes.append(0)
 
-        return initial_period or 0, periods, volumes, duty_cycles
+        initial_period = initial_period if initial_period is not None else 0
+        return initial_period, periods, volumes, duty_cycles
 
     def get_feature_map(self, instructions: List[NoiseInstruction]) -> FeatureMap:
         initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
