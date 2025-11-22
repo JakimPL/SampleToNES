@@ -76,8 +76,6 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_WINDOW_POSITION_X,
-    VAL_WINDOW_POSITION_Y,
 )
 from .panels.browser import GUIBrowserPanel
 from .panels.config import GUIConfigPanel
@@ -120,11 +118,6 @@ class GUI:
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
 
-        self._is_fullscreen: bool = False
-        self._previous_viewport_decorated: Optional[bool] = None
-        self._previous_viewport_position: Optional[List[float]] = None
-        self._previous_viewport_size: Optional[Tuple[int, int]] = None
-
         self.setup_gui()
 
     def setup_gui(self) -> None:
@@ -151,13 +144,15 @@ class GUI:
             height=DIM_WINDOW_MAIN_HEIGHT,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
-            x_pos=VAL_WINDOW_POSITION_X,
-            y_pos=VAL_WINDOW_POSITION_Y,
-            decorated=True,
+            x_pos=self.application_config_manager.window_x,
+            y_pos=self.application_config_manager.window_y,
+            decorated=not self.application_config_manager.is_fullscreen,
         )
 
-        self._is_fullscreen = False
-        self._previous_viewport_decorated = dpg.is_viewport_decorated()
+        if self.application_config_manager.config.window_state.fullscreen:
+            self._enable_fullscreen()
+        else:
+            self._disable_fullscreen()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
@@ -259,8 +254,7 @@ class GUI:
         dpg_configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
         dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
-        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
-        dpg_configure_item(TAG_MENU_VIEW_FULLSCREEN, check=self._is_fullscreen)
+        self._update_fullscreen_menu_item()
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
@@ -502,12 +496,15 @@ class GUI:
 
     def _monitor_for_position(self, x: float, y: float) -> Optional[Dict]:
         monitors = self._get_monitors()
-        px = float(x)
-        py = float(y)
+        position_x = float(x)
+        position_y = float(y)
 
         for monitor in monitors:
-            if monitor["x"] <= px < (monitor["x"] + monitor["width"]) and monitor["y"] <= py < (
-                monitor["y"] + monitor["height"]
+            if all(
+                (
+                    monitor["x"] <= position_x < (monitor["x"] + monitor["width"]),
+                    monitor["y"] <= position_y < (monitor["y"] + monitor["height"]),
+                )
             ):
                 return monitor
 
@@ -519,7 +516,7 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if self._is_fullscreen:
+        if self.application_config_manager.config.window_state.fullscreen:
             self._toggle_fullscreen(sender, app_data, user_data)
 
     def _on_toggle_fullscreen(
@@ -569,67 +566,88 @@ class GUI:
             self.converter_window.converter.cleanup()
         dpg.stop_dearpygui()
 
-    def _enable_fullscreen(self) -> None:
-        previous_decorated = dpg.is_viewport_decorated()
+    def _enable_fullscreen(self):
         dpg.set_viewport_decorated(False)
-        self._previous_viewport_decorated = previous_decorated
-        self._previous_viewport_position = list(dpg.get_viewport_pos())
-        self._previous_viewport_size = (int(dpg.get_viewport_width()), int(dpg.get_viewport_height()))
 
-        monitor_x = VAL_WINDOW_POSITION_X
-        monitor_y = VAL_WINDOW_POSITION_Y
-        monitor_width = None
-        monitor_height = None
+        window_x = self.application_config_manager.window_x
+        window_y = self.application_config_manager.window_y
+        window_width = None
+        window_height = None
 
-        monitor = None
-        if self._previous_viewport_position is not None:
-            monitor = self._monitor_for_position(
-                self._previous_viewport_position[0], self._previous_viewport_position[1]
-            )
+        monitor = self._monitor_for_position(window_x, window_y)
+        if monitor is not None and "width" in monitor and "height" in monitor:
+            window_x = int(monitor.get("x", self.application_config_manager.window_x))
+            window_y = int(monitor.get("y", self.application_config_manager.window_y))
+            window_width = int(monitor["width"])
+            window_height = int(monitor["height"])
+        else:
+            screen_dimensions = self._get_screen_dimensions()
+            window_width = screen_dimensions[0]
+            window_height = screen_dimensions[1]
 
+        self._apply_window_state(
+            fullscreen=True,
+            x=window_x,
+            y=window_y,
+            width=window_width,
+            height=window_height,
+        )
+
+    def _disable_fullscreen(self):
+        window_width = self.application_config_manager.window_width
+        window_height = self.application_config_manager.window_height
+        window_x = self.application_config_manager.window_x
+        window_y = self.application_config_manager.window_y
+
+        monitor = self._monitor_for_position(window_x, window_y)
         if monitor is not None:
-            monitor_x = int(monitor.get("x", VAL_WINDOW_POSITION_X))
-            monitor_y = int(monitor.get("y", VAL_WINDOW_POSITION_Y))
-            monitor_width = int(
-                monitor.get(
-                    "width",
-                    self._previous_viewport_size[0] if self._previous_viewport_size else DIM_WINDOW_MAIN_WIDTH,
-                )
-            )
-            monitor_height = int(
-                monitor.get(
-                    "height",
-                    self._previous_viewport_size[1] if self._previous_viewport_size else DIM_WINDOW_MAIN_HEIGHT,
-                )
-            )
-        else:
-            _root = tkinter.Tk()
-            _root.withdraw()
-            monitor_width = int(_root.winfo_screenwidth())
-            monitor_height = int(_root.winfo_screenheight())
-            _root.destroy()
+            screen_x = int(monitor.get("x", 0))
+            screen_y = int(monitor.get("y", 0))
+            screen_w = int(monitor.get("width", window_width))
+            screen_h = int(monitor.get("height", window_height))
 
-        dpg.set_viewport_pos([monitor_x, monitor_y])
-        dpg.set_viewport_width(monitor_width)
-        dpg.set_viewport_height(monitor_height)
-        self._is_fullscreen = True
+            window_width = min(window_width, screen_w)
+            window_height = min(window_height, screen_h)
 
-    def _disable_fullscreen(self) -> None:
-        if self._previous_viewport_size is not None:
-            width, height = self._previous_viewport_size
-            dpg.set_viewport_width(width)
-            dpg.set_viewport_height(height)
+            max_x = max(0, screen_x + screen_w - window_width)
+            max_y = max(0, screen_y + screen_h - window_height)
+            window_x = max(screen_x, min(window_x, max_x))
+            window_y = max(screen_y, min(window_y, max_y))
         else:
-            dpg.set_viewport_width(DIM_WINDOW_MAIN_WIDTH)
-            dpg.set_viewport_height(DIM_WINDOW_MAIN_HEIGHT)
+            window_x = max(0, window_x)
+            window_y = max(0, window_y)
 
-        if self._previous_viewport_position is not None:
-            dpg.set_viewport_pos(list(self._previous_viewport_position))
-        else:
-            dpg.set_viewport_pos([VAL_WINDOW_POSITION_X, VAL_WINDOW_POSITION_Y])
+        self._apply_window_state(
+            fullscreen=False,
+            x=window_x,
+            y=window_y,
+            width=window_width,
+            height=window_height,
+        )
 
         dpg.set_viewport_decorated(True)
-        self._is_fullscreen = False
+
+    def _apply_window_state(
+        self,
+        fullscreen: bool,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> None:
+
+        dpg.set_viewport_pos([x, y])
+        dpg.set_viewport_width(width)
+        dpg.set_viewport_height(height)
+
+        self.application_config_manager.set_window_state(
+            fullscreen=fullscreen,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+        )
+
         self._update_fullscreen_menu_item()
 
     def _toggle_fullscreen(
@@ -638,13 +656,24 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if not self._is_fullscreen:
+        if not self.application_config_manager.config.window_state.fullscreen:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
 
     def _update_fullscreen_menu_item(self) -> None:
-        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
+        fullscreen = self.application_config_manager.config.window_state.fullscreen
+        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, fullscreen)
+        dpg_configure_item(TAG_MENU_VIEW_FULLSCREEN, check=fullscreen)
+
+    @staticmethod
+    def _get_screen_dimensions() -> Tuple[int, int]:
+        _root = tkinter.Tk()
+        _root.withdraw()
+        window_width = int(_root.winfo_screenwidth())
+        window_height = int(_root.winfo_screenheight())
+        _root.destroy()
+        return window_width, window_height
 
     def run(self) -> None:
         try:
