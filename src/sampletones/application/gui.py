@@ -110,7 +110,7 @@ class GUI:
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
-        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
+        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager, self.application_config_manager)
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager,
             self.application_config_manager,
@@ -131,6 +131,7 @@ class GUI:
         self.set_callbacks()
         self.config_manager.update_gui()
         self.update_menu()
+        self._restore_current_items()
 
     def set_viewport(self) -> None:
         if sys.platform.startswith("win"):
@@ -263,9 +264,14 @@ class GUI:
             self.create_library_tab()
             self.create_reconstruction_tab()
 
+    def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
             dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
+
+        current_reconstruction = self.application_config_manager.config.gui_state.current_reconstruction
+        if current_reconstruction is not None and current_reconstruction.exists():
+            self.browser_panel.load_and_display_reconstruction(current_reconstruction)
 
     @staticmethod
     def create_layout(
@@ -572,6 +578,7 @@ class GUI:
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.application_config_manager.set_current_reconstruction(filepath)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()

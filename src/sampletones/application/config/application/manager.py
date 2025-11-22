@@ -78,6 +78,9 @@ class ApplicationConfigManager:
     def get_audio_path(self) -> Path:
         return self.config.last_paths.audio
 
+    def set_current_reconstruction(self, path: Path) -> None:
+        self.config.gui_state.current_reconstruction = path
+
     def save_config(self) -> None:
         self.load_window_state()
         self.save_current_tab()

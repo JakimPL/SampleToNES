@@ -14,6 +14,7 @@ from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ..browser.manager import BrowserManager
+from ..config.application.manager import ApplicationConfigManager
 from ..config.manager import ConfigManager
 from ..constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
@@ -47,8 +48,13 @@ from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
 
 
 class GUIBrowserPanel(GUITreePanel):
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ) -> None:
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
@@ -204,6 +210,8 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
             self._on_reconstruction_selected(reconstruction_data)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
+
+        self.application_config_manager.set_current_reconstruction(filepath)
 
     def set_callbacks(
         self,
