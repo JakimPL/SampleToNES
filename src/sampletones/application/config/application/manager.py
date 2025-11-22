@@ -3,6 +3,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils.logger import logger
 
+from ...constants import TAG_TAB_BAR_MAIN
 from .config import ApplicationConfig
 
 
@@ -36,8 +37,17 @@ class ApplicationConfigManager:
             self.config.window_state.width = dpg.get_viewport_width()
             self.config.window_state.height = dpg.get_viewport_height()
 
+    def save_current_tab(self) -> None:
+        current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
+        current_tab = dpg.get_item_alias(current_tab)
+        self.config.gui_state.current_tab = current_tab
+
+    def load_current_tab(self) -> str:
+        return self.config.gui_state.current_tab
+
     def save_config(self) -> None:
         self.load_window_state()
+        self.save_current_tab()
 
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)

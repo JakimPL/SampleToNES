@@ -261,6 +261,9 @@ class GUI:
             self.create_library_tab()
             self.create_reconstruction_tab()
 
+        current_tab = self.application_config_manager.load_current_tab()
+        dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
+
     @staticmethod
     def create_layout(
         label: str,
@@ -635,7 +638,6 @@ class GUI:
         width: int,
         height: int,
     ) -> None:
-
         dpg.set_viewport_pos([x, y])
         dpg.set_viewport_width(width)
         dpg.set_viewport_height(height)
