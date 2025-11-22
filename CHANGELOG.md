@@ -14,8 +14,9 @@
 * Improved application error handling.
 * Enhanced task processing communication with the GUI.
 * Fixed installer bugs.
+* Created a Python package and an application installer via _PyInstaller_.
 
-## v0.2.0 [2025-11-07]
+## v0.2.0 [2025-11-08]
 
 * Created a graphical interface for the application.
 * Added application content:
@@ -24,7 +25,6 @@
 * Included library creation and converter windows.
 * Added audio graphs and spectrum plots.
 * Implemented audio playback.
-* Created a Python package and an application installer via _PyInstaller_.
 
 ## v0.1.0 [2025-10-23]
 
