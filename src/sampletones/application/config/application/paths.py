@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from sampletones.constants.paths import LIBRARY_DIRECTORY
 
@@ -16,3 +16,7 @@ class LastPaths(BaseModel):
         default=Path.cwd(),
         description="The last used reconstruction directory path.",
     )
+
+    @field_serializer("last_library_path", "last_reconstruction_path")
+    def serialize_paths(self, path: Path) -> str:
+        return str(path)

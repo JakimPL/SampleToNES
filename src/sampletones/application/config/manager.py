@@ -18,7 +18,6 @@ from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_D
 from sampletones.ffts import Window
 from sampletones.library import LibraryKey
 from sampletones.typehints import SerializedData
-from sampletones.utils import save_json
 from sampletones.utils.logger import logger
 
 from ..constants import (
@@ -97,11 +96,9 @@ class ConfigManager:
             logger.warning("No configuration to save")
             return
 
-        config_dict = self.config.model_dump()
-
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            save_json(self.config_path, config_dict)
+            self.config.save(self.config_path)
         except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)

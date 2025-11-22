@@ -1,7 +1,7 @@
 import sys
 import tkinter
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
@@ -20,6 +20,7 @@ from sampletones.library import LibraryFragment
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
+from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -103,6 +104,7 @@ class GUI:
     def __init__(self, config_path: Optional[Path] = None) -> None:
         self.audio_device_manager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
+        self.application_config_manager = ApplicationConfigManager()
 
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
         self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
@@ -120,8 +122,8 @@ class GUI:
 
         self._is_fullscreen: bool = False
         self._previous_viewport_decorated: Optional[bool] = None
-        self._previous_viewport_position: Optional[list[float]] = None
-        self._previous_viewport_size: Optional[tuple[int, int]] = None
+        self._previous_viewport_position: Optional[List[float]] = None
+        self._previous_viewport_size: Optional[Tuple[int, int]] = None
 
         self.setup_gui()
 
@@ -651,4 +653,5 @@ class GUI:
             if self.converter_window and self.converter_window.converter:
                 self.converter_window.converter.cleanup()
             self.config_manager.save_config()
+            self.application_config_manager.save_config()
             dpg.destroy_context()
