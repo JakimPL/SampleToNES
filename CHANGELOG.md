@@ -26,7 +26,7 @@
 * Implemented audio playback.
 * Created a Python package and an application installer via _PyInstaller_.
 
-## v0.1.0 [2025-10-10]
+## v0.1.0 [2025-10-23]
 
 * Added spectral features and FFT windows for the sample approximator.
 * Included mixer levels for adjusting the general amplitude of sound.
