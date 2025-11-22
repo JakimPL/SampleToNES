@@ -29,5 +29,6 @@ repos:
         entry: pylint
         language: system
         types: [python]
+        verbose: True
         require_serial: true
         exclude: ^src/schemas/

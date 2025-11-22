@@ -75,8 +75,8 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_WINDOW_X_POS,
-    VAL_WINDOW_Y_POS,
+    VAL_WINDOW_POSITION_X,
+    VAL_WINDOW_POSITION_Y,
 )
 from .panels.browser import GUIBrowserPanel
 from .panels.config import GUIConfigPanel
@@ -149,8 +149,8 @@ class GUI:
             height=DIM_WINDOW_MAIN_HEIGHT,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
-            x_pos=VAL_WINDOW_X_POS,
-            y_pos=VAL_WINDOW_Y_POS,
+            x_pos=VAL_WINDOW_POSITION_X,
+            y_pos=VAL_WINDOW_POSITION_Y,
             decorated=True,
         )
 
@@ -574,8 +574,8 @@ class GUI:
         self._previous_viewport_position = list(dpg.get_viewport_pos())
         self._previous_viewport_size = (int(dpg.get_viewport_width()), int(dpg.get_viewport_height()))
 
-        monitor_x = VAL_WINDOW_X_POS
-        monitor_y = VAL_WINDOW_Y_POS
+        monitor_x = VAL_WINDOW_POSITION_X
+        monitor_y = VAL_WINDOW_POSITION_Y
         monitor_width = None
         monitor_height = None
 
@@ -586,8 +586,8 @@ class GUI:
             )
 
         if monitor is not None:
-            monitor_x = int(monitor.get("x", VAL_WINDOW_X_POS))
-            monitor_y = int(monitor.get("y", VAL_WINDOW_Y_POS))
+            monitor_x = int(monitor.get("x", VAL_WINDOW_POSITION_X))
+            monitor_y = int(monitor.get("y", VAL_WINDOW_POSITION_Y))
             monitor_width = int(
                 monitor.get(
                     "width",
@@ -624,7 +624,7 @@ class GUI:
         if self._previous_viewport_position is not None:
             dpg.set_viewport_pos(list(self._previous_viewport_position))
         else:
-            dpg.set_viewport_pos([VAL_WINDOW_X_POS, VAL_WINDOW_Y_POS])
+            dpg.set_viewport_pos([VAL_WINDOW_POSITION_X, VAL_WINDOW_POSITION_Y])
 
         dpg.set_viewport_decorated(True)
         self._is_fullscreen = False

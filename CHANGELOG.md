@@ -1,5 +1,7 @@
 # SampleToNES
 
+## v0.2.3
+
 ## v0.2.2 [2025-11-21]
 
 * Added GPU support via _CuPy_.
