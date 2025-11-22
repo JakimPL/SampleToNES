@@ -17,7 +17,9 @@ from sampletones.constants.general import (
 )
 from sampletones.library import LibraryKey
 from sampletones.typehints import Sender, SerializedData
+from sampletones.utils import to_path
 
+from ..config.application.manager import ApplicationConfigManager
 from ..config.manager import ConfigManager
 from ..constants import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -55,8 +57,13 @@ from ..utils.file import file_dialog_handler
 
 
 class GUIConfigPanel(GUIPanel):
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ):
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
 
         self._on_update_library_directory: Optional[Callable[[], None]] = None
         self.library_path_text: Optional[GUIPathText] = None
@@ -167,14 +174,16 @@ class GUIConfigPanel(GUIPanel):
             label=TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._select_library_directory,
+            callback=self._handle_select_library_directory,
             directory_selector=True,
+            default_path=str(self.application_config_manager.get_library_path()),
         ):
             pass
 
     @file_dialog_handler
-    def _select_library_directory(self, filepath: Path) -> None:
+    def _handle_select_library_directory(self, filepath: Path) -> None:
         self.change_library_directory(filepath)
+        self.application_config_manager.set_library_path(filepath)
 
     def change_library_directory(self, directory_path: Path) -> None:
         self.config_manager.library_directory = directory_path
@@ -203,7 +212,7 @@ class GUIConfigPanel(GUIPanel):
             if hasattr(section, tag):
                 dpg.set_value(tag, getattr(section, tag))
 
-        library_directory = Path(config.general.library_directory)
+        library_directory = to_path(config.general.library_directory)
         if self.library_path_text:
             self.library_path_text.set_path(library_directory)
 

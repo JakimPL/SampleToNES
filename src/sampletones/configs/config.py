@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel
-from sampletones.utils import load_json, save_json
+from sampletones.utils import load_json, save_json, to_path
 
 from .general import GeneralConfig
 from .generation import GenerationConfig
@@ -32,12 +32,12 @@ class Config(DataModel):
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> "Config":
-        path = Path(path)
+        path = to_path(path)
         config_dict = load_json(path)
         return cls(**config_dict)
 
     def save(self, path: Union[str, Path]) -> None:
-        path = Path(path)
+        path = to_path(path)
         config_dict = self.model_dump()
         save_json(path, config_dict)
 

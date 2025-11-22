@@ -7,7 +7,7 @@ from .frequencies import (
     pitch_to_frequency,
     pitch_to_name,
 )
-from .paths import shorten_path, to_path
+from .paths import get_directory, shorten_path, to_path
 from .serialization import (
     deserialize_array,
     dump,
@@ -48,4 +48,5 @@ __all__ = [
     "write_fti",
     "shorten_path",
     "to_path",
+    "get_directory",
 ]

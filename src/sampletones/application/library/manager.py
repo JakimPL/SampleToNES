@@ -24,7 +24,7 @@ from sampletones.tree import (
     Tree,
     TreeNode,
 )
-from sampletones.utils import pitch_to_name
+from sampletones.utils import pitch_to_name, to_path
 
 from ..constants import (
     NOD_LABEL_LIBRARIES,
@@ -65,7 +65,7 @@ class LibraryManager:
         self.gather_available_libraries()
 
     def gather_available_libraries(self) -> Dict[LibraryKey, str]:
-        library_directory = Path(self.library.directory)
+        library_directory = to_path(self.library.directory)
         if not library_directory.exists():
             self.library_files.clear()
             self.rebuild_tree()

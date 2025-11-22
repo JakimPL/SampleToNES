@@ -104,7 +104,7 @@ class GUI:
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
 
-        self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
+        self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
         self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
@@ -112,7 +112,9 @@ class GUI:
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
-            self.config_manager, self.audio_device_manager
+            self.config_manager,
+            self.application_config_manager,
+            self.audio_device_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
@@ -191,8 +193,8 @@ class GUI:
         )
 
         self.reconstruction_details_panel.set_callbacks(
-            on_instrument_export=self.reconstruction_panel.export_reconstruction_fti_dialog,
-            on_instruments_export=self.reconstruction_panel.export_reconstruction_ftis_dialog,
+            on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
+            on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
         )
 
     def create_main_window(self) -> None:
@@ -262,7 +264,8 @@ class GUI:
             self.create_reconstruction_tab()
 
         current_tab = self.application_config_manager.load_current_tab()
-        dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
+        if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
+            dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
 
     @staticmethod
     def create_layout(
@@ -359,6 +362,7 @@ class GUI:
             callback=self._handle_save_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
+            default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -371,6 +375,8 @@ class GUI:
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
 
+        self.application_config_manager.set_config_path(filepath)
+
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TITLE_DIALOG_LOAD_CONFIG,
@@ -378,6 +384,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -389,6 +396,8 @@ class GUI:
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
+
+        self.application_config_manager.set_config_path(filepath)
 
     def _reconstruct_file_dialog(self) -> None:
         if self.converter_window.converter is not None and self.converter_window.converter.is_running():
@@ -404,6 +413,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_file,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_WAVE)
 
@@ -421,6 +431,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_directory,
             directory_selector=True,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
             show=True,
         )
 
@@ -431,6 +442,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
@@ -472,7 +484,7 @@ class GUI:
 
     def _export_reconstruction_ftis_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_reconstruction_ftis_dialog()
+            self.reconstruction_panel.export_instruments_dialog()
 
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():
@@ -548,15 +560,18 @@ class GUI:
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     @file_dialog_handler
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
+        self.application_config_manager.set_reconstruction_path(directory_path)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()

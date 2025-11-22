@@ -4,7 +4,7 @@ from typing import Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
-from sampletones.utils import load_yaml, save_yaml
+from sampletones.utils import load_yaml, save_yaml, to_path
 
 from .gui import GUIState
 from .paths import LastPaths
@@ -36,11 +36,11 @@ class ApplicationConfig(BaseModel):
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> "ApplicationConfig":
-        path = Path(path)
+        path = to_path(path)
         config_dict = load_yaml(path)
         return cls(**config_dict)
 
     def save(self, path: Union[str, Path]) -> None:
-        path = Path(path)
+        path = to_path(path)
         config_dict = self.model_dump()
         save_yaml(path, config_dict)

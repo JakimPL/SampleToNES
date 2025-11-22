@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
+from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
 
 from ...constants import TAG_TAB_BAR_MAIN
@@ -44,6 +47,36 @@ class ApplicationConfigManager:
 
     def load_current_tab(self) -> str:
         return self.config.gui_state.current_tab
+
+    def set_config_path(self, path: Path) -> None:
+        self.config.last_paths.config = get_directory(path)
+
+    def get_config_path(self) -> Path:
+        return self.config.last_paths.config
+
+    def set_library_path(self, path: Path) -> None:
+        self.config.last_paths.library = get_directory(path)
+
+    def get_library_path(self) -> Path:
+        return self.config.last_paths.library
+
+    def set_instrument_path(self, path: Path) -> None:
+        self.config.last_paths.instrument = get_directory(path)
+
+    def get_instrument_path(self) -> Path:
+        return self.config.last_paths.instrument
+
+    def set_reconstruction_path(self, path: Path) -> None:
+        self.config.last_paths.reconstruction = get_directory(path)
+
+    def get_reconstruction_path(self) -> Path:
+        return self.config.last_paths.reconstruction
+
+    def set_audio_path(self, path: Path) -> None:
+        self.config.last_paths.audio = get_directory(path)
+
+    def get_audio_path(self) -> Path:
+        return self.config.last_paths.audio
 
     def save_config(self) -> None:
         self.load_window_state()

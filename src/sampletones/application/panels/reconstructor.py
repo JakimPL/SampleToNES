@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
+from sampletones.utils import to_path
 
 from ..config.manager import ConfigManager
 from ..constants import (
@@ -144,13 +145,14 @@ class GUIReconstructorPanel(GUIPanel):
             label=TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._select_output_directory,
+            callback=self._handle_select_output_directory,
             directory_selector=True,
+            default_path=str(self.config_manager.get_output_directory()),
         ):
             pass
 
     @file_dialog_handler
-    def _select_output_directory(self, directory_path: Path) -> None:
+    def _handle_select_output_directory(self, directory_path: Path) -> None:
         self.change_output_directory(directory_path)
 
     def change_output_directory(self, directory_path: Path) -> None:
@@ -178,7 +180,7 @@ class GUIReconstructorPanel(GUIPanel):
         for generator_tag, generator in self.config_manager.generator_tags.items():
             dpg_set_value(generator_tag, generator in config.generation.generators)
 
-        output_directory = Path(config.general.output_directory)
+        output_directory = to_path(config.general.output_directory)
         if self.output_path_text:
             self.output_path_text.set_path(output_directory)
 

@@ -9,6 +9,7 @@ from sampletones.reconstruction.converter import (
     ReconstructionConverter,
     get_output_path,
 )
+from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
 from ..config.manager import ConfigManager
@@ -200,7 +201,7 @@ class GUIConverterWindow:
 
         current_file = task_progress.current_item
         if self.input_path_text and current_file is not None:
-            current_file_path = Path(current_file)
+            current_file_path = to_path(current_file)
             self.input_path_text.set_path(current_file_path)
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:

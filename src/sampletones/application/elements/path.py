@@ -5,7 +5,7 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.utils import shorten_path
+from sampletones.utils import get_directory, shorten_path, to_path
 
 from ..constants import (
     CLR_PATH_TEXT,
@@ -91,7 +91,7 @@ class GUIPathText:
         if not self.path.exists():
             return
 
-        path_to_open = self.path if self.path.is_dir() else self.path.parent
+        path_to_open = get_directory(self.path)
         path_string = str(path_to_open)
 
         system = platform.system()
@@ -103,7 +103,7 @@ class GUIPathText:
             subprocess.run(["xdg-open", path_string], check=False)
 
     def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
-        self.path = Path(path)
+        self.path = to_path(path)
         self.display_text = shorten_path(self.path) if shorten else str(self.path)
         dpg_set_value(self.tag, self.display_text)
 

@@ -4,7 +4,7 @@ from typing import List
 from sampletones.configs import Config
 from sampletones.constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
-from sampletones.utils import hash_models
+from sampletones.utils import hash_models, to_path
 
 
 def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
@@ -34,7 +34,7 @@ def get_relative_path(
 
 def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_RECONSTRUCTION) -> Path:
     config_directory = generate_config_directory_name(config)
-    output_directory = Path(config.general.output_directory) / config_directory
+    output_directory = to_path(config.general.output_directory) / config_directory
     if input_path.is_dir():
         return output_directory / input_path.name
     if input_path.is_file():
