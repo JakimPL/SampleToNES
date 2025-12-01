@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -11,7 +11,7 @@ from sampletones.exceptions import (
     InvalidMetadataError,
     WindowNotAvailableError,
 )
-from sampletones.instructions import Instruction
+from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.parallelization.progress import ETAEstimator
@@ -25,8 +25,8 @@ from sampletones.tree import (
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
@@ -70,15 +70,20 @@ from ..constants import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from ..elements.button import GUIButton
-from ..elements.tree import GUITreePanel
-from ..library.manager import LibraryManager
-from ..utils.dialogs import (
+from ...elements.button import GUIButton
+from ...elements.tree import GUITreePanel
+from ...library.manager import LibraryManager
+from ...utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
     show_info_dialog,
 )
-from ..utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.dpg import dpg_configure_item, dpg_set_value
+
+OnInstructionSelectedCallable = Callable[
+    [GeneratorClassName, InstructionUnion, InstructionLibraryFragment[Any], InstructionsLibraryConfig], None
+]
+OnApplyLibraryConfigCallable = Callable[[InstructionLibraryKey], None]
 
 
 class GUILibraryPanel(GUITreePanel):
@@ -96,10 +101,8 @@ class GUILibraryPanel(GUITreePanel):
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
-        self._on_instruction_selected: Optional[
-            Callable[[GeneratorClassName, Instruction, InstructionLibraryFragment, InstructionsLibraryConfig], None]
-        ] = None
-        self._on_apply_library_config: Optional[Callable[[InstructionLibraryKey], None]] = None
+        self._on_instruction_selected: Optional[OnInstructionSelectedCallable] = None
+        self._on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None
 
         super().__init__(
             tree=self.library_manager.tree,
@@ -427,8 +430,8 @@ class GUILibraryPanel(GUITreePanel):
 
     def set_callbacks(
         self,
-        on_instruction_selected: Optional[Callable] = None,
-        on_apply_library_config: Optional[Callable] = None,
+        on_instruction_selected: Optional[OnInstructionSelectedCallable] = None,
+        on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None,
     ) -> None:
         if on_instruction_selected is not None:
             self._on_instruction_selected = on_instruction_selected

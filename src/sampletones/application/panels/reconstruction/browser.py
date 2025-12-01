@@ -13,10 +13,10 @@ from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
-from ..browser.manager import BrowserManager
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...browser.manager import BrowserManager
+from ...config.application.manager import ApplicationConfigManager
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BROWSER_RECONSTRUCTIONS,
@@ -42,9 +42,12 @@ from ..constants import (
     TAG_BROWSER_TREE_WINDOW,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
-from ..elements.button import GUIButton
-from ..elements.tree import GUITreePanel
-from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
+from ...elements.button import GUIButton
+from ...elements.tree import GUITreePanel
+from ...reconstruction.data import ReconstructionData
+from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
+
+OnReconstructionSelectedCallable = Callable[[ReconstructionData], None]
 
 
 class GUIBrowserPanel(GUITreePanel):
@@ -58,9 +61,9 @@ class GUIBrowserPanel(GUITreePanel):
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
-        self._on_reconstruction_selected: Optional[Callable] = None
-        self._on_reconstruct_file: Optional[Callable] = None
-        self._on_reconstruct_directory: Optional[Callable] = None
+        self._on_reconstruction_selected: Optional[OnReconstructionSelectedCallable] = None
+        self._on_reconstruct_file: Optional[Callable[[], None]] = None
+        self._on_reconstruct_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tree=self.browser_manager.tree,
@@ -215,9 +218,9 @@ class GUIBrowserPanel(GUITreePanel):
 
     def set_callbacks(
         self,
-        on_reconstruction_selected: Optional[Callable] = None,
-        on_reconstruct_file: Optional[Callable] = None,
-        on_reconstruct_directory: Optional[Callable] = None,
+        on_reconstruction_selected: Optional[OnReconstructionSelectedCallable] = None,
+        on_reconstruct_file: Optional[Callable[[], None]] = None,
+        on_reconstruct_directory: Optional[Callable[[], None]] = None,
     ) -> None:
         if on_reconstruction_selected is not None:
             self._on_reconstruction_selected = on_reconstruction_selected

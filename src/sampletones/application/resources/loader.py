@@ -28,9 +28,9 @@ class ResourceLoader:
 
         return None
 
-    def _get_package_path(self, resource_name: str):
+    def _get_package_path(self, resource_name: str) -> Path:
         module_name = str(self.base_directory).replace("/", ".")
-        return resources.files(module_name).joinpath(self.resource_directory, resource_name)
+        return Path(str(resources.files(module_name).joinpath(self.resource_directory, resource_name)))
 
     def get_path(self, resource_name: str) -> str:
         path_from_meipass = self._get_meipass_path(resource_name)

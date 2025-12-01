@@ -180,22 +180,22 @@ class GUIConverterWindow:
         self.converter.start()
         self.system_progress.initialize()
 
-    def _set_status_completed(self):
+    def _set_status_completed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
-    def _set_status_cancelling(self):
+    def _set_status_cancelling(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
 
-    def _set_status_cancelled(self):
+    def _set_status_cancelled(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
-    def _set_status_failed(self):
+    def _set_status_failed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
 
-    def _set_status_running(self, task_progress: TaskProgress):
+    def _set_status_running(self, task_progress: TaskProgress) -> None:
         assert self.converter is not None, "Converter is not initialized"
         self._update_progress(task_progress)
 
@@ -206,19 +206,21 @@ class GUIConverterWindow:
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            return
+            return None
 
         match task_status:
             case TaskStatus.COMPLETED:
-                self._set_status_completed()
+                return self._set_status_completed()
             case TaskStatus.FAILED:
-                self._set_status_failed()
+                return self._set_status_failed()
             case TaskStatus.CANCELLED:
-                self._set_status_cancelled()
+                return self._set_status_cancelled()
             case TaskStatus.CANCELLING:
-                self._set_status_cancelling()
+                return self._set_status_cancelling()
             case TaskStatus.RUNNING:
-                self._set_status_running(task_progress)
+                return self._set_status_running(task_progress)
+
+        return None
 
     def _on_load_clicked(self) -> None:
         dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)

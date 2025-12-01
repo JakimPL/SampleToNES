@@ -78,15 +78,15 @@ from .constants import (
     VAL_FONT_SIZE,
     VAL_GLOBAL_FONT_SCALE,
 )
-from .panels.browser import GUIBrowserPanel
-from .panels.config import GUIConfigPanel
 from .panels.converter import GUIConverterWindow
+from .panels.instruction.config import GUIConfigPanel
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
-from .panels.library import GUILibraryPanel
+from .panels.instruction.library import GUILibraryPanel
+from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
-from .panels.reconstructor import GUIReconstructorPanel
+from .panels.reconstruction.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
 from .resources.items import FontResource, IconResource
 from .resources.resources import get_font_path, get_icon_path

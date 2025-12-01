@@ -8,8 +8,8 @@ from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
 from sampletones.utils import to_path
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
@@ -32,11 +32,11 @@ from ..constants import (
     TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
-from ..elements.button import GUIButton
-from ..elements.panel import GUIPanel
-from ..elements.path import GUIPathText
-from ..utils.dpg import dpg_set_value
-from ..utils.file import file_dialog_handler
+from ...elements.button import GUIButton
+from ...elements.panel import GUIPanel
+from ...elements.path import GUIPathText
+from ...utils.dpg import dpg_set_value
+from ...utils.file import file_dialog_handler
 
 
 class GUIReconstructorPanel(GUIPanel):

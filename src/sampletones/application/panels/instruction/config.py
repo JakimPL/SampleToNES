@@ -19,9 +19,9 @@ from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Sender, SerializedData
 from sampletones.utils import to_path
 
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.application.manager import ApplicationConfigManager
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
@@ -49,11 +49,11 @@ from ..constants import (
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
-from ..elements.button import GUIButton
-from ..elements.panel import GUIPanel
-from ..elements.path import GUIPathText
-from ..utils.dpg import dpg_set_value
-from ..utils.file import file_dialog_handler
+from ...elements.button import GUIButton
+from ...elements.panel import GUIPanel
+from ...elements.path import GUIPathText
+from ...utils.dpg import dpg_set_value
+from ...utils.file import file_dialog_handler
 
 
 class GUIConfigPanel(GUIPanel):
@@ -155,11 +155,11 @@ class GUIConfigPanel(GUIPanel):
         return gui_values
 
     def _clamp_value(self, tag: str) -> Union[int, float, bool, str]:
-        value = dpg.get_value(tag)
-        cfg = dpg.get_item_configuration(tag)
+        value: Union[int, float, bool, str] = dpg.get_value(tag)
+        item_config = dpg.get_item_configuration(tag)
 
-        min_v = cfg.get("min_value")
-        max_v = cfg.get("max_value")
+        min_v = item_config.get("min_value")
+        max_v = item_config.get("max_value")
 
         if isinstance(value, (int, float)):
             if min_v is not None:
