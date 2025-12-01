@@ -1,12 +1,12 @@
 from typing import Any, Dict, List, Tuple
 
-from sampletones.configs import Config, LibraryConfig
+from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 
 def generate_instruction(
@@ -15,9 +15,9 @@ def generate_instruction(
     instruction: InstructionUnion,
     window: Window,
     transformer: FFTTransformer,
-) -> Tuple[InstructionUnion, LibraryFragment[Any]]:
+) -> Tuple[InstructionUnion, InstructionLibraryFragment[Any]]:
     generator = generators[generator_class_name]
-    fragment: LibraryFragment[Any] = LibraryFragment.create(
+    fragment: InstructionLibraryFragment[Any] = InstructionLibraryFragment.create(
         generator,
         instruction,
         window,
@@ -28,10 +28,10 @@ def generate_instruction(
 
 def generate_instructions(
     instructions_batch: List[Tuple[GeneratorClassName, InstructionUnion]],
-    config: LibraryConfig,
+    config: InstructionsLibraryConfig,
     window: Window,
     generators: Dict[GeneratorClassName, GeneratorUnion],
-) -> List[Tuple[InstructionUnion, LibraryFragment[Any]]]:
+) -> List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]]:
     transformer = FFTTransformer.from_gamma(config.transformation_gamma)
     return [
         generate_instruction(generators, generator_class_name, instruction, window, transformer)
@@ -41,7 +41,7 @@ def generate_instructions(
 
 def generate_instruction_batch(
     task: Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window],
-) -> List[Tuple[InstructionUnion, LibraryFragment[Any]]]:
+) -> List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]]:
     instructions_batch, config, window = task
 
     generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(config)

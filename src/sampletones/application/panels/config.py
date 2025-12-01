@@ -15,7 +15,7 @@ from sampletones.constants.general import (
     NORMALIZE,
     QUANTIZE,
 )
-from sampletones.library import LibraryKey
+from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Sender, SerializedData
 from sampletones.utils import to_path
 
@@ -196,7 +196,7 @@ class GUIConfigPanel(GUIPanel):
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
 
-    def apply_library_config(self, library_key: LibraryKey) -> None:
+    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
         for tag, value in gui_updates.items():
             dpg_set_value(tag, value)

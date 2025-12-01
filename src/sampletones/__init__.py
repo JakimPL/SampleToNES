@@ -13,7 +13,7 @@ if TYPE_CHECKING:
         PulseInstruction,
         TriangleInstruction,
     )
-    from .library import Library
+    from .library import InstructionLibrary
     from .reconstruction import Reconstruction, Reconstructor
 
 
@@ -73,10 +73,10 @@ def __getattr__(name: str) -> Any:
         module = importlib.import_module(".reconstruction", __package__)
         return getattr(module, name)
 
-    if name == "Library":
-        from .library import Library
+    if name == "InstructionLibrary":
+        from .library import InstructionLibrary
 
-        return Library
+        return InstructionLibrary
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
@@ -84,7 +84,7 @@ def __getattr__(name: str) -> Any:
 __all__ = [
     "Config",
     "Window",
-    "Library",
+    "InstructionLibrary",
     "Reconstruction",
     "Reconstructor",
     "Generator",

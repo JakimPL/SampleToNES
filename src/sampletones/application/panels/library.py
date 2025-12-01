@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -12,7 +12,7 @@ from sampletones.exceptions import (
     WindowNotAvailableError,
 )
 from sampletones.instructions import Instruction
-from sampletones.library import LibraryFragment, LibraryKey
+from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.parallelization.progress import ETAEstimator
 from sampletones.tree import (
@@ -97,9 +97,9 @@ class GUILibraryPanel(GUITreePanel):
         self.eta_estimator: Optional[ETAEstimator] = None
 
         self._on_instruction_selected: Optional[
-            Callable[[GeneratorClassName, Instruction, LibraryFragment, LibraryConfig], None]
+            Callable[[GeneratorClassName, Instruction, InstructionLibraryFragment, InstructionsLibraryConfig], None]
         ] = None
-        self._on_apply_library_config: Optional[Callable[[LibraryKey], None]] = None
+        self._on_apply_library_config: Optional[Callable[[InstructionLibraryKey], None]] = None
 
         super().__init__(
             tree=self.library_manager.tree,
@@ -195,7 +195,7 @@ class GUILibraryPanel(GUITreePanel):
 
     def _set_current_library(
         self,
-        library_key: LibraryKey,
+        library_key: InstructionLibraryKey,
         load_if_needed: bool = True,
         apply_config: bool = False,
     ) -> None:
@@ -207,7 +207,7 @@ class GUILibraryPanel(GUITreePanel):
 
         self.update_status()
 
-    def _load_library(self, library_key: LibraryKey) -> None:
+    def _load_library(self, library_key: InstructionLibraryKey) -> None:
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
@@ -291,7 +291,7 @@ class GUILibraryPanel(GUITreePanel):
             current = current.parent
         return None
 
-    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: LibraryKey) -> None:
+    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
         try:

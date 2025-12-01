@@ -1,11 +1,11 @@
-from .data import LibraryData
-from .fragment import LibraryFragment
-from .key import LibraryKey
-from .library import Library
+from .data import InstructionLibraryData
+from .fragment import InstructionLibraryFragment
+from .key import InstructionLibraryKey
+from .library import InstructionLibrary
 
 __all__ = [
-    "LibraryFragment",
-    "LibraryData",
-    "LibraryKey",
-    "Library",
+    "InstructionLibraryFragment",
+    "InstructionLibraryData",
+    "InstructionLibraryKey",
+    "InstructionLibrary",
 ]

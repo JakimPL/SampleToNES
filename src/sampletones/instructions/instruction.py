@@ -1,4 +1,3 @@
-from types import ModuleType
 from typing import Self
 
 from pydantic import ConfigDict
@@ -25,15 +24,3 @@ class Instruction(DataModel):
     @classmethod
     def class_name(cls) -> InstructionClassName:
         raise NotImplementedError("Subclasses must implement class_name method")
-
-    @classmethod
-    def buffer_builder(cls) -> ModuleType:
-        from schemas.instructions import FBInstruction
-
-        return FBInstruction
-
-    @classmethod
-    def buffer_reader(cls) -> type:
-        from schemas.instructions import FBInstruction
-
-        return FBInstruction.FBInstruction

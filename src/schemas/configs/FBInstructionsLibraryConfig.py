@@ -8,54 +8,54 @@ from flatbuffers.compat import import_numpy
 np = import_numpy()
 
 
-class FBLibraryConfig(object):
+class FBInstructionsLibraryConfig(object):
     __slots__ = ["_tab"]
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = FBLibraryConfig()
+        x = FBInstructionsLibraryConfig()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsFBLibraryConfig(cls, buf, offset=0):
+    def GetRootAsFBInstructionsLibraryConfig(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def ChangeRate(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def SampleRate(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def TransformationGamma(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int32Flags, o + self._tab.Pos)
         return 0
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def A4Frequency(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Float32Flags, o + self._tab.Pos)
         return 0.0
 
-    # FBLibraryConfig
+    # FBInstructionsLibraryConfig
     def A4Pitch(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
@@ -63,57 +63,57 @@ class FBLibraryConfig(object):
         return 0
 
 
-def FBLibraryConfigStart(builder):
+def FBInstructionsLibraryConfigStart(builder):
     builder.StartObject(5)
 
 
 def Start(builder):
-    return FBLibraryConfigStart(builder)
+    return FBInstructionsLibraryConfigStart(builder)
 
 
-def FBLibraryConfigAddChangeRate(builder, changeRate):
+def FBInstructionsLibraryConfigAddChangeRate(builder, changeRate):
     builder.PrependInt32Slot(0, changeRate, 0)
 
 
 def AddChangeRate(builder, changeRate):
-    return FBLibraryConfigAddChangeRate(builder, changeRate)
+    return FBInstructionsLibraryConfigAddChangeRate(builder, changeRate)
 
 
-def FBLibraryConfigAddSampleRate(builder, sampleRate):
+def FBInstructionsLibraryConfigAddSampleRate(builder, sampleRate):
     builder.PrependInt32Slot(1, sampleRate, 0)
 
 
 def AddSampleRate(builder, sampleRate):
-    return FBLibraryConfigAddSampleRate(builder, sampleRate)
+    return FBInstructionsLibraryConfigAddSampleRate(builder, sampleRate)
 
 
-def FBLibraryConfigAddTransformationGamma(builder, transformationGamma):
+def FBInstructionsLibraryConfigAddTransformationGamma(builder, transformationGamma):
     builder.PrependInt32Slot(2, transformationGamma, 0)
 
 
 def AddTransformationGamma(builder, transformationGamma):
-    return FBLibraryConfigAddTransformationGamma(builder, transformationGamma)
+    return FBInstructionsLibraryConfigAddTransformationGamma(builder, transformationGamma)
 
 
-def FBLibraryConfigAddA4Frequency(builder, a4Frequency):
+def FBInstructionsLibraryConfigAddA4Frequency(builder, a4Frequency):
     builder.PrependFloat32Slot(3, a4Frequency, 0.0)
 
 
 def AddA4Frequency(builder, a4Frequency):
-    return FBLibraryConfigAddA4Frequency(builder, a4Frequency)
+    return FBInstructionsLibraryConfigAddA4Frequency(builder, a4Frequency)
 
 
-def FBLibraryConfigAddA4Pitch(builder, a4Pitch):
+def FBInstructionsLibraryConfigAddA4Pitch(builder, a4Pitch):
     builder.PrependInt32Slot(4, a4Pitch, 0)
 
 
 def AddA4Pitch(builder, a4Pitch):
-    return FBLibraryConfigAddA4Pitch(builder, a4Pitch)
+    return FBInstructionsLibraryConfigAddA4Pitch(builder, a4Pitch)
 
 
-def FBLibraryConfigEnd(builder):
+def FBInstructionsLibraryConfigEnd(builder):
     return builder.EndObject()
 
 
 def End(builder):
-    return FBLibraryConfigEnd(builder)
+    return FBInstructionsLibraryConfigEnd(builder)

@@ -19,7 +19,7 @@ from sampletones.constants.general import (
 from sampletones.data import DataModel
 
 
-class LibraryConfig(DataModel):
+class InstructionsLibraryConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     change_rate: int = Field(default=DEFAULT_CHANGE_RATE, ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
@@ -39,12 +39,12 @@ class LibraryConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.configs import FBLibraryConfig
+        from schemas.configs import FBInstructionsLibraryConfig
 
-        return FBLibraryConfig
+        return FBInstructionsLibraryConfig
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.configs import FBLibraryConfig
+        from schemas.configs import FBInstructionsLibraryConfig
 
-        return FBLibraryConfig.FBLibraryConfig
+        return FBInstructionsLibraryConfig.FBInstructionsLibraryConfig

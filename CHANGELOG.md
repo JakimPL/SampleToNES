@@ -22,9 +22,9 @@
 
 * Created a graphical interface for the application.
 * Added application content:
-    * Instruction library explorer
+    * Instruction instruction data explorer
     * Audio reconstruction viewer
-* Included library creation and converter windows.
+* Included instruction data creation and converter windows.
 * Added audio graphs and spectrum plots.
 * Implemented audio playback.
 
@@ -32,8 +32,8 @@
 
 * Added spectral features and FFT windows for the sample approximator.
 * Included mixer levels for adjusting the general amplitude of sound.
-* Created an instruction library for reconstruction optimization.
-* Added library and generation configurations.
+* Created an instruction instruction data for reconstruction optimization.
+* Added instruction data and generation configurations.
 
 ## v0.0.1 [2025-09-24]
 

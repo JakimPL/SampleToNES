@@ -13,14 +13,14 @@ from sampletones.instructions import (
     InstructionT,
 )
 
-from .fragment import LibraryFragment
+from .fragment import InstructionLibraryFragment
 
 
 class LibraryItem(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
 
     instruction_data: InstructionData[InstructionT] = Field(..., description="Instruction data")
-    fragment: LibraryFragment[InstructionT] = Field(
+    fragment: InstructionLibraryFragment[InstructionT] = Field(
         ...,
         description="Library fragment associated with the instruction",
     )
@@ -29,7 +29,7 @@ class LibraryItem(DataModel, Generic[InstructionT]):
     def create(
         cls,
         instruction: InstructionT,
-        fragment: LibraryFragment[InstructionT],
+        fragment: InstructionLibraryFragment[InstructionT],
     ) -> Self:
         return cls(
             instruction_data=InstructionData.create(instruction),
@@ -53,12 +53,12 @@ class LibraryItem(DataModel, Generic[InstructionT]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.library import FBLibraryItem
+        from schemas.library import FBInstructionsLibraryItem
 
-        return FBLibraryItem
+        return FBInstructionsLibraryItem
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.library import FBLibraryItem
+        from schemas.library import FBInstructionsLibraryItem
 
-        return FBLibraryItem.FBLibraryItem
+        return FBInstructionsLibraryItem.FBInstructionsLibraryItem

@@ -3,9 +3,9 @@ include "library/fragment.fbs";
 
 namespace schemas.library;
 
-table FBLibraryItem {
+table FBInstructionsLibraryItem {
     instruction_data: schemas.instructions.FBInstructionData;
-    fragment: FBLibraryFragment;
+    fragment: FBInstructionsLibraryFragment;
 }
 
-root_type FBLibraryItem;
+root_type FBInstructionsLibraryItem;

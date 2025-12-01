@@ -3,10 +3,10 @@ from .creation import (
     generate_instruction_batch,
     generate_instructions,
 )
-from .creator import LibraryCreator
+from .creator import InstructionsLibraryCreator
 
 __all__ = [
-    "LibraryCreator",
+    "InstructionsLibraryCreator",
     "generate_instruction",
     "generate_instructions",
     "generate_instruction_batch",

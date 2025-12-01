@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
@@ -13,8 +13,13 @@ from sampletones.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones.library import Library, LibraryData, LibraryFragment, LibraryKey
-from sampletones.library.creator import LibraryCreator
+from sampletones.library import (
+    InstructionLibrary,
+    InstructionLibraryData,
+    InstructionLibraryFragment,
+    InstructionLibraryKey,
+)
+from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.tree import (
     GeneratorNode,
@@ -48,11 +53,11 @@ class LibraryManager:
         on_error: Optional[Callable[[Exception], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
     ) -> None:
-        self.library = Library(directory=str(library_directory))
-        self.library_files: Dict[LibraryKey, str] = {}
-        self.current_library_key: Optional[LibraryKey] = None
+        self.library = InstructionLibrary(directory=str(library_directory))
+        self.library_files: Dict[InstructionLibraryKey, str] = {}
+        self.current_library_key: Optional[InstructionLibraryKey] = None
         self.tree = Tree()
-        self.creator: Optional[LibraryCreator] = None
+        self.creator: Optional[InstructionsLibraryCreator] = None
 
         self._on_generation_start: Optional[Callable[[], None]] = on_generation_start
         self._on_generation_completed: Optional[Callable[[], None]] = on_completed
@@ -61,10 +66,10 @@ class LibraryManager:
         self._on_generation_cancelled: Optional[Callable[[], None]] = on_cancelled
 
     def set_library_directory(self, directory: Path) -> None:
-        self.library = Library(directory=str(directory))
+        self.library = InstructionLibrary(directory=str(directory))
         self.gather_available_libraries()
 
-    def gather_available_libraries(self) -> Dict[LibraryKey, str]:
+    def gather_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         library_directory = to_path(self.library.directory)
         if not library_directory.exists():
             self.library_files.clear()
@@ -85,13 +90,13 @@ class LibraryManager:
         self.library_files = new_library_files
         return self.library_files
 
-    def get_available_libraries(self) -> Dict[LibraryKey, str]:
+    def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         return self.library_files.copy()
 
-    def is_library_loaded(self, library_key: LibraryKey) -> bool:
+    def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
         return library_key in self.library.data
 
-    def load_library(self, library_key: LibraryKey) -> bool:
+    def load_library(self, library_key: InstructionLibraryKey) -> bool:
         if self.is_library_loaded(library_key):
             self.current_library_key = library_key
             return True
@@ -103,14 +108,14 @@ class LibraryManager:
         self.current_library_key = library_key
         return True
 
-    def get_path(self, library_key: LibraryKey) -> Path:
+    def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self.library.get_path(library_key)
 
-    def get_library_data(self, library_key: LibraryKey) -> Optional[LibraryData]:
+    def get_library_data(self, library_key: InstructionLibraryKey) -> Optional[InstructionLibraryData]:
         return self.library.data.get(library_key)
 
     def get_library_instructions_by_generator(
-        self, library_key: LibraryKey, generator_name: LibraryGeneratorName
+        self, library_key: InstructionLibraryKey, generator_name: LibraryGeneratorName
     ) -> Dict[str, List[Tuple]]:
         library_data = self.get_library_data(library_key)
         if not library_data:
@@ -124,7 +129,7 @@ class LibraryManager:
 
     def get_all_generator_instructions(
         self,
-        library_key: LibraryKey,
+        library_key: InstructionLibraryKey,
     ) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
         result = {}
         for generator_name in LibraryGeneratorName:
@@ -133,19 +138,19 @@ class LibraryManager:
                 result[generator_name] = instructions
         return result
 
-    def sync_with_config_key(self, config_key: LibraryKey) -> Optional[LibraryKey]:
+    def sync_with_config_key(self, config_key: InstructionLibraryKey) -> Optional[InstructionLibraryKey]:
         if self.library_exists_for_key(config_key):
             self.current_library_key = config_key
             return config_key
 
         return None
 
-    def library_exists_for_key(self, key: LibraryKey) -> bool:
+    def library_exists_for_key(self, key: InstructionLibraryKey) -> bool:
         return self.library.exists(key)
 
     def generate_library(self, config: Config, window: Window) -> None:
-        self.library = Library.from_config(config)
-        self.creator = LibraryCreator(config, window)
+        self.library = InstructionLibrary.from_config(config)
+        self.creator = InstructionsLibraryCreator(config, window)
         self.creator.set_callbacks(
             on_start=self._on_generation_start,
             on_completed=self._complete_generation,
@@ -156,7 +161,7 @@ class LibraryManager:
 
         self.creator.start()
 
-    def _complete_generation(self, result: Tuple[LibraryKey, LibraryData]) -> None:
+    def _complete_generation(self, result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
         try:
             key, library_data = result
             self.library.save_data(key, library_data)
@@ -203,7 +208,7 @@ class LibraryManager:
         return True
 
     # TODO: change; relying on the filename is error-prone
-    def _create_key_from_filename(self, filename: str) -> LibraryKey:
+    def _create_key_from_filename(self, filename: str) -> InstructionLibraryKey:
         file_parts = filename.split("_")
         if len(file_parts) != 10:
             raise ValueError(f"Invalid library file name format: {filename}")
@@ -215,7 +220,7 @@ class LibraryManager:
         config_hash = file_parts[9]
         frame_length = round(sample_rate / change_rate)
 
-        return LibraryKey(
+        return InstructionLibraryKey(
             sample_rate=sample_rate,
             frame_length=frame_length,
             window_size=window_size,
@@ -224,7 +229,7 @@ class LibraryManager:
             filename=f"{filename}{EXT_FILE_LIBRARY}",
         )
 
-    def get_display_name_from_key(self, key: LibraryKey) -> str:
+    def get_display_name_from_key(self, key: InstructionLibraryKey) -> str:
         sample_rate = key.sample_rate
         change_rate = round(sample_rate / key.frame_length)
         transformation_gamma = key.transformation_gamma
@@ -237,14 +242,14 @@ class LibraryManager:
 
     def _parse_instructions_by_generator(
         self,
-        library_data: LibraryData,
+        library_data: InstructionLibraryData,
         generator_class_name: GeneratorClassName,
-    ) -> Dict[str, List[Tuple]]:
+    ) -> Dict[str, List[Tuple[Instruction, InstructionLibraryFragment[Any]]]]:
         generator_data = library_data.filter(generator_class_name)
         if not generator_data:
             return {}
 
-        instructions: Dict[str, List[Tuple[Instruction, LibraryFragment]]] = {}
+        instructions: Dict[str, List[Tuple[Instruction, InstructionLibraryFragment[Any]]]] = {}
         sorted_generator_data = dict(sorted(generator_data.items(), key=lambda item: item[0]))
         for instruction, fragment in sorted_generator_data.items():
             if not instruction.on:
@@ -272,7 +277,7 @@ class LibraryManager:
 
         self.tree.set_root(root)
 
-    def _build_library_node(self, library_key: LibraryKey, parent: TreeNode) -> LibraryNode:
+    def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
         display_name = self.get_display_name_from_key(library_key)
         library_node = LibraryNode(display_name, node_type=NOD_TYPE_LIBRARY, library_key=library_key, parent=parent)
 
@@ -288,7 +293,7 @@ class LibraryManager:
             NOD_LABEL_NOT_LOADED, node_type=NOD_TYPE_LIBRARY_PLACEHOLDER, library_key=parent.library_key, parent=parent
         )
 
-    def _build_generator_nodes(self, library_key: LibraryKey, parent: TreeNode) -> None:
+    def _build_generator_nodes(self, library_key: InstructionLibraryKey, parent: TreeNode) -> None:
         for generator_name in LibraryGeneratorName:
             grouped_instructions = self.get_library_instructions_by_generator(library_key, generator_name)
 
@@ -335,7 +340,7 @@ class LibraryManager:
                     parent=group_node,
                 )
 
-    def refresh_library_node(self, library_key: LibraryKey) -> None:
+    def refresh_library_node(self, library_key: InstructionLibraryKey) -> None:
         if not self.tree.root:
             return
 

@@ -22,7 +22,7 @@ from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import serialize_array
 
 
-class LibraryFragment(DataModel, Generic[InstructionT]):
+class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
@@ -106,12 +106,12 @@ class LibraryFragment(DataModel, Generic[InstructionT]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.library import FBLibraryFragment
+        from schemas.library import FBInstructionsLibraryFragment
 
-        return FBLibraryFragment
+        return FBInstructionsLibraryFragment
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.library import FBLibraryFragment
+        from schemas.library import FBInstructionsLibraryFragment
 
-        return FBLibraryFragment.FBLibraryFragment
+        return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

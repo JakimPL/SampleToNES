@@ -3,7 +3,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 
-from sampletones.configs import Config, LibraryConfig
+from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.utils import pad
 
 from ..fft import calculate_weights
@@ -11,7 +11,7 @@ from ..fft import calculate_weights
 
 @dataclass(frozen=True)
 class Window:
-    config: LibraryConfig
+    config: InstructionsLibraryConfig
     on: bool = True
     custom_size: Optional[int] = None
 
@@ -42,9 +42,9 @@ class Window:
 
     @classmethod
     def from_config(
-        cls, config: Union[Config, LibraryConfig], on: bool = True, custom_size: Optional[int] = None
+        cls, config: Union[Config, InstructionsLibraryConfig], on: bool = True, custom_size: Optional[int] = None
     ) -> "Window":
-        if isinstance(config, LibraryConfig):
+        if isinstance(config, InstructionsLibraryConfig):
             return cls(config=config, on=on, custom_size=custom_size)
 
         if isinstance(config, Config):

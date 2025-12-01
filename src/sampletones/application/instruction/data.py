@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, computed_field
 
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 
 class InstructionPanelData(BaseModel):
@@ -11,7 +11,7 @@ class InstructionPanelData(BaseModel):
 
     generator_class_name: str
     instruction: InstructionUnion
-    fragment: Optional[LibraryFragment] = None
+    fragment: Optional[InstructionLibraryFragment] = None
 
     @computed_field
     @property

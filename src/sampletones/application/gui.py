@@ -7,7 +7,7 @@ import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
@@ -15,7 +15,7 @@ from sampletones.constants.paths import (
 )
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
@@ -476,8 +476,8 @@ class GUI:
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: LibraryFragment[Any],
-        library_config: LibraryConfig,
+        fragment: InstructionLibraryFragment[Any],
+        library_config: InstructionsLibraryConfig,
     ) -> None:
         try:
             self.instruction_panel.display_instruction(
@@ -644,10 +644,8 @@ class GUI:
             window_width = min(window_width, screen_w)
             window_height = min(window_height, screen_h)
 
-            max_x = max(0, screen_x + screen_w - window_width)
-            max_y = max(0, screen_y + screen_h - window_height)
-            window_x = max(screen_x, min(window_x, max_x))
-            window_y = max(screen_y, min(window_y, max_y))
+            window_x = max(0, screen_x, min(window_x, screen_x + screen_w - window_width))
+            window_y = max(0, screen_y, min(window_y, screen_y + screen_h - window_height))
         else:
             window_x = max(0, window_x)
             window_y = max(0, window_y)

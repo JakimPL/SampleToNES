@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants.enums import GeneratorName
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 
 from ...constants import (
@@ -80,7 +80,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
-        self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
+        self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
 
         super().__init__(
             tag,
@@ -96,7 +96,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     @property
     def sample_length(self) -> int:
-        if isinstance(self.current_data, LibraryFragment):
+        if isinstance(self.current_data, InstructionLibraryFragment):
             return len(self.current_data.data)
 
         if isinstance(self.current_data, ReconstructionData):
@@ -144,7 +144,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
 
-    def load_library_fragment(self, fragment: LibraryFragment) -> None:
+    def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
         self.current_position = 0

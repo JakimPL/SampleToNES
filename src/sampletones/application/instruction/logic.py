@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 from sampletones.utils import hash_model
 
 from ..constants import (
@@ -31,7 +31,7 @@ class InstructionDetailsLogic:
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: Optional[LibraryFragment] = None,
+        fragment: Optional[InstructionLibraryFragment] = None,
     ) -> InstructionPanelData:
         self.current_data = InstructionPanelData(
             generator_class_name=generator_class_name,

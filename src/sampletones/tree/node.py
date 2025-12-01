@@ -5,7 +5,7 @@ from anytree import Node
 
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
 from sampletones.instructions import InstructionT
-from sampletones.library import LibraryFragment, LibraryKey
+from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 
 
 class TreeNode(Node):
@@ -42,7 +42,7 @@ class LibraryNode(TreeNode):
         self,
         name: str,
         node_type: str,
-        library_key: LibraryKey,
+        library_key: InstructionLibraryKey,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -103,7 +103,7 @@ class InstructionNode(TreeNode, Generic[InstructionT]):
         generator_name: LibraryGeneratorName,
         generator_class_name: GeneratorClassName,
         instruction: InstructionT,
-        fragment: LibraryFragment[InstructionT],
+        fragment: InstructionLibraryFragment[InstructionT],
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)

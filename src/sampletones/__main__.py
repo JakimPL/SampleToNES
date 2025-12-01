@@ -48,8 +48,7 @@ def main() -> None:
     if args.version:
         from sampletones.constants.application import SAMPLETONES_NAME_VERSION
 
-        print(SAMPLETONES_NAME_VERSION)
-        return None
+        return print(SAMPLETONES_NAME_VERSION)
 
     if args.path and args.generate:
         raise RuntimeError("Only one action can be called at once.")

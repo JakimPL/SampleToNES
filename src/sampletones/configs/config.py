@@ -11,14 +11,16 @@ from sampletones.utils import load_json, save_json, to_path
 
 from .general import GeneralConfig
 from .generation import GenerationConfig
-from .library import LibraryConfig
+from .library import InstructionsLibraryConfig
 
 
 class Config(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid", frozen=True)
 
     general: GeneralConfig = Field(default_factory=GeneralConfig, description="Base configuration for audio processing")
-    library: LibraryConfig = Field(default_factory=LibraryConfig, description="Configuration for the audio library")
+    library: InstructionsLibraryConfig = Field(
+        default_factory=InstructionsLibraryConfig, description="Configuration for the audio library"
+    )
     generation: GenerationConfig = Field(
         default_factory=GenerationConfig, description="Configuration for generation processes"
     )

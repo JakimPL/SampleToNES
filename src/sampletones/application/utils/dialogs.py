@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.library import LibraryKey
+from sampletones.library import InstructionLibraryKey
 
 from ..constants import (
     CLR_ERROR_TEXT,
@@ -172,7 +172,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
     )
 
 
-def show_library_not_loaded_dialog(key: LibraryKey) -> None:
+def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
     def content(parent: str) -> None:
         dpg.add_text(
             MSG_LIBRARY_NOT_LOADED.format(library_key=key),

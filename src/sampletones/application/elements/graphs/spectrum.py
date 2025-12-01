@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
@@ -46,7 +46,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
-        self.current_library_fragment: Optional[LibraryFragment] = None
+        self.current_library_fragment: Optional[InstructionLibraryFragment[Any]] = None
 
         super().__init__(
             tag,
@@ -75,7 +75,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
 
     def load_library_fragment(
         self,
-        fragment: LibraryFragment,
+        fragment: InstructionLibraryFragment[Any],
         sample_rate: int,
         frame_length: int,
     ) -> None:

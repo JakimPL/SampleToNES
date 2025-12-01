@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
     MSG_INSTRUCTION_DETAILS,
@@ -33,7 +33,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
             dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
 
     def display_instruction(
-        self, generator_class_name: str, instruction: InstructionUnion, fragment: Optional[LibraryFragment] = None
+        self,
+        generator_class_name: str,
+        instruction: InstructionUnion,
+        fragment: Optional[InstructionLibraryFragment[Any]] = None,
     ) -> None:
         self.logic.set_instruction_data(generator_class_name, instruction, fragment)
         self._update_display()

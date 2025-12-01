@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.configs.config import Config
 from sampletones.constants.general import (
     MAX_SAMPLE_RATE,
@@ -11,7 +11,7 @@ from sampletones.ffts import Window
 from sampletones.utils import hash_model
 
 
-class LibraryKey(BaseModel):
+class InstructionLibraryKey(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     sample_rate: int = Field(..., ge=MIN_SAMPLE_RATE, le=MAX_SAMPLE_RATE, description="Sample rate of the audio")
@@ -27,12 +27,12 @@ class LibraryKey(BaseModel):
     filename: str = Field(..., description="Filename representing the key")
 
     @classmethod
-    def from_config(cls, config: Config) -> "LibraryKey":
+    def from_config(cls, config: Config) -> "InstructionLibraryKey":
         window = Window.from_config(config)
         return cls.create(config.library, window)
 
     @classmethod
-    def create(cls, config: LibraryConfig, window: Window) -> "LibraryKey":
+    def create(cls, config: InstructionsLibraryConfig, window: Window) -> "InstructionLibraryKey":
         config_hash = hash_model(config)
         filename = cls.get_filename(config, window, config_hash)
         return cls(
@@ -45,7 +45,7 @@ class LibraryKey(BaseModel):
         )
 
     @staticmethod
-    def get_filename(config: LibraryConfig, window: Window, config_hash: str) -> str:
+    def get_filename(config: InstructionsLibraryConfig, window: Window, config_hash: str) -> str:
         return (
             f"sr_{config.sample_rate}_"
             f"cr_{config.change_rate}_"

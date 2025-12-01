@@ -4,10 +4,10 @@ include "metadata.fbs";
 
 namespace schemas.library;
 
-table FBLibraryData {
+table FBInstructionsLibraryData {
 	metadata: schemas.metadata.FBMetadata;
-	config: schemas.configs.FBLibraryConfig;
-	items: [FBLibraryItem];
+	config: schemas.configs.FBInstructionsLibraryConfig;
+	items: [FBInstructionsLibraryItem];
 }
 
-root_type FBLibraryData;
+root_type FBInstructionsLibraryData;

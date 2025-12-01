@@ -4,7 +4,7 @@ from typing import Optional
 from tqdm import tqdm
 
 from sampletones.configs import Config
-from sampletones.library import Library
+from sampletones.library import InstructionLibrary
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.reconstruction import Reconstructor
 from sampletones.reconstruction.converter import (
@@ -42,7 +42,7 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
     if not input_path.is_dir():
         raise NotADirectoryError(f"Expected a directory path, got file path: {input_path}")
 
-    library = Library.from_config(config)
+    library = InstructionLibrary.from_config(config)
     if not library.exists(config):
         logger.warning("Library does not exist for the given configuration, generating a new library")
         generate_library(config)
