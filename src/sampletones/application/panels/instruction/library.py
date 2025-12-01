@@ -51,6 +51,7 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    TAG_FONT_BOLD,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
@@ -114,7 +115,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            dpg.add_text(LBL_LIBRARY_LIBRARIES)
+            section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 

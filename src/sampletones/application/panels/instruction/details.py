@@ -6,8 +6,9 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
-    MSG_INSTRUCTION_DETAILS,
+    LBL_INSTRUCTION_DETAILS,
     MSG_INSTRUCTION_NO_SELECTION,
+    TAG_FONT_BOLD,
     TAG_INSTRUCTION_DETAILS,
     TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_PANEL,
@@ -28,7 +29,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
-            dpg.add_text(MSG_INSTRUCTION_DETAILS)
+            section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             dpg.add_separator()
             dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
 

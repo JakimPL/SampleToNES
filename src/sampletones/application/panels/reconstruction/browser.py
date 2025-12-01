@@ -40,6 +40,7 @@ from ...constants import (
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
+    TAG_FONT_BOLD,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from ...elements.button import GUIButton
@@ -75,7 +76,9 @@ class GUIBrowserPanel(GUITreePanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+            section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
                 GUIButton(

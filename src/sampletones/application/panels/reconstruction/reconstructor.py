@@ -24,6 +24,7 @@ from ...constants import (
     LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
+    TAG_FONT_BOLD,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
@@ -61,9 +62,10 @@ class GUIReconstructorPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
-            dpg.add_separator()
+            section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
 
+            dpg.add_separator()
             dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
             GUIButton(
                 tag=TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,

@@ -9,7 +9,7 @@ class IconResource(Enum):
 
 
 class FontResource(Enum):
-    MAIN = "RobotoMono-Regular.ttf"
+    REGULAR = "RobotoMono-Regular.ttf"
     BOLD = "RobotoMono-Bold.ttf"
     ITALIC = "RobotoMono-Italic.ttf"
     BOLD_ITALIC = "RobotoMono-BoldItalic.ttf"

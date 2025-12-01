@@ -55,6 +55,8 @@ from .constants import (
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
+    TAG_FONT_BOLD,
+    TAG_FONT_REGULAR,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_RECONSTRUCT_DIRECTORY,
     TAG_MENU_RECONSTRUCT_FILE,
@@ -138,8 +140,9 @@ class GUI:
 
     def set_fonts(self) -> None:
         with dpg.font_registry():
-            default_font = dpg.add_font(get_font_path(FontResource.MAIN), VAL_FONT_SIZE)
-            dpg.bind_font(default_font)
+            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SIZE, tag=TAG_FONT_REGULAR)
+            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
+            dpg.bind_font(TAG_FONT_REGULAR)
 
         dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
 

@@ -23,6 +23,7 @@ from ...constants import (
     SUF_NO_DATA_MESSAGE,
     SUF_SEPARATOR,
     SUF_WINDOW,
+    TAG_FONT_BOLD,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
@@ -63,7 +64,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
-            dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
+            section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             GUIButton(
                 tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
                 label=LBL_RECONSTRUCTION_EXPORT_FTIS,

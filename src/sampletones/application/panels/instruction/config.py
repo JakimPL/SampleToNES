@@ -47,6 +47,7 @@ from ...constants import (
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
+    TAG_FONT_BOLD,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
@@ -84,9 +85,10 @@ class GUIConfigPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
-            dpg.add_separator()
+            section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
 
+            dpg.add_separator()
             dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
             dpg.add_checkbox(label=LBL_CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_CONFIG_QUANTIZE)
             dpg.add_input_int(
