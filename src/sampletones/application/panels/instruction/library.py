@@ -51,11 +51,11 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
     TAG_LIBRARY_CONTROLS_GROUP,
     TAG_LIBRARY_PANEL,
-    TAG_LIBRARY_PANEL_GROUP,
     TAG_LIBRARY_PROGRESS,
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
@@ -72,7 +72,7 @@ from ...constants import (
 )
 from ...elements.button import GUIButton
 from ...elements.tree import GUITreePanel
-from ...library.manager import LibraryManager
+from ...library.manager import InstructionsLibraryManager
 from ...utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
@@ -86,11 +86,11 @@ OnInstructionSelectedCallable = Callable[
 OnApplyLibraryConfigCallable = Callable[[InstructionLibraryKey], None]
 
 
-class GUILibraryPanel(GUITreePanel):
+class GUIInstructionsLibraryPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         library_directory = config_manager.get_library_directory()
-        self.library_manager = LibraryManager(
+        self.library_manager = InstructionsLibraryManager(
             library_directory,
             on_generation_start=self._on_generation_start,
             on_progress=self._update_status,
@@ -107,7 +107,7 @@ class GUILibraryPanel(GUITreePanel):
         super().__init__(
             tree=self.library_manager.tree,
             tag=TAG_LIBRARY_PANEL,
-            parent=TAG_LIBRARY_PANEL_GROUP,
+            parent=TAG_INSTRUCTIONS_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )

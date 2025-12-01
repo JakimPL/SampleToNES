@@ -45,7 +45,7 @@ from ..constants import (
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
 
-class LibraryManager:
+class InstructionsLibraryManager:
     def __init__(
         self,
         library_directory: Path,

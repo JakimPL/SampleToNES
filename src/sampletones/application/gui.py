@@ -44,8 +44,8 @@ from .constants import (
     LBL_MENU_RECONSTRUCT_FILE,
     LBL_MENU_SAVE_CONFIG,
     LBL_MENU_VIEW,
-    LBL_TAB_LIBRARY,
-    LBL_TAB_RECONSTRUCTION,
+    LBL_TAB_INSTRUCTIONS,
+    LBL_TAB_RECONSTRUCTIONS,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVE_FAILED,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
@@ -55,7 +55,7 @@ from .constants import (
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_LIBRARY_PANEL_GROUP,
+    TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_RECONSTRUCT_DIRECTORY,
     TAG_MENU_RECONSTRUCT_FILE,
     TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
@@ -63,8 +63,8 @@ from .constants import (
     TAG_MENU_VIEW_FULLSCREEN,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
-    TAG_TAB_LIBRARY,
-    TAG_TAB_RECONSTRUCTION,
+    TAG_TAB_INSTRUCTIONS,
+    TAG_TAB_RECONSTRUCTIONS,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
     TITLE_DIALOG_LOAD_CONFIG,
@@ -82,7 +82,7 @@ from .panels.converter import GUIConverterWindow
 from .panels.instruction.config import GUIConfigPanel
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
-from .panels.instruction.library import GUILibraryPanel
+from .panels.instruction.library import GUIInstructionsLibraryPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
@@ -107,7 +107,7 @@ class GUI:
         self.application_config_manager = ApplicationConfigManager()
 
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
-        self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
+        self.instructions_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
@@ -168,12 +168,12 @@ class GUI:
             self._disable_fullscreen()
 
     def set_callbacks(self) -> None:
-        self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.add_config_change_callback(self.instructions_panel.update_status)
         self.config_manager.add_config_change_callback(self.update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
-        self.config_panel.set_callbacks(on_update_library_directory=self.library_panel.refresh)
-        self.library_panel.set_callbacks(
+        self.config_panel.set_callbacks(on_update_library_directory=self.instructions_panel.refresh)
+        self.instructions_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
         )
@@ -271,8 +271,8 @@ class GUI:
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
-            self.create_library_tab()
-            self.create_reconstruction_tab()
+            self.create_reconstructions_tab()
+            self.create_instructions_tab()
 
     def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
@@ -330,24 +330,24 @@ class GUI:
                     ):
                         right_content_builder()
 
-    def create_library_tab(self) -> None:
+    def create_instructions_tab(self) -> None:
         self.create_layout(
-            label=LBL_TAB_LIBRARY,
-            tab_tag=TAG_TAB_LIBRARY,
-            left_content_builder=self._create_library_left_panel,
+            label=LBL_TAB_INSTRUCTIONS,
+            tab_tag=TAG_TAB_INSTRUCTIONS,
+            left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
         )
-        self.library_panel.initialize_libraries()
+        self.instructions_panel.initialize_libraries()
 
-    def create_reconstruction_tab(self) -> None:
+    def create_reconstructions_tab(self) -> None:
         self.create_layout(
-            label=LBL_TAB_RECONSTRUCTION,
-            tab_tag=TAG_TAB_RECONSTRUCTION,
-            left_content_builder=self._create_reconstruction_left_panel,
+            label=LBL_TAB_RECONSTRUCTIONS,
+            tab_tag=TAG_TAB_RECONSTRUCTIONS,
+            left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
@@ -356,14 +356,14 @@ class GUI:
         )
         self.browser_panel.initialize_tree()
 
-    def _create_library_left_panel(self) -> None:
+    def _create_instructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
             self.config_panel.create_panel()
 
-        with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
-            self.library_panel.create_panel()
+        with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
+            self.instructions_panel.create_panel()
 
-    def _create_reconstruction_left_panel(self) -> None:
+    def _create_reconstructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
             self.reconstructor_panel.create_panel()
 
@@ -562,7 +562,7 @@ class GUI:
         return self.reconstruction_panel.is_loaded()
 
     def _is_library_loaded(self) -> bool:
-        return self.library_panel.is_loaded()
+        return self.instructions_panel.is_loaded()
 
     def _check_if_library_loaded(self) -> bool:
         if not self._is_library_loaded():
@@ -586,14 +586,14 @@ class GUI:
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
 
     def _on_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
         self.audio_device_manager.stop()
 
     def _exit_application(self) -> None:

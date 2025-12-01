@@ -24,6 +24,7 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_INPUT_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
     DIM_PANEL_CONFIG_WIDTH,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
@@ -93,6 +94,7 @@ class GUIConfigPanel(GUIPanel):
                 default_value=MAX_WORKERS,
                 tag=TAG_CONFIG_MAX_WORKERS,
                 min_value=RNG_CONFIG_MIN_WORKERS,
+                width=DIM_INPUT_WIDTH,
             )
 
             dpg.add_separator()
@@ -121,6 +123,7 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_CONFIG_SAMPLE_RATE,
                 min_value=MIN_SAMPLE_RATE,
                 max_value=MAX_SAMPLE_RATE,
+                width=DIM_INPUT_WIDTH,
             )
             dpg.add_input_int(
                 label=LBL_INPUT_CHANGE_RATE,
@@ -128,13 +131,14 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_CONFIG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
+                width=DIM_INPUT_WIDTH,
             )
             dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
             dpg.add_slider_int(
+                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
                 min_value=0,
                 max_value=MAX_TRANSFORMATION_GAMMA,
                 width=-1,
-                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
             )
 
         self._register_callbacks()
