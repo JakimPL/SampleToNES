@@ -44,7 +44,7 @@ class LibraryFragment(DataModel, Generic[InstructionT]):
         features = []
         for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
             phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
-            windowed_audio = sample.get_window(phase, window)
+            windowed_audio = sample.get_windowed_fragment(phase, window)
             transformed_windowed_audio = transformer.calculate(windowed_audio)
             features.append(transformed_windowed_audio)
 
@@ -68,7 +68,7 @@ class LibraryFragment(DataModel, Generic[InstructionT]):
         return cast(InstructionT, self.instruction_data.instruction)
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        windowed_audio = self.sample.get_window(shift, window)
+        windowed_audio = self.sample.get_windowed_fragment(shift, window)
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
             audio=audio,

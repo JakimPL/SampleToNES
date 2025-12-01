@@ -8,11 +8,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import FragmentedAudio, Window
-from sampletones.generators import (
-    MIXER_LEVELS,
-    GeneratorUnion,
-    get_generators_by_names,
-)
+from sampletones.generators import MIXER_LEVELS, GeneratorUnion, get_generators_by_names
 from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
@@ -119,7 +115,14 @@ class Reconstructor:
         if self.config.generation.final_regeneration:
             instruction = fragment_approximation.instruction
             initials = generator.initials
-            approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
+            approximation = (
+                generator(
+                    instruction,  # type: ignore
+                    initials=initials,
+                    save=True,
+                )
+                * self.config.generation.mixer
+            )
         else:
             approximation = fragment_approximation.approximation.audio * self.config.generation.mixer
 

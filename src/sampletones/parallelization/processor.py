@@ -109,7 +109,7 @@ class TaskProcessor(Generic[T]):
     def _create_tasks(self) -> List[Any]:
         raise NotImplementedError
 
-    def _get_task_function(self) -> Callable:
+    def _get_task_function(self) -> Callable[..., Any]:
         raise NotImplementedError
 
     def _process_results(self, results: List[T]) -> Any:

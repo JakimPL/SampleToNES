@@ -16,7 +16,7 @@ class Criterion:
     weights: xp.ndarray = field(init=False)
     no_weights: xp.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         alpha, beta = self.get_loss_weights()
         object.__setattr__(self, "alpha", alpha)
         object.__setattr__(self, "beta", beta)

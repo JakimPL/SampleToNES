@@ -44,3 +44,4 @@ include = ["assets/icons/*", "assets/fonts/*"]
 files = "src/sampletones"
 ignore_missing_imports = true
 strict = true
+disallow_subclassing_any = true

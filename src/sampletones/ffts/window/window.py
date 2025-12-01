@@ -22,7 +22,7 @@ class Window:
     forward_frames: int = field(init=False)
     weights: np.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         size = self.custom_size if self.custom_size is not None else self.config.window_size
 
         left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
