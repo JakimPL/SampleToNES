@@ -18,9 +18,9 @@ class PulseExporter(Exporter[PulseInstruction]):
         volume = 0
         duty_cycle = 0
 
-        pitches = []
-        volumes = []
-        duty_cycles = []
+        pitches: List[int] = []
+        volumes: List[int] = []
+        duty_cycles: List[int] = []
 
         for instruction in instructions:
             if instruction.on:
@@ -54,3 +54,7 @@ class PulseExporter(Exporter[PulseInstruction]):
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return PulseInstruction

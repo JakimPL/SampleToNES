@@ -28,7 +28,7 @@ except ImportError:
     from sampletones.exceptions import CuPyNotInstalledWarning
     from sampletones.utils.logger import logger
 
-    def _format_warning_no_location(message, category, filename, lineno, line=None):
+    def _format_warning_no_location(message, category, filename, lineno, line=None) -> str:
         return f"{category.__name__}: {message}\n"
 
     warnings.formatwarning = _format_warning_no_location

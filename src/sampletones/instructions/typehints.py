@@ -8,3 +8,4 @@ from .triangle import TriangleInstruction
 InstructionT = TypeVar("InstructionT", bound=Instruction)
 InstructionClass = Type[InstructionT]
 InstructionUnion = Union[PulseInstruction, TriangleInstruction, NoiseInstruction]
+InstructionTypeUnion = Union[Type[PulseInstruction], Type[TriangleInstruction], Type[NoiseInstruction]]

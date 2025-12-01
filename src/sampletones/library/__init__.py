@@ -1,4 +1,5 @@
-from .data import LibraryData, LibraryFragment
+from .data import LibraryData
+from .fragment import LibraryFragment
 from .key import LibraryKey
 from .library import Library
 

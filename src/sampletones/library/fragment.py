@@ -1,6 +1,6 @@
 from functools import cached_property
 from types import ModuleType
-from typing import Generic, Self, cast
+from typing import Any, Generic, Self, cast
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -15,14 +15,14 @@ from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import (
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
-    GeneratorT,
+    Generator,
 )
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import serialize_array
 
 
-class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
+class LibraryFragment(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
@@ -34,7 +34,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
     @classmethod
     def create(
         cls,
-        generator: GeneratorT,
+        generator: Generator[InstructionT, Any],
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
@@ -79,7 +79,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
 
     def get(
         self,
-        generator: GeneratorT,
+        generator: Generator[InstructionT, Any],
         config: Config,
         window: Window,
         initials: Initials = None,

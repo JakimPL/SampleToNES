@@ -28,7 +28,7 @@ def write_fti(
     pitch_setting: int = 0,
     hi_pitch_setting: int = 0,
     duty_cycle_setting: int = 0,
-):
+) -> None:
     with open(filename, "wb") as file:
         file.write(b"FTI")
         file.write(b"2.4")

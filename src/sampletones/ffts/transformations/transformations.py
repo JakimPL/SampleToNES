@@ -40,7 +40,7 @@ class LinearExponentialMorpher:
     a: float = field(init=False)
     transformations: Transformations = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.gamma, float):
             raise TypeError(f"The gamma parameter must be a float, got {type(self.gamma)}")
 

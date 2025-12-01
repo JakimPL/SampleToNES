@@ -9,12 +9,10 @@ from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import FragmentedAudio, Window
 from sampletones.generators import (
-    INSTRUCTION_TO_GENERATOR_MAP,
     MIXER_LEVELS,
     GeneratorUnion,
     get_generators_by_names,
 )
-from sampletones.instructions import INSTRUCTION_CLASS_MAP
 from sampletones.library import Library, LibraryData
 from sampletones.utils import to_path
 
@@ -119,10 +117,7 @@ class Reconstructor:
     def update_state(self, fragment_approximation: ApproximationData) -> None:
         generator: GeneratorUnion = self.generators[fragment_approximation.generator_name]
         if self.config.generation.final_regeneration:
-            instruction_class = INSTRUCTION_TO_GENERATOR_MAP[
-                INSTRUCTION_CLASS_MAP[fragment_approximation.instruction.class_name()]
-            ]
-            instruction: instruction_class = fragment_approximation.instruction
+            instruction = fragment_approximation.instruction
             initials = generator.initials
             approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
         else:

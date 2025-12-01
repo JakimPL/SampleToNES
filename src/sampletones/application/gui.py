@@ -476,7 +476,7 @@ class GUI:
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: LibraryFragment[Any, Any],
+        fragment: LibraryFragment[Any],
         library_config: LibraryConfig,
     ) -> None:
         try:

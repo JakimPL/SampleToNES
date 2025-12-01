@@ -16,7 +16,9 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
 def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> int:
     if frequency <= 0:
         return 0
-    return round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
+
+    pitch: int = round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
+    return pitch
 
 
 def pitch_to_name(pitch: int, transpose: int = 0) -> str:

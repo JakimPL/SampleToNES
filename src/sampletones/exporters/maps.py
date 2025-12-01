@@ -1,7 +1,7 @@
-from typing import Dict
+from typing import Dict, Type
 
 from sampletones.instructions import (
-    InstructionClass,
+    Instruction,
     NoiseInstruction,
     PulseInstruction,
     TriangleInstruction,
@@ -10,9 +10,9 @@ from sampletones.instructions import (
 from .noise import NoiseExporter
 from .pulse import PulseExporter
 from .triangle import TriangleExporter
-from .typehints import ExporterClass
+from .typehints import ExporterTypeUnion
 
-INSTRUCTION_TO_EXPORTER_MAP: Dict[InstructionClass, ExporterClass] = {
+INSTRUCTION_TO_EXPORTER_MAP: Dict[Type[Instruction], ExporterTypeUnion] = {
     TriangleInstruction: TriangleExporter,
     PulseInstruction: PulseExporter,
     NoiseInstruction: NoiseExporter,

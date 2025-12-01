@@ -297,7 +297,7 @@ class DataModel(BaseModel):
         for offset in reversed(offsets):
             builder.PrependUOffsetTRelative(offset)
 
-        return builder.EndVector(len(offsets))
+        return int(builder.EndVector(len(offsets)))
 
     @classmethod
     def buffer_reader(cls) -> type:

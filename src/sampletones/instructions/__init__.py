@@ -4,7 +4,12 @@ from .maps import INSTRUCTION_CLASS_MAP
 from .noise import NoiseInstruction
 from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
-from .typehints import InstructionClass, InstructionT, InstructionUnion
+from .typehints import (
+    InstructionClass,
+    InstructionT,
+    InstructionTypeUnion,
+    InstructionUnion,
+)
 from .utils import get_instruction_by_type
 
 __all__ = [
@@ -17,5 +22,6 @@ __all__ = [
     "InstructionT",
     "InstructionClass",
     "InstructionUnion",
+    "InstructionTypeUnion",
     "get_instruction_by_type",
 ]

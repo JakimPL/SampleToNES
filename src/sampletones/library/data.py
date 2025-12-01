@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, KeysView, List, Self, Union, ValuesView
+from typing import Any, Dict, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
@@ -34,17 +34,19 @@ class LibraryData(DataModel):
         description="Library metadata",
     )
     config: LibraryConfig = Field(..., description="Configuration of the library data")
-    items: List[LibraryItem] = Field(
+    items: List[LibraryItem[InstructionUnion]] = Field(
         ...,
         description="Library data mapping instructions to fragments",
     )
 
     @cached_property
-    def data(self) -> Dict[InstructionUnion, LibraryFragment]:
+    def data(self) -> Dict[InstructionUnion, LibraryFragment[Any]]:
         return {item.instruction: item.fragment for item in self.items}
 
     @cached_property
-    def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
+    def subdata(
+        self,
+    ) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment[Any]]]:
         subdata = {}
         for generator_class_name in GeneratorClassName:
             subdata[generator_class_name] = {
@@ -55,11 +57,15 @@ class LibraryData(DataModel):
 
         return subdata
 
-    def __getitem__(self, key: InstructionUnion) -> LibraryFragment:
+    def __getitem__(self, key: InstructionUnion) -> LibraryFragment[Any]:
         return self.data[key]
 
     @classmethod
-    def create(cls, config: Union[Config, LibraryConfig], data: Dict[InstructionUnion, LibraryFragment]) -> Self:
+    def create(
+        cls,
+        config: Union[Config, LibraryConfig],
+        data: Dict[InstructionUnion, LibraryFragment[Any]],
+    ) -> Self:
         library_config = config.library if isinstance(config, Config) else config
         items = [
             LibraryItem.create(
@@ -73,7 +79,7 @@ class LibraryData(DataModel):
     def filter(
         self,
         generator_classes: GeneratorClassNames,
-    ) -> Dict[InstructionUnion, LibraryFragment]:
+    ) -> Dict[InstructionUnion, LibraryFragment[Any]]:
         if not generator_classes:
             return {}
 
@@ -81,7 +87,7 @@ class LibraryData(DataModel):
             return self.subdata.get(generator_classes, {})
 
         if isinstance(generator_classes, tuple):
-            result: Dict[InstructionUnion, LibraryFragment] = {}
+            result: Dict[InstructionUnion, LibraryFragment[Any]] = {}
             for generator_class_name in generator_classes:
                 result |= self.subdata[generator_class_name]
             return result
@@ -94,7 +100,7 @@ class LibraryData(DataModel):
     def keys(self) -> KeysView[InstructionUnion]:
         return self.data.keys()
 
-    def values(self) -> ValuesView[LibraryFragment]:
+    def values(self) -> ValuesView[LibraryFragment[Any]]:
         return self.data.values()
 
     @classmethod

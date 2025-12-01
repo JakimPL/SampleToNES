@@ -19,7 +19,7 @@ class Fragment:
 
     transformer: FFTTransformer = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "transformer", FFTTransformer.from_gamma(self.config.library.transformation_gamma))
 
     @classmethod
