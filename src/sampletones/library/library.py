@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, ItemsView, KeysView, Optional, Union, ValuesView
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,13 +54,13 @@ class Library(BaseModel):
     def purge(self) -> None:
         self.data.clear()
 
-    def keys(self):
+    def keys(self) -> KeysView[LibraryKey]:
         return self.data.keys()
 
-    def items(self):
+    def items(self) -> ItemsView[LibraryKey, LibraryData]:
         return self.data.items()
 
-    def values(self):
+    def values(self) -> ValuesView[LibraryData]:
         return self.data.values()
 
     def get_path(self, key: LibraryKey) -> Path:

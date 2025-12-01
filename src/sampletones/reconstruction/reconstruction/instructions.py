@@ -5,14 +5,16 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel
-from sampletones.instructions import InstructionData
+from sampletones.instructions import InstructionData, InstructionUnion
 
 
 class InstructionsItem(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     generator_name: GeneratorName = Field(..., description="Name of the generator")
-    instructions: List[InstructionData] = Field(..., description="List of instruction data for the generator")
+    instructions: List[InstructionData[InstructionUnion]] = Field(
+        ..., description="List of instruction data for the generator"
+    )
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:

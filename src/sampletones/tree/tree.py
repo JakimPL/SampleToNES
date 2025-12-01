@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Sequence, Set
+from typing import Callable, Dict, Optional, Sequence, Set
 
 from anytree import PreOrderIter
 from anytree.search import findall
@@ -12,7 +12,7 @@ class Tree:
         self._filter_query: Optional[str] = None
         self._filtered_root: Optional[TreeNode] = None
         self._matching_nodes: Set[TreeNode] = set()
-        self._original_to_copy: dict[TreeNode, TreeNode] = {}
+        self._original_to_copy: Dict[Optional[TreeNode], TreeNode] = {}
 
     def set_root(self, root: Optional[TreeNode]) -> None:
         self.root = root
@@ -58,7 +58,7 @@ class Tree:
             for descendant in PreOrderIter(node):
                 nodes_to_include.add(descendant)
 
-        node_map = {}
+        node_map: Dict[Optional[TreeNode], TreeNode] = {}
         for original_node in PreOrderIter(self.root):
             if original_node in nodes_to_include:
                 parent_copy = node_map.get(original_node.parent) if original_node.parent else None

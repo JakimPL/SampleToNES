@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Optional, Self, Union, cast
+from typing import Any, Dict, List, Optional, Self, Union, cast
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -198,11 +198,11 @@ class Reconstruction(DataModel):
         return features
 
     @field_serializer("approximation")
-    def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
+    def _serialize_approximation(self, approximation: np.ndarray, _info: Any) -> SerializedData:
         return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
-    def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
+    def _serialize_audio_filepath(self, audio_filepath: Path, _info: Any) -> str:
         return str(audio_filepath)
 
     @classmethod

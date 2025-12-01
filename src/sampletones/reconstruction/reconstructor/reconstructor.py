@@ -79,8 +79,8 @@ class Reconstructor:
         )
 
     def get_coefficient(self, audio: np.ndarray) -> float:
-        return np.max(np.abs(audio)) / sum(
-            MIXER_LEVELS[generator.class_name()] for generator in self.generators.values()
+        return float(
+            np.max(np.abs(audio)) / sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
         )
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:

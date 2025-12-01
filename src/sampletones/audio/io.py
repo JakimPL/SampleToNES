@@ -23,6 +23,8 @@ def read_wave(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", wavfile.WavFileWarning)
         try:
+            sample_rate: int
+            audio: np.ndarray
             sample_rate, audio = wavfile.read(path, mmap=False)
         except ValueError as exception:
             raise UnsupportedAudioFormatError(f"Could not read WAV file: {path}") from exception

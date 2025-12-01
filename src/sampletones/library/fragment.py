@@ -26,7 +26,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
-    instruction_data: InstructionData
+    instruction_data: InstructionData[InstructionT]
     sample: CyclicArray
     feature: np.ndarray
     frequency: float

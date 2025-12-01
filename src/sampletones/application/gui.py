@@ -1,7 +1,7 @@
 import sys
 import tkinter
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
@@ -12,10 +12,9 @@ from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
-    ICON_UNIX_FILENAME,
-    ICON_WIN_FILENAME,
 )
 from sampletones.exceptions import LibraryDisplayError
+from sampletones.instructions import InstructionUnion
 from sampletones.library import LibraryFragment
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
@@ -76,6 +75,8 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
+    VAL_FONT_SIZE,
+    VAL_GLOBAL_FONT_SCALE,
 )
 from .panels.browser import GUIBrowserPanel
 from .panels.config import GUIConfigPanel
@@ -87,7 +88,8 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
-from .resources import get_icon_path
+from .resources.items import FontResource, IconResource
+from .resources.resources import get_font_path, get_icon_path
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -100,7 +102,7 @@ from .utils.file import file_dialog_handler
 
 class GUI:
     def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.audio_device_manager = AudioDeviceManager()
+        self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
 
@@ -124,6 +126,7 @@ class GUI:
 
     def setup_gui(self) -> None:
         dpg.create_context()
+        self.set_fonts()
         self.create_main_window()
         self.set_viewport()
         dpg.setup_dearpygui()
@@ -133,11 +136,18 @@ class GUI:
         self.update_menu()
         self._restore_current_items()
 
+    def set_fonts(self) -> None:
+        with dpg.font_registry():
+            default_font = dpg.add_font(get_font_path(FontResource.MAIN), VAL_FONT_SIZE)
+            dpg.bind_font(default_font)
+
+        dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
+
     def set_viewport(self) -> None:
         if sys.platform.startswith("win"):
-            icon_filename = ICON_WIN_FILENAME
+            icon_filename = IconResource.WIN
         else:
-            icon_filename = ICON_UNIX_FILENAME
+            icon_filename = IconResource.UNIX
 
         icon_file_path = get_icon_path(icon_filename)
 
@@ -465,8 +475,8 @@ class GUI:
     def _on_instruction_selected(
         self,
         generator_class_name: str,
-        instruction,
-        fragment: LibraryFragment,
+        instruction: InstructionUnion,
+        fragment: LibraryFragment[Any, Any],
         library_config: LibraryConfig,
     ) -> None:
         try:
@@ -501,8 +511,8 @@ class GUI:
         return True
 
     @staticmethod
-    def _get_monitors() -> List[Dict]:
-        monitors: List[Dict] = []
+    def _get_monitors() -> List[Dict[str, Any]]:
+        monitors: List[Dict[str, Any]] = []
         for monitor in get_monitors():
             monitors.append(
                 {
@@ -515,7 +525,7 @@ class GUI:
 
         return monitors
 
-    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict]:
+    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict[str, Any]]:
         monitors = self._get_monitors()
         position_x = float(x)
         position_y = float(y)
@@ -591,7 +601,7 @@ class GUI:
             self.converter_window.converter.cleanup()
         dpg.stop_dearpygui()
 
-    def _enable_fullscreen(self):
+    def _enable_fullscreen(self) -> None:
         dpg.set_viewport_decorated(False)
 
         window_x = self.application_config_manager.window_x
@@ -618,7 +628,7 @@ class GUI:
             height=window_height,
         )
 
-    def _disable_fullscreen(self):
+    def _disable_fullscreen(self) -> None:
         window_width = self.application_config_manager.window_width
         window_height = self.application_config_manager.window_height
         window_x = self.application_config_manager.window_x

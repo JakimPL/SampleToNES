@@ -23,6 +23,17 @@ EXT_FILE_INSTRUMENT = ".fti"
 EXT_FILE_WAVE = ".wav"
 EXT_FILE_RECONSTRUCTION = ".stn"
 
+# Assets
+ASSETS_DIRECTORY = "assets"
+
 # Icon filenames
+ICON_DIRECTORY = "icons"
 ICON_WIN_FILENAME = "sampletones.ico"
 ICON_UNIX_FILENAME = "sampletones.png"
+
+# Font paths
+FONT_DIRECTORY = "fonts"
+FONT_MAIN = "RobotoMono-Regular.ttf"
+FONT_BOLD = "RobotoMono-Bold.ttf"
+FONT_ITALIC = "RobotoMono-Italic.ttf"
+FONT_BOLD_ITALIC = "RobotoMono-BoldItalic.ttf"

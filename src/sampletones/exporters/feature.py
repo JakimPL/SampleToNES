@@ -71,9 +71,9 @@ class Features(BaseModel):
         write_fti(
             filename=filepath,
             instrument_name=instrument_name,
-            volume=cast(Optional[np.ndarray], self.volume),
-            arpeggio=cast(Optional[np.ndarray], self.arpeggio),
-            pitch=cast(Optional[np.ndarray], self.pitch),
-            hi_pitch=cast(Optional[np.ndarray], self.hi_pitch),
-            duty_cycle=cast(Optional[np.ndarray], self.duty_cycle),
+            volume=self.volume,
+            arpeggio=self.arpeggio,
+            pitch=self.pitch,
+            hi_pitch=self.hi_pitch,
+            duty_cycle=self.duty_cycle,
         )

@@ -52,7 +52,7 @@ class PhaseTimer(Timer):
         indices = np.arange(self.frame_length, dtype=np.float32) + 1
         delta = self.phase_increment / self._timer_ticks * self._cycles_per_sample
         lower = np.ceil(1.0 + abs(delta * indices[-1]))
-        frame = np.fmod(lower + indices * delta + self.phase, 1.0)
+        frame: np.ndarray = np.fmod(lower + indices * delta + self.phase, 1.0)
 
         if save:
             self.phase = float(frame[-1])

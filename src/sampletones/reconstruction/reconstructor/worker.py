@@ -44,7 +44,7 @@ class ReconstructorWorker:
     ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
         return {fragment_id: self.reconstruct(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
 
         def _build_get_cached_approximations() -> GetCachedApproximationsCallable:

@@ -6,11 +6,11 @@ from sampletones.constants.general import BATCH_SIZE
 from sampletones.ffts import Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
+from sampletones.library import LibraryData, LibraryFragment
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger
 from sampletones.utils.logger import logger as default_logger
 
-from ..data import LibraryData, LibraryFragment
 from ..key import LibraryKey
 from .creation import generate_instruction_batch
 
@@ -57,7 +57,12 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
 
         return tasks
 
-    def _get_task_function(self) -> Callable[[Tuple], List[Tuple[InstructionUnion, LibraryFragment]]]:
+    def _get_task_function(
+        self,
+    ) -> Callable[
+        [Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window]],
+        List[Tuple[InstructionUnion, LibraryFragment]],
+    ]:
         return generate_instruction_batch
 
     def _process_results(self, results: List[Any]) -> Tuple[LibraryKey, LibraryData]:

@@ -6,6 +6,7 @@ SAMPLETONES_RECONSTRUCTION_DATA_VERSION = "1.0"
 
 SAMPLETONES_AUTHOR = "Jakim"
 SAMPLETONES_GROUP = "Stage Magician"
+SAMPLETONES_PACKAGE_NAME = "sampletones"
 
 
 def compare_versions(version1: str, version2: str) -> int:

@@ -6,8 +6,7 @@ from sampletones.ffts import Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
-
-from ..data import LibraryFragment
+from sampletones.library import LibraryFragment
 
 
 def generate_instruction(
@@ -16,7 +15,7 @@ def generate_instruction(
     instruction: InstructionUnion,
     window: Window,
     transformer: FFTTransformer,
-):
+) -> Tuple[InstructionUnion, LibraryFragment]:
     generator = generators[generator_class_name]
     fragment = LibraryFragment.create(generator, instruction, window, transformer=transformer)
     return instruction, fragment

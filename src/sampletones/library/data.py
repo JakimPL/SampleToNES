@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Self, Union
+from typing import Dict, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
@@ -91,10 +91,10 @@ class LibraryData(DataModel):
             f"expected GeneratorClassName or a tuple of GeneratorClassName."
         )
 
-    def keys(self):
+    def keys(self) -> KeysView[InstructionUnion]:
         return self.data.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[LibraryFragment]:
         return self.data.values()
 
     @classmethod

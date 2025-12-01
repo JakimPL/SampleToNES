@@ -35,8 +35,8 @@ echo "Building executable..."
 pyinstaller --name sampletones \
     --onefile \
     --distpath . \
-    --icon src/sampletones/icons/sampletones.png \
-    --add-data "src/sampletones/icons:sampletones/icons" src/sampletones/__main__.py
+    --icon assets/icons/sampletones.png \
+    --add-data "assets/icons:sampletones/icons" src/sampletones/__main__.py
 
 if [[ -f sampletones ]]; then
     echo "Build complete: ./sampletones"
