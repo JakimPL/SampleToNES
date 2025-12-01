@@ -42,6 +42,8 @@ from ..constants import (
     NOD_TYPE_ROOT,
 )
 
+InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
+
 
 class LibraryManager:
     def __init__(
@@ -116,7 +118,7 @@ class LibraryManager:
 
     def get_library_instructions_by_generator(
         self, library_key: InstructionLibraryKey, generator_name: LibraryGeneratorName
-    ) -> Dict[str, List[Tuple]]:
+    ) -> Dict[str, InstructionsList]:
         library_data = self.get_library_data(library_key)
         if not library_data:
             return {}
@@ -130,7 +132,7 @@ class LibraryManager:
     def get_all_generator_instructions(
         self,
         library_key: InstructionLibraryKey,
-    ) -> Dict[LibraryGeneratorName, Dict[str, List[Tuple]]]:
+    ) -> Dict[LibraryGeneratorName, Dict[str, InstructionsList]]:
         result = {}
         for generator_name in LibraryGeneratorName:
             instructions = self.get_library_instructions_by_generator(library_key, generator_name)
@@ -244,12 +246,12 @@ class LibraryManager:
         self,
         library_data: InstructionLibraryData,
         generator_class_name: GeneratorClassName,
-    ) -> Dict[str, List[Tuple[Instruction, InstructionLibraryFragment[Any]]]]:
+    ) -> Dict[str, InstructionsList]:
         generator_data = library_data.filter(generator_class_name)
         if not generator_data:
             return {}
 
-        instructions: Dict[str, List[Tuple[Instruction, InstructionLibraryFragment[Any]]]] = {}
+        instructions: Dict[str, InstructionsList] = {}
         sorted_generator_data = dict(sorted(generator_data.items(), key=lambda item: item[0]))
         for instruction, fragment in sorted_generator_data.items():
             if not instruction.on:
@@ -312,7 +314,7 @@ class LibraryManager:
     def _build_group_nodes(
         self,
         generator_name: LibraryGeneratorName,
-        grouped_instructions: Dict[str, List[Tuple]],
+        grouped_instructions: Dict[str, InstructionsList],
         parent: TreeNode,
     ) -> None:
         generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)

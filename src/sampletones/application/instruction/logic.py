@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
@@ -31,7 +31,7 @@ class InstructionDetailsLogic:
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: Optional[InstructionLibraryFragment] = None,
+        fragment: Optional[InstructionLibraryFragment[Any]] = None,
     ) -> InstructionPanelData:
         self.current_data = InstructionPanelData(
             generator_class_name=generator_class_name,
@@ -73,7 +73,7 @@ class InstructionDetailsLogic:
 
         return "\n".join(lines)
 
-    def _format_parameter_value(self, value: Union[float, bool, list, tuple, str, int]) -> str:
+    def _format_parameter_value(self, value: Union[float, bool, List[Any], Tuple[Any, ...], str, int]) -> str:
         if isinstance(value, float):
             return f"{value:.{VAL_INSTRUCTION_FLOAT_PRECISION}f}"
 

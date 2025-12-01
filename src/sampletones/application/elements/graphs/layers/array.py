@@ -16,7 +16,7 @@ class ArrayLayer:
     x_data: np.ndarray = field(init=False)
     y_data: np.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "data", self.data.astype(np.float32))
         object.__setattr__(self, "x_data", np.arange(len(self.data)).astype(np.float32))
         object.__setattr__(self, "y_data", self.data)
