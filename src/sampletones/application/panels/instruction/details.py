@@ -15,8 +15,8 @@ from ...constants import (
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
     TAG_INSTRUCTION_DETAILS_INFO,
-    TAG_INSTRUCTION_DETAILS_PARAMS_HEADER,
-    TAG_INSTRUCTION_DETAILS_PARAMS_TABLE,
+    TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
+    TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
     TAG_INSTRUCTION_PANEL,
 )
 from ...elements.panel import GUIPanel
@@ -53,10 +53,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
             dpg.add_text(
                 LBL_INSTRUCTION_PARAMETERS_HEADER,
-                tag=TAG_INSTRUCTION_DETAILS_PARAMS_HEADER,
+                tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
                 show=False,
             )
-            dpg.bind_item_font(TAG_INSTRUCTION_DETAILS_PARAMS_HEADER, TAG_FONT_BOLD)
+            dpg.bind_item_font(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, TAG_FONT_BOLD)
 
     def display_instruction(
         self,
@@ -79,23 +79,23 @@ class GUIInstructionDetailsPanel(GUIPanel):
         if table_data is None:
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=True)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=False)
-            dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMS_HEADER, show=False)
+            dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=False)
             return
 
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=False)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
-        dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMS_HEADER, show=table_data.has_parameters)
+        dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
 
         self.general_table = GUITable(
             tag=TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
             rows=table_data.general_rows,
             parent=self.tag,
-            before=TAG_INSTRUCTION_DETAILS_PARAMS_HEADER,
+            before=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
         )
 
         if table_data.has_parameters:
             self.params_table = GUITable(
-                tag=TAG_INSTRUCTION_DETAILS_PARAMS_TABLE,
+                tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
                 rows=table_data.parameter_rows,
                 parent=self.tag,
             )

@@ -494,6 +494,9 @@ LBL_INSTRUCTION_GENERATOR = "Generator"
 LBL_INSTRUCTION_NAME = "Instruction"
 LBL_INSTRUCTION_FREQUENCY = "Frequency"
 FMT_INSTRUCTION_FREQUENCY = "{:.2f} Hz"
+FMT_INSTRUCTION_PITCH = "{} ({})"
+FMT_INSTRUCTION_DUTY_CYCLE = "{:.1f}% ({})"
+FMT_INSTRUCTION_PERIOD = "p{} ({})"
 MSG_INSTRUCTION_NO_FREQUENCY = "N/A"
 LBL_INSTRUCTION_SAMPLE_LENGTH = "Sample length"
 SUF_INSTRUCTION_SAMPLE_LENGTH = " samples"
@@ -506,9 +509,9 @@ SUF_INSTRUCTION_SPECTRUM = "_spectrum"
 
 # Instruction details table tags
 TAG_INSTRUCTION_DETAILS_GENERAL_TABLE = "instruction_details_general_table"
-TAG_INSTRUCTION_DETAILS_PARAMS_TABLE = "instruction_details_params_table"
+TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE = "instruction_details_parameters_table"
 TAG_INSTRUCTION_DETAILS_GENERAL_HEADER = "instruction_details_general_header"
-TAG_INSTRUCTION_DETAILS_PARAMS_HEADER = "instruction_details_params_header"
+TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER = "instruction_details_parameters_header"
 SUF_INSTRUCTION_DETAILS_TABLE = "_table"
 
 # Instruction details table colors (dark gray with blue/purple tones)
@@ -520,7 +523,7 @@ COL_TABLE_LABEL = (140, 160, 200, 255)
 COL_TABLE_VALUE = (200, 205, 220, 255)
 
 # Instruction details table dimensions
-DIM_INSTRUCTION_TABLE_LABEL_WIDTH = 120
+DIM_TABLE_LABEL_WIDTH = 130
 VAL_TABLE_CELL_PADDING = 8, 4
 VAL_TABLE_FRAME_ROUNDING = 4
 
