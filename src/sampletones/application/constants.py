@@ -48,16 +48,27 @@ TITLE_WINDOW_MAIN = "SampleToNES"
 
 # Menu labels
 LBL_MENU_FILE = "File"
-LBL_MENU_SAVE_CONFIG = "Save configuration"
-LBL_MENU_LOAD_CONFIG = "Load configuration"
-LBL_MENU_RECONSTRUCT_FILE = "Reconstruct file"
-LBL_MENU_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
-LBL_MENU_LOAD_RECONSTRUCTION = "Load reconstruction"
-LBL_MENU_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
-LBL_MENU_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
-LBL_MENU_EXIT = "Exit"
+LBL_MENU_ITEM_EXIT = "Exit"
+LBL_MENU_RECONSTRUCTION = "Reconstruction"
+LBL_MENU_ITEM_SAVE_CONFIG = "Save configuration"
+LBL_MENU_ITEM_LOAD_CONFIG = "Load configuration"
+LBL_MENU_ITEM_RECONSTRUCT_FILE = "Reconstruct file"
+LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+LBL_MENU_ITEM_CLOSE_RECONSTRUCTION = "Close reconstruction"
+LBL_MENU_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
+LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
+LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
 LBL_MENU_VIEW = "View"
-LBL_MENU_FULLSCREEN = "Fullscreen"
+LBL_MENU_ITEM_FULLSCREEN = "Fullscreen"
+
+# Menu item tags
+TAG_MENU_ITEM_RECONSTRUCT_FILE = "menu_item_reconstruct_file"
+TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY = "menu_item_reconstruct_directory"
+TAG_MENU_ITEM_CLOSE_RECONSTRUCTION = "menu_item_close_reconstruction"
+TAG_MENU_ITEM_LOAD_RECONSTRUCTION = "menu_item_load_reconstruction"
+TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "menu_item_export_reconstruction_wav"
+TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "menu_item_export_reconstruction_ftis"
+TAG_MENU_ITEM_FULLSCREEN = "menu_item_view_fullscreen"
 
 # Tab labels
 LBL_TAB_INSTRUCTIONS = "Instructions"
@@ -214,13 +225,6 @@ TAG_LIBRARY_NOT_LOADED_DIALOG = "library_not_loaded_dialog"
 TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
 TAG_PATH_MESSAGE_DIALOG = "path_message_dialog"
 TAG_CONFIG_LIBRARY_DIRECTORY = "config_library_directory"
-
-# Menu item tags
-TAG_MENU_RECONSTRUCT_FILE = "menu_reconstruct_file"
-TAG_MENU_RECONSTRUCT_DIRECTORY = "menu_reconstruct_directory"
-TAG_MENU_RECONSTRUCTION_EXPORT_WAV = "menu_reconstruction_export_wav"
-TAG_MENU_RECONSTRUCTION_EXPORT_FTIS = "menu_reconstruction_export_ftis"
-TAG_MENU_VIEW_FULLSCREEN = "menu_view_fullscreen"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0
@@ -379,6 +383,7 @@ TAG_RECONSTRUCTION_DETAILS_PANEL = "reconstruction_details_panel"
 TAG_RECONSTRUCTION_EXPORT_PANEL = "reconstruction_export_panel"
 TAG_RECONSTRUCTION_PITCH_BAR_PLOT = "reconstruction_pitch_bar_plot"
 TAG_RECONSTRUCTION_DETAILS_TAB_BAR = "reconstruction_details_tab_bar"
+TAG_RECONSTRUCTION_DETAILS_GENERATORS = "reconstruction_details_generators"
 TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON = "reconstruction_export_fti_button"
 TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON = "reconstruction_export_ftis_button"
 TAG_RECONSTRUCTION_GENERATORS_GROUP = "reconstruction_generators_group"
@@ -433,6 +438,7 @@ MSG_CONFIG_LOAD_FAILED = "Failed to load configuration."
 TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
 TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
+LBL_RECONSTRUCTION_GENERATORS = "Generators"
 
 # Waveform layer colors
 COL_WAVEFORM_DEFAULT = (255, 255, 255, 255)

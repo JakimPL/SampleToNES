@@ -33,16 +33,18 @@ from .constants import (
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
     FLAG_WINDOW_PRIMARY_ENABLED,
-    LBL_MENU_EXIT,
-    LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
-    LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
-    LBL_MENU_FULLSCREEN,
-    LBL_MENU_LOAD_CONFIG,
-    LBL_MENU_LOAD_RECONSTRUCTION,
-    LBL_MENU_RECONSTRUCT_DIRECTORY,
-    LBL_MENU_RECONSTRUCT_FILE,
-    LBL_MENU_SAVE_CONFIG,
+    LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
+    LBL_MENU_ITEM_EXIT,
+    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+    LBL_MENU_ITEM_FULLSCREEN,
+    LBL_MENU_ITEM_LOAD_CONFIG,
+    LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+    LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+    LBL_MENU_ITEM_RECONSTRUCT_FILE,
+    LBL_MENU_ITEM_SAVE_CONFIG,
+    LBL_MENU_RECONSTRUCTION,
     LBL_MENU_VIEW,
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_RECONSTRUCTIONS,
@@ -58,11 +60,13 @@ from .constants import (
     TAG_FONT_BOLD,
     TAG_FONT_REGULAR,
     TAG_INSTRUCTIONS_PANEL_GROUP,
-    TAG_MENU_RECONSTRUCT_DIRECTORY,
-    TAG_MENU_RECONSTRUCT_FILE,
-    TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
-    TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
-    TAG_MENU_VIEW_FULLSCREEN,
+    TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
+    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+    TAG_MENU_ITEM_FULLSCREEN,
+    TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+    TAG_MENU_ITEM_RECONSTRUCT_FILE,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
     TAG_TAB_INSTRUCTIONS,
@@ -191,13 +195,13 @@ class GUI:
             on_update_library_directory=self.browser_panel.refresh,
         )
         self.browser_panel.set_callbacks(
-            on_reconstruction_selected=self._on_reconstruction_selected,
+            on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
 
         self.converter_window.set_callbacks(
-            on_load_file=self._on_reconstruction_loaded,
+            on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
         )
@@ -230,41 +234,52 @@ class GUI:
     def create_menu_bar(self) -> None:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_FILE):
-                dpg.add_menu_item(label=LBL_MENU_SAVE_CONFIG, callback=self._save_config_dialog)
-                dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self._load_config_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_SAVE_CONFIG, callback=self._save_config_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_LOAD_CONFIG, callback=self._load_config_dialog)
                 dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_EXIT, callback=self._exit_application)
+            with dpg.menu(label=LBL_MENU_RECONSTRUCTION):
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCT_FILE,
-                    label=LBL_MENU_RECONSTRUCT_FILE,
+                    tag=TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
+                    callback=self._on_reconstruction_close,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                dpg.add_menu_item(
+                    tag=TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+                    callback=self._load_reconstruction_dialog,
+                    enabled=not self._is_reconstruction_loaded(),
+                )
+                dpg.add_menu_item(
+                    tag=TAG_MENU_ITEM_RECONSTRUCT_FILE,
+                    label=LBL_MENU_ITEM_RECONSTRUCT_FILE,
                     callback=self._reconstruct_file_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCT_DIRECTORY,
-                    label=LBL_MENU_RECONSTRUCT_DIRECTORY,
+                    tag=TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+                    label=LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
                     callback=self._reconstruct_directory_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_separator()
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
-                    label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
+                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
                     callback=self._export_reconstruction_wav_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
-                    label=LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
+                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
                     callback=self._export_reconstruction_ftis_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
-                dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
             with dpg.menu(label=LBL_MENU_VIEW):
                 dpg.add_menu_item(
-                    tag=TAG_MENU_VIEW_FULLSCREEN,
-                    label=LBL_MENU_FULLSCREEN,
+                    tag=TAG_MENU_ITEM_FULLSCREEN,
+                    label=LBL_MENU_ITEM_FULLSCREEN,
                     callback=self._toggle_fullscreen,
                     check=True,
                 )
@@ -273,10 +288,10 @@ class GUI:
         library_loaded = self._is_library_loaded()
         reconstruction_loaded = self._is_reconstruction_loaded()
 
-        dpg_configure_item(TAG_MENU_RECONSTRUCT_FILE, enabled=library_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_FILE, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
         self._update_fullscreen_menu_item()
 
     def create_tabs(self) -> None:
@@ -499,11 +514,6 @@ class GUI:
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 
-    def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_panel.display_reconstruction(reconstruction_data)
-        self.update_menu()
-        self.audio_device_manager.stop()
-
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
             self.reconstruction_panel.export_reconstruction_wav_dialog()
@@ -596,15 +606,29 @@ class GUI:
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
 
-    def _on_reconstruction_loaded(self, filepath: Path) -> None:
+    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
+        self.audio_device_manager.stop()
+        self.reconstruction_panel.display_reconstruction(reconstruction_data)
+        self.update_menu()
+        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=True)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=True)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=True)
+
+    def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
-        self.audio_device_manager.stop()
+
+    def _on_reconstruction_close(self) -> None:
+        self.reconstruction_panel.close_reconstruction()
+        self.application_config_manager.set_current_reconstruction(None)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
+        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=False)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=False)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=False)
 
     def _exit_application(self) -> None:
         if self.converter_window and self.converter_window.converter:
@@ -705,8 +729,8 @@ class GUI:
 
     def _update_fullscreen_menu_item(self) -> None:
         fullscreen = self.application_config_manager.config.window_state.fullscreen
-        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, fullscreen)
-        dpg_configure_item(TAG_MENU_VIEW_FULLSCREEN, check=fullscreen)
+        dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
+        dpg_configure_item(TAG_MENU_ITEM_FULLSCREEN, check=fullscreen)
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:

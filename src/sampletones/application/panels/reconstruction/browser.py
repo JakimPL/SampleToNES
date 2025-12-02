@@ -48,7 +48,7 @@ from ...elements.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
 
-OnReconstructionSelectedCallable = Callable[[ReconstructionData], None]
+OnReconstructionLoadedCallable = Callable[[ReconstructionData], None]
 
 
 class GUIBrowserPanel(GUITreePanel):
@@ -62,7 +62,7 @@ class GUIBrowserPanel(GUITreePanel):
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
-        self._on_reconstruction_selected: Optional[OnReconstructionSelectedCallable] = None
+        self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallable] = None
         self._on_reconstruct_file: Optional[Callable[[], None]] = None
         self._on_reconstruct_directory: Optional[Callable[[], None]] = None
 
@@ -213,22 +213,22 @@ class GUIBrowserPanel(GUITreePanel):
                 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
             )
 
-        if self._on_reconstruction_selected:
-            self._set_browser_tree_enabled(False)
+        if self._on_reconstruction_loaded:
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
-            self._on_reconstruction_selected(reconstruction_data)
+            self._set_browser_tree_enabled(False)
+            self._on_reconstruction_loaded(reconstruction_data)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
 
         self.application_config_manager.set_current_reconstruction(filepath)
 
     def set_callbacks(
         self,
-        on_reconstruction_selected: Optional[OnReconstructionSelectedCallable] = None,
+        on_reconstruction_loaded: Optional[OnReconstructionLoadedCallable] = None,
         on_reconstruct_file: Optional[Callable[[], None]] = None,
         on_reconstruct_directory: Optional[Callable[[], None]] = None,
     ) -> None:
-        if on_reconstruction_selected is not None:
-            self._on_reconstruction_selected = on_reconstruction_selected
+        if on_reconstruction_loaded is not None:
+            self._on_reconstruction_loaded = on_reconstruction_loaded
         if on_reconstruct_file is not None:
             self._on_reconstruct_file = on_reconstruct_file
         if on_reconstruct_directory is not None:

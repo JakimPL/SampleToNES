@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -78,7 +79,7 @@ class ApplicationConfigManager:
     def get_audio_path(self) -> Path:
         return self.config.last_paths.audio
 
-    def set_current_reconstruction(self, path: Path) -> None:
+    def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self.config.gui_state.current_reconstruction = path
 
     def save_config(self) -> None:

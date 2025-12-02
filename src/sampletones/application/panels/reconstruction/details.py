@@ -15,6 +15,7 @@ from ...constants import (
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
     LBL_RECONSTRUCTION_EXPORT_FTIS,
+    LBL_RECONSTRUCTION_GENERATORS,
     LBL_RECONSTRUCTION_INITIAL_PITCH,
     MSG_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
@@ -24,6 +25,7 @@ from ...constants import (
     SUF_SEPARATOR,
     SUF_WINDOW,
     TAG_FONT_BOLD,
+    TAG_RECONSTRUCTION_DETAILS_GENERATORS,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
@@ -102,12 +104,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self._on_instrument_export(generator_name)
 
     def _clear_tabs(self) -> None:
+        dpg_delete_item(self.export_button_separator_tag)
         dpg_delete_item(self.tab_bar_tag)
+        dpg_delete_item(TAG_RECONSTRUCTION_DETAILS_GENERATORS)
         self.generator_plots.clear()
 
     def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:
         self._clear_tabs()
 
+        dpg.add_text(LBL_RECONSTRUCTION_GENERATORS, tag=TAG_RECONSTRUCTION_DETAILS_GENERATORS, parent=self.tag)
         with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag):
             for generator_name in feature_data.get_generator_names():
                 self._create_generator_tab(generator_name, feature_data)
@@ -261,9 +266,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def clear_display(self) -> None:
         self.current_features = None
         dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON, show=False, enabled=False)
+
         self._clear_tabs()
-
         dpg_configure_item(self.no_data_message_tag, show=True)
-
         dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON, show=False)
         dpg_configure_item(self.export_button_separator_tag, show=False)

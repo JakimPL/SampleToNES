@@ -98,6 +98,19 @@ class GUIReconstructionPanel(GUIPanel):
     def is_loaded(self) -> bool:
         return self.reconstruction_data is not None
 
+    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_data = reconstruction_data
+        self.config_manager.load_config(reconstruction_data.config)
+
+        if self._on_display_reconstruction_details:
+            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
+
+        self._update_generator_checkboxes(reconstruction_data)
+        self._update_reconstruction_display()
+
+    def close_reconstruction(self) -> None:
+        self._clear_display()
+
     def _create_audio_panel(self) -> None:
         with dpg.child_window(
             tag=self.audio_tag,
@@ -190,16 +203,6 @@ class GUIReconstructionPanel(GUIPanel):
         if on_clear_reconstruction_details is not None:
             self._on_clear_reconstruction_details = on_clear_reconstruction_details
 
-    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
-        self.config_manager.load_config(reconstruction_data.config)
-
-        if self._on_display_reconstruction_details:
-            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
-
-        self._update_generator_checkboxes(reconstruction_data)
-        self._update_reconstruction_display()
-
     def _get_selected_generators(self) -> List[GeneratorName]:
         selected_generators = []
         for generator_name in GeneratorName:
@@ -256,7 +259,7 @@ class GUIReconstructionPanel(GUIPanel):
         dpg_configure_item(radio_tag, enabled=True)
         dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
-    def clear_display(self) -> None:
+    def _clear_display(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
 
