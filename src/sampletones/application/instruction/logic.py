@@ -11,15 +11,14 @@ from ..constants import (
     LBL_INSTRUCTION_FREQUENCY,
     LBL_INSTRUCTION_GENERATOR,
     LBL_INSTRUCTION_NAME,
-    LBL_INSTRUCTION_PARAMETER_INDENT,
-    LBL_INSTRUCTION_PARAMETERS_HEADER,
     LBL_INSTRUCTION_SAMPLE_LENGTH,
     MSG_INSTRUCTION_NO_FREQUENCY,
-    MSG_INSTRUCTION_NO_SELECTION,
     SUF_INSTRUCTION_SAMPLE_LENGTH,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
+from ..elements.table.cell import TableCell
 from .data import InstructionPanelData
+from .table import InstructionTableData
 
 
 class InstructionDetailsLogic:
@@ -44,34 +43,83 @@ class InstructionDetailsLogic:
     def clear_data(self) -> None:
         self.current_data = None
 
-    def get_display_text(self) -> str:
+    def get_table_data(self) -> Optional[InstructionTableData]:
         if not self.current_data:
-            return MSG_INSTRUCTION_NO_SELECTION
+            return None
 
-        if not self.current_data.fragment:
-            lines = [
-                f"{LBL_INSTRUCTION_GENERATOR}{self.current_data.generator_class_name}",
-                f"{LBL_INSTRUCTION_NAME}{self.current_data.instruction.name}",
-                f"{LBL_INSTRUCTION_FREQUENCY}{MSG_INSTRUCTION_NO_FREQUENCY}",
-            ]
-            return "\n".join(lines)
+        general_rows = self._build_general_rows()
+        parameter_rows = self._build_parameter_rows()
 
-        fragment = self.current_data.fragment
+        return InstructionTableData(
+            general_rows=tuple(general_rows),
+            parameter_rows=tuple(parameter_rows),
+        )
+
+    def _build_general_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
+
+        if self.current_data.fragment:
+            fragment = self.current_data.fragment
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_GENERATOR,
+                    value=fragment.generator_class,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_FREQUENCY,
+                    value=FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency),
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_SAMPLE_LENGTH,
+                    value=f"{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+                )
+            )
+        else:
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_GENERATOR,
+                    value=self.current_data.generator_class_name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_NAME,
+                    value=self.current_data.instruction.name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_FREQUENCY,
+                    value=MSG_INSTRUCTION_NO_FREQUENCY,
+                )
+            )
+
+        return rows
+
+    def _build_parameter_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
         instruction = self.current_data.instruction
-
-        lines = [
-            f"{LBL_INSTRUCTION_GENERATOR}{fragment.generator_class}",
-            f"{LBL_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
-            f"{LBL_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
-            "",
-            LBL_INSTRUCTION_PARAMETERS_HEADER,
-        ]
 
         for field_name, field_value in instruction.model_dump().items():
             formatted_value = self._format_parameter_value(field_value)
-            lines.append(f"{LBL_INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
+            rows.append(
+                TableCell(
+                    label=field_name,
+                    value=formatted_value,
+                )
+            )
 
-        return "\n".join(lines)
+        return rows
 
     def _format_parameter_value(self, value: Union[float, bool, List[Any], Tuple[Any, ...], str, int]) -> str:
         if isinstance(value, float):
