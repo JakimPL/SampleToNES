@@ -39,7 +39,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
         self.audio_device_manager = audio_device_manager
 
-        self._devices: List[AudioDevice] = []
+        self._devices: Dict[int, AudioDevice] = {}
         self._device_name_to_device: Dict[str, AudioDevice] = {}
 
         self._device_items: List[str] = []
@@ -55,9 +55,9 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def prepare(self) -> None:
         settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
-        self._devices = list(settings_data.devices)
-        self._device_name_to_device = {device.name: device for device in self._devices}
-        self._device_items = [device.name for device in self._devices]
+        self._devices = dict(settings_data.devices)
+        self._device_name_to_device = {device.name: device for device in self._devices.values()}
+        self._device_items = [device.name for device in self._devices.values()]
 
         current_device = settings_data.get_current_device()
         self._current_device_name = current_device.name
@@ -186,8 +186,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         sample_rate = self._get_selected_sample_rate()
         bit_depth = self._get_selected_bit_depth()
 
-        self.audio_device_manager.set_device(device_index)
-        self.audio_device_manager.set_sample_rate(sample_rate)
-        self.audio_device_manager.set_bit_depth(bit_depth)
+        self.audio_device_manager.configure_device(device_index, sample_rate, bit_depth)
 
         self.hide()

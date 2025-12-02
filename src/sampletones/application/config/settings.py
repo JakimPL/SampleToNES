@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict
 
 from pydantic import BaseModel, ConfigDict
 
@@ -8,7 +8,7 @@ from sampletones.audio import AudioDevice, AudioDeviceManager
 class AudioSettingsData(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    devices: List[AudioDevice]
+    devices: Dict[int, AudioDevice]
     current_device_index: int
     current_sample_rate: int
     current_bit_depth: int
@@ -28,7 +28,7 @@ class AudioSettingsData(BaseModel):
         )
 
     def get_current_device(self) -> AudioDevice:
-        for device in self.devices:
-            if device.index == self.current_device_index:
-                return device
-        raise ValueError(f"Device with index {self.current_device_index} not found")
+        device = self.devices.get(self.current_device_index)
+        if device is None:
+            raise ValueError(f"Device with index {self.current_device_index} not found")
+        return device
