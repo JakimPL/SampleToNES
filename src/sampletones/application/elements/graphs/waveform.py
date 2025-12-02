@@ -8,9 +8,9 @@ from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 
 from ...constants import (
-    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
-    CLR_WAVEFORM_LAYER_SAMPLE,
-    CLR_WAVEFORM_POSITION_INDICATOR,
+    COL_WAVEFORM_LAYER_RECONSTRUCTION,
+    COL_WAVEFORM_LAYER_SAMPLE,
+    COL_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_PLOT_ORIGINAL,
@@ -153,7 +153,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             WaveformLayer(
                 fragment=fragment,
                 name=LBL_WAVEFORM_SAMPLE_LAYER_NAME,
-                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
         )
@@ -190,7 +190,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             ArrayLayer(
                 data=original_audio / (coefficient * original_audio_coefficient),
                 name=LBL_PLOT_ORIGINAL,
-                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
         )
@@ -199,7 +199,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             ArrayLayer(
                 data=approximation / coefficient,
                 name=LBL_PLOT_RECONSTRUCTION,
-                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
+                color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
             )
         )
@@ -267,7 +267,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             with dpg.theme() as indicator_theme:
                 with dpg.theme_component(dpg.mvLineSeries):
                     dpg.add_theme_color(
-                        dpg.mvPlotCol_Line, CLR_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
+                        dpg.mvPlotCol_Line, COL_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
                     )
                     dpg.add_theme_style(
                         dpg.mvPlotStyleVar_LineWeight,

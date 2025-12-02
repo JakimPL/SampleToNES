@@ -8,14 +8,14 @@ from ..constants import (
     FMT_INSTRUCTION_FREQUENCY,
     LBL_GLOBAL_NO,
     LBL_GLOBAL_YES,
+    LBL_INSTRUCTION_FREQUENCY,
+    LBL_INSTRUCTION_GENERATOR,
+    LBL_INSTRUCTION_NAME,
+    LBL_INSTRUCTION_PARAMETER_INDENT,
     LBL_INSTRUCTION_PARAMETERS_HEADER,
+    LBL_INSTRUCTION_SAMPLE_LENGTH,
     MSG_INSTRUCTION_NO_FREQUENCY,
     MSG_INSTRUCTION_NO_SELECTION,
-    PFX_INSTRUCTION_FREQUENCY,
-    PFX_INSTRUCTION_GENERATOR,
-    PFX_INSTRUCTION_NAME,
-    PFX_INSTRUCTION_PARAMETER_INDENT,
-    PFX_INSTRUCTION_SAMPLE_LENGTH,
     SUF_INSTRUCTION_SAMPLE_LENGTH,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
@@ -50,9 +50,9 @@ class InstructionDetailsLogic:
 
         if not self.current_data.fragment:
             lines = [
-                f"{PFX_INSTRUCTION_GENERATOR}{self.current_data.generator_class_name}",
-                f"{PFX_INSTRUCTION_NAME}{self.current_data.instruction.name}",
-                f"{PFX_INSTRUCTION_FREQUENCY}{MSG_INSTRUCTION_NO_FREQUENCY}",
+                f"{LBL_INSTRUCTION_GENERATOR}{self.current_data.generator_class_name}",
+                f"{LBL_INSTRUCTION_NAME}{self.current_data.instruction.name}",
+                f"{LBL_INSTRUCTION_FREQUENCY}{MSG_INSTRUCTION_NO_FREQUENCY}",
             ]
             return "\n".join(lines)
 
@@ -60,16 +60,16 @@ class InstructionDetailsLogic:
         instruction = self.current_data.instruction
 
         lines = [
-            f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class}",
-            f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
-            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+            f"{LBL_INSTRUCTION_GENERATOR}{fragment.generator_class}",
+            f"{LBL_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
+            f"{LBL_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
             "",
             LBL_INSTRUCTION_PARAMETERS_HEADER,
         ]
 
         for field_name, field_value in instruction.model_dump().items():
             formatted_value = self._format_parameter_value(field_value)
-            lines.append(f"{PFX_INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
+            lines.append(f"{LBL_INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
 
         return "\n".join(lines)
 

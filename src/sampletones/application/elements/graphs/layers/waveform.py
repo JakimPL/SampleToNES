@@ -5,14 +5,14 @@ import numpy as np
 
 from sampletones.library import InstructionLibraryFragment
 
-from ....constants import CLR_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
+from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 
 
 @dataclass(frozen=True)
 class WaveformLayer:
     fragment: InstructionLibraryFragment[Any]
     name: str
-    color: Tuple[int, int, int, int] = CLR_WAVEFORM_DEFAULT
+    color: Tuple[int, int, int, int] = COL_WAVEFORM_DEFAULT
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
 
     x_data: np.ndarray = field(init=False)

@@ -3,14 +3,14 @@ from typing import Tuple
 
 import numpy as np
 
-from ....constants import CLR_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
+from ....constants import COL_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
 
 
 @dataclass(frozen=True)
 class BarLayer:
     data: np.ndarray
     name: str
-    color: Tuple[int, int, int, int] = CLR_BAR_PLOT_DEFAULT
+    color: Tuple[int, int, int, int] = COL_BAR_PLOT_DEFAULT
     bar_weight: float = VAL_BAR_PLOT_BAR_WEIGHT
 
     x_data: np.ndarray = field(init=False)

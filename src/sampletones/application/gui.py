@@ -92,6 +92,7 @@ from .panels.reconstruction.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
 from .resources.items import FontResource, IconResource
 from .resources.resources import get_font_path, get_icon_path
+from .themes.default import DefaultTheme
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -124,11 +125,14 @@ class GUI:
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
 
+        self.theme = DefaultTheme()
+
         self.setup_gui()
 
     def setup_gui(self) -> None:
         dpg.create_context()
         self.set_fonts()
+        self.set_default_theme()
         self.create_main_window()
         self.set_viewport()
         dpg.setup_dearpygui()
@@ -145,6 +149,9 @@ class GUI:
             dpg.bind_font(TAG_FONT_REGULAR)
 
         dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
+
+    def set_default_theme(self) -> None:
+        self.theme.bind()
 
     def set_viewport(self) -> None:
         if sys.platform.startswith("win"):

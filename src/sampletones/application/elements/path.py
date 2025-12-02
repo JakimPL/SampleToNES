@@ -8,8 +8,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.utils import get_directory, shorten_path, to_path
 
 from ..constants import (
-    CLR_PATH_TEXT,
-    CLR_PATH_TEXT_HOVER,
+    COL_PATH_TEXT,
+    COL_PATH_TEXT_HOVER,
     SUF_CONVERTER_HANDLER,
     SUF_GROUP,
 )
@@ -23,8 +23,8 @@ class GUIPathText:
         path: Path,
         parent: str,
         prefix: Optional[str] = None,
-        color: Tuple[int, int, int] = CLR_PATH_TEXT,
-        hover_color: Tuple[int, int, int] = CLR_PATH_TEXT_HOVER,
+        color: Tuple[int, int, int] = COL_PATH_TEXT,
+        hover_color: Tuple[int, int, int] = COL_PATH_TEXT_HOVER,
     ) -> None:
         self.tag = tag
         self.path = path

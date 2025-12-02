@@ -2,38 +2,9 @@ from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
-    COL_BUTTON_SPECIAL,
-    COL_BUTTON_SPECIAL_ACTIVE,
-    COL_BUTTON_SPECIAL_HOVERED,
-    SUF_BUTTON,
-    TAG_FONT_BOLD,
-    TAG_THEME_BUTTON,
-    VAL_BUTTON_SPECIAL_FRAME_PADDING,
-    VAL_BUTTON_SPECIAL_FRAME_ROUNDING,
-)
-
-
-def create_button_theme() -> str:
-    if dpg.does_item_exist(TAG_THEME_BUTTON):
-        return TAG_THEME_BUTTON
-
-    with dpg.theme(tag=TAG_THEME_BUTTON):
-        with dpg.theme_component():
-            dpg.add_theme_color(dpg.mvThemeCol_Button, COL_BUTTON_SPECIAL, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, COL_BUTTON_SPECIAL_HOVERED, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, COL_BUTTON_SPECIAL_ACTIVE, category=dpg.mvThemeCat_Core)
-            dpg.add_theme_style(
-                dpg.mvStyleVar_FrameRounding,
-                VAL_BUTTON_SPECIAL_FRAME_ROUNDING,
-                category=dpg.mvThemeCat_Core,
-            )
-            dpg.add_theme_style(
-                dpg.mvStyleVar_FramePadding,
-                *VAL_BUTTON_SPECIAL_FRAME_PADDING,
-                category=dpg.mvThemeCat_Core,
-            )
-    return TAG_THEME_BUTTON
+from ..constants import SUF_BUTTON, TAG_FONT_BOLD
+from ..themes.button import ButtonTheme
+from ..themes.theme import Theme
 
 
 class GUIButton:
@@ -45,6 +16,8 @@ class GUIButton:
         label: str,
         callback: Callable[..., Any],
         enabled: bool = True,
+        bold: bool = False,
+        theme: Theme = ButtonTheme(),
         **kwargs: Any,
     ) -> None:
         self._tag = tag
@@ -58,8 +31,10 @@ class GUIButton:
                 **kwargs,
             )
 
-            dpg.bind_item_theme(self._button_tag, create_button_theme())
-            dpg.bind_item_font(self._button_tag, TAG_FONT_BOLD)
+            theme.bind_to_item(self._button_tag)
+            if bold:
+                dpg.bind_item_font(self._button_tag, TAG_FONT_BOLD)
+
         GUIButton.REGISTRY[tag] = self
 
     @classmethod
