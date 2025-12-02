@@ -325,8 +325,6 @@ class GUI:
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
-                borders_innerV=False,
-                borders_outerV=False,
             ):
                 dpg.add_table_column(width_fixed=True)
                 dpg.add_table_column()
@@ -338,12 +336,14 @@ class GUI:
                         height=left_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         left_content_builder()
 
                     with dpg.child_window(
                         tag=f"{tab_tag}{SUF_CENTER_PANEL}",
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         center_content_builder()
 
@@ -352,6 +352,7 @@ class GUI:
                         height=right_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         right_content_builder()
 
