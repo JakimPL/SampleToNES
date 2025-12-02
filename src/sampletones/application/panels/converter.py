@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -74,9 +74,7 @@ class GUIConverterWindow(GUIWindow):
 
         super().__init__(tag=TAG_CONVERTER_WINDOW)
 
-    def show(self, input_path: Path, *args: Any, is_file: bool = False, **kwargs: Any) -> None:
-        self.hide()
-
+    def prepare(self, input_path: Path, is_file: bool) -> None:
         config = self._load_config()
         if config is None:
             return
@@ -86,7 +84,6 @@ class GUIConverterWindow(GUIWindow):
 
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=False)
         self._start_conversion(input_path, config, is_file)
-        self.create_panel()
 
     def create_panel(self) -> None:
         assert self.input_path is not None, "Input path is not set"

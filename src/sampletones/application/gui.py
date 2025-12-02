@@ -21,6 +21,7 @@ from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
+from .config.settings import AudioSettingsData
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -34,6 +35,7 @@ from .constants import (
     DIM_WINDOW_MAIN_WIDTH,
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_FILE,
+    LBL_MENU_ITEM_AUDIO_SETTINGS,
     LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_EXIT,
     LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -93,6 +95,7 @@ from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstruction.reconstructor import GUIReconstructorPanel
+from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.data import ReconstructionData
 from .resources.items import FontResource, IconResource
 from .resources.resources import get_font_path, get_icon_path
@@ -128,6 +131,7 @@ class GUI:
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
+        self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow()
 
         self.theme = DefaultTheme()
 
@@ -236,6 +240,8 @@ class GUI:
             with dpg.menu(label=LBL_MENU_FILE):
                 dpg.add_menu_item(label=LBL_MENU_ITEM_SAVE_CONFIG, callback=self._save_config_dialog)
                 dpg.add_menu_item(label=LBL_MENU_ITEM_LOAD_CONFIG, callback=self._load_config_dialog)
+                dpg.add_separator()
+                dpg.add_menu_item(label=LBL_MENU_ITEM_AUDIO_SETTINGS, callback=self._open_audio_settings)
                 dpg.add_separator()
                 dpg.add_menu_item(label=LBL_MENU_ITEM_EXIT, callback=self._exit_application)
             with dpg.menu(label=LBL_MENU_RECONSTRUCTION):
@@ -440,6 +446,10 @@ class GUI:
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
 
         self.application_config_manager.set_config_path(filepath)
+
+    def _open_audio_settings(self) -> None:
+        audio_settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
+        self.audio_settings_window.show(audio_settings_data)
 
     def _reconstruct_file_dialog(self) -> None:
         if self.converter_window.converter is not None and self.converter_window.converter.is_running():

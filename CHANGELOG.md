@@ -2,6 +2,9 @@
 
 ## v0.2.3
 
+* Improved the application's graphical interface.
+* Added audio settings panel.
+
 ## v0.2.2 [2025-11-21]
 
 * Added GPU support via _CuPy_.

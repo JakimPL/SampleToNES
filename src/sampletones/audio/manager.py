@@ -6,11 +6,16 @@ import sounddevice as sd
 
 from .device import AudioDevice
 
+DEFAULT_SAMPLE_RATES = [22050, 44100, 48000, 96000, 192000]
+DEFAULT_BIT_DEPTHS = [16, 24, 32]
+DEFAULT_BIT_DEPTH = 16
+
 
 class AudioDeviceManager:
     def __init__(self) -> None:
         self._current_device: Optional[int] = None
         self._device_sample_rate: Optional[int] = None
+        self._bit_depth: int = DEFAULT_BIT_DEPTH
         self._stream: Optional[sd.OutputStream] = None
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
@@ -116,6 +121,54 @@ class AudioDeviceManager:
 
     def get_device(self) -> Optional[int]:
         return self._current_device
+
+    def get_device_index(self) -> int:
+        if self._current_device is None:
+            raise ValueError("No audio device selected")
+        return self._current_device
+
+    def get_device_name(self) -> str:
+        if self._current_device is None:
+            raise ValueError("No audio device selected")
+        device_info = sd.query_devices(self._current_device)
+        device_info_any: Any = device_info
+        return str(device_info_any["name"])
+
+    def get_sample_rate(self) -> int:
+        if self._device_sample_rate is None:
+            raise ValueError("No audio device selected")
+        return self._device_sample_rate
+
+    def get_bit_depth(self) -> int:
+        return self._bit_depth
+
+    def set_bit_depth(self, bit_depth: int) -> None:
+        if bit_depth not in DEFAULT_BIT_DEPTHS:
+            raise ValueError(f"Unsupported bit depth: {bit_depth}")
+        self._bit_depth = bit_depth
+
+    def get_supported_sample_rates(self) -> List[int]:
+        if self._current_device is None:
+            return list(DEFAULT_SAMPLE_RATES)
+
+        supported_rates = []
+        for rate in DEFAULT_SAMPLE_RATES:
+            try:
+                sd.check_output_settings(device=self._current_device, samplerate=rate)
+                supported_rates.append(rate)
+            except sd.PortAudioError:
+                pass
+
+        if not supported_rates and self._device_sample_rate is not None:
+            supported_rates = [self._device_sample_rate]
+
+        return supported_rates
+
+    def get_supported_bit_depths(self) -> List[int]:
+        return list(DEFAULT_BIT_DEPTHS)
+
+    def list_output_devices(self) -> List[AudioDevice]:
+        return [device for device in self.list_devices() if device.is_output]
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
         self._on_position_changed = callback

@@ -47,16 +47,19 @@ TITLE_WINDOW_MAIN = "SampleToNES"
 
 # Menu labels
 LBL_MENU_FILE = "File"
-LBL_MENU_ITEM_EXIT = "Exit"
-LBL_MENU_RECONSTRUCTION = "Reconstruction"
 LBL_MENU_ITEM_SAVE_CONFIG = "Save configuration"
 LBL_MENU_ITEM_LOAD_CONFIG = "Load configuration"
+LBL_MENU_ITEM_AUDIO_SETTINGS = "Audio settings"
+LBL_MENU_ITEM_EXIT = "Exit"
+
+LBL_MENU_RECONSTRUCTION = "Reconstruction"
 LBL_MENU_ITEM_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
 LBL_MENU_ITEM_CLOSE_RECONSTRUCTION = "Close reconstruction"
 LBL_MENU_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
+
 LBL_MENU_VIEW = "View"
 LBL_MENU_ITEM_FULLSCREEN = "Fullscreen"
 
@@ -610,3 +613,30 @@ VAL_WINDOW_FULLSCREEN = False
 
 TAG_THEME_BUTTON = "theme_button"
 TAG_THEME_DEFAULT = "theme_default"
+
+# Audio settings panel constants
+TAG_AUDIO_SETTINGS_PANEL = "audio_settings_panel"
+TAG_AUDIO_SETTINGS_WINDOW = "audio_settings_window"
+TAG_AUDIO_SETTINGS_DEVICE_COMBO = "audio_settings_device_combo"
+TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO = "audio_settings_sample_rate_combo"
+TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO = "audio_settings_bit_depth_combo"
+TAG_AUDIO_SETTINGS_DEVICE_GROUP = "audio_settings_device_group"
+TAG_AUDIO_SETTINGS_SAMPLE_RATE_GROUP = "audio_settings_sample_rate_group"
+TAG_AUDIO_SETTINGS_BIT_DEPTH_GROUP = "audio_settings_bit_depth_group"
+TAG_AUDIO_SETTINGS_APPLY_BUTTON = "audio_settings_apply_button"
+TAG_AUDIO_SETTINGS_REFRESH_BUTTON = "audio_settings_refresh_button"
+
+LBL_AUDIO_SETTINGS_TITLE = "Audio Settings"
+LBL_AUDIO_SETTINGS_OUTPUT_DEVICE = "Output device"
+LBL_AUDIO_SETTINGS_SAMPLE_RATE = "Sample rate"
+LBL_AUDIO_SETTINGS_BIT_DEPTH = "Bit depth"
+LBL_AUDIO_SETTINGS_APPLY = "Apply"
+LBL_AUDIO_SETTINGS_REFRESH_DEVICES = "Refresh devices"
+
+DIM_AUDIO_SETTINGS_WINDOW_WIDTH = 400
+DIM_AUDIO_SETTINGS_WINDOW_HEIGHT = 0
+DIM_AUDIO_SETTINGS_COMBO_WIDTH = -1
+DIM_AUDIO_SETTINGS_LABEL_WIDTH = 100
+
+SUF_AUDIO_SETTINGS_HZ = " Hz"
+SUF_AUDIO_SETTINGS_BIT = "-bit"

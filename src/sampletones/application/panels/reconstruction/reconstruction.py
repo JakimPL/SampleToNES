@@ -191,7 +191,6 @@ class GUIReconstructionPanel(GUIPanel):
 
     def set_callbacks(
         self,
-        *,
         on_export_wav: Optional[Callable[[], None]] = None,
         on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None,
         on_clear_reconstruction_details: Optional[Callable[[], None]] = None,
