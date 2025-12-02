@@ -1,7 +1,7 @@
 import sys
 import tkinter
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
@@ -16,7 +16,7 @@ from sampletones.constants.paths import (
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender
+from sampletones.typehints import Sender, SerializedData
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
@@ -532,8 +532,8 @@ class GUI:
         return True
 
     @staticmethod
-    def _get_monitors() -> List[Dict[str, Any]]:
-        monitors: List[Dict[str, Any]] = []
+    def _get_monitors() -> List[SerializedData]:
+        monitors: List[SerializedData] = []
         for monitor in get_monitors():
             monitors.append(
                 {
@@ -546,7 +546,7 @@ class GUI:
 
         return monitors
 
-    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict[str, Any]]:
+    def _monitor_for_position(self, x: float, y: float) -> Optional[SerializedData]:
         monitors = self._get_monitors()
         position_x = float(x)
         position_y = float(y)

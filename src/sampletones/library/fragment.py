@@ -18,8 +18,12 @@ from sampletones.generators import (
     Generator,
 )
 from sampletones.instructions import InstructionData, InstructionT
-from sampletones.typehints import Initials, SerializedData
+from sampletones.typehints import Initials, ReducedObject, SerializedData
 from sampletones.utils import serialize_array
+
+
+def _instruction_library_fragment(data: SerializedData) -> "InstructionLibraryFragment[Any]":
+    return InstructionLibraryFragment(**data)
 
 
 class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
@@ -30,6 +34,9 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     sample: CyclicArray
     feature: np.ndarray
     frequency: float
+
+    def __reduce__(self) -> ReducedObject:
+        return (_instruction_library_fragment, (dict(self),))
 
     @classmethod
     def create(

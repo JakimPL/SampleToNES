@@ -1,6 +1,6 @@
 from functools import cached_property
 from types import ModuleType
-from typing import Generic, Self
+from typing import Any, Generic, Self, Tuple
 
 from pydantic import ConfigDict, Field
 
@@ -12,8 +12,13 @@ from sampletones.instructions import (
     InstructionData,
     InstructionT,
 )
+from sampletones.typehints import SerializedData
 
 from .fragment import InstructionLibraryFragment
+
+
+def _library_item(data: SerializedData) -> "LibraryItem[Any]":
+    return LibraryItem(**data)
 
 
 class LibraryItem(DataModel, Generic[InstructionT]):
@@ -24,6 +29,9 @@ class LibraryItem(DataModel, Generic[InstructionT]):
         ...,
         description="Library fragment associated with the instruction",
     )
+
+    def __reduce__(self) -> Tuple[Any, Tuple[SerializedData]]:
+        return (_library_item, (dict(self),))
 
     @classmethod
     def create(

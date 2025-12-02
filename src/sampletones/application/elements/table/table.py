@@ -1,6 +1,8 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
+
+from sampletones.typehints import SerializedData
 
 from ...constants import (
     COL_TABLE_LABEL,
@@ -43,7 +45,7 @@ class GUITable:
         self._bold_labels = bold_labels
         self._theme = theme
 
-        table_kwargs: Dict[str, Any] = {
+        table_kwargs: SerializedData = {
             "tag": tag,
             "header_row": header_row,
             "borders_innerH": borders_inner_horizontal,
