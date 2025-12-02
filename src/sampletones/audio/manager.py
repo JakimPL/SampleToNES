@@ -10,6 +10,12 @@ DEFAULT_SAMPLE_RATES = [22050, 44100, 48000, 96000, 192000]
 DEFAULT_BIT_DEPTHS = [16, 24, 32]
 DEFAULT_BIT_DEPTH = 16
 
+BIT_DEPTH_TO_DTYPE = {
+    16: np.int16,
+    24: np.int32,
+    32: np.float32,
+}
+
 
 class AudioDeviceManager:
     def __init__(self) -> None:
@@ -98,6 +104,9 @@ class AudioDeviceManager:
             max_input_channels = int(device_any["max_input_channels"])
             max_output_channels = int(device_any["max_output_channels"])
             device_name = str(device_any["name"])
+            device_default_sample_rate = int(device_any["default_samplerate"])
+
+            supported_sample_rates = self._get_supported_sample_rates_for_device(i, device_default_sample_rate)
 
             result.append(
                 AudioDevice(
@@ -107,10 +116,27 @@ class AudioDeviceManager:
                     is_output=max_output_channels > 0,
                     is_default_input=i == default_input,
                     is_default_output=i == default_output,
+                    default_sample_rate=device_default_sample_rate,
+                    supported_sample_rates=supported_sample_rates,
+                    supported_bit_depths=list(DEFAULT_BIT_DEPTHS),
                 )
             )
 
         return result
+
+    def _get_supported_sample_rates_for_device(self, device_index: int, default_sample_rate: int) -> List[int]:
+        supported_rates = []
+        for rate in DEFAULT_SAMPLE_RATES:
+            try:
+                sd.check_output_settings(device=device_index, samplerate=rate)
+                supported_rates.append(rate)
+            except sd.PortAudioError:
+                pass
+
+        if not supported_rates:
+            supported_rates = [default_sample_rate]
+
+        return supported_rates
 
     def set_device(self, device_index: int) -> None:
         self.stop()
@@ -139,33 +165,30 @@ class AudioDeviceManager:
             raise ValueError("No audio device selected")
         return self._device_sample_rate
 
+    def set_sample_rate(self, sample_rate: int) -> None:
+        if self._current_device is not None:
+            try:
+                sd.check_output_settings(device=self._current_device, samplerate=sample_rate)
+            except sd.PortAudioError as error:
+                raise ValueError(f"Sample rate {sample_rate} not supported by device") from error
+        self._device_sample_rate = sample_rate
+
     def get_bit_depth(self) -> int:
         return self._bit_depth
 
     def set_bit_depth(self, bit_depth: int) -> None:
         if bit_depth not in DEFAULT_BIT_DEPTHS:
             raise ValueError(f"Unsupported bit depth: {bit_depth}")
+        if self._current_device is not None:
+            dtype = BIT_DEPTH_TO_DTYPE[bit_depth]
+            try:
+                sd.check_output_settings(device=self._current_device, dtype=dtype)
+            except sd.PortAudioError as error:
+                raise ValueError(f"Bit depth {bit_depth} not supported by device") from error
         self._bit_depth = bit_depth
 
-    def get_supported_sample_rates(self) -> List[int]:
-        if self._current_device is None:
-            return list(DEFAULT_SAMPLE_RATES)
-
-        supported_rates = []
-        for rate in DEFAULT_SAMPLE_RATES:
-            try:
-                sd.check_output_settings(device=self._current_device, samplerate=rate)
-                supported_rates.append(rate)
-            except sd.PortAudioError:
-                pass
-
-        if not supported_rates and self._device_sample_rate is not None:
-            supported_rates = [self._device_sample_rate]
-
-        return supported_rates
-
-    def get_supported_bit_depths(self) -> List[int]:
-        return list(DEFAULT_BIT_DEPTHS)
+    def _get_output_dtype(self) -> np.dtype[Any]:
+        return BIT_DEPTH_TO_DTYPE.get(self._bit_depth, np.float32)
 
     def list_output_devices(self) -> List[AudioDevice]:
         return [device for device in self.list_devices() if device.is_output]
@@ -209,7 +232,7 @@ class AudioDeviceManager:
                 channels=1,
                 callback=self._audio_callback,
                 device=self._current_device,
-                dtype=np.float32,
+                dtype=self._get_output_dtype(),
             )
             self._stream.start()
 

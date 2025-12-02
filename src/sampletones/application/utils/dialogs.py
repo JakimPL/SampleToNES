@@ -13,6 +13,7 @@ from ..constants import (
     DIM_DIALOG_ERROR_WIDTH_WRAP,
     DIM_DIALOG_HEIGHT,
     DIM_DIALOG_WIDTH,
+    LBL_BUTTON_HIDE_TRACEBACK,
     LBL_BUTTON_OK,
     LBL_BUTTON_SHOW_TRACEBACK,
     MSG_LIBRARY_NOT_LOADED,
@@ -36,7 +37,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
-from .dpg import dpg_delete_item
+from .dpg import dpg_configure_item, dpg_delete_item
 
 
 def show_modal_dialog(
@@ -135,6 +136,10 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
                 def toggle_traceback() -> None:
                     traceback.toggle_visibility()
+                    dpg_configure_item(
+                        show_button_tag,
+                        label=LBL_BUTTON_SHOW_TRACEBACK if not traceback.visible else LBL_BUTTON_HIDE_TRACEBACK,
+                    )
 
                 GUIButton(
                     tag=show_button_tag,

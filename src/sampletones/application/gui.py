@@ -21,7 +21,6 @@ from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
-from .config.settings import AudioSettingsData
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
@@ -131,7 +130,7 @@ class GUI:
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
-        self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow()
+        self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
         self.theme = DefaultTheme()
 
@@ -204,12 +203,6 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
 
-        self.converter_window.set_callbacks(
-            on_load_file=self._on_converted_reconstruction_loaded,
-            on_load_directory=self.browser_panel.refresh,
-            on_cancelled=self.browser_panel.refresh,
-        )
-
         self.instruction_panel.set_callbacks(
             on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
@@ -224,6 +217,12 @@ class GUI:
         self.reconstruction_details_panel.set_callbacks(
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
             on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
+        )
+
+        self.converter_window.set_callbacks(
+            on_load_file=self._on_converted_reconstruction_loaded,
+            on_load_directory=self.browser_panel.refresh,
+            on_cancelled=self.browser_panel.refresh,
         )
 
     def create_main_window(self) -> None:
@@ -448,8 +447,7 @@ class GUI:
         self.application_config_manager.set_config_path(filepath)
 
     def _open_audio_settings(self) -> None:
-        audio_settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
-        self.audio_settings_window.show(audio_settings_data)
+        self.audio_settings_window.show()
 
     def _reconstruct_file_dialog(self) -> None:
         if self.converter_window.converter is not None and self.converter_window.converter.is_running():
