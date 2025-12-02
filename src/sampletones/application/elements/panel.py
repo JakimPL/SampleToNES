@@ -1,5 +1,15 @@
+from typing import Optional
+
+
 class GUIPanel:
-    def __init__(self, tag: str, parent: str, width: int = -1, height: int = -1, init: bool = False) -> None:
+    def __init__(
+        self,
+        tag: str,
+        parent: Optional[str] = None,
+        width: int = -1,
+        height: int = -1,
+        init: bool = False,
+    ) -> None:
         self.tag = tag
         self.parent = parent
         self.width = width

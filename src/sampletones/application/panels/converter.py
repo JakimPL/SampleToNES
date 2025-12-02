@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.reconstruction.converter import (
@@ -46,17 +47,13 @@ from ..constants import (
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
+from ..elements.window import GUIWindow
 from ..utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ..utils.dpg import (
-    dpg_configure_item,
-    dpg_delete_item,
-    dpg_set_item_callback,
-    dpg_set_value,
-)
+from ..utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
 from ..utils.progress import SystemProgress
 
 
-class GUIConverterWindow:
+class GUIConverterWindow(GUIWindow):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.converter: Optional[ReconstructionConverter] = None
@@ -68,62 +65,36 @@ class GUIConverterWindow:
         self.eta_estimator: Optional[ETAEstimator] = None
 
         self.is_file: bool = False
+        self.input_path: Optional[Path] = None
         self.output_path: Optional[Path] = None
 
         self._on_load_file: Optional[Callable[[Path], None]] = None
         self._on_load_directory: Optional[Callable[[], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
 
-    def hide(self) -> None:
-        dpg_delete_item(TAG_CONVERTER_WINDOW)
+        super().__init__(tag=TAG_CONVERTER_WINDOW)
 
-    def show(self, input_path: Path, is_file: bool = False) -> None:
+    def show(self, input_path: Path, *args: Any, is_file: bool = False, **kwargs: Any) -> None:
         self.hide()
 
-        try:
-            config = self.config_manager.get_config()
-        except RuntimeError as exception:
-            logger.error("Config not initialized")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
-            return
-        except Exception as exception:
-            logger.error("Failed to get config")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+        config = self._load_config()
+        if config is None:
             return
 
-        try:
-            self.output_path = get_output_path(config, input_path)
-        except FileNotFoundError as exception:
-            logger.error("Input file does not exist")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+        if not self._assign_paths(input_path, config):
             return
-        except OSError as exception:
-            logger.error("Invalid path")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
-            return
-        except Exception as exception:
-            logger.error("Failed to determine output path")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
-            return
-
-        self.is_file = is_file
-        self.converter = ReconstructionConverter(
-            config=config,
-            input_path=input_path,
-            is_file=is_file,
-        )
-        self.converter.set_callbacks(
-            on_start=self._on_start,
-            on_completed=self._on_conversion_complete,
-            on_error=self._on_conversion_error,
-            on_cancelled=self._on_cancellation_complete,
-            on_progress=self._update_status,
-        )
 
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=False)
+        self._start_conversion(input_path, config, is_file)
+        self.create_panel()
+
+    def create_panel(self) -> None:
+        assert self.input_path is not None, "Input path is not set"
+        assert self.output_path is not None, "Output path is not set"
+
         with dpg.window(
             label=TITLE_DIALOG_CONVERTER,
-            tag=TAG_CONVERTER_WINDOW,
+            tag=self.tag,
             modal=False,
             min_size=(DIM_DIALOG_CONVERTER_WIDTH, DIM_DIALOG_CONVERTER_HEIGHT),
             autosize=True,
@@ -138,7 +109,7 @@ class GUIConverterWindow:
             )
 
             self.input_path_text = GUIPathText(
-                path=input_path,
+                path=self.input_path,
                 prefix=MSG_INPUT_PATH_PREFIX,
                 tag=TAG_CONVERTER_INPUT_PATH_TEXT,
                 parent=TAG_CONVERTER_WINDOW,
@@ -152,33 +123,81 @@ class GUIConverterWindow:
             )
 
             dpg.add_separator()
+            self._add_buttons()
 
-            with dpg.table(
-                header_row=False,
-                policy=dpg.mvTable_SizingStretchProp,
-                resizable=False,
-                width=-1,
-            ):
-                dpg.add_table_column()
-                dpg.add_table_column()
+    def _load_config(self) -> Optional[Config]:
+        try:
+            return self.config_manager.get_config()
+        except RuntimeError as exception:
+            logger.error("Config not initialized")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+        except Exception as exception:
+            logger.error("Failed to get config")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
 
-                with dpg.table_row():
-                    GUIButton(
-                        label=LBL_BUTTON_LOAD,
-                        tag=TAG_CONVERTER_LOAD_BUTTON,
-                        width=DIM_CONVERTER_BUTTON_WIDTH,
-                        callback=self._on_load_clicked,
-                        enabled=False,
-                    )
-                    GUIButton(
-                        label=LBL_BUTTON_CANCEL,
-                        tag=TAG_CONVERTER_CANCEL_BUTTON,
-                        width=DIM_CONVERTER_BUTTON_WIDTH,
-                        callback=self._on_cancel_clicked,
-                    )
+        return None
+
+    def _assign_paths(self, input_path: Path, config: Config) -> bool:
+        try:
+            self.output_path = get_output_path(config, input_path)
+            self.input_path = input_path
+        except FileNotFoundError as exception:
+            logger.error("Input file does not exist")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return False
+        except OSError as exception:
+            logger.error("Invalid path")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return False
+        except Exception as exception:
+            logger.error("Failed to determine output path")
+            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            return False
+
+        return True
+
+    def _start_conversion(self, input_path: Path, config: Config, is_file: bool) -> None:
+        self.is_file = is_file
+        self.converter = ReconstructionConverter(
+            config=config,
+            input_path=input_path,
+            is_file=is_file,
+        )
+        self.converter.set_callbacks(
+            on_start=self._on_start,
+            on_completed=self._on_conversion_complete,
+            on_error=self._on_conversion_error,
+            on_cancelled=self._on_cancellation_complete,
+            on_progress=self._update_status,
+        )
 
         self.converter.start()
         self.system_progress.initialize()
+
+    def _add_buttons(self) -> None:
+        with dpg.table(
+            header_row=False,
+            policy=dpg.mvTable_SizingStretchProp,
+            resizable=False,
+            width=-1,
+        ):
+            dpg.add_table_column()
+            dpg.add_table_column()
+
+            with dpg.table_row():
+                GUIButton(
+                    label=LBL_BUTTON_LOAD,
+                    tag=TAG_CONVERTER_LOAD_BUTTON,
+                    width=DIM_CONVERTER_BUTTON_WIDTH,
+                    callback=self._on_load_clicked,
+                    enabled=False,
+                )
+                GUIButton(
+                    label=LBL_BUTTON_CANCEL,
+                    tag=TAG_CONVERTER_CANCEL_BUTTON,
+                    width=DIM_CONVERTER_BUTTON_WIDTH,
+                    callback=self._on_cancel_clicked,
+                )
 
     def _set_status_completed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
