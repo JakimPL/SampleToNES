@@ -4,10 +4,10 @@ from typing import Dict, List, Optional, Tuple
 from sampletones.constants.enums import FeatureKey
 
 from ..constants import (
-    CLR_BAR_PLOT_ARPEGGIO,
-    CLR_BAR_PLOT_DUTY_CYCLE,
-    CLR_BAR_PLOT_PITCH,
-    CLR_BAR_PLOT_VOLUME,
+    COL_BAR_PLOT_ARPEGGIO,
+    COL_BAR_PLOT_DUTY_CYCLE,
+    COL_BAR_PLOT_PITCH,
+    COL_BAR_PLOT_VOLUME,
     LBL_RECONSTRUCTION_ARPEGGIO_PLOT,
     LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT,
     LBL_RECONSTRUCTION_HI_PITCH_PLOT,
@@ -36,7 +36,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.VOLUME: FeaturePlotConfig(
         feature_key=FeatureKey.VOLUME,
         label=LBL_RECONSTRUCTION_VOLUME_PLOT,
-        color=CLR_BAR_PLOT_VOLUME,
+        color=COL_BAR_PLOT_VOLUME,
         y_min=VAL_BAR_PLOT_VOLUME_Y_MIN,
         y_max=VAL_BAR_PLOT_VOLUME_Y_MAX,
         y_ticks=(0, 4, 8, 12, 16),
@@ -44,7 +44,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.ARPEGGIO: FeaturePlotConfig(
         feature_key=FeatureKey.ARPEGGIO,
         label=LBL_RECONSTRUCTION_ARPEGGIO_PLOT,
-        color=CLR_BAR_PLOT_ARPEGGIO,
+        color=COL_BAR_PLOT_ARPEGGIO,
         y_min=-1.0,
         y_max=-1.0,
         y_ticks=None,
@@ -52,7 +52,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.PITCH,
         label=LBL_RECONSTRUCTION_PITCH_PLOT,
-        color=CLR_BAR_PLOT_PITCH,
+        color=COL_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
         y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
@@ -60,7 +60,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.HI_PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.HI_PITCH,
         label=LBL_RECONSTRUCTION_HI_PITCH_PLOT,
-        color=CLR_BAR_PLOT_PITCH,
+        color=COL_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
         y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
@@ -68,7 +68,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
         feature_key=FeatureKey.DUTY_CYCLE,
         label=LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT,
-        color=CLR_BAR_PLOT_DUTY_CYCLE,
+        color=COL_BAR_PLOT_DUTY_CYCLE,
         y_min=VAL_BAR_PLOT_DUTY_CYCLE_Y_MIN,
         y_max=VAL_BAR_PLOT_DUTY_CYCLE_Y_MAX,
         y_ticks=(0, 1, 2, 3),

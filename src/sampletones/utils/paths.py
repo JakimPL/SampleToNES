@@ -25,3 +25,8 @@ def to_path(path: Union[str, Path]) -> Path:
         path = Path(path)
 
     return path
+
+
+def get_directory(path: Union[str, Path]) -> Path:
+    path = to_path(path)
+    return path if path.is_dir() else path.parent

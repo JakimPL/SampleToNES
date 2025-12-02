@@ -17,10 +17,10 @@ if ! flatc --help 2>&1 | grep -q -- '--python'; then
 	exit 3
 fi
 
-DEFINITIONS_DIR="$SCRIPT_DIR/definitions"
-echo "Removing existing .py files under ${DEFINITIONS_DIR}..."
-find "$DEFINITIONS_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
+echo "Removing existing .py files under ${SCRIPT_DIR}..."
+find "$SCRIPT_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
 
+DEFINITIONS_DIR="$SCRIPT_DIR/definitions"
 echo "Generating Python bindings for all .fbs files in: ${DEFINITIONS_DIR}..."
 TARGET_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 mapfile -t FBS_FILES < <(find "$DEFINITIONS_DIR" -type f -name '*.fbs' | sort)

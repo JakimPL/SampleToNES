@@ -8,26 +8,26 @@ from flatbuffers.compat import import_numpy
 np = import_numpy()
 
 
-class FBLibraryItem(object):
+class FBInstructionsLibraryItem(object):
     __slots__ = ["_tab"]
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = FBLibraryItem()
+        x = FBInstructionsLibraryItem()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsFBLibraryItem(cls, buf, offset=0):
+    def GetRootAsFBInstructionsLibraryItem(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
 
-    # FBLibraryItem
+    # FBInstructionsLibraryItem
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # FBLibraryItem
+    # FBInstructionsLibraryItem
     def InstructionData(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
@@ -39,46 +39,46 @@ class FBLibraryItem(object):
             return obj
         return None
 
-    # FBLibraryItem
+    # FBInstructionsLibraryItem
     def Fragment(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from schemas.library.FBLibraryFragment import FBLibraryFragment
+            from schemas.library.FBInstructionsLibraryFragment import FBInstructionsLibraryFragment
 
-            obj = FBLibraryFragment()
+            obj = FBInstructionsLibraryFragment()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
 
 
-def FBLibraryItemStart(builder):
+def FBInstructionsLibraryItemStart(builder):
     builder.StartObject(2)
 
 
 def Start(builder):
-    return FBLibraryItemStart(builder)
+    return FBInstructionsLibraryItemStart(builder)
 
 
-def FBLibraryItemAddInstructionData(builder, instructionData):
+def FBInstructionsLibraryItemAddInstructionData(builder, instructionData):
     builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(instructionData), 0)
 
 
 def AddInstructionData(builder, instructionData):
-    return FBLibraryItemAddInstructionData(builder, instructionData)
+    return FBInstructionsLibraryItemAddInstructionData(builder, instructionData)
 
 
-def FBLibraryItemAddFragment(builder, fragment):
+def FBInstructionsLibraryItemAddFragment(builder, fragment):
     builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(fragment), 0)
 
 
 def AddFragment(builder, fragment):
-    return FBLibraryItemAddFragment(builder, fragment)
+    return FBInstructionsLibraryItemAddFragment(builder, fragment)
 
 
-def FBLibraryItemEnd(builder):
+def FBInstructionsLibraryItemEnd(builder):
     return builder.EndObject()
 
 
 def End(builder):
-    return FBLibraryItemEnd(builder)
+    return FBInstructionsLibraryItemEnd(builder)

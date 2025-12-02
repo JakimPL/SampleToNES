@@ -8,8 +8,10 @@ from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones.reconstruction import Reconstruction
 from sampletones.typehints import Sender
+from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
+from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -60,8 +62,14 @@ from ..player import GUIAudioPlayerPanel
 
 
 class GUIReconstructionPanel(GUIPanel):
-    def __init__(self, config_manager: ConfigManager, audio_device_manager: AudioDeviceManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
+    ) -> None:
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
         self.waveform_display: GUIWaveformDisplay
         self.player_panel: GUIAudioPlayerPanel
@@ -89,6 +97,19 @@ class GUIReconstructionPanel(GUIPanel):
 
     def is_loaded(self) -> bool:
         return self.reconstruction_data is not None
+
+    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_data = reconstruction_data
+        self.config_manager.load_config(reconstruction_data.config)
+
+        if self._on_display_reconstruction_details:
+            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
+
+        self._update_generator_checkboxes(reconstruction_data)
+        self._update_reconstruction_display()
+
+    def close_reconstruction(self) -> None:
+        self._clear_display()
 
     def _create_audio_panel(self) -> None:
         with dpg.child_window(
@@ -182,16 +203,6 @@ class GUIReconstructionPanel(GUIPanel):
         if on_clear_reconstruction_details is not None:
             self._on_clear_reconstruction_details = on_clear_reconstruction_details
 
-    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
-        self.config_manager.load_config(reconstruction_data.config)
-
-        if self._on_display_reconstruction_details:
-            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
-
-        self._update_generator_checkboxes(reconstruction_data)
-        self._update_reconstruction_display()
-
     def _get_selected_generators(self) -> List[GeneratorName]:
         selected_generators = []
         for generator_name in GeneratorName:
@@ -248,7 +259,7 @@ class GUIReconstructionPanel(GUIPanel):
         dpg_configure_item(radio_tag, enabled=True)
         dpg_configure_item(TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON, enabled=True)
 
-    def clear_display(self) -> None:
+    def _clear_display(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
 
@@ -280,14 +291,14 @@ class GUIReconstructionPanel(GUIPanel):
             raise AssertionError("Expected reconstruction data to be present")
 
         reconstruction = self.reconstruction_data.reconstruction
-        filename = Path(reconstruction.audio_filepath).stem
+        filename = to_path(reconstruction.audio_filepath).stem
         if generator_name is None:
             return filename
 
         instrument_name = f"{filename}_{generator_name}"
         return instrument_name
 
-    def export_reconstruction_fti_dialog(self, generator_name: GeneratorName) -> None:
+    def export_instrument_dialog(self, generator_name: GeneratorName) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
 
@@ -296,7 +307,7 @@ class GUIReconstructionPanel(GUIPanel):
         if generator_name not in feature_data.generators:
             return
 
-        filename = Path(reconstruction.audio_filepath).stem
+        filename = to_path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename} ({generator_name})"
 
         self._pending_generator_name = generator_name
@@ -304,14 +315,15 @@ class GUIReconstructionPanel(GUIPanel):
             label=TITLE_DIALOG_EXPORT_FTI,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._handle_fti_export_dialog_result,
+            callback=self._handle_export_instrument,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=instrument_name,
+            default_path=str(self.application_config_manager.get_instrument_path()),
         ):
             dpg.add_file_extension(EXT_FILE_INSTRUMENT)
 
     @file_dialog_handler
-    def _handle_fti_export_dialog_result(self, filepath: Path) -> None:
+    def _handle_export_instrument(self, filepath: Path) -> None:
         if not self.reconstruction_data or not self._pending_generator_name:
             logger.warning("No reconstruction data available for FTI export")
             self._pending_generator_name = None
@@ -336,8 +348,10 @@ class GUIReconstructionPanel(GUIPanel):
             logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
 
+        self.application_config_manager.set_instrument_path(filepath.parent)
+
     @file_dialog_handler
-    def _handle_ftis_export_dialog_result(self, directory: Path) -> None:
+    def _handle_export_instruments(self, directory: Path) -> None:
         if not self.reconstruction_data:
             logger.warning("No reconstruction data available for FTIs export")
             return
@@ -357,7 +371,9 @@ class GUIReconstructionPanel(GUIPanel):
             logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
 
-    def export_reconstruction_ftis_dialog(self) -> None:
+        self.application_config_manager.set_instrument_path(directory.parent)
+
+    def export_instruments_dialog(self) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
 
@@ -365,10 +381,11 @@ class GUIReconstructionPanel(GUIPanel):
             label=TITLE_DIALOG_EXPORT_FTI,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._handle_ftis_export_dialog_result,
+            callback=self._handle_export_instruments,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-            directory_selector=False,
+            directory_selector=True,
             default_filename=self._get_instrument_name(),
+            default_path=str(self.application_config_manager.get_instrument_path()),
         ):
             pass
 
@@ -403,20 +420,21 @@ class GUIReconstructionPanel(GUIPanel):
             raise AssertionError("Expected reconstruction data to be loaded before exporting to WAV")
 
         reconstruction = self.reconstruction_data.reconstruction
-        filename = Path(reconstruction.audio_filepath).stem
+        filename = to_path(reconstruction.audio_filepath).stem
 
         with dpg.file_dialog(
             label=TITLE_DIALOG_EXPORT_WAV,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._handle_wav_export_dialog_result,
+            callback=self._handle_wav_export,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=filename,
+            default_path=str(self.application_config_manager.get_audio_path()),
         ):
             dpg.add_file_extension(EXT_FILE_WAVE)
 
     @file_dialog_handler
-    def _handle_wav_export_dialog_result(self, filepath: Path) -> None:
+    def _handle_wav_export(self, filepath: Path) -> None:
         if not self.reconstruction_data:
             return
 
@@ -435,3 +453,5 @@ class GUIReconstructionPanel(GUIPanel):
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
+
+        self.application_config_manager.set_audio_path(filepath)

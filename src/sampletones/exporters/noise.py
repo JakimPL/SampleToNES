@@ -17,9 +17,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         volume = 0
         duty_cycle = 0
 
-        periods = []
-        volumes = []
-        duty_cycles = []
+        periods: List[int] = []
+        volumes: List[int] = []
+        duty_cycles: List[int] = []
 
         for instruction in instructions:
             if instruction.on:
@@ -53,3 +53,7 @@ class NoiseExporter(Exporter[NoiseInstruction]):
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return NoiseInstruction

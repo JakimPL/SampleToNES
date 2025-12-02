@@ -5,8 +5,12 @@ from tqdm import tqdm
 
 from sampletones.configs import Config
 from sampletones.ffts import Window
-from sampletones.library import Library, LibraryData, LibraryKey
-from sampletones.library.creator import LibraryCreator
+from sampletones.library import (
+    InstructionLibrary,
+    InstructionLibraryData,
+    InstructionLibraryKey,
+)
+from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.utils.logger import logger, null_logger
 
@@ -22,10 +26,10 @@ def load_library(library_path: Path, config_path: Optional[Path] = None) -> None
 
 def generate_library(config: Config) -> None:
     window = Window.from_config(config)
-    library = Library.from_config(config)
+    library = InstructionLibrary.from_config(config)
     key = library.create_key(config, window)
 
-    creator = LibraryCreator(config, window=window, logger=null_logger)
+    creator = InstructionsLibraryCreator(config, window=window, logger=null_logger)
 
     progress_bar = tqdm(total=0, desc="Generating library", unit="instruction", disable=False)
 
@@ -33,7 +37,7 @@ def generate_library(config: Config) -> None:
         progress_bar.disable = False
         logger.info(f"Starting library generation for key {key}")
 
-    def on_completed(result: Tuple[LibraryKey, LibraryData]) -> None:
+    def on_completed(result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
         key, library_data = result
         library.save_data(key, library_data)
         logger.info("Library successfully generated")

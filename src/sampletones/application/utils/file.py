@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, TypeVar
 
 from sampletones.typehints import Sender, SerializedData
+from sampletones.utils import to_path
 
 T = TypeVar("T")
 
@@ -17,7 +18,7 @@ def file_dialog_handler(func: Callable[[T, Path], None]) -> Callable[[T, int, Se
         if not filepath:
             return
 
-        filepath = Path(filepath)
+        filepath = to_path(filepath)
         func(self, filepath)
 
     return wrapper

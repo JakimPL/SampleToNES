@@ -3,20 +3,20 @@ from typing import Tuple
 
 import numpy as np
 
-from ....constants import CLR_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
+from ....constants import COL_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
 
 
 @dataclass(frozen=True)
 class BarLayer:
     data: np.ndarray
     name: str
-    color: Tuple[int, int, int, int] = CLR_BAR_PLOT_DEFAULT
+    color: Tuple[int, int, int, int] = COL_BAR_PLOT_DEFAULT
     bar_weight: float = VAL_BAR_PLOT_BAR_WEIGHT
 
     x_data: np.ndarray = field(init=False)
     y_data: np.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "data", self.data.astype(np.int64))
         object.__setattr__(self, "x_data", np.arange(len(self.data)).astype(np.float32) + 0.5)
         object.__setattr__(self, "y_data", self.data.tolist())

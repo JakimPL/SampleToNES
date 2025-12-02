@@ -1,24 +1,24 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Any, Tuple
 
 import numpy as np
 
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
-from ....constants import CLR_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
+from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 
 
 @dataclass(frozen=True)
 class WaveformLayer:
-    fragment: LibraryFragment
+    fragment: InstructionLibraryFragment[Any]
     name: str
-    color: Tuple[int, int, int, int] = CLR_WAVEFORM_DEFAULT
+    color: Tuple[int, int, int, int] = COL_WAVEFORM_DEFAULT
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
 
     x_data: np.ndarray = field(init=False)
     y_data: np.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         data = self.fragment.data.astype(np.float32)
         object.__setattr__(self, "x_data", np.arange(len(data)).astype(np.float32))
         object.__setattr__(self, "y_data", data)

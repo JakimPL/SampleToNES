@@ -1,6 +1,6 @@
 from functools import cached_property
 from types import ModuleType
-from typing import Generic, Self, cast
+from typing import Any, Generic, Self, cast
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -15,18 +15,18 @@ from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import (
     GENERATOR_CLASS_MAP,
     GENERATOR_TO_INSTRUCTION_MAP,
-    GeneratorT,
+    Generator,
 )
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.typehints import Initials, SerializedData
 from sampletones.utils import serialize_array
 
 
-class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
+class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
 
     generator_class: GeneratorClassName
-    instruction_data: InstructionData
+    instruction_data: InstructionData[InstructionT]
     sample: CyclicArray
     feature: np.ndarray
     frequency: float
@@ -34,7 +34,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
     @classmethod
     def create(
         cls,
-        generator: GeneratorT,
+        generator: Generator[InstructionT, Any],
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
@@ -44,7 +44,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
         features = []
         for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
             phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
-            windowed_audio = sample.get_window(phase, window)
+            windowed_audio = sample.get_windowed_fragment(phase, window)
             transformed_windowed_audio = transformer.calculate(windowed_audio)
             features.append(transformed_windowed_audio)
 
@@ -68,7 +68,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
         return cast(InstructionT, self.instruction_data.instruction)
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
-        windowed_audio = self.sample.get_window(shift, window)
+        windowed_audio = self.sample.get_windowed_fragment(shift, window)
         audio = window.get_frame_from_window(windowed_audio)
         return Fragment(
             audio=audio,
@@ -79,7 +79,7 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
 
     def get(
         self,
-        generator: GeneratorT,
+        generator: Generator[InstructionT, Any],
         config: Config,
         window: Window,
         initials: Initials = None,
@@ -106,12 +106,12 @@ class LibraryFragment(DataModel, Generic[InstructionT, GeneratorT]):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.library import FBLibraryFragment
+        from schemas.library import FBInstructionsLibraryFragment
 
-        return FBLibraryFragment
+        return FBInstructionsLibraryFragment
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.library import FBLibraryFragment
+        from schemas.library import FBInstructionsLibraryFragment
 
-        return FBLibraryFragment.FBLibraryFragment
+        return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

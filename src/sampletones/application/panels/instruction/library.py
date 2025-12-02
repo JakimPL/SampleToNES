@@ -1,8 +1,8 @@
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -11,8 +11,8 @@ from sampletones.exceptions import (
     InvalidMetadataError,
     WindowNotAvailableError,
 )
-from sampletones.instructions import Instruction
-from sampletones.library import LibraryFragment, LibraryKey
+from sampletones.instructions import InstructionUnion
+from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.parallelization.progress import ETAEstimator
 from sampletones.tree import (
@@ -25,8 +25,8 @@ from sampletones.tree import (
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
@@ -51,11 +51,12 @@ from ..constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    TAG_FONT_BOLD,
+    TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
     TAG_LIBRARY_CONTROLS_GROUP,
     TAG_LIBRARY_PANEL,
-    TAG_LIBRARY_PANEL_GROUP,
     TAG_LIBRARY_PROGRESS,
     TAG_LIBRARY_STATUS,
     TAG_LIBRARY_TREE,
@@ -70,22 +71,27 @@ from ..constants import (
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
-from ..elements.button import GUIButton
-from ..elements.tree import GUITreePanel
-from ..library.manager import LibraryManager
-from ..utils.dialogs import (
+from ...elements.button import GUIButton
+from ...elements.tree import GUITreePanel
+from ...library.manager import InstructionsLibraryManager
+from ...utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
     show_info_dialog,
 )
-from ..utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.dpg import dpg_configure_item, dpg_set_value
+
+OnInstructionSelectedCallable = Callable[
+    [GeneratorClassName, InstructionUnion, InstructionLibraryFragment[Any], InstructionsLibraryConfig], None
+]
+OnApplyLibraryConfigCallable = Callable[[InstructionLibraryKey], None]
 
 
-class GUILibraryPanel(GUITreePanel):
+class GUIInstructionsLibraryPanel(GUITreePanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         library_directory = config_manager.get_library_directory()
-        self.library_manager = LibraryManager(
+        self.library_manager = InstructionsLibraryManager(
             library_directory,
             on_generation_start=self._on_generation_start,
             on_progress=self._update_status,
@@ -96,22 +102,22 @@ class GUILibraryPanel(GUITreePanel):
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
-        self._on_instruction_selected: Optional[
-            Callable[[GeneratorClassName, Instruction, LibraryFragment, LibraryConfig], None]
-        ] = None
-        self._on_apply_library_config: Optional[Callable[[LibraryKey], None]] = None
+        self._on_instruction_selected: Optional[OnInstructionSelectedCallable] = None
+        self._on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None
 
         super().__init__(
             tree=self.library_manager.tree,
             tag=TAG_LIBRARY_PANEL,
-            parent=TAG_LIBRARY_PANEL_GROUP,
+            parent=TAG_INSTRUCTIONS_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            dpg.add_text(LBL_LIBRARY_LIBRARIES)
+            section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
@@ -127,6 +133,7 @@ class GUILibraryPanel(GUITreePanel):
                     label=LBL_BUTTON_GENERATE_LIBRARY,
                     width=-1,
                     callback=self._generate_library,
+                    bold=True,
                 )
                 dpg.add_progress_bar(
                     tag=TAG_LIBRARY_PROGRESS,
@@ -195,7 +202,7 @@ class GUILibraryPanel(GUITreePanel):
 
     def _set_current_library(
         self,
-        library_key: LibraryKey,
+        library_key: InstructionLibraryKey,
         load_if_needed: bool = True,
         apply_config: bool = False,
     ) -> None:
@@ -207,7 +214,7 @@ class GUILibraryPanel(GUITreePanel):
 
         self.update_status()
 
-    def _load_library(self, library_key: LibraryKey) -> None:
+    def _load_library(self, library_key: InstructionLibraryKey) -> None:
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
@@ -291,7 +298,7 @@ class GUILibraryPanel(GUITreePanel):
             current = current.parent
         return None
 
-    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: LibraryKey) -> None:
+    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
         dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
         try:
@@ -427,8 +434,8 @@ class GUILibraryPanel(GUITreePanel):
 
     def set_callbacks(
         self,
-        on_instruction_selected: Optional[Callable] = None,
-        on_apply_library_config: Optional[Callable] = None,
+        on_instruction_selected: Optional[OnInstructionSelectedCallable] = None,
+        on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None,
     ) -> None:
         if on_instruction_selected is not None:
             self._on_instruction_selected = on_instruction_selected

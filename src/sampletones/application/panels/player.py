@@ -13,9 +13,9 @@ from ..constants import (
     LBL_PLAYER_BUTTON_PLAY,
     LBL_PLAYER_BUTTON_RESUME,
     LBL_PLAYER_BUTTON_STOP,
+    LBL_PLAYER_POSITION,
     MSG_PLAYER_AUDIO_PLAYBACK_ERROR,
     MSG_PLAYER_NO_AUDIO_LOADED,
-    PFX_PLAYER_POSITION,
     SUF_PLAYER_CONTROLS_GROUP,
     SUF_PLAYER_ERROR_POPUP,
     SUF_PLAYER_NO_AUDIO_POPUP,
@@ -179,7 +179,7 @@ class GUIAudioPlayerPanel(GUIPanel):
             dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
             position_text = (
-                f"{PFX_PLAYER_POSITION}{self.audio_player.audio_data.current_position}"
+                f"{LBL_PLAYER_POSITION}{self.audio_player.audio_data.current_position}"
                 f"/{self.audio_player.audio_data.samples}{SUF_PLAYER_SAMPLES}"
             )
             dpg_set_value(self.position_text_tag, position_text)

@@ -1,25 +1,25 @@
 import sys
 import tkinter
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
-    ICON_UNIX_FILENAME,
-    ICON_WIN_FILENAME,
 )
 from sampletones.exceptions import LibraryDisplayError
-from sampletones.library import LibraryFragment
+from sampletones.instructions import InstructionUnion
+from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
+from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
@@ -33,19 +33,21 @@ from .constants import (
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
     FLAG_WINDOW_PRIMARY_ENABLED,
-    LBL_MENU_EXIT,
-    LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
-    LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
     LBL_MENU_FILE,
-    LBL_MENU_FULLSCREEN,
-    LBL_MENU_LOAD_CONFIG,
-    LBL_MENU_LOAD_RECONSTRUCTION,
-    LBL_MENU_RECONSTRUCT_DIRECTORY,
-    LBL_MENU_RECONSTRUCT_FILE,
-    LBL_MENU_SAVE_CONFIG,
+    LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
+    LBL_MENU_ITEM_EXIT,
+    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+    LBL_MENU_ITEM_FULLSCREEN,
+    LBL_MENU_ITEM_LOAD_CONFIG,
+    LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+    LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+    LBL_MENU_ITEM_RECONSTRUCT_FILE,
+    LBL_MENU_ITEM_SAVE_CONFIG,
+    LBL_MENU_RECONSTRUCTION,
     LBL_MENU_VIEW,
-    LBL_TAB_LIBRARY,
-    LBL_TAB_RECONSTRUCTION,
+    LBL_TAB_INSTRUCTIONS,
+    LBL_TAB_RECONSTRUCTIONS,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVE_FAILED,
     MSG_CONFIG_SAVED_SUCCESSFULLY,
@@ -55,16 +57,20 @@ from .constants import (
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_LIBRARY_PANEL_GROUP,
-    TAG_MENU_RECONSTRUCT_DIRECTORY,
-    TAG_MENU_RECONSTRUCT_FILE,
-    TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
-    TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
-    TAG_MENU_VIEW_FULLSCREEN,
+    TAG_FONT_BOLD,
+    TAG_FONT_REGULAR,
+    TAG_INSTRUCTIONS_PANEL_GROUP,
+    TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
+    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+    TAG_MENU_ITEM_FULLSCREEN,
+    TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+    TAG_MENU_ITEM_RECONSTRUCT_FILE,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
-    TAG_TAB_LIBRARY,
-    TAG_TAB_RECONSTRUCTION,
+    TAG_TAB_INSTRUCTIONS,
+    TAG_TAB_RECONSTRUCTIONS,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
     TITLE_DIALOG_LOAD_CONFIG,
@@ -75,20 +81,22 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_WINDOW_X_POS,
-    VAL_WINDOW_Y_POS,
+    VAL_FONT_SIZE,
+    VAL_GLOBAL_FONT_SCALE,
 )
-from .panels.browser import GUIBrowserPanel
-from .panels.config import GUIConfigPanel
 from .panels.converter import GUIConverterWindow
+from .panels.instruction.config import GUIConfigPanel
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
-from .panels.library import GUILibraryPanel
+from .panels.instruction.library import GUIInstructionsLibraryPanel
+from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
-from .panels.reconstructor import GUIReconstructorPanel
+from .panels.reconstruction.reconstructor import GUIReconstructorPanel
 from .reconstruction.data import ReconstructionData
-from .resources import get_icon_path
+from .resources.items import FontResource, IconResource
+from .resources.resources import get_font_path, get_icon_path
+from .themes.default import DefaultTheme
 from .utils.dialogs import (
     show_error_dialog,
     show_library_not_loaded_dialog,
@@ -101,32 +109,34 @@ from .utils.file import file_dialog_handler
 
 class GUI:
     def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.audio_device_manager = AudioDeviceManager()
+        self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
+        self.application_config_manager = ApplicationConfigManager()
 
-        self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager)
-        self.library_panel: GUILibraryPanel = GUILibraryPanel(self.config_manager)
+        self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
+        self.instructions_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
-        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager)
+        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager, self.application_config_manager)
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
-            self.config_manager, self.audio_device_manager
+            self.config_manager,
+            self.application_config_manager,
+            self.audio_device_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
         self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
 
-        self._is_fullscreen: bool = False
-        self._previous_viewport_decorated: Optional[bool] = None
-        self._previous_viewport_position: Optional[list[float]] = None
-        self._previous_viewport_size: Optional[tuple[int, int]] = None
+        self.theme = DefaultTheme()
 
         self.setup_gui()
 
     def setup_gui(self) -> None:
         dpg.create_context()
+        self.set_fonts()
+        self.set_default_theme()
         self.create_main_window()
         self.set_viewport()
         dpg.setup_dearpygui()
@@ -134,12 +144,24 @@ class GUI:
         self.set_callbacks()
         self.config_manager.update_gui()
         self.update_menu()
+        self._restore_current_items()
+
+    def set_fonts(self) -> None:
+        with dpg.font_registry():
+            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SIZE, tag=TAG_FONT_REGULAR)
+            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
+            dpg.bind_font(TAG_FONT_REGULAR)
+
+        dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
+
+    def set_default_theme(self) -> None:
+        self.theme.bind()
 
     def set_viewport(self) -> None:
         if sys.platform.startswith("win"):
-            icon_filename = ICON_WIN_FILENAME
+            icon_filename = IconResource.WIN
         else:
-            icon_filename = ICON_UNIX_FILENAME
+            icon_filename = IconResource.UNIX
 
         icon_file_path = get_icon_path(icon_filename)
 
@@ -149,21 +171,23 @@ class GUI:
             height=DIM_WINDOW_MAIN_HEIGHT,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
-            x_pos=VAL_WINDOW_X_POS,
-            y_pos=VAL_WINDOW_Y_POS,
-            decorated=True,
+            x_pos=self.application_config_manager.window_x,
+            y_pos=self.application_config_manager.window_y,
+            decorated=not self.application_config_manager.is_fullscreen,
         )
 
-        self._is_fullscreen = False
-        self._previous_viewport_decorated = dpg.is_viewport_decorated()
+        if self.application_config_manager.config.window_state.fullscreen:
+            self._enable_fullscreen()
+        else:
+            self._disable_fullscreen()
 
     def set_callbacks(self) -> None:
-        self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.add_config_change_callback(self.instructions_panel.update_status)
         self.config_manager.add_config_change_callback(self.update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
-        self.config_panel.set_callbacks(on_update_library_directory=self.library_panel.refresh)
-        self.library_panel.set_callbacks(
+        self.config_panel.set_callbacks(on_update_library_directory=self.instructions_panel.refresh)
+        self.instructions_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
         )
@@ -171,13 +195,13 @@ class GUI:
             on_update_library_directory=self.browser_panel.refresh,
         )
         self.browser_panel.set_callbacks(
-            on_reconstruction_selected=self._on_reconstruction_selected,
+            on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
 
         self.converter_window.set_callbacks(
-            on_load_file=self._on_reconstruction_loaded,
+            on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
         )
@@ -194,8 +218,8 @@ class GUI:
         )
 
         self.reconstruction_details_panel.set_callbacks(
-            on_instrument_export=self.reconstruction_panel.export_reconstruction_fti_dialog,
-            on_instruments_export=self.reconstruction_panel.export_reconstruction_ftis_dialog,
+            on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
+            on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
         )
 
     def create_main_window(self) -> None:
@@ -210,41 +234,52 @@ class GUI:
     def create_menu_bar(self) -> None:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_FILE):
-                dpg.add_menu_item(label=LBL_MENU_SAVE_CONFIG, callback=self._save_config_dialog)
-                dpg.add_menu_item(label=LBL_MENU_LOAD_CONFIG, callback=self._load_config_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_SAVE_CONFIG, callback=self._save_config_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_LOAD_CONFIG, callback=self._load_config_dialog)
                 dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_LOAD_RECONSTRUCTION, callback=self._load_reconstruction_dialog)
+                dpg.add_menu_item(label=LBL_MENU_ITEM_EXIT, callback=self._exit_application)
+            with dpg.menu(label=LBL_MENU_RECONSTRUCTION):
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCT_FILE,
-                    label=LBL_MENU_RECONSTRUCT_FILE,
+                    tag=TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
+                    callback=self._on_reconstruction_close,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                dpg.add_menu_item(
+                    tag=TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+                    callback=self._load_reconstruction_dialog,
+                    enabled=not self._is_reconstruction_loaded(),
+                )
+                dpg.add_menu_item(
+                    tag=TAG_MENU_ITEM_RECONSTRUCT_FILE,
+                    label=LBL_MENU_ITEM_RECONSTRUCT_FILE,
                     callback=self._reconstruct_file_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCT_DIRECTORY,
-                    label=LBL_MENU_RECONSTRUCT_DIRECTORY,
+                    tag=TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+                    label=LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
                     callback=self._reconstruct_directory_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_separator()
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_WAV,
-                    label=LBL_MENU_EXPORT_RECONSTRUCTION_WAV,
+                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
                     callback=self._export_reconstruction_wav_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 dpg.add_menu_item(
-                    tag=TAG_MENU_RECONSTRUCTION_EXPORT_FTIS,
-                    label=LBL_MENU_EXPORT_RECONSTRUCTION_FTIS,
+                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
                     callback=self._export_reconstruction_ftis_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
-                dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_EXIT, callback=self._exit_application)
             with dpg.menu(label=LBL_MENU_VIEW):
                 dpg.add_menu_item(
-                    tag=TAG_MENU_VIEW_FULLSCREEN,
-                    label=LBL_MENU_FULLSCREEN,
+                    tag=TAG_MENU_ITEM_FULLSCREEN,
+                    label=LBL_MENU_ITEM_FULLSCREEN,
                     callback=self._toggle_fullscreen,
                     check=True,
                 )
@@ -253,17 +288,25 @@ class GUI:
         library_loaded = self._is_library_loaded()
         reconstruction_loaded = self._is_reconstruction_loaded()
 
-        dpg_configure_item(TAG_MENU_RECONSTRUCT_FILE, enabled=library_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_RECONSTRUCTION_EXPORT_FTIS, enabled=reconstruction_loaded)
-        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
-        dpg_configure_item(TAG_MENU_VIEW_FULLSCREEN, check=self._is_fullscreen)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_FILE, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
+        self._update_fullscreen_menu_item()
 
     def create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
-            self.create_library_tab()
-            self.create_reconstruction_tab()
+            self.create_reconstructions_tab()
+            self.create_instructions_tab()
+
+    def _restore_current_items(self) -> None:
+        current_tab = self.application_config_manager.load_current_tab()
+        if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
+            dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
+
+        current_reconstruction = self.application_config_manager.config.gui_state.current_reconstruction
+        if current_reconstruction is not None and current_reconstruction.exists():
+            self.browser_panel.load_and_display_reconstruction(current_reconstruction)
 
     @staticmethod
     def create_layout(
@@ -282,8 +325,6 @@ class GUI:
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
-                borders_innerV=False,
-                borders_outerV=False,
             ):
                 dpg.add_table_column(width_fixed=True)
                 dpg.add_table_column()
@@ -295,12 +336,14 @@ class GUI:
                         height=left_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         left_content_builder()
 
                     with dpg.child_window(
                         tag=f"{tab_tag}{SUF_CENTER_PANEL}",
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         center_content_builder()
 
@@ -309,27 +352,28 @@ class GUI:
                         height=right_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
+                        border=False,
                     ):
                         right_content_builder()
 
-    def create_library_tab(self) -> None:
+    def create_instructions_tab(self) -> None:
         self.create_layout(
-            label=LBL_TAB_LIBRARY,
-            tab_tag=TAG_TAB_LIBRARY,
-            left_content_builder=self._create_library_left_panel,
+            label=LBL_TAB_INSTRUCTIONS,
+            tab_tag=TAG_TAB_INSTRUCTIONS,
+            left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
         )
-        self.library_panel.initialize_libraries()
+        self.instructions_panel.initialize_libraries()
 
-    def create_reconstruction_tab(self) -> None:
+    def create_reconstructions_tab(self) -> None:
         self.create_layout(
-            label=LBL_TAB_RECONSTRUCTION,
-            tab_tag=TAG_TAB_RECONSTRUCTION,
-            left_content_builder=self._create_reconstruction_left_panel,
+            label=LBL_TAB_RECONSTRUCTIONS,
+            tab_tag=TAG_TAB_RECONSTRUCTIONS,
+            left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
@@ -338,14 +382,14 @@ class GUI:
         )
         self.browser_panel.initialize_tree()
 
-    def _create_library_left_panel(self) -> None:
+    def _create_instructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
             self.config_panel.create_panel()
 
-        with dpg.group(tag=TAG_LIBRARY_PANEL_GROUP):
-            self.library_panel.create_panel()
+        with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
+            self.instructions_panel.create_panel()
 
-    def _create_reconstruction_left_panel(self) -> None:
+    def _create_reconstructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
             self.reconstructor_panel.create_panel()
 
@@ -360,6 +404,7 @@ class GUI:
             callback=self._handle_save_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
+            default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -372,6 +417,8 @@ class GUI:
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
 
+        self.application_config_manager.set_config_path(filepath)
+
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TITLE_DIALOG_LOAD_CONFIG,
@@ -379,6 +426,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -390,6 +438,8 @@ class GUI:
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
+
+        self.application_config_manager.set_config_path(filepath)
 
     def _reconstruct_file_dialog(self) -> None:
         if self.converter_window.converter is not None and self.converter_window.converter.is_running():
@@ -405,6 +455,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_file,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_WAVE)
 
@@ -422,6 +473,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_directory,
             directory_selector=True,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
             show=True,
         )
 
@@ -432,6 +484,7 @@ class GUI:
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
@@ -448,9 +501,9 @@ class GUI:
     def _on_instruction_selected(
         self,
         generator_class_name: str,
-        instruction,
-        fragment: LibraryFragment,
-        library_config: LibraryConfig,
+        instruction: InstructionUnion,
+        fragment: InstructionLibraryFragment[Any],
+        library_config: InstructionsLibraryConfig,
     ) -> None:
         try:
             self.instruction_panel.display_instruction(
@@ -462,18 +515,13 @@ class GUI:
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 
-    def _on_reconstruction_selected(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_panel.display_reconstruction(reconstruction_data)
-        self.update_menu()
-        self.audio_device_manager.stop()
-
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
             self.reconstruction_panel.export_reconstruction_wav_dialog()
 
     def _export_reconstruction_ftis_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_reconstruction_ftis_dialog()
+            self.reconstruction_panel.export_instruments_dialog()
 
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():
@@ -484,8 +532,8 @@ class GUI:
         return True
 
     @staticmethod
-    def _get_monitors() -> List[Dict]:
-        monitors: List[Dict] = []
+    def _get_monitors() -> List[Dict[str, Any]]:
+        monitors: List[Dict[str, Any]] = []
         for monitor in get_monitors():
             monitors.append(
                 {
@@ -498,14 +546,17 @@ class GUI:
 
         return monitors
 
-    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict]:
+    def _monitor_for_position(self, x: float, y: float) -> Optional[Dict[str, Any]]:
         monitors = self._get_monitors()
-        px = float(x)
-        py = float(y)
+        position_x = float(x)
+        position_y = float(y)
 
         for monitor in monitors:
-            if monitor["x"] <= px < (monitor["x"] + monitor["width"]) and monitor["y"] <= py < (
-                monitor["y"] + monitor["height"]
+            if all(
+                (
+                    monitor["x"] <= position_x < (monitor["x"] + monitor["width"]),
+                    monitor["y"] <= position_y < (monitor["y"] + monitor["height"]),
+                )
             ):
                 return monitor
 
@@ -517,7 +568,7 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if self._is_fullscreen:
+        if self.application_config_manager.config.window_state.fullscreen:
             self._toggle_fullscreen(sender, app_data, user_data)
 
     def _on_toggle_fullscreen(
@@ -532,7 +583,7 @@ class GUI:
         return self.reconstruction_panel.is_loaded()
 
     def _is_library_loaded(self) -> bool:
-        return self.library_panel.is_loaded()
+        return self.instructions_panel.is_loaded()
 
     def _check_if_library_loaded(self) -> bool:
         if not self._is_library_loaded():
@@ -546,21 +597,39 @@ class GUI:
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     @file_dialog_handler
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
+        self.application_config_manager.set_reconstruction_path(directory_path)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.application_config_manager.set_current_reconstruction(filepath)
 
-    def _on_reconstruction_loaded(self, filepath: Path) -> None:
+    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
+        self.audio_device_manager.stop()
+        self.reconstruction_panel.display_reconstruction(reconstruction_data)
+        self.update_menu()
+        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=True)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=True)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=True)
+
+    def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTION)
-        self.audio_device_manager.stop()
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
+
+    def _on_reconstruction_close(self) -> None:
+        self.reconstruction_panel.close_reconstruction()
+        self.application_config_manager.set_current_reconstruction(None)
+        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
+        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=False)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=False)
+        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=False)
 
     def _exit_application(self) -> None:
         if self.converter_window and self.converter_window.converter:
@@ -568,66 +637,84 @@ class GUI:
         dpg.stop_dearpygui()
 
     def _enable_fullscreen(self) -> None:
-        previous_decorated = dpg.is_viewport_decorated()
         dpg.set_viewport_decorated(False)
-        self._previous_viewport_decorated = previous_decorated
-        self._previous_viewport_position = list(dpg.get_viewport_pos())
-        self._previous_viewport_size = (int(dpg.get_viewport_width()), int(dpg.get_viewport_height()))
 
-        monitor_x = VAL_WINDOW_X_POS
-        monitor_y = VAL_WINDOW_Y_POS
-        monitor_width = None
-        monitor_height = None
+        window_x = self.application_config_manager.window_x
+        window_y = self.application_config_manager.window_y
+        window_width = None
+        window_height = None
 
-        monitor = None
-        if self._previous_viewport_position is not None:
-            monitor = self._monitor_for_position(
-                self._previous_viewport_position[0], self._previous_viewport_position[1]
-            )
-
-        if monitor is not None:
-            monitor_x = int(monitor.get("x", VAL_WINDOW_X_POS))
-            monitor_y = int(monitor.get("y", VAL_WINDOW_Y_POS))
-            monitor_width = int(
-                monitor.get(
-                    "width",
-                    self._previous_viewport_size[0] if self._previous_viewport_size else DIM_WINDOW_MAIN_WIDTH,
-                )
-            )
-            monitor_height = int(
-                monitor.get(
-                    "height",
-                    self._previous_viewport_size[1] if self._previous_viewport_size else DIM_WINDOW_MAIN_HEIGHT,
-                )
-            )
+        monitor = self._monitor_for_position(window_x, window_y)
+        if monitor is not None and "width" in monitor and "height" in monitor:
+            window_x = int(monitor.get("x", self.application_config_manager.window_x))
+            window_y = int(monitor.get("y", self.application_config_manager.window_y))
+            window_width = int(monitor["width"])
+            window_height = int(monitor["height"])
         else:
-            _root = tkinter.Tk()
-            _root.withdraw()
-            monitor_width = int(_root.winfo_screenwidth())
-            monitor_height = int(_root.winfo_screenheight())
-            _root.destroy()
+            screen_dimensions = self._get_screen_dimensions()
+            window_width = screen_dimensions[0]
+            window_height = screen_dimensions[1]
 
-        dpg.set_viewport_pos([monitor_x, monitor_y])
-        dpg.set_viewport_width(monitor_width)
-        dpg.set_viewport_height(monitor_height)
-        self._is_fullscreen = True
+        self._apply_window_state(
+            fullscreen=True,
+            x=window_x,
+            y=window_y,
+            width=window_width,
+            height=window_height,
+        )
 
     def _disable_fullscreen(self) -> None:
-        if self._previous_viewport_size is not None:
-            width, height = self._previous_viewport_size
-            dpg.set_viewport_width(width)
-            dpg.set_viewport_height(height)
-        else:
-            dpg.set_viewport_width(DIM_WINDOW_MAIN_WIDTH)
-            dpg.set_viewport_height(DIM_WINDOW_MAIN_HEIGHT)
+        window_width = self.application_config_manager.window_width
+        window_height = self.application_config_manager.window_height
+        window_x = self.application_config_manager.window_x
+        window_y = self.application_config_manager.window_y
 
-        if self._previous_viewport_position is not None:
-            dpg.set_viewport_pos(list(self._previous_viewport_position))
+        monitor = self._monitor_for_position(window_x, window_y)
+        if monitor is not None:
+            screen_x = int(monitor.get("x", 0))
+            screen_y = int(monitor.get("y", 0))
+            screen_w = int(monitor.get("width", window_width))
+            screen_h = int(monitor.get("height", window_height))
+
+            window_width = min(window_width, screen_w)
+            window_height = min(window_height, screen_h)
+
+            window_x = max(0, screen_x, min(window_x, screen_x + screen_w - window_width))
+            window_y = max(0, screen_y, min(window_y, screen_y + screen_h - window_height))
         else:
-            dpg.set_viewport_pos([VAL_WINDOW_X_POS, VAL_WINDOW_Y_POS])
+            window_x = max(0, window_x)
+            window_y = max(0, window_y)
+
+        self._apply_window_state(
+            fullscreen=False,
+            x=window_x,
+            y=window_y,
+            width=window_width,
+            height=window_height,
+        )
 
         dpg.set_viewport_decorated(True)
-        self._is_fullscreen = False
+
+    def _apply_window_state(
+        self,
+        fullscreen: bool,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> None:
+        dpg.set_viewport_pos([x, y])
+        dpg.set_viewport_width(width)
+        dpg.set_viewport_height(height)
+
+        self.application_config_manager.set_window_state(
+            fullscreen=fullscreen,
+            x=x,
+            y=y,
+            width=width,
+            height=height,
+        )
+
         self._update_fullscreen_menu_item()
 
     def _toggle_fullscreen(
@@ -636,13 +723,24 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if not self._is_fullscreen:
+        if not self.application_config_manager.config.window_state.fullscreen:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
 
     def _update_fullscreen_menu_item(self) -> None:
-        dpg_set_value(TAG_MENU_VIEW_FULLSCREEN, self._is_fullscreen)
+        fullscreen = self.application_config_manager.config.window_state.fullscreen
+        dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
+        dpg_configure_item(TAG_MENU_ITEM_FULLSCREEN, check=fullscreen)
+
+    @staticmethod
+    def _get_screen_dimensions() -> Tuple[int, int]:
+        _root = tkinter.Tk()
+        _root.withdraw()
+        window_width = int(_root.winfo_screenwidth())
+        window_height = int(_root.winfo_screenheight())
+        _root.destroy()
+        return window_width, window_height
 
     def run(self) -> None:
         try:
@@ -651,4 +749,5 @@ class GUI:
             if self.converter_window and self.converter_window.converter:
                 self.converter_window.converter.cleanup()
             self.config_manager.save_config()
+            self.application_config_manager.save_config()
             dpg.destroy_context()

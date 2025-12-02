@@ -1,5 +1,5 @@
 import importlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Optional, Type, Union
 
 if TYPE_CHECKING:
     from .configs import Config
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
         PulseInstruction,
         TriangleInstruction,
     )
-    from .library import Library
+    from .library import InstructionLibrary
     from .reconstruction import Reconstruction, Reconstructor
 
 
@@ -28,7 +28,9 @@ except ImportError:
     from sampletones.exceptions import CuPyNotInstalledWarning
     from sampletones.utils.logger import logger
 
-    def _format_warning_no_location(message, category, filename, lineno, line=None):
+    def _format_warning_no_location(
+        message: Union[Warning, str], category: Type[Warning], filename: str, lineno: int, line: Optional[str] = None
+    ) -> str:
         return f"{category.__name__}: {message}\n"
 
     warnings.formatwarning = _format_warning_no_location
@@ -38,7 +40,7 @@ except ImportError:
     import numpy as xp
 
 
-def __getattr__(name):
+def __getattr__(name: str) -> Any:
     if name == "Config":
         from .configs import Config
 
@@ -71,10 +73,10 @@ def __getattr__(name):
         module = importlib.import_module(".reconstruction", __package__)
         return getattr(module, name)
 
-    if name == "Library":
-        from .library import Library
+    if name == "InstructionLibrary":
+        from .library import InstructionLibrary
 
-        return Library
+        return InstructionLibrary
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
@@ -82,7 +84,7 @@ def __getattr__(name):
 __all__ = [
     "Config",
     "Window",
-    "Library",
+    "InstructionLibrary",
     "Reconstruction",
     "Reconstructor",
     "Generator",
@@ -100,5 +102,5 @@ __all__ = [
 ]
 
 
-def __dir__():
+def __dir__() -> List[str]:
     return sorted(__all__)

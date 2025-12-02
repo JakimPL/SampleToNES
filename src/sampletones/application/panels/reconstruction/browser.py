@@ -13,9 +13,10 @@ from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
-from ..browser.manager import BrowserManager
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...browser.manager import BrowserManager
+from ...config.application.manager import ApplicationConfigManager
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_PANEL_LIBRARY_HEIGHT,
     DIM_PANEL_LIBRARY_WIDTH,
     LBL_BROWSER_RECONSTRUCTIONS,
@@ -39,22 +40,31 @@ from ..constants import (
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
+    TAG_FONT_BOLD,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
-from ..elements.button import GUIButton
-from ..elements.tree import GUITreePanel
-from ..utils.dialogs import show_error_dialog, show_file_not_found_dialog
+from ...elements.button import GUIButton
+from ...elements.tree import GUITreePanel
+from ...reconstruction.data import ReconstructionData
+from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
+
+OnReconstructionLoadedCallable = Callable[[ReconstructionData], None]
 
 
 class GUIBrowserPanel(GUITreePanel):
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ) -> None:
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
-        self._on_reconstruction_selected: Optional[Callable] = None
-        self._on_reconstruct_file: Optional[Callable] = None
-        self._on_reconstruct_directory: Optional[Callable] = None
+        self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallable] = None
+        self._on_reconstruct_file: Optional[Callable[[], None]] = None
+        self._on_reconstruct_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tree=self.browser_manager.tree,
@@ -66,7 +76,9 @@ class GUIBrowserPanel(GUITreePanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+            section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
                 GUIButton(
@@ -80,12 +92,14 @@ class GUIBrowserPanel(GUITreePanel):
                     label=LBL_BUTTON_RECONSTRUCT_FILE,
                     width=-1,
                     callback=self._reconstruct_file,
+                    bold=True,
                 )
                 GUIButton(
                     tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                     label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
                     width=-1,
                     callback=self._reconstruct_directory,
+                    bold=True,
                 )
 
             dpg.add_separator()
@@ -199,20 +213,22 @@ class GUIBrowserPanel(GUITreePanel):
                 MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
             )
 
-        if self._on_reconstruction_selected:
-            self._set_browser_tree_enabled(False)
+        if self._on_reconstruction_loaded:
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
-            self._on_reconstruction_selected(reconstruction_data)
+            self._set_browser_tree_enabled(False)
+            self._on_reconstruction_loaded(reconstruction_data)
             dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
+
+        self.application_config_manager.set_current_reconstruction(filepath)
 
     def set_callbacks(
         self,
-        on_reconstruction_selected: Optional[Callable] = None,
-        on_reconstruct_file: Optional[Callable] = None,
-        on_reconstruct_directory: Optional[Callable] = None,
+        on_reconstruction_loaded: Optional[OnReconstructionLoadedCallable] = None,
+        on_reconstruct_file: Optional[Callable[[], None]] = None,
+        on_reconstruct_directory: Optional[Callable[[], None]] = None,
     ) -> None:
-        if on_reconstruction_selected is not None:
-            self._on_reconstruction_selected = on_reconstruction_selected
+        if on_reconstruction_loaded is not None:
+            self._on_reconstruction_loaded = on_reconstruction_loaded
         if on_reconstruct_file is not None:
             self._on_reconstruct_file = on_reconstruct_file
         if on_reconstruct_directory is not None:

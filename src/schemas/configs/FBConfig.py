@@ -44,9 +44,9 @@ class FBConfig(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from schemas.configs.FBLibraryConfig import FBLibraryConfig
+            from schemas.configs.FBInstructionsLibraryConfig import FBInstructionsLibraryConfig
 
-            obj = FBLibraryConfig()
+            obj = FBInstructionsLibraryConfig()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None

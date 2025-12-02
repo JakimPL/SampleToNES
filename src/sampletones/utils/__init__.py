@@ -7,7 +7,7 @@ from .frequencies import (
     pitch_to_frequency,
     pitch_to_name,
 )
-from .paths import shorten_path, to_path
+from .paths import get_directory, shorten_path, to_path
 from .serialization import (
     deserialize_array,
     dump,
@@ -15,8 +15,10 @@ from .serialization import (
     hash_models,
     load_binary,
     load_json,
+    load_yaml,
     save_binary,
     save_json,
+    save_yaml,
     serialize_array,
     snake_to_camel,
 )
@@ -32,6 +34,8 @@ __all__ = [
     "dump",
     "save_json",
     "load_json",
+    "save_yaml",
+    "load_yaml",
     "save_binary",
     "load_binary",
     "serialize_array",
@@ -44,4 +48,5 @@ __all__ = [
     "write_fti",
     "shorten_path",
     "to_path",
+    "get_directory",
 ]

@@ -57,6 +57,6 @@ class InstructionData(DataModel, Generic[InstructionT]):
     @classmethod
     def buffer_union_map(cls) -> Dict[int, type]:
         return {
-            index + 1: INSTRUCTION_CLASS_MAP[instruction_class]
+            index + 1: INSTRUCTION_CLASS_MAP[InstructionClassName(instruction_class)]
             for index, instruction_class in enumerate(InstructionClassName)
         }

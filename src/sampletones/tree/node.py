@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Optional
+from typing import Generic, Optional
 
 from anytree import Node
 
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
-from sampletones.instructions import Instruction
-from sampletones.library import LibraryFragment, LibraryKey
+from sampletones.instructions import InstructionT
+from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 
 
 class TreeNode(Node):
@@ -42,7 +42,7 @@ class LibraryNode(TreeNode):
         self,
         name: str,
         node_type: str,
-        library_key: LibraryKey,
+        library_key: InstructionLibraryKey,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -95,15 +95,15 @@ class GroupNode(TreeNode):
         )
 
 
-class InstructionNode(TreeNode):
+class InstructionNode(TreeNode, Generic[InstructionT]):
     def __init__(
         self,
         name: str,
         node_type: str,
         generator_name: LibraryGeneratorName,
         generator_class_name: GeneratorClassName,
-        instruction: Instruction,
-        fragment: LibraryFragment,
+        instruction: InstructionT,
+        fragment: InstructionLibraryFragment[InstructionT],
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -112,7 +112,7 @@ class InstructionNode(TreeNode):
         self.instruction = instruction
         self.fragment = fragment
 
-    def copy(self, parent: Optional[TreeNode] = None) -> "InstructionNode":
+    def copy(self, parent: Optional[TreeNode] = None) -> "InstructionNode[InstructionT]":
         return InstructionNode(
             self.name,
             node_type=self.node_type,

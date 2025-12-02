@@ -1,27 +1,26 @@
 from functools import cached_property
 from types import ModuleType
-from typing import Generic, Self, cast
+from typing import Generic, Self
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
 from sampletones.exceptions import InstructionTypeMismatchError
-from sampletones.generators import GeneratorT
 from sampletones.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionData,
     InstructionT,
 )
 
-from .fragment import LibraryFragment
+from .fragment import InstructionLibraryFragment
 
 
-class LibraryItem(DataModel, Generic[InstructionT, GeneratorT]):
+class LibraryItem(DataModel, Generic[InstructionT]):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
 
-    instruction_data: InstructionData = Field(..., description="Instruction data")
-    fragment: LibraryFragment[InstructionT, GeneratorT] = Field(
+    instruction_data: InstructionData[InstructionT] = Field(..., description="Instruction data")
+    fragment: InstructionLibraryFragment[InstructionT] = Field(
         ...,
         description="Library fragment associated with the instruction",
     )
@@ -30,7 +29,7 @@ class LibraryItem(DataModel, Generic[InstructionT, GeneratorT]):
     def create(
         cls,
         instruction: InstructionT,
-        fragment: LibraryFragment[InstructionT, GeneratorT],
+        fragment: InstructionLibraryFragment[InstructionT],
     ) -> Self:
         return cls(
             instruction_data=InstructionData.create(instruction),
@@ -48,16 +47,18 @@ class LibraryItem(DataModel, Generic[InstructionT, GeneratorT]):
             INSTRUCTION_CLASS_MAP[self.instruction_class],
         ):
             raise InstructionTypeMismatchError("Instruction type does not match the expected class")
-        return cast(InstructionT, self.instruction_data.instruction)
+
+        instruction: InstructionT = self.instruction_data.instruction
+        return instruction
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.library import FBLibraryItem
+        from schemas.library import FBInstructionsLibraryItem
 
-        return FBLibraryItem
+        return FBInstructionsLibraryItem
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.library import FBLibraryItem
+        from schemas.library import FBInstructionsLibraryItem
 
-        return FBLibraryItem.FBLibraryItem
+        return FBInstructionsLibraryItem.FBInstructionsLibraryItem

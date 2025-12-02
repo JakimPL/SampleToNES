@@ -10,12 +10,13 @@ from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger
 from sampletones.utils.logger import logger as default_logger
 
-from ..data import LibraryData, LibraryFragment
-from ..key import LibraryKey
+from ..data import InstructionLibraryData
+from ..fragment import InstructionLibraryFragment
+from ..key import InstructionLibraryKey
 from .creation import generate_instruction_batch
 
 
-class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
+class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, InstructionLibraryData]]):
     def __init__(
         self,
         config: Config,
@@ -57,18 +58,23 @@ class LibraryCreator(TaskProcessor[Tuple[LibraryKey, LibraryData]]):
 
         return tasks
 
-    def _get_task_function(self) -> Callable[[Tuple], List[Tuple[InstructionUnion, LibraryFragment]]]:
+    def _get_task_function(
+        self,
+    ) -> Callable[
+        [Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window]],
+        List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]],
+    ]:
         return generate_instruction_batch
 
-    def _process_results(self, results: List[Any]) -> Tuple[LibraryKey, LibraryData]:
+    def _process_results(self, results: List[Any]) -> Tuple[InstructionLibraryKey, InstructionLibraryData]:
         all_fragments = []
         for batch_results in results:
             all_fragments.extend(batch_results)
 
-        data: Dict[InstructionUnion, LibraryFragment] = dict(all_fragments)
-        library_data = LibraryData.create(self.config, data)
+        data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = dict(all_fragments)
+        library_data = InstructionLibraryData.create(self.config, data)
 
-        key = LibraryKey.create(self.config.library, self.window)
+        key = InstructionLibraryKey.create(self.config.library, self.window)
         return key, library_data
 
     def _notify_progress(self) -> None:

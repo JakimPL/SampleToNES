@@ -1,12 +1,12 @@
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.configs import LibraryConfig
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 from sampletones.utils.logger import logger
 
 from ...constants import (
@@ -35,10 +35,10 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformDisplay
         self.spectrum_display: GUISpectrumDisplay
-        self.library_config: Optional[LibraryConfig] = None
+        self.library_config: Optional[InstructionsLibraryConfig] = None
 
         self._on_display_instruction_details: Optional[
-            Callable[[str, InstructionUnion, Optional[LibraryFragment]], None]
+            Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
         ] = None
         self._on_clear_instruction_details: Optional[Callable[[], None]] = None
 
@@ -53,7 +53,7 @@ class GUIInstructionPanel(GUIPanel):
     def set_callbacks(
         self,
         on_display_instruction_details: Optional[
-            Callable[[str, InstructionUnion, Optional[LibraryFragment]], None]
+            Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
         ] = None,
         on_clear_instruction_details: Optional[Callable[[], None]] = None,
     ) -> None:
@@ -109,8 +109,8 @@ class GUIInstructionPanel(GUIPanel):
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: LibraryFragment,
-        library_config: LibraryConfig,
+        fragment: InstructionLibraryFragment[Any],
+        library_config: InstructionsLibraryConfig,
     ) -> None:
         self.library_config = library_config
 

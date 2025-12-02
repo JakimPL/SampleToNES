@@ -1,9 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict
 
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 
 class InstructionPanelData(BaseModel):
@@ -11,14 +11,12 @@ class InstructionPanelData(BaseModel):
 
     generator_class_name: str
     instruction: InstructionUnion
-    fragment: Optional[LibraryFragment] = None
+    fragment: Optional[InstructionLibraryFragment[Any]] = None
 
-    @computed_field
     @property
     def frequency(self) -> Optional[float]:
         return self.fragment.frequency if self.fragment else None
 
-    @computed_field
     @property
     def has_audio_data(self) -> bool:
         return self.fragment is not None and not self.fragment.empty

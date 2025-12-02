@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.2.2"
+version = "0.2.3"
 description = "SampleToNES - Convert audio samples to FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -38,4 +38,10 @@ build-backend = "hatchling.build"
 packages = ["src/sampletones", "src/schemas"]
 
 [tool.hatch.build]
-include = ["src/sampletones/icons/*"]
+include = ["assets/icons/*", "assets/fonts/*"]
+
+[tool.mypy]
+files = "src/sampletones"
+ignore_missing_imports = true
+strict = true
+disallow_subclassing_any = true

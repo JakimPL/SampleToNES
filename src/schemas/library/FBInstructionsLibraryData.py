@@ -8,26 +8,26 @@ from flatbuffers.compat import import_numpy
 np = import_numpy()
 
 
-class FBLibraryData(object):
+class FBInstructionsLibraryData(object):
     __slots__ = ["_tab"]
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = FBLibraryData()
+        x = FBInstructionsLibraryData()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsFBLibraryData(cls, buf, offset=0):
+    def GetRootAsFBInstructionsLibraryData(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def Metadata(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
@@ -39,88 +39,88 @@ class FBLibraryData(object):
             return obj
         return None
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def Config(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from schemas.configs.FBLibraryConfig import FBLibraryConfig
+            from schemas.configs.FBInstructionsLibraryConfig import FBInstructionsLibraryConfig
 
-            obj = FBLibraryConfig()
+            obj = FBInstructionsLibraryConfig()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def Items(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from schemas.library.FBLibraryItem import FBLibraryItem
+            from schemas.library.FBInstructionsLibraryItem import FBInstructionsLibraryItem
 
-            obj = FBLibraryItem()
+            obj = FBInstructionsLibraryItem()
             obj.Init(self._tab.Bytes, x)
             return obj
         return None
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def ItemsLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
-    # FBLibraryData
+    # FBInstructionsLibraryData
     def ItemsIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         return o == 0
 
 
-def FBLibraryDataStart(builder):
+def FBInstructionsLibraryDataStart(builder):
     builder.StartObject(3)
 
 
 def Start(builder):
-    return FBLibraryDataStart(builder)
+    return FBInstructionsLibraryDataStart(builder)
 
 
-def FBLibraryDataAddMetadata(builder, metadata):
+def FBInstructionsLibraryDataAddMetadata(builder, metadata):
     builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(metadata), 0)
 
 
 def AddMetadata(builder, metadata):
-    return FBLibraryDataAddMetadata(builder, metadata)
+    return FBInstructionsLibraryDataAddMetadata(builder, metadata)
 
 
-def FBLibraryDataAddConfig(builder, config):
+def FBInstructionsLibraryDataAddConfig(builder, config):
     builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(config), 0)
 
 
 def AddConfig(builder, config):
-    return FBLibraryDataAddConfig(builder, config)
+    return FBInstructionsLibraryDataAddConfig(builder, config)
 
 
-def FBLibraryDataAddItems(builder, items):
+def FBInstructionsLibraryDataAddItems(builder, items):
     builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(items), 0)
 
 
 def AddItems(builder, items):
-    return FBLibraryDataAddItems(builder, items)
+    return FBInstructionsLibraryDataAddItems(builder, items)
 
 
-def FBLibraryDataStartItemsVector(builder, numElems):
+def FBInstructionsLibraryDataStartItemsVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
 
 def StartItemsVector(builder, numElems):
-    return FBLibraryDataStartItemsVector(builder, numElems)
+    return FBInstructionsLibraryDataStartItemsVector(builder, numElems)
 
 
-def FBLibraryDataEnd(builder):
+def FBInstructionsLibraryDataEnd(builder):
     return builder.EndObject()
 
 
 def End(builder):
-    return FBLibraryDataEnd(builder)
+    return FBInstructionsLibraryDataEnd(builder)

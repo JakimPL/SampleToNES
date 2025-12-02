@@ -4,7 +4,7 @@ from typing import Dict
 import dearpygui.dearpygui as dpg
 
 from ..constants import (
-    CLR_TRACEBACK_TEXT,
+    COL_TRACEBACK_TEXT,
     DIM_DIALOG_TRACEBACK_HEIGHT,
     LBL_BUTTON_TRACEBACK_COPY,
     SUF_BUTTON_COPY,
@@ -32,7 +32,7 @@ class GUITraceback:
         with dpg.group(tag=self._tag, parent=parent, show=False):
             with dpg.theme() as traceback_input_theme:
                 with dpg.theme_component(dpg.mvInputText):
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, CLR_TRACEBACK_TEXT)
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TRACEBACK_TEXT)
 
             dpg.add_input_text(
                 tag=traceback_text_tag,
@@ -69,7 +69,8 @@ class GUITraceback:
 
     @property
     def visible(self) -> bool:
-        return dpg.get_item_configuration(self._tag).get("show", False)
+        show: bool = dpg.get_item_configuration(self._tag).get("show", False)
+        return show
 
     @property
     def tag(self) -> str:

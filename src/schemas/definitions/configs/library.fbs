@@ -1,6 +1,6 @@
 namespace schemas.configs;
 
-table FBLibraryConfig {
+table FBInstructionsLibraryConfig {
 	change_rate: int;
 	sample_rate: int;
 	transformation_gamma: int;
@@ -8,4 +8,4 @@ table FBLibraryConfig {
 	a4_pitch: int;
 }
 
-root_type FBLibraryConfig;
+root_type FBInstructionsLibraryConfig;

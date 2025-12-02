@@ -3,7 +3,7 @@ include "instructions/instruction.fbs";
 
 namespace schemas.library;
 
-table FBLibraryFragment {
+table FBInstructionsLibraryFragment {
 	generator_class: string;
 	instruction_data: schemas.instructions.FBInstructionData;
 	feature: [float];
@@ -11,4 +11,4 @@ table FBLibraryFragment {
 	frequency: float;
 }
 
-root_type FBLibraryFragment;
+root_type FBInstructionsLibraryFragment;

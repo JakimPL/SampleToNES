@@ -40,3 +40,7 @@ class Exporter(Generic[InstructionT]):
     def pitch_to_timer(pitch: int) -> int:
         frequency = pitch_to_frequency(pitch)
         return PhaseTimer.frequency_to_timer(frequency)
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        raise NotImplementedError("Subclasses must implement this method")

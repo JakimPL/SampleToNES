@@ -8,7 +8,7 @@ from .device import AudioDevice
 
 
 class AudioDeviceManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self._current_device: Optional[int] = None
         self._device_sample_rate: Optional[int] = None
         self._stream: Optional[sd.OutputStream] = None

@@ -1,25 +1,28 @@
-from typing import Optional, Union
+from typing import Any, List, Optional, Tuple, Union
 
+from sampletones.constants.general import DUTY_CYCLES, NOISE_PERIODS
 from sampletones.instructions import InstructionUnion
-from sampletones.library import LibraryFragment
-from sampletones.utils import hash_model
+from sampletones.library import InstructionLibraryFragment
+from sampletones.utils import hash_model, pitch_to_name
 
 from ..constants import (
+    FMT_INSTRUCTION_DUTY_CYCLE,
     FMT_INSTRUCTION_FREQUENCY,
+    FMT_INSTRUCTION_PERIOD,
+    FMT_INSTRUCTION_PITCH,
     LBL_GLOBAL_NO,
     LBL_GLOBAL_YES,
-    LBL_INSTRUCTION_PARAMETERS_HEADER,
+    LBL_INSTRUCTION_FREQUENCY,
+    LBL_INSTRUCTION_GENERATOR,
+    LBL_INSTRUCTION_NAME,
+    LBL_INSTRUCTION_SAMPLE_LENGTH,
     MSG_INSTRUCTION_NO_FREQUENCY,
-    MSG_INSTRUCTION_NO_SELECTION,
-    PFX_INSTRUCTION_FREQUENCY,
-    PFX_INSTRUCTION_GENERATOR,
-    PFX_INSTRUCTION_NAME,
-    PFX_INSTRUCTION_PARAMETER_INDENT,
-    PFX_INSTRUCTION_SAMPLE_LENGTH,
     SUF_INSTRUCTION_SAMPLE_LENGTH,
     VAL_INSTRUCTION_FLOAT_PRECISION,
 )
+from ..elements.table.cell import TableCell
 from .data import InstructionPanelData
+from .table import InstructionTableData
 
 
 class InstructionDetailsLogic:
@@ -31,7 +34,7 @@ class InstructionDetailsLogic:
         self,
         generator_class_name: str,
         instruction: InstructionUnion,
-        fragment: Optional[LibraryFragment] = None,
+        fragment: Optional[InstructionLibraryFragment[Any]] = None,
     ) -> InstructionPanelData:
         self.current_data = InstructionPanelData(
             generator_class_name=generator_class_name,
@@ -44,36 +47,100 @@ class InstructionDetailsLogic:
     def clear_data(self) -> None:
         self.current_data = None
 
-    def get_display_text(self) -> str:
+    def get_table_data(self) -> Optional[InstructionTableData]:
         if not self.current_data:
-            return MSG_INSTRUCTION_NO_SELECTION
+            return None
 
-        if not self.current_data.fragment:
-            lines = [
-                f"{PFX_INSTRUCTION_GENERATOR}{self.current_data.generator_class_name}",
-                f"{PFX_INSTRUCTION_NAME}{self.current_data.instruction.name}",
-                f"{PFX_INSTRUCTION_FREQUENCY}{MSG_INSTRUCTION_NO_FREQUENCY}",
-            ]
-            return "\n".join(lines)
+        general_rows = self._build_general_rows()
+        parameter_rows = self._build_parameter_rows()
 
-        fragment = self.current_data.fragment
+        return InstructionTableData(
+            general_rows=tuple(general_rows),
+            parameter_rows=tuple(parameter_rows),
+        )
+
+    def _build_general_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
+
+        if self.current_data.fragment:
+            fragment = self.current_data.fragment
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_GENERATOR,
+                    value=fragment.generator_class,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_FREQUENCY,
+                    value=FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency),
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_SAMPLE_LENGTH,
+                    value=f"{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+                )
+            )
+        else:
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_GENERATOR,
+                    value=self.current_data.generator_class_name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_NAME,
+                    value=self.current_data.instruction.name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_INSTRUCTION_FREQUENCY,
+                    value=MSG_INSTRUCTION_NO_FREQUENCY,
+                )
+            )
+
+        return rows
+
+    def _build_parameter_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
         instruction = self.current_data.instruction
 
-        lines = [
-            f"{PFX_INSTRUCTION_GENERATOR}{fragment.generator_class}",
-            f"{PFX_INSTRUCTION_FREQUENCY}{FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency)}",
-            f"{PFX_INSTRUCTION_SAMPLE_LENGTH}{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
-            "",
-            LBL_INSTRUCTION_PARAMETERS_HEADER,
-        ]
-
         for field_name, field_value in instruction.model_dump().items():
-            formatted_value = self._format_parameter_value(field_value)
-            lines.append(f"{PFX_INSTRUCTION_PARAMETER_INDENT}{field_name}: {formatted_value}")
+            formatted_value = self._format_parameter_value(field_name, field_value)
+            rows.append(
+                TableCell(
+                    label=field_name,
+                    value=formatted_value,
+                )
+            )
 
-        return "\n".join(lines)
+        return rows
 
-    def _format_parameter_value(self, value: Union[float, bool, list, tuple, str, int]) -> str:
+    def _format_parameter_value(
+        self,
+        name: str,
+        value: Union[float, bool, List[Any], Tuple[Any, ...], str, int],
+    ) -> str:
+        if name == "pitch" and isinstance(value, (int, float)):
+            return FMT_INSTRUCTION_PITCH.format(pitch_to_name(round(value)), value)
+
+        if name == "duty_cycle" and isinstance(value, int):
+            duty_cycle = DUTY_CYCLES[value] * 100
+            return FMT_INSTRUCTION_DUTY_CYCLE.format(duty_cycle, value)
+
+        if name == "period" and isinstance(value, int):
+            period = NOISE_PERIODS[value]
+            return FMT_INSTRUCTION_PERIOD.format(period, value)
+
         if isinstance(value, float):
             return f"{value:.{VAL_INSTRUCTION_FLOAT_PRECISION}f}"
 
@@ -81,6 +148,6 @@ class InstructionDetailsLogic:
             return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO
 
         if isinstance(value, (list, tuple)):
-            return f"[{', '.join(str(v) for v in value)}]"
+            return f"[{', '.join(str(element) for element in value)}]"
 
         return str(value)

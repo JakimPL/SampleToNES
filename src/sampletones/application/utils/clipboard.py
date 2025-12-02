@@ -11,7 +11,7 @@ def copy_to_clipboard(text: str, label: str, button_tag: str) -> None:
 
     dpg_configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
 
-    def restore_label():
+    def restore_label() -> None:
         dpg_configure_item(button_tag, label=label)
 
     timer = threading.Timer(1.0, restore_label)

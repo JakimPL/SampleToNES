@@ -1,17 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Any, Dict, Generator, Tuple
 
 import numpy as np
 
 from sampletones.ffts import calculate_frequencies
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 from ....constants import VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_LOG_OFFSET
 
 
 @dataclass(frozen=True)
 class SpectrumLayer:
-    fragment: LibraryFragment
+    fragment: InstructionLibraryFragment[Any]
     name: str
     sample_rate: int
     frame_length: int
@@ -22,7 +22,7 @@ class SpectrumLayer:
     frequency_bands: Dict[int, float] = field(init=False)
     brightness_values: Dict[int, int] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         spectrum = self.fragment.feature
         total_energy = np.sqrt(np.sum(spectrum**2)) + VAL_SPECTRUM_LOG_OFFSET
         normalized_spectrum = spectrum / total_energy
@@ -39,10 +39,12 @@ class SpectrumLayer:
         object.__setattr__(self, "frequency_bands", frequency_bands)
         object.__setattr__(self, "brightness_values", brightness_values)
 
-    def __iter__(self):
-        for frequency, band_width, brightness in zip(
-            self.frequencies, self.frequency_bands.values(), self.brightness_values.values()
-        ):
+    def __iter__(self) -> Generator[Tuple[float, float, int]]:
+        for item in zip(self.frequencies, self.frequency_bands.values(), self.brightness_values.values()):
+            frequency: float
+            band_width: float
+            brightness: int
+            frequency, band_width, brightness = item
             yield frequency, band_width, brightness
 
     def get_frequency_band_width(self, index: int) -> float:
@@ -56,7 +58,8 @@ class SpectrumLayer:
         else:
             frequency_upper_bound = np.sqrt(frequency * self.frequencies[index + 1])
 
-        return frequency_upper_bound - frequency_lower_bound
+        band_width: float = frequency_upper_bound - frequency_lower_bound
+        return band_width
 
     def brightness(self, index: int) -> int:
         energy: float = self.spectrum[index]

@@ -62,4 +62,5 @@ class ReconstructionData(BaseModel):
         if not selected_approximations:
             return np.zeros_like(self.original_audio)
 
-        return np.sum(selected_approximations, axis=0)
+        partials: np.ndarray = np.sum(selected_approximations, axis=0)
+        return partials

@@ -3,11 +3,11 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.library import LibraryKey
+from sampletones.library import InstructionLibraryKey
 
 from ..constants import (
-    CLR_ERROR_TEXT,
-    CLR_PATH_TEXT,
+    COL_ERROR_TEXT,
+    COL_PATH_TEXT,
     DIM_DIALOG_ERROR_HEIGHT,
     DIM_DIALOG_ERROR_WIDTH,
     DIM_DIALOG_ERROR_WIDTH_WRAP,
@@ -104,13 +104,13 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             dpg.add_text(
                 f"{str(type(exception).__name__)}: ",
                 parent=group_tag,
-                color=CLR_ERROR_TEXT,
+                color=COL_ERROR_TEXT,
             )
             dpg.add_text(
                 str(exception),
                 parent=group_tag,
                 wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
-                color=CLR_ERROR_TEXT,
+                color=COL_ERROR_TEXT,
             )
 
         traceback = GUITraceback(
@@ -161,7 +161,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         dpg.add_text(
             str(filepath),
             parent=parent,
-            color=CLR_PATH_TEXT,
+            color=COL_PATH_TEXT,
             wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
         )
 
@@ -172,7 +172,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
     )
 
 
-def show_library_not_loaded_dialog(key: LibraryKey) -> None:
+def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
     def content(parent: str) -> None:
         dpg.add_text(
             MSG_LIBRARY_NOT_LOADED.format(library_key=key),

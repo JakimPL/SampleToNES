@@ -6,7 +6,7 @@ namespace schemas.configs;
 
 table FBConfig {
 	general: schemas.configs.FBGeneralConfig;
-	library: schemas.configs.FBLibraryConfig;
+	library: schemas.configs.FBInstructionsLibraryConfig;
 	generation: schemas.configs.FBGenerationConfig;
 }
 

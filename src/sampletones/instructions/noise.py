@@ -68,12 +68,12 @@ class NoiseInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.instructions.noise import FBNoiseInstruction
+        from schemas.instructions import FBNoiseInstruction
 
         return FBNoiseInstruction
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.instructions.noise import FBNoiseInstruction
+        from schemas.instructions import FBNoiseInstruction
 
         return FBNoiseInstruction.FBNoiseInstruction

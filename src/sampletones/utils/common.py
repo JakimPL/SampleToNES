@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 
@@ -37,7 +37,7 @@ def trim(array: np.ndarray) -> np.ndarray:
     return np.concatenate([array[: last_end + 1], [last_value]])
 
 
-def first_key_for_value(dictionary: dict, target: Any) -> Any:
+def first_key_for_value(dictionary: Dict[Any, Any], target: Any) -> Any:
     for key, value in dictionary.items():
         if value == target:
             return key

@@ -15,7 +15,7 @@ from sampletones.constants.enums import (
 from sampletones.ffts import Fragment, FragmentedAudio, Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
-from sampletones.library import LibraryData
+from sampletones.library import InstructionLibraryData
 
 from ..criterion import Criterion
 from .approximation import ApproximationData
@@ -32,7 +32,7 @@ class ReconstructorWorker:
     config: Config
     window: Window
     generators: Dict[GeneratorName, GeneratorUnion]
-    library_data: LibraryData
+    library_data: InstructionLibraryData
 
     criterion: Criterion = field(init=False)
     _get_cached_approximations: GetCachedApproximationsCallable = field(init=False)
@@ -44,7 +44,7 @@ class ReconstructorWorker:
     ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
         return {fragment_id: self.reconstruct(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
 
         def _build_get_cached_approximations() -> GetCachedApproximationsCallable:

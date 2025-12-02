@@ -7,7 +7,7 @@ from .base import BaseLogger
 class NullLogger(BaseLogger):
     _instance: Optional["NullLogger"] = None
 
-    def __new__(cls):
+    def __new__(cls) -> "NullLogger":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

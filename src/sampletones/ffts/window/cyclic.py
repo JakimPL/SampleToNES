@@ -47,13 +47,15 @@ class CyclicArray(DataModel):
 
         offset = self.get_offset(phase) if isinstance(phase, float) else phase
         idx = np.arange(offset, offset + length) % n
-        return self.array[idx]
+        fragment: np.ndarray = self.array[idx]
+        return fragment
 
-    def get_window(self, phase: Union[int, float], window: Window) -> np.ndarray:
+    def get_windowed_fragment(self, phase: Union[int, float], window: Window) -> np.ndarray:
         offset = self.get_offset(phase) if isinstance(phase, float) else phase
         offset += window.left_offset
-        fragment = self.get_fragment(offset, window.size)
-        return fragment * window.envelope
+        fragment: np.ndarray = self.get_fragment(offset, window.size)
+        windowed_fragment: np.ndarray = fragment * window.envelope
+        return windowed_fragment
 
     @property
     def length(self) -> int:

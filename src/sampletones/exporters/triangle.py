@@ -17,8 +17,8 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         pitch = MIN_PITCH
         volume = 0
 
-        pitches = []
-        volumes = []
+        pitches: List[int] = []
+        volumes: List[int] = []
 
         for instruction in instructions:
             if instruction.on:
@@ -49,3 +49,7 @@ class TriangleExporter(Exporter[TriangleInstruction]):
             FeatureKey.VOLUME: np.array(volumes).astype(np.int8),
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
         }
+
+    @staticmethod
+    def get_instruction_type() -> type:
+        return TriangleInstruction

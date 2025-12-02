@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import numpy as np
+import yaml
 from pydantic import BaseModel
 
 from sampletones.typehints import SerializedData
@@ -23,7 +24,19 @@ def save_json(filepath: Union[str, Path], data: SerializedData) -> None:
 
 def load_json(filepath: Union[str, Path]) -> SerializedData:
     with open(filepath, "r", encoding="utf-8") as file:
-        return json.load(file)
+        data: SerializedData = json.load(file)
+        return data
+
+
+def save_yaml(filepath: Union[str, Path], data: SerializedData) -> None:
+    with open(filepath, "w", encoding="utf-8") as file:
+        yaml.dump(data, file)
+
+
+def load_yaml(filepath: Union[str, Path]) -> SerializedData:
+    with open(filepath, "r", encoding="utf-8") as file:
+        data: SerializedData = yaml.safe_load(file)
+        return data
 
 
 def save_binary(filepath: Union[str, Path], data: bytes) -> None:

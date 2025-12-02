@@ -15,13 +15,16 @@ from sampletones.constants.general import (
     NORMALIZE,
     QUANTIZE,
 )
-from sampletones.library import LibraryKey
+from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Sender, SerializedData
+from sampletones.utils import to_path
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.application.manager import ApplicationConfigManager
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_INPUT_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
     DIM_PANEL_CONFIG_WIDTH,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
@@ -44,19 +47,25 @@ from ..constants import (
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
+    TAG_FONT_BOLD,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
-from ..elements.button import GUIButton
-from ..elements.panel import GUIPanel
-from ..elements.path import GUIPathText
-from ..utils.dpg import dpg_set_value
-from ..utils.file import file_dialog_handler
+from ...elements.button import GUIButton
+from ...elements.panel import GUIPanel
+from ...elements.path import GUIPathText
+from ...utils.dpg import dpg_set_value
+from ...utils.file import file_dialog_handler
 
 
 class GUIConfigPanel(GUIPanel):
-    def __init__(self, config_manager: ConfigManager):
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ):
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
 
         self._on_update_library_directory: Optional[Callable[[], None]] = None
         self.library_path_text: Optional[GUIPathText] = None
@@ -76,9 +85,10 @@ class GUIConfigPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
-            dpg.add_separator()
+            section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
 
+            dpg.add_separator()
             dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
             dpg.add_checkbox(label=LBL_CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_CONFIG_QUANTIZE)
             dpg.add_input_int(
@@ -86,6 +96,7 @@ class GUIConfigPanel(GUIPanel):
                 default_value=MAX_WORKERS,
                 tag=TAG_CONFIG_MAX_WORKERS,
                 min_value=RNG_CONFIG_MIN_WORKERS,
+                width=DIM_INPUT_WIDTH,
             )
 
             dpg.add_separator()
@@ -114,6 +125,7 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_CONFIG_SAMPLE_RATE,
                 min_value=MIN_SAMPLE_RATE,
                 max_value=MAX_SAMPLE_RATE,
+                width=DIM_INPUT_WIDTH,
             )
             dpg.add_input_int(
                 label=LBL_INPUT_CHANGE_RATE,
@@ -121,13 +133,14 @@ class GUIConfigPanel(GUIPanel):
                 tag=TAG_CONFIG_CHANGE_RATE,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
+                width=DIM_INPUT_WIDTH,
             )
             dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
             dpg.add_slider_int(
+                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
                 min_value=0,
                 max_value=MAX_TRANSFORMATION_GAMMA,
                 width=-1,
-                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
             )
 
         self._register_callbacks()
@@ -148,11 +161,11 @@ class GUIConfigPanel(GUIPanel):
         return gui_values
 
     def _clamp_value(self, tag: str) -> Union[int, float, bool, str]:
-        value = dpg.get_value(tag)
-        cfg = dpg.get_item_configuration(tag)
+        value: Union[int, float, bool, str] = dpg.get_value(tag)
+        item_config = dpg.get_item_configuration(tag)
 
-        min_v = cfg.get("min_value")
-        max_v = cfg.get("max_value")
+        min_v = item_config.get("min_value")
+        max_v = item_config.get("max_value")
 
         if isinstance(value, (int, float)):
             if min_v is not None:
@@ -167,14 +180,16 @@ class GUIConfigPanel(GUIPanel):
             label=TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._select_library_directory,
+            callback=self._handle_select_library_directory,
             directory_selector=True,
+            default_path=str(self.application_config_manager.get_library_path()),
         ):
             pass
 
     @file_dialog_handler
-    def _select_library_directory(self, filepath: Path) -> None:
+    def _handle_select_library_directory(self, filepath: Path) -> None:
         self.change_library_directory(filepath)
+        self.application_config_manager.set_library_path(filepath)
 
     def change_library_directory(self, directory_path: Path) -> None:
         self.config_manager.library_directory = directory_path
@@ -187,7 +202,7 @@ class GUIConfigPanel(GUIPanel):
         if self._on_update_library_directory is not None:
             self._on_update_library_directory()
 
-    def apply_library_config(self, library_key: LibraryKey) -> None:
+    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
         for tag, value in gui_updates.items():
             dpg_set_value(tag, value)
@@ -203,7 +218,7 @@ class GUIConfigPanel(GUIPanel):
             if hasattr(section, tag):
                 dpg.set_value(tag, getattr(section, tag))
 
-        library_directory = Path(config.general.library_directory)
+        library_directory = to_path(config.general.library_directory)
         if self.library_path_text:
             self.library_path_text.set_path(library_directory)
 

@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Optional, Self, Union, cast
+from typing import Any, Dict, List, Optional, Self, Union
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -18,14 +18,18 @@ from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
 )
-from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterClass
+from sampletones.exporters import (
+    INSTRUCTION_TO_EXPORTER_MAP,
+    ExporterTypeUnion,
+    ExporterUnion,
+    Features,
+)
 from sampletones.instructions import (
-    InstructionClass,
+    InstructionData,
     InstructionUnion,
     get_instruction_by_type,
 )
-from sampletones.instructions.data import InstructionData
-from sampletones.typehints import FeatureMap, SerializedData
+from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
 from sampletones.utils.logger import logger
 
@@ -66,9 +70,8 @@ class Reconstruction(DataModel):
         return {item.generator_name: list(item.errors) for item in self.errors_data}
 
     @staticmethod
-    def _get_exporter_class(instruction: InstructionUnion) -> ExporterClass:
-        instruction_type = cast(InstructionClass, type(instruction))
-        return INSTRUCTION_TO_EXPORTER_MAP[instruction_type]
+    def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
+        return INSTRUCTION_TO_EXPORTER_MAP[type(instruction)]
 
     @classmethod
     def _parse_instructions(cls, data: Dict[str, SerializedData]) -> Dict[str, List[InstructionUnion]]:
@@ -185,24 +188,40 @@ class Reconstruction(DataModel):
                 actual_version=reconstruction_version,
             )
 
-    def export(self) -> Dict[GeneratorName, FeatureMap]:
-        features = {}
+    def _validate_instructions(self, exporter: ExporterUnion, instructions: List[InstructionUnion]) -> None:
+        first_instruction: InstructionUnion = instructions[0]
+        exporter_class = self._get_exporter_class(instructions[0])
+        exporter_instruction_type = exporter.get_instruction_type()
+        for instruction in instructions:
+            if not isinstance(instruction, type(first_instruction)):
+                raise TypeError(f"All instructions must be of the same type for exporter {exporter_class.__name__}")
+
+            if not isinstance(instruction, exporter_instruction_type):
+                raise TypeError(
+                    f"Instruction type {type(instruction).__name__} is not compatible "
+                    f"with exporter {exporter_class.__name__}"
+                )
+
+    def export(self) -> Dict[GeneratorName, Features]:
+        features: Dict[GeneratorName, Features] = {}
         for name, instructions in self.instructions.items():
             if not instructions:
                 continue
 
             exporter_class = self._get_exporter_class(instructions[0])
-            exporter = exporter_class()
-            features[name] = exporter(instructions)
+            exporter: ExporterUnion = exporter_class()
+            self._validate_instructions(exporter, instructions)
+            feature: Features = exporter(instructions)  # type: ignore
+            features[name] = feature
 
         return features
 
     @field_serializer("approximation")
-    def _serialize_approximation(self, approximation: np.ndarray, _info) -> SerializedData:
+    def _serialize_approximation(self, approximation: np.ndarray, _info: Any) -> SerializedData:
         return serialize_array(approximation)
 
     @field_serializer("audio_filepath")
-    def _serialize_audio_filepath(self, audio_filepath: Path, _info) -> str:
+    def _serialize_audio_filepath(self, audio_filepath: Path, _info: Any) -> str:
         return str(audio_filepath)
 
     @classmethod

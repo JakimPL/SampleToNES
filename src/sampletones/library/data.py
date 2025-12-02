@@ -1,11 +1,11 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Self, Union
+from typing import Any, Dict, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
-from sampletones.configs import Config, LibraryConfig
+from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.constants.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
@@ -22,29 +22,31 @@ from sampletones.generators import GeneratorClassNames
 from sampletones.instructions import InstructionUnion
 from sampletones.utils import load_binary
 
-from .fragment import LibraryFragment
+from .fragment import InstructionLibraryFragment
 from .item import LibraryItem
 
 
-class LibraryData(DataModel):
+class InstructionLibraryData(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
         default_factory=default_metadata,
         description="Library metadata",
     )
-    config: LibraryConfig = Field(..., description="Configuration of the library data")
-    items: List[LibraryItem] = Field(
+    config: InstructionsLibraryConfig = Field(..., description="Configuration of the library data")
+    items: List[LibraryItem[InstructionUnion]] = Field(
         ...,
         description="Library data mapping instructions to fragments",
     )
 
     @cached_property
-    def data(self) -> Dict[InstructionUnion, LibraryFragment]:
+    def data(self) -> Dict[InstructionUnion, InstructionLibraryFragment[Any]]:
         return {item.instruction: item.fragment for item in self.items}
 
     @cached_property
-    def subdata(self) -> Dict[GeneratorClassName, Dict[InstructionUnion, LibraryFragment]]:
+    def subdata(
+        self,
+    ) -> Dict[GeneratorClassName, Dict[InstructionUnion, InstructionLibraryFragment[Any]]]:
         subdata = {}
         for generator_class_name in GeneratorClassName:
             subdata[generator_class_name] = {
@@ -55,11 +57,15 @@ class LibraryData(DataModel):
 
         return subdata
 
-    def __getitem__(self, key: InstructionUnion) -> LibraryFragment:
+    def __getitem__(self, key: InstructionUnion) -> InstructionLibraryFragment[Any]:
         return self.data[key]
 
     @classmethod
-    def create(cls, config: Union[Config, LibraryConfig], data: Dict[InstructionUnion, LibraryFragment]) -> Self:
+    def create(
+        cls,
+        config: Union[Config, InstructionsLibraryConfig],
+        data: Dict[InstructionUnion, InstructionLibraryFragment[Any]],
+    ) -> Self:
         library_config = config.library if isinstance(config, Config) else config
         items = [
             LibraryItem.create(
@@ -73,7 +79,7 @@ class LibraryData(DataModel):
     def filter(
         self,
         generator_classes: GeneratorClassNames,
-    ) -> Dict[InstructionUnion, LibraryFragment]:
+    ) -> Dict[InstructionUnion, InstructionLibraryFragment[Any]]:
         if not generator_classes:
             return {}
 
@@ -81,7 +87,7 @@ class LibraryData(DataModel):
             return self.subdata.get(generator_classes, {})
 
         if isinstance(generator_classes, tuple):
-            result: Dict[InstructionUnion, LibraryFragment] = {}
+            result: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
             for generator_class_name in generator_classes:
                 result |= self.subdata[generator_class_name]
             return result
@@ -91,18 +97,18 @@ class LibraryData(DataModel):
             f"expected GeneratorClassName or a tuple of GeneratorClassName."
         )
 
-    def keys(self):
+    def keys(self) -> KeysView[InstructionUnion]:
         return self.data.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[InstructionLibraryFragment[Any]]:
         return self.data.values()
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "LibraryData":
+    def load(cls, path: Union[str, Path]) -> "InstructionLibraryData":
         binary = load_binary(path)
 
         try:
-            library_data = LibraryData.deserialize(binary)
+            library_data = InstructionLibraryData.deserialize(binary)
         except (ValidationError, TypeError) as exception:
             raise InvalidLibraryDataValuesError(
                 f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
@@ -131,12 +137,12 @@ class LibraryData(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> ModuleType:
-        from schemas.library import FBLibraryData
+        from schemas.library import FBInstructionsLibraryData
 
-        return FBLibraryData
+        return FBInstructionsLibraryData
 
     @classmethod
     def buffer_reader(cls) -> type:
-        from schemas.library import FBLibraryData
+        from schemas.library import FBInstructionsLibraryData
 
-        return FBLibraryData.FBLibraryData
+        return FBInstructionsLibraryData.FBInstructionsLibraryData

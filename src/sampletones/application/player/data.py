@@ -1,8 +1,10 @@
+from typing import Any
+
 import numpy as np
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict
 
 from sampletones.audio import clip_audio, stereo_to_mono
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 
 
 class AudioData(BaseModel):
@@ -12,13 +14,12 @@ class AudioData(BaseModel):
     sample_rate: int
     current_position: int = 0
 
-    @computed_field
     @property
     def samples(self) -> int:
         return len(self.sample)
 
     @classmethod
-    def from_library_fragment(cls, fragment: LibraryFragment, sample_rate: int) -> "AudioData":
+    def from_library_fragment(cls, fragment: InstructionLibraryFragment[Any], sample_rate: int) -> "AudioData":
         audio = fragment.data.copy()
         audio = stereo_to_mono(audio)
         audio = clip_audio(audio)

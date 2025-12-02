@@ -8,33 +8,33 @@ from flatbuffers.compat import import_numpy
 np = import_numpy()
 
 
-class FBLibraryFragment(object):
+class FBInstructionsLibraryFragment(object):
     __slots__ = ["_tab"]
 
     @classmethod
     def GetRootAs(cls, buf, offset=0):
         n = flatbuffers.encode.Get(flatbuffers.packer.uoffset, buf, offset)
-        x = FBLibraryFragment()
+        x = FBInstructionsLibraryFragment()
         x.Init(buf, n + offset)
         return x
 
     @classmethod
-    def GetRootAsFBLibraryFragment(cls, buf, offset=0):
+    def GetRootAsFBInstructionsLibraryFragment(cls, buf, offset=0):
         """This method is deprecated. Please switch to GetRootAs."""
         return cls.GetRootAs(buf, offset)
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def Init(self, buf, pos):
         self._tab = flatbuffers.table.Table(buf, pos)
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def GeneratorClass(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
         return None
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def InstructionData(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
@@ -46,7 +46,7 @@ class FBLibraryFragment(object):
             return obj
         return None
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def Feature(self, j):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
@@ -56,26 +56,26 @@ class FBLibraryFragment(object):
             )
         return 0
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def FeatureAsNumpy(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.GetVectorAsNumpy(flatbuffers.number_types.Float32Flags, o)
         return 0
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def FeatureLength(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             return self._tab.VectorLen(o)
         return 0
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def FeatureIsNone(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         return o == 0
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def Sample(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
         if o != 0:
@@ -87,7 +87,7 @@ class FBLibraryFragment(object):
             return obj
         return None
 
-    # FBLibraryFragment
+    # FBInstructionsLibraryFragment
     def Frequency(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(12))
         if o != 0:
@@ -95,65 +95,65 @@ class FBLibraryFragment(object):
         return 0.0
 
 
-def FBLibraryFragmentStart(builder):
+def FBInstructionsLibraryFragmentStart(builder):
     builder.StartObject(5)
 
 
 def Start(builder):
-    return FBLibraryFragmentStart(builder)
+    return FBInstructionsLibraryFragmentStart(builder)
 
 
-def FBLibraryFragmentAddGeneratorClass(builder, generatorClass):
+def FBInstructionsLibraryFragmentAddGeneratorClass(builder, generatorClass):
     builder.PrependUOffsetTRelativeSlot(0, flatbuffers.number_types.UOffsetTFlags.py_type(generatorClass), 0)
 
 
 def AddGeneratorClass(builder, generatorClass):
-    return FBLibraryFragmentAddGeneratorClass(builder, generatorClass)
+    return FBInstructionsLibraryFragmentAddGeneratorClass(builder, generatorClass)
 
 
-def FBLibraryFragmentAddInstructionData(builder, instructionData):
+def FBInstructionsLibraryFragmentAddInstructionData(builder, instructionData):
     builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(instructionData), 0)
 
 
 def AddInstructionData(builder, instructionData):
-    return FBLibraryFragmentAddInstructionData(builder, instructionData)
+    return FBInstructionsLibraryFragmentAddInstructionData(builder, instructionData)
 
 
-def FBLibraryFragmentAddFeature(builder, feature):
+def FBInstructionsLibraryFragmentAddFeature(builder, feature):
     builder.PrependUOffsetTRelativeSlot(2, flatbuffers.number_types.UOffsetTFlags.py_type(feature), 0)
 
 
 def AddFeature(builder, feature):
-    return FBLibraryFragmentAddFeature(builder, feature)
+    return FBInstructionsLibraryFragmentAddFeature(builder, feature)
 
 
-def FBLibraryFragmentStartFeatureVector(builder, numElems):
+def FBInstructionsLibraryFragmentStartFeatureVector(builder, numElems):
     return builder.StartVector(4, numElems, 4)
 
 
 def StartFeatureVector(builder, numElems):
-    return FBLibraryFragmentStartFeatureVector(builder, numElems)
+    return FBInstructionsLibraryFragmentStartFeatureVector(builder, numElems)
 
 
-def FBLibraryFragmentAddSample(builder, sample):
+def FBInstructionsLibraryFragmentAddSample(builder, sample):
     builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(sample), 0)
 
 
 def AddSample(builder, sample):
-    return FBLibraryFragmentAddSample(builder, sample)
+    return FBInstructionsLibraryFragmentAddSample(builder, sample)
 
 
-def FBLibraryFragmentAddFrequency(builder, frequency):
+def FBInstructionsLibraryFragmentAddFrequency(builder, frequency):
     builder.PrependFloat32Slot(4, frequency, 0.0)
 
 
 def AddFrequency(builder, frequency):
-    return FBLibraryFragmentAddFrequency(builder, frequency)
+    return FBInstructionsLibraryFragmentAddFrequency(builder, frequency)
 
 
-def FBLibraryFragmentEnd(builder):
+def FBInstructionsLibraryFragmentEnd(builder):
     return builder.EndObject()
 
 
 def End(builder):
-    return FBLibraryFragmentEnd(builder)
+    return FBInstructionsLibraryFragmentEnd(builder)

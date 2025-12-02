@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from ...constants import (
-    CLR_BAR_PLOT_ZERO_LINE,
+    COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_BAR_PLOT_DISPLAY,
@@ -132,7 +132,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
 
         with dpg.theme() as zero_line_theme:
             with dpg.theme_component(dpg.mvLineSeries):
-                dpg.add_theme_color(dpg.mvPlotCol_Line, CLR_BAR_PLOT_ZERO_LINE, category=dpg.mvThemeCat_Plots)
+                dpg.add_theme_color(dpg.mvPlotCol_Line, COL_BAR_PLOT_ZERO_LINE, category=dpg.mvThemeCat_Plots)
                 dpg.add_theme_style(
                     dpg.mvPlotStyleVar_LineWeight,
                     VAL_BAR_PLOT_ZERO_LINE_THICKNESS,

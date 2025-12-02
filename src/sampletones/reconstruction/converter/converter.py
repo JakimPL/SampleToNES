@@ -58,10 +58,10 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
         return arguments
 
-    def _get_task_function(self) -> Callable[[Tuple], Path]:
+    def _get_task_function(self) -> Callable[[Tuple[Reconstructor, Path, Path]], Path]:
         return reconstruct_file
 
-    def _process_results(self, results: List[Any]) -> Path:
+    def _process_results(self, results: List[Path]) -> Path:
         if self.is_file:
             return results[0]
 

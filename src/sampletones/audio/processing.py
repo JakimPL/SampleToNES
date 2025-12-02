@@ -41,7 +41,7 @@ def interpolate(data: np.ndarray, target_length: int) -> np.ndarray:
 
     original_indices = np.arange(original_length)
     new_indices = np.linspace(0, original_length - 1, target_length)
-    interpolated_data = np.interp(new_indices, original_indices, data)
+    interpolated_data: np.ndarray = np.interp(new_indices, original_indices, data)
 
     return interpolated_data.astype(np.float32)
 

@@ -10,7 +10,13 @@ from .maps import (
 from .noise import NoiseGenerator
 from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
-from .typehints import GeneratorClass, GeneratorClassNames, GeneratorT, GeneratorUnion
+from .typehints import (
+    GeneratorClass,
+    GeneratorClassNames,
+    GeneratorT,
+    GeneratorTypeUnion,
+    GeneratorUnion,
+)
 from .utils import (
     get_generator_by_instruction,
     get_generators_by_names,
@@ -36,5 +42,6 @@ __all__ = [
     "GeneratorT",
     "GeneratorClass",
     "GeneratorUnion",
+    "GeneratorTypeUnion",
     "GeneratorClassNames",
 ]

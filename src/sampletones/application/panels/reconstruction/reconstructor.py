@@ -6,9 +6,10 @@ import dearpygui.dearpygui as dpg
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
+from sampletones.utils import to_path
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.manager import ConfigManager
+from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
@@ -23,6 +24,7 @@ from ..constants import (
     LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
+    TAG_FONT_BOLD,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
@@ -31,11 +33,11 @@ from ..constants import (
     TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
-from ..elements.button import GUIButton
-from ..elements.panel import GUIPanel
-from ..elements.path import GUIPathText
-from ..utils.dpg import dpg_set_value
-from ..utils.file import file_dialog_handler
+from ...elements.button import GUIButton
+from ...elements.panel import GUIPanel
+from ...elements.path import GUIPathText
+from ...utils.dpg import dpg_set_value
+from ...utils.file import file_dialog_handler
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -60,9 +62,10 @@ class GUIReconstructorPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
-            dpg.add_separator()
+            section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
 
+            dpg.add_separator()
             dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
             GUIButton(
                 tag=TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
@@ -144,13 +147,14 @@ class GUIReconstructorPanel(GUIPanel):
             label=TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._select_output_directory,
+            callback=self._handle_select_output_directory,
             directory_selector=True,
+            default_path=str(self.config_manager.get_output_directory()),
         ):
             pass
 
     @file_dialog_handler
-    def _select_output_directory(self, directory_path: Path) -> None:
+    def _handle_select_output_directory(self, directory_path: Path) -> None:
         self.change_output_directory(directory_path)
 
     def change_output_directory(self, directory_path: Path) -> None:
@@ -178,7 +182,7 @@ class GUIReconstructorPanel(GUIPanel):
         for generator_tag, generator in self.config_manager.generator_tags.items():
             dpg_set_value(generator_tag, generator in config.generation.generators)
 
-        output_directory = Path(config.general.output_directory)
+        output_directory = to_path(config.general.output_directory)
         if self.output_path_text:
             self.output_path_text.set_path(output_directory)
 

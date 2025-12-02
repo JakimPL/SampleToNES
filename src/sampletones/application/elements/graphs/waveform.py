@@ -4,13 +4,13 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants.enums import GeneratorName
-from sampletones.library import LibraryFragment
+from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 
 from ...constants import (
-    CLR_WAVEFORM_LAYER_RECONSTRUCTION,
-    CLR_WAVEFORM_LAYER_SAMPLE,
-    CLR_WAVEFORM_POSITION_INDICATOR,
+    COL_WAVEFORM_LAYER_RECONSTRUCTION,
+    COL_WAVEFORM_LAYER_SAMPLE,
+    COL_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_PLOT_ORIGINAL,
@@ -80,7 +80,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
-        self.current_data: Optional[Union[LibraryFragment, ReconstructionData]] = None
+        self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
 
         super().__init__(
             tag,
@@ -96,7 +96,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     @property
     def sample_length(self) -> int:
-        if isinstance(self.current_data, LibraryFragment):
+        if isinstance(self.current_data, InstructionLibraryFragment):
             return len(self.current_data.data)
 
         if isinstance(self.current_data, ReconstructionData):
@@ -144,7 +144,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
 
-    def load_library_fragment(self, fragment: LibraryFragment) -> None:
+    def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
         self.current_position = 0
@@ -153,7 +153,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             WaveformLayer(
                 fragment=fragment,
                 name=LBL_WAVEFORM_SAMPLE_LAYER_NAME,
-                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
         )
@@ -190,7 +190,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             ArrayLayer(
                 data=original_audio / (coefficient * original_audio_coefficient),
                 name=LBL_PLOT_ORIGINAL,
-                color=CLR_WAVEFORM_LAYER_SAMPLE,
+                color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
         )
@@ -199,7 +199,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             ArrayLayer(
                 data=approximation / coefficient,
                 name=LBL_PLOT_RECONSTRUCTION,
-                color=CLR_WAVEFORM_LAYER_RECONSTRUCTION,
+                color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
             )
         )
@@ -267,7 +267,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             with dpg.theme() as indicator_theme:
                 with dpg.theme_component(dpg.mvLineSeries):
                     dpg.add_theme_color(
-                        dpg.mvPlotCol_Line, CLR_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
+                        dpg.mvPlotCol_Line, COL_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
                     )
                     dpg.add_theme_style(
                         dpg.mvPlotStyleVar_LineWeight,

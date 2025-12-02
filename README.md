@@ -67,11 +67,11 @@ pip install ".[gpu]"
 
 ## Data structures
 
-### Libraries
+### Instruction data
 
 To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
 
-The library depends on the following configuration properties:
+The instruction data depends on the following configuration properties:
 * `change_rate` (frequency, usually NTSC or PAL)
 * `sample_rate` (in Hz)
 * `transformation_gamma`, which determines the transformation of the spectral information:
@@ -79,13 +79,13 @@ The library depends on the following configuration properties:
     * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
     Intermediate values interpolate between these two.
 
-Each set of parameters corresponds to a different library, encoded by a library configuration key.
+Each set of parameters corresponds to a different instructions data, encoded by a configuration key.
 
-Libraries are generated using the library generator included in the application. They can be generated from the _Library_ tab of the application and explored using the application.
+Libraries are generated using the generator included in the application. They can be generated from the _Instructions_ tab of the application and explored using the application.
 
-#### Library data
+#### Data content
 
-For each key, library data consists of instructions. Each instruction contains:
+For each key, the data consists of single instructions. Each instruction contains:
 * metadata
 * instruction data
 * a single waveform frame
@@ -93,7 +93,7 @@ For each key, library data consists of instructions. Each instruction contains:
 
 ##### Instructions
 
-Libraries contain the following instruction data:
+Prerendered instructions contain the following data:
 * generator class (`pulse`/`triangle`/`noise`)
 * instruction data (`on`/`pitch`/`period`/`volume`/`duty_cycle`/`short`)
 
@@ -113,13 +113,13 @@ Within each waveform, each instruction data contains spectral information on the
 
 #### File format
 
-Libraries are stored as `.dat` files in the user's documents folder, e.g.:
+Instructions libraries are stored as `.dat` files in the user's documents folder, e.g.:
 
 ```
 sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.dat
 ```
 
-The library configuration is embedded in the file name:
+The configuration is embedded in the file name:
 * `sr_44100` corresponds to the sample rate 44100 Hz
 * `cr_30` describes change rate of 30 Hz
 * `ws_1615` is the size of the FFT transformation (1615 samples)
@@ -138,7 +138,7 @@ As in 2A03, there are four generators of three types:
 * `triangle`
 * `noise`
 
-For the most part, generators are not used during the reconstruction: each single instruction is precalculated in the library with spectral information.
+For the most part, generators are not used during the reconstruction: each single instruction is precalculated with spectral information.
 
 #### Reconstructor
 
@@ -158,7 +158,7 @@ Reconstruction is an object containing all conversion information. The most impo
 
 #### Generation options
 
-_SampleToNES_, besides the library settings, offers additional generation settings:
+_SampleToNES_ offers additional generation settings:
 
 * `mixer`: For amplifying the NES waveforms. Too low values may result in clamped dynamics; too high values may cause quiet samples to be lost.
 * `find_best_phase`: Tries to find the best phase for a sample to fit the frame. `True` by default. Allows ignoring phase shifts while searching for the best approximation.
@@ -178,23 +178,23 @@ are stored in the default documents directory. The path depends on the operating
 
 ### Windows
 
-The default path of the library is:
+The default path of the instruction data is:
 ```
-C:\Users\<user>\Documents\SampleToNES
+C:\Users\<user>\Documents\SampleToNES\instructions
 ```
 
 ### Linux
 
 Local files can be found in the following directory:
 ```
-/home/<user>/Documents/SampleToNES
+/home/<user>/Documents/SampleToNES/instructions
 ```
 
 ### macOS
 
 Similarly, the default directory for macOS is:
 ```
-/Users/<user>/Documents/SampleToNES
+/Users/<user>/Documents/SampleToNES/instructions
 ```
 
 ## CLI arguments
@@ -213,9 +213,9 @@ or, shortly:
 sampletones -c <config-path>
 ```
 
-### Library generation
+### Instructions data generation
 
-_SampleToNES_ supports CLI arguments also for library generation. To generate a library for a given config, run:
+_SampleToNES_ supports CLI arguments also for instructions data generation. To generate a library for a given config, run:
 
 ```bash
 sampletones --generate --config <config-path>
@@ -237,7 +237,7 @@ You can also specify the output file via `--output` (`-o`):
 sampletones <path> --config <config-path> --output <output-path>
 ```
 
-However, this approach is discouraged, since the reconstruction files won't appear in the program's reconstructions library.
+However, this approach is discouraged, since the reconstruction files won't appear in the program application.
 
 ### Help
 
@@ -256,7 +256,7 @@ SampleToNES exposes a variety of classes:
 from sampletones import (
     Config,  # generation configuration
     Window,  # FFT window
-    Library,  # library
+    InstructionsLibrary,  # library
     Reconstruction,  # reconstruction data
     Reconstructor,  # object reconstructing an audio
     # Generators

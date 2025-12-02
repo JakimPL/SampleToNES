@@ -8,14 +8,8 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
 from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import FragmentedAudio, Window
-from sampletones.generators import (
-    INSTRUCTION_TO_GENERATOR_MAP,
-    MIXER_LEVELS,
-    GeneratorUnion,
-    get_generators_by_names,
-)
-from sampletones.instructions import INSTRUCTION_CLASS_MAP
-from sampletones.library import Library, LibraryData
+from sampletones.generators import MIXER_LEVELS, GeneratorUnion, get_generators_by_names
+from sampletones.library import InstructionLibrary, InstructionLibraryData
 from sampletones.utils import to_path
 
 from ..reconstruction.reconstruction import Reconstruction
@@ -30,7 +24,7 @@ def reconstruct(
     config: Config,
     window: Window,
     generators: Dict[GeneratorName, GeneratorUnion],
-    library_data: LibraryData,
+    library_data: InstructionLibraryData,
 ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
     worker = ReconstructorWorker(
         config=config,
@@ -46,7 +40,7 @@ class Reconstructor:
     def __init__(
         self,
         config: Config,
-        library: Optional[Library] = None,
+        library: Optional[InstructionLibrary] = None,
     ) -> None:
         self.config: Config = config
         self.state: ReconstructionState = ReconstructionState.create([])
@@ -55,7 +49,7 @@ class Reconstructor:
         self.generators = get_generators_by_names(config, generator_names)
 
         self.window: Window = Window.from_config(self.config)
-        self.library_data: LibraryData = self.load_library(library)
+        self.library_data: InstructionLibraryData = self.load_library(library)
 
     def __call__(self, path: Union[str, Path]) -> Optional[Reconstruction]:
         if not isinstance(path, (str, Path)):
@@ -79,8 +73,8 @@ class Reconstructor:
         )
 
     def get_coefficient(self, audio: np.ndarray) -> float:
-        return np.max(np.abs(audio)) / sum(
-            MIXER_LEVELS[generator.class_name()] for generator in self.generators.values()
+        return float(
+            np.max(np.abs(audio)) / sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
         )
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
@@ -100,8 +94,8 @@ class Reconstructor:
             for fragment_approximation in fragment_approximations.values():
                 self.update_state(fragment_approximation)
 
-    def load_library(self, library: Optional[Library] = None) -> LibraryData:
-        library = library or Library(directory=self.config.general.library_directory)
+    def load_library(self, library: Optional[InstructionLibrary] = None) -> InstructionLibraryData:
+        library = library or InstructionLibrary(directory=self.config.general.library_directory)
         library_data = library.get(self.config, self.window)
         key = library.create_key(self.config, self.window)
         if not library_data:
@@ -109,7 +103,7 @@ class Reconstructor:
                 f"No library data found for the given configuration and window: {library.get_path(key)}"
             )
 
-        return LibraryData.create(
+        return InstructionLibraryData.create(
             config=self.config,
             data=library_data.filter(
                 tuple(generator.class_name() for generator in self.generators.values()),
@@ -119,12 +113,16 @@ class Reconstructor:
     def update_state(self, fragment_approximation: ApproximationData) -> None:
         generator: GeneratorUnion = self.generators[fragment_approximation.generator_name]
         if self.config.generation.final_regeneration:
-            instruction_class = INSTRUCTION_TO_GENERATOR_MAP[
-                INSTRUCTION_CLASS_MAP[fragment_approximation.instruction.class_name()]
-            ]
-            instruction: instruction_class = fragment_approximation.instruction
+            instruction = fragment_approximation.instruction
             initials = generator.initials
-            approximation = generator(instruction, initials=initials, save=True) * self.config.generation.mixer
+            approximation = (
+                generator(
+                    instruction,  # type: ignore
+                    initials=initials,
+                    save=True,
+                )
+                * self.config.generation.mixer
+            )
         else:
             approximation = fragment_approximation.approximation.audio * self.config.generation.mixer
 

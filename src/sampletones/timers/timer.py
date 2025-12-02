@@ -71,7 +71,7 @@ class Timer:
     ) -> np.ndarray:
         previous_initials = self.get()
         self.set(initials)
-        frames = np.concatenate([self.generate_frame(save=True) for _ in range(frames_count)])
+        frames: np.ndarray = np.concatenate([self.generate_frame(save=True) for _ in range(frames_count)])
         self.set(previous_initials)
         return frames
 

@@ -3,7 +3,12 @@ from typing import Callable, Dict, List, Optional
 
 from pydantic import ValidationError
 
-from sampletones.configs import Config, GeneralConfig, GenerationConfig, LibraryConfig
+from sampletones.configs import (
+    Config,
+    GeneralConfig,
+    GenerationConfig,
+    InstructionsLibraryConfig,
+)
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
     DEFAULT_CHANGE_RATE,
@@ -16,9 +21,8 @@ from sampletones.constants.general import (
 )
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.ffts import Window
-from sampletones.library import LibraryKey
+from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import SerializedData
-from sampletones.utils import save_json
 from sampletones.utils.logger import logger
 
 from ..constants import (
@@ -44,7 +48,7 @@ class ConfigManager:
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
-        self.config_change_callbacks: List[Callable] = []
+        self.config_change_callbacks: List[Callable[[], None]] = []
         self.config_path: Path = Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
@@ -97,11 +101,9 @@ class ConfigManager:
             logger.warning("No configuration to save")
             return
 
-        config_dict = self.config.model_dump()
-
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
-            save_json(self.config_path, config_dict)
+            self.config.save(self.config_path)
         except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
@@ -122,7 +124,7 @@ class ConfigManager:
 
         self.config = Config(
             general=GeneralConfig(**general_config_data),
-            library=LibraryConfig(**library_config_data),
+            library=InstructionsLibraryConfig(**library_config_data),
             generation=GenerationConfig(**generation_config_data),
         )
         self.window = Window.from_config(self.config)
@@ -144,7 +146,7 @@ class ConfigManager:
                 if value is None:
                     continue
 
-                section = info["section"]
+                section = str(info["section"])
                 config_data[section][tag] = value
 
         return config_data
@@ -176,19 +178,19 @@ class ConfigManager:
         return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
 
     @property
-    def key(self) -> LibraryKey:
+    def key(self) -> InstructionLibraryKey:
         if not self.config or not self.window:
             raise RuntimeError("Library key is not available")
-        return LibraryKey.create(self.config.library, self.window)
+        return InstructionLibraryKey.create(self.config.library, self.window)
 
-    def add_config_change_callback(self, callback: Callable) -> None:
+    def add_config_change_callback(self, callback: Callable[[], None]) -> None:
         self.config_change_callbacks.append(callback)
 
     def update_gui(self) -> None:
         for callback in self.config_change_callbacks:
             callback()
 
-    def apply_library_config(self, library_key: LibraryKey) -> SerializedData:
+    def apply_library_config(self, library_key: InstructionLibraryKey) -> SerializedData:
         if not self.config:
             raise ValueError("No config available")
 
