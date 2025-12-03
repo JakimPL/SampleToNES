@@ -306,7 +306,7 @@ class GUI:
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
             dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
 
-        current_reconstruction = self.application_config_manager.config.gui.current_reconstruction
+        current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
             self.browser_panel.load_and_display_reconstruction(current_reconstruction)
 
