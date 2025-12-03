@@ -77,7 +77,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 callback=self._export_instruments,
                 enabled=False,
                 show=False,
-                bold=True,
+                font=Font.BOLD,
             )
             dpg.add_separator()
 

@@ -134,7 +134,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     label=LBL_BUTTON_GENERATE_LIBRARY,
                     width=-1,
                     callback=self._generate_library,
-                    bold=True,
+                    font=Font.BOLD,
                 )
                 dpg.add_progress_bar(
                     tag=TAG_LIBRARY_PROGRESS,

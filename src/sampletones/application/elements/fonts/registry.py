@@ -1,3 +1,5 @@
+from typing import Dict
+
 import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Sender
@@ -13,15 +15,16 @@ from ...constants import (
 )
 from ...resources.items import FontResource
 from ...resources.resources import get_font_path
+from .data import FontData
 from .font import Font
 
 
 class FontRegistry:
-    REGISTRY = {
-        Font.REGULAR: TAG_FONT_REGULAR,
-        Font.BOLD: TAG_FONT_BOLD,
-        Font.REGULAR_SMALL: TAG_FONT_REGULAR_SMALL,
-        Font.BOLD_SMALL: TAG_FONT_BOLD_SMALL,
+    REGISTRY: Dict[Font, FontData] = {
+        Font.REGULAR: FontData(TAG_FONT_REGULAR, VAL_FONT_SIZE, FontResource.REGULAR),
+        Font.BOLD: FontData(TAG_FONT_BOLD, VAL_FONT_SIZE, FontResource.BOLD),
+        Font.REGULAR_SMALL: FontData(TAG_FONT_REGULAR_SMALL, VAL_FONT_SMALL_SIZE, FontResource.REGULAR),
+        Font.BOLD_SMALL: FontData(TAG_FONT_BOLD_SMALL, VAL_FONT_SMALL_SIZE, FontResource.BOLD),
     }
 
     @staticmethod
@@ -36,9 +39,21 @@ class FontRegistry:
         dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
 
     @classmethod
-    def get_font(cls, font: Font) -> str:
+    def get_font(cls, font: Font) -> FontData:
         return cls.REGISTRY[font]
 
     @classmethod
+    def get_tag(cls, font: Font) -> str:
+        return cls.get_font(font).tag
+
+    @classmethod
+    def get_size(cls, font: Font) -> int:
+        return cls.get_font(font).size
+
+    @classmethod
+    def get_resource(cls, font: Font) -> FontResource:
+        return cls.get_font(font).font_resource
+
+    @classmethod
     def bind_to_item(cls, item: Sender, font: Font) -> None:
-        dpg.bind_item_font(item, cls.get_font(font))
+        dpg.bind_item_font(item, cls.get_tag(font))

@@ -34,7 +34,7 @@ class GUIButton:
             )
 
             theme.bind_to_item(self._button_tag)
-            FontRegistry.bind_to_item(self._button_tag, Font.BOLD)
+            FontRegistry.bind_to_item(self._button_tag, font)
 
         GUIButton.REGISTRY[tag] = self
 

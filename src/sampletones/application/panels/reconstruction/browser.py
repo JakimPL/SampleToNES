@@ -93,14 +93,14 @@ class GUIBrowserPanel(GUITreePanel):
                     label=LBL_BUTTON_RECONSTRUCT_FILE,
                     width=-1,
                     callback=self._reconstruct_file,
-                    bold=True,
+                    font=Font.BOLD,
                 )
                 GUIButton(
                     tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                     label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
                     width=-1,
                     callback=self._reconstruct_directory,
-                    bold=True,
+                    font=Font.BOLD,
                 )
 
             dpg.add_separator()

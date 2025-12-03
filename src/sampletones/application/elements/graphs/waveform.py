@@ -33,6 +33,7 @@ from ...constants import (
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
+from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
 from ...utils.align import table_wrapper
 from ...utils.dpg import (
@@ -135,14 +136,14 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             label=LBL_WAVEFORM_BUTTON_RESET_X,
             callback=self._reset_x_axis,
             width=-1,
-            height=20,
+            font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_y_tag,
             label=LBL_WAVEFORM_BUTTON_RESET_Y,
             callback=self._reset_y_axis,
             width=-1,
-            height=20,
+            font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_all_tag,
@@ -150,6 +151,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             callback=self._reset_all_axes,
             width=-1,
             height=20,
+            font=Font.REGULAR_SMALL,
         )
 
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
