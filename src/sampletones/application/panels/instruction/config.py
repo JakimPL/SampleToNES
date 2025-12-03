@@ -47,12 +47,12 @@ from ...constants import (
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_FONT_BOLD,
-    TAG_FONT_REGULAR_SMALL,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
 from ...utils.dpg import dpg_set_value
@@ -87,7 +87,7 @@ class GUIConfigPanel(GUIPanel):
             auto_resize_y=True,
         ):
             section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
             dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
@@ -115,7 +115,7 @@ class GUIConfigPanel(GUIPanel):
                 path=library_directory,
                 parent=self.tag,
             )
-            dpg.bind_item_font(TAG_LIBRARY_DIRECTORY_DISPLAY, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(TAG_LIBRARY_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
             dpg.add_separator()
 
             dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)

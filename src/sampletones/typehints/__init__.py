@@ -1,4 +1,5 @@
 from .general import (
+    Color,
     FeatureMap,
     FeatureValue,
     Initials,
@@ -14,4 +15,5 @@ __all__ = [
     "SerializedData",
     "ReducedObject",
     "Sender",
+    "Color",
 ]

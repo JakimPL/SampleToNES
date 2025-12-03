@@ -3,6 +3,8 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones.typehints import Color
+
 from ...constants import (
     COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
@@ -81,7 +83,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         self,
         data: np.ndarray,
         name: str,
-        color: Tuple[int, int, int, int],
+        color: Color,
         y_ticks: Optional[Tuple[int, ...]] = None,
     ) -> None:
         self.clear_layers()

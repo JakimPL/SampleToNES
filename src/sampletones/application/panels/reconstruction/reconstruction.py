@@ -34,7 +34,6 @@ from ...constants import (
     MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
     SUF_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTION_PLOT,
-    TAG_FONT_REGULAR_SMALL,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
     TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
@@ -52,6 +51,8 @@ from ...constants import (
     VAL_PLOT_WIDTH_FULL,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.waveform import GUIWaveformDisplay
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
@@ -152,7 +153,7 @@ class GUIReconstructionPanel(GUIPanel):
                 horizontal=True,
                 enabled=False,
             )
-            dpg.bind_item_font(radio_button_tag, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(radio_button_tag, Font.REGULAR_SMALL)
 
     def _create_export_wav_button(self) -> None:
         GUIButton(

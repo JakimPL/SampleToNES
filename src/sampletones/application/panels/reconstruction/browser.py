@@ -40,11 +40,11 @@ from ...constants import (
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
-    TAG_FONT_BOLD,
-    TAG_FONT_REGULAR_SMALL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
@@ -78,7 +78,7 @@ class GUIBrowserPanel(GUITreePanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
             section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
             with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
@@ -124,7 +124,7 @@ class GUIBrowserPanel(GUITreePanel):
         if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
-                dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
+                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 for child in node.children:
                     self._build_tree_node(child, node_tag)
         else:
@@ -136,7 +136,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
-            dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
     def initialize_tree(self) -> None:
         self._refresh_tree()

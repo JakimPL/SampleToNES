@@ -12,3 +12,4 @@ FeatureValue = Union[int, np.ndarray]
 FeatureMap = Dict[FeatureKey, FeatureValue]
 
 Sender = Union[int, str]
+Color = Tuple[int, int, int, int]

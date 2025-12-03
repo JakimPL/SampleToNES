@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.align import table_wrapper
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
@@ -171,30 +172,21 @@ class GUIConverterWindow(GUIWindow):
         self.converter.start()
         self.system_progress.initialize()
 
+    @table_wrapper(columns=2)
     def _add_buttons(self) -> None:
-        with dpg.table(
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchProp,
-            resizable=False,
-            width=-1,
-        ):
-            dpg.add_table_column()
-            dpg.add_table_column()
-
-            with dpg.table_row():
-                GUIButton(
-                    label=LBL_BUTTON_LOAD,
-                    tag=TAG_CONVERTER_LOAD_BUTTON,
-                    width=DIM_CONVERTER_BUTTON_WIDTH,
-                    callback=self._on_load_clicked,
-                    enabled=False,
-                )
-                GUIButton(
-                    label=LBL_BUTTON_CANCEL,
-                    tag=TAG_CONVERTER_CANCEL_BUTTON,
-                    width=DIM_CONVERTER_BUTTON_WIDTH,
-                    callback=self._on_cancel_clicked,
-                )
+        GUIButton(
+            label=LBL_BUTTON_LOAD,
+            tag=TAG_CONVERTER_LOAD_BUTTON,
+            width=DIM_CONVERTER_BUTTON_WIDTH,
+            callback=self._on_load_clicked,
+            enabled=False,
+        )
+        GUIButton(
+            label=LBL_BUTTON_CANCEL,
+            tag=TAG_CONVERTER_CANCEL_BUTTON,
+            width=DIM_CONVERTER_BUTTON_WIDTH,
+            callback=self._on_cancel_clicked,
+        )
 
     def _set_status_completed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)

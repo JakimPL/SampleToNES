@@ -51,8 +51,6 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
-    TAG_FONT_BOLD,
-    TAG_FONT_REGULAR_SMALL,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
@@ -73,6 +71,8 @@ from ...constants import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager
 from ...utils.dialogs import (
@@ -117,7 +117,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
             section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
@@ -270,7 +270,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
-            dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, InstructionNode):
             dpg.add_selectable(
@@ -281,13 +281,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
-            dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
             is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
             should_expand = is_current or self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
-                dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
+                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 for child in node.children:
                     self._build_tree_node(child, node_tag)
 

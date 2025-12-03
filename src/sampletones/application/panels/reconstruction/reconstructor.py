@@ -24,8 +24,6 @@ from ...constants import (
     LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
-    TAG_FONT_BOLD,
-    TAG_FONT_REGULAR_SMALL,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
@@ -35,6 +33,8 @@ from ...constants import (
     TPL_RECONSTRUCTION_GEN_TAG,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
 from ...utils.dpg import dpg_set_value
@@ -64,7 +64,7 @@ class GUIReconstructorPanel(GUIPanel):
             auto_resize_y=True,
         ):
             section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
             dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
@@ -81,7 +81,7 @@ class GUIReconstructorPanel(GUIPanel):
                 path=output_directory,
                 parent=self.tag,
             )
-            dpg.bind_item_font(TAG_OUTPUT_DIRECTORY_DISPLAY, TAG_FONT_REGULAR_SMALL)
+            FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
 
             dpg.add_separator()
 

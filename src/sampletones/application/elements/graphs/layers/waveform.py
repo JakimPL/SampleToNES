@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Any, Tuple
+from typing import Any
 
 import numpy as np
 
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import Color
 
 from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 
@@ -12,7 +13,7 @@ from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 class WaveformLayer:
     fragment: InstructionLibraryFragment[Any]
     name: str
-    color: Tuple[int, int, int, int] = COL_WAVEFORM_DEFAULT
+    color: Color = COL_WAVEFORM_DEFAULT
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
 
     x_data: np.ndarray = field(init=False)

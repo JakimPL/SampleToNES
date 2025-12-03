@@ -6,7 +6,7 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.exceptions import PlaybackError
 
 from ..constants import (
-    DIM_PLAYER_BUTTON_WIDTH,
+    DIM_PLAYER_PANEL_CONTROLS_HEIGHT,
     DIM_PLAYER_PANEL_HEIGHT,
     DIM_PLAYER_PANEL_WIDTH,
     LBL_PLAYER_BUTTON_PAUSE,
@@ -30,6 +30,7 @@ from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..player.data import AudioData
 from ..player.player import AudioPlayer
+from ..utils.align import table_wrapper
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 from ..utils.dpg import (
     dpg_configure_item,
@@ -78,29 +79,32 @@ class GUIAudioPlayerPanel(GUIPanel):
             no_scroll_with_mouse=True,
             no_scrollbar=True,
         ):
-            with dpg.group(tag=self.controls_group_tag, horizontal=True):
-                GUIButton(
-                    tag=self.play_button_tag,
-                    label=LBL_PLAYER_BUTTON_PLAY,
-                    callback=self._play_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
-                GUIButton(
-                    tag=self.pause_button_tag,
-                    label=LBL_PLAYER_BUTTON_PAUSE,
-                    callback=self._pause_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
-                GUIButton(
-                    tag=self.stop_button_tag,
-                    label=LBL_PLAYER_BUTTON_STOP,
-                    callback=self._stop_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
+            self._create_controls()
             dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
+
+    @table_wrapper(columns=3, height=DIM_PLAYER_PANEL_CONTROLS_HEIGHT)
+    def _create_controls(self) -> None:
+        GUIButton(
+            tag=self.play_button_tag,
+            label=LBL_PLAYER_BUTTON_PLAY,
+            callback=self._play_audio,
+            enabled=False,
+            width=-1,
+        )
+        GUIButton(
+            tag=self.pause_button_tag,
+            label=LBL_PLAYER_BUTTON_PAUSE,
+            callback=self._pause_audio,
+            enabled=False,
+            width=-1,
+        )
+        GUIButton(
+            tag=self.stop_button_tag,
+            label=LBL_PLAYER_BUTTON_STOP,
+            callback=self._stop_audio,
+            enabled=False,
+            width=-1,
+        )
 
     def disable(self) -> None:
         dpg_configure_item(self.controls_group_tag, enabled=False)

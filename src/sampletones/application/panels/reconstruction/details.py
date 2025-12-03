@@ -24,7 +24,6 @@ from ...constants import (
     SUF_NO_DATA_MESSAGE,
     SUF_SEPARATOR,
     SUF_WINDOW,
-    TAG_FONT_BOLD,
     TAG_RECONSTRUCTION_DETAILS_GENERATORS,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
     TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
@@ -34,6 +33,8 @@ from ...constants import (
     VAL_PLOT_WIDTH_FULL,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.bar import GUIBarPlotDisplay
 from ...elements.panel import GUIPanel
 from ...reconstruction.config import (
@@ -67,7 +68,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
             section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             GUIButton(
                 tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,

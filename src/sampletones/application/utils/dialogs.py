@@ -37,6 +37,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
+from .align import table_wrapper
 from .dpg import dpg_configure_item, dpg_delete_item
 
 
@@ -121,39 +122,32 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         dpg.add_separator()
 
-        with dpg.table(
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchProp,
-            resizable=False,
-            width=-1,
-            height=-1,
-        ):
-            dpg.add_table_column()
-            dpg.add_table_column()
+        @table_wrapper(columns=2)
+        def content(_: None) -> None:
+            show_button_tag = f"{TAG_ERROR_DIALOG}{SUF_BUTTON_SHOW_TRACEBACK}"
 
-            with dpg.table_row():
-                show_button_tag = f"{TAG_ERROR_DIALOG}{SUF_BUTTON_SHOW_TRACEBACK}"
-
-                def toggle_traceback() -> None:
-                    traceback.toggle_visibility()
-                    dpg_configure_item(
-                        show_button_tag,
-                        label=LBL_BUTTON_SHOW_TRACEBACK if not traceback.visible else LBL_BUTTON_HIDE_TRACEBACK,
-                    )
-
-                GUIButton(
-                    tag=show_button_tag,
-                    label=LBL_BUTTON_SHOW_TRACEBACK,
-                    width=-1,
-                    callback=toggle_traceback,
+            def toggle_traceback() -> None:
+                traceback.toggle_visibility()
+                dpg_configure_item(
+                    show_button_tag,
+                    label=LBL_BUTTON_SHOW_TRACEBACK if not traceback.visible else LBL_BUTTON_HIDE_TRACEBACK,
                 )
 
-                GUIButton(
-                    tag=f"{TAG_ERROR_DIALOG}{SUF_BUTTON_OK}",
-                    label=LBL_BUTTON_OK,
-                    callback=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
-                    width=-1,
-                )
+            GUIButton(
+                tag=show_button_tag,
+                label=LBL_BUTTON_SHOW_TRACEBACK,
+                width=-1,
+                callback=toggle_traceback,
+            )
+
+            GUIButton(
+                tag=f"{TAG_ERROR_DIALOG}{SUF_BUTTON_OK}",
+                label=LBL_BUTTON_OK,
+                callback=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
+                width=-1,
+            )
+
+        content(None)
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

@@ -123,7 +123,7 @@ class GUIAudioSettingsWindow(GUIWindow):
                 width=DIM_AUDIO_SETTINGS_COMBO_WIDTH,
             )
 
-    @table_wrapper
+    @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:
         GUIButton(
             tag=TAG_AUDIO_SETTINGS_REFRESH_BUTTON,

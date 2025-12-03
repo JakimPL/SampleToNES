@@ -4,7 +4,7 @@ import numpy as np
 
 from sampletones.instructions import InstructionT
 from sampletones.timers import PhaseTimer
-from sampletones.typehints.general import FeatureMap
+from sampletones.typehints import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
 
 from .feature import Features

@@ -34,6 +34,7 @@ from ...constants import (
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...reconstruction.data import ReconstructionData
+from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
@@ -106,24 +107,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
     def _create_content(self) -> None:
         with dpg.group(tag=self.controls_tag, horizontal=True):
-            GUIButton(
-                tag=self.reset_x_tag,
-                label=LBL_WAVEFORM_BUTTON_RESET_X,
-                callback=self._reset_x_axis,
-                small=True,
-            )
-            GUIButton(
-                tag=self.reset_y_tag,
-                label=LBL_WAVEFORM_BUTTON_RESET_Y,
-                callback=self._reset_y_axis,
-                small=True,
-            )
-            GUIButton(
-                tag=self.reset_all_tag,
-                label=LBL_WAVEFORM_BUTTON_RESET_ALL,
-                callback=self._reset_all_axes,
-                small=True,
-            )
+            self._create_controls()
 
         with dpg.plot(
             label=self.label,
@@ -143,6 +127,30 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
+
+    @table_wrapper(columns=3, height=0)
+    def _create_controls(self) -> None:
+        GUIButton(
+            tag=self.reset_x_tag,
+            label=LBL_WAVEFORM_BUTTON_RESET_X,
+            callback=self._reset_x_axis,
+            width=-1,
+            height=20,
+        )
+        GUIButton(
+            tag=self.reset_y_tag,
+            label=LBL_WAVEFORM_BUTTON_RESET_Y,
+            callback=self._reset_y_axis,
+            width=-1,
+            height=20,
+        )
+        GUIButton(
+            tag=self.reset_all_tag,
+            label=LBL_WAVEFORM_BUTTON_RESET_ALL,
+            callback=self._reset_all_axes,
+            width=-1,
+            height=20,
+        )
 
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()

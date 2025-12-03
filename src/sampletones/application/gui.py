@@ -58,10 +58,6 @@ from .constants import (
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_FONT_BOLD,
-    TAG_FONT_BOLD_SMALL,
-    TAG_FONT_REGULAR,
-    TAG_FONT_REGULAR_SMALL,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -84,10 +80,8 @@ from .constants import (
     TITLE_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
-    VAL_FONT_SIZE,
-    VAL_FONT_SMALL_SIZE,
-    VAL_GLOBAL_FONT_SCALE,
 )
+from .elements.fonts.registry import FontRegistry
 from .panels.converter import GUIConverterWindow
 from .panels.instruction.config import GUIConfigPanel
 from .panels.instruction.details import GUIInstructionDetailsPanel
@@ -99,8 +93,8 @@ from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.reconstruction.reconstructor import GUIReconstructorPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.data import ReconstructionData
-from .resources.items import FontResource, IconResource
-from .resources.resources import get_font_path, get_icon_path
+from .resources.items import IconResource
+from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .utils.dialogs import (
     show_error_dialog,
@@ -153,14 +147,7 @@ class GUI:
         self._restore_current_items()
 
     def set_fonts(self) -> None:
-        with dpg.font_registry():
-            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SIZE, tag=TAG_FONT_REGULAR)
-            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_REGULAR_SMALL)
-            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
-            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_BOLD_SMALL)
-            dpg.bind_font(TAG_FONT_REGULAR)
-
-        dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
+        FontRegistry.register_fonts()
 
     def set_default_theme(self) -> None:
         self.theme.bind()

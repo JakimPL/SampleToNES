@@ -10,7 +10,6 @@ from ...constants import (
     LBL_INSTRUCTION_GENERAL_HEADER,
     LBL_INSTRUCTION_PARAMETERS_HEADER,
     MSG_INSTRUCTION_NO_SELECTION,
-    TAG_FONT_BOLD,
     TAG_INSTRUCTION_DETAILS,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
@@ -19,6 +18,8 @@ from ...constants import (
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
     TAG_INSTRUCTION_PANEL,
 )
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.table.table import GUITable
 from ...instruction.logic import InstructionDetailsLogic
@@ -39,7 +40,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
             section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
             dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
@@ -49,14 +50,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
                 show=False,
             )
-            dpg.bind_item_font(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
 
             dpg.add_text(
                 LBL_INSTRUCTION_PARAMETERS_HEADER,
                 tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
                 show=False,
             )
-            dpg.bind_item_font(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, Font.BOLD)
 
     def display_instruction(
         self,

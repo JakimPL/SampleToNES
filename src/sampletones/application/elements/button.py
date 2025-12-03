@@ -2,9 +2,11 @@ from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import SUF_BUTTON, TAG_FONT_BOLD
+from ..constants import SUF_BUTTON
 from ..themes.button import ButtonTheme
 from ..themes.theme import Theme
+from .fonts.font import Font
+from .fonts.registry import FontRegistry
 
 
 class GUIButton:
@@ -16,7 +18,7 @@ class GUIButton:
         label: str,
         callback: Callable[..., Any],
         enabled: bool = True,
-        bold: bool = False,
+        font: Font = Font.REGULAR,
         theme: Theme = ButtonTheme(),
         **kwargs: Any,
     ) -> None:
@@ -32,8 +34,7 @@ class GUIButton:
             )
 
             theme.bind_to_item(self._button_tag)
-            if bold:
-                dpg.bind_item_font(self._button_tag, TAG_FONT_BOLD)
+            FontRegistry.bind_to_item(self._button_tag, Font.BOLD)
 
         GUIButton.REGISTRY[tag] = self
 
