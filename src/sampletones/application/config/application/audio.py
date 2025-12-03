@@ -17,5 +17,5 @@ class AudioConfig(BaseModel):
         description="The master volume level (0.0 to 1.0).",
     )
 
-    def store_current_device(self, audio_device_manager: AudioDeviceManager) -> None:
+    def set_current_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self.current_device = audio_device_manager.get_current_device()

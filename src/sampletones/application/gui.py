@@ -132,6 +132,11 @@ class GUI:
         self.theme = DefaultTheme()
 
         self.setup_gui()
+        self.load_settings()
+
+    def load_settings(self) -> None:
+        audio_device = self.application_config_manager.current_audio_device
+        self.audio_device_manager.set_current_device(audio_device)
 
     def setup_gui(self) -> None:
         dpg.create_context()
@@ -168,10 +173,10 @@ class GUI:
             large_icon=str(icon_file_path),
             x_pos=self.application_config_manager.window_x,
             y_pos=self.application_config_manager.window_y,
-            decorated=not self.application_config_manager.is_fullscreen,
+            decorated=not self.application_config_manager.fullscreen,
         )
 
-        if self.application_config_manager.config.window.fullscreen:
+        if self.application_config_manager.fullscreen:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
@@ -749,6 +754,7 @@ class GUI:
             if self.converter_window and self.converter_window.converter:
                 self.converter_window.converter.cleanup()
             self.config_manager.save_config()
+            self.application_config_manager.set_current_audio_device(self.audio_device_manager)
             self.application_config_manager.save_config()
             self.audio_device_manager.terminate()
             dpg.destroy_context()

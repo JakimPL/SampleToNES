@@ -150,7 +150,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             label=LBL_WAVEFORM_BUTTON_RESET_ALL,
             callback=self._reset_all_axes,
             width=-1,
-            height=20,
             font=Font.REGULAR_SMALL,
         )
 

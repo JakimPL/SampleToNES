@@ -3,6 +3,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager, CurrentDevice
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
@@ -82,6 +83,9 @@ class ApplicationConfigManager:
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self.config.gui.current_reconstruction = path
 
+    def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
+        self.config.audio.set_current_device(audio_device_manager)
+
     def save_config(self) -> None:
         self.load_window_state()
         self.save_current_tab()
@@ -97,7 +101,7 @@ class ApplicationConfigManager:
             logger.error_with_traceback(exception, f"Failed to save application config to {APPLICATION_CONFIG_PATH}")
 
     @property
-    def is_fullscreen(self) -> bool:
+    def fullscreen(self) -> bool:
         return self.config.window.fullscreen
 
     @property
@@ -115,3 +119,15 @@ class ApplicationConfigManager:
     @property
     def window_height(self) -> int:
         return self.config.window.height
+
+    @property
+    def current_tab(self) -> str:
+        return self.config.gui.current_tab
+
+    @property
+    def current_reconstruction(self) -> Optional[Path]:
+        return self.config.gui.current_reconstruction
+
+    @property
+    def current_audio_device(self) -> CurrentDevice:
+        return self.config.audio.current_device

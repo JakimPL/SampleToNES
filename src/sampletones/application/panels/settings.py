@@ -1,8 +1,15 @@
-from typing import Dict, List
+from typing import Dict, List, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDevice, AudioDeviceManager
+from sampletones.audio import (
+    BIT_DEPTHS,
+    SAMPLE_RATES,
+    AudioDevice,
+    AudioDeviceManager,
+    BitDepth,
+    SampleRate,
+)
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
@@ -32,6 +39,7 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.window import GUIWindow
 from ..utils.align import table_wrapper
+from ..utils.dialogs import show_error_dialog
 from ..utils.dpg import dpg_configure_item, dpg_set_value
 
 
@@ -54,16 +62,15 @@ class GUIAudioSettingsWindow(GUIWindow):
         )
 
     def prepare(self) -> None:
-        self.audio_device_manager.refresh_devices()
         settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
         self._devices = dict(settings_data.devices)
         self._device_name_to_device = {device.name: device for device in self._devices.values()}
         self._device_items = [device.name for device in self._devices.values()]
 
-        current_device = settings_data.get_current_device()
+        current_device = settings_data.current_device
         self._current_device_name = current_device.name
-        self._current_sample_rate = f"{settings_data.sample_rate}{SUF_AUDIO_SETTINGS_HZ}"
-        self._current_bit_depth = f"{settings_data.bit_depth}{SUF_AUDIO_SETTINGS_BIT}"
+        self._current_sample_rate = f"{current_device.sample_rate}{SUF_AUDIO_SETTINGS_HZ}"
+        self._current_bit_depth = f"{current_device.bit_depth}{SUF_AUDIO_SETTINGS_BIT}"
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -81,7 +88,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg.add_separator()
             self._create_action_buttons()
 
-        self._update_device_dependent_combos()
+        self._update_combos()
 
     def _create_device_selection(self) -> None:
         with dpg.group(tag=TAG_AUDIO_SETTINGS_DEVICE_GROUP, horizontal=True):
@@ -140,12 +147,19 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _on_device_changed(self, sender: Sender, device_name: str) -> None:
         self._current_device_name = device_name
-        self._update_device_dependent_combos()
+        self._update_combos()
 
-    def _update_device_dependent_combos(self) -> None:
+    def _update_combos(self) -> None:
+        if not self._device_items:
+            return
+
+        dpg_configure_item(TAG_AUDIO_SETTINGS_DEVICE_COMBO, items=self._device_items)
         device = self._device_name_to_device.get(self._current_device_name)
         if device is None:
-            return
+            dpg_set_value(TAG_AUDIO_SETTINGS_DEVICE_COMBO, self._device_items[0] if self._device_items else "")
+            device = self._devices[0]
+        else:
+            dpg_set_value(TAG_AUDIO_SETTINGS_DEVICE_COMBO, self._current_device_name)
 
         sample_rate_items = [f"{rate}{SUF_AUDIO_SETTINGS_HZ}" for rate in device.supported_sample_rates]
         bit_depth_items = [f"{depth}{SUF_AUDIO_SETTINGS_BIT}" for depth in device.supported_bit_depths]
@@ -166,22 +180,30 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg_set_value(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO, bit_depth_items[0])
 
     def _get_selected_device_index(self) -> int:
-        device = self._device_name_to_device.get(self._current_device_name)
-        if device is None:
-            raise ValueError(f"Device '{self._current_device_name}' not found")
+        try:
+            device = self._device_name_to_device[self._current_device_name]
+        except KeyError as exception:
+            show_error_dialog(exception, f"Audio device '{self._current_device_name}' not found")
+            return -1
 
         return device.index
 
-    def _get_selected_sample_rate(self) -> int:
+    def _get_selected_sample_rate(self) -> SampleRate:
         sample_rate_str: str = dpg.get_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO)
-        return int(sample_rate_str.replace(SUF_AUDIO_SETTINGS_HZ, ""))
+        sample_rate: int = int(sample_rate_str.replace(SUF_AUDIO_SETTINGS_HZ, ""))
+        assert sample_rate in SAMPLE_RATES
+        return cast(SampleRate, sample_rate)
 
-    def _get_selected_bit_depth(self) -> int:
+    def _get_selected_bit_depth(self) -> BitDepth:
         bit_depth_str: str = dpg.get_value(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO)
-        return int(bit_depth_str.replace(SUF_AUDIO_SETTINGS_BIT, ""))
+        bit_depth: int = int(bit_depth_str.replace(SUF_AUDIO_SETTINGS_BIT, ""))
+        assert bit_depth in BIT_DEPTHS
+        return cast(BitDepth, bit_depth)
 
     def _refresh_devices(self) -> None:
+        self.audio_device_manager.refresh_devices()
         self.prepare()
+        self._update_combos()
 
     def _apply(self) -> None:
         device_index = self._get_selected_device_index()

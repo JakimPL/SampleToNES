@@ -23,7 +23,7 @@ CHUNK_SIZE = 1024
 
 class AudioDeviceManager:
     def __init__(self) -> None:
-        self._pyaudio = pyaudio.PyAudio()
+        self._pyaudio: Optional[pyaudio.PyAudio] = None
         self._devices: Dict[int, AudioDevice] = {}
 
         self._device_index: Optional[int] = None
@@ -40,9 +40,22 @@ class AudioDeviceManager:
 
         self.refresh_devices()
         self._initialize_default_device()
-        logger.debug("AudioDeviceManager initialized")
+
+    def reinitialize(self) -> None:
+        if self._pyaudio is None:
+            self._pyaudio = pyaudio.PyAudio()
+            logger.debug("AudioDeviceManager initialized")
+            return
+
+        self.stop()
+        self._pyaudio.terminate()
+        self._pyaudio = pyaudio.PyAudio()
+        logger.debug("AudioDeviceManager reinitialized")
 
     def refresh_devices(self) -> None:
+        self.reinitialize()
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+
         try:
             default_input_index = int(self._pyaudio.get_default_input_device_info()["index"])
         except IOError:
@@ -75,6 +88,7 @@ class AudioDeviceManager:
             )
 
     def _initialize_default_device(self) -> None:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
         try:
             info = self._pyaudio.get_default_output_device_info()
             device_index = int(info["index"])
@@ -90,6 +104,7 @@ class AudioDeviceManager:
     def device_index(self) -> int:
         if self._device_index is None:
             raise ValueError("No audio device selected")
+
         return self._device_index
 
     @device_index.setter
@@ -151,10 +166,33 @@ class AudioDeviceManager:
             bit_depth=self.bit_depth,
         )
 
+    def set_current_device(self, current_device: CurrentDevice) -> None:
+        device_index = self.find_device_by_name(current_device.name)
+        if device_index is not None:
+            return self.configure_device(
+                device_index=current_device.device_index,
+                sample_rate=current_device.sample_rate,
+                bit_depth=current_device.bit_depth,
+            )
+
+        logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        return None
+
+    def find_device_by_name(self, name: str) -> Optional[AudioDevice]:
+        for device in self._devices.values():
+            if device.name == name:
+                return device
+
+        return None
+
     def list_devices(self) -> Dict[int, AudioDevice]:
         return dict(self._devices)
 
-    def configure_device(self, device_index: int, sample_rate: int, bit_depth: int) -> None:
+    def configure_device(self, device_index: int, sample_rate: SampleRate, bit_depth: BitDepth) -> None:
+        if device_index not in self._devices:
+            logger.error(f"Audio device with index {device_index} not found")
+            return
+
         self.stop()
         self.device_index = device_index
         self.sample_rate = sample_rate
@@ -182,6 +220,7 @@ class AudioDeviceManager:
         self._playback_thread.start()
 
     def _playback_worker(self) -> None:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
         stream = self._pyaudio.open(
             format=FORMAT,
             channels=CHANNELS,
@@ -237,5 +276,7 @@ class AudioDeviceManager:
         return self._paused
 
     def terminate(self) -> None:
-        self.stop()
-        self._pyaudio.terminate()
+        if self._pyaudio is not None:
+            self.stop()
+            self._pyaudio.terminate()
+            self._pyaudio = None
