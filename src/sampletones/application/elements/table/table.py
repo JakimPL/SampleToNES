@@ -8,7 +8,8 @@ from ...constants import (
     COL_TABLE_LABEL,
     COL_TABLE_VALUE,
     DIM_TABLE_LABEL_WIDTH,
-    TAG_FONT_BOLD,
+    TAG_FONT_BOLD_SMALL,
+    TAG_FONT_REGULAR_SMALL,
 )
 from ...themes.table import TableTheme
 from ...themes.theme import Theme
@@ -77,11 +78,15 @@ class GUITable:
         with dpg.table_row():
             label_text = dpg.add_text(cell.label)
             if self._bold_labels:
-                dpg.bind_item_font(label_text, TAG_FONT_BOLD)
+                dpg.bind_item_font(label_text, TAG_FONT_BOLD_SMALL)
+            else:
+                dpg.bind_item_font(label_text, TAG_FONT_REGULAR_SMALL)
+
             dpg.configure_item(label_text, color=self._label_color)
 
             value_text = dpg.add_text(cell.value)
             dpg.configure_item(value_text, color=self._value_color)
+            dpg.bind_item_font(value_text, TAG_FONT_REGULAR_SMALL)
 
     @classmethod
     def delete(cls, tag: str) -> None:

@@ -26,28 +26,28 @@ class ApplicationConfigManager:
         width: int,
         height: int,
     ) -> None:
-        self.config.window_state.fullscreen = fullscreen
+        self.config.window.fullscreen = fullscreen
         if not fullscreen:
-            self.config.window_state.x = x
-            self.config.window_state.y = y
-            self.config.window_state.width = width
-            self.config.window_state.height = height
+            self.config.window.x = x
+            self.config.window.y = y
+            self.config.window.width = width
+            self.config.window.height = height
 
     def load_window_state(self) -> None:
         window_x, window_y = dpg.get_viewport_pos()
-        if not self.config.window_state.fullscreen:
-            self.config.window_state.x = int(window_x)
-            self.config.window_state.y = int(window_y)
-            self.config.window_state.width = dpg.get_viewport_width()
-            self.config.window_state.height = dpg.get_viewport_height()
+        if not self.config.window.fullscreen:
+            self.config.window.x = int(window_x)
+            self.config.window.y = int(window_y)
+            self.config.window.width = dpg.get_viewport_width()
+            self.config.window.height = dpg.get_viewport_height()
 
     def save_current_tab(self) -> None:
         current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
         current_tab = dpg.get_item_alias(current_tab)
-        self.config.gui_state.current_tab = current_tab
+        self.config.gui.current_tab = current_tab
 
     def load_current_tab(self) -> str:
-        return self.config.gui_state.current_tab
+        return self.config.gui.current_tab
 
     def set_config_path(self, path: Path) -> None:
         self.config.last_paths.config = get_directory(path)
@@ -80,7 +80,7 @@ class ApplicationConfigManager:
         return self.config.last_paths.audio
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.config.gui_state.current_reconstruction = path
+        self.config.gui.current_reconstruction = path
 
     def save_config(self) -> None:
         self.load_window_state()
@@ -98,20 +98,20 @@ class ApplicationConfigManager:
 
     @property
     def is_fullscreen(self) -> bool:
-        return self.config.window_state.fullscreen
+        return self.config.window.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self.config.window_state.x
+        return self.config.window.x
 
     @property
     def window_y(self) -> int:
-        return self.config.window_state.y
+        return self.config.window.y
 
     @property
     def window_width(self) -> int:
-        return self.config.window_state.width
+        return self.config.window.width
 
     @property
     def window_height(self) -> int:
-        return self.config.window_state.height
+        return self.config.window.height

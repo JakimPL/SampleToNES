@@ -54,6 +54,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         )
 
     def prepare(self) -> None:
+        self.audio_device_manager.refresh_devices()
         settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
         self._devices = dict(settings_data.devices)
         self._device_name_to_device = {device.name: device for device in self._devices.values()}
@@ -61,8 +62,8 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         current_device = settings_data.get_current_device()
         self._current_device_name = current_device.name
-        self._current_sample_rate = f"{settings_data.current_sample_rate}{SUF_AUDIO_SETTINGS_HZ}"
-        self._current_bit_depth = f"{settings_data.current_bit_depth}{SUF_AUDIO_SETTINGS_BIT}"
+        self._current_sample_rate = f"{settings_data.sample_rate}{SUF_AUDIO_SETTINGS_HZ}"
+        self._current_bit_depth = f"{settings_data.bit_depth}{SUF_AUDIO_SETTINGS_BIT}"
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -168,6 +169,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         device = self._device_name_to_device.get(self._current_device_name)
         if device is None:
             raise ValueError(f"Device '{self._current_device_name}' not found")
+
         return device.index
 
     def _get_selected_sample_rate(self) -> int:
@@ -185,7 +187,5 @@ class GUIAudioSettingsWindow(GUIWindow):
         device_index = self._get_selected_device_index()
         sample_rate = self._get_selected_sample_rate()
         bit_depth = self._get_selected_bit_depth()
-
         self.audio_device_manager.configure_device(device_index, sample_rate, bit_depth)
-
         self.hide()

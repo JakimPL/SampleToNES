@@ -2,33 +2,33 @@ from typing import Dict
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.audio import AudioDevice, AudioDeviceManager
+from sampletones.audio import AudioDevice, AudioDeviceManager, BitDepth, SampleRate
 
 
 class AudioSettingsData(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     devices: Dict[int, AudioDevice]
-    current_device_index: int
-    current_sample_rate: int
-    current_bit_depth: int
+    device_index: int
+    device_name: str
+    sample_rate: SampleRate
+    bit_depth: BitDepth
 
     @classmethod
-    def from_device_manager(cls, device_manager: AudioDeviceManager) -> "AudioSettingsData":
-        output_devices = device_manager.list_output_devices()
-        current_device_index = device_manager.get_device_index()
-        current_sample_rate = device_manager.get_sample_rate()
-        current_bit_depth = device_manager.get_bit_depth()
+    def from_device_manager(cls, audio_device_manager: AudioDeviceManager) -> "AudioSettingsData":
+        output_devices = audio_device_manager.list_devices()
+        current_device = audio_device_manager.get_current_device()
 
         return cls(
             devices=output_devices,
-            current_device_index=current_device_index,
-            current_sample_rate=current_sample_rate,
-            current_bit_depth=current_bit_depth,
+            device_index=current_device.device_index,
+            device_name=current_device.name,
+            sample_rate=current_device.sample_rate,
+            bit_depth=current_device.bit_depth,
         )
 
     def get_current_device(self) -> AudioDevice:
-        device = self.devices.get(self.current_device_index)
+        device = self.devices.get(self.device_index)
         if device is None:
-            raise ValueError(f"Device with index {self.current_device_index} not found")
+            raise ValueError(f"Device with index {self.device_index} not found")
         return device

@@ -59,7 +59,9 @@ from .constants import (
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
     TAG_FONT_BOLD,
+    TAG_FONT_BOLD_SMALL,
     TAG_FONT_REGULAR,
+    TAG_FONT_REGULAR_SMALL,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -83,6 +85,7 @@ from .constants import (
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_FONT_SIZE,
+    VAL_FONT_SMALL_SIZE,
     VAL_GLOBAL_FONT_SCALE,
 )
 from .panels.converter import GUIConverterWindow
@@ -152,7 +155,9 @@ class GUI:
     def set_fonts(self) -> None:
         with dpg.font_registry():
             dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SIZE, tag=TAG_FONT_REGULAR)
+            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_REGULAR_SMALL)
             dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
+            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_BOLD_SMALL)
             dpg.bind_font(TAG_FONT_REGULAR)
 
         dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
@@ -179,7 +184,7 @@ class GUI:
             decorated=not self.application_config_manager.is_fullscreen,
         )
 
-        if self.application_config_manager.config.window_state.fullscreen:
+        if self.application_config_manager.config.window.fullscreen:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
@@ -309,7 +314,7 @@ class GUI:
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
             dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
 
-        current_reconstruction = self.application_config_manager.config.gui_state.current_reconstruction
+        current_reconstruction = self.application_config_manager.config.gui.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
             self.browser_panel.load_and_display_reconstruction(current_reconstruction)
 
@@ -576,7 +581,7 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if self.application_config_manager.config.window_state.fullscreen:
+        if self.application_config_manager.config.window.fullscreen:
             self._toggle_fullscreen(sender, app_data, user_data)
 
     def _on_toggle_fullscreen(
@@ -731,13 +736,13 @@ class GUI:
         app_data: Optional[object] = None,
         user_data: Optional[object] = None,
     ) -> None:
-        if not self.application_config_manager.config.window_state.fullscreen:
+        if not self.application_config_manager.config.window.fullscreen:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
 
     def _update_fullscreen_menu_item(self) -> None:
-        fullscreen = self.application_config_manager.config.window_state.fullscreen
+        fullscreen = self.application_config_manager.config.window.fullscreen
         dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
         dpg_configure_item(TAG_MENU_ITEM_FULLSCREEN, check=fullscreen)
 
@@ -758,4 +763,5 @@ class GUI:
                 self.converter_window.converter.cleanup()
             self.config_manager.save_config()
             self.application_config_manager.save_config()
+            self.audio_device_manager.terminate()
             dpg.destroy_context()

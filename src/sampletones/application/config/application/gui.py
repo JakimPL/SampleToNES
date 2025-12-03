@@ -1,14 +1,12 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer
 
 from ...constants import TAG_TAB_INSTRUCTIONS
 
 
 class GUIState(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     current_tab: str = Field(default=TAG_TAB_INSTRUCTIONS, description="The currently selected tab.")
     current_reconstruction: Optional[Path] = Field(
         default=None,

@@ -1,6 +1,14 @@
-from .device import AudioDevice
+from .device import (
+    BIT_DEPTHS,
+    DEFAULT_BIT_DEPTH,
+    SAMPLE_RATES,
+    AudioDevice,
+    BitDepth,
+    CurrentDevice,
+    SampleRate,
+)
 from .io import load_audio, read_wave, write_wave
-from .manager import AudioDeviceManager
+from .manager import CHANNELS, CHUNK_SIZE, FORMAT, AudioDeviceManager
 from .processing import (
     clip_audio,
     interpolate,
@@ -11,6 +19,7 @@ from .processing import (
 )
 
 __all__ = [
+    "CurrentDevice",
     "AudioDevice",
     "AudioDeviceManager",
     "clip_audio",
@@ -22,4 +31,12 @@ __all__ = [
     "interpolate",
     "normalize",
     "quantize",
+    "SampleRate",
+    "BitDepth",
+    "SAMPLE_RATES",
+    "BIT_DEPTHS",
+    "DEFAULT_BIT_DEPTH",
+    "CHANNELS",
+    "FORMAT",
+    "CHUNK_SIZE",
 ]

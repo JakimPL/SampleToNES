@@ -6,21 +6,30 @@ import pyaudio
 
 from sampletones.utils.logger import logger
 
-from .device import AudioDevice
+from .device import (
+    BIT_DEPTHS,
+    DEFAULT_BIT_DEPTH,
+    SAMPLE_RATES,
+    AudioDevice,
+    BitDepth,
+    CurrentDevice,
+    SampleRate,
+)
 
-STANDARD_SAMPLE_RATES = [22050, 44100, 48000, 96000, 192000]
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
 CHUNK_SIZE = 1024
-DEFAULT_BIT_DEPTH = 32
 
 
 class AudioDeviceManager:
     def __init__(self) -> None:
         self._pyaudio = pyaudio.PyAudio()
+        self._devices: Dict[int, AudioDevice] = {}
+
         self._device_index: Optional[int] = None
-        self._sample_rate: Optional[int] = None
-        self._stream: Optional[pyaudio.Stream] = None
+        self._sample_rate: Optional[SampleRate] = None
+        self._bit_depth: Optional[BitDepth] = None
+
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
         self._playing: bool = False
@@ -28,43 +37,12 @@ class AudioDeviceManager:
         self._position_callback: Optional[Callable[[int], None]] = None
         self._playback_thread: Optional[threading.Thread] = None
         self._stop_flag: bool = False
+
+        self.refresh_devices()
         self._initialize_default_device()
         logger.debug("AudioDeviceManager initialized")
 
-    def _initialize_default_device(self) -> None:
-        try:
-            info = self._pyaudio.get_default_output_device_info()
-            self._device_index = int(info["index"])
-            self._sample_rate = int(info["defaultSampleRate"])
-        except IOError:
-            logger.warning("No default output device found")
-
-    @property
-    def device_index(self) -> int:
-        if self._device_index is None:
-            raise ValueError("No audio device selected")
-        return self._device_index
-
-    @property
-    def sample_rate(self) -> int:
-        if self._sample_rate is None:
-            raise ValueError("No audio device selected")
-        return self._sample_rate
-
-    @sample_rate.setter
-    def sample_rate(self, value: int) -> None:
-        self._sample_rate = value
-
-    def get_device_index(self) -> int:
-        return self.device_index
-
-    def get_sample_rate(self) -> int:
-        return self.sample_rate
-
-    def get_bit_depth(self) -> int:
-        return DEFAULT_BIT_DEPTH
-
-    def list_devices(self) -> Dict[int, AudioDevice]:
+    def refresh_devices(self) -> None:
         try:
             default_input_index = int(self._pyaudio.get_default_input_device_info()["index"])
         except IOError:
@@ -75,16 +53,16 @@ class AudioDeviceManager:
         except IOError:
             default_output_index = -1
 
-        result: Dict[int, AudioDevice] = {}
+        self._devices: Dict[int, AudioDevice] = {}
         for i in range(self._pyaudio.get_device_count()):
             info = self._pyaudio.get_device_info_by_index(i)
             if int(info["maxOutputChannels"]) == 0:
                 continue
 
-            default_sample_rate = int(info["defaultSampleRate"])
-            supported_rates = sorted(set(STANDARD_SAMPLE_RATES) | {default_sample_rate})
+            default_sample_rate: SampleRate = int(info["defaultSampleRate"])
+            supported_rates = sorted(set(SAMPLE_RATES) | {default_sample_rate})
 
-            result[i] = AudioDevice(
+            self._devices[i] = AudioDevice(
                 index=i,
                 name=str(info["name"]),
                 is_input=int(info["maxInputChannels"]) > 0,
@@ -96,17 +74,95 @@ class AudioDeviceManager:
                 supported_bit_depths=[DEFAULT_BIT_DEPTH],
             )
 
-        return result
+    def _initialize_default_device(self) -> None:
+        try:
+            info = self._pyaudio.get_default_output_device_info()
+            device_index = int(info["index"])
+            if device_index in self._devices:
+                device = self._devices[device_index]
+                self._device_index = device_index
+                self._sample_rate = device.default_sample_rate
+                self._bit_depth = DEFAULT_BIT_DEPTH
+        except IOError:
+            logger.warning("No default output device found")
 
-    def list_output_devices(self) -> Dict[int, AudioDevice]:
-        return self.list_devices()
+    @property
+    def device_index(self) -> int:
+        if self._device_index is None:
+            raise ValueError("No audio device selected")
+        return self._device_index
+
+    @device_index.setter
+    def device_index(self, value: int) -> None:
+        if value not in self._devices:
+            raise ValueError(f"Device with index {value} not found")
+
+        self.stop()
+        device = self._devices[value]
+        self._device_index = value
+        self._sample_rate = device.default_sample_rate
+        self._bit_depth = DEFAULT_BIT_DEPTH
+
+    @property
+    def device_name(self) -> str:
+        return self._devices[self.device_index].name
+
+    @property
+    def sample_rate(self) -> SampleRate:
+        if self._sample_rate is None:
+            raise ValueError("No audio device selected")
+
+        return self._sample_rate
+
+    @sample_rate.setter
+    def sample_rate(self, value: SampleRate) -> None:
+        if not value in SAMPLE_RATES:
+            raise ValueError(f"Sample rate {value} is not valid")
+
+        device = self._devices[self.device_index]
+        if value not in device.supported_sample_rates:
+            raise ValueError(f"Sample rate {value} not supported by device {device.name}")
+
+        self._sample_rate = value
+
+    @property
+    def bit_depth(self) -> BitDepth:
+        if self._bit_depth is None:
+            raise ValueError("No audio device selected")
+
+        return self._bit_depth
+
+    @bit_depth.setter
+    def bit_depth(self, value: BitDepth) -> None:
+        if not value in BIT_DEPTHS:
+            raise ValueError(f"Bit depth {value} is not valid")
+
+        device = self._devices[self.device_index]
+        if value not in device.supported_bit_depths:
+            raise ValueError(f"Bit depth {value} not supported by device {device.name}")
+
+        self._bit_depth = value
+
+    def get_current_device(self) -> CurrentDevice:
+        return CurrentDevice(
+            device_index=self.device_index,
+            name=self.device_name,
+            sample_rate=self.sample_rate,
+            bit_depth=self.bit_depth,
+        )
+
+    def list_devices(self) -> Dict[int, AudioDevice]:
+        return dict(self._devices)
 
     def configure_device(self, device_index: int, sample_rate: int, bit_depth: int) -> None:
         self.stop()
-        self._device_index = device_index
-        self._sample_rate = sample_rate
-        info = self._pyaudio.get_device_info_by_index(device_index)
-        logger.info(f"Audio device configured: {info['name']} (index={device_index}, sample_rate={sample_rate})")
+        self.device_index = device_index
+        self.sample_rate = sample_rate
+        self.bit_depth = bit_depth
+        logger.info(
+            f"Audio device configured: {self.device_name} "
+            f"(index={device_index}, sample_rate={sample_rate}, bit_depth={bit_depth})"
+        )
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
         self._position_callback = callback
@@ -164,6 +220,7 @@ class AudioDeviceManager:
         self._stop_flag = True
         if self._playback_thread is not None:
             self._playback_thread.join(timeout=1.0)
+
         self._playback_thread = None
         self._playing = False
         self._paused = False

@@ -41,6 +41,7 @@ from ...constants import (
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
     TAG_FONT_BOLD,
+    TAG_FONT_REGULAR_SMALL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from ...elements.button import GUIButton
@@ -104,7 +105,6 @@ class GUIBrowserPanel(GUITreePanel):
 
             dpg.add_separator()
             self.create_search(self.tag)
-            dpg.add_separator()
             with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
                 with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
                     with dpg.tree_node(
@@ -124,6 +124,7 @@ class GUIBrowserPanel(GUITreePanel):
         if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
+                dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
                 for child in node.children:
                     self._build_tree_node(child, node_tag)
         else:
@@ -135,6 +136,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
+            dpg.bind_item_font(node_tag, TAG_FONT_REGULAR_SMALL)
 
     def initialize_tree(self) -> None:
         self._refresh_tree()

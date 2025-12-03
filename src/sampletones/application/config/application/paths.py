@@ -1,13 +1,11 @@
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer
 
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY
 
 
 class LastPaths(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     library: Path = Field(
         default=LIBRARY_DIRECTORY,
         description="The last used library directory path.",

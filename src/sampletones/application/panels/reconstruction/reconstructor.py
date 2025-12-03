@@ -25,6 +25,7 @@ from ...constants import (
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     TAG_FONT_BOLD,
+    TAG_FONT_REGULAR_SMALL,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
@@ -80,6 +81,7 @@ class GUIReconstructorPanel(GUIPanel):
                 path=output_directory,
                 parent=self.tag,
             )
+            dpg.bind_item_font(TAG_OUTPUT_DIRECTORY_DISPLAY, TAG_FONT_REGULAR_SMALL)
 
             dpg.add_separator()
 

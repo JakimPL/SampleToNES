@@ -48,6 +48,7 @@ from ...constants import (
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
     TAG_FONT_BOLD,
+    TAG_FONT_REGULAR_SMALL,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
     TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
@@ -114,11 +115,10 @@ class GUIConfigPanel(GUIPanel):
                 path=library_directory,
                 parent=self.tag,
             )
-
+            dpg.bind_item_font(TAG_LIBRARY_DIRECTORY_DISPLAY, TAG_FONT_REGULAR_SMALL)
             dpg.add_separator()
+
             dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
-            dpg.add_separator()
-
             dpg.add_input_int(
                 label=LBL_INPUT_SAMPLE_RATE,
                 default_value=DEFAULT_SAMPLE_RATE,

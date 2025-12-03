@@ -6,21 +6,28 @@ from pydantic import BaseModel, ConfigDict, Field
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import load_yaml, save_yaml, to_path
 
+from .audio import AudioConfig
 from .gui import GUIState
 from .paths import LastPaths
 from .window import WindowState
 
 
 class ApplicationConfig(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    window_state: WindowState = Field(
+    audio: AudioConfig = Field(
+        default_factory=AudioConfig,
+        description="The audio configuration settings.",
+    )
+    window: WindowState = Field(
         default_factory=WindowState,
         description="The state of the main application window.",
+        alias="window_state",
     )
-    gui_state: GUIState = Field(
+    gui: GUIState = Field(
         default_factory=GUIState,
         description="The state of the graphical user interface.",
+        alias="gui_state",
     )
     last_paths: LastPaths = Field(
         default_factory=LastPaths,
