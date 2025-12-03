@@ -2,14 +2,7 @@ from typing import Dict, List, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import (
-    BIT_DEPTHS,
-    SAMPLE_RATES,
-    AudioDevice,
-    AudioDeviceManager,
-    BitDepth,
-    SampleRate,
-)
+from sampletones.audio import SAMPLE_RATES, AudioDevice, AudioDeviceManager, SampleRate
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
@@ -19,16 +12,12 @@ from ..constants import (
     DIM_AUDIO_SETTINGS_WINDOW_HEIGHT,
     DIM_AUDIO_SETTINGS_WINDOW_WIDTH,
     LBL_AUDIO_SETTINGS_APPLY,
-    LBL_AUDIO_SETTINGS_BIT_DEPTH,
     LBL_AUDIO_SETTINGS_OUTPUT_DEVICE,
     LBL_AUDIO_SETTINGS_REFRESH_DEVICES,
     LBL_AUDIO_SETTINGS_SAMPLE_RATE,
     LBL_AUDIO_SETTINGS_TITLE,
-    SUF_AUDIO_SETTINGS_BIT,
     SUF_AUDIO_SETTINGS_HZ,
     TAG_AUDIO_SETTINGS_APPLY_BUTTON,
-    TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO,
-    TAG_AUDIO_SETTINGS_BIT_DEPTH_GROUP,
     TAG_AUDIO_SETTINGS_DEVICE_COMBO,
     TAG_AUDIO_SETTINGS_DEVICE_GROUP,
     TAG_AUDIO_SETTINGS_REFRESH_BUTTON,
@@ -53,7 +42,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._device_items: List[str] = []
         self._current_device_name: str = ""
         self._current_sample_rate: str = ""
-        self._current_bit_depth: str = ""
 
         super().__init__(
             tag=TAG_AUDIO_SETTINGS_WINDOW,
@@ -70,7 +58,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         current_device = settings_data.current_device
         self._current_device_name = current_device.name
         self._current_sample_rate = f"{current_device.sample_rate}{SUF_AUDIO_SETTINGS_HZ}"
-        self._current_bit_depth = f"{current_device.bit_depth}{SUF_AUDIO_SETTINGS_BIT}"
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -84,7 +71,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         ):
             self._create_device_selection()
             self._create_sample_rate_selection()
-            self._create_bit_depth_selection()
             dpg.add_separator()
             self._create_action_buttons()
 
@@ -114,19 +100,6 @@ class GUIAudioSettingsWindow(GUIWindow):
                 tag=TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO,
                 items=[],
                 default_value=self._current_sample_rate,
-                width=DIM_AUDIO_SETTINGS_COMBO_WIDTH,
-            )
-
-    def _create_bit_depth_selection(self) -> None:
-        with dpg.group(tag=TAG_AUDIO_SETTINGS_BIT_DEPTH_GROUP, horizontal=True):
-            dpg.add_text(LBL_AUDIO_SETTINGS_BIT_DEPTH)
-            dpg.add_spacer(
-                width=DIM_AUDIO_SETTINGS_LABEL_WIDTH - int(dpg.get_text_size(LBL_AUDIO_SETTINGS_BIT_DEPTH)[0])
-            )
-            dpg.add_combo(
-                tag=TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO,
-                items=[],
-                default_value=self._current_bit_depth,
                 width=DIM_AUDIO_SETTINGS_COMBO_WIDTH,
             )
 
@@ -162,10 +135,8 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg_set_value(TAG_AUDIO_SETTINGS_DEVICE_COMBO, self._current_device_name)
 
         sample_rate_items = [f"{rate}{SUF_AUDIO_SETTINGS_HZ}" for rate in device.supported_sample_rates]
-        bit_depth_items = [f"{depth}{SUF_AUDIO_SETTINGS_BIT}" for depth in device.supported_bit_depths]
 
         dpg_configure_item(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO, items=sample_rate_items)
-        dpg_configure_item(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO, items=bit_depth_items)
 
         current_sample_rate_value = dpg.get_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO)
         if current_sample_rate_value not in sample_rate_items:
@@ -174,10 +145,6 @@ class GUIAudioSettingsWindow(GUIWindow):
                 dpg_set_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO, default_sample_rate)
             elif sample_rate_items:
                 dpg_set_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO, sample_rate_items[0])
-
-        current_bit_depth_value = dpg.get_value(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO)
-        if current_bit_depth_value not in bit_depth_items and bit_depth_items:
-            dpg_set_value(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO, bit_depth_items[0])
 
     def _get_selected_device_index(self) -> int:
         try:
@@ -194,12 +161,6 @@ class GUIAudioSettingsWindow(GUIWindow):
         assert sample_rate in SAMPLE_RATES
         return cast(SampleRate, sample_rate)
 
-    def _get_selected_bit_depth(self) -> BitDepth:
-        bit_depth_str: str = dpg.get_value(TAG_AUDIO_SETTINGS_BIT_DEPTH_COMBO)
-        bit_depth: int = int(bit_depth_str.replace(SUF_AUDIO_SETTINGS_BIT, ""))
-        assert bit_depth in BIT_DEPTHS
-        return cast(BitDepth, bit_depth)
-
     def _refresh_devices(self) -> None:
         self.audio_device_manager.refresh_devices()
         self.prepare()
@@ -208,6 +169,5 @@ class GUIAudioSettingsWindow(GUIWindow):
     def _apply(self) -> None:
         device_index = self._get_selected_device_index()
         sample_rate = self._get_selected_sample_rate()
-        bit_depth = self._get_selected_bit_depth()
-        self.audio_device_manager.configure_device(device_index, sample_rate, bit_depth)
+        self.audio_device_manager.configure_device(device_index, sample_rate)
         self.hide()

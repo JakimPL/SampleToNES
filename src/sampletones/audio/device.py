@@ -1,15 +1,11 @@
-from typing import List, Literal
+from typing import List, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE
 
 SampleRate = Literal[22050, 44100, 48000, 96000, 192000]
-BitDepth = Literal[8, 16, 24, 32]
-
-SAMPLE_RATES = SampleRate.__args__
-BIT_DEPTHS = BitDepth.__args__
-DEFAULT_BIT_DEPTH = 32
+SAMPLE_RATES: List[SampleRate] = cast(List[SampleRate], SampleRate.__args__)
 
 
 class CurrentDevice(BaseModel):
@@ -18,7 +14,6 @@ class CurrentDevice(BaseModel):
     device_index: int = Field(..., description="Device index")
     name: str = Field(..., description="Device name")
     sample_rate: SampleRate = Field(..., description="Sample rate")
-    bit_depth: BitDepth = Field(..., description="Bit depth")
 
     @classmethod
     def default(cls) -> "CurrentDevice":
@@ -26,7 +21,6 @@ class CurrentDevice(BaseModel):
             device_index=-1,
             name="",
             sample_rate=DEFAULT_SAMPLE_RATE,
-            bit_depth=DEFAULT_BIT_DEPTH,
         )
 
 
@@ -41,4 +35,3 @@ class AudioDevice(BaseModel):
     is_default_output: bool
     default_sample_rate: SampleRate
     supported_sample_rates: List[SampleRate]
-    supported_bit_depths: List[BitDepth]

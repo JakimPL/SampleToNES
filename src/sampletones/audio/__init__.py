@@ -1,12 +1,4 @@
-from .device import (
-    BIT_DEPTHS,
-    DEFAULT_BIT_DEPTH,
-    SAMPLE_RATES,
-    AudioDevice,
-    BitDepth,
-    CurrentDevice,
-    SampleRate,
-)
+from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
 from .io import load_audio, read_wave, write_wave
 from .manager import CHANNELS, CHUNK_SIZE, FORMAT, AudioDeviceManager
 from .processing import (
@@ -32,10 +24,7 @@ __all__ = [
     "normalize",
     "quantize",
     "SampleRate",
-    "BitDepth",
     "SAMPLE_RATES",
-    "BIT_DEPTHS",
-    "DEFAULT_BIT_DEPTH",
     "CHANNELS",
     "FORMAT",
     "CHUNK_SIZE",
