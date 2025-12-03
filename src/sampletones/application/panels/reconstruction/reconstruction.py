@@ -34,6 +34,7 @@ from ...constants import (
     MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
     SUF_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTION_PLOT,
+    TAG_FONT_REGULAR_SMALL,
     TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP,
     TAG_RECONSTRUCTION_EXPORT_WAV_BUTTON,
     TAG_RECONSTRUCTION_GENERATORS_GROUP,
@@ -140,16 +141,18 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
     def _create_audio_source_radio_buttons(self) -> None:
+        dpg.add_text(LBL_RECONSTRUCTION_AUDIO_SOURCE)
         with dpg.group(horizontal=True, parent=self.audio_tag, tag=TAG_RECONSTRUCTION_AUDIO_SOURCE_GROUP):
-            dpg.add_text(LBL_RECONSTRUCTION_AUDIO_SOURCE)
+            radio_button_tag = TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR)
             dpg.add_radio_button(
                 items=[LBL_RADIO_RECONSTRUCTION_AUDIO, LBL_RADIO_ORIGINAL_AUDIO],
-                tag=TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO.format(VAL_AUDIO_SOURCE_SELECTOR),
+                tag=radio_button_tag,
                 default_value=LBL_RADIO_RECONSTRUCTION_AUDIO,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
                 enabled=False,
             )
+            dpg.bind_item_font(radio_button_tag, TAG_FONT_REGULAR_SMALL)
 
     def _create_export_wav_button(self) -> None:
         GUIButton(
