@@ -156,8 +156,8 @@ class GUIAudioSettingsWindow(GUIWindow):
         return device.index
 
     def _get_selected_sample_rate(self) -> SampleRate:
-        sample_rate_str: str = dpg.get_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO)
-        sample_rate: int = int(sample_rate_str.replace(SUF_AUDIO_SETTINGS_HZ, ""))
+        sample_rate_string: str = dpg.get_value(TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO)
+        sample_rate: int = int(sample_rate_string.replace(SUF_AUDIO_SETTINGS_HZ, ""))
         assert sample_rate in SAMPLE_RATES
         return cast(SampleRate, sample_rate)
 
