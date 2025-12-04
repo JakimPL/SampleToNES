@@ -1,5 +1,8 @@
+import contextlib
+import os
+import sys
 import threading
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
@@ -11,6 +14,34 @@ from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
 CHUNK_SIZE = 1024
+
+
+@contextlib.contextmanager
+def _capture_stderr_to_logger() -> Generator[None, None, None]:
+    stderr_fd = sys.stderr.fileno()
+    original_stderr_fd = os.dup(stderr_fd)
+
+    read_pipe, write_pipe = os.pipe()
+    os.dup2(write_pipe, stderr_fd)
+
+    try:
+        yield
+    finally:
+        os.dup2(original_stderr_fd, stderr_fd)
+        os.close(original_stderr_fd)
+        os.close(write_pipe)
+
+        os.set_blocking(read_pipe, False)
+        try:
+            captured = os.read(read_pipe, 65536).decode("utf-8", errors="replace")
+        except BlockingIOError:
+            captured = ""
+        os.close(read_pipe)
+
+        for line in captured.strip().splitlines():
+            if line.strip():
+                line = line.replace("ALSA lib ", "")
+                logger.warning(f"ALSA: {line.strip()}")
 
 
 class AudioDeviceManager:
@@ -33,15 +64,16 @@ class AudioDeviceManager:
         self._initialize_default_device()
 
     def reinitialize(self) -> None:
-        if self._pyaudio is None:
-            self._pyaudio = pyaudio.PyAudio()
-            logger.debug("AudioDeviceManager initialized")
-            return
+        with _capture_stderr_to_logger():
+            if self._pyaudio is None:
+                self._pyaudio = pyaudio.PyAudio()
+                logger.debug("AudioDeviceManager initialized")
+                return
 
-        self.stop()
-        self._pyaudio.terminate()
-        self._pyaudio = pyaudio.PyAudio()
-        logger.debug("AudioDeviceManager reinitialized")
+            self.stop()
+            self._pyaudio.terminate()
+            self._pyaudio = pyaudio.PyAudio()
+            logger.debug("AudioDeviceManager reinitialized")
 
     def refresh_devices(self) -> None:
         self.reinitialize()
@@ -63,8 +95,11 @@ class AudioDeviceManager:
             if int(info["maxOutputChannels"]) == 0:
                 continue
 
-            default_sample_rate: SampleRate = int(info["defaultSampleRate"])
-            supported_rates = sorted(set(SAMPLE_RATES) | {default_sample_rate})
+            default_sample_rate: int = int(info["defaultSampleRate"])
+            if default_sample_rate not in SAMPLE_RATES:
+                logger.warning(f"Device '{info['name']}' has an uncommon default sample rate {default_sample_rate}")
+
+            supported_rates = cast(List[SampleRate], sorted(set(SAMPLE_RATES) | {default_sample_rate}))
 
             self._devices[i] = AudioDevice(
                 index=i,
@@ -73,7 +108,7 @@ class AudioDeviceManager:
                 is_output=True,
                 is_default_input=i == default_input_index,
                 is_default_output=i == default_output_index,
-                default_sample_rate=default_sample_rate,
+                default_sample_rate=cast(SampleRate, default_sample_rate),
                 supported_sample_rates=supported_rates,
             )
 
