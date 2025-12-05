@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import COL_TEXT_DEFAULT, TAG_THEME_DEFAULT
+from ..constants import COL_TEXT_DEFAULT, COL_TEXT_DISABLED_DEFAULT, TAG_THEME_DEFAULT
 from .theme import Theme
 
 
@@ -17,3 +17,4 @@ class DefaultTheme(Theme):
         with dpg.theme(tag=self.tag):
             with dpg.theme_component(dpg.mvAll):
                 dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DEFAULT)
+                dpg.add_theme_color(dpg.mvThemeCol_TextDisabled, COL_TEXT_DISABLED_DEFAULT)

@@ -241,6 +241,21 @@ class GUI:
             Shortcut(dpg.mvKey_F11),
             self._toggle_fullscreen,
         )
+        self.shortcut_manager.register(
+            ShortcutId.PLAY,
+            Shortcut(dpg.mvKey_Spacebar, (Modifier.SHIFT,)),
+            self._play,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.PAUSE,
+            Shortcut(dpg.mvKey_Spacebar),
+            self._pause,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.STOP,
+            Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
+            self._stop,
+        )
 
         self.shortcut_manager.bind_all()
 
@@ -672,6 +687,31 @@ class GUI:
         dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=False)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=False)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=False)
+
+    def _get_current_tab(self) -> str:
+        current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
+        return dpg.get_item_alias(current_tab)
+
+    def _play(self) -> None:
+        current_tab_tag = self._get_current_tab()
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            self.reconstruction_panel.player_panel.play()
+        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            self.instruction_panel.player_panel.play()
+
+    def _pause(self) -> None:
+        current_tab_tag = self._get_current_tab()
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            self.reconstruction_panel.player_panel.pause_or_resume()
+        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            self.instruction_panel.player_panel.pause_or_resume()
+
+    def _stop(self) -> None:
+        current_tab_tag = self._get_current_tab()
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            self.reconstruction_panel.player_panel.stop()
+        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            self.instruction_panel.player_panel.stop()
 
     def _exit_application(self) -> None:
         if self.converter_window and self.converter_window.converter:

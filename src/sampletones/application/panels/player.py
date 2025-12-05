@@ -87,21 +87,21 @@ class GUIAudioPlayerPanel(GUIPanel):
         GUIButton(
             tag=self.play_button_tag,
             label=LBL_PLAYER_BUTTON_PLAY,
-            callback=self._play_audio,
+            callback=self.play,
             enabled=False,
             width=-1,
         )
         GUIButton(
             tag=self.pause_button_tag,
             label=LBL_PLAYER_BUTTON_PAUSE,
-            callback=self._pause_audio,
+            callback=self.pause,
             enabled=False,
             width=-1,
         )
         GUIButton(
             tag=self.stop_button_tag,
             label=LBL_PLAYER_BUTTON_STOP,
-            callback=self._stop_audio,
+            callback=self.stop,
             enabled=False,
             width=-1,
         )
@@ -132,7 +132,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         if self.on_position_changed:
             self.on_position_changed(position)
 
-    def _play_audio(self) -> None:
+    def play(self) -> None:
         try:
             self.audio_player.play()
         except PlaybackError as exception:
@@ -141,17 +141,26 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         self._update_controls()
 
-    def _pause_audio(self) -> None:
+    def pause_or_resume(self) -> None:
+        if not self.audio_player.is_playing:
+            return self.play()
+
+        if self.audio_player.is_paused:
+            return self.resume()
+
+        return self.pause()
+
+    def pause(self) -> None:
         self.audio_player.pause()
         self._update_controls()
         self._update_position_display()
 
-    def _resume_audio(self) -> None:
+    def resume(self) -> None:
         self.audio_player.resume()
         self._update_controls()
         self._update_position_display()
 
-    def _stop_audio(self) -> None:
+    def stop(self) -> None:
         self.audio_player.stop()
         self._update_controls()
         self._update_position_display()
@@ -169,10 +178,10 @@ class GUIAudioPlayerPanel(GUIPanel):
 
             if is_paused:
                 dpg_set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_RESUME)
-                dpg_set_item_callback(self.pause_button_tag, self._resume_audio)
+                dpg_set_item_callback(self.pause_button_tag, self.resume)
             else:
                 dpg_set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_PAUSE)
-                dpg_set_item_callback(self.pause_button_tag, self._pause_audio)
+                dpg_set_item_callback(self.pause_button_tag, self.pause)
         else:
             dpg_configure_item(self.play_button_tag, enabled=False)
             dpg_configure_item(self.pause_button_tag, enabled=False)
