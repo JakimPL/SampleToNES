@@ -224,7 +224,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 self.library_manager.get_path(library_key),
                 MSG_LIBRARY_FILE_NOT_FOUND,
             )
-        except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
             show_error_dialog(exception, MSG_LIBRARY_FILE_LOAD_ERROR)
         except InvalidMetadataError as exception:

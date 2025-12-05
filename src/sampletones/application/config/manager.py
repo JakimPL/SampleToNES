@@ -80,7 +80,7 @@ class ConfigManager:
                 self.load_default_config()
                 logger.error(f"Config file not found: {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
-            except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+            except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
@@ -104,7 +104,7 @@ class ConfigManager:
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(self.config_path)
-        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type

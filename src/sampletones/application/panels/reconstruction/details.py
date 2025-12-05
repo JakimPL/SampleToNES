@@ -208,8 +208,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             max_tick = step * 4
             y_ticks = tuple(range(-max_tick, max_tick + 1, step))
 
-        y_min -= 1.0
-        y_max += 1.0
+        gap = max(1.0, y_min * 0.1, y_max * 0.1)
+        y_min = int(np.floor(y_min - gap))
+        y_max = int(np.ceil(y_max + gap))
 
         plot = GUIBarPlotDisplay(
             tag=plot_tag,

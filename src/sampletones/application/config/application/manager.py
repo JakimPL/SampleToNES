@@ -93,7 +93,7 @@ class ApplicationConfigManager:
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(APPLICATION_CONFIG_PATH)
-        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception, f"File error while saving application config from {APPLICATION_CONFIG_PATH}"
             )

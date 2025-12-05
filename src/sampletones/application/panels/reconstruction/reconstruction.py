@@ -236,7 +236,7 @@ class GUIReconstructionPanel(GUIPanel):
         if not self.reconstruction_data:
             return
 
-        sample_rate = self.reconstruction_data.reconstruction.config.library.sample_rate
+        sample_rate = self.reconstruction_data.reconstruction.config.sample_rate
 
         if self.current_audio_source == AudioSourceType.ORIGINAL:
             audio_data = AudioData.from_array(self.reconstruction_data.original_audio, sample_rate)
@@ -344,7 +344,7 @@ class GUIReconstructionPanel(GUIPanel):
                 MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
                 filepath,
             )
-        except (IOError, IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+        except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
         except Exception as exception:  # TODO: specify exception type
@@ -367,7 +367,7 @@ class GUIReconstructionPanel(GUIPanel):
                 MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
                 directory,
             )
-        except (IOError, IsADirectoryError, FileNotFoundError, OSError, PermissionError) as exception:
+        except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
         except Exception as exception:  # TODO: specify exception type
