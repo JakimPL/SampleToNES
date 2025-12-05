@@ -7,6 +7,7 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
+from sampletones.exceptions import PlaybackError
 from sampletones.utils.logger import logger
 
 from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
@@ -99,7 +100,10 @@ class AudioDeviceManager:
             if default_sample_rate not in SAMPLE_RATES:
                 logger.warning(f"Device '{info['name']}' has an uncommon default sample rate {default_sample_rate}")
 
-            supported_rates = cast(List[SampleRate], sorted(set(SAMPLE_RATES) | {default_sample_rate}))
+            supported_rates = self._get_supported_sample_rates(i, default_sample_rate)
+            if not supported_rates:
+                logger.warning(f"Device '{info['name']}' has no supported sample rates, skipping")
+                continue
 
             self._devices[i] = AudioDevice(
                 index=i,
@@ -111,6 +115,28 @@ class AudioDeviceManager:
                 default_sample_rate=cast(SampleRate, default_sample_rate),
                 supported_sample_rates=supported_rates,
             )
+
+    def _is_sample_rate_supported(self, device_index: int, sample_rate: int) -> bool:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            self._pyaudio.is_format_supported(
+                rate=sample_rate,
+                output_device=device_index,
+                output_channels=CHANNELS,
+                output_format=FORMAT,
+            )
+            return True
+        except ValueError:
+            return False
+
+    def _get_supported_sample_rates(self, device_index: int, default_sample_rate: int) -> List[SampleRate]:
+        supported_rates: List[SampleRate] = []
+        candidate_rates = sorted(set(SAMPLE_RATES) | {default_sample_rate})
+        for rate in candidate_rates:
+            if self._is_sample_rate_supported(device_index, rate):
+                supported_rates.append(cast(SampleRate, rate))
+
+        return supported_rates
 
     def _initialize_default_device(self) -> None:
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
@@ -196,12 +222,18 @@ class AudioDeviceManager:
             logger.error(f"Audio device with index {device_index} not found")
             return
 
+        device = self._devices[device_index]
+        if sample_rate not in device.supported_sample_rates:
+            fallback_rate = device.default_sample_rate
+            logger.warning(
+                f"Sample rate {sample_rate} not supported by device {device.name}. " f"Falling back to {fallback_rate}"
+            )
+            sample_rate = fallback_rate
+
         self.stop()
         self.device_index = device_index
         self.sample_rate = sample_rate
-        logger.info(
-            f"Audio device configured: {self.device_name} " f"(index={device_index}, sample_rate={sample_rate})"
-        )
+        logger.info(f"Audio device configured: {self.device_name} (index={device_index}, sample_rate={sample_rate})")
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
         self._position_callback = callback
@@ -222,13 +254,16 @@ class AudioDeviceManager:
 
     def _playback_worker(self) -> None:
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
-        stream = self._pyaudio.open(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=self.sample_rate,
-            output=True,
-            output_device_index=self._device_index,
-        )
+        try:
+            stream = self._pyaudio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=self.sample_rate,
+                output=True,
+                output_device_index=self._device_index,
+            )
+        except OSError as exception:
+            raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
 
         while not self._stop_flag and self._audio_data is not None:
             if self._paused:

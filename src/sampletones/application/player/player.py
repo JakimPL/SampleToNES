@@ -3,7 +3,6 @@ from typing import Callable, Optional
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
-from sampletones.utils.logger import logger
 
 from .data import AudioData
 
@@ -49,8 +48,7 @@ class AudioPlayer:
         try:
             self.audio_device_manager.play(audio)
         except Exception as exception:
-            logger.error_with_traceback(exception, "Audio playback failed")
-            raise PlaybackError(str(exception)) from exception
+            raise PlaybackError(f"Audio playback failed: {exception}") from exception
 
     def pause(self) -> None:
         self.audio_device_manager.pause()

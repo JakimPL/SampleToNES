@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
-from screeninfo import get_monitors
+from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import InstructionsLibraryConfig
@@ -16,7 +16,7 @@ from sampletones.constants.paths import (
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender, SerializedData
+from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
@@ -534,21 +534,10 @@ class GUI:
         return True
 
     @staticmethod
-    def _get_monitors() -> List[SerializedData]:
-        monitors: List[SerializedData] = []
-        for monitor in get_monitors():
-            monitors.append(
-                {
-                    "x": int(monitor.x),
-                    "y": int(monitor.y),
-                    "width": int(monitor.width),
-                    "height": int(monitor.height),
-                }
-            )
+    def _get_monitors() -> List[Monitor]:
+        return get_monitors()
 
-        return monitors
-
-    def _monitor_for_position(self, x: float, y: float) -> Optional[SerializedData]:
+    def _monitor_for_position(self, x: float, y: float) -> Optional[Monitor]:
         monitors = self._get_monitors()
         position_x = float(x)
         position_y = float(y)
@@ -556,8 +545,8 @@ class GUI:
         for monitor in monitors:
             if all(
                 (
-                    monitor["x"] <= position_x < (monitor["x"] + monitor["width"]),
-                    monitor["y"] <= position_y < (monitor["y"] + monitor["height"]),
+                    monitor.x <= position_x < (monitor.x + monitor.width),
+                    monitor.y <= position_y < (monitor.y + monitor.height),
                 )
             ):
                 return monitor
@@ -641,11 +630,11 @@ class GUI:
         window_height = None
 
         monitor = self._monitor_for_position(window_x, window_y)
-        if monitor is not None and "width" in monitor and "height" in monitor:
-            window_x = int(monitor.get("x", self.application_config_manager.window_x))
-            window_y = int(monitor.get("y", self.application_config_manager.window_y))
-            window_width = int(monitor["width"])
-            window_height = int(monitor["height"])
+        if monitor is not None:
+            window_x = int(monitor.x)
+            window_y = int(monitor.y)
+            window_width = int(monitor.width)
+            window_height = int(monitor.height)
         else:
             screen_dimensions = self._get_screen_dimensions()
             window_width = screen_dimensions[0]
@@ -667,10 +656,10 @@ class GUI:
 
         monitor = self._monitor_for_position(window_x, window_y)
         if monitor is not None:
-            screen_x = int(monitor.get("x", 0))
-            screen_y = int(monitor.get("y", 0))
-            screen_w = int(monitor.get("width", window_width))
-            screen_h = int(monitor.get("height", window_height))
+            screen_x = int(monitor.x)
+            screen_y = int(monitor.y)
+            screen_w = int(monitor.width)
+            screen_h = int(monitor.height)
 
             window_width = min(window_width, screen_w)
             window_height = min(window_height, screen_h)

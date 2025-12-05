@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE
 
-SampleRate = Literal[22050, 44100, 48000, 96000, 192000]
+SampleRate = Literal[8000, 16000, 22050, 44100, 48000, 96000, 192000]
 SAMPLE_RATES: List[SampleRate] = cast(List[SampleRate], SampleRate.__args__)
 
 
