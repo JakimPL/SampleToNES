@@ -572,7 +572,7 @@ NOD_TYPE_DIRECTORY = "directory"
 NOD_TYPE_FILE = "file"
 
 # Node labels
-NOD_LABEL_NOT_LOADED = "Not loaded"
+NOD_LABEL_NOT_LOADED = "Click to load the library"
 NOD_LABEL_LIBRARIES = "Libraries"
 
 # Bar plot display settings

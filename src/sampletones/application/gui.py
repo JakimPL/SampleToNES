@@ -103,6 +103,9 @@ from .utils.dialogs import (
 )
 from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
+from .utils.shortcuts.keys import Modifier
+from .utils.shortcuts.manager import ShortcutManager
+from .utils.shortcuts.shortcut import Shortcut, ShortcutId
 
 
 class GUI:
@@ -110,6 +113,7 @@ class GUI:
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
+        self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
         self.instructions_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
@@ -140,6 +144,7 @@ class GUI:
     def setup_gui(self) -> None:
         dpg.create_context()
         self.set_fonts()
+        self.register_shortcuts()
         self.set_default_theme()
         self.create_main_window()
         self.set_viewport()
@@ -179,6 +184,65 @@ class GUI:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
+
+    def register_shortcuts(self) -> None:
+        self.shortcut_manager.register(
+            ShortcutId.SAVE_CONFIGURATION,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
+            self._save_config_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.LOAD_CONFIGURATION,
+            Shortcut(dpg.mvKey_L, (Modifier.CTRL,)),
+            self._load_config_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.AUDIO_SETTINGS,
+            Shortcut(dpg.mvKey_A, (Modifier.CTRL,)),
+            self._open_audio_settings,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.EXIT,
+            Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
+            self._exit_application,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.CLOSE_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            self._close_reconstruction,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.LOAD_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            self._load_reconstruction_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.RECONSTRUCT_FILE,
+            Shortcut(dpg.mvKey_R, (Modifier.CTRL,)),
+            self._reconstruct_file_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.RECONSTRUCT_DIRECTORY,
+            Shortcut(dpg.mvKey_R, (Modifier.CTRL, Modifier.SHIFT)),
+            self._reconstruct_directory_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.EXPORT_RECONSTRUCTION_WAV,
+            Shortcut(dpg.mvKey_E, (Modifier.CTRL,)),
+            self._export_reconstruction_wav_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
+            Shortcut(dpg.mvKey_I, (Modifier.CTRL,)),
+            self._export_reconstruction_ftis_dialog,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.FULLSCREEN_TOGGLE,
+            Shortcut(dpg.mvKey_F11),
+            self._toggle_fullscreen,
+        )
+
+        self.shortcut_manager.bind_all()
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.instructions_panel.update_status)
@@ -227,63 +291,73 @@ class GUI:
         with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
             self.create_menu_bar()
             self.create_tabs()
-            # dpg.add_key_press_handler(key=dpg.mvKey_Escape, callback=self._on_key_escape)
-            # dpg.add_key_press_handler(key=dpg.mvKey_F11, callback=self._on_toggle_fullscreen)
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
     def create_menu_bar(self) -> None:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_FILE):
-                dpg.add_menu_item(label=LBL_MENU_ITEM_SAVE_CONFIG, callback=self._save_config_dialog)
-                dpg.add_menu_item(label=LBL_MENU_ITEM_LOAD_CONFIG, callback=self._load_config_dialog)
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_CONFIGURATION,
+                    label=LBL_MENU_ITEM_SAVE_CONFIG,
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_CONFIGURATION,
+                    label=LBL_MENU_ITEM_LOAD_CONFIG,
+                )
                 dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_ITEM_AUDIO_SETTINGS, callback=self._open_audio_settings)
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.AUDIO_SETTINGS,
+                    label=LBL_MENU_ITEM_AUDIO_SETTINGS,
+                )
                 dpg.add_separator()
-                dpg.add_menu_item(label=LBL_MENU_ITEM_EXIT, callback=self._exit_application)
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.EXIT,
+                    label=LBL_MENU_ITEM_EXIT,
+                )
             with dpg.menu(label=LBL_MENU_RECONSTRUCTION):
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.CLOSE_RECONSTRUCTION,
                     tag=TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
                     label=LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
-                    callback=self._on_reconstruction_close,
                     enabled=self._is_reconstruction_loaded(),
                 )
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_RECONSTRUCTION,
                     tag=TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
                     label=LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
-                    callback=self._load_reconstruction_dialog,
                     enabled=not self._is_reconstruction_loaded(),
                 )
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCT_FILE,
                     label=LBL_MENU_ITEM_RECONSTRUCT_FILE,
-                    callback=self._reconstruct_file_dialog,
                     enabled=self._is_library_loaded(),
                 )
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.RECONSTRUCT_DIRECTORY,
                     tag=TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
                     label=LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
-                    callback=self._reconstruct_directory_dialog,
                     enabled=self._is_library_loaded(),
                 )
                 dpg.add_separator()
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.EXPORT_RECONSTRUCTION_WAV,
                     tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
                     label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
-                    callback=self._export_reconstruction_wav_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
                     tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
                     label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
-                    callback=self._export_reconstruction_ftis_dialog,
                     enabled=self._is_reconstruction_loaded(),
                 )
             with dpg.menu(label=LBL_MENU_VIEW):
-                dpg.add_menu_item(
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.FULLSCREEN_TOGGLE,
                     tag=TAG_MENU_ITEM_FULLSCREEN,
                     label=LBL_MENU_ITEM_FULLSCREEN,
-                    callback=self._toggle_fullscreen,
                     check=True,
                 )
 
@@ -553,23 +627,6 @@ class GUI:
 
         return monitors[0] if monitors else None
 
-    def _on_key_escape(
-        self,
-        sender: Sender,
-        app_data: Optional[object] = None,
-        user_data: Optional[object] = None,
-    ) -> None:
-        if self.application_config_manager.config.window.fullscreen:
-            self._toggle_fullscreen(sender, app_data, user_data)
-
-    def _on_toggle_fullscreen(
-        self,
-        sender: Sender,
-        app_data: Optional[object] = None,
-        user_data: Optional[object] = None,
-    ) -> None:
-        self._toggle_fullscreen(sender, app_data, user_data)
-
     def _is_reconstruction_loaded(self) -> bool:
         return self.reconstruction_panel.is_loaded()
 
@@ -609,7 +666,7 @@ class GUI:
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
 
-    def _on_reconstruction_close(self) -> None:
+    def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
         dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=False)
@@ -704,9 +761,9 @@ class GUI:
 
     def _toggle_fullscreen(
         self,
-        sender: Sender,
-        app_data: Optional[object] = None,
-        user_data: Optional[object] = None,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
     ) -> None:
         if not self.application_config_manager.config.window.fullscreen:
             self._enable_fullscreen()
