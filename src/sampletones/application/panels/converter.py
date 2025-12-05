@@ -76,7 +76,10 @@ class GUIConverterWindow(GUIWindow):
         self._generate_library: Optional[Callable[[], None]] = None
         self._is_library_loaded: Optional[Callable[[], bool]] = None
 
-        super().__init__(tag=TAG_CONVERTER_WINDOW)
+        super().__init__(
+            tag=TAG_CONVERTER_WINDOW,
+            parent=TITLE_DIALOG_CONVERTER,
+        )
 
     def prepare(self, input_path: Path, is_file: bool) -> None:
         config = self._load_config()

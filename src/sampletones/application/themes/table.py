@@ -18,9 +18,12 @@ from .theme import Theme
 class TableTheme(Theme):
     tag: str = TAG_THEME_TABLE
 
-    def create(self) -> None:
-        if dpg.does_item_exist(self.tag):
+    def create(self, override: bool = False) -> None:
+        if not override and dpg.does_item_exist(self.tag):
             return
+
+        if override and dpg.does_item_exist(self.tag):
+            dpg.delete_item(self.tag)
 
         with dpg.theme(tag=self.tag):
             with dpg.theme_component(dpg.mvTable):

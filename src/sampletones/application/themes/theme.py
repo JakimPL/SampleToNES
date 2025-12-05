@@ -1,14 +1,23 @@
-from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 import dearpygui.dearpygui as dpg
 
 
-@dataclass(frozen=True)
 class Theme:
+    REGISTRY: Dict[str, "Theme"] = {}
     tag: str
 
-    def create(self) -> None:
+    def __init__(self) -> None:
+        Theme.REGISTRY[self.tag] = self
+
+    def __new__(cls) -> "Theme":
+        if cls.tag in cls.REGISTRY:
+            return cls.REGISTRY[cls.tag]
+
+        instance = super(Theme, cls).__new__(cls)
+        return instance
+
+    def create(self, override: bool = True) -> None:
         raise NotImplementedError("Subclasses must implement _create method")
 
     @staticmethod

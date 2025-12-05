@@ -353,13 +353,11 @@ class GUI:
                     ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCT_FILE,
                     label=LBL_MENU_ITEM_RECONSTRUCT_FILE,
-                    enabled=self._is_library_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_DIRECTORY,
                     tag=TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
                     label=LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
-                    enabled=self._is_library_loaded(),
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
@@ -402,11 +400,7 @@ class GUI:
                 )
 
     def update_menu(self) -> None:
-        library_loaded = self._is_library_loaded()
         reconstruction_loaded = self._is_reconstruction_loaded()
-
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_FILE, enabled=library_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)

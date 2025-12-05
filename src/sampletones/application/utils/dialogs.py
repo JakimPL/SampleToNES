@@ -46,13 +46,14 @@ def show_modal_dialog(
     content: Callable[[str], None],
     width: int = DIM_DIALOG_WIDTH,
     height: int = DIM_DIALOG_HEIGHT,
+    modal: bool = True,
 ) -> None:
     dpg_delete_item(tag)
 
     with dpg.window(
         label=title,
         tag=tag,
-        modal=False,  # changed to False to allow interaction with other windows
+        modal=True,
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
@@ -81,6 +82,7 @@ def show_info_dialog(tag: str, message: str, title: str) -> None:
         tag=info_tag,
         title=title,
         content=content,
+        modal=False,
     )
 
 
@@ -90,7 +92,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
     with dpg.window(
         label=TITLE_DIALOG_ERROR,
         tag=TAG_ERROR_DIALOG,
-        modal=False,
+        modal=True,
         min_size=(DIM_DIALOG_ERROR_WIDTH, DIM_DIALOG_ERROR_HEIGHT),
         autosize=True,
         on_close=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
@@ -186,6 +188,7 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
         tag=TAG_LIBRARY_NOT_LOADED_DIALOG,
         title=TITLE_DIALOG_LIBRARY_NOT_LOADED,
         content=content,
+        modal=False,
     )
 
 
@@ -201,6 +204,7 @@ def show_reconstruction_not_loaded_dialog() -> None:
         tag=TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
         title=TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
         content=content,
+        modal=False,
     )
 
 
@@ -225,4 +229,5 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
         tag=TAG_PATH_MESSAGE_DIALOG,
         title=title,
         content=content,
+        modal=False,
     )

@@ -1,11 +1,8 @@
-from typing import Optional
-
-
 class GUIPanel:
     def __init__(
         self,
         tag: str,
-        parent: Optional[str] = None,
+        parent: str,
         width: int = -1,
         height: int = -1,
         init: bool = False,
