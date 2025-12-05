@@ -13,7 +13,7 @@ def table_wrapper(
         def wrapper(self: Any) -> None:
             with dpg.table(
                 header_row=False,
-                policy=dpg.mvTable_SizingStretchProp,
+                policy=dpg.mvTable_SizingStretchSame,
                 resizable=False,
                 width=width,
                 height=height,

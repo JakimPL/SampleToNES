@@ -248,7 +248,16 @@ class AudioDeviceManager:
 
         stream.stop_stream()
         stream.close()
+        self._reset()
+
+    def _reset(self) -> None:
         self._playing = False
+        self._paused = False
+        self._position = 0
+        self._audio_data = None
+
+        if self._position_callback:
+            self._position_callback(0)
 
     def pause(self) -> None:
         self._paused = True
@@ -262,13 +271,7 @@ class AudioDeviceManager:
             self._playback_thread.join(timeout=1.0)
 
         self._playback_thread = None
-        self._playing = False
-        self._paused = False
-        self._position = 0
-        self._audio_data = None
-
-        if self._position_callback:
-            self._position_callback(0)
+        self._reset()
 
     def is_playing(self) -> bool:
         return self._playing
