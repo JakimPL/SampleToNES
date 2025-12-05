@@ -83,6 +83,7 @@ class GUIReconstructionPanel(GUIPanel):
         self._on_export_wav: Optional[Callable[[], None]] = None
         self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
         self._on_clear_reconstruction_details: Optional[Callable[[], None]] = None
+        self._on_change_audio_state: Optional[Callable[[], None]] = None
 
         self.audio_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTION_PLOT}"
@@ -137,8 +138,9 @@ class GUIReconstructionPanel(GUIPanel):
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_RECONSTRUCTION_PLAYER_PANEL,
             parent=self.parent,
-            on_position_changed=self._on_player_position_changed,
             audio_device_manager=self.audio_device_manager,
+            on_position_changed=self._on_player_position_changed,
+            on_change_audio_state=self._on_change_audio_state,
         )
 
     def _create_audio_source_radio_buttons(self) -> None:
@@ -198,6 +200,7 @@ class GUIReconstructionPanel(GUIPanel):
         on_export_wav: Optional[Callable[[], None]] = None,
         on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None,
         on_clear_reconstruction_details: Optional[Callable[[], None]] = None,
+        on_change_audio_state: Optional[Callable[[], None]] = None,
     ) -> None:
         if on_export_wav is not None:
             self._on_export_wav = on_export_wav
@@ -205,6 +208,8 @@ class GUIReconstructionPanel(GUIPanel):
             self._on_display_reconstruction_details = on_display_reconstruction_details
         if on_clear_reconstruction_details is not None:
             self._on_clear_reconstruction_details = on_clear_reconstruction_details
+        if on_change_audio_state is not None:
+            self._on_change_audio_state = on_change_audio_state
 
     def _get_selected_generators(self) -> List[GeneratorName]:
         selected_generators = []

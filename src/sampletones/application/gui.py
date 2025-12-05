@@ -42,9 +42,14 @@ from .constants import (
     LBL_MENU_ITEM_FULLSCREEN,
     LBL_MENU_ITEM_LOAD_CONFIG,
     LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+    LBL_MENU_ITEM_PAUSE,
+    LBL_MENU_ITEM_PLAY,
+    LBL_MENU_ITEM_PLAY_FROM_START,
     LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCT_FILE,
     LBL_MENU_ITEM_SAVE_CONFIG,
+    LBL_MENU_ITEM_STOP,
+    LBL_MENU_PLAYBACK,
     LBL_MENU_RECONSTRUCTION,
     LBL_MENU_VIEW,
     LBL_TAB_INSTRUCTIONS,
@@ -64,8 +69,11 @@ from .constants import (
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
     TAG_MENU_ITEM_FULLSCREEN,
     TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_PLAY,
+    TAG_MENU_ITEM_PLAY_FROM_START,
     TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCT_FILE,
+    TAG_MENU_ITEM_STOP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_BAR_MAIN,
     TAG_TAB_INSTRUCTIONS,
@@ -243,13 +251,13 @@ class GUI:
         )
         self.shortcut_manager.register(
             ShortcutId.PLAY,
-            Shortcut(dpg.mvKey_Spacebar, (Modifier.SHIFT,)),
+            Shortcut(dpg.mvKey_Spacebar),
             self._play,
         )
         self.shortcut_manager.register(
-            ShortcutId.PAUSE,
-            Shortcut(dpg.mvKey_Spacebar),
-            self._pause,
+            ShortcutId.PLAY_FROM_START,
+            Shortcut(dpg.mvKey_Spacebar, (Modifier.SHIFT,)),
+            self._play_from_start,
         )
         self.shortcut_manager.register(
             ShortcutId.STOP,
@@ -277,23 +285,21 @@ class GUI:
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
-
         self.instruction_panel.set_callbacks(
             on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
+            on_change_audio_state=self.update_menu,
         )
-
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
             on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
             on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
+            on_change_audio_state=self.update_menu,
         )
-
         self.reconstruction_details_panel.set_callbacks(
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
             on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
         )
-
         self.converter_window.set_callbacks(
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
@@ -368,6 +374,25 @@ class GUI:
                     label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
                     enabled=self._is_reconstruction_loaded(),
                 )
+            with dpg.menu(label=LBL_MENU_PLAYBACK):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.PLAY,
+                    tag=TAG_MENU_ITEM_PLAY,
+                    label=self._get_play_label(),
+                    enabled=self._is_play_or_pause_enabled(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.PLAY_FROM_START,
+                    tag=TAG_MENU_ITEM_PLAY_FROM_START,
+                    label=LBL_MENU_ITEM_PLAY_FROM_START,
+                    enabled=self._is_play_or_pause_enabled(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.STOP,
+                    tag=TAG_MENU_ITEM_STOP,
+                    label=LBL_MENU_ITEM_STOP,
+                    enabled=self._is_stop_enabled(),
+                )
             with dpg.menu(label=LBL_MENU_VIEW):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.FULLSCREEN_TOGGLE,
@@ -384,12 +409,19 @@ class GUI:
         dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY, enabled=library_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
+        dpg_configure_item(TAG_MENU_ITEM_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled())
+        dpg_configure_item(TAG_MENU_ITEM_STOP, enabled=self._is_stop_enabled())
         self._update_fullscreen_menu_item()
 
     def create_tabs(self) -> None:
-        with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN):
+        with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN, callback=self._on_tab_changed):
             self.create_reconstructions_tab()
             self.create_instructions_tab()
+
+    def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        self.update_menu()
 
     def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
@@ -580,13 +612,13 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
     def _show_config_status_dialog(self, message: str) -> None:
-        def content_builder(parent: str) -> None:
+        def content(parent: str) -> None:
             dpg.add_text(message, parent=parent)
 
         show_modal_dialog(
             tag=TAG_CONFIG_STATUS_POPUP,
             title=TITLE_DIALOG_CONFIG_STATUS,
-            content=content_builder,
+            content=content,
         )
 
     def _on_instruction_selected(
@@ -605,6 +637,8 @@ class GUI:
             )
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
+
+        self.update_menu()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
@@ -661,50 +695,52 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
         self.application_config_manager.set_reconstruction_path(directory_path)
+        self.update_menu()
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
+        self.update_menu()
 
     def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
         self.audio_device_manager.stop()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self.update_menu()
-        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=True)
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=True)
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=True)
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
+        self.update_menu()
 
     def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
-        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=False)
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=False)
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=False)
+        self.update_menu()
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
         return dpg.get_item_alias(current_tab)
 
-    def _play(self) -> None:
+    def _play_from_start(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
             self.reconstruction_panel.player_panel.play()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.play()
 
-    def _pause(self) -> None:
+        self.update_menu()
+
+    def _play(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
             self.reconstruction_panel.player_panel.pause_or_resume()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.pause_or_resume()
+
+        self.update_menu()
 
     def _stop(self) -> None:
         current_tab_tag = self._get_current_tab()
@@ -712,6 +748,45 @@ class GUI:
             self.reconstruction_panel.player_panel.stop()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.stop()
+
+        self.update_menu()
+
+    def _get_play_label(self) -> str:
+        current_tab_tag = self._get_current_tab()
+        playing = False
+        loaded = False
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            playing = self.reconstruction_panel.player_panel.is_playing()
+            loaded = self.reconstruction_panel.player_panel.is_loaded()
+        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            playing = self.instruction_panel.player_panel.is_playing()
+            loaded = self.instruction_panel.player_panel.is_loaded()
+
+        is_playing = loaded and playing
+        return LBL_MENU_ITEM_PAUSE if is_playing else LBL_MENU_ITEM_PLAY
+
+    def _is_play_or_pause_enabled(self) -> bool:
+        current_tab_tag = self._get_current_tab()
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            return self.reconstruction_panel.player_panel.is_loaded()
+
+        if current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            return self.instruction_panel.player_panel.is_loaded()
+
+        return False
+
+    def _is_stop_enabled(self) -> bool:
+        current_tab_tag = self._get_current_tab()
+        loaded = False
+        playing = False
+        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
+            loaded = self.reconstruction_panel.player_panel.is_loaded()
+            playing = self.reconstruction_panel.player_panel.is_playing()
+        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
+            loaded = self.instruction_panel.player_panel.is_loaded()
+            playing = self.instruction_panel.player_panel.is_playing()
+
+        return loaded and playing
 
     def _exit_application(self) -> None:
         if self.converter_window and self.converter_window.converter:

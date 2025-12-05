@@ -47,8 +47,8 @@ class GUIAudioPlayerPanel(GUIPanel):
         parent: str,
         audio_device_manager: AudioDeviceManager,
         on_position_changed: Optional[Callable[[int], None]] = None,
+        on_change_audio_state: Optional[Callable[[], None]] = None,
     ):
-        self.on_position_changed = on_position_changed
         self.audio_device_manager = audio_device_manager
 
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
@@ -60,7 +60,11 @@ class GUIAudioPlayerPanel(GUIPanel):
         self.no_audio_popup_tag = f"{tag}{SUF_PLAYER_NO_AUDIO_POPUP}"
         self.error_popup_tag = f"{tag}{SUF_PLAYER_ERROR_POPUP}"
 
-        self.audio_player = AudioPlayer(audio_device_manager, on_position_changed=self._on_position_update)
+        self.audio_player = AudioPlayer(
+            audio_device_manager,
+            on_position_changed=on_position_changed,
+            on_change_audio_state=on_change_audio_state,
+        )
 
         super().__init__(
             tag=tag,
@@ -129,8 +133,6 @@ class GUIAudioPlayerPanel(GUIPanel):
     def _on_position_update(self, position: int) -> None:
         self._update_position_display()
         self._update_controls()
-        if self.on_position_changed:
-            self.on_position_changed(position)
 
     def play(self) -> None:
         try:
@@ -164,6 +166,15 @@ class GUIAudioPlayerPanel(GUIPanel):
         self.audio_player.stop()
         self._update_controls()
         self._update_position_display()
+
+    def is_loaded(self) -> bool:
+        return self.audio_player.audio_data.is_loaded()
+
+    def is_playing(self) -> bool:
+        return self.audio_player.is_playing
+
+    def is_paused(self) -> bool:
+        return self.audio_player.is_paused
 
     def _update_controls(self) -> None:
         has_audio = self.audio_player.audio_data.is_loaded()

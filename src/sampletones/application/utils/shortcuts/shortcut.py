@@ -32,6 +32,6 @@ class ShortcutId(Enum):
     EXPORT_RECONSTRUCTION_FTIS = "ExportReconstructionFTIs"
     FULLSCREEN_TOGGLE = "FullscreenToggle"
     ABOUT_DIALOG = "AboutDialog"
-    PLAY = "Play"
+    PLAY_FROM_START = "Play"
     STOP = "Stop"
-    PAUSE = "Pause"
+    PLAY = "Pause"

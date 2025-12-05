@@ -60,6 +60,12 @@ LBL_MENU_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
 
+LBL_MENU_PLAYBACK = "Playback"
+LBL_MENU_ITEM_PLAY_FROM_START = "Play from start"
+LBL_MENU_ITEM_PLAY = "Play"
+LBL_MENU_ITEM_PAUSE = "Pause"
+LBL_MENU_ITEM_STOP = "Stop"
+
 LBL_MENU_VIEW = "View"
 LBL_MENU_ITEM_FULLSCREEN = "Fullscreen"
 
@@ -71,6 +77,9 @@ TAG_MENU_ITEM_LOAD_RECONSTRUCTION = "menu_item_load_reconstruction"
 TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "menu_item_export_reconstruction_wav"
 TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "menu_item_export_reconstruction_ftis"
 TAG_MENU_ITEM_FULLSCREEN = "menu_item_view_fullscreen"
+TAG_MENU_ITEM_PLAY_FROM_START = "menu_item_play_from_start"
+TAG_MENU_ITEM_PLAY = "menu_item_play"
+TAG_MENU_ITEM_STOP = "menu_item_stop"
 
 # Tab labels
 LBL_TAB_INSTRUCTIONS = "Instructions"

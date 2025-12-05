@@ -28,6 +28,8 @@ from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ..player import GUIAudioPlayerPanel
 
+OnDisplayInstructionDetailsCallback = Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
+
 
 class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
@@ -37,10 +39,9 @@ class GUIInstructionPanel(GUIPanel):
         self.spectrum_display: GUISpectrumDisplay
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
-        self._on_display_instruction_details: Optional[
-            Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
-        ] = None
+        self._on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
         self._on_clear_instruction_details: Optional[Callable[[], None]] = None
+        self._on_change_audio_state: Optional[Callable[[], None]] = None
 
         self.waveform_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_WAVEFORM}"
         self.spectrum_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_SPECTRUM}"
@@ -52,15 +53,16 @@ class GUIInstructionPanel(GUIPanel):
 
     def set_callbacks(
         self,
-        on_display_instruction_details: Optional[
-            Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
-        ] = None,
+        on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None,
         on_clear_instruction_details: Optional[Callable[[], None]] = None,
+        on_change_audio_state: Optional[Callable[[], None]] = None,
     ) -> None:
         if on_display_instruction_details is not None:
             self._on_display_instruction_details = on_display_instruction_details
         if on_clear_instruction_details is not None:
             self._on_clear_instruction_details = on_clear_instruction_details
+        if on_change_audio_state is not None:
+            self._on_change_audio_state = on_change_audio_state
 
     def create_panel(self) -> None:
         self._create_player_panel()
@@ -101,9 +103,13 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_INSTRUCTION_PLAYER_PANEL,
             parent=self.parent,
-            on_position_changed=self._on_player_position_changed,
             audio_device_manager=self.audio_device_manager,
+            on_position_changed=self._on_player_position_changed,
+            on_change_audio_state=self._on_change_audio_state,
         )
+
+    def is_loaded(self) -> bool:
+        return self.library_config is not None
 
     def display_instruction(
         self,
