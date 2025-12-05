@@ -98,7 +98,6 @@ from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .utils.dialogs import (
     show_error_dialog,
-    show_library_not_loaded_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
 )
@@ -220,6 +219,8 @@ class GUI:
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
+            generate_library=self._generate_library_if_not_loaded,
+            is_library_loaded=self.instructions_panel.is_loaded,
         )
 
     def create_main_window(self) -> None:
@@ -451,9 +452,7 @@ class GUI:
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
-        if not self._check_if_library_loaded():
-            return
-
+        self._generate_library_if_not_loaded()
         with dpg.file_dialog(
             label=TITLE_DIALOG_RECONSTRUCT_FILE,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -469,9 +468,7 @@ class GUI:
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
-        if not self._check_if_library_loaded():
-            return
-
+        self._generate_library_if_not_loaded()
         dpg.add_file_dialog(
             label=TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
@@ -590,14 +587,9 @@ class GUI:
     def _is_library_loaded(self) -> bool:
         return self.instructions_panel.is_loaded()
 
-    def _check_if_library_loaded(self) -> bool:
+    def _generate_library_if_not_loaded(self) -> None:
         if not self._is_library_loaded():
-            key = self.config_manager.key
-            logger.warning(f"Library {key} is not loaded; cannot proceed")
-            show_library_not_loaded_dialog(key)
-            return False
-
-        return True
+            self.instructions_panel.generate_library()
 
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:

@@ -4,6 +4,7 @@
 
 * Improved the application's graphical interface.
 * Added audio settings panel.
+* Added instructions library autogeneration.
 
 ## v0.2.2 [2025-11-21]
 

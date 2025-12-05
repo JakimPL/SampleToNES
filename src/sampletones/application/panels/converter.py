@@ -26,6 +26,7 @@ from ..constants import (
     MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_COMPLETED,
     MSG_CONVERTER_ERROR,
+    MSG_CONVERTER_GENERATING_LIBRARY,
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_NO_FILES_TO_PROCESS,
     MSG_CONVERTER_SUCCESS,
@@ -72,6 +73,8 @@ class GUIConverterWindow(GUIWindow):
         self._on_load_file: Optional[Callable[[Path], None]] = None
         self._on_load_directory: Optional[Callable[[], None]] = None
         self._on_cancelled: Optional[Callable[[], None]] = None
+        self._generate_library: Optional[Callable[[], None]] = None
+        self._is_library_loaded: Optional[Callable[[], bool]] = None
 
         super().__init__(tag=TAG_CONVERTER_WINDOW)
 
@@ -84,7 +87,20 @@ class GUIConverterWindow(GUIWindow):
             return
 
         dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=False)
-        self._start_conversion(input_path, config, is_file)
+        if self._generate_library is not None:
+            self._generate_library()
+
+        self._wait_for_library_and_start(input_path, config, is_file)
+
+    def _wait_for_library_and_start(self, input_path: Path, config: Config, is_file: bool) -> None:
+        if self._is_library_loaded is not None and not self._is_library_loaded():
+            dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_GENERATING_LIBRARY)
+            dpg.set_frame_callback(
+                dpg.get_frame_count() + 10,
+                lambda: self._wait_for_library_and_start(input_path, config, is_file),
+            )
+        else:
+            self._start_conversion(input_path, config, is_file)
 
     def create_panel(self) -> None:
         assert self.input_path is not None, "Input path is not set"
@@ -97,6 +113,7 @@ class GUIConverterWindow(GUIWindow):
             min_size=(DIM_DIALOG_CONVERTER_WIDTH, DIM_DIALOG_CONVERTER_HEIGHT),
             autosize=True,
             on_close=self._on_close,
+            no_close=True,
         ):
             dpg.add_text(MSG_CONVERTER_IDLE, tag=TAG_CONVERTER_STATUS)
             dpg.add_progress_bar(
@@ -289,7 +306,7 @@ class GUIConverterWindow(GUIWindow):
         if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
-                lambda: show_info_dialog(MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),
+                lambda: show_info_dialog(self.tag, MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),
             )
             return
 
@@ -336,6 +353,8 @@ class GUIConverterWindow(GUIWindow):
         on_load_file: Optional[Callable[[Path], None]] = None,
         on_load_directory: Optional[Callable[[], None]] = None,
         on_cancelled: Optional[Callable[[], None]] = None,
+        generate_library: Optional[Callable[[], None]] = None,
+        is_library_loaded: Optional[Callable[[], bool]] = None,
     ) -> None:
         if on_load_file is not None:
             self._on_load_file = on_load_file
@@ -343,3 +362,7 @@ class GUIConverterWindow(GUIWindow):
             self._on_load_directory = on_load_directory
         if on_cancelled is not None:
             self._on_cancelled = on_cancelled
+        if generate_library is not None:
+            self._generate_library = generate_library
+        if is_library_loaded is not None:
+            self._is_library_loaded = is_library_loaded

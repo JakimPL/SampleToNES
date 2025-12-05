@@ -51,6 +51,7 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    TAG_CONVERTER_WINDOW,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
@@ -123,6 +124,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
             with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
+                dpg.add_progress_bar(
+                    tag=TAG_LIBRARY_PROGRESS,
+                    show=False,
+                    width=-1,
+                    default_value=VAL_GLOBAL_DEFAULT_FLOAT,
+                )
                 GUIButton(
                     tag=TAG_LIBRARY_BUTTON_REFRESH,
                     label=LBL_BUTTON_REFRESH_LIBRARIES,
@@ -133,14 +140,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     tag=TAG_LIBRARY_BUTTON_GENERATE,
                     label=LBL_BUTTON_GENERATE_LIBRARY,
                     width=-1,
-                    callback=self._generate_library,
+                    callback=self.generate_library,
                     font=Font.BOLD,
-                )
-                dpg.add_progress_bar(
-                    tag=TAG_LIBRARY_PROGRESS,
-                    show=False,
-                    width=-1,
-                    default_value=VAL_GLOBAL_DEFAULT_FLOAT,
                 )
 
             dpg.add_separator()
@@ -338,7 +339,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         finally:
             self._set_library_tree_enabled(True)
 
-    def _generate_library(self) -> None:
+    def generate_library(self) -> None:
         if self.library_manager.is_generating():
             return
 
@@ -406,7 +407,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_generation_completed(self) -> None:
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
-        show_info_dialog(MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
+        if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+            show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
@@ -414,7 +416,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._finalize_generation_error(exception)
 
     def _on_generation_cancelled(self) -> None:
-        show_info_dialog(MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
+        show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:

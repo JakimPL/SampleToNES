@@ -96,6 +96,10 @@ class InstructionsLibraryManager:
         return self.library_files.copy()
 
     def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
+        filepath = self.get_path(library_key)
+        if not filepath.exists():
+            return False
+
         return library_key in self.library.data
 
     def load_library(self, library_key: InstructionLibraryKey) -> bool:

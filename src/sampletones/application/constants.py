@@ -274,7 +274,6 @@ TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
 TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
 TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
-TAG_INFO_DIALOG = "info_dialog"
 TAG_ERROR_DIALOG = "error_dialog"
 
 
@@ -287,6 +286,7 @@ MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_NO_FILES_TO_PROCESS = "No WAV files found to process."
 MSG_CONVERTER_IDLE = "Waiting to start..."
+MSG_CONVERTER_GENERATING_LIBRARY = "Generating instructions library..."
 MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_CONVERTER_CANCELLED = "Conversion cancelled."
 TPL_CONVERTER_STATUS = "Progress: {}/{} files"
@@ -333,6 +333,7 @@ SUF_WAVEFORM_POSITION_INDICATOR = "_position_indicator"
 COL_PATH_TEXT = (100, 150, 255)
 COL_PATH_TEXT_HOVER = (150, 200, 255)
 SUF_CONVERTER_HANDLER = "_handler"
+SUF_INFO_DIALOG = "_info_dialog"
 
 # Waveform labels and messages
 LBL_WAVEFORM_DISPLAY = "Waveform display"

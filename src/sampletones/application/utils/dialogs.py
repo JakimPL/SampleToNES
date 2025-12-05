@@ -21,11 +21,10 @@ from ..constants import (
     SUF_BUTTON_OK,
     SUF_BUTTON_SHOW_TRACEBACK,
     SUF_GROUP,
+    SUF_INFO_DIALOG,
     SUF_PATH_TEXT,
-    TAG_BUTTON_OK,
     TAG_ERROR_DIALOG,
     TAG_FILE_NOT_FOUND_DIALOG,
-    TAG_INFO_DIALOG,
     TAG_LIBRARY_NOT_LOADED_DIALOG,
     TAG_PATH_MESSAGE_DIALOG,
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
@@ -60,15 +59,16 @@ def show_modal_dialog(
     ):
         content(tag)
         dpg.add_separator()
+        button_ok_tag = f"{tag}{SUF_BUTTON_OK}"
         GUIButton(
-            tag=TAG_BUTTON_OK,
+            tag=button_ok_tag,
             label=LBL_BUTTON_OK,
             callback=lambda: dpg_delete_item(tag),
             width=-1,
         )
 
 
-def show_info_dialog(message: str, title: str) -> None:
+def show_info_dialog(tag: str, message: str, title: str) -> None:
     def content(parent: str) -> None:
         dpg.add_text(
             message,
@@ -76,8 +76,9 @@ def show_info_dialog(message: str, title: str) -> None:
             wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
         )
 
+    info_tag = f"{tag}{SUF_INFO_DIALOG}"
     show_modal_dialog(
-        tag=TAG_INFO_DIALOG,
+        tag=info_tag,
         title=title,
         content=content,
     )
@@ -151,6 +152,8 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:
+    dpg_delete_item(TAG_FILE_NOT_FOUND_DIALOG)
+
     def content(parent: str) -> None:
         dpg.add_text(
             message,
@@ -202,6 +205,8 @@ def show_reconstruction_not_loaded_dialog() -> None:
 
 
 def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
+    dpg_delete_item(TAG_PATH_MESSAGE_DIALOG)
+
     def content(parent: str) -> None:
         group_tag = f"{parent}{SUF_GROUP}"
         with dpg.group(parent=parent):
