@@ -42,6 +42,7 @@ class AudioPlayer:
 
     def play(self) -> None:
         if not self.audio_data.is_loaded():
+            self._notify_audio_state_changed()
             return
 
         self.audio_device_manager.set_position_callback(self._on_device_position_changed)

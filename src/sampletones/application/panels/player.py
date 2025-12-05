@@ -119,19 +119,9 @@ class GUIAudioPlayerPanel(GUIPanel):
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_player.load_audio_data(audio_data)
         self._update_controls()
-        self._update_position_display()
 
     def clear_audio(self) -> None:
         self.audio_player.clear_audio()
-        self._update_controls()
-        self._update_position_display()
-
-    def set_position(self, position: int) -> None:
-        self.audio_player.set_position(position)
-        self._update_position_display()
-
-    def _on_position_update(self, position: int) -> None:
-        self._update_position_display()
         self._update_controls()
 
     def play(self) -> None:
@@ -155,17 +145,14 @@ class GUIAudioPlayerPanel(GUIPanel):
     def pause(self) -> None:
         self.audio_player.pause()
         self._update_controls()
-        self._update_position_display()
 
     def resume(self) -> None:
         self.audio_player.resume()
         self._update_controls()
-        self._update_position_display()
 
     def stop(self) -> None:
         self.audio_player.stop()
         self._update_controls()
-        self._update_position_display()
 
     def is_loaded(self) -> bool:
         return self.audio_player.audio_data.is_loaded()
@@ -198,8 +185,10 @@ class GUIAudioPlayerPanel(GUIPanel):
             dpg_configure_item(self.pause_button_tag, enabled=False)
             dpg_configure_item(self.stop_button_tag, enabled=False)
 
+        self._update_position_display()
+
     def _update_position_display(self) -> None:
-        if not self.audio_player.audio_data:
+        if not self.audio_player.audio_data.is_loaded():
             dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
             position_text = (
