@@ -3,7 +3,6 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.align import table_wrapper
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
@@ -50,6 +49,8 @@ from ..constants import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.window import GUIWindow
+from ..themes.converter import ConverterTheme
+from ..utils.align import table_wrapper
 from ..utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
 from ..utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
 from ..utils.progress import SystemProgress
@@ -75,6 +76,8 @@ class GUIConverterWindow(GUIWindow):
         self._on_cancelled: Optional[Callable[[], None]] = None
         self._generate_library: Optional[Callable[[], None]] = None
         self._is_library_loaded: Optional[Callable[[], bool]] = None
+
+        self.theme = ConverterTheme()
 
         super().__init__(
             tag=TAG_CONVERTER_WINDOW,
@@ -142,6 +145,8 @@ class GUIConverterWindow(GUIWindow):
 
             dpg.add_separator()
             self._add_buttons()
+
+        self.theme.bind_to_item(self.tag)
 
     def _load_config(self) -> Optional[Config]:
         try:

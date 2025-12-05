@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from ..constants import SUF_BUTTON
-from ..themes.button import ButtonTheme
+from ..themes.default import DefaultTheme
 from ..themes.theme import Theme
 from .fonts.font import Font
 from .fonts.registry import FontRegistry
@@ -19,7 +19,7 @@ class GUIButton:
         callback: Callable[..., Any],
         enabled: bool = True,
         font: Font = Font.REGULAR,
-        theme: Theme = ButtonTheme(),
+        theme: Theme = DefaultTheme(),
         **kwargs: Any,
     ) -> None:
         self._tag = tag
