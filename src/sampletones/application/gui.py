@@ -53,6 +53,7 @@ from .constants import (
     LBL_MENU_RECONSTRUCTION,
     LBL_MENU_VIEW,
     LBL_TAB_INSTRUCTIONS,
+    LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
     MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVE_FAILED,
@@ -60,9 +61,12 @@ from .constants import (
     MSG_LIBRARY_DISPLAY_ERROR,
     MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
     SUF_CENTER_PANEL,
+    SUF_LEFT_PANEL,
+    SUF_RIGHT_PANEL,
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
+    TAG_EXPLORER_PANEL_GROUP,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -75,9 +79,10 @@ from .constants import (
     TAG_MENU_ITEM_RECONSTRUCT_FILE,
     TAG_MENU_ITEM_STOP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
-    TAG_TAB_BAR_MAIN,
     TAG_TAB_INSTRUCTIONS,
+    TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
+    TAG_TABS,
     TAG_WINDOW_MAIN,
     TITLE_DIALOG_CONFIG_STATUS,
     TITLE_DIALOG_LOAD_CONFIG,
@@ -91,14 +96,15 @@ from .constants import (
 )
 from .elements.fonts.registry import FontRegistry
 from .panels.converter import GUIConverterWindow
-from .panels.instruction.config import GUIConfigPanel
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
+from .panels.main.config import GUIConfigPanel
+from .panels.main.explorer import GUIExplorerPanel
+from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
-from .panels.reconstruction.reconstructor import GUIReconstructorPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.data import ReconstructionData
 from .resources.items import IconResource
@@ -123,12 +129,14 @@ class GUI:
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
+        self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel()
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
+        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
+
         self.instructions_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
-        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager, self.application_config_manager)
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager,
@@ -410,7 +418,8 @@ class GUI:
         self._update_fullscreen_menu_item()
 
     def create_tabs(self) -> None:
-        with dpg.tab_bar(tag=TAG_TAB_BAR_MAIN, callback=self._on_tab_changed):
+        with dpg.tab_bar(tag=TAG_TABS, callback=self._on_tab_changed):
+            self.create_main_tab()
             self.create_reconstructions_tab()
             self.create_instructions_tab()
 
@@ -420,11 +429,39 @@ class GUI:
     def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
-            dpg.set_value(TAG_TAB_BAR_MAIN, current_tab)
+            dpg.set_value(TAG_TABS, current_tab)
 
         current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
             self.browser_panel.load_and_display_reconstruction(current_reconstruction)
+
+    def create_main_tab(self) -> None:
+        with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
+            with dpg.table(
+                header_row=False,
+                resizable=False,
+                policy=dpg.mvTable_SizingStretchProp,
+            ):
+                dpg.add_table_column(width_fixed=True)
+                dpg.add_table_column()
+
+                with dpg.table_row():
+                    with dpg.child_window(
+                        tag=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
+                        width=DIM_PANEL_LEFT_WIDTH,
+                        height=DIM_PANEL_LEFT_HEIGHT,
+                        no_scrollbar=True,
+                        no_scroll_with_mouse=True,
+                        border=False,
+                    ):
+                        self._create_main_left_panel()
+
+                    with dpg.child_window(
+                        tag=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
+                        no_scroll_with_mouse=True,
+                        border=False,
+                    ):
+                        self._create_main_panel()
 
     @staticmethod
     def create_layout(
@@ -450,6 +487,7 @@ class GUI:
 
                 with dpg.table_row():
                     with dpg.child_window(
+                        tag=f"{tab_tag}{SUF_LEFT_PANEL}",
                         width=left_panel_width,
                         height=left_panel_height,
                         no_scrollbar=True,
@@ -466,6 +504,7 @@ class GUI:
                         center_content_builder()
 
                     with dpg.child_window(
+                        tag=f"{tab_tag}{SUF_RIGHT_PANEL}",
                         width=right_panel_width,
                         height=right_panel_height,
                         no_scrollbar=True,
@@ -473,19 +512,6 @@ class GUI:
                         border=False,
                     ):
                         right_content_builder()
-
-    def create_instructions_tab(self) -> None:
-        self.create_layout(
-            label=LBL_TAB_INSTRUCTIONS,
-            tab_tag=TAG_TAB_INSTRUCTIONS,
-            left_content_builder=self._create_instructions_left_panel,
-            center_content_builder=self.instruction_panel.create_panel,
-            right_content_builder=self.instruction_details_panel.create_panel,
-            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
-            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
-            right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
-        )
-        self.instructions_panel.initialize_libraries()
 
     def create_reconstructions_tab(self) -> None:
         self.create_layout(
@@ -498,21 +524,39 @@ class GUI:
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
         )
-        self.browser_panel.initialize_tree()
+
+    def create_instructions_tab(self) -> None:
+        self.create_layout(
+            label=LBL_TAB_INSTRUCTIONS,
+            tab_tag=TAG_TAB_INSTRUCTIONS,
+            left_content_builder=self._create_instructions_left_panel,
+            center_content_builder=self.instruction_panel.create_panel,
+            right_content_builder=self.instruction_details_panel.create_panel,
+            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
+            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
+            right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
+        )
 
     def _create_instructions_left_panel(self) -> None:
+        with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
+            self.instructions_panel.create_panel()
+            self.instructions_panel.initialize_libraries()
+
+    def _create_reconstructions_left_panel(self) -> None:
+        with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
+            self.browser_panel.create_panel()
+            self.browser_panel.initialize_tree()
+
+    def _create_main_left_panel(self) -> None:
+        with dpg.group(tag=TAG_EXPLORER_PANEL_GROUP):
+            self.explorer_panel.create_panel()
+
+    def _create_main_panel(self) -> None:
         with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
             self.config_panel.create_panel()
 
-        with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
-            self.instructions_panel.create_panel()
-
-    def _create_reconstructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
             self.reconstructor_panel.create_panel()
-
-        with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
-            self.browser_panel.create_panel()
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -706,7 +750,7 @@ class GUI:
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TAB_BAR_MAIN, TAG_TAB_RECONSTRUCTIONS)
+        dpg_set_value(TAG_TABS, TAG_TAB_RECONSTRUCTIONS)
         self.update_menu()
 
     def _close_reconstruction(self) -> None:
@@ -715,7 +759,7 @@ class GUI:
         self.update_menu()
 
     def _get_current_tab(self) -> str:
-        current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
+        current_tab = dpg.get_value(TAG_TABS)
         return dpg.get_item_alias(current_tab)
 
     def _play_from_start(self) -> None:

@@ -8,7 +8,7 @@ from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
 
-from ...constants import TAG_TAB_BAR_MAIN
+from ...constants import TAG_TABS
 from .config import ApplicationConfig
 
 
@@ -43,7 +43,7 @@ class ApplicationConfigManager:
             self.config.window.height = dpg.get_viewport_height()
 
     def save_current_tab(self) -> None:
-        current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
+        current_tab = dpg.get_value(TAG_TABS)
         current_tab = dpg.get_item_alias(current_tab)
         self.config.gui.current_tab = current_tab
 

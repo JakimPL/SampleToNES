@@ -120,7 +120,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             no_inputs=False,
             pan_button=-1,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag)
+            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, label=LBL_WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
 

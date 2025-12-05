@@ -75,7 +75,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             tag=self.plot_tag,
             anti_aliased=True,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag)
+            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag)
 

@@ -14,8 +14,6 @@ from ..constants import (
     TAG_THEME_DEFAULT,
     VAL_BUTTON_FRAME_PADDING,
     VAL_BUTTON_FRAME_ROUNDING,
-    VAL_TABLE_CELL_PADDING,
-    VAL_TABLE_FRAME_ROUNDING,
 )
 from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
 from .theme import Theme
@@ -52,8 +50,6 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_TableRowBgAlt, color=COL_TABLE_ROW_ALTERNATIVE_BACKGROUND),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderStrong, color=COL_TABLE_BORDER),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderLight, color=COL_TABLE_BORDER),
-                ThemeStyle(key=dpg.mvStyleVar_CellPadding, x=VAL_TABLE_CELL_PADDING[0], y=VAL_TABLE_CELL_PADDING[1]),
-                ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_TABLE_FRAME_ROUNDING),
             ],
         }
     )

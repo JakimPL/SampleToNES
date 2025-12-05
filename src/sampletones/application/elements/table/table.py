@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.typehints import Color, SerializedData
 
 from ...constants import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_LABEL_WIDTH
-from ...themes.default import DefaultTheme
+from ...themes.table import TableTheme
 from ...themes.theme import Theme
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
@@ -32,7 +32,7 @@ class GUITable:
         label_color: Color = COL_TABLE_LABEL,
         value_color: Color = COL_TABLE_VALUE,
         bold_labels: bool = True,
-        theme: Theme = DefaultTheme(),
+        theme: Theme = TableTheme(),
     ) -> None:
         self._tag = tag
         self._rows = rows

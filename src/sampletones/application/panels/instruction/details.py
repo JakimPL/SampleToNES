@@ -28,14 +28,14 @@ from ...utils.dpg import dpg_configure_item
 
 class GUIInstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
+        self.logic = InstructionDetailsLogic()
+        self.general_table: Optional[GUITable] = None
+        self.params_table: Optional[GUITable] = None
+
         super().__init__(
             tag=TAG_INSTRUCTION_DETAILS,
             parent=TAG_INSTRUCTION_PANEL,
         )
-
-        self.logic = InstructionDetailsLogic()
-        self.general_table: Optional[GUITable] = None
-        self.params_table: Optional[GUITable] = None
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):

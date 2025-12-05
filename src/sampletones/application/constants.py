@@ -82,6 +82,7 @@ TAG_MENU_ITEM_PLAY = "menu_item_play"
 TAG_MENU_ITEM_STOP = "menu_item_stop"
 
 # Tab labels
+LBL_TAB_MAIN = "Main"
 LBL_TAB_INSTRUCTIONS = "Instructions"
 LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
@@ -248,7 +249,8 @@ KEY_DIALOG_SELECTIONS = "selections"
 
 # Main GUI tags
 TAG_WINDOW_MAIN = "main_window"
-TAG_TAB_BAR_MAIN = "main_tab_bar"
+TAG_TABS = "tabs"
+TAG_TAB_MAIN = "tab_main"
 TAG_TAB_INSTRUCTIONS = "tab_instructions"
 TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
 TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
@@ -471,7 +473,10 @@ SUF_BAR_PLOT_ZERO_LINE = "_zero_line"
 SUF_SEPARATOR = "_separator"
 SUF_NO_DATA_MESSAGE = "_no_data_message"
 SUF_WINDOW = "_window"
+
+SUF_LEFT_PANEL = "_left_panel"
 SUF_CENTER_PANEL = "_center_panel"
+SUF_RIGHT_PANEL = "_right_panel"
 
 # Spectrum display settings
 LBL_SPECTRUM_DISPLAY = "Spectrum display"
@@ -548,9 +553,6 @@ DIM_TABLE_LABEL_WIDTH = 130
 VAL_TABLE_CELL_PADDING = 8, 4
 VAL_TABLE_FRAME_ROUNDING = 4
 
-# Instruction details theme tag
-TAG_THEME_TABLE = "theme_instruction_table"
-
 # Reconstructor panel constants
 TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
@@ -561,6 +563,14 @@ LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "Transformation gamma"
 TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"
 TAG_RECONSTRUCTOR_MIXER = "mixer"
+
+# Explorer panel constants
+TAG_EXPLORER_PANEL_GROUP = "explorer_panel_group"
+TAG_EXPLORER_TREE = "explorer_tree"
+TAG_EXPLORER_PANEL = "explorer_panel"
+TAG_EXPLORER_TREE_WINDOW = "explorer_tree_window"
+TAG_EXPLORER_TREE_GROUP = "explorer_tree_group"
+LBL_EXPLORER_FILESYSTEM = "Filesystem"
 
 # Browser panel constants
 LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"
@@ -628,9 +638,9 @@ VAL_WINDOW_POSITION_X = 200
 VAL_WINDOW_POSITION_Y = 200
 VAL_WINDOW_FULLSCREEN = False
 
-TAG_THEME_BUTTON = "theme_button"
 TAG_THEME_DEFAULT = "theme_default"
 TAG_THEME_CONVERTER = "theme_converter"
+TAG_THEME_TABLE = "theme_table"
 
 # Audio settings panel constants
 TAG_AUDIO_SETTINGS_PANEL = "audio_settings_panel"

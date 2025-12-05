@@ -37,10 +37,10 @@ from ...constants import (
     TAG_BROWSER_BUTTON_REFRESH_LIST,
     TAG_BROWSER_CONTROLS_GROUP,
     TAG_BROWSER_PANEL,
+    TAG_BROWSER_PANEL_GROUP,
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
-    TAG_RECONSTRUCTOR_PANEL_GROUP,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -70,7 +70,7 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
-            parent=TAG_RECONSTRUCTOR_PANEL_GROUP,
+            parent=TAG_BROWSER_PANEL_GROUP,
             width=DIM_PANEL_LIBRARY_WIDTH,
             height=DIM_PANEL_LIBRARY_HEIGHT,
         )
