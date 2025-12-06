@@ -567,6 +567,7 @@ class GUI:
     def _create_main_left_panel(self) -> None:
         with dpg.group(tag=TAG_EXPLORER_PANEL_GROUP):
             self.explorer_panel.create_panel()
+            self.explorer_panel.initialize_tree()
 
     def _create_main_panel(self) -> None:
         with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
