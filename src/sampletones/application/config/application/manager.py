@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional, Set
 
 import dearpygui.dearpygui as dpg
 
@@ -54,6 +54,9 @@ class ApplicationConfigManager:
     def toggle_autoplay(self) -> bool:
         self.config.gui.autoplay = not self.config.gui.autoplay
         return self.config.gui.autoplay
+
+    def toggle_favorite(self, path: Path) -> None:
+        self.config.favorites.toggle_favorite(path)
 
     def load_current_tab(self) -> str:
         return self.config.gui.current_tab
@@ -149,5 +152,5 @@ class ApplicationConfigManager:
         return self.config.gui.autoplay
 
     @property
-    def favorites(self) -> List[Path]:
+    def favorites(self) -> Set[Path]:
         return self.config.favorites.paths
