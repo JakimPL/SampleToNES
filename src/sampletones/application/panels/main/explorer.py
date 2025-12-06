@@ -6,13 +6,17 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, TreeNode
-from sampletones.typehints import Sender
+from sampletones.typehints import Color, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
     COL_PATH_TEXT_HOVER,
+    COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
+    COL_TEXT_LIBRARY,
+    COL_TEXT_RECONSTRUCTION,
+    COL_TEXT_WAVE,
     DIM_PANEL_EXPLORER_HEIGHT,
     DIM_PANEL_EXPLORER_WIDTH,
     LBL_BUTTON_COLLAPSE_ALL,
@@ -130,9 +134,15 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.configure_item(TAG_EXPLORER_TREE_GROUP, enabled=enabled)
 
     def _apply_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
-        if node.node_type != NOD_TYPE_DIRECTORY:
-            return
+        if node.node_type == NOD_TYPE_DIRECTORY:
+            return self._apply_directory_node_theme(node_tag, node)
 
+        if node.node_type == NOD_TYPE_FILE:
+            return self._apply_file_node_theme(node_tag, node)
+
+        return None
+
+    def _apply_directory_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)
         if not has_content:
             with dpg.theme() as disabled_theme:
@@ -141,6 +151,23 @@ class GUIExplorerPanel(GUITreePanel):
             dpg.bind_item_theme(node_tag, disabled_theme)
         else:
             dpg.bind_item_theme(node_tag, 0)
+
+    def _apply_file_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
+        # is_favorite = ... # TODO: Check if the file is marked as favorite
+        with dpg.theme() as node_theme:
+            with dpg.theme_component(dpg.mvSelectable):
+                color: Color = COL_TEXT_DEFAULT
+                match node.filepath.suffix.lower():
+                    case paths.EXT_FILE_RECONSTRUCTION:
+                        color = COL_TEXT_RECONSTRUCTION
+                    case paths.EXT_FILE_LIBRARY:
+                        color = COL_TEXT_LIBRARY
+                    case paths.EXT_FILE_WAVE:
+                        color = COL_TEXT_WAVE
+
+                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+
+        dpg.bind_item_theme(node_tag, node_theme)
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
@@ -192,6 +219,8 @@ class GUIExplorerPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
+
+            self._apply_node_theme(node_tag, node)
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(
@@ -339,17 +368,6 @@ class GUIExplorerPanel(GUITreePanel):
                 tag=dummy_tag,
                 parent=node_tag,
             )
-
-    def _reapply_themes_recursive(self, node: TreeNode) -> None:
-        if not isinstance(node, FileSystemNode):
-            return
-
-        node_tag = self._generate_node_tag(node)
-        if dpg.does_item_exist(node_tag):
-            self._apply_node_theme(node_tag, node)
-
-        for child in node.children:
-            self._reapply_themes_recursive(child)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:

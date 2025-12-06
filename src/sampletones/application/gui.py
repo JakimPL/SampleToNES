@@ -776,6 +776,7 @@ class GUI:
         self.library_panel.load_library_file(filepath)
         self.config_manager.update_gui()
         self._set_current_tab(TAG_TAB_INSTRUCTIONS)
+        self._update_menu()
 
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:
