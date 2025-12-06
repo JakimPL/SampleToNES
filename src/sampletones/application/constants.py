@@ -36,6 +36,7 @@ DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
+DIM_CONVERTER_BUTTON_HEIGHT = 60
 DIM_INPUT_WIDTH = -240
 
 # Search UI dimensions
@@ -95,10 +96,11 @@ LBL_TAB_INSTRUCTIONS = "Instructions"
 LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
 # Section headers
-LBL_SECTION_GENERAL_SETTINGS = "General settings"
-LBL_SECTION_LIBRARY_SETTINGS = "Instructions library settings"
-LBL_SECTION_GENERATOR_SELECTION = "Generators"
-LBL_CONFIG_SECTION_LIBRARY_DIRECTORY = "Instructions data directory"
+LBL_SECTION_CONFIG_GENERAL_SETTINGS = "General settings"
+LBL_SECTION_CONFIG_LIBRARY_SETTINGS = "Instructions library settings"
+LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION = "Generators"
+LBL_SECTION_CONFIG_LIBRARY_DIRECTORY = "Instructions data directory"
+LBL_SECTION_CONVERTER = "Converter"
 
 # Button labels
 LBL_BUTTON_COLLAPSE_ALL = "Collapse all"
@@ -114,6 +116,8 @@ LBL_BUTTON_CLEAR_SEARCH = "Clear"
 LBL_BUTTON_CLOSE = "Close"
 LBL_BUTTON_CANCEL = "Cancel"
 LBL_BUTTON_LOAD = "Load"
+LBL_BUTTON_CONVERTER_CONVERT_SAMPLE = "Convert sample"
+LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY = "Convert directory"
 
 # Checkbox labels
 LBL_CHECKBOX_NORMALIZE_AUDIO = "Normalize audio"
@@ -270,6 +274,7 @@ TAG_EXPLORER_COLLAPSE_ALL = "collapse_all"
 IDX_DIALOG_FIRST_SELECTION = 0
 VAL_GLOBAL_DEFAULT_SLOT = 1
 VAL_GLOBAL_DEFAULT_FLOAT = 0.0
+VAL_GLOBAL_PROGRESS_START = 0.0
 VAL_GLOBAL_PROGRESS_COMPLETE = 1.0
 
 # Dictionary keys
@@ -302,15 +307,18 @@ TAG_BROWSER_RECONSTRUCTION_DETAILS = "reconstruction_details"
 TAG_BROWSER_FAMITRACKER_EXPORT = "famitracker_export"
 TAG_DIALOG_ERROR_LIBRARY_GENERATION = "error_dialog_library_generation"
 TAG_CONFIG_LOAD_ERROR_DIALOG = "config_load_error_dialog"
-TAG_CONVERTER_WINDOW = "converter_window"
 TAG_CONVERTER_PROGRESS = "converter_progress"
 TAG_CONVERTER_STATUS = "converter_status"
+TAG_CONVERTER_PANEL = "converter_panel"
+TAG_CONVERTER_SUBPANEL = "converter_subpanel"
 TAG_CONVERTER_INPUT_PATH_TEXT = "converter_input_path_text"
 TAG_CONVERTER_OUTPUT_PATH_TEXT = "converter_output_path_text"
-TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
-TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
+TAG_CONVERTER_BUTTON_LOAD = "converter_load_button"
+TAG_CONVERTER_BUTTON_CANCEL = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
+TAG_CONVERTER_PANEL_GROUP = "converter_panel_group"
+TAG_CONVERTER_BUTTON_CONVERT = "converter_convert_button"
 TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
 TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
 TAG_ERROR_DIALOG = "error_dialog"
@@ -324,7 +332,8 @@ MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_NO_FILES_TO_PROCESS = "No WAV files found to process."
-MSG_CONVERTER_IDLE = "Waiting to start..."
+MSG_CONVERTER_IDLE = "No tasks in progress."
+MSG_CONVERTER_WAITING = "Waiting to start..."
 MSG_CONVERTER_GENERATING_LIBRARY = "Generating instructions library..."
 MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_CONVERTER_CANCELLED = "Conversion cancelled."
@@ -346,13 +355,16 @@ VAL_PLOT_CHILDREN_SLOT = 2
 
 VAL_GLOBAL_FONT_SCALE = 1
 VAL_FONT_SIZE = 22
-VAL_FONT_SMALL_SIZE = 19
+VAL_FONT_SIZE_SMALL = 19
+VAL_FONT_SIZE_LARGE = 26
 
 # Font tags
 TAG_FONT_BOLD = "font_bold"
 TAG_FONT_BOLD_SMALL = "font_bold_small"
+TAG_FONT_BOLD_LARGE = "font_bold_large"
 TAG_FONT_REGULAR = "font_regular"
 TAG_FONT_REGULAR_SMALL = "font_regular_small"
+TAG_FONT_REGULAR_LARGE = "font_regular_large"
 TAG_FONT_ICON = "font_icon"
 
 CHR_STAR = 0x2605  # Unicode star character
@@ -591,8 +603,7 @@ TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
 TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP = "reconstructor_output_directory_group"
 TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
-LBL_SECTION_OUTPUT_DIRECTORY = "Output directory"
-LBL_SECTION_PATHS = "Paths"
+LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY = "Output directory"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "Transformation gamma"
 TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"

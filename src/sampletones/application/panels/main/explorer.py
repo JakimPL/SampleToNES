@@ -64,6 +64,8 @@ class GUIExplorerPanel(GUITreePanel):
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
 
+        self._on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
+        self._on_directory_clicked: Optional[OnReconstructPathCallback] = None
         self._on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
         self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
         self._on_load_reconstruction: Optional[OnReconstructPathCallback] = None
@@ -277,6 +279,8 @@ class GUIExplorerPanel(GUITreePanel):
                 case paths.EXT_FILE_LIBRARY:
                     return self._load_library(user_data)
                 case paths.EXT_FILE_WAVE:
+                    if self._on_wave_file_clicked is not None:
+                        self._on_wave_file_clicked(user_data.filepath)
                     return self._schedule_autoplay(user_data)
                 case _:
                     logger.warning(f"Unhandled file type clicked: {user_data.filepath.suffix.lower()}")
@@ -300,6 +304,8 @@ class GUIExplorerPanel(GUITreePanel):
     def _on_directory_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
+            if self._on_directory_clicked is not None:
+                self._on_directory_clicked(user_data.filepath)
             return self._toggle_directory_expansion(user_data)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -500,6 +506,8 @@ class GUIExplorerPanel(GUITreePanel):
 
     def set_callbacks(
         self,
+        on_wave_file_clicked: Optional[OnReconstructPathCallback] = None,
+        on_directory_clicked: Optional[OnReconstructPathCallback] = None,
         on_reconstruct_directory: Optional[OnReconstructPathCallback] = None,
         on_reconstruct_file: Optional[OnReconstructPathCallback] = None,
         on_load_reconstruction: Optional[OnReconstructPathCallback] = None,
@@ -508,6 +516,10 @@ class GUIExplorerPanel(GUITreePanel):
         on_set_as_output_directory: Optional[OnReconstructPathCallback] = None,
         on_set_as_library_directory: Optional[OnReconstructPathCallback] = None,
     ) -> None:
+        if on_wave_file_clicked is not None:
+            self._on_wave_file_clicked = on_wave_file_clicked
+        if on_directory_clicked is not None:
+            self._on_directory_clicked = on_directory_clicked
         if on_reconstruct_directory is not None:
             self._on_reconstruct_directory = on_reconstruct_directory
         if on_reconstruct_file is not None:

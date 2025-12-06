@@ -33,9 +33,9 @@ from ...constants import (
     LBL_CONFIG_INPUT_CHANGE_RATE,
     LBL_CONFIG_INPUT_MAX_WORKERS,
     LBL_CONFIG_INPUT_SAMPLE_RATE,
-    LBL_CONFIG_SECTION_LIBRARY_DIRECTORY,
-    LBL_SECTION_GENERAL_SETTINGS,
-    LBL_SECTION_LIBRARY_SETTINGS,
+    LBL_SECTION_CONFIG_GENERAL_SETTINGS,
+    LBL_SECTION_CONFIG_LIBRARY_DIRECTORY,
+    LBL_SECTION_CONFIG_LIBRARY_SETTINGS,
     LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
     LBL_TOOLTIP_CONFIG_CHANGE_RATE,
     LBL_TOOLTIP_CONFIG_MAX_WORKERS,
@@ -102,7 +102,7 @@ class GUIConfigPanel(GUIPanel):
         self._register_callbacks()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
+        section_text = dpg.add_text(LBL_SECTION_CONFIG_GENERAL_SETTINGS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_audio_options(self) -> None:
@@ -128,7 +128,7 @@ class GUIConfigPanel(GUIPanel):
     def _create_library_directory_selection(self) -> None:
         with dpg.group(tag=TAG_CONFIG_LIBRARY_DIRECTORY_GROUP):
             dpg.add_separator()
-            dpg.add_text(LBL_CONFIG_SECTION_LIBRARY_DIRECTORY)
+            dpg.add_text(LBL_SECTION_CONFIG_LIBRARY_DIRECTORY)
             GUIButton(
                 tag=TAG_CONFIG_LIBRARY_DIRECTORY,
                 parent=TAG_CONFIG_LIBRARY_DIRECTORY_GROUP,
@@ -147,7 +147,7 @@ class GUIConfigPanel(GUIPanel):
 
     def _create_library_settings(self) -> None:
         dpg.add_separator()
-        dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
+        dpg.add_text(LBL_SECTION_CONFIG_LIBRARY_SETTINGS)
         dpg.add_input_int(
             label=LBL_CONFIG_INPUT_SAMPLE_RATE,
             default_value=DEFAULT_SAMPLE_RATE,

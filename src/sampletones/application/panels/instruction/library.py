@@ -52,7 +52,7 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
-    TAG_CONVERTER_WINDOW,
+    TAG_CONVERTER_PANEL,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
@@ -119,40 +119,54 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
+        with dpg.child_window(
+            tag=self.tag,
+            width=self.width,
+            height=self.height,
+            parent=self.parent,
+        ):
+            self._create_section_text()
+            self._create_library_status()
+            self._create_library_controls()
+            self._create_library_tree()
 
-            dpg.add_separator()
-            dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-            with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
-                dpg.add_progress_bar(
-                    tag=TAG_LIBRARY_PROGRESS,
-                    show=False,
-                    width=-1,
-                    default_value=VAL_GLOBAL_DEFAULT_FLOAT,
-                )
-                GUIButton(
-                    tag=TAG_LIBRARY_BUTTON_REFRESH,
-                    label=LBL_BUTTON_REFRESH_LIBRARIES,
-                    width=-1,
-                    callback=self._refresh_libraries,
-                )
-                GUIButton(
-                    tag=TAG_LIBRARY_BUTTON_GENERATE,
-                    label=LBL_BUTTON_GENERATE_LIBRARY,
-                    width=-1,
-                    callback=self.generate_library,
-                    font=Font.BOLD,
-                )
+    def _create_library_status(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
-            dpg.add_separator()
-            self.create_search(self.tag)
-            with dpg.child_window(tag=TAG_LIBRARY_TREE_WINDOW):
-                with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
-                    with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
-                        pass
+    def _create_library_controls(self) -> None:
+        with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
+            dpg.add_progress_bar(
+                tag=TAG_LIBRARY_PROGRESS,
+                show=False,
+                width=-1,
+                default_value=VAL_GLOBAL_DEFAULT_FLOAT,
+            )
+            GUIButton(
+                tag=TAG_LIBRARY_BUTTON_REFRESH,
+                label=LBL_BUTTON_REFRESH_LIBRARIES,
+                width=-1,
+                callback=self._refresh_libraries,
+            )
+            GUIButton(
+                tag=TAG_LIBRARY_BUTTON_GENERATE,
+                label=LBL_BUTTON_GENERATE_LIBRARY,
+                width=-1,
+                callback=self.generate_library,
+                font=Font.BOLD,
+            )
+
+    def _create_library_tree(self) -> None:
+        dpg.add_separator()
+        self.create_search(self.tag)
+        with dpg.child_window(tag=TAG_LIBRARY_TREE_WINDOW):
+            with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
+                with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
+                    pass
 
     def refresh(self) -> None:
         self.library_manager.set_library_directory(self.config_manager.get_library_directory())
@@ -420,7 +434,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_generation_completed(self) -> None:
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
-        if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+        if not dpg.get_item_configuration(TAG_CONVERTER_PANEL)["show"]:
             show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS)
         self._finalize_generation()
 

@@ -7,12 +7,15 @@ from sampletones.typehints import Sender
 from ...constants import (
     CHR_STAR,
     TAG_FONT_BOLD,
+    TAG_FONT_BOLD_LARGE,
     TAG_FONT_BOLD_SMALL,
     TAG_FONT_ICON,
     TAG_FONT_REGULAR,
+    TAG_FONT_REGULAR_LARGE,
     TAG_FONT_REGULAR_SMALL,
     VAL_FONT_SIZE,
-    VAL_FONT_SMALL_SIZE,
+    VAL_FONT_SIZE_LARGE,
+    VAL_FONT_SIZE_SMALL,
     VAL_GLOBAL_FONT_SCALE,
 )
 from ...resources.items import FontResource
@@ -24,23 +27,22 @@ from .font import Font
 class FontRegistry:
     REGISTRY: Dict[Font, FontData] = {
         Font.REGULAR: FontData(TAG_FONT_REGULAR, VAL_FONT_SIZE, FontResource.REGULAR),
+        Font.REGULAR_SMALL: FontData(TAG_FONT_REGULAR_SMALL, VAL_FONT_SIZE_SMALL, FontResource.REGULAR),
+        Font.REGULAR_LARGE: FontData(TAG_FONT_REGULAR_LARGE, VAL_FONT_SIZE_LARGE, FontResource.REGULAR),
         Font.BOLD: FontData(TAG_FONT_BOLD, VAL_FONT_SIZE, FontResource.BOLD),
-        Font.REGULAR_SMALL: FontData(TAG_FONT_REGULAR_SMALL, VAL_FONT_SMALL_SIZE, FontResource.REGULAR),
-        Font.BOLD_SMALL: FontData(TAG_FONT_BOLD_SMALL, VAL_FONT_SMALL_SIZE, FontResource.BOLD),
-        Font.ICON: FontData(TAG_FONT_ICON, VAL_FONT_SMALL_SIZE, FontResource.ICON),
+        Font.BOLD_SMALL: FontData(TAG_FONT_BOLD_SMALL, VAL_FONT_SIZE_SMALL, FontResource.BOLD),
+        Font.BOLD_LARGE: FontData(TAG_FONT_BOLD_LARGE, VAL_FONT_SIZE_LARGE, FontResource.BOLD),
+        Font.ICON: FontData(TAG_FONT_ICON, VAL_FONT_SIZE_SMALL, FontResource.ICON),
     }
 
     @staticmethod
     def register_fonts() -> None:
         with dpg.font_registry():
-            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SIZE, tag=TAG_FONT_REGULAR)
-            dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_REGULAR_SMALL)
-            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
-            dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_BOLD_SMALL)
+            for font_data in FontRegistry.REGISTRY.values():
+                dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
 
-            icon_font = dpg.add_font(get_font_path(FontResource.ICON), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_ICON)
-            dpg.add_font_range_hint(dpg.mvFontRangeHint_Default, parent=icon_font)
-            dpg.add_font_chars([CHR_STAR], parent=icon_font)
+            dpg.add_font_range_hint(dpg.mvFontRangeHint_Default, parent=TAG_FONT_ICON)
+            dpg.add_font_chars([CHR_STAR], parent=TAG_FONT_ICON)
 
             dpg.bind_font(TAG_FONT_REGULAR)
 

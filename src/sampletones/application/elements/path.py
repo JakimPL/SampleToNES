@@ -5,6 +5,7 @@ from typing import Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.typehints import Sender
 from sampletones.utils import get_directory, shorten_path, to_path
 
 from ..constants import (
@@ -21,16 +22,17 @@ class GUIPathText:
     def __init__(
         self,
         tag: str,
-        path: Path,
+        path: Optional[Path],
         parent: str,
         prefix: Optional[str] = None,
         color: Tuple[int, int, int] = COL_PATH_TEXT,
         hover_color: Tuple[int, int, int] = COL_PATH_TEXT_HOVER,
     ) -> None:
         self.tag = tag
-        self.path = path
+        self.path = path or Path()
         self.display_text = shorten_path(self.path)
         self.prefix = prefix
+        self.tooltip: Optional[Sender] = None
 
         self.color = color
         self.hover_color = hover_color
@@ -55,7 +57,11 @@ class GUIPathText:
             color=self.color,
         )
 
-        show_tooltip(self.tag, str(self.path))
+        self.tooltip = show_tooltip(self.tag, self.path_text)
+
+    @property
+    def path_text(self) -> str:
+        return str(self.path.absolute())
 
     def _create_handler(self) -> None:
         dpg_delete_item(self.handler_tag)
@@ -105,6 +111,8 @@ class GUIPathText:
         self.path = to_path(path)
         self.display_text = shorten_path(self.path) if shorten else str(self.path)
         dpg_set_value(self.tag, self.display_text)
+        if self.tooltip is not None:
+            dpg.set_value(self.tooltip, self.path_text)
 
     def get_path(self) -> Path:
         return self.path

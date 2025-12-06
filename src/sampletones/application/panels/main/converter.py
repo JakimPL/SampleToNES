@@ -13,14 +13,16 @@ from sampletones.reconstruction.converter import (
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
-from ..config.manager import ConfigManager
-from ..constants import (
+from ...config.manager import ConfigManager
+from ...constants import (
+    DIM_CONVERTER_BUTTON_HEIGHT,
     DIM_CONVERTER_BUTTON_WIDTH,
-    DIM_DIALOG_CONVERTER_HEIGHT,
-    DIM_DIALOG_CONVERTER_WIDTH,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
+    LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
+    LBL_BUTTON_CONVERTER_CONVERT_SAMPLE,
     LBL_BUTTON_LOAD,
+    LBL_SECTION_CONVERTER,
     MSG_CONVERTER_CANCELLED,
     MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_COMPLETED,
@@ -29,47 +31,51 @@ from ..constants import (
     MSG_CONVERTER_IDLE,
     MSG_CONVERTER_NO_FILES_TO_PROCESS,
     MSG_CONVERTER_SUCCESS,
+    MSG_CONVERTER_WAITING,
     MSG_INPUT_PATH_PREFIX,
     MSG_OUTPUT_PATH_PREFIX,
-    TAG_BROWSER_CONTROLS_GROUP,
-    TAG_CONVERTER_CANCEL_BUTTON,
+    TAG_CONVERTER_BUTTON_CANCEL,
+    TAG_CONVERTER_BUTTON_CONVERT,
+    TAG_CONVERTER_BUTTON_LOAD,
     TAG_CONVERTER_INPUT_PATH_TEXT,
-    TAG_CONVERTER_LOAD_BUTTON,
     TAG_CONVERTER_OUTPUT_PATH_TEXT,
+    TAG_CONVERTER_PANEL,
+    TAG_CONVERTER_PANEL_GROUP,
     TAG_CONVERTER_PROGRESS,
     TAG_CONVERTER_STATUS,
+    TAG_CONVERTER_SUBPANEL,
     TAG_CONVERTER_SUCCESS_DIALOG,
-    TAG_CONVERTER_WINDOW,
     TPL_CONVERTER_STATUS,
     TPL_TIME_ESTIMATION,
     TTL_DIALOG_CONVERTER,
-    VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
+    VAL_GLOBAL_PROGRESS_START,
 )
-from ..elements.button import GUIButton
-from ..elements.path import GUIPathText
-from ..elements.window import GUIWindow
-from ..themes.converter import ConverterTheme
-from ..utils.align import table_wrapper
-from ..utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ..utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
-from ..utils.progress import SystemProgress
+from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
+from ...elements.panel import GUIPanel
+from ...elements.path import GUIPathText
+from ...utils.align import table_wrapper
+from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
+from ...utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
+from ...utils.progress import SystemProgress
 
 
-class GUIConverterWindow(GUIWindow):
+class GUIConverterPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
         self.converter: Optional[ReconstructionConverter] = None
         self.system_progress = SystemProgress()
 
-        self.input_path_text: Optional[GUIPathText] = None
-        self.output_path_text: Optional[GUIPathText] = None
-
         self.eta_estimator: Optional[ETAEstimator] = None
 
-        self.is_file: bool = False
+        self.config: Optional[Config] = None
+        self.is_file: bool = True
         self.input_path: Optional[Path] = None
         self.output_path: Optional[Path] = None
+        self.input_path_text: Optional[GUIPathText] = None
+        self.output_path_text: Optional[GUIPathText] = None
 
         self._on_load_file: Optional[Callable[[Path], None]] = None
         self._on_load_directory: Optional[Callable[[], None]] = None
@@ -77,14 +83,12 @@ class GUIConverterWindow(GUIWindow):
         self._generate_library: Optional[Callable[[], None]] = None
         self._is_library_loaded: Optional[Callable[[], bool]] = None
 
-        self.theme = ConverterTheme()
-
         super().__init__(
-            tag=TAG_CONVERTER_WINDOW,
-            parent=TTL_DIALOG_CONVERTER,
+            tag=TAG_CONVERTER_PANEL,
+            parent=TAG_CONVERTER_PANEL_GROUP,
         )
 
-    def prepare(self, input_path: Path, is_file: bool) -> None:
+    def set_input_path(self, input_path: Path, convert: bool = False) -> None:
         config = self._load_config()
         if config is None:
             return
@@ -92,61 +96,128 @@ class GUIConverterWindow(GUIWindow):
         if not self._assign_paths(input_path, config):
             return
 
-        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=False)
+        if not self.is_converter_running():
+            self._set_conversion_subpanel_visible(False)
+            dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_IDLE)
+
+        if convert:
+            self._prepare_conversion()
+
+    def is_converter_running(self) -> bool:
+        return self.converter is not None and self.converter.is_running()
+
+    def _prepare_conversion(self) -> None:
+        if self.is_converter_running():
+            logger.warning("Conversion is already in progress")
+            return
+
+        self.config = self._load_config()
+        self._set_conversion_panel_enabled(False)
+        self._set_conversion_subpanel_visible(True)
+        self._reset_progress()
+        self._update_paths()
         if self._generate_library is not None:
             self._generate_library()
 
-        self._wait_for_library_and_start(input_path, config, is_file)
-
-    def _wait_for_library_and_start(self, input_path: Path, config: Config, is_file: bool) -> None:
-        if self._is_library_loaded is not None and not self._is_library_loaded():
-            dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_GENERATING_LIBRARY)
-            dpg.set_frame_callback(
-                dpg.get_frame_count() + 10,
-                lambda: self._wait_for_library_and_start(input_path, config, is_file),
-            )
-        else:
-            self._start_conversion(input_path, config, is_file)
+        self._wait_for_library_and_start()
 
     def create_panel(self) -> None:
-        assert self.input_path is not None, "Input path is not set"
-        assert self.output_path is not None, "Output path is not set"
-
-        with dpg.window(
-            label=TTL_DIALOG_CONVERTER,
+        with dpg.child_window(
             tag=self.tag,
-            modal=False,
-            min_size=(DIM_DIALOG_CONVERTER_WIDTH, DIM_DIALOG_CONVERTER_HEIGHT),
-            autosize=True,
-            on_close=self._on_close,
-            no_close=True,
+            parent=self.parent,
+            width=self.width,
+            height=self.height,
         ):
-            dpg.add_text(MSG_CONVERTER_IDLE, tag=TAG_CONVERTER_STATUS)
+            self._create_section_text()
+            self._create_export_button()
+            self._create_paths()
+            self._create_conversion_status()
+
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_SECTION_CONVERTER)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+
+    def _create_export_button(self) -> None:
+        dpg.add_separator()
+        label = LBL_BUTTON_CONVERTER_CONVERT_SAMPLE if self.is_file else LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY
+        enabled = self.input_path is not None and not self.is_converter_running()
+        GUIButton(
+            label=label,
+            tag=TAG_CONVERTER_BUTTON_CONVERT,
+            width=DIM_CONVERTER_BUTTON_WIDTH,
+            height=DIM_CONVERTER_BUTTON_HEIGHT,
+            font=Font.BOLD_LARGE,
+            enabled=enabled,
+            callback=self._prepare_conversion,
+        )
+
+    def _create_paths(self) -> None:
+        self.input_path_text = GUIPathText(
+            path=self.input_path,
+            prefix=MSG_INPUT_PATH_PREFIX,
+            tag=TAG_CONVERTER_INPUT_PATH_TEXT,
+            parent=TAG_CONVERTER_SUBPANEL,
+        )
+
+        self.output_path_text = GUIPathText(
+            path=self.config_manager.get_output_directory(),
+            prefix=MSG_OUTPUT_PATH_PREFIX,
+            tag=TAG_CONVERTER_OUTPUT_PATH_TEXT,
+            parent=TAG_CONVERTER_SUBPANEL,
+        )
+
+    def _create_conversion_status(self) -> None:
+        with dpg.group(
+            tag=TAG_CONVERTER_SUBPANEL,
+            parent=self.tag,
+            show=False,
+        ):
+            dpg.add_separator()
+            dpg.add_text(
+                MSG_CONVERTER_WAITING,
+                tag=TAG_CONVERTER_STATUS,
+                parent=TAG_CONVERTER_SUBPANEL,
+            )
             dpg.add_progress_bar(
                 tag=TAG_CONVERTER_PROGRESS,
-                default_value=VAL_GLOBAL_DEFAULT_FLOAT,
+                parent=TAG_CONVERTER_SUBPANEL,
+                default_value=VAL_GLOBAL_PROGRESS_START,
                 width=-1,
                 overlay="0%",
-            )
-
-            self.input_path_text = GUIPathText(
-                path=self.input_path,
-                prefix=MSG_INPUT_PATH_PREFIX,
-                tag=TAG_CONVERTER_INPUT_PATH_TEXT,
-                parent=TAG_CONVERTER_WINDOW,
-            )
-
-            self.output_path_text = GUIPathText(
-                path=self.output_path,
-                prefix=MSG_OUTPUT_PATH_PREFIX,
-                tag=TAG_CONVERTER_OUTPUT_PATH_TEXT,
-                parent=TAG_CONVERTER_WINDOW,
             )
 
             dpg.add_separator()
             self._add_buttons()
 
-        self.theme.bind_to_item(self.tag)
+    def _update_paths(self) -> None:
+        if self.is_converter_running():
+            return
+
+        if self.input_path is None or self.output_path is None:
+            return
+
+        label = (
+            f"{LBL_BUTTON_CONVERTER_CONVERT_SAMPLE}" if self.is_file else f"{LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY}"
+        )
+        label += f": {self.input_path.name}"
+        dpg_configure_item(
+            TAG_CONVERTER_BUTTON_CONVERT,
+            label=label,
+            enabled=True,
+        )
+
+        if self.input_path_text is not None:
+            self.input_path_text.set_path(self.input_path)
+
+        if self.output_path_text is not None:
+            self.output_path_text.set_path(self.output_path)
+
+    def _wait_for_library_and_start(self) -> None:
+        if self._is_library_loaded is not None and not self._is_library_loaded():
+            dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_GENERATING_LIBRARY)
+            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
+        else:
+            self._start_conversion()
 
     def _load_config(self) -> Optional[Config]:
         try:
@@ -164,6 +235,7 @@ class GUIConverterWindow(GUIWindow):
         try:
             self.output_path = get_output_path(config, input_path)
             self.input_path = input_path
+            self.is_file = input_path.is_file()
         except FileNotFoundError as exception:
             logger.error("Input file does not exist")
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
@@ -177,14 +249,24 @@ class GUIConverterWindow(GUIWindow):
             show_error_dialog(exception, MSG_CONVERTER_ERROR)
             return False
 
+        self._update_paths()
+
         return True
 
-    def _start_conversion(self, input_path: Path, config: Config, is_file: bool) -> None:
-        self.is_file = is_file
+    def _set_conversion_panel_enabled(self, enabled: bool) -> None:
+        dpg_configure_item(TAG_CONVERTER_BUTTON_CONVERT, enabled=enabled)
+
+    def _set_conversion_subpanel_visible(self, visible: bool) -> None:
+        dpg.configure_item(TAG_CONVERTER_SUBPANEL, show=visible)
+
+    def _start_conversion(self) -> None:
+        assert self.input_path is not None, "Input path is not set"
+        assert self.config is not None, "Config is not set"
+
         self.converter = ReconstructionConverter(
-            config=config,
-            input_path=input_path,
-            is_file=is_file,
+            config=self.config,
+            input_path=self.input_path,
+            is_file=self.is_file,
         )
         self.converter.set_callbacks(
             on_start=self._on_start,
@@ -201,32 +283,32 @@ class GUIConverterWindow(GUIWindow):
     def _add_buttons(self) -> None:
         GUIButton(
             label=LBL_BUTTON_LOAD,
-            tag=TAG_CONVERTER_LOAD_BUTTON,
+            tag=TAG_CONVERTER_BUTTON_LOAD,
             width=DIM_CONVERTER_BUTTON_WIDTH,
             callback=self._on_load_clicked,
             enabled=False,
         )
         GUIButton(
             label=LBL_BUTTON_CANCEL,
-            tag=TAG_CONVERTER_CANCEL_BUTTON,
+            tag=TAG_CONVERTER_BUTTON_CANCEL,
             width=DIM_CONVERTER_BUTTON_WIDTH,
             callback=self._on_cancel_clicked,
         )
 
     def _set_status_completed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
-        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
+        self._set_conversion_panel_enabled(True)
 
     def _set_status_cancelling(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
 
     def _set_status_cancelled(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
-        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
+        self._set_conversion_panel_enabled(True)
 
     def _set_status_failed(self) -> None:
         dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
-        dpg_configure_item(TAG_BROWSER_CONTROLS_GROUP, enabled=True)
+        self._set_conversion_panel_enabled(True)
 
     def _set_status_running(self, task_progress: TaskProgress) -> None:
         assert self.converter is not None, "Converter is not initialized"
@@ -238,7 +320,7 @@ class GUIConverterWindow(GUIWindow):
             self.input_path_text.set_path(current_file_path)
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
-        if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
+        if not dpg.does_item_exist(TAG_CONVERTER_SUBPANEL):
             return None
 
         match task_status:
@@ -256,7 +338,7 @@ class GUIConverterWindow(GUIWindow):
         return None
 
     def _on_load_clicked(self) -> None:
-        dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=False)
+        dpg_configure_item(TAG_CONVERTER_BUTTON_LOAD, enabled=False)
 
         if self.is_file:
             if self.output_path and self._on_load_file is not None:
@@ -282,9 +364,16 @@ class GUIConverterWindow(GUIWindow):
         if self._on_cancelled is not None:
             self._on_cancelled()
 
+    def _reset_progress(self) -> None:
+        dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_START)
+        dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay="0%")
+        dpg_set_value(TAG_CONVERTER_STATUS, MSG_CONVERTER_WAITING)
+
     def _rename_cancel_to_close(self) -> None:
-        dpg_configure_item(TAG_CONVERTER_CANCEL_BUTTON, label=LBL_BUTTON_CLOSE, enabled=True)
-        dpg_set_item_callback(TAG_CONVERTER_CANCEL_BUTTON, self._on_close)
+        dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_START)
+        dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay="100%")
+        dpg_configure_item(TAG_CONVERTER_BUTTON_CANCEL, label=LBL_BUTTON_CLOSE, enabled=True)
+        dpg_set_item_callback(TAG_CONVERTER_BUTTON_CANCEL, self._on_close)
 
     def _cancel(self) -> None:
         if self.converter and self.converter.is_running():
@@ -301,10 +390,11 @@ class GUIConverterWindow(GUIWindow):
                 self.converter.cleanup()
         finally:
             self.system_progress.clear()
-            self.hide()
+            self.converter = None
+            self.eta_estimator = None
 
     def _on_conversion_complete(self, output_path: Path) -> None:
-        self.set_completed(output_path)
+        self._set_completed(output_path)
         self._rename_cancel_to_close()
         self._show_success_dialog()
 
@@ -347,14 +437,14 @@ class GUIConverterWindow(GUIWindow):
 
         dpg_set_value(TAG_CONVERTER_STATUS, status_text)
 
-    def set_completed(self, output_path: Path) -> None:
+    def _set_completed(self, output_path: Path) -> None:
         if output_path.exists():
             self.output_path = output_path
 
         self._set_status_completed()
         dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
         dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay="100%")
-        dpg_configure_item(TAG_CONVERTER_LOAD_BUTTON, enabled=True)
+        dpg_configure_item(TAG_CONVERTER_BUTTON_LOAD, enabled=True)
 
     def set_callbacks(
         self,

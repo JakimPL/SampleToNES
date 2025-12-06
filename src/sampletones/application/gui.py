@@ -70,6 +70,7 @@ from .constants import (
     TAG_BROWSER_PANEL_GROUP,
     TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
+    TAG_CONVERTER_PANEL_GROUP,
     TAG_EXPLORER_PANEL_GROUP,
     TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_ITEM_AUTOPLAY,
@@ -101,11 +102,11 @@ from .constants import (
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
 from .elements.fonts.registry import FontRegistry
-from .panels.converter import GUIConverterWindow
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
 from .panels.main.config import GUIConfigPanel
+from .panels.main.converter import GUIConverterPanel
 from .panels.main.explorer import GUIExplorerPanel
 from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
@@ -160,7 +161,7 @@ class GUI:
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
 
-        self.converter_window: GUIConverterWindow = GUIConverterWindow(self.config_manager)
+        self.converter_panel: GUIConverterPanel = GUIConverterPanel(self.config_manager)
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
         self.theme = DefaultTheme()
@@ -313,6 +314,8 @@ class GUI:
             on_update_library_directory=self.library_panel.refresh,
         )
         self.explorer_panel.set_callbacks(
+            on_wave_file_clicked=self._assign_file_to_converter,
+            on_directory_clicked=self._assign_directory_to_converter,
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
             on_load_reconstruction=self._load_reconstruction,
@@ -347,7 +350,7 @@ class GUI:
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
             on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
         )
-        self.converter_window.set_callbacks(
+        self.converter_panel.set_callbacks(
             on_load_file=self._on_converted_reconstruction_loaded,
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
@@ -610,6 +613,9 @@ class GUI:
         with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
             self.reconstructor_panel.create_panel()
 
+        with dpg.group(tag=TAG_CONVERTER_PANEL_GROUP):
+            self.converter_panel.create_panel()
+
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SAVE_CONFIG,
@@ -659,7 +665,7 @@ class GUI:
         self.audio_settings_window.show()
 
     def _reconstruct_file_dialog(self) -> None:
-        if self.converter_window.converter is not None and self.converter_window.converter.is_running():
+        if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
@@ -675,7 +681,7 @@ class GUI:
             dpg.add_file_extension(EXT_FILE_WAVE)
 
     def _reconstruct_directory_dialog(self) -> None:
-        if self.converter_window.converter is not None and self.converter_window.converter.is_running():
+        if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
@@ -776,8 +782,14 @@ class GUI:
         if not self._is_library_loaded():
             self.library_panel.generate_library()
 
+    def _assign_file_to_converter(self, filepath: Path) -> None:
+        self.converter_panel.set_input_path(filepath, convert=False)
+
+    def _assign_directory_to_converter(self, directory_path: Path) -> None:
+        self.converter_panel.set_input_path(directory_path, convert=False)
+
     def _reconstruct_file(self, filepath: Path) -> None:
-        self.converter_window.show(filepath, is_file=True)
+        self.converter_panel.set_input_path(filepath, convert=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     def _load_library(self, filepath: Path) -> None:
@@ -792,7 +804,7 @@ class GUI:
         self._reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
-        self.converter_window.show(directory_path, is_file=False)
+        self.converter_panel.set_input_path(directory_path, convert=True)
         self.application_config_manager.set_reconstruction_path(directory_path)
         self._update_menu()
 
@@ -904,8 +916,8 @@ class GUI:
         return loaded and playing
 
     def _exit_application(self) -> None:
-        if self.converter_window and self.converter_window.converter:
-            self.converter_window.converter.cleanup()
+        if self.converter_panel and self.converter_panel.converter:
+            self.converter_panel.converter.cleanup()
         dpg.stop_dearpygui()
 
     def _enable_fullscreen(self) -> None:
@@ -1046,8 +1058,8 @@ class GUI:
         try:
             dpg.start_dearpygui()
         finally:
-            if self.converter_window and self.converter_window.converter:
-                self.converter_window.converter.cleanup()
+            if self.converter_panel and self.converter_panel.converter:
+                self.converter_panel.converter.cleanup()
             self.config_manager.save_config()
             self.application_config_manager.set_current_audio_device(self.audio_device_manager)
             self.application_config_manager.save_config()

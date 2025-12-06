@@ -21,8 +21,8 @@ from ...constants import (
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
-    LBL_SECTION_GENERATOR_SELECTION,
-    LBL_SECTION_OUTPUT_DIRECTORY,
+    LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION,
+    LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
@@ -81,7 +81,7 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _create_generator_selection(self) -> None:
         dpg.add_separator()
-        dpg.add_text(LBL_SECTION_GENERATOR_SELECTION)
+        dpg.add_text(LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION)
         dpg.add_checkbox(
             label=LBL_CHECKBOX_PULSE_1,
             default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
@@ -117,7 +117,7 @@ class GUIReconstructorPanel(GUIPanel):
     def _create_output_directory_section(self) -> None:
         with dpg.group(tag=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP):
             dpg.add_separator()
-            dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
+            dpg.add_text(LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY)
             GUIButton(
                 tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
                 label=LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
