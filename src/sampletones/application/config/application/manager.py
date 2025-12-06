@@ -47,6 +47,10 @@ class ApplicationConfigManager:
         current_tab = dpg.get_item_alias(current_tab)
         self.config.gui.current_tab = current_tab
 
+    def toggle_show_advanced_settings(self) -> bool:
+        self.config.gui.advanced_settings = not self.config.gui.advanced_settings
+        return self.config.gui.advanced_settings
+
     def load_current_tab(self) -> str:
         return self.config.gui.current_tab
 
@@ -131,3 +135,7 @@ class ApplicationConfigManager:
     @property
     def current_audio_device(self) -> CurrentDevice:
         return self.config.audio.current_device
+
+    @property
+    def advanced_settings(self) -> bool:
+        return self.config.gui.advanced_settings

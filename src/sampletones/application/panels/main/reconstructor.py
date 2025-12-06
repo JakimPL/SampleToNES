@@ -28,6 +28,7 @@ from ...constants import (
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_MIXER,
+    TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
@@ -114,22 +115,24 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def _create_output_directory_section(self) -> None:
-        dpg.add_separator()
-        dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
-        GUIButton(
-            tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-            label=LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-            width=-1,
-            callback=self._select_output_directory_dialog,
-        )
+        with dpg.group(tag=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP):
+            dpg.add_separator()
+            dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
+            GUIButton(
+                tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
+                label=LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
+                parent=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
+                width=-1,
+                callback=self._select_output_directory_dialog,
+            )
 
-        output_directory = self.config_manager.get_output_directory()
-        self.output_path_text = GUIPathText(
-            tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
-            path=output_directory,
-            parent=self.tag,
-        )
-        FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
+            output_directory = self.config_manager.get_output_directory()
+            self.output_path_text = GUIPathText(
+                tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
+                parent=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
+                path=output_directory,
+            )
+            FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)

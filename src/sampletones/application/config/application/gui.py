@@ -12,6 +12,10 @@ class GUIState(BaseModel):
         default=None,
         description="The currently loaded reconstruction's path.",
     )
+    advanced_settings: bool = Field(
+        default=False,
+        description="If advanced settings are shown in the config panel.",
+    )
 
     @field_serializer("current_reconstruction")
     def serialize_current_reconstruction(self, value: Optional[Path]) -> Optional[str]:

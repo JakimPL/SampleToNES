@@ -48,6 +48,7 @@ from .constants import (
     LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCT_FILE,
     LBL_MENU_ITEM_SAVE_CONFIG,
+    LBL_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
     LBL_MENU_ITEM_STOP,
     LBL_MENU_PLAYBACK,
     LBL_MENU_RECONSTRUCTION,
@@ -77,6 +78,7 @@ from .constants import (
     TAG_MENU_ITEM_PLAY_FROM_START,
     TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCT_FILE,
+    TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_ITEM_STOP,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_INSTRUCTIONS,
@@ -150,34 +152,37 @@ class GUI:
 
         self.theme = DefaultTheme()
 
-        self.setup_gui()
-        self.load_settings()
+        self._setup_gui()
+        self._load_settings()
 
-    def load_settings(self) -> None:
+    def _load_settings(self) -> None:
         audio_device = self.application_config_manager.current_audio_device
         self.audio_device_manager.set_current_device(audio_device)
 
-    def setup_gui(self) -> None:
+    def _setup_gui(self) -> None:
         dpg.create_context()
-        self.set_fonts()
-        self.register_shortcuts()
-        self.set_default_theme()
-        self.create_main_window()
-        self.set_viewport()
-        dpg.setup_dearpygui()
-        dpg.show_viewport()
+        self._set_fonts()
+        self._register_shortcuts()
+        self._set_default_theme()
+        self._create_main_window()
+        self._set_viewport()
+        self._setup_dearpygui()
         self.set_callbacks()
         self.config_manager.update_gui()
-        self.update_menu()
+        self._update_menu()
         self._restore_current_items()
 
-    def set_fonts(self) -> None:
+    def _setup_dearpygui(self) -> None:
+        dpg.setup_dearpygui()
+        dpg.show_viewport()
+
+    def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
 
-    def set_default_theme(self) -> None:
+    def _set_default_theme(self) -> None:
         self.theme.bind()
 
-    def set_viewport(self) -> None:
+    def _set_viewport(self) -> None:
         if sys.platform.startswith("win"):
             icon_filename = IconResource.WIN
         else:
@@ -201,7 +206,7 @@ class GUI:
         else:
             self._disable_fullscreen()
 
-    def register_shortcuts(self) -> None:
+    def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
@@ -258,6 +263,11 @@ class GUI:
             self._toggle_fullscreen,
         )
         self.shortcut_manager.register(
+            ShortcutId.TOGGLE_ADVANCED_SETTINGS,
+            Shortcut(dpg.mvKey_A, (Modifier.CTRL, Modifier.SHIFT)),
+            self._toggle_advanced_settings,
+        )
+        self.shortcut_manager.register(
             ShortcutId.PLAY,
             Shortcut(dpg.mvKey_Spacebar),
             self._play,
@@ -277,7 +287,7 @@ class GUI:
 
     def set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.instructions_panel.update_status)
-        self.config_manager.add_config_change_callback(self.update_menu)
+        self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_panel.set_callbacks(on_update_library_directory=self.instructions_panel.refresh)
@@ -296,13 +306,13 @@ class GUI:
         self.instruction_panel.set_callbacks(
             on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
-            on_change_audio_state=self.update_menu,
+            on_change_audio_state=self._update_menu,
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
             on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
             on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
-            on_change_audio_state=self.update_menu,
+            on_change_audio_state=self._update_menu,
         )
         self.reconstruction_details_panel.set_callbacks(
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
@@ -316,14 +326,14 @@ class GUI:
             is_library_loaded=self.instructions_panel.is_loaded,
         )
 
-    def create_main_window(self) -> None:
+    def _create_main_window(self) -> None:
         with dpg.window(label=TTL_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
-            self.create_menu_bar()
-            self.create_tabs()
+            self._create_menu_bar()
+            self._create_tabs()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
 
-    def create_menu_bar(self) -> None:
+    def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_FILE):
                 self.shortcut_manager.add_menu_item(
@@ -401,13 +411,19 @@ class GUI:
                 )
             with dpg.menu(label=LBL_MENU_VIEW):
                 self.shortcut_manager.add_menu_item(
+                    ShortcutId.TOGGLE_ADVANCED_SETTINGS,
+                    tag=TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
+                    label=LBL_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
+                    check=True,
+                )
+                self.shortcut_manager.add_menu_item(
                     ShortcutId.FULLSCREEN_TOGGLE,
                     tag=TAG_MENU_ITEM_FULLSCREEN,
                     label=LBL_MENU_ITEM_FULLSCREEN,
                     check=True,
                 )
 
-    def update_menu(self) -> None:
+    def _update_menu(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
@@ -416,15 +432,16 @@ class GUI:
         dpg_configure_item(TAG_MENU_ITEM_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled())
         dpg_configure_item(TAG_MENU_ITEM_STOP, enabled=self._is_stop_enabled())
         self._update_fullscreen_menu_item()
+        self._update_advanced_settings_menu_item()
 
-    def create_tabs(self) -> None:
+    def _create_tabs(self) -> None:
         with dpg.tab_bar(tag=TAG_TABS, callback=self._on_tab_changed):
-            self.create_main_tab()
-            self.create_reconstructions_tab()
-            self.create_instructions_tab()
+            self._create_main_tab()
+            self._create_reconstructions_tab()
+            self._create_instructions_tab()
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
-        self.update_menu()
+        self._update_menu()
 
     def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
@@ -435,7 +452,7 @@ class GUI:
         if current_reconstruction is not None and current_reconstruction.exists():
             self.browser_panel.load_and_display_reconstruction(current_reconstruction)
 
-    def create_main_tab(self) -> None:
+    def _create_main_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
             with dpg.table(
                 header_row=False,
@@ -464,7 +481,7 @@ class GUI:
                         self._create_main_panel()
 
     @staticmethod
-    def create_layout(
+    def _create_layout(
         label: str,
         tab_tag: str,
         left_content_builder: Callable[[], None],
@@ -513,8 +530,8 @@ class GUI:
                     ):
                         right_content_builder()
 
-    def create_reconstructions_tab(self) -> None:
-        self.create_layout(
+    def _create_reconstructions_tab(self) -> None:
+        self._create_layout(
             label=LBL_TAB_RECONSTRUCTIONS,
             tab_tag=TAG_TAB_RECONSTRUCTIONS,
             left_content_builder=self._create_reconstructions_left_panel,
@@ -525,8 +542,8 @@ class GUI:
             right_panel_width=DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
         )
 
-    def create_instructions_tab(self) -> None:
-        self.create_layout(
+    def _create_instructions_tab(self) -> None:
+        self._create_layout(
             label=LBL_TAB_INSTRUCTIONS,
             tab_tag=TAG_TAB_INSTRUCTIONS,
             left_content_builder=self._create_instructions_left_panel,
@@ -676,7 +693,7 @@ class GUI:
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 
-        self.update_menu()
+        self._update_menu()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
@@ -733,30 +750,30 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
         self.application_config_manager.set_reconstruction_path(directory_path)
-        self.update_menu()
+        self._update_menu()
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
-        self.update_menu()
+        self._update_menu()
 
     def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
         self.audio_device_manager.stop()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
-        self.update_menu()
+        self._update_menu()
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         dpg_set_value(TAG_TABS, TAG_TAB_RECONSTRUCTIONS)
-        self.update_menu()
+        self._update_menu()
 
     def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
-        self.update_menu()
+        self._update_menu()
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS)
@@ -769,7 +786,7 @@ class GUI:
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.play()
 
-        self.update_menu()
+        self._update_menu()
 
     def _play(self) -> None:
         current_tab_tag = self._get_current_tab()
@@ -778,7 +795,7 @@ class GUI:
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.pause_or_resume()
 
-        self.update_menu()
+        self._update_menu()
 
     def _stop(self) -> None:
         current_tab_tag = self._get_current_tab()
@@ -787,7 +804,7 @@ class GUI:
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.stop()
 
-        self.update_menu()
+        self._update_menu()
 
     def _get_play_label(self) -> str:
         current_tab_tag = self._get_current_tab()
@@ -926,7 +943,20 @@ class GUI:
     def _update_fullscreen_menu_item(self) -> None:
         fullscreen = self.application_config_manager.config.window.fullscreen
         dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
-        dpg_configure_item(TAG_MENU_ITEM_FULLSCREEN, check=fullscreen)
+
+    def _toggle_advanced_settings(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.application_config_manager.toggle_show_advanced_settings()
+        self._update_advanced_settings_menu_item()
+
+    def _update_advanced_settings_menu_item(self) -> None:
+        advanced_settings = self.application_config_manager.advanced_settings
+        self.config_panel.set_advanced_settings_visibility(advanced_settings)
+        dpg_set_value(TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:

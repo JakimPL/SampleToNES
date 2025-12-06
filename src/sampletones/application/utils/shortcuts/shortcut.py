@@ -31,6 +31,7 @@ class ShortcutId(Enum):
     EXPORT_RECONSTRUCTION_WAV = "ExportReconstructionWav"
     EXPORT_RECONSTRUCTION_FTIS = "ExportReconstructionFTIs"
     FULLSCREEN_TOGGLE = "FullscreenToggle"
+    TOGGLE_ADVANCED_SETTINGS = "ToggleAdvancedSettings"
     ABOUT_DIALOG = "AboutDialog"
     PLAY_FROM_START = "Play"
     STOP = "Stop"

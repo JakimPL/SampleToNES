@@ -46,15 +46,15 @@ from ...constants import (
     RNG_CONFIG_MIN_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_LIBRARY_DIRECTORY,
+    TAG_CONFIG_LIBRARY_DIRECTORY_DISPLAY,
+    TAG_CONFIG_LIBRARY_DIRECTORY_GROUP,
     TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_PANEL,
     TAG_CONFIG_PANEL_GROUP,
-    TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_LIBRARY_DIRECTORY_DISPLAY,
     TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
 from ...elements.button import GUIButton
@@ -62,7 +62,7 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
-from ...utils.dpg import dpg_set_value
+from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
 from ...utils.tooltip import show_tooltip
 
@@ -126,23 +126,24 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def _create_library_directory_selection(self) -> None:
-        dpg.add_separator()
-        dpg.add_text(LBL_CONFIG_SECTION_LIBRARY_DIRECTORY)
-        GUIButton(
-            tag=TAG_CONFIG_LIBRARY_DIRECTORY,
-            parent=TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
-            label=LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY,
-            width=-1,
-            callback=self._select_library_directory_dialog,
-        )
+        with dpg.group(tag=TAG_CONFIG_LIBRARY_DIRECTORY_GROUP):
+            dpg.add_separator()
+            dpg.add_text(LBL_CONFIG_SECTION_LIBRARY_DIRECTORY)
+            GUIButton(
+                tag=TAG_CONFIG_LIBRARY_DIRECTORY,
+                parent=TAG_CONFIG_LIBRARY_DIRECTORY_GROUP,
+                label=LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY,
+                width=-1,
+                callback=self._select_library_directory_dialog,
+            )
 
-        library_directory = self.config_manager.get_library_directory()
-        self.library_path_text = GUIPathText(
-            tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
-            parent=TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
-            path=library_directory,
-        )
-        FontRegistry.bind_to_item(TAG_LIBRARY_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
+            library_directory = self.config_manager.get_library_directory()
+            self.library_path_text = GUIPathText(
+                tag=TAG_CONFIG_LIBRARY_DIRECTORY_DISPLAY,
+                parent=TAG_CONFIG_LIBRARY_DIRECTORY_GROUP,
+                path=library_directory,
+            )
+            FontRegistry.bind_to_item(TAG_CONFIG_LIBRARY_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
 
     def _create_library_settings(self) -> None:
         dpg.add_separator()
@@ -261,3 +262,8 @@ class GUIConfigPanel(GUIPanel):
     def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
         if on_update_library_directory is not None:
             self._on_update_library_directory = on_update_library_directory
+
+    def set_advanced_settings_visibility(self, visible: bool) -> None:
+        dpg_configure_item(TAG_CONFIG_MAX_WORKERS, show=visible)
+        dpg_configure_item(TAG_CONFIG_TRANSFORMATION_GAMMA, show=visible)
+        dpg_configure_item(TAG_CONFIG_LIBRARY_DIRECTORY_GROUP, show=visible)
