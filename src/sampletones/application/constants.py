@@ -615,6 +615,7 @@ TAG_EXPLORER_TREE = "explorer_tree"
 TAG_EXPLORER_PANEL = "explorer_panel"
 TAG_EXPLORER_TREE_WINDOW = "explorer_tree_window"
 TAG_EXPLORER_TREE_GROUP = "explorer_tree_group"
+TAG_EXPLORER_CONVERTER_RUNNING = "explorer_converter_running_info_dialog"
 LBL_EXPLORER_FILESYSTEM = "Filesystem"
 LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY = "Load instructions library"
@@ -624,6 +625,11 @@ LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE = "Mark as favorite"
 LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE = "Unmark as favorite"
 LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY = "Set as instructions library directory"
 LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY = "Set as output directory"
+MSG_EXPLORER_CONVERTER_RUNNING = (
+    "A conversion is already running. Please wait for it to complete or cancel the current operation "
+    "before starting a new one."
+)
+TTL_EXPLORER_CONVERTER_RUNNING = "Conversion in progress"
 
 # Browser panel constants
 LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"

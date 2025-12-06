@@ -322,6 +322,7 @@ class GUI:
             on_load_library=self._load_library,
             on_set_as_library_directory=self.config_panel.change_library_directory,
             on_set_as_output_directory=self.reconstructor_panel.change_output_directory,
+            is_converter_running=self.converter_panel.is_converter_running,
         )
         self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
@@ -791,6 +792,8 @@ class GUI:
     def _reconstruct_file(self, filepath: Path) -> None:
         self.converter_panel.set_input_path(filepath, convert=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self._set_current_tab(TAG_TAB_MAIN)
+        self._update_menu()
 
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
@@ -806,6 +809,7 @@ class GUI:
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_panel.set_input_path(directory_path, convert=True)
         self.application_config_manager.set_reconstruction_path(directory_path)
+        self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
 
     @file_dialog_handler

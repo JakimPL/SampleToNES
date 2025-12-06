@@ -32,23 +32,27 @@ from ...constants import (
     LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
     LBL_EXPLORER_FILESYSTEM,
     LBL_TREE_FILTER,
+    MSG_EXPLORER_CONVERTER_RUNNING,
     NOD_TYPE_DIRECTORY,
     NOD_TYPE_FILE,
     NOD_TYPE_ROOT,
     SUF_NODE_DUMMY,
     SUF_NODE_HANDLER,
     TAG_EXPLORER_COLLAPSE_ALL,
+    TAG_EXPLORER_CONVERTER_RUNNING,
     TAG_EXPLORER_PANEL,
     TAG_EXPLORER_PANEL_GROUP,
     TAG_EXPLORER_TREE,
     TAG_EXPLORER_TREE_GROUP,
     TAG_EXPLORER_TREE_WINDOW,
+    TTL_EXPLORER_CONVERTER_RUNNING,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
+from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_delete_children, dpg_delete_item
 
 OnReconstructPathCallback = Callable[[Path], None]
@@ -73,6 +77,7 @@ class GUIExplorerPanel(GUITreePanel):
         self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
         self._on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
         self._on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
+        self._is_converter_running: Optional[Callable[[], bool]] = None
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
@@ -351,6 +356,9 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
 
+        if self._check_if_converter_running():
+            return
+
         if self._on_reconstruct_file is not None:
             self._on_reconstruct_file(node.filepath)
 
@@ -476,11 +484,30 @@ class GUIExplorerPanel(GUITreePanel):
                 callback=lambda: self._context_set_as_library_directory(node),
             )
 
+    def _check_if_converter_running(self) -> bool:
+        if self._is_converter_running is not None:
+            if self._is_converter_running():
+                logger.warning("Conversion is already running. Wait or cancel the current operation.")
+                show_info_dialog(
+                    tag=TAG_EXPLORER_CONVERTER_RUNNING,
+                    message=MSG_EXPLORER_CONVERTER_RUNNING,
+                    title=TTL_EXPLORER_CONVERTER_RUNNING,
+                )
+                return True
+
+        return False
+
     def _context_reconstruct_file(self, node: FileSystemNode) -> None:
+        if self._check_if_converter_running():
+            return
+
         if self._on_reconstruct_file is not None:
             self._on_reconstruct_file(node.filepath)
 
     def _context_reconstruct_directory(self, node: FileSystemNode) -> None:
+        if self._check_if_converter_running():
+            return
+
         if self._on_reconstruct_directory is not None:
             self._on_reconstruct_directory(node.filepath)
 
@@ -515,6 +542,7 @@ class GUIExplorerPanel(GUITreePanel):
         on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None,
         on_set_as_output_directory: Optional[OnReconstructPathCallback] = None,
         on_set_as_library_directory: Optional[OnReconstructPathCallback] = None,
+        is_converter_running: Optional[Callable[[], bool]] = None,
     ) -> None:
         if on_wave_file_clicked is not None:
             self._on_wave_file_clicked = on_wave_file_clicked
@@ -534,3 +562,5 @@ class GUIExplorerPanel(GUITreePanel):
             self._on_set_as_output_directory = on_set_as_output_directory
         if on_set_as_library_directory is not None:
             self._on_set_as_library_directory = on_set_as_library_directory
+        if is_converter_running is not None:
+            self._is_converter_running = is_converter_running

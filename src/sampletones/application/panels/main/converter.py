@@ -104,7 +104,9 @@ class GUIConverterPanel(GUIPanel):
             self._prepare_conversion()
 
     def is_converter_running(self) -> bool:
-        return self.converter is not None and self.converter.is_running()
+        return self.converter is not None and (
+            self.converter.is_running() or self.converter.status == TaskStatus.PENDING
+        )
 
     def _prepare_conversion(self) -> None:
         if self.is_converter_running():
@@ -392,6 +394,7 @@ class GUIConverterPanel(GUIPanel):
             self.system_progress.clear()
             self.converter = None
             self.eta_estimator = None
+            self._set_conversion_subpanel_visible(False)
 
     def _on_conversion_complete(self, output_path: Path) -> None:
         self._set_completed(output_path)

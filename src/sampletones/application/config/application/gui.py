@@ -3,11 +3,14 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
-from ...constants import TAG_TAB_INSTRUCTIONS
+from ...constants import TAG_TAB_MAIN
 
 
 class GUIState(BaseModel):
-    current_tab: str = Field(default=TAG_TAB_INSTRUCTIONS, description="The currently selected tab.")
+    current_tab: str = Field(
+        default=TAG_TAB_MAIN,
+        description="The currently selected tab.",
+    )
     current_reconstruction: Optional[Path] = Field(
         default=None,
         description="The currently loaded reconstruction's path.",
