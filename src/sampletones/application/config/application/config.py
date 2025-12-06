@@ -8,6 +8,7 @@ from sampletones.utils import load_yaml, save_yaml, to_path
 from sampletones.utils.logger import logger
 
 from .audio import AudioConfig
+from .favorites import Favorites
 from .gui import GUIState
 from .paths import LastPaths
 from .window import WindowState
@@ -31,6 +32,10 @@ class ApplicationConfig(BaseModel):
     last_paths: LastPaths = Field(
         default_factory=LastPaths,
         description="The last used file system paths.",
+    )
+    favorites: Favorites = Field(
+        default_factory=Favorites,
+        description="The user's favorite files and recent files.",
     )
 
     @classmethod

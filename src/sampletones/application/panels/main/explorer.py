@@ -153,7 +153,6 @@ class GUIExplorerPanel(GUITreePanel):
             dpg.bind_item_theme(node_tag, 0)
 
     def _apply_file_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
-        # is_favorite = ... # TODO: Check if the file is marked as favorite
         with dpg.theme() as node_theme:
             with dpg.theme_component(dpg.mvSelectable):
                 color: Color = COL_TEXT_DEFAULT

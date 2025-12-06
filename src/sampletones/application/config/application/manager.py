@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -147,3 +147,7 @@ class ApplicationConfigManager:
     @property
     def autoplay(self) -> bool:
         return self.config.gui.autoplay
+
+    @property
+    def favorites(self) -> List[Path]:
+        return self.config.favorites.paths
