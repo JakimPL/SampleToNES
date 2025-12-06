@@ -16,7 +16,7 @@ class GUIButton:
         self,
         tag: str,
         label: str,
-        callback: Callable[..., Any],
+        callback: Optional[Callable[..., Any]] = None,
         enabled: bool = True,
         font: Font = Font.REGULAR,
         theme: Theme = DefaultTheme(),
@@ -24,6 +24,7 @@ class GUIButton:
     ) -> None:
         self._tag = tag
         self._button_tag = f"{tag}{SUF_BUTTON}"
+        callback = callback if callback is not None else lambda: None
         with dpg.group(tag=tag, horizontal=True, enabled=enabled):
             dpg.add_button(
                 label=label,

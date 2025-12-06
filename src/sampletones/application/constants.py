@@ -87,9 +87,7 @@ LBL_TAB_INSTRUCTIONS = "Instructions"
 LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
 # Section headers
-LBL_SECTION_OUTPUT_DIRECTORY = "Output directory"
 LBL_SECTION_GENERAL_SETTINGS = "Settings"
-LBL_SECTION_LIBRARY_DIRECTORY = "Instructions directory"
 LBL_SECTION_LIBRARY_SETTINGS = "Instructions settings"
 LBL_SECTION_GENERATOR_SELECTION = "Generators"
 
@@ -138,12 +136,11 @@ LBL_TOOLTIP_CONFIG_MAX_WORKERS = "Set the number parallel workers for audio proc
 LBL_TOOLTIP_CONFIG_SAMPLE_RATE = "Set the sample rate (in Hz) for audio processing."
 LBL_TOOLTIP_CONFIG_CHANGE_RATE = "Set the NES refresh rate (in Hz) for audio processing. NTSC = 60 Hz, PAL = 50 Hz."
 LBL_TOOLTIP_TRANSFORMATION_GAMMA = (
-    "Interpolate between linear spectral features (0.0) features and logarithmic ones (1.0)."
+    "Interpolate between linear spectral features (0) features and logarithmic ones (100)."
 )
 LBL_TOOLTIP_RECONSTRUCTOR_MIXER = (
     "Amplify the NES generated audio. Lower values introduce compression, while higher values increase dynamics."
 )
-
 
 # Dialog titles
 TTL_DIALOG_SAVE_CONFIG = "Save configuration"
@@ -242,6 +239,9 @@ TAG_CONFIG_PREVIEW = "config_preview"
 TAG_CONFIG_NORMALIZE = "normalize"
 TAG_CONFIG_QUANTIZE = "quantize"
 TAG_CONFIG_MAX_WORKERS = "max_workers"
+TAG_CONFIG_PATHS_GROUP = "config_paths_group"
+TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP = "config_paths_instructions_group"
+TAG_CONFIG_PATHS_RECONSTRUCTIONS_GROUP = "config_paths_reconstructions_group"
 TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
@@ -571,8 +571,10 @@ VAL_TABLE_FRAME_ROUNDING = 4
 TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
 TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
-TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
+TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
+LBL_SECTION_OUTPUT_DIRECTORY = "Output directory"
+LBL_SECTION_PATHS = "Paths"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "Transformation gamma"
 TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"

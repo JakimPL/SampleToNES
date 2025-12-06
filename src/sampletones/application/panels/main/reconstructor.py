@@ -26,10 +26,10 @@ from ...constants import (
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
+    TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
     TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
 )
@@ -65,63 +65,73 @@ class GUIReconstructorPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
-
-            dpg.add_separator()
-            dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
-            GUIButton(
-                tag=TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
-                label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
-                width=-1,
-                callback=self._select_output_directory_dialog,
-            )
-
-            output_directory = self.config_manager.get_output_directory()
-            self.output_path_text = GUIPathText(
-                tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
-                path=output_directory,
-                parent=self.tag,
-            )
-            FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
-
-            dpg.add_separator()
-
-            dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_MIXER)
-            dpg.add_slider_float(
-                min_value=0.0,
-                max_value=MAX_MIXER,
-                default_value=MIXER,
-                width=-1,
-                tag=TAG_RECONSTRUCTOR_MIXER,
-            )
-            dpg.add_separator()
-
-            dpg.add_text(LBL_SECTION_GENERATOR_SELECTION)
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_PULSE_1,
-                default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE1.value),
-            )
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_PULSE_2,
-                default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE2.value),
-            )
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_TRIANGLE,
-                default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.TRIANGLE.value),
-            )
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_NOISE,
-                default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-                tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
-            )
-
-            show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
+            self._create_section_text()
+            self._create_generator_selection()
+            self._create_mixer_slider()
+            self._create_output_directory_section()
+            self._create_tooltips()
 
         self._register_callbacks()
+
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+
+    def _create_generator_selection(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(LBL_SECTION_GENERATOR_SELECTION)
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_PULSE_1,
+            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
+            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE1.value),
+        )
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_PULSE_2,
+            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
+            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE2.value),
+        )
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_TRIANGLE,
+            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
+            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.TRIANGLE.value),
+        )
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_NOISE,
+            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
+            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
+        )
+
+    def _create_mixer_slider(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_MIXER)
+        dpg.add_slider_float(
+            min_value=0.0,
+            max_value=MAX_MIXER,
+            default_value=MIXER,
+            width=-1,
+            tag=TAG_RECONSTRUCTOR_MIXER,
+        )
+
+    def _create_output_directory_section(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
+        GUIButton(
+            tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
+            label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
+            width=-1,
+            callback=self._select_output_directory_dialog,
+        )
+
+        output_directory = self.config_manager.get_output_directory()
+        self.output_path_text = GUIPathText(
+            tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
+            path=output_directory,
+            parent=self.tag,
+        )
+        FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
+
+    def _create_tooltips(self) -> None:
+        show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["reconstructor"].keys():

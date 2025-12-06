@@ -34,7 +34,6 @@ from ...constants import (
     LBL_INPUT_CHANGE_RATE,
     LBL_INPUT_SAMPLE_RATE,
     LBL_SECTION_GENERAL_SETTINGS,
-    LBL_SECTION_LIBRARY_DIRECTORY,
     LBL_SECTION_LIBRARY_SETTINGS,
     LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
     LBL_TOOLTIP_CONFIG_CHANGE_RATE,
@@ -50,6 +49,7 @@ from ...constants import (
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_PANEL,
     TAG_CONFIG_PANEL_GROUP,
+    TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
@@ -93,79 +93,90 @@ class GUIConfigPanel(GUIPanel):
             height=self.height,
             auto_resize_y=True,
         ):
-            section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
-
-            dpg.add_separator()
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_NORMALIZE_AUDIO,
-                default_value=NORMALIZE,
-                tag=TAG_CONFIG_NORMALIZE,
-            )
-            dpg.add_checkbox(
-                label=LBL_CHECKBOX_QUANTIZE_AUDIO,
-                default_value=QUANTIZE,
-                tag=TAG_CONFIG_QUANTIZE,
-            )
-            dpg.add_input_int(
-                label=LBL_CONFIG_INPUT_MAX_WORKERS,
-                default_value=MAX_WORKERS,
-                tag=TAG_CONFIG_MAX_WORKERS,
-                min_value=RNG_CONFIG_MIN_WORKERS,
-                width=DIM_INPUT_WIDTH,
-            )
-
-            dpg.add_separator()
-            dpg.add_text(LBL_SECTION_LIBRARY_DIRECTORY)
-            GUIButton(
-                tag=TAG_CONFIG_LIBRARY_DIRECTORY,
-                label=LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
-                width=-1,
-                callback=self._select_library_directory_dialog,
-            )
-
-            library_directory = self.config_manager.get_library_directory()
-            self.library_path_text = GUIPathText(
-                tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
-                path=library_directory,
-                parent=self.tag,
-            )
-            FontRegistry.bind_to_item(TAG_LIBRARY_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
-            dpg.add_separator()
-
-            dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
-            dpg.add_input_int(
-                label=LBL_INPUT_SAMPLE_RATE,
-                default_value=DEFAULT_SAMPLE_RATE,
-                tag=TAG_CONFIG_SAMPLE_RATE,
-                min_value=MIN_SAMPLE_RATE,
-                max_value=MAX_SAMPLE_RATE,
-                width=DIM_INPUT_WIDTH,
-            )
-            dpg.add_input_int(
-                label=LBL_INPUT_CHANGE_RATE,
-                default_value=DEFAULT_CHANGE_RATE,
-                tag=TAG_CONFIG_CHANGE_RATE,
-                min_value=MIN_CHANGE_RATE,
-                max_value=MAX_CHANGE_RATE,
-                width=DIM_INPUT_WIDTH,
-            )
-            dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
-            dpg.add_slider_int(
-                tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
-                min_value=0,
-                max_value=MAX_TRANSFORMATION_GAMMA,
-                width=-1,
-            )
-
-            show_tooltip(TAG_CONFIG_NORMALIZE, LBL_TOOLTIP_CONFIG_NORMALIZE)
-            show_tooltip(TAG_CONFIG_QUANTIZE, LBL_TOOLTIP_CONFIG_QUANTIZE)
-            show_tooltip(TAG_CONFIG_MAX_WORKERS, LBL_TOOLTIP_CONFIG_MAX_WORKERS)
-            show_tooltip(TAG_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_CONFIG_SAMPLE_RATE)
-            show_tooltip(TAG_CONFIG_CHANGE_RATE, LBL_TOOLTIP_CONFIG_CHANGE_RATE)
-            show_tooltip(TAG_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_TRANSFORMATION_GAMMA)
+            self._create_section_text()
+            self._create_audio_options()
+            self._create_library_directory_selection()
+            self._create_library_settings()
+            self._create_tooltips()
 
         self._register_callbacks()
+
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_SECTION_GENERAL_SETTINGS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+
+    def _create_audio_options(self) -> None:
+        dpg.add_separator()
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_NORMALIZE_AUDIO,
+            default_value=NORMALIZE,
+            tag=TAG_CONFIG_NORMALIZE,
+        )
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_QUANTIZE_AUDIO,
+            default_value=QUANTIZE,
+            tag=TAG_CONFIG_QUANTIZE,
+        )
+        dpg.add_input_int(
+            label=LBL_CONFIG_INPUT_MAX_WORKERS,
+            default_value=MAX_WORKERS,
+            tag=TAG_CONFIG_MAX_WORKERS,
+            min_value=RNG_CONFIG_MIN_WORKERS,
+            width=DIM_INPUT_WIDTH,
+        )
+
+    def _create_library_directory_selection(self) -> None:
+        dpg.add_separator()
+        GUIButton(
+            tag=TAG_CONFIG_LIBRARY_DIRECTORY,
+            parent=TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
+            label=LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
+            width=-1,
+            callback=self._select_library_directory_dialog,
+        )
+
+        library_directory = self.config_manager.get_library_directory()
+        self.library_path_text = GUIPathText(
+            tag=TAG_LIBRARY_DIRECTORY_DISPLAY,
+            parent=TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
+            path=library_directory,
+        )
+        FontRegistry.bind_to_item(TAG_LIBRARY_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
+
+    def _create_library_settings(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
+        dpg.add_input_int(
+            label=LBL_INPUT_SAMPLE_RATE,
+            default_value=DEFAULT_SAMPLE_RATE,
+            tag=TAG_CONFIG_SAMPLE_RATE,
+            min_value=MIN_SAMPLE_RATE,
+            max_value=MAX_SAMPLE_RATE,
+            width=DIM_INPUT_WIDTH,
+        )
+        dpg.add_input_int(
+            label=LBL_INPUT_CHANGE_RATE,
+            default_value=DEFAULT_CHANGE_RATE,
+            tag=TAG_CONFIG_CHANGE_RATE,
+            min_value=MIN_CHANGE_RATE,
+            max_value=MAX_CHANGE_RATE,
+            width=DIM_INPUT_WIDTH,
+        )
+        dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
+        dpg.add_slider_int(
+            tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
+            min_value=0,
+            max_value=MAX_TRANSFORMATION_GAMMA,
+            width=-1,
+        )
+
+    def _create_tooltips(self) -> None:
+        show_tooltip(TAG_CONFIG_NORMALIZE, LBL_TOOLTIP_CONFIG_NORMALIZE)
+        show_tooltip(TAG_CONFIG_QUANTIZE, LBL_TOOLTIP_CONFIG_QUANTIZE)
+        show_tooltip(TAG_CONFIG_MAX_WORKERS, LBL_TOOLTIP_CONFIG_MAX_WORKERS)
+        show_tooltip(TAG_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_CONFIG_SAMPLE_RATE)
+        show_tooltip(TAG_CONFIG_CHANGE_RATE, LBL_TOOLTIP_CONFIG_CHANGE_RATE)
+        show_tooltip(TAG_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_TRANSFORMATION_GAMMA)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["config"].keys():
