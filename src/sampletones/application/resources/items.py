@@ -13,3 +13,4 @@ class FontResource(Enum):
     BOLD = "RobotoMono-Bold.ttf"
     ITALIC = "RobotoMono-Italic.ttf"
     BOLD_ITALIC = "RobotoMono-BoldItalic.ttf"
+    ICON = "DejaVuSans.ttf"

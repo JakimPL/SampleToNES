@@ -11,9 +11,11 @@ from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
+    CHR_STAR,
     COL_PATH_TEXT_HOVER,
     COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
+    COL_TEXT_FAVORITE,
     COL_TEXT_LIBRARY,
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
@@ -144,25 +146,33 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _apply_directory_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)
-        if not has_content:
-            with dpg.theme() as disabled_theme:
-                with dpg.theme_component(dpg.mvTreeNode):
+        is_favorite = node.filepath in self.application_config_manager.favorites
+
+        with dpg.theme() as node_theme:
+            with dpg.theme_component(dpg.mvTreeNode):
+                if is_favorite:
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE)
+                elif not has_content:
                     dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
-            dpg.bind_item_theme(node_tag, disabled_theme)
-        else:
-            dpg.bind_item_theme(node_tag, 0)
+
+        dpg.bind_item_theme(node_tag, node_theme)
 
     def _apply_file_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
+        is_favorite = node.filepath in self.application_config_manager.favorites
+
         with dpg.theme() as node_theme:
             with dpg.theme_component(dpg.mvSelectable):
                 color: Color = COL_TEXT_DEFAULT
-                match node.filepath.suffix.lower():
-                    case paths.EXT_FILE_RECONSTRUCTION:
-                        color = COL_TEXT_RECONSTRUCTION
-                    case paths.EXT_FILE_LIBRARY:
-                        color = COL_TEXT_LIBRARY
-                    case paths.EXT_FILE_WAVE:
-                        color = COL_TEXT_WAVE
+                if is_favorite:
+                    color = COL_TEXT_FAVORITE
+                else:
+                    match node.filepath.suffix.lower():
+                        case paths.EXT_FILE_RECONSTRUCTION:
+                            color = COL_TEXT_RECONSTRUCTION
+                        case paths.EXT_FILE_LIBRARY:
+                            color = COL_TEXT_LIBRARY
+                        case paths.EXT_FILE_WAVE:
+                            color = COL_TEXT_WAVE
 
                 dpg.add_theme_color(dpg.mvThemeCol_Text, color)
 
@@ -368,6 +378,19 @@ class GUIExplorerPanel(GUITreePanel):
                 parent=node_tag,
             )
 
+    def _add_context_menu_text(self, node: FileSystemNode) -> None:
+        is_favorite = node.filepath in self.application_config_manager.favorites
+        color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
+
+        with dpg.group(horizontal=True):
+            if is_favorite:
+                star = chr(CHR_STAR)
+                star_text = dpg.add_text(star, color=color)
+                FontRegistry.bind_to_item(star_text, Font.ICON)
+
+            text = dpg.add_text(node.name, color=color)
+            FontRegistry.bind_to_item(text, Font.BOLD)
+
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
@@ -379,9 +402,7 @@ class GUIExplorerPanel(GUITreePanel):
             no_title_bar=True,
             modal=False,
         ):
-            text = dpg.add_text(node.name, color=COL_PATH_TEXT_HOVER)
-            FontRegistry.bind_to_item(text, Font.BOLD)
-
+            self._add_context_menu_text(node)
             dpg.add_separator()
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
@@ -399,8 +420,6 @@ class GUIExplorerPanel(GUITreePanel):
                         label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
                         callback=lambda: self._context_reconstruct_file(node),
                     )
-                case _:
-                    pass
 
             dpg.add_menu_item(
                 label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
@@ -418,9 +437,7 @@ class GUIExplorerPanel(GUITreePanel):
             no_title_bar=True,
             modal=False,
         ):
-            text = dpg.add_text(node.name, color=COL_PATH_TEXT_HOVER)
-            FontRegistry.bind_to_item(text, Font.BOLD)
-
+            self._add_context_menu_text(node)
             dpg.add_separator()
             dpg.add_menu_item(
                 label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
@@ -442,6 +459,14 @@ class GUIExplorerPanel(GUITreePanel):
     def _context_mark_as_favorite(self, node: FileSystemNode) -> None:
         if self._on_toggle_mark_as_favorite is not None:
             self._on_toggle_mark_as_favorite(node.filepath)
+
+        self.application_config_manager.toggle_favorite(node.filepath)
+        self._update_favorite_indicator(node)
+
+    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
+        node_tag = self._generate_node_tag(node)
+        if dpg.does_item_exist(node_tag):
+            self._apply_node_theme(node_tag, node)
 
     def set_callbacks(
         self,

@@ -6,3 +6,4 @@ class Font(Enum):
     BOLD = "Bold"
     REGULAR_SMALL = "RegularSmall"
     BOLD_SMALL = "BoldSmall"
+    ICON = "Icon"

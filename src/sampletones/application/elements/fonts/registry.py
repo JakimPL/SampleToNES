@@ -5,8 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones.typehints import Sender
 
 from ...constants import (
+    CHR_STAR,
     TAG_FONT_BOLD,
     TAG_FONT_BOLD_SMALL,
+    TAG_FONT_ICON,
     TAG_FONT_REGULAR,
     TAG_FONT_REGULAR_SMALL,
     VAL_FONT_SIZE,
@@ -25,6 +27,7 @@ class FontRegistry:
         Font.BOLD: FontData(TAG_FONT_BOLD, VAL_FONT_SIZE, FontResource.BOLD),
         Font.REGULAR_SMALL: FontData(TAG_FONT_REGULAR_SMALL, VAL_FONT_SMALL_SIZE, FontResource.REGULAR),
         Font.BOLD_SMALL: FontData(TAG_FONT_BOLD_SMALL, VAL_FONT_SMALL_SIZE, FontResource.BOLD),
+        Font.ICON: FontData(TAG_FONT_ICON, VAL_FONT_SMALL_SIZE, FontResource.ICON),
     }
 
     @staticmethod
@@ -34,6 +37,11 @@ class FontRegistry:
             dpg.add_font(get_font_path(FontResource.REGULAR), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_REGULAR_SMALL)
             dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SIZE, tag=TAG_FONT_BOLD)
             dpg.add_font(get_font_path(FontResource.BOLD), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_BOLD_SMALL)
+
+            icon_font = dpg.add_font(get_font_path(FontResource.ICON), VAL_FONT_SMALL_SIZE, tag=TAG_FONT_ICON)
+            dpg.add_font_range_hint(dpg.mvFontRangeHint_Default, parent=icon_font)
+            dpg.add_font_chars([CHR_STAR], parent=icon_font)
+
             dpg.bind_font(TAG_FONT_REGULAR)
 
         dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
