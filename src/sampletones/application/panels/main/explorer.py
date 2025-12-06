@@ -55,6 +55,8 @@ class GUIExplorerPanel(GUITreePanel):
         self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
         self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
 
+        self._pending_autoplay_node: Optional[FileSystemNode] = None
+
         super().__init__(
             tree=self.explorer_manager.tree,
             tag=TAG_EXPLORER_PANEL,
@@ -220,7 +222,9 @@ class GUIExplorerPanel(GUITreePanel):
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
-            return self._autoplay_file(user_data)
+            self._pending_autoplay_node = user_data
+            dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
+            return None
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(user_data)
@@ -232,6 +236,7 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
+            self._pending_autoplay_node = None
             return self._reconstruct_file(user_data)
 
         return None
@@ -252,6 +257,11 @@ class GUIExplorerPanel(GUITreePanel):
 
         if self.application_config_manager.autoplay:
             self.audio_device_manager.play_file(node.filepath)
+
+    def _execute_autoplay(self) -> None:
+        if self._pending_autoplay_node is not None:
+            self._autoplay_file(self._pending_autoplay_node)
+            self._pending_autoplay_node = None
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
