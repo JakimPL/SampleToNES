@@ -137,7 +137,7 @@ class GUIExplorerPanel(GUITreePanel):
                 tag=node_tag,
                 parent=parent,
                 default_open=should_expand,
-                open_on_arrow=True,
+                open_on_arrow=False,
             ) as tree_node_tag:
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
@@ -202,8 +202,8 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.bind_item_handler_registry(parent, tag)
 
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
-        mouse_button, _ = app_data
-        if mouse_button == dpg.mvMouseButton_Left:
+        mouse_button, click_count = app_data
+        if mouse_button == dpg.mvMouseButton_Left and click_count == 1:
             return self._autoplay_file(user_data)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -254,23 +254,15 @@ class GUIExplorerPanel(GUITreePanel):
 
         self._set_explorer_tree_enabled(False)
         try:
-            current_state = dpg.get_value(node_tag)
-            new_state = not current_state
-            dpg.set_value(node_tag, new_state)
+            is_currently_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
 
-            if new_state:
-                if not self.explorer_manager.is_directory_expanded(node.filepath):
-                    self.explorer_manager.expand_directory(node)
-
-                    dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
-                    dpg_delete_item(dummy_tag)
-
-                    for child in node.children:
-                        self._build_tree_node(child, node_tag)
-            else:
+            if is_currently_expanded:
                 self.explorer_manager.collapse_directory(node.filepath)
                 self.explorer_manager.clear_directory_children(node)
-                self._rebuild_tree()
+            else:
+                self.explorer_manager.expand_directory(node)
+
+            self._rebuild_tree()
         finally:
             self._set_explorer_tree_enabled(True)
 
