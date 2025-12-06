@@ -114,6 +114,12 @@ class InstructionsLibraryManager:
         self.current_library_key = library_key
         return True
 
+    def load_library_file(self, filepath: Path) -> InstructionLibraryKey:
+        library_key = self._create_key_from_filename(filepath.stem)
+        self.library.load_data(library_key)
+        self.current_library_key = library_key
+        return library_key
+
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self.library.get_path(library_key)
 

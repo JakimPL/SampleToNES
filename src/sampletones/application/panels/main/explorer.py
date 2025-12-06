@@ -4,8 +4,10 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
+from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
+from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
@@ -53,6 +55,8 @@ class GUIExplorerPanel(GUITreePanel):
 
         self._on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
         self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
+        self._on_load_reconstruction: Optional[OnReconstructPathCallback] = None
+        self._on_load_library: Optional[OnReconstructPathCallback] = None
         self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
@@ -222,9 +226,16 @@ class GUIExplorerPanel(GUITreePanel):
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._pending_autoplay_node = user_data
-            dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
-            return None
+            match user_data.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    return self._load_reconstruction(user_data)
+                case paths.EXT_FILE_LIBRARY:
+                    return self._load_library(user_data)
+                case paths.EXT_FILE_WAVE:
+                    return self._schedule_autoplay(user_data)
+                case _:
+                    logger.warning(f"Unhandled file type clicked: {user_data.filepath.suffix.lower()}")
+                    return None
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(user_data)
@@ -250,6 +261,28 @@ class GUIExplorerPanel(GUITreePanel):
             return self._show_directory_context_menu(user_data)
 
         return None
+
+    def _load_reconstruction(self, node: FileSystemNode) -> None:
+        filepath = node.filepath
+        if self._on_load_reconstruction is not None and filepath.exists():
+            self._set_explorer_tree_enabled(False)
+            try:
+                self._on_load_reconstruction(filepath)
+            finally:
+                self._set_explorer_tree_enabled(True)
+
+    def _load_library(self, node: FileSystemNode) -> None:
+        filepath = node.filepath
+        if self._on_load_library is not None and filepath.exists():
+            self._set_explorer_tree_enabled(False)
+            try:
+                self._on_load_library(filepath)
+            finally:
+                self._set_explorer_tree_enabled(True)
+
+    def _schedule_autoplay(self, node: FileSystemNode) -> None:
+        self._pending_autoplay_node = node
+        dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
@@ -370,11 +403,17 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         on_reconstruct_directory: Optional[OnReconstructPathCallback] = None,
         on_reconstruct_file: Optional[OnReconstructPathCallback] = None,
+        on_load_reconstruction: Optional[OnReconstructPathCallback] = None,
+        on_load_library: Optional[OnReconstructPathCallback] = None,
         on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None,
     ) -> None:
         if on_reconstruct_directory is not None:
             self._on_reconstruct_directory = on_reconstruct_directory
         if on_reconstruct_file is not None:
             self._on_reconstruct_file = on_reconstruct_file
+        if on_load_reconstruction is not None:
+            self._on_load_reconstruction = on_load_reconstruction
+        if on_load_library is not None:
+            self._on_load_library = on_load_library
         if on_toggle_mark_as_favorite is not None:
             self._on_toggle_mark_as_favorite = on_toggle_mark_as_favorite

@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
@@ -252,6 +253,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             )
         except Exception as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
+            show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
+
+    def load_library_file(self, filepath: Path) -> None:
+        try:
+            library_key = self.library_manager.load_library_file(filepath)
+            self._set_current_library(library_key, load_if_needed=False, apply_config=True)
+            self._rebuild_tree()
+        except Exception as exception:
+            logger.error_with_traceback(exception, f"Error loading library from file {filepath}")
             show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:

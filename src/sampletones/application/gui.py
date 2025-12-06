@@ -308,6 +308,8 @@ class GUI:
         self.explorer_panel.set_callbacks(
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
+            on_load_reconstruction=self._load_reconstruction,
+            on_load_library=self._load_library,
         )
         self.instructions_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
@@ -769,6 +771,11 @@ class GUI:
         self.converter_window.show(filepath, is_file=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
 
+    def _load_library(self, filepath: Path) -> None:
+        self.instructions_panel.load_library_file(filepath)
+        self.config_manager.update_gui()
+        self._set_current_tab(TAG_TAB_INSTRUCTIONS)
+
     @file_dialog_handler
     def _handle_reconstruct_file(self, filepath: Path) -> None:
         self._reconstruct_file(filepath)
@@ -786,6 +793,7 @@ class GUI:
         self.browser_panel.load_and_display_reconstruction(filepath)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
+        self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._update_menu()
 
     @file_dialog_handler
@@ -800,13 +808,17 @@ class GUI:
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
-        dpg_set_value(TAG_TABS, TAG_TAB_RECONSTRUCTIONS)
+        self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._update_menu()
 
     def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
         self._update_menu()
+
+    def _set_current_tab(self, tab_tag: str) -> None:
+        dpg_set_value(TAG_TABS, tab_tag)
+        self.application_config_manager.save_current_tab()
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS)
