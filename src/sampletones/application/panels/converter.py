@@ -40,9 +40,9 @@ from ..constants import (
     TAG_CONVERTER_STATUS,
     TAG_CONVERTER_SUCCESS_DIALOG,
     TAG_CONVERTER_WINDOW,
-    TITLE_DIALOG_CONVERTER,
     TPL_CONVERTER_STATUS,
     TPL_TIME_ESTIMATION,
+    TTL_DIALOG_CONVERTER,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
@@ -81,7 +81,7 @@ class GUIConverterWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_CONVERTER_WINDOW,
-            parent=TITLE_DIALOG_CONVERTER,
+            parent=TTL_DIALOG_CONVERTER,
         )
 
     def prepare(self, input_path: Path, is_file: bool) -> None:
@@ -113,7 +113,7 @@ class GUIConverterWindow(GUIWindow):
         assert self.output_path is not None, "Output path is not set"
 
         with dpg.window(
-            label=TITLE_DIALOG_CONVERTER,
+            label=TTL_DIALOG_CONVERTER,
             tag=self.tag,
             modal=False,
             min_size=(DIM_DIALOG_CONVERTER_WIDTH, DIM_DIALOG_CONVERTER_HEIGHT),
@@ -314,7 +314,7 @@ class GUIConverterWindow(GUIWindow):
         if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
-                lambda: show_info_dialog(self.tag, MSG_CONVERTER_NO_FILES_TO_PROCESS, TITLE_DIALOG_CONVERTER),
+                lambda: show_info_dialog(self.tag, MSG_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_CONVERTER),
             )
             return
 
@@ -327,7 +327,7 @@ class GUIConverterWindow(GUIWindow):
 
         show_modal_dialog(
             tag=TAG_CONVERTER_SUCCESS_DIALOG,
-            title=TITLE_DIALOG_CONVERTER,
+            title=TTL_DIALOG_CONVERTER,
             content=content,
         )
 

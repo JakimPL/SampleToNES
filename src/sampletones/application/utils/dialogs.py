@@ -28,12 +28,14 @@ from ..constants import (
     TAG_LIBRARY_NOT_LOADED_DIALOG,
     TAG_PATH_MESSAGE_DIALOG,
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
-    TITLE_DIALOG_ERROR,
-    TITLE_DIALOG_FILE_NOT_FOUND,
-    TITLE_DIALOG_LIBRARY_NOT_LOADED,
-    TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
+    TTL_DIALOG_ERROR,
+    TTL_DIALOG_FILE_NOT_FOUND,
+    TTL_DIALOG_LIBRARY_NOT_LOADED,
+    TTL_DIALOG_RECONSTRUCTION_NOT_LOADED,
 )
 from ..elements.button import GUIButton
+from ..elements.fonts.font import Font
+from ..elements.fonts.registry import FontRegistry
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
 from .align import table_wrapper
@@ -90,7 +92,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
     dpg_delete_item(TAG_ERROR_DIALOG)
 
     with dpg.window(
-        label=TITLE_DIALOG_ERROR,
+        label=TTL_DIALOG_ERROR,
         tag=TAG_ERROR_DIALOG,
         modal=True,
         min_size=(DIM_DIALOG_ERROR_WIDTH, DIM_DIALOG_ERROR_HEIGHT),
@@ -171,7 +173,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
 
     show_modal_dialog(
         tag=TAG_FILE_NOT_FOUND_DIALOG,
-        title=TITLE_DIALOG_FILE_NOT_FOUND,
+        title=TTL_DIALOG_FILE_NOT_FOUND,
         content=content,
     )
 
@@ -186,7 +188,7 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
 
     show_modal_dialog(
         tag=TAG_LIBRARY_NOT_LOADED_DIALOG,
-        title=TITLE_DIALOG_LIBRARY_NOT_LOADED,
+        title=TTL_DIALOG_LIBRARY_NOT_LOADED,
         content=content,
         modal=False,
     )
@@ -202,7 +204,7 @@ def show_reconstruction_not_loaded_dialog() -> None:
 
     show_modal_dialog(
         tag=TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
-        title=TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED,
+        title=TTL_DIALOG_RECONSTRUCTION_NOT_LOADED,
         content=content,
         modal=False,
     )
@@ -231,3 +233,9 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
         content=content,
         modal=False,
     )
+
+
+def show_tooltip(parent: str, message: str) -> None:
+    with dpg.tooltip(parent, hide_on_activity=True):
+        tooltip_text = dpg.add_text(message)
+        FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)

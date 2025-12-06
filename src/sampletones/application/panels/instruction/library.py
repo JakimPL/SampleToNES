@@ -62,12 +62,12 @@ from ...constants import (
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
     TAG_LIBRARY_TREE_WINDOW,
-    TITLE_DIALOG_LIBRARY_GENERATION_STATUS,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_GENERATION_PROGRESS,
     TPL_LIBRARY_LOADED,
     TPL_LIBRARY_NOT_EXISTS,
     TPL_TIME_ESTIMATION,
+    TTL_DIALOG_LIBRARY_GENERATION_STATUS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
@@ -408,7 +408,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _on_generation_completed(self) -> None:
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
         if not dpg.does_item_exist(TAG_CONVERTER_WINDOW):
-            show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_SUCCESS, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
+            show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS)
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
@@ -416,7 +416,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._finalize_generation_error(exception)
 
     def _on_generation_cancelled(self) -> None:
-        show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_CANCELLATION, TITLE_DIALOG_LIBRARY_GENERATION_STATUS)
+        show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_CANCELLATION, TTL_DIALOG_LIBRARY_GENERATION_STATUS)
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:

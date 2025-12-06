@@ -37,6 +37,12 @@ from ...constants import (
     LBL_SECTION_LIBRARY_DIRECTORY,
     LBL_SECTION_LIBRARY_SETTINGS,
     LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
+    LBL_TOOLTIP_CONFIG_CHANGE_RATE,
+    LBL_TOOLTIP_CONFIG_MAX_WORKERS,
+    LBL_TOOLTIP_CONFIG_NORMALIZE,
+    LBL_TOOLTIP_CONFIG_QUANTIZE,
+    LBL_TOOLTIP_CONFIG_SAMPLE_RATE,
+    LBL_TOOLTIP_TRANSFORMATION_GAMMA,
     RNG_CONFIG_MIN_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_LIBRARY_DIRECTORY,
@@ -48,13 +54,14 @@ from ...constants import (
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
     TAG_LIBRARY_DIRECTORY_DISPLAY,
-    TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
+    TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
+from ...utils.dialogs import show_tooltip
 from ...utils.dpg import dpg_set_value
 from ...utils.file import file_dialog_handler
 
@@ -90,8 +97,16 @@ class GUIConfigPanel(GUIPanel):
             FontRegistry.bind_to_item(section_text, Font.BOLD)
 
             dpg.add_separator()
-            dpg.add_checkbox(label=LBL_CHECKBOX_NORMALIZE_AUDIO, default_value=NORMALIZE, tag=TAG_CONFIG_NORMALIZE)
-            dpg.add_checkbox(label=LBL_CHECKBOX_QUANTIZE_AUDIO, default_value=QUANTIZE, tag=TAG_CONFIG_QUANTIZE)
+            dpg.add_checkbox(
+                label=LBL_CHECKBOX_NORMALIZE_AUDIO,
+                default_value=NORMALIZE,
+                tag=TAG_CONFIG_NORMALIZE,
+            )
+            dpg.add_checkbox(
+                label=LBL_CHECKBOX_QUANTIZE_AUDIO,
+                default_value=QUANTIZE,
+                tag=TAG_CONFIG_QUANTIZE,
+            )
             dpg.add_input_int(
                 label=LBL_CONFIG_INPUT_MAX_WORKERS,
                 default_value=MAX_WORKERS,
@@ -143,6 +158,13 @@ class GUIConfigPanel(GUIPanel):
                 width=-1,
             )
 
+            show_tooltip(TAG_CONFIG_NORMALIZE, LBL_TOOLTIP_CONFIG_NORMALIZE)
+            show_tooltip(TAG_CONFIG_QUANTIZE, LBL_TOOLTIP_CONFIG_QUANTIZE)
+            show_tooltip(TAG_CONFIG_MAX_WORKERS, LBL_TOOLTIP_CONFIG_MAX_WORKERS)
+            show_tooltip(TAG_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_CONFIG_SAMPLE_RATE)
+            show_tooltip(TAG_CONFIG_CHANGE_RATE, LBL_TOOLTIP_CONFIG_CHANGE_RATE)
+            show_tooltip(TAG_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_TRANSFORMATION_GAMMA)
+
         self._register_callbacks()
 
     def _register_callbacks(self) -> None:
@@ -177,7 +199,7 @@ class GUIConfigPanel(GUIPanel):
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY,
+            label=TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_select_library_directory,

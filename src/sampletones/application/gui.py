@@ -84,13 +84,13 @@ from .constants import (
     TAG_TAB_RECONSTRUCTIONS,
     TAG_TABS,
     TAG_WINDOW_MAIN,
-    TITLE_DIALOG_CONFIG_STATUS,
-    TITLE_DIALOG_LOAD_CONFIG,
-    TITLE_DIALOG_LOAD_RECONSTRUCTION,
-    TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
-    TITLE_DIALOG_RECONSTRUCT_FILE,
-    TITLE_DIALOG_SAVE_CONFIG,
-    TITLE_WINDOW_MAIN,
+    TTL_DIALOG_CONFIG_STATUS,
+    TTL_DIALOG_LOAD_CONFIG,
+    TTL_DIALOG_LOAD_RECONSTRUCTION,
+    TTL_DIALOG_RECONSTRUCT_DIRECTORY,
+    TTL_DIALOG_RECONSTRUCT_FILE,
+    TTL_DIALOG_SAVE_CONFIG,
+    TTL_WINDOW_MAIN,
     VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
     VAL_DIALOG_FILE_COUNT_SINGLE,
 )
@@ -186,7 +186,7 @@ class GUI:
         icon_file_path = get_icon_path(icon_filename)
 
         dpg.create_viewport(
-            title=TITLE_WINDOW_MAIN,
+            title=TTL_WINDOW_MAIN,
             width=DIM_WINDOW_MAIN_WIDTH,
             height=DIM_WINDOW_MAIN_HEIGHT,
             small_icon=str(icon_file_path),
@@ -317,7 +317,7 @@ class GUI:
         )
 
     def create_main_window(self) -> None:
-        with dpg.window(label=TITLE_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
+        with dpg.window(label=TTL_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
             self.create_menu_bar()
             self.create_tabs()
 
@@ -560,7 +560,7 @@ class GUI:
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_SAVE_CONFIG,
+            label=TTL_DIALOG_SAVE_CONFIG,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_save_config,
@@ -583,7 +583,7 @@ class GUI:
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_LOAD_CONFIG,
+            label=TTL_DIALOG_LOAD_CONFIG,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_config,
@@ -613,7 +613,7 @@ class GUI:
 
         self._generate_library_if_not_loaded()
         with dpg.file_dialog(
-            label=TITLE_DIALOG_RECONSTRUCT_FILE,
+            label=TTL_DIALOG_RECONSTRUCT_FILE,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_file,
@@ -629,7 +629,7 @@ class GUI:
 
         self._generate_library_if_not_loaded()
         dpg.add_file_dialog(
-            label=TITLE_DIALOG_RECONSTRUCT_DIRECTORY,
+            label=TTL_DIALOG_RECONSTRUCT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_reconstruct_directory,
@@ -640,7 +640,7 @@ class GUI:
 
     def _load_reconstruction_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_LOAD_RECONSTRUCTION,
+            label=TTL_DIALOG_LOAD_RECONSTRUCTION,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_load_reconstruction,
@@ -655,7 +655,7 @@ class GUI:
 
         show_modal_dialog(
             tag=TAG_CONFIG_STATUS_POPUP,
-            title=TITLE_DIALOG_CONFIG_STATUS,
+            title=TTL_DIALOG_CONFIG_STATUS,
             content=content,
         )
 

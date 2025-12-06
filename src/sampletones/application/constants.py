@@ -43,7 +43,7 @@ DIM_COPY_BUTTON_WIDTH = 60
 RNG_CONFIG_MIN_WORKERS = 1
 
 # GUI Labels
-TITLE_WINDOW_MAIN = "SampleToNES"
+TTL_WINDOW_MAIN = "SampleToNES"
 
 # Menu labels
 LBL_MENU_FILE = "File"
@@ -131,22 +131,36 @@ SUF_BUTTON_RESET_ALL = f"{SUF_BUTTON}_reset_all"
 SUF_BUTTON_SEARCH = f"{SUF_BUTTON}_search"
 SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}_show_traceback"
 
+# Tooltip labels
+LBL_TOOLTIP_CONFIG_NORMALIZE = "Normalize audio to ensure consistent volume levels."
+LBL_TOOLTIP_CONFIG_QUANTIZE = "Quantize audio samples to 5-bit resolution."
+LBL_TOOLTIP_CONFIG_MAX_WORKERS = "Set the number parallel workers for audio processing tasks."
+LBL_TOOLTIP_CONFIG_SAMPLE_RATE = "Set the sample rate (in Hz) for audio processing."
+LBL_TOOLTIP_CONFIG_CHANGE_RATE = "Set the NES refresh rate (in Hz) for audio processing. NTSC = 60 Hz, PAL = 50 Hz."
+LBL_TOOLTIP_TRANSFORMATION_GAMMA = (
+    "Interpolate between linear spectral features (0.0) features and logarithmic ones (1.0)."
+)
+LBL_TOOLTIP_RECONSTRUCTOR_MIXER = (
+    "Amplify the NES generated audio. Lower values introduce compression, while higher values increase dynamics."
+)
+
+
 # Dialog titles
-TITLE_DIALOG_SAVE_CONFIG = "Save configuration"
-TITLE_DIALOG_LOAD_CONFIG = "Load configuration"
-TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
-TITLE_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
-TITLE_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
-TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
-TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-TITLE_DIALOG_EXPORT_WAV = "Export WAV"
-TITLE_DIALOG_EXPORT_FTI = "Export FTI"
-TITLE_DIALOG_ERROR = "Error"
-TITLE_DIALOG_CONFIG_STATUS = "Configuration status"
-TITLE_DIALOG_CONVERTER = "Reconstruction progress"
-TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
-TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
-TITLE_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"
+TTL_DIALOG_SAVE_CONFIG = "Save configuration"
+TTL_DIALOG_LOAD_CONFIG = "Load configuration"
+TTL_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
+TTL_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
+TTL_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+TTL_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
+TTL_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
+TTL_DIALOG_EXPORT_WAV = "Export WAV"
+TTL_DIALOG_EXPORT_FTI = "Export FTI"
+TTL_DIALOG_ERROR = "Error"
+TTL_DIALOG_CONFIG_STATUS = "Configuration status"
+TTL_DIALOG_CONVERTER = "Reconstruction progress"
+TTL_DIALOG_FILE_NOT_FOUND = "File not found"
+TTL_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
+TTL_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -383,8 +397,8 @@ LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
 MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error."
-TITLE_DIALOG_NO_AUDIO = "No Audio"
-TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
+TTL_DIALOG_NO_AUDIO = "No Audio"
+TTL_DIALOG_PLAYBACK_ERROR = "Playback error."
 
 # Instruction panel constants
 LBL_INSTRUCTION_DETAILS = "Instruction details"
@@ -452,8 +466,8 @@ MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
 MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE = "Incompatible reconstruction version: {}, expected {}."
 MSG_CONFIG_SAVE_FAILED = "Failed to save configuration."
 MSG_CONFIG_LOAD_FAILED = "Failed to load configuration."
-TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
-TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
+TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+TTL_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
 LBL_RECONSTRUCTION_GENERATORS = "Generators"
 
@@ -630,9 +644,9 @@ VAL_BUTTON_FRAME_PADDING = 10, 4
 
 COL_ERROR_TEXT = (255, 100, 100, 255)
 COL_TRACEBACK_TEXT = (192, 192, 192, 255)
-COL_BACKGROUND = (40, 40, 40, 255)
-COL_BACKGROUND_DARK = (32, 32, 32, 255)
-COL_BACKGROUND_LIGHT = (50, 50, 50, 255)
+COL_BACKGROUND = (36, 36, 36, 255)
+COL_BACKGROUND_DARK = (28, 28, 28, 255)
+COL_BACKGROUND_LIGHT = (44, 44, 44, 255)
 
 VAL_WINDOW_POSITION_X = 200
 VAL_WINDOW_POSITION_Y = 200

@@ -24,7 +24,7 @@ from ..constants import (
     SUF_PLAYER_POSITION,
     SUF_PLAYER_SAMPLES,
     SUF_PLAYER_STOP,
-    TITLE_DIALOG_NO_AUDIO,
+    TTL_DIALOG_NO_AUDIO,
 )
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
@@ -203,6 +203,6 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         show_modal_dialog(
             tag=self.no_audio_popup_tag,
-            title=TITLE_DIALOG_NO_AUDIO,
+            title=TTL_DIALOG_NO_AUDIO,
             content=content,
         )

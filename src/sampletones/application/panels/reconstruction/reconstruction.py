@@ -41,11 +41,11 @@ from ...constants import (
     TAG_RECONSTRUCTION_PANEL_GROUP,
     TAG_RECONSTRUCTION_PLAYER_PANEL,
     TAG_RECONSTRUCTION_WAVEFORM_DISPLAY,
-    TITLE_DIALOG_EXPORT_FTI,
-    TITLE_DIALOG_EXPORT_WAV,
-    TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
     TPL_RECONSTRUCTION_AUDIO_SOURCE_RADIO,
     TPL_RECONSTRUCTION_GENERATOR_CHECKBOX,
+    TTL_DIALOG_EXPORT_FTI,
+    TTL_DIALOG_EXPORT_WAV,
+    TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
     VAL_AUDIO_SOURCE_SELECTOR,
     VAL_DIALOG_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_FULL,
@@ -320,7 +320,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self._pending_generator_name = generator_name
         with dpg.file_dialog(
-            label=TITLE_DIALOG_EXPORT_FTI,
+            label=TTL_DIALOG_EXPORT_FTI,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_export_instrument,
@@ -345,7 +345,7 @@ class GUIReconstructionPanel(GUIPanel):
             self.save_instrument_feature(filepath, instrument_name, generator_name)
             logger.info(f"Exported instrument feature to FTI: {filepath}")
             show_message_with_path_dialog(
-                TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
+                TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
                 filepath,
             )
@@ -368,7 +368,7 @@ class GUIReconstructionPanel(GUIPanel):
             self.save_instrument_features(directory)
             logger.info(f"Exported instrument features to FTI: {directory}")
             show_message_with_path_dialog(
-                TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
+                TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
                 directory,
             )
@@ -386,7 +386,7 @@ class GUIReconstructionPanel(GUIPanel):
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")
 
         with dpg.file_dialog(
-            label=TITLE_DIALOG_EXPORT_FTI,
+            label=TTL_DIALOG_EXPORT_FTI,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_export_instruments,
@@ -431,7 +431,7 @@ class GUIReconstructionPanel(GUIPanel):
         filename = to_path(reconstruction.audio_filepath).stem
 
         with dpg.file_dialog(
-            label=TITLE_DIALOG_EXPORT_WAV,
+            label=TTL_DIALOG_EXPORT_WAV,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_wav_export,
@@ -454,7 +454,7 @@ class GUIReconstructionPanel(GUIPanel):
             write_wave(filepath, sample_rate, partial_approximation)
             logger.info(f"Exported reconstruction to WAV: {filepath}")
             show_message_with_path_dialog(
-                TITLE_DIALOG_EXPORT_WAV,
+                TTL_DIALOG_EXPORT_WAV,
                 MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
                 filepath,
             )

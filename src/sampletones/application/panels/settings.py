@@ -24,7 +24,7 @@ from ..constants import (
     TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO,
     TAG_AUDIO_SETTINGS_SAMPLE_RATE_GROUP,
     TAG_AUDIO_SETTINGS_WINDOW,
-    TITLE_WINDOW_MAIN,
+    TTL_WINDOW_MAIN,
 )
 from ..elements.button import GUIButton
 from ..elements.window import GUIWindow
@@ -46,7 +46,7 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         super().__init__(
             tag=TAG_AUDIO_SETTINGS_WINDOW,
-            parent=TITLE_WINDOW_MAIN,
+            parent=TTL_WINDOW_MAIN,
             width=DIM_AUDIO_SETTINGS_WINDOW_WIDTH,
             height=DIM_AUDIO_SETTINGS_WINDOW_HEIGHT,
         )

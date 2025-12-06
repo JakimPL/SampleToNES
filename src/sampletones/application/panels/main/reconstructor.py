@@ -24,19 +24,21 @@ from ...constants import (
     LBL_SECTION_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
+    LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
     TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
-    TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
+    TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
+from ...utils.dialogs import show_tooltip
 from ...utils.dpg import dpg_set_value
 from ...utils.file import file_dialog_handler
 
@@ -117,6 +119,8 @@ class GUIReconstructorPanel(GUIPanel):
                 tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
             )
 
+            show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
+
         self._register_callbacks()
 
     def _register_callbacks(self) -> None:
@@ -146,7 +150,7 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _select_output_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY,
+            label=TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
             width=DIM_DIALOG_FILE_WIDTH,
             height=DIM_DIALOG_FILE_HEIGHT,
             callback=self._handle_select_output_directory,
