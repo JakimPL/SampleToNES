@@ -16,6 +16,8 @@ from ...constants import (
     DIM_PANEL_EXPLORER_HEIGHT,
     DIM_PANEL_EXPLORER_WIDTH,
     LBL_BUTTON_COLLAPSE_ALL,
+    LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
+    LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
     LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
@@ -353,11 +355,36 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
 
-        with dpg.window(popup=True, no_move=True, no_resize=True, no_title_bar=True, modal=False):
-            dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
-                callback=lambda: self._context_reconstruct_file(node),
-            )
+        with dpg.window(
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            modal=False,
+        ):
+            text = dpg.add_text(node.name, color=COL_PATH_TEXT_HOVER)
+            FontRegistry.bind_to_item(text, Font.BOLD)
+
+            dpg.add_separator()
+            match node.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    dpg.add_menu_item(
+                        label=LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
+                        callback=lambda: self._load_reconstruction(node),
+                    )
+                case paths.EXT_FILE_LIBRARY:
+                    dpg.add_menu_item(
+                        label=LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
+                        callback=lambda: self._load_library(node),
+                    )
+                case paths.EXT_FILE_WAVE:
+                    dpg.add_menu_item(
+                        label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
+                        callback=lambda: self._context_reconstruct_file(node),
+                    )
+                case _:
+                    pass
+
             dpg.add_menu_item(
                 label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
                 callback=lambda: self._context_mark_as_favorite(node),

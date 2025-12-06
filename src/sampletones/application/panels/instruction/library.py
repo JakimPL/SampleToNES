@@ -84,10 +84,11 @@ from ...utils.dialogs import (
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 
-OnInstructionSelectedCallable = Callable[
+OnInstructionSelectedCallback = Callable[
     [GeneratorClassName, InstructionUnion, InstructionLibraryFragment[Any], InstructionsLibraryConfig], None
 ]
-OnApplyLibraryConfigCallable = Callable[[InstructionLibraryKey], None]
+OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
+OnLibraryLoadedCallback = Callable[[InstructionLibraryKey], None]
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
@@ -105,8 +106,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
-        self._on_instruction_selected: Optional[OnInstructionSelectedCallable] = None
-        self._on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None
+        self._on_instruction_selected: Optional[OnInstructionSelectedCallback] = None
+        self._on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
+        self._on_library_loaded: Optional[OnLibraryLoadedCallback] = None
 
         super().__init__(
             tree=self.library_manager.tree,
@@ -256,13 +258,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
 
     def load_library_file(self, filepath: Path) -> None:
-        try:
-            library_key = self.library_manager.load_library_file(filepath)
-            self._set_current_library(library_key, load_if_needed=False, apply_config=True)
-            self._rebuild_tree()
-        except Exception as exception:
-            logger.error_with_traceback(exception, f"Error loading library from file {filepath}")
-            show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
+        library_key = self.library_manager.create_key_from_filename(filepath.name)
+        self._load_library_and_set_current(library_key)
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
@@ -315,16 +312,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             current = current.parent
         return None
 
-    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
-        library_key = user_data
-        dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
+    def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
         try:
             self._set_library_tree_enabled(False)
             self._load_library(library_key)
             self._set_current_library(library_key, load_if_needed=False, apply_config=True)
             self._rebuild_tree()
+            if self._on_library_loaded:
+                self._on_library_loaded(library_key)
         finally:
             self._set_library_tree_enabled(True)
+
+    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
+        library_key = user_data
+        dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
+        self._load_library_and_set_current(library_key)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -452,10 +454,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def set_callbacks(
         self,
-        on_instruction_selected: Optional[OnInstructionSelectedCallable] = None,
-        on_apply_library_config: Optional[OnApplyLibraryConfigCallable] = None,
+        on_instruction_selected: Optional[OnInstructionSelectedCallback] = None,
+        on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None,
+        on_library_loaded: Optional[OnLibraryLoadedCallback] = None,
     ) -> None:
         if on_instruction_selected is not None:
             self._on_instruction_selected = on_instruction_selected
         if on_apply_library_config is not None:
             self._on_apply_library_config = on_apply_library_config
+        if on_library_loaded is not None:
+            self._on_library_loaded = on_library_loaded

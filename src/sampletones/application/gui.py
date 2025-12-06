@@ -141,7 +141,7 @@ class GUI:
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
 
-        self.instructions_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
+        self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
@@ -297,13 +297,13 @@ class GUI:
         self.shortcut_manager.bind_all()
 
     def set_callbacks(self) -> None:
-        self.config_manager.add_config_change_callback(self.instructions_panel.update_status)
+        self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
 
         self.config_panel.set_callbacks(
-            on_update_library_directory=self.instructions_panel.refresh,
+            on_update_library_directory=self.library_panel.refresh,
         )
         self.explorer_panel.set_callbacks(
             on_reconstruct_file=self._reconstruct_file,
@@ -311,7 +311,7 @@ class GUI:
             on_load_reconstruction=self._load_reconstruction,
             on_load_library=self._load_library,
         )
-        self.instructions_panel.set_callbacks(
+        self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
         )
@@ -343,7 +343,7 @@ class GUI:
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
             generate_library=self._generate_library_if_not_loaded,
-            is_library_loaded=self.instructions_panel.is_loaded,
+            is_library_loaded=self.library_panel.is_loaded,
         )
 
     def _create_main_window(self) -> None:
@@ -581,8 +581,8 @@ class GUI:
 
     def _create_instructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
-            self.instructions_panel.create_panel()
-            self.instructions_panel.initialize_libraries()
+            self.library_panel.create_panel()
+            self.library_panel.initialize_libraries()
 
     def _create_reconstructions_left_panel(self) -> None:
         with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
@@ -761,18 +761,19 @@ class GUI:
         return self.reconstruction_panel.is_loaded()
 
     def _is_library_loaded(self) -> bool:
-        return self.instructions_panel.is_loaded()
+        return self.library_panel.is_loaded()
 
     def _generate_library_if_not_loaded(self) -> None:
         if not self._is_library_loaded():
-            self.instructions_panel.generate_library()
+            self.library_panel.generate_library()
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     def _load_library(self, filepath: Path) -> None:
-        self.instructions_panel.load_library_file(filepath)
+        self.instruction_panel.close_instruction()
+        self.library_panel.load_library_file(filepath)
         self.config_manager.update_gui()
         self._set_current_tab(TAG_TAB_INSTRUCTIONS)
 
@@ -809,6 +810,10 @@ class GUI:
         self.browser_panel.refresh()
         self.browser_panel.load_and_display_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
+        self._update_menu()
+
+    def _close_instruction(self) -> None:
+        self.instruction_panel.close_instruction()
         self._update_menu()
 
     def _close_reconstruction(self) -> None:

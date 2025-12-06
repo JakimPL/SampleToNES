@@ -108,6 +108,16 @@ class GUIInstructionPanel(GUIPanel):
             on_change_audio_state=self._on_change_audio_state,
         )
 
+    def close_instruction(self) -> None:
+        self.library_config = None
+        self.player_panel.disable()
+        self.waveform_display.clear_layers()
+        self.spectrum_display.clear_layers()
+        if self._on_clear_instruction_details:
+            self._on_clear_instruction_details()
+
+        self.player_panel.enable()
+
     def is_loaded(self) -> bool:
         return self.library_config is not None
 
