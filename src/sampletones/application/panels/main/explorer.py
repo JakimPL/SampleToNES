@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -9,9 +9,13 @@ from sampletones.typehints import Sender
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
+    COL_PATH_TEXT_HOVER,
     DIM_PANEL_EXPLORER_HEIGHT,
     DIM_PANEL_EXPLORER_WIDTH,
     LBL_BUTTON_COLLAPSE_ALL,
+    LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
+    LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
+    LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
     LBL_EXPLORER_FILESYSTEM,
     LBL_TREE_FILTER,
     NOD_TYPE_DIRECTORY,
@@ -178,8 +182,8 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         tag: str,
         parent: str,
-        item_click_callback: Callable[[Sender, int, Any], None],
-        item_double_click_callback: Optional[Callable[[Sender, int, Any], None]],
+        item_click_callback: Callable[[Sender, Tuple[int, int], Any], None],
+        item_double_click_callback: Optional[Callable[[Sender, Tuple[int, int], Any], None]],
         node: TreeNode,
     ) -> None:
         dpg_delete_item(tag)
@@ -197,25 +201,54 @@ class GUIExplorerPanel(GUITreePanel):
 
         dpg.bind_item_handler_registry(parent, tag)
 
-    def _on_file_node_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
-        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_FILE:
+    def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            return self._autoplay_file(user_data)
+
+        if mouse_button == dpg.mvMouseButton_Right:
+            return self._show_file_context_menu(user_data)
+
+        return None
+
+    def _on_file_node_double_clicked(
+        self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode
+    ) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            return self._reconstruct_file(user_data)
+
+        return None
+
+    def _on_directory_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            return self._toggle_directory_expansion(user_data)
+
+        if mouse_button == dpg.mvMouseButton_Right:
+            return self._show_directory_context_menu(user_data)
+
+        return None
+
+    def _autoplay_file(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
 
         if self.application_config_manager.autoplay:
-            self.audio_device_manager.play_file(user_data.filepath)
+            self.audio_device_manager.play_file(node.filepath)
 
-    def _on_file_node_double_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
-        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_FILE:
+    def _reconstruct_file(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
 
         if self._on_reconstruct_file is not None:
-            self._on_reconstruct_file(user_data.filepath)
+            self._on_reconstruct_file(node.filepath)
 
-    def _on_directory_node_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
-        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_DIRECTORY:
+    def _toggle_directory_expansion(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_DIRECTORY:
             return
 
-        node_tag = self._generate_node_tag(user_data)
+        node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
             return
 
@@ -226,20 +259,70 @@ class GUIExplorerPanel(GUITreePanel):
             dpg.set_value(node_tag, new_state)
 
             if new_state:
-                if not self.explorer_manager.is_directory_expanded(user_data.filepath):
-                    self.explorer_manager.expand_directory(user_data)
+                if not self.explorer_manager.is_directory_expanded(node.filepath):
+                    self.explorer_manager.expand_directory(node)
 
                     dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
                     dpg_delete_item(dummy_tag)
 
-                    for child in user_data.children:
+                    for child in node.children:
                         self._build_tree_node(child, node_tag)
             else:
-                self.explorer_manager.collapse_directory(user_data.filepath)
-                self.explorer_manager.clear_directory_children(user_data)
+                self.explorer_manager.collapse_directory(node.filepath)
+                self.explorer_manager.clear_directory_children(node)
                 self._rebuild_tree()
         finally:
             self._set_explorer_tree_enabled(True)
+
+    def _show_file_context_menu(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
+            return
+
+        with dpg.window(popup=True, no_move=True, no_resize=True, no_title_bar=True, modal=False):
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
+                callback=lambda: self._context_reconstruct_file(node),
+            )
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
+                callback=lambda: self._context_mark_as_favorite(node),
+            )
+
+    def _show_directory_context_menu(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_DIRECTORY:
+            return
+
+        with dpg.window(
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            modal=False,
+        ):
+            text = dpg.add_text(node.name, color=COL_PATH_TEXT_HOVER)
+            FontRegistry.bind_to_item(text, Font.BOLD)
+
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
+                callback=lambda: self._context_reconstruct_directory(node),
+            )
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
+                callback=lambda: self._context_mark_as_favorite(node),
+            )
+
+    def _context_reconstruct_file(self, node: FileSystemNode) -> None:
+        if self._on_reconstruct_file is not None:
+            self._on_reconstruct_file(node.filepath)
+
+    def _context_reconstruct_directory(self, node: FileSystemNode) -> None:
+        if self._on_reconstruct_directory is not None:
+            self._on_reconstruct_directory(node.filepath)
+
+    def _context_mark_as_favorite(self, node: FileSystemNode) -> None:
+        if self._on_toggle_mark_as_favorite is not None:
+            self._on_toggle_mark_as_favorite(node.filepath)
 
     def set_callbacks(
         self,
