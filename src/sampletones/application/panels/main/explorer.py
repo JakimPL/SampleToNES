@@ -132,7 +132,6 @@ class GUIExplorerPanel(GUITreePanel):
 
             with dpg.item_handler_registry(tag=handler_registry_tag):
                 dpg.add_item_clicked_handler(callback=self._on_directory_node_clicked, user_data=node)
-                dpg.add_item_double_clicked_handler(callback=self._on_directory_node_double_clicked, user_data=node)
 
             dpg.bind_item_handler_registry(node_tag, handler_registry_tag)
 
@@ -155,24 +154,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_open = dpg.get_value(node_tag)
-        if is_open and not self.explorer_manager.is_directory_expanded(user_data.filepath):
-            self.explorer_manager.expand_directory(user_data)
-
-            dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
-            dpg_delete_item(dummy_tag)
-
-            for child in user_data.children:
-                self._build_tree_node(child, node_tag)
-
-    def _on_directory_node_double_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
-        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_DIRECTORY:
-            return
-
-        node_tag = self._generate_node_tag(user_data)
-        if not dpg.does_item_exist(node_tag):
-            return
-
+        self._set_explorer_tree_enabled(False)
         current_state = dpg.get_value(node_tag)
         new_state = not current_state
         dpg.set_value(node_tag, new_state)
@@ -190,3 +172,5 @@ class GUIExplorerPanel(GUITreePanel):
             self.explorer_manager.collapse_directory(user_data.filepath)
             self.explorer_manager.clear_directory_children(user_data)
             self._rebuild_tree()
+
+        self._set_explorer_tree_enabled(True)
