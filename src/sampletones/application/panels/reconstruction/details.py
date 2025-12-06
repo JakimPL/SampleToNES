@@ -67,26 +67,33 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
-            section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
+            self._create_section_text()
+            self._create_export_button()
+            self._create_details_panel()
 
-            GUIButton(
-                tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
-                label=LBL_RECONSTRUCTION_EXPORT_FTIS,
-                width=-1,
-                callback=self._export_instruments,
-                enabled=False,
-                show=False,
-                font=Font.BOLD,
-            )
-            dpg.add_separator()
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-            dpg.add_separator(tag=self.export_button_separator_tag, show=False)
-            dpg.add_text(
-                tag=self.no_data_message_tag,
-                default_value=MSG_RECONSTRUCTION_NO_DATA,
-                show=True,
-            )
+    def _create_export_button(self) -> None:
+        dpg.add_separator()
+        GUIButton(
+            tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
+            label=LBL_RECONSTRUCTION_EXPORT_FTIS,
+            width=-1,
+            callback=self._export_instruments,
+            enabled=False,
+            show=False,
+            font=Font.BOLD,
+        )
+
+    def _create_details_panel(self) -> None:
+        dpg.add_separator(tag=self.export_button_separator_tag, show=False)
+        dpg.add_text(
+            tag=self.no_data_message_tag,
+            default_value=MSG_RECONSTRUCTION_NO_DATA,
+            show=True,
+        )
 
     def set_callbacks(
         self,

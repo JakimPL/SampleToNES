@@ -29,13 +29,23 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            section_text = dpg.add_text(LBL_EXPLORER_FILESYSTEM)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
+        with dpg.child_window(
+            tag=self.tag,
+            width=self.width,
+            height=self.height,
+            parent=self.parent,
+        ):
+            self._create_section_text()
+            self._create_tree_window()
 
-            dpg.add_separator()
-            self.create_search(self.tag)
-            with dpg.child_window(tag=TAG_EXPLORER_TREE_WINDOW):
-                with dpg.group(tag=TAG_EXPLORER_TREE_GROUP):
-                    with dpg.tree_node(label=LBL_EXPLORER_FILESYSTEM, tag=TAG_EXPLORER_TREE, default_open=True):
-                        pass
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_EXPLORER_FILESYSTEM)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+
+    def _create_tree_window(self) -> None:
+        dpg.add_separator()
+        self.create_search(self.tag)
+        with dpg.child_window(tag=TAG_EXPLORER_TREE_WINDOW):
+            with dpg.group(tag=TAG_EXPLORER_TREE_GROUP):
+                with dpg.tree_node(label=LBL_EXPLORER_FILESYSTEM, tag=TAG_EXPLORER_TREE, default_open=True):
+                    pass

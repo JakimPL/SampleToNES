@@ -39,25 +39,30 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def create_panel(self) -> None:
         with dpg.child_window(tag=self.tag, parent=self.parent):
-            section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
+            self._create_section_text()
+            self._create_instruction_tables()
 
-            dpg.add_separator()
-            dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-            dpg.add_text(
-                LBL_INSTRUCTION_GENERAL_HEADER,
-                tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
-                show=False,
-            )
-            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
+    def _create_instruction_tables(self) -> None:
+        dpg.add_separator()
+        dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
 
-            dpg.add_text(
-                LBL_INSTRUCTION_PARAMETERS_HEADER,
-                tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
-                show=False,
-            )
-            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, Font.BOLD)
+        dpg.add_text(
+            LBL_INSTRUCTION_GENERAL_HEADER,
+            tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
+            show=False,
+        )
+        FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
+
+        dpg.add_text(
+            LBL_INSTRUCTION_PARAMETERS_HEADER,
+            tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
+            show=False,
+        )
+        FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, Font.BOLD)
 
     def display_instruction(
         self,

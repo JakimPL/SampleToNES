@@ -76,41 +76,51 @@ class GUIBrowserPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
-            FontRegistry.bind_to_item(section_text, Font.BOLD)
+        with dpg.child_window(
+            tag=self.tag,
+            width=self.width,
+            height=self.height,
+            parent=self.parent,
+        ):
+            self._create_section_text()
+            self._create_browser_controls()
+            self._create_tree_window()
 
-            dpg.add_separator()
-            with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
-                    label=LBL_BUTTON_REFRESH_LIST,
-                    width=-1,
-                    callback=self._refresh_tree,
-                )
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
-                    label=LBL_BUTTON_RECONSTRUCT_FILE,
-                    width=-1,
-                    callback=self._reconstruct_file,
-                    font=Font.BOLD,
-                )
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-                    label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
-                    width=-1,
-                    callback=self._reconstruct_directory,
-                    font=Font.BOLD,
-                )
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-            dpg.add_separator()
-            self.create_search(self.tag)
-            with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
-                with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
-                    with dpg.tree_node(
-                        label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True
-                    ):
-                        pass
+    def _create_browser_controls(self) -> None:
+        dpg.add_separator()
+        with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
+                label=LBL_BUTTON_REFRESH_LIST,
+                width=-1,
+                callback=self._refresh_tree,
+            )
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+                label=LBL_BUTTON_RECONSTRUCT_FILE,
+                width=-1,
+                callback=self._reconstruct_file,
+                font=Font.BOLD,
+            )
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+                label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
+                width=-1,
+                callback=self._reconstruct_directory,
+                font=Font.BOLD,
+            )
+
+    def _create_tree_window(self) -> None:
+        dpg.add_separator()
+        self.create_search(self.tag)
+        with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
+            with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
+                with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
+                    pass
 
     def refresh(self) -> None:
         self._refresh_tree()
