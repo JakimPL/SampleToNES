@@ -26,8 +26,8 @@ from ...constants import (
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
-    TAG_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_MIXER,
+    TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_PANEL_GROUP,
@@ -128,11 +128,11 @@ class GUIReconstructorPanel(GUIPanel):
 
             output_directory = self.config_manager.get_output_directory()
             self.output_path_text = GUIPathText(
-                tag=TAG_OUTPUT_DIRECTORY_DISPLAY,
+                tag=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY,
                 parent=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
                 path=output_directory,
             )
-            FontRegistry.bind_to_item(TAG_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
+            FontRegistry.bind_to_item(TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)

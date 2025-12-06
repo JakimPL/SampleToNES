@@ -1,34 +1,35 @@
+import platform
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List
 
 from sampletones.constants.paths import (
     EXT_FILE_LIBRARY,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
 )
-from sampletones.tree import FileSystemNode, Tree
+from sampletones.tree import FileSystemNode, Tree, TreeNode
 
-from ..constants import NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
+from ..constants import LBL_TREE_ROOT, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE, NOD_TYPE_ROOT
 
 
 class ExplorerManager:
-    def __init__(self, root_directory: Optional[Path] = None) -> None:
+    def __init__(self) -> None:
         self.tree = Tree()
-        self.root_directory = root_directory or Path.cwd()
+        self.current_directory = Path.cwd()
         self._expanded_directories: Dict[Path, bool] = {}
 
-    def set_root_directory(self, directory: Path) -> None:
-        self.root_directory = directory
-        self._expanded_directories.clear()
-        self.refresh_tree()
-
     def refresh_tree(self) -> None:
-        if not self.root_directory.exists() or not self.root_directory.is_dir():
-            self.tree.set_root(None)
-            return
+        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NOD_TYPE_ROOT)
 
-        root_node = self._create_directory_node(self.root_directory, load_children=True)
-        self.tree.set_root(root_node)
+        filesystems = self._get_filesystems()
+        for filesystem_path in filesystems:
+            filesystem_node = self._create_directory_node(filesystem_path)
+            filesystem_node.parent = container_root
+
+            if self._is_ancestor_of_current(filesystem_path):
+                self._expand_path_to_current(filesystem_node)
+
+        self.tree.set_root(container_root)
 
     def _create_directory_node(
         self,
@@ -63,6 +64,9 @@ class ExplorerManager:
         for entry_path in entries:
             try:
                 if entry_path.is_dir():
+                    if entry_path.name.startswith("."):
+                        continue
+
                     FileSystemNode(
                         name=entry_path.name,
                         filepath=entry_path,
@@ -84,6 +88,18 @@ class ExplorerManager:
             except (PermissionError, OSError):
                 continue
 
+    def collapse_all(self) -> None:
+        self._expanded_directories.clear()
+
+        root = self.tree.get_root()
+        if not root:
+            return
+
+        for filesystem_node in list(root.children):
+            if isinstance(filesystem_node, FileSystemNode):
+                for child in list(filesystem_node.children):
+                    child.parent = None
+
     def expand_directory(self, directory_node: FileSystemNode) -> None:
         if directory_node.node_type != NOD_TYPE_DIRECTORY:
             return
@@ -101,3 +117,50 @@ class ExplorerManager:
     def collapse_directory(self, directory_path: Path) -> None:
         if directory_path in self._expanded_directories:
             del self._expanded_directories[directory_path]
+
+    def clear_directory_children(self, directory_node: FileSystemNode) -> None:
+        for child in list(directory_node.children):
+            child.parent = None
+
+    def _get_filesystems(self) -> List[Path]:
+        system = platform.system()
+
+        if system == "Windows":
+            return self._get_windows_drives()
+
+        return [Path("/")]
+
+    def _get_windows_drives(self) -> List[Path]:
+        drives = []
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            drive = Path(f"{letter}:/")
+            if drive.exists():
+                drives.append(drive)
+        return drives
+
+    def _is_ancestor_of_current(self, path: Path) -> bool:
+        try:
+            self.current_directory.relative_to(path)
+            return True
+        except ValueError:
+            return False
+
+    def _expand_path_to_current(self, filesystem_node: FileSystemNode) -> None:
+        try:
+            relative_parts = self.current_directory.relative_to(filesystem_node.filepath).parts
+        except ValueError:
+            return
+
+        current_node = filesystem_node
+        current_path = filesystem_node.filepath
+
+        for part in relative_parts:
+            current_path = current_path / part
+            self._load_directory_children(current_node)
+
+            for child in current_node.children:
+                if isinstance(child, FileSystemNode) and child.filepath == current_path:
+                    current_node = child
+                    break
+            else:
+                break

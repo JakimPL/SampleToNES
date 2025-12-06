@@ -27,6 +27,8 @@ from .constants import (
     DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
     DIM_PANEL_LEFT_HEIGHT,
     DIM_PANEL_LEFT_WIDTH,
+    DIM_PANEL_MAIN_LEFT_HEIGHT,
+    DIM_PANEL_MAIN_LEFT_WIDTH,
     DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
     DIM_PANEL_RIGHT_HEIGHT,
     DIM_PANEL_RIGHT_WIDTH,
@@ -465,8 +467,8 @@ class GUI:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
-                        width=DIM_PANEL_LEFT_WIDTH,
-                        height=DIM_PANEL_LEFT_HEIGHT,
+                        width=DIM_PANEL_MAIN_LEFT_WIDTH,
+                        height=DIM_PANEL_MAIN_LEFT_HEIGHT,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                         border=False,
