@@ -16,6 +16,10 @@ class GUIState(BaseModel):
         default=False,
         description="If advanced settings are shown in the config panel.",
     )
+    autoplay: bool = Field(
+        default=True,
+        description="If samples should autoplay when clicked.",
+    )
 
     @field_serializer("current_reconstruction")
     def serialize_current_reconstruction(self, value: Optional[Path]) -> Optional[str]:

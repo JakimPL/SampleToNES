@@ -2,11 +2,13 @@ import contextlib
 import os
 import sys
 import threading
+from pathlib import Path
 from typing import Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
 
+from sampletones.audio.io import load_audio
 from sampletones.exceptions import PlaybackError
 from sampletones.utils.logger import logger
 
@@ -241,6 +243,10 @@ class AudioDeviceManager:
     def set_position(self, position: int) -> None:
         if self._audio_data is not None:
             self._position = max(0, min(position, len(self._audio_data)))
+
+    def play_file(self, filepath: Path) -> None:
+        audio = load_audio(filepath, normalize=False, quantize=False)
+        self.play(audio)
 
     def play(self, audio: np.ndarray) -> None:
         self.stop()

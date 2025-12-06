@@ -69,6 +69,7 @@ LBL_MENU_ITEM_PLAY_FROM_START = "Play from start"
 LBL_MENU_ITEM_PLAY = "Play"
 LBL_MENU_ITEM_PAUSE = "Pause"
 LBL_MENU_ITEM_STOP = "Stop"
+LBL_MENU_ITEM_AUTOPLAY = "Autoplay"
 
 LBL_MENU_VIEW = "View"
 LBL_MENU_ITEM_FULLSCREEN = "Fullscreen"
@@ -86,6 +87,7 @@ TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS = "menu_item_show_advanced_settings"
 TAG_MENU_ITEM_PLAY_FROM_START = "menu_item_play_from_start"
 TAG_MENU_ITEM_PLAY = "menu_item_play"
 TAG_MENU_ITEM_STOP = "menu_item_stop"
+TAG_MENU_ITEM_AUTOPLAY = "menu_item_autoplay"
 
 # Tab labels
 LBL_TAB_MAIN = "Main"

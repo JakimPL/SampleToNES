@@ -1,8 +1,13 @@
+from pathlib import Path
+from typing import Any, Callable, Optional
+
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, TreeNode
 from sampletones.typehints import Sender
 
+from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
     DIM_PANEL_EXPLORER_HEIGHT,
     DIM_PANEL_EXPLORER_WIDTH,
@@ -10,6 +15,7 @@ from ...constants import (
     LBL_EXPLORER_FILESYSTEM,
     LBL_TREE_FILTER,
     NOD_TYPE_DIRECTORY,
+    NOD_TYPE_FILE,
     NOD_TYPE_ROOT,
     SUF_NODE_DUMMY,
     SUF_NODE_HANDLER,
@@ -27,10 +33,22 @@ from ...elements.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dpg import dpg_delete_item
 
+OnReconstructPathCallback = Callable[[Path], None]
+
 
 class GUIExplorerPanel(GUITreePanel):
-    def __init__(self):
+    def __init__(
+        self,
+        audio_device_manager: AudioDeviceManager,
+        application_config_manager: ApplicationConfigManager,
+    ) -> None:
         self.explorer_manager = ExplorerManager()
+        self.audio_device_manager = audio_device_manager
+        self.application_config_manager = application_config_manager
+
+        self._on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
+        self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
+        self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
 
         super().__init__(
             tree=self.explorer_manager.tree,
@@ -89,9 +107,11 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _refresh_tree(self) -> None:
         self._set_explorer_tree_enabled(False)
-        self.explorer_manager.refresh_tree()
-        self._rebuild_tree()
-        self._set_explorer_tree_enabled(True)
+        try:
+            self.explorer_manager.refresh_tree()
+            self._rebuild_tree()
+        finally:
+            self._set_explorer_tree_enabled(True)
 
     def _set_explorer_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_EXPLORER_TREE_GROUP, enabled=enabled)
@@ -105,6 +125,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
+        handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
         if node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
             with dpg.tree_node(
@@ -127,14 +148,13 @@ class GUIExplorerPanel(GUITreePanel):
                     show=not self.explorer_manager.is_directory_expanded(node.filepath),
                 )
 
-            handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
-            dpg_delete_item(handler_registry_tag)
-
-            with dpg.item_handler_registry(tag=handler_registry_tag):
-                dpg.add_item_clicked_handler(callback=self._on_directory_node_clicked, user_data=node)
-
-            dpg.bind_item_handler_registry(node_tag, handler_registry_tag)
-
+            self._add_item_handler_registry(
+                tag=handler_registry_tag,
+                parent=node_tag,
+                item_click_callback=self._on_directory_node_clicked,
+                item_double_click_callback=None,
+                node=node,
+            )
         else:
             dpg.add_selectable(
                 label=node.name,
@@ -146,6 +166,51 @@ class GUIExplorerPanel(GUITreePanel):
             )
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
+            self._add_item_handler_registry(
+                tag=handler_registry_tag,
+                parent=node_tag,
+                item_click_callback=self._on_file_node_clicked,
+                item_double_click_callback=self._on_file_node_double_clicked,
+                node=node,
+            )
+
+    def _add_item_handler_registry(
+        self,
+        tag: str,
+        parent: str,
+        item_click_callback: Callable[[Sender, int, Any], None],
+        item_double_click_callback: Optional[Callable[[Sender, int, Any], None]],
+        node: TreeNode,
+    ) -> None:
+        dpg_delete_item(tag)
+        with dpg.item_handler_registry(tag=tag):
+            if item_click_callback is not None:
+                dpg.add_item_clicked_handler(
+                    callback=item_click_callback,
+                    user_data=node,
+                )
+            if item_double_click_callback is not None:
+                dpg.add_item_double_clicked_handler(
+                    callback=item_double_click_callback,
+                    user_data=node,
+                )
+
+        dpg.bind_item_handler_registry(parent, tag)
+
+    def _on_file_node_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_FILE:
+            return
+
+        if self.application_config_manager.autoplay:
+            self.audio_device_manager.play_file(user_data.filepath)
+
+    def _on_file_node_double_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_FILE:
+            return
+
+        if self._on_reconstruct_file is not None:
+            self._on_reconstruct_file(user_data.filepath)
+
     def _on_directory_node_clicked(self, sender: Sender, app_data: int, user_data: FileSystemNode) -> None:
         if not isinstance(user_data, FileSystemNode) or user_data.node_type != NOD_TYPE_DIRECTORY:
             return
@@ -155,22 +220,36 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         self._set_explorer_tree_enabled(False)
-        current_state = dpg.get_value(node_tag)
-        new_state = not current_state
-        dpg.set_value(node_tag, new_state)
+        try:
+            current_state = dpg.get_value(node_tag)
+            new_state = not current_state
+            dpg.set_value(node_tag, new_state)
 
-        if new_state:
-            if not self.explorer_manager.is_directory_expanded(user_data.filepath):
-                self.explorer_manager.expand_directory(user_data)
+            if new_state:
+                if not self.explorer_manager.is_directory_expanded(user_data.filepath):
+                    self.explorer_manager.expand_directory(user_data)
 
-                dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
-                dpg_delete_item(dummy_tag)
+                    dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
+                    dpg_delete_item(dummy_tag)
 
-                for child in user_data.children:
-                    self._build_tree_node(child, node_tag)
-        else:
-            self.explorer_manager.collapse_directory(user_data.filepath)
-            self.explorer_manager.clear_directory_children(user_data)
-            self._rebuild_tree()
+                    for child in user_data.children:
+                        self._build_tree_node(child, node_tag)
+            else:
+                self.explorer_manager.collapse_directory(user_data.filepath)
+                self.explorer_manager.clear_directory_children(user_data)
+                self._rebuild_tree()
+        finally:
+            self._set_explorer_tree_enabled(True)
 
-        self._set_explorer_tree_enabled(True)
+    def set_callbacks(
+        self,
+        on_reconstruct_directory: Optional[OnReconstructPathCallback] = None,
+        on_reconstruct_file: Optional[OnReconstructPathCallback] = None,
+        on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None,
+    ) -> None:
+        if on_reconstruct_directory is not None:
+            self._on_reconstruct_directory = on_reconstruct_directory
+        if on_reconstruct_file is not None:
+            self._on_reconstruct_file = on_reconstruct_file
+        if on_toggle_mark_as_favorite is not None:
+            self._on_toggle_mark_as_favorite = on_toggle_mark_as_favorite

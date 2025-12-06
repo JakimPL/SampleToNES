@@ -51,6 +51,10 @@ class ApplicationConfigManager:
         self.config.gui.advanced_settings = not self.config.gui.advanced_settings
         return self.config.gui.advanced_settings
 
+    def toggle_autoplay(self) -> bool:
+        self.config.gui.autoplay = not self.config.gui.autoplay
+        return self.config.gui.autoplay
+
     def load_current_tab(self) -> str:
         return self.config.gui.current_tab
 
@@ -139,3 +143,7 @@ class ApplicationConfigManager:
     @property
     def advanced_settings(self) -> bool:
         return self.config.gui.advanced_settings
+
+    @property
+    def autoplay(self) -> bool:
+        return self.config.gui.autoplay

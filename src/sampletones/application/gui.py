@@ -37,6 +37,7 @@ from .constants import (
     FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_FILE,
     LBL_MENU_ITEM_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_AUTOPLAY,
     LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_EXIT,
     LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -71,6 +72,7 @@ from .constants import (
     TAG_CONFIG_STATUS_POPUP,
     TAG_EXPLORER_PANEL_GROUP,
     TAG_INSTRUCTIONS_PANEL_GROUP,
+    TAG_MENU_ITEM_AUTOPLAY,
     TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
@@ -133,7 +135,9 @@ class GUI:
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
-        self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel()
+        self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
+            self.audio_device_manager, self.application_config_manager
+        )
         self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
 
@@ -260,7 +264,7 @@ class GUI:
             self._export_reconstruction_ftis_dialog,
         )
         self.shortcut_manager.register(
-            ShortcutId.FULLSCREEN_TOGGLE,
+            ShortcutId.TOGGLE_FULLSCREEN,
             Shortcut(dpg.mvKey_F11),
             self._toggle_fullscreen,
         )
@@ -284,6 +288,11 @@ class GUI:
             Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
             self._stop,
         )
+        self.shortcut_manager.register(
+            ShortcutId.TOGGLE_AUTOPLAY,
+            Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
+            self._toggle_autoplay,
+        )
 
         self.shortcut_manager.bind_all()
 
@@ -292,7 +301,14 @@ class GUI:
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
-        self.config_panel.set_callbacks(on_update_library_directory=self.instructions_panel.refresh)
+
+        self.config_panel.set_callbacks(
+            on_update_library_directory=self.instructions_panel.refresh,
+        )
+        self.explorer_panel.set_callbacks(
+            on_reconstruct_file=self._reconstruct_file,
+            on_reconstruct_directory=self._reconstruct_directory,
+        )
         self.instructions_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
@@ -411,6 +427,13 @@ class GUI:
                     label=LBL_MENU_ITEM_STOP,
                     enabled=self._is_stop_enabled(),
                 )
+                dpg.add_separator()
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.TOGGLE_AUTOPLAY,
+                    tag=TAG_MENU_ITEM_AUTOPLAY,
+                    label=LBL_MENU_ITEM_AUTOPLAY,
+                    check=True,
+                )
             with dpg.menu(label=LBL_MENU_VIEW):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_ADVANCED_SETTINGS,
@@ -419,7 +442,7 @@ class GUI:
                     check=True,
                 )
                 self.shortcut_manager.add_menu_item(
-                    ShortcutId.FULLSCREEN_TOGGLE,
+                    ShortcutId.TOGGLE_FULLSCREEN,
                     tag=TAG_MENU_ITEM_FULLSCREEN,
                     label=LBL_MENU_ITEM_FULLSCREEN,
                     check=True,
@@ -430,9 +453,7 @@ class GUI:
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
-        dpg_configure_item(TAG_MENU_ITEM_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled())
-        dpg_configure_item(TAG_MENU_ITEM_STOP, enabled=self._is_stop_enabled())
+        self._update_playback_menu_items()
         self._update_fullscreen_menu_item()
         self._update_advanced_settings_menu_item()
 
@@ -744,23 +765,32 @@ class GUI:
         if not self._is_library_loaded():
             self.instructions_panel.generate_library()
 
-    @file_dialog_handler
-    def _handle_reconstruct_file(self, filepath: Path) -> None:
+    def _reconstruct_file(self, filepath: Path) -> None:
         self.converter_window.show(filepath, is_file=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
 
     @file_dialog_handler
-    def _handle_reconstruct_directory(self, directory_path: Path) -> None:
+    def _handle_reconstruct_file(self, filepath: Path) -> None:
+        self._reconstruct_file(filepath)
+
+    def _reconstruct_directory(self, directory_path: Path) -> None:
         self.converter_window.show(directory_path, is_file=False)
         self.application_config_manager.set_reconstruction_path(directory_path)
         self._update_menu()
 
     @file_dialog_handler
-    def _handle_load_reconstruction(self, filepath: Path) -> None:
+    def _handle_reconstruct_directory(self, directory_path: Path) -> None:
+        self._reconstruct_directory(directory_path)
+
+    def _load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.load_and_display_reconstruction(filepath)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
         self._update_menu()
+
+    @file_dialog_handler
+    def _handle_load_reconstruction(self, filepath: Path) -> None:
+        self._load_reconstruction(filepath)
 
     def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
         self.audio_device_manager.stop()
@@ -944,8 +974,23 @@ class GUI:
             self._disable_fullscreen()
 
     def _update_fullscreen_menu_item(self) -> None:
-        fullscreen = self.application_config_manager.config.window.fullscreen
+        fullscreen = self.application_config_manager.fullscreen
         dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
+
+    def _toggle_autoplay(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.application_config_manager.toggle_autoplay()
+        self._update_playback_menu_items()
+
+    def _update_playback_menu_items(self) -> None:
+        dpg_configure_item(TAG_MENU_ITEM_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
+        dpg_configure_item(TAG_MENU_ITEM_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled())
+        dpg_configure_item(TAG_MENU_ITEM_STOP, enabled=self._is_stop_enabled())
+        dpg_set_value(TAG_MENU_ITEM_AUTOPLAY, self.application_config_manager.autoplay)
 
     def _toggle_advanced_settings(
         self,
