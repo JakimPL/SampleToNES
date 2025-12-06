@@ -357,6 +357,7 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         is_currently_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+        is_currently_expanded &= dpg.get_item_configuration(node_tag).get("open", False)
 
         if is_currently_expanded:
             self.explorer_manager.collapse_directory(node.filepath)
