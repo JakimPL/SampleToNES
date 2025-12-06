@@ -14,6 +14,7 @@ from ..constants import (
     SUF_GROUP,
 )
 from ..utils.dpg import dpg_delete_item, dpg_set_value
+from ..utils.tooltip import show_tooltip
 
 
 class GUIPathText:
@@ -47,16 +48,14 @@ class GUIPathText:
             dpg.add_group(horizontal=True, tag=self.group_tag, parent=self.parent)
             dpg.add_text(self.prefix, parent=self.group_tag)
 
-        kwargs = {
-            "tag": self.tag,
-            "color": self.color,
-            "parent": parent,
-        }
-
         dpg.add_text(
             self.display_text,
-            **kwargs,
+            tag=self.tag,
+            parent=parent,
+            color=self.color,
         )
+
+        show_tooltip(self.tag, str(self.path))
 
     def _create_handler(self) -> None:
         dpg_delete_item(self.handler_tag)

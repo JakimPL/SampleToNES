@@ -34,8 +34,6 @@ from ..constants import (
     TTL_DIALOG_RECONSTRUCTION_NOT_LOADED,
 )
 from ..elements.button import GUIButton
-from ..elements.fonts.font import Font
-from ..elements.fonts.registry import FontRegistry
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
 from .align import table_wrapper
@@ -55,7 +53,7 @@ def show_modal_dialog(
     with dpg.window(
         label=title,
         tag=tag,
-        modal=True,
+        modal=modal,
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
@@ -233,9 +231,3 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
         content=content,
         modal=False,
     )
-
-
-def show_tooltip(parent: str, message: str) -> None:
-    with dpg.tooltip(parent, hide_on_activity=True):
-        tooltip_text = dpg.add_text(message)
-        FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)

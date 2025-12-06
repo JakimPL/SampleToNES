@@ -32,7 +32,7 @@ DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
-DIM_INPUT_WIDTH = 200
+DIM_INPUT_WIDTH = -240
 
 # Search UI dimensions
 DIM_SEARCH_INPUT_WIDTH = -80
@@ -87,13 +87,14 @@ LBL_TAB_INSTRUCTIONS = "Instructions"
 LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
 # Section headers
-LBL_SECTION_GENERAL_SETTINGS = "Settings"
-LBL_SECTION_LIBRARY_SETTINGS = "Instructions settings"
+LBL_SECTION_GENERAL_SETTINGS = "General settings"
+LBL_SECTION_LIBRARY_SETTINGS = "Instructions library settings"
 LBL_SECTION_GENERATOR_SELECTION = "Generators"
+LBL_CONFIG_SECTION_LIBRARY_DIRECTORY = "Instructions directory"
 
 # Button labels
-LBL_BUTTON_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-LBL_CONFIG_SELECT_LIBRARY_DIRECTORY = "Select instructions directory"
+LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "Select output directory"
+LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY = "Select instructions directory"
 LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
 LBL_BUTTON_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_BUTTON_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
@@ -115,9 +116,9 @@ LBL_CHECKBOX_NOISE = "Noise"
 
 # Input field labels
 LBL_CONFIG_INPUT_MAX_WORKERS = "Workers"
-LBL_INPUT_SAMPLE_RATE = "Sample rate"
-LBL_INPUT_CHANGE_RATE = "NES frequency"
-LBL_INPUT_SEARCH = "Search"
+LBL_CONFIG_INPUT_SAMPLE_RATE = "Sample rate"
+LBL_CONFIG_INPUT_CHANGE_RATE = "NES frequency"
+LBL_CONFIG_INPUT_SEARCH = "Search"
 
 # Buttons suffixes
 SUF_BUTTON = "_button"

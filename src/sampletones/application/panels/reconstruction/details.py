@@ -120,6 +120,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:
         self._clear_tabs()
 
+        dpg.add_separator(tag=self.export_button_separator_tag, parent=self.tag)
         dpg.add_text(LBL_RECONSTRUCTION_GENERATORS, tag=TAG_RECONSTRUCTION_DETAILS_GENERATORS, parent=self.tag)
         with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag):
             for generator_name in feature_data.get_generator_names():

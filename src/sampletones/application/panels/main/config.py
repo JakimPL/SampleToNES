@@ -27,12 +27,13 @@ from ...constants import (
     DIM_INPUT_WIDTH,
     DIM_PANEL_CONFIG_HEIGHT,
     DIM_PANEL_CONFIG_WIDTH,
+    LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
     LBL_CHECKBOX_QUANTIZE_AUDIO,
+    LBL_CONFIG_INPUT_CHANGE_RATE,
     LBL_CONFIG_INPUT_MAX_WORKERS,
-    LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
-    LBL_INPUT_CHANGE_RATE,
-    LBL_INPUT_SAMPLE_RATE,
+    LBL_CONFIG_INPUT_SAMPLE_RATE,
+    LBL_CONFIG_SECTION_LIBRARY_DIRECTORY,
     LBL_SECTION_GENERAL_SETTINGS,
     LBL_SECTION_LIBRARY_SETTINGS,
     LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
@@ -61,9 +62,9 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
-from ...utils.dialogs import show_tooltip
 from ...utils.dpg import dpg_set_value
 from ...utils.file import file_dialog_handler
+from ...utils.tooltip import show_tooltip
 
 
 class GUIConfigPanel(GUIPanel):
@@ -95,7 +96,6 @@ class GUIConfigPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_audio_options()
-            self._create_library_directory_selection()
             self._create_library_settings()
             self._create_tooltips()
 
@@ -127,10 +127,11 @@ class GUIConfigPanel(GUIPanel):
 
     def _create_library_directory_selection(self) -> None:
         dpg.add_separator()
+        dpg.add_text(LBL_CONFIG_SECTION_LIBRARY_DIRECTORY)
         GUIButton(
             tag=TAG_CONFIG_LIBRARY_DIRECTORY,
             parent=TAG_CONFIG_PATHS_INSTRUCTIONS_GROUP,
-            label=LBL_CONFIG_SELECT_LIBRARY_DIRECTORY,
+            label=LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY,
             width=-1,
             callback=self._select_library_directory_dialog,
         )
@@ -147,7 +148,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_text(LBL_SECTION_LIBRARY_SETTINGS)
         dpg.add_input_int(
-            label=LBL_INPUT_SAMPLE_RATE,
+            label=LBL_CONFIG_INPUT_SAMPLE_RATE,
             default_value=DEFAULT_SAMPLE_RATE,
             tag=TAG_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
@@ -155,20 +156,22 @@ class GUIConfigPanel(GUIPanel):
             width=DIM_INPUT_WIDTH,
         )
         dpg.add_input_int(
-            label=LBL_INPUT_CHANGE_RATE,
+            label=LBL_CONFIG_INPUT_CHANGE_RATE,
             default_value=DEFAULT_CHANGE_RATE,
             tag=TAG_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
             width=DIM_INPUT_WIDTH,
         )
-        dpg.add_text(LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA)
         dpg.add_slider_int(
+            label=LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
             tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
-            width=-1,
+            width=DIM_INPUT_WIDTH,
         )
+
+        self._create_library_directory_selection()
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_CONFIG_NORMALIZE, LBL_TOOLTIP_CONFIG_NORMALIZE)

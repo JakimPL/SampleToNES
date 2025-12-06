@@ -9,7 +9,7 @@ from ..constants import (
     DIM_SEARCH_BUTTON_WIDTH,
     DIM_SEARCH_INPUT_WIDTH,
     LBL_BUTTON_CLEAR_SEARCH,
-    LBL_INPUT_SEARCH,
+    LBL_CONFIG_INPUT_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_SEARCH_INPUT,
@@ -53,7 +53,7 @@ class GUITreePanel(GUIPanel):
         with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
                 tag=self._search_input_tag,
-                hint=LBL_INPUT_SEARCH,
+                hint=LBL_CONFIG_INPUT_SEARCH,
                 callback=self._on_search_changed,
                 width=DIM_SEARCH_INPUT_WIDTH,
             )

@@ -12,10 +12,11 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_INPUT_WIDTH,
     DIM_PANEL_RECONSTRUCTOR_HEIGHT,
     DIM_PANEL_RECONSTRUCTOR_WIDTH,
     FLAG_CHECKBOX_DEFAULT_ENABLED,
-    LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
+    LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -38,9 +39,9 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
-from ...utils.dialogs import show_tooltip
 from ...utils.dpg import dpg_set_value
 from ...utils.file import file_dialog_handler
+from ...utils.tooltip import show_tooltip
 
 
 class GUIReconstructorPanel(GUIPanel):
@@ -103,13 +104,13 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _create_mixer_slider(self) -> None:
         dpg.add_separator()
-        dpg.add_text(LBL_SLIDER_RECONSTRUCTOR_MIXER)
         dpg.add_slider_float(
+            label=LBL_SLIDER_RECONSTRUCTOR_MIXER,
+            tag=TAG_RECONSTRUCTOR_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=MIXER,
-            width=-1,
-            tag=TAG_RECONSTRUCTOR_MIXER,
+            width=DIM_INPUT_WIDTH,
         )
 
     def _create_output_directory_section(self) -> None:
@@ -117,7 +118,7 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_text(LBL_SECTION_OUTPUT_DIRECTORY)
         GUIButton(
             tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-            label=LBL_BUTTON_SELECT_OUTPUT_DIRECTORY,
+            label=LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
             width=-1,
             callback=self._select_output_directory_dialog,
         )
