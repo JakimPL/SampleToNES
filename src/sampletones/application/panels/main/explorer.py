@@ -10,6 +10,7 @@ from sampletones.typehints import Sender
 from ...config.application.manager import ApplicationConfigManager
 from ...constants import (
     COL_PATH_TEXT_HOVER,
+    COL_TEXT_DISABLED_DEFAULT,
     DIM_PANEL_EXPLORER_HEIGHT,
     DIM_PANEL_EXPLORER_WIDTH,
     LBL_BUTTON_COLLAPSE_ALL,
@@ -35,7 +36,7 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
-from ...utils.dpg import dpg_delete_item
+from ...utils.dpg import dpg_delete_children, dpg_delete_item
 
 OnReconstructPathCallback = Callable[[Path], None]
 
@@ -120,6 +121,19 @@ class GUIExplorerPanel(GUITreePanel):
     def _set_explorer_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_EXPLORER_TREE_GROUP, enabled=enabled)
 
+    def _apply_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
+        if node.node_type != NOD_TYPE_DIRECTORY:
+            return
+
+        has_content = self.explorer_manager.has_relevant_content(node.filepath)
+        if not has_content:
+            with dpg.theme() as disabled_theme:
+                with dpg.theme_component(dpg.mvTreeNode):
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
+            dpg.bind_item_theme(node_tag, disabled_theme)
+        else:
+            dpg.bind_item_theme(node_tag, 0)
+
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
@@ -132,6 +146,7 @@ class GUIExplorerPanel(GUITreePanel):
         handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
         if node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
+
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
@@ -140,6 +155,7 @@ class GUIExplorerPanel(GUITreePanel):
                 open_on_arrow=False,
             ) as tree_node_tag:
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+                self._apply_node_theme(node_tag, node)
 
                 if self.explorer_manager.is_directory_expanded(node.filepath):
                     for child in node.children:
@@ -202,8 +218,8 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.bind_item_handler_registry(parent, tag)
 
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
-        mouse_button, click_count = app_data
-        if mouse_button == dpg.mvMouseButton_Left and click_count == 1:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
             return self._autoplay_file(user_data)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -252,19 +268,43 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        self._set_explorer_tree_enabled(False)
-        try:
-            is_currently_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+        is_currently_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
 
-            if is_currently_expanded:
-                self.explorer_manager.collapse_directory(node.filepath)
-                self.explorer_manager.clear_directory_children(node)
-            else:
-                self.explorer_manager.expand_directory(node)
+        if is_currently_expanded:
+            self.explorer_manager.collapse_directory(node.filepath)
+            self.explorer_manager.clear_directory_children(node)
+        else:
+            self.explorer_manager.expand_directory(node)
 
-            self._rebuild_tree()
-        finally:
-            self._set_explorer_tree_enabled(True)
+        self._rebuild_node_subtree(node)
+
+    def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        dpg_delete_children(node_tag)
+        if self.explorer_manager.is_directory_expanded(node.filepath):
+            for child in node.children:
+                self._build_tree_node(child, node_tag)
+        else:
+            dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
+            dpg.add_tree_node(
+                label="",
+                tag=dummy_tag,
+                parent=node_tag,
+            )
+
+    def _reapply_themes_recursive(self, node: TreeNode) -> None:
+        if not isinstance(node, FileSystemNode):
+            return
+
+        node_tag = self._generate_node_tag(node)
+        if dpg.does_item_exist(node_tag):
+            self._apply_node_theme(node_tag, node)
+
+        for child in node.children:
+            self._reapply_themes_recursive(child)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:

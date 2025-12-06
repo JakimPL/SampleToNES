@@ -88,6 +88,29 @@ class ExplorerManager:
             except (PermissionError, OSError):
                 continue
 
+    def has_relevant_content(self, directory_path: Path) -> bool:
+        if not directory_path.is_dir():
+            return False
+
+        try:
+            for entry_path in directory_path.iterdir():
+                if entry_path.name.startswith("."):
+                    continue
+
+                if entry_path.is_dir():
+                    return True
+
+                if entry_path.is_file() and entry_path.suffix.lower() in [
+                    EXT_FILE_WAVE,
+                    EXT_FILE_LIBRARY,
+                    EXT_FILE_RECONSTRUCTION,
+                ]:
+                    return True
+        except (PermissionError, OSError):
+            return False
+
+        return False
+
     def collapse_all(self) -> None:
         self._expanded_directories.clear()
 
