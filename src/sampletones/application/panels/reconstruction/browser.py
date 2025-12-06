@@ -207,8 +207,8 @@ class GUIBrowserPanel(GUITreePanel):
             show_error_dialog(
                 exception,
                 MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
-                    exception.expected_version,
                     exception.actual_version,
+                    exception.expected_version,
                 ),
             )
             return

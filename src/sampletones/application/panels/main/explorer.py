@@ -27,6 +27,7 @@ from ...constants import (
     LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
+    LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
     LBL_EXPLORER_FILESYSTEM,
     LBL_TREE_FILTER,
     NOD_TYPE_DIRECTORY,
@@ -391,6 +392,17 @@ class GUIExplorerPanel(GUITreePanel):
             text = dpg.add_text(node.name, color=color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
+    def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
+        label = (
+            LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE
+            if node.filepath in self.application_config_manager.favorites
+            else LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE
+        )
+        dpg.add_menu_item(
+            label=label,
+            callback=lambda: self._context_mark_as_favorite(node),
+        )
+
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
             return
@@ -421,10 +433,7 @@ class GUIExplorerPanel(GUITreePanel):
                         callback=lambda: self._context_reconstruct_file(node),
                     )
 
-            dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
-                callback=lambda: self._context_mark_as_favorite(node),
-            )
+            self._add_context_menu_favorite_item(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_DIRECTORY:
@@ -443,10 +452,8 @@ class GUIExplorerPanel(GUITreePanel):
                 label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
                 callback=lambda: self._context_reconstruct_directory(node),
             )
-            dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
-                callback=lambda: self._context_mark_as_favorite(node),
-            )
+
+            self._add_context_menu_favorite_item(node)
 
     def _context_reconstruct_file(self, node: FileSystemNode) -> None:
         if self._on_reconstruct_file is not None:
