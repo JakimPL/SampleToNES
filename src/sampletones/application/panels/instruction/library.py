@@ -260,6 +260,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def load_library_file(self, filepath: Path) -> None:
         library_key = self.library_manager.create_key_from_filename(filepath.name)
         self._load_library_and_set_current(library_key)
+        self.update_status()
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)

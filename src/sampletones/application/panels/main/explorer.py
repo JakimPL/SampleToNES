@@ -27,6 +27,8 @@ from ...constants import (
     LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
     LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
+    LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY,
+    LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY,
     LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
     LBL_EXPLORER_FILESYSTEM,
     LBL_TREE_FILTER,
@@ -67,6 +69,8 @@ class GUIExplorerPanel(GUITreePanel):
         self._on_load_reconstruction: Optional[OnReconstructPathCallback] = None
         self._on_load_library: Optional[OnReconstructPathCallback] = None
         self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
+        self._on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
+        self._on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
@@ -454,6 +458,16 @@ class GUIExplorerPanel(GUITreePanel):
             )
 
             self._add_context_menu_favorite_item(node)
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY,
+                callback=lambda: self._context_set_as_output_directory(node),
+            )
+
+            dpg.add_menu_item(
+                label=LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY,
+                callback=lambda: self._context_set_as_library_directory(node),
+            )
 
     def _context_reconstruct_file(self, node: FileSystemNode) -> None:
         if self._on_reconstruct_file is not None:
@@ -470,6 +484,14 @@ class GUIExplorerPanel(GUITreePanel):
         self.application_config_manager.toggle_favorite(node.filepath)
         self._update_favorite_indicator(node)
 
+    def _context_set_as_output_directory(self, node: FileSystemNode) -> None:
+        if self._on_set_as_output_directory is not None:
+            self._on_set_as_output_directory(node.filepath)
+
+    def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
+        if self._on_set_as_library_directory is not None:
+            self._on_set_as_library_directory(node.filepath)
+
     def _update_favorite_indicator(self, node: FileSystemNode) -> None:
         node_tag = self._generate_node_tag(node)
         if dpg.does_item_exist(node_tag):
@@ -482,6 +504,8 @@ class GUIExplorerPanel(GUITreePanel):
         on_load_reconstruction: Optional[OnReconstructPathCallback] = None,
         on_load_library: Optional[OnReconstructPathCallback] = None,
         on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None,
+        on_set_as_output_directory: Optional[OnReconstructPathCallback] = None,
+        on_set_as_library_directory: Optional[OnReconstructPathCallback] = None,
     ) -> None:
         if on_reconstruct_directory is not None:
             self._on_reconstruct_directory = on_reconstruct_directory
@@ -493,3 +517,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._on_load_library = on_load_library
         if on_toggle_mark_as_favorite is not None:
             self._on_toggle_mark_as_favorite = on_toggle_mark_as_favorite
+        if on_set_as_output_directory is not None:
+            self._on_set_as_output_directory = on_set_as_output_directory
+        if on_set_as_library_directory is not None:
+            self._on_set_as_library_directory = on_set_as_library_directory

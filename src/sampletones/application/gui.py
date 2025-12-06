@@ -136,16 +136,23 @@ class GUI:
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
-            self.audio_device_manager, self.application_config_manager
+            self.audio_device_manager,
+            self.application_config_manager,
         )
-        self.config_panel: GUIConfigPanel = GUIConfigPanel(self.config_manager, self.application_config_manager)
+        self.config_panel: GUIConfigPanel = GUIConfigPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
 
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
 
-        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(self.config_manager, self.application_config_manager)
+        self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager,
             self.application_config_manager,
@@ -310,13 +317,15 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory,
             on_load_reconstruction=self._load_reconstruction,
             on_load_library=self._load_library,
+            on_set_as_library_directory=self.config_panel.change_library_directory,
+            on_set_as_output_directory=self.reconstructor_panel.change_output_directory,
         )
         self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.config_panel.apply_library_config,
         )
         self.reconstructor_panel.set_callbacks(
-            on_update_library_directory=self.browser_panel.refresh,
+            on_update_output_directory=self.browser_panel.refresh,
         )
         self.browser_panel.set_callbacks(
             on_reconstruction_loaded=self._on_reconstruction_loaded,

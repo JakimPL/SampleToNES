@@ -50,7 +50,7 @@ class GUIReconstructorPanel(GUIPanel):
         self.config_manager = config_manager
         self.output_path_text: Optional[GUIPathText] = None
 
-        self._on_update_library_directory: Optional[Callable[[], None]] = None
+        self._on_update_output_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
@@ -185,8 +185,8 @@ class GUIReconstructorPanel(GUIPanel):
         if self.output_path_text is not None:
             self.output_path_text.set_path(directory_path)
 
-        if self._on_update_library_directory:
-            self._on_update_library_directory()
+        if self._on_update_output_directory:
+            self._on_update_output_directory()
 
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:
@@ -206,6 +206,9 @@ class GUIReconstructorPanel(GUIPanel):
         if self.output_path_text:
             self.output_path_text.set_path(output_directory)
 
-    def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
-        if on_update_library_directory is not None:
-            self._on_update_library_directory = on_update_library_directory
+    def set_callbacks(
+        self,
+        on_update_output_directory: Optional[Callable[[], None]] = None,
+    ) -> None:
+        if on_update_output_directory is not None:
+            self._on_update_output_directory = on_update_output_directory
