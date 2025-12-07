@@ -28,26 +28,26 @@ from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
 from ...constants import (
-    LBL_BUTTON_GENERATE_LIBRARY,
-    LBL_BUTTON_REFRESH_LIBRARIES,
-    LBL_BUTTON_REGENERATE_LIBRARY,
-    LBL_LIBRARY_AVAILABLE_LIBRARIES,
-    LBL_LIBRARY_LIBRARIES,
-    MSG_GLOBAL_WINDOW_NOT_AVAILABLE,
-    MSG_INVALID_METADATA_ERROR,
-    MSG_LIBRARY_FILE_LOAD_ERROR,
-    MSG_LIBRARY_FILE_NOT_FOUND,
-    MSG_LIBRARY_GENERATING,
-    MSG_LIBRARY_GENERATION_CANCELLATION,
-    MSG_LIBRARY_GENERATION_FAILED,
-    MSG_LIBRARY_GENERATION_SAVING,
-    MSG_LIBRARY_GENERATION_SUCCESS,
-    MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
-    MSG_LIBRARY_INVALID_DATA_ERROR,
-    MSG_LIBRARY_INVALID_DATA_VALUES_ERROR,
-    MSG_LIBRARY_LOAD_ERROR,
-    MSG_LIBRARY_LOADING,
-    MSG_LIBRARY_NOT_LOADED,
+    LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+    LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
+    LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
+    LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
+    LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_FILE_NOT_FOUND,
+    MSG_INSTRUCTIONS_LIBRARY_GENERATING,
+    MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION,
+    MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED,
+    MSG_INSTRUCTIONS_LIBRARY_GENERATION_SAVING,
+    MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
+    MSG_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
+    MSG_INSTRUCTIONS_LIBRARY_LOADING,
+    MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED,
+    MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     SUF_LEFT_PANEL,
@@ -62,10 +62,10 @@ from ...constants import (
     TAG_LIBRARY_TREE_GROUP,
     TAG_LIBRARY_TREE_WINDOW,
     TAG_TAB_INSTRUCTIONS,
-    TPL_LIBRARY_EXISTS,
-    TPL_LIBRARY_GENERATION_PROGRESS,
-    TPL_LIBRARY_LOADED,
-    TPL_LIBRARY_NOT_EXISTS,
+    TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS,
+    TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS,
+    TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED,
+    TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS,
     TPL_TIME_ESTIMATION,
     TTL_DIALOG_LIBRARY_GENERATION_STATUS,
     VAL_GLOBAL_DEFAULT_FLOAT,
@@ -131,12 +131,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.initialize_libraries()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)
+        section_text = dpg.add_text(LBL_INSTRUCTIONS_LIBRARY_LIBRARIES)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_library_status(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
+        dpg.add_text(MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
@@ -148,13 +148,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             )
             GUIButton(
                 tag=TAG_LIBRARY_BUTTON_REFRESH,
-                label=LBL_BUTTON_REFRESH_LIBRARIES,
+                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
                 width=-1,
                 callback=self._refresh_libraries,
             )
             GUIButton(
                 tag=TAG_LIBRARY_BUTTON_GENERATE,
-                label=LBL_BUTTON_GENERATE_LIBRARY,
+                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 width=-1,
                 callback=self.generate_library,
                 font=Font.BOLD,
@@ -165,7 +165,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_LIBRARY_TREE_WINDOW):
             with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
-                with dpg.tree_node(label=LBL_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True):
+                with dpg.tree_node(
+                    label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True
+                ):
                     pass
 
     def refresh(self) -> None:
@@ -188,14 +190,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         library_name = self.library_manager.get_display_name_from_key(key)
 
         if self.library_manager.is_library_loaded(key):
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_LOADED.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_REGENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY)
         elif self.library_manager.library_exists_for_key(key):
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_EXISTS.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY)
         else:
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_LIBRARY_NOT_EXISTS.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_GENERATE_LIBRARY)
+            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name))
+            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY)
 
         is_generating = self.library_manager.is_generating()
         dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
@@ -240,20 +242,20 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             logger.error_with_traceback(exception, f"Library file not found for key {library_key}")
             show_file_not_found_dialog(
                 self.library_manager.get_path(library_key),
-                MSG_LIBRARY_FILE_NOT_FOUND,
+                MSG_INSTRUCTIONS_LIBRARY_FILE_NOT_FOUND,
             )
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
-            show_error_dialog(exception, MSG_LIBRARY_FILE_LOAD_ERROR)
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR)
         except InvalidMetadataError as exception:
             logger.error_with_traceback(exception, f"Invalid metadata in library file for key {library_key}")
-            show_error_dialog(exception, MSG_INVALID_METADATA_ERROR)
+            show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
         except InvalidLibraryDataValuesError as exception:
             logger.error_with_traceback(exception, f"Library data contains invalid values for key {library_key}")
-            show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_VALUES_ERROR)
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR)
         except InvalidLibraryDataError as exception:
             logger.error_with_traceback(exception, f"Invalid library data file for {library_key}")
-            show_error_dialog(exception, MSG_LIBRARY_INVALID_DATA_ERROR)
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR)
         except IncompatibleLibraryDataVersionError as exception:
             logger.error_with_traceback(
                 exception,
@@ -262,14 +264,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             )
             show_error_dialog(
                 exception,
-                MSG_LIBRARY_INCOMPATIBLE_VERSION_ERROR.format(
+                MSG_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR.format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
             )
         except Exception as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
-            show_error_dialog(exception, MSG_LIBRARY_LOAD_ERROR)
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
 
     def load_library_file(self, filepath: Path) -> None:
         library_key = self.library_manager.create_key_from_filename(filepath.name)
@@ -340,7 +342,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
-        dpg.set_item_label(sender, MSG_LIBRARY_LOADING)
+        dpg.set_item_label(sender, MSG_INSTRUCTIONS_LIBRARY_LOADING)
         self._load_library_and_set_current(library_key)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
@@ -373,13 +375,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         config = self.config_manager.get_config()
         window = self.config_manager.get_window()
         if not window:
-            exception = WindowNotAvailableError(MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
+            exception = WindowNotAvailableError(MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             logger.info("No FFT window available for library generation")
-            show_error_dialog(exception, MSG_GLOBAL_WINDOW_NOT_AVAILABLE)
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             return
 
         dpg_configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATING)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATING)
         dpg_configure_item(TAG_LIBRARY_PROGRESS, show=True)
         dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=False)
         dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
@@ -412,18 +414,20 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         percent_string = self.eta_estimator.get_percent_string()
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay=percent_string)
 
-        status_text = TPL_LIBRARY_GENERATION_PROGRESS.format(creator.completed_instructions, creator.total_instructions)
+        status_text = TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS.format(
+            creator.completed_instructions, creator.total_instructions
+        )
         if eta_string:
             status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
 
         dpg_set_value(TAG_LIBRARY_STATUS, status_text)
 
     def _set_generation_completed(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_SAVING)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SAVING)
         dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_LIBRARY_GENERATION_FAILED)
+        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
 
     def _set_generation_cancelled(self) -> None:
         dpg_set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
@@ -435,15 +439,19 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _on_generation_completed(self) -> None:
         dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
         if not dpg.get_item_configuration(TAG_CONVERTER_PANEL)["show"]:
-            show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS)
+            show_info_dialog(
+                self.tag, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS
+            )
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
+        show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
         self._finalize_generation_error(exception)
 
     def _on_generation_cancelled(self) -> None:
-        show_info_dialog(self.tag, MSG_LIBRARY_GENERATION_CANCELLATION, TTL_DIALOG_LIBRARY_GENERATION_STATUS)
+        show_info_dialog(
+            self.tag, MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION, TTL_DIALOG_LIBRARY_GENERATION_STATUS
+        )
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:
@@ -463,7 +471,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_LIBRARY_PROGRESS, show=False)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_LIBRARY_GENERATION_FAILED)
+        show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
         self.library_manager.cleanup_creator()
         self._restore_generation_panel()
 

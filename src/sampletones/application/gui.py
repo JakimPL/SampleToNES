@@ -58,9 +58,9 @@ from .constants import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
-    MSG_CONFIG_LOADED_SUCCESSFULLY,
     MSG_CONFIG_SAVE_FAILED,
-    MSG_CONFIG_SAVED_SUCCESSFULLY,
+    MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
+    MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
     MSG_LIBRARY_DISPLAY_ERROR,
     MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
     SUF_CENTER_PANEL,
@@ -610,7 +610,7 @@ class GUI:
     def _handle_save_config(self, filepath: Path) -> None:
         try:
             self.config_manager.save_config_to_file(filepath)
-            self._show_config_status_dialog(MSG_CONFIG_SAVED_SUCCESSFULLY)
+            self._show_config_status_dialog(MSG_CONFIGURATION_SAVED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
@@ -632,7 +632,7 @@ class GUI:
     def _handle_load_config(self, filepath: Path) -> None:
         try:
             self.config_manager.load_config_from_file(filepath)
-            self._show_config_status_dialog(MSG_CONFIG_LOADED_SUCCESSFULLY)
+            self._show_config_status_dialog(MSG_CONFIGURATION_LOADED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)

@@ -13,8 +13,8 @@ from ...constants import (
     COL_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
-    LBL_PLOT_ORIGINAL,
-    LBL_PLOT_RECONSTRUCTION,
+    LBL_GRAPH_WAVEFORM_ORIGINAL,
+    LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
     LBL_WAVEFORM_AMPLITUDE_LABEL,
     LBL_WAVEFORM_BUTTON_RESET_ALL,
     LBL_WAVEFORM_BUTTON_RESET_X,
@@ -198,7 +198,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.add_layer(
             ArrayLayer(
                 data=original_audio / (coefficient * original_audio_coefficient),
-                name=LBL_PLOT_ORIGINAL,
+                name=LBL_GRAPH_WAVEFORM_ORIGINAL,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
@@ -207,7 +207,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.add_layer(
             ArrayLayer(
                 data=approximation / coefficient,
-                name=LBL_PLOT_RECONSTRUCTION,
+                name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
                 color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
             )

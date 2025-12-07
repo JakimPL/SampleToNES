@@ -19,7 +19,7 @@ from ...constants import (
     COL_TEXT_LIBRARY,
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
-    LBL_BUTTON_COLLAPSE_ALL,
+    LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
     LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
     LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
@@ -109,7 +109,7 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.add_separator()
         GUIButton(
             tag=TAG_EXPLORER_COLLAPSE_ALL,
-            label=LBL_BUTTON_COLLAPSE_ALL,
+            label=LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
             parent=self.tag,
             width=-1,
             callback=self.collapse_all,

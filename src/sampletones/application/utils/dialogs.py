@@ -16,7 +16,7 @@ from ..constants import (
     LBL_BUTTON_HIDE_TRACEBACK,
     LBL_BUTTON_OK,
     LBL_BUTTON_SHOW_TRACEBACK,
-    MSG_LIBRARY_NOT_LOADED,
+    MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED,
     MSG_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_OK,
     SUF_BUTTON_SHOW_TRACEBACK,
@@ -179,7 +179,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
 def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
     def content(parent: str) -> None:
         dpg.add_text(
-            MSG_LIBRARY_NOT_LOADED.format(library_key=key),
+            MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED.format(library_key=key),
             parent=parent,
             wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )

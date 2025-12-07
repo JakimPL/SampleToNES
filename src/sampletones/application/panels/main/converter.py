@@ -18,12 +18,12 @@ from ...constants import (
     DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
     DIM_BUTTON_WIDTH_MAIN_CONVERTER,
     DIM_PANEL_HEIGHT_MAIN_CONVERTER,
-    LBL_BUTTON_CANCEL,
-    LBL_BUTTON_CLOSE,
-    LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
-    LBL_BUTTON_CONVERTER_CONVERT_SAMPLE,
-    LBL_BUTTON_LOAD,
-    LBL_SECTION_CONVERTER,
+    LBL_BUTTON_MAIN_CONVERTER_CANCEL,
+    LBL_BUTTON_MAIN_CONVERTER_CLOSE,
+    LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY,
+    LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE,
+    LBL_BUTTON_MAIN_CONVERTER_LOAD,
+    LBL_SECTION_MAIN_CONVERTER,
     MSG_CONVERTER_CANCELLED,
     MSG_CONVERTER_CANCELLING,
     MSG_CONVERTER_COMPLETED,
@@ -139,12 +139,14 @@ class GUIConverterPanel(GUIPanel):
             self._create_conversion_status()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_CONVERTER)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_CONVERTER)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_export_button(self) -> None:
         dpg.add_separator()
-        label = LBL_BUTTON_CONVERTER_CONVERT_SAMPLE if self.is_file else LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY
+        label = (
+            LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE if self.is_file else LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY
+        )
         enabled = self.input_path is not None and not self.is_converter_running()
         GUIButton(
             label=label,
@@ -204,7 +206,9 @@ class GUIConverterPanel(GUIPanel):
             return
 
         label = (
-            f"{LBL_BUTTON_CONVERTER_CONVERT_SAMPLE}" if self.is_file else f"{LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY}"
+            f"{LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE}"
+            if self.is_file
+            else f"{LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY}"
         )
         label += f": {self.input_path.name}"
         dpg_configure_item(
@@ -289,14 +293,14 @@ class GUIConverterPanel(GUIPanel):
     @table_wrapper(columns=2)
     def _add_buttons(self) -> None:
         GUIButton(
-            label=LBL_BUTTON_LOAD,
+            label=LBL_BUTTON_MAIN_CONVERTER_LOAD,
             tag=TAG_CONVERTER_BUTTON_LOAD,
             width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
             callback=self._on_load_clicked,
             enabled=False,
         )
         GUIButton(
-            label=LBL_BUTTON_CANCEL,
+            label=LBL_BUTTON_MAIN_CONVERTER_CANCEL,
             tag=TAG_CONVERTER_BUTTON_CANCEL,
             width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
             callback=self._on_cancel_clicked,
@@ -379,7 +383,7 @@ class GUIConverterPanel(GUIPanel):
     def _rename_cancel_to_close(self) -> None:
         dpg_set_value(TAG_CONVERTER_PROGRESS, VAL_GLOBAL_PROGRESS_START)
         dpg_configure_item(TAG_CONVERTER_PROGRESS, overlay="100%")
-        dpg_configure_item(TAG_CONVERTER_BUTTON_CANCEL, label=LBL_BUTTON_CLOSE, enabled=True)
+        dpg_configure_item(TAG_CONVERTER_BUTTON_CANCEL, label=LBL_BUTTON_MAIN_CONVERTER_CLOSE, enabled=True)
         dpg_set_item_callback(TAG_CONVERTER_BUTTON_CANCEL, self._on_close)
 
     def _cancel(self) -> None:

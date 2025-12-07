@@ -15,10 +15,10 @@ from ...constants import (
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
-    LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION,
+    LBL_SECTION_MAIN_RECONSTRUCTOR,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
-    LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
+    LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER,
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
@@ -62,7 +62,7 @@ class GUIReconstructorPanel(GUIPanel):
 
     def _create_generator_selection(self) -> None:
         dpg.add_separator()
-        dpg.add_text(LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION)
+        dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR)
 
         dpg.add_checkbox(
             label=LBL_CHECKBOX_PULSE_1,
@@ -97,7 +97,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
+        show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["reconstructor"].keys():

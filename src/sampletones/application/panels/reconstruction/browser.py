@@ -17,18 +17,18 @@ from ...browser.manager import BrowserManager
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    LBL_BROWSER_RECONSTRUCTIONS,
-    LBL_BUTTON_RECONSTRUCT_DIRECTORY,
-    LBL_BUTTON_RECONSTRUCT_FILE,
-    LBL_BUTTON_REFRESH_LIST,
+    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
+    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
+    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
-    MSG_INVALID_METADATA_ERROR,
-    MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_RECONSTRUCTION_FILE_LOAD_ERROR,
-    MSG_RECONSTRUCTION_FILE_NOT_FOUND,
     MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
     SUF_LEFT_PANEL,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
@@ -87,7 +87,7 @@ class GUIBrowserPanel(GUITreePanel):
         self.initialize_tree()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+        section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_browser_controls(self) -> None:
@@ -95,20 +95,20 @@ class GUIBrowserPanel(GUITreePanel):
         with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
             GUIButton(
                 tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
-                label=LBL_BUTTON_REFRESH_LIST,
+                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
                 width=-1,
                 callback=self._refresh_tree,
             )
             GUIButton(
                 tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
-                label=LBL_BUTTON_RECONSTRUCT_FILE,
+                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
                 width=-1,
                 callback=self._reconstruct_file,
                 font=Font.BOLD,
             )
             GUIButton(
                 tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-                label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
+                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
                 width=-1,
                 callback=self._reconstruct_directory,
                 font=Font.BOLD,
@@ -180,7 +180,7 @@ class GUIBrowserPanel(GUITreePanel):
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
-            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
+            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
             return
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
@@ -188,7 +188,7 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except InvalidMetadataError as exception:
             logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
-            show_error_dialog(exception, MSG_INVALID_METADATA_ERROR)
+            show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
             return
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
@@ -222,7 +222,7 @@ class GUIBrowserPanel(GUITreePanel):
         if not reconstruction_data.reconstruction.audio_filepath.exists():
             show_file_not_found_dialog(
                 reconstruction_data.reconstruction.audio_filepath,
-                MSG_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+                MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
             )
 
         if self._on_reconstruction_loaded:

@@ -15,11 +15,11 @@ from ...constants import (
     DIM_DIALOG_WIDTH_FILE,
     DIM_INPUT_WIDTH_DEFAULT,
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
-    LBL_ADVANCED_INPUT_MAX_WORKERS,
-    LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY,
-    LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-    LBL_SECTION_CONFIG_ADVANCED,
-    LBL_TOOLTIP_ADVANCED_MAX_WORKERS,
+    LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+    LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    LBL_SECTION_MAIN_ADVANCED,
+    LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS,
     TAG_ADVANCED_LIBRARY_DIRECTORY,
     TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
     TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
@@ -81,7 +81,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._register_callbacks()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_CONFIG_ADVANCED)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_ADVANCED)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     @table_wrapper(columns=2, height=-1)
@@ -92,7 +92,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _create_workers_settings(self) -> None:
         dpg.add_separator()
         dpg.add_input_int(
-            label=LBL_ADVANCED_INPUT_MAX_WORKERS,
+            label=LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
             default_value=MAX_WORKERS,
             tag=TAG_ADVANCED_MAX_WORKERS,
             min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
@@ -109,7 +109,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             GUIButton(
                 tag=TAG_ADVANCED_LIBRARY_DIRECTORY,
                 parent=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
-                label=LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+                label=LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
                 width=-1,
                 callback=self._select_library_directory_dialog,
             )
@@ -131,7 +131,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         ):
             GUIButton(
                 tag=TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-                label=LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+                label=LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
                 parent=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
                 width=-1,
                 callback=self._select_output_directory_dialog,
@@ -146,7 +146,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_ADVANCED_MAX_WORKERS)
+        show_tooltip(TAG_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["advanced"].keys():

@@ -8,9 +8,9 @@ from sampletones.typehints import Sender
 from ..constants import (
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
-    LBL_BUTTON_CLEAR_SEARCH,
+    LBL_BUTTON_TREE_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
-    MSG_GLOBAL_NO_RESULTS_FOUND,
+    MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_SEARCH_INPUT,
 )
@@ -42,7 +42,7 @@ class GUITreePanel(GUIPanel):
         root = self.tree.get_root()
         if root is None:
             if self.tree.is_filtered():
-                dpg.add_text(MSG_GLOBAL_NO_RESULTS_FOUND, parent=tree_root_tag)
+                dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=tree_root_tag)
             return
 
         for child in root.children:
@@ -60,7 +60,7 @@ class GUITreePanel(GUIPanel):
                 width=DIM_INPUT_WIDTH_SEARCH,
             )
             GUIButton(
-                label=LBL_BUTTON_CLEAR_SEARCH,
+                label=LBL_BUTTON_TREE_CLEAR_SEARCH,
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,
                 width=DIM_BUTTON_WIDTH_SEARCH,
