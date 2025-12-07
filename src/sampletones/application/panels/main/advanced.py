@@ -104,6 +104,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             tag=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
             width=-1,
             height=-1,
+            border=False,
         ):
             GUIButton(
                 tag=TAG_ADVANCED_LIBRARY_DIRECTORY,
@@ -126,6 +127,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             tag=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
             width=-1,
             height=-1,
+            border=False,
         ):
             GUIButton(
                 tag=TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
