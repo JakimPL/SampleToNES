@@ -17,6 +17,7 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_CONVERTER_BUTTON_HEIGHT,
     DIM_CONVERTER_BUTTON_WIDTH,
+    DIM_PANEL_CONVERTER_HEIGHT,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
@@ -34,7 +35,6 @@ from ...constants import (
     MSG_CONVERTER_WAITING,
     MSG_INPUT_PATH_PREFIX,
     MSG_OUTPUT_PATH_PREFIX,
-    SUF_CENTER_PANEL,
     TAG_CONVERTER_BUTTON_CANCEL,
     TAG_CONVERTER_BUTTON_CONVERT,
     TAG_CONVERTER_BUTTON_LOAD,
@@ -45,7 +45,7 @@ from ...constants import (
     TAG_CONVERTER_STATUS,
     TAG_CONVERTER_SUBPANEL,
     TAG_CONVERTER_SUCCESS_DIALOG,
-    TAG_TAB_MAIN,
+    TAG_PANEL_MAIN,
     TPL_CONVERTER_STATUS,
     TPL_TIME_ESTIMATION,
     TTL_DIALOG_CONVERTER,
@@ -86,7 +86,8 @@ class GUIConverterPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_CONVERTER_PANEL,
-            parent=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
+            parent=TAG_PANEL_MAIN,
+            height=DIM_PANEL_CONVERTER_HEIGHT,
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:

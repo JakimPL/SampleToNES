@@ -24,6 +24,7 @@ DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH = 600
 DIM_DIALOG_ERROR_HEIGHT = 120
 DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
+DIM_PANEL_CONVERTER_HEIGHT = 296
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
@@ -230,6 +231,10 @@ TPL_GROUP_TAG = "{}_{}_{}"
 TPL_GROUP_LABEL = "{} ({} item(s))"
 
 # GUI element tags
+TAG_PANEL_MAIN = "main_panel"
+TAG_PANEL_MAIN_SETTINGS = "main_panel_settings"
+TAG_PANEL_MAIN_CONFIG_CELL = "main_panel_config_cell"
+TAG_PANEL_MAIN_RECONSTRUCTOR_CELL = "main_panel_reconstructor_cell"
 TAG_LIBRARY_PANEL = "library_panel"
 TAG_INSTRUCTION_PANEL = "instruction_panel"
 TAG_LIBRARY_STATUS = "library_status"

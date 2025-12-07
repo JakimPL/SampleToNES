@@ -8,6 +8,7 @@ def table_wrapper(
     columns: int = 2,
     width: int = -1,
     height: int = -1,
+    **kwargs: Any,
 ) -> Callable[[Callable[[Any], None]], Callable[[Any], None]]:
     def decorator(content: Callable[[Any], None]) -> Callable[[Any], None]:
         def wrapper(self: Any) -> None:
@@ -17,8 +18,9 @@ def table_wrapper(
                 resizable=False,
                 width=width,
                 height=height,
+                **kwargs,
             ):
-                for _ in range(rows * columns):
+                for _ in range(columns):
                     dpg.add_table_column()
 
                 with dpg.table_row():

@@ -42,7 +42,6 @@ from ...constants import (
     LBL_TOOLTIP_CONFIG_SAMPLE_RATE,
     LBL_TOOLTIP_TRANSFORMATION_GAMMA,
     RNG_CONFIG_MIN_WORKERS,
-    SUF_CENTER_PANEL,
     TAG_CONFIG_CHANGE_RATE,
     TAG_CONFIG_LIBRARY_DIRECTORY,
     TAG_CONFIG_LIBRARY_DIRECTORY_DISPLAY,
@@ -53,7 +52,7 @@ from ...constants import (
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_TAB_MAIN,
+    TAG_PANEL_MAIN_CONFIG_CELL,
     TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
 )
 from ...elements.button import GUIButton
@@ -80,7 +79,7 @@ class GUIConfigPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_CONFIG_PANEL,
-            parent=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
+            parent=TAG_PANEL_MAIN_CONFIG_CELL,
         )
 
     def create_panel(self) -> None:
@@ -89,7 +88,6 @@ class GUIConfigPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
-            auto_resize_y=True,
         ):
             self._create_section_text()
             self._create_audio_options()

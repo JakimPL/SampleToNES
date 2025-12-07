@@ -102,6 +102,7 @@ from .panels.instruction.library import GUIInstructionsLibraryPanel
 from .panels.main.config import GUIConfigPanel
 from .panels.main.converter import GUIConverterPanel
 from .panels.main.explorer import GUIExplorerPanel
+from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
@@ -139,11 +140,9 @@ class GUI:
             self.application_config_manager,
         )
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
-
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
-
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
@@ -154,8 +153,12 @@ class GUI:
             self.audio_device_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
-
         self.converter_panel: GUIConverterPanel = GUIConverterPanel(self.config_manager)
+        self.main_panel: GUIMainPanel = GUIMainPanel(
+            self.config_panel,
+            self.reconstructor_panel,
+            self.converter_panel,
+        )
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
         self.theme = DefaultTheme()
@@ -596,9 +599,7 @@ class GUI:
         self.explorer_panel.create_panel()
 
     def _create_main_panel(self) -> None:
-        self.config_panel.create_panel()
-        self.reconstructor_panel.create_panel()
-        self.converter_panel.create_panel()
+        self.main_panel.create_panel()
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(

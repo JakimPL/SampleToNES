@@ -24,13 +24,12 @@ from ...constants import (
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
-    SUF_CENTER_PANEL,
+    TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY,
     TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
     TAG_RECONSTRUCTOR_PANEL,
     TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-    TAG_TAB_MAIN,
     TPL_RECONSTRUCTION_GEN_TAG,
     TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
 )
@@ -53,7 +52,7 @@ class GUIReconstructorPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
-            parent=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
+            parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
         )
 
     def create_panel(self) -> None:
@@ -62,7 +61,6 @@ class GUIReconstructorPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
-            auto_resize_y=True,
         ):
             self._create_section_text()
             self._create_generator_selection()
