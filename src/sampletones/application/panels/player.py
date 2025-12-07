@@ -6,7 +6,7 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.exceptions import PlaybackError
 
 from ..constants import (
-    DIM_PLAYER_BUTTON_WIDTH,
+    DIM_PLAYER_PANEL_CONTROLS_HEIGHT,
     DIM_PLAYER_PANEL_HEIGHT,
     DIM_PLAYER_PANEL_WIDTH,
     LBL_PLAYER_BUTTON_PAUSE,
@@ -24,12 +24,13 @@ from ..constants import (
     SUF_PLAYER_POSITION,
     SUF_PLAYER_SAMPLES,
     SUF_PLAYER_STOP,
-    TITLE_DIALOG_NO_AUDIO,
+    TTL_DIALOG_NO_AUDIO,
 )
 from ..elements.button import GUIButton
 from ..elements.panel import GUIPanel
 from ..player.data import AudioData
 from ..player.player import AudioPlayer
+from ..utils.align import table_wrapper
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
 from ..utils.dpg import (
     dpg_configure_item,
@@ -46,8 +47,8 @@ class GUIAudioPlayerPanel(GUIPanel):
         parent: str,
         audio_device_manager: AudioDeviceManager,
         on_position_changed: Optional[Callable[[int], None]] = None,
+        on_change_audio_state: Optional[Callable[[], None]] = None,
     ):
-        self.on_position_changed = on_position_changed
         self.audio_device_manager = audio_device_manager
 
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
@@ -59,7 +60,11 @@ class GUIAudioPlayerPanel(GUIPanel):
         self.no_audio_popup_tag = f"{tag}{SUF_PLAYER_NO_AUDIO_POPUP}"
         self.error_popup_tag = f"{tag}{SUF_PLAYER_ERROR_POPUP}"
 
-        self.audio_player = AudioPlayer(audio_device_manager, on_position_changed=self._on_position_update)
+        self.audio_player = AudioPlayer(
+            audio_device_manager,
+            on_position_changed=on_position_changed,
+            on_change_audio_state=on_change_audio_state,
+        )
 
         super().__init__(
             tag=tag,
@@ -77,30 +82,34 @@ class GUIAudioPlayerPanel(GUIPanel):
             height=self.height,
             no_scroll_with_mouse=True,
             no_scrollbar=True,
+            border=False,
         ):
-            with dpg.group(tag=self.controls_group_tag, horizontal=True):
-                GUIButton(
-                    tag=self.play_button_tag,
-                    label=LBL_PLAYER_BUTTON_PLAY,
-                    callback=self._play_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
-                GUIButton(
-                    tag=self.pause_button_tag,
-                    label=LBL_PLAYER_BUTTON_PAUSE,
-                    callback=self._pause_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
-                GUIButton(
-                    tag=self.stop_button_tag,
-                    label=LBL_PLAYER_BUTTON_STOP,
-                    callback=self._stop_audio,
-                    enabled=False,
-                    width=DIM_PLAYER_BUTTON_WIDTH,
-                )
+            self._create_controls()
             dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
+
+    @table_wrapper(columns=3, height=DIM_PLAYER_PANEL_CONTROLS_HEIGHT)
+    def _create_controls(self) -> None:
+        GUIButton(
+            tag=self.play_button_tag,
+            label=LBL_PLAYER_BUTTON_PLAY,
+            callback=self.play,
+            enabled=False,
+            width=-1,
+        )
+        GUIButton(
+            tag=self.pause_button_tag,
+            label=LBL_PLAYER_BUTTON_PAUSE,
+            callback=self.pause,
+            enabled=False,
+            width=-1,
+        )
+        GUIButton(
+            tag=self.stop_button_tag,
+            label=LBL_PLAYER_BUTTON_STOP,
+            callback=self.stop,
+            enabled=False,
+            width=-1,
+        )
 
     def disable(self) -> None:
         dpg_configure_item(self.controls_group_tag, enabled=False)
@@ -111,24 +120,12 @@ class GUIAudioPlayerPanel(GUIPanel):
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_player.load_audio_data(audio_data)
         self._update_controls()
-        self._update_position_display()
 
     def clear_audio(self) -> None:
         self.audio_player.clear_audio()
         self._update_controls()
-        self._update_position_display()
 
-    def set_position(self, position: int) -> None:
-        self.audio_player.set_position(position)
-        self._update_position_display()
-
-    def _on_position_update(self, position: int) -> None:
-        self._update_position_display()
-        self._update_controls()
-        if self.on_position_changed:
-            self.on_position_changed(position)
-
-    def _play_audio(self) -> None:
+    def play(self) -> None:
         try:
             self.audio_player.play()
         except PlaybackError as exception:
@@ -137,20 +134,35 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         self._update_controls()
 
-    def _pause_audio(self) -> None:
+    def pause_or_resume(self) -> None:
+        if not self.audio_player.is_playing:
+            return self.play()
+
+        if self.audio_player.is_paused:
+            return self.resume()
+
+        return self.pause()
+
+    def pause(self) -> None:
         self.audio_player.pause()
         self._update_controls()
-        self._update_position_display()
 
-    def _resume_audio(self) -> None:
+    def resume(self) -> None:
         self.audio_player.resume()
         self._update_controls()
-        self._update_position_display()
 
-    def _stop_audio(self) -> None:
+    def stop(self) -> None:
         self.audio_player.stop()
         self._update_controls()
-        self._update_position_display()
+
+    def is_loaded(self) -> bool:
+        return self.audio_player.audio_data.is_loaded()
+
+    def is_playing(self) -> bool:
+        return self.audio_player.is_playing
+
+    def is_paused(self) -> bool:
+        return self.audio_player.is_paused
 
     def _update_controls(self) -> None:
         has_audio = self.audio_player.audio_data.is_loaded()
@@ -165,17 +177,19 @@ class GUIAudioPlayerPanel(GUIPanel):
 
             if is_paused:
                 dpg_set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_RESUME)
-                dpg_set_item_callback(self.pause_button_tag, self._resume_audio)
+                dpg_set_item_callback(self.pause_button_tag, self.resume)
             else:
                 dpg_set_item_label(self.pause_button_tag, LBL_PLAYER_BUTTON_PAUSE)
-                dpg_set_item_callback(self.pause_button_tag, self._pause_audio)
+                dpg_set_item_callback(self.pause_button_tag, self.pause)
         else:
             dpg_configure_item(self.play_button_tag, enabled=False)
             dpg_configure_item(self.pause_button_tag, enabled=False)
             dpg_configure_item(self.stop_button_tag, enabled=False)
 
+        self._update_position_display()
+
     def _update_position_display(self) -> None:
-        if not self.audio_player.audio_data:
+        if not self.audio_player.audio_data.is_loaded():
             dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
             position_text = (
@@ -190,6 +204,6 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         show_modal_dialog(
             tag=self.no_audio_popup_tag,
-            title=TITLE_DIALOG_NO_AUDIO,
+            title=TTL_DIALOG_NO_AUDIO,
             content=content,
         )

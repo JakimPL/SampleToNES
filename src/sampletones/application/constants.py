@@ -1,38 +1,37 @@
 # GUI Constants
 
 # Window dimensions
-DIM_WINDOW_MAIN_WIDTH = 1200
+DIM_WINDOW_MAIN_WIDTH = 1280
 DIM_WINDOW_MAIN_HEIGHT = 800
 
 # Layout dimensions
-DIM_PANEL_LEFT_WIDTH = 420
+DIM_PANEL_EXPLORER_WIDTH = 440
+DIM_PANEL_EXPLORER_HEIGHT = -1
+DIM_PANEL_LEFT_WIDTH = 360
 DIM_PANEL_LEFT_HEIGHT = -1
-DIM_PANEL_RIGHT_WIDTH = 720
+DIM_PANEL_RIGHT_WIDTH = 460
 DIM_PANEL_RIGHT_HEIGHT = -1
-DIM_PANEL_INSTRUCTION_DETAILS_WIDTH = 420
-DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH = 520
-DIM_PANEL_CONFIG_WIDTH = 0
-DIM_PANEL_CONFIG_HEIGHT = 0
-DIM_PANEL_LIBRARY_WIDTH = 0
-DIM_PANEL_LIBRARY_HEIGHT = -1
-DIM_PANEL_RECONSTRUCTOR_HEIGHT = 0
-DIM_PANEL_RECONSTRUCTOR_WIDTH = 0
-DIM_DIALOG_TRACEBACK_HEIGHT = 400
+DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH = 360
+DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH = 420
 
 # File dialog dimensions
-DIM_DIALOG_FILE_WIDTH = 600
+DIM_DIALOG_TRACEBACK_HEIGHT = 400
+DIM_DIALOG_TRACEBACK_WIDTH = 0
+DIM_DIALOG_FILE_WIDTH = 720
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_WIDTH = 350
 DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH = 600
 DIM_DIALOG_ERROR_HEIGHT = 120
 DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
-DIM_DIALOG_CONVERTER_WIDTH = 800
-DIM_DIALOG_CONVERTER_HEIGHT = 0
+DIM_PANEL_CONFIG_HEIGHT = 258
+DIM_PANEL_CONVERTER_HEIGHT = 260
+DIM_PANEL_ADVANCED_HEIGHT = 162
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
-DIM_INPUT_WIDTH = 240
+DIM_CONVERTER_BUTTON_HEIGHT = 45
+DIM_INPUT_WIDTH = -180
 
 # Search UI dimensions
 DIM_SEARCH_INPUT_WIDTH = -80
@@ -40,25 +39,36 @@ DIM_SEARCH_BUTTON_WIDTH = -1
 DIM_COPY_BUTTON_WIDTH = 60
 
 # Input validation ranges
-RNG_CONFIG_MIN_WORKERS = 1
+RNG_ADVANCED_MIN_WORKERS = 1
 
 # GUI Labels
-TITLE_WINDOW_MAIN = "SampleToNES"
+TTL_WINDOW_MAIN = "SampleToNES"
 
 # Menu labels
 LBL_MENU_FILE = "File"
-LBL_MENU_ITEM_EXIT = "Exit"
-LBL_MENU_RECONSTRUCTION = "Reconstruction"
 LBL_MENU_ITEM_SAVE_CONFIG = "Save configuration"
 LBL_MENU_ITEM_LOAD_CONFIG = "Load configuration"
+LBL_MENU_ITEM_AUDIO_SETTINGS = "Audio settings"
+LBL_MENU_ITEM_EXIT = "Exit"
+
+LBL_MENU_RECONSTRUCTION = "Reconstruction"
 LBL_MENU_ITEM_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
 LBL_MENU_ITEM_CLOSE_RECONSTRUCTION = "Close reconstruction"
 LBL_MENU_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
 LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
+
+LBL_MENU_PLAYBACK = "Playback"
+LBL_MENU_ITEM_PLAY_FROM_START = "Play from start"
+LBL_MENU_ITEM_PLAY = "Play"
+LBL_MENU_ITEM_PAUSE = "Pause"
+LBL_MENU_ITEM_STOP = "Stop"
+LBL_MENU_ITEM_AUTOPLAY = "Autoplay"
+
 LBL_MENU_VIEW = "View"
 LBL_MENU_ITEM_FULLSCREEN = "Fullscreen"
+LBL_MENU_ITEM_SHOW_ADVANCED_SETTINGS = "Show advanced settings"
 
 # Menu item tags
 TAG_MENU_ITEM_RECONSTRUCT_FILE = "menu_item_reconstruct_file"
@@ -68,21 +78,28 @@ TAG_MENU_ITEM_LOAD_RECONSTRUCTION = "menu_item_load_reconstruction"
 TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV = "menu_item_export_reconstruction_wav"
 TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS = "menu_item_export_reconstruction_ftis"
 TAG_MENU_ITEM_FULLSCREEN = "menu_item_view_fullscreen"
+TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS = "menu_item_show_advanced_settings"
+TAG_MENU_ITEM_PLAY_FROM_START = "menu_item_play_from_start"
+TAG_MENU_ITEM_PLAY = "menu_item_play"
+TAG_MENU_ITEM_STOP = "menu_item_stop"
+TAG_MENU_ITEM_AUTOPLAY = "menu_item_autoplay"
 
 # Tab labels
+LBL_TAB_MAIN = "Main"
 LBL_TAB_INSTRUCTIONS = "Instructions"
 LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
 # Section headers
-LBL_SECTION_OUTPUT_DIRECTORY = "Output directory"
-LBL_SECTION_GENERAL_SETTINGS = "Settings"
-LBL_SECTION_LIBRARY_DIRECTORY = "Instructions directory"
-LBL_SECTION_LIBRARY_SETTINGS = "Instructions settings"
-LBL_SECTION_GENERATOR_SELECTION = "Generators"
+LBL_SECTION_CONFIG_GENERAL_SETTINGS = "General settings"
+LBL_SECTION_CONFIG_ADVANCED = "Advanced settings"
+LBL_SECTION_CONFIG_LIBRARY_SETTINGS = "Instructions library settings"
+LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION = "Generators"
+LBL_SECTION_CONVERTER = "Converter"
 
 # Button labels
-LBL_BUTTON_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-LBL_CONFIG_SELECT_LIBRARY_DIRECTORY = "Select instructions directory"
+LBL_BUTTON_COLLAPSE_ALL = "Collapse all"
+LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY = "Select output directory"
+LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY = "Select instructions data directory"
 LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
 LBL_BUTTON_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_BUTTON_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
@@ -93,6 +110,8 @@ LBL_BUTTON_CLEAR_SEARCH = "Clear"
 LBL_BUTTON_CLOSE = "Close"
 LBL_BUTTON_CANCEL = "Cancel"
 LBL_BUTTON_LOAD = "Load"
+LBL_BUTTON_CONVERTER_CONVERT_SAMPLE = "Convert sample"
+LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY = "Convert directory"
 
 # Checkbox labels
 LBL_CHECKBOX_NORMALIZE_AUDIO = "Normalize audio"
@@ -103,10 +122,14 @@ LBL_CHECKBOX_PULSE_2 = "Pulse 2"
 LBL_CHECKBOX_NOISE = "Noise"
 
 # Input field labels
-LBL_CONFIG_INPUT_MAX_WORKERS = "Workers"
-LBL_INPUT_SAMPLE_RATE = "Sample rate"
-LBL_INPUT_CHANGE_RATE = "NES frequency"
-LBL_INPUT_SEARCH = "Search"
+LBL_ADVANCED_INPUT_MAX_WORKERS = "Workers"
+LBL_CONFIG_INPUT_SAMPLE_RATE = "Sample rate"
+LBL_CONFIG_INPUT_CHANGE_RATE = "NES frequency"
+
+# Tree
+LBL_TREE_ROOT = "Root"
+LBL_TREE_SEARCH = "Search"
+LBL_TREE_FILTER = "Filter"
 
 # Buttons suffixes
 SUF_BUTTON = "_button"
@@ -118,22 +141,35 @@ SUF_BUTTON_RESET_ALL = f"{SUF_BUTTON}_reset_all"
 SUF_BUTTON_SEARCH = f"{SUF_BUTTON}_search"
 SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}_show_traceback"
 
+# Tooltip labels
+LBL_TOOLTIP_CONFIG_NORMALIZE = "Normalize audio to ensure consistent volume levels."
+LBL_TOOLTIP_CONFIG_QUANTIZE = "Quantize audio samples to 5-bit resolution."
+LBL_TOOLTIP_ADVANCED_MAX_WORKERS = "Set the number parallel workers for audio processing tasks."
+LBL_TOOLTIP_CONFIG_SAMPLE_RATE = "Set the sample rate (in Hz) for audio processing."
+LBL_TOOLTIP_CONFIG_CHANGE_RATE = "Set the NES refresh rate (in Hz) for audio processing. NTSC = 60 Hz, PAL = 50 Hz."
+LBL_TOOLTIP_TRANSFORMATION_GAMMA = (
+    "Interpolate between linear spectral features (0) features and logarithmic ones (100)."
+)
+LBL_TOOLTIP_RECONSTRUCTOR_MIXER = (
+    "Amplify the NES generated audio. Lower values introduce compression, while higher values increase dynamics."
+)
+
 # Dialog titles
-TITLE_DIALOG_SAVE_CONFIG = "Save configuration"
-TITLE_DIALOG_LOAD_CONFIG = "Load configuration"
-TITLE_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
-TITLE_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
-TITLE_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
-TITLE_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
-TITLE_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-TITLE_DIALOG_EXPORT_WAV = "Export WAV"
-TITLE_DIALOG_EXPORT_FTI = "Export FTI"
-TITLE_DIALOG_ERROR = "Error"
-TITLE_DIALOG_CONFIG_STATUS = "Configuration status"
-TITLE_DIALOG_CONVERTER = "Reconstruction progress"
-TITLE_DIALOG_FILE_NOT_FOUND = "File not found"
-TITLE_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
-TITLE_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"
+TTL_DIALOG_SAVE_CONFIG = "Save configuration"
+TTL_DIALOG_LOAD_CONFIG = "Load configuration"
+TTL_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
+TTL_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
+TTL_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+TTL_DIALOG_SELECT_LIBRARY_DIRECTORY = "Select library directory"
+TTL_DIALOG_SELECT_OUTPUT_DIRECTORY = "Select output directory"
+TTL_DIALOG_EXPORT_WAV = "Export WAV"
+TTL_DIALOG_EXPORT_FTI = "Export FTI"
+TTL_DIALOG_ERROR = "Error"
+TTL_DIALOG_CONFIG_STATUS = "Configuration status"
+TTL_DIALOG_CONVERTER = "Reconstruction progress"
+TTL_DIALOG_FILE_NOT_FOUND = "File not found"
+TTL_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
+TTL_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"
 
 # Plot labels
 LBL_PLOT_AUDIO_WAVEFORMS = "Audio waveforms"
@@ -197,24 +233,33 @@ TPL_GROUP_TAG = "{}_{}_{}"
 TPL_GROUP_LABEL = "{} ({} item(s))"
 
 # GUI element tags
+TAG_PANEL_MAIN = "main_panel"
+TAG_PANEL_MAIN_ADVANCED = "main_panel_advanced"
+TAG_PANEL_ADVANCED = "advanced_panel"
+TAG_PANEL_MAIN_SETTINGS = "main_panel_settings"
+TAG_PANEL_MAIN_CONFIG_CELL = "main_panel_config_cell"
+TAG_PANEL_MAIN_RECONSTRUCTOR_CELL = "main_panel_reconstructor_cell"
 TAG_LIBRARY_PANEL = "library_panel"
+TAG_INSTRUCTION_PANEL = "instruction_panel"
 TAG_LIBRARY_STATUS = "library_status"
 TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
 TAG_BROWSER_CONTROLS_GROUP = "browser_controls_group"
 TAG_LIBRARY_BUTTON_GENERATE = "library_generate_button"
 TAG_LIBRARY_BUTTON_REFRESH = "library_refresh_button"
 TAG_LIBRARY_PROGRESS = "library_progress"
-TAG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
+TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
 TAG_BROWSER_BUTTON_REFRESH_LIST = "browser_refresh_list_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_FILE = "browser_reconstruct_file_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY = "browser_reconstruct_directory_button"
-TAG_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
+TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
 TAG_CONFIG_STATUS_POPUP = "config_status_popup"
-TAG_CONFIG_PANEL = "config_panel"
+TAG_PANEL_CONFIG = "config_panel"
 TAG_CONFIG_PREVIEW = "config_preview"
 TAG_CONFIG_NORMALIZE = "normalize"
 TAG_CONFIG_QUANTIZE = "quantize"
-TAG_CONFIG_MAX_WORKERS = "max_workers"
+TAG_ADVANCED_MAX_WORKERS = "max_workers"
+TAG_CONFIG_PATHS_GROUP = "config_paths_group"
+TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP = "config_paths_instructions_group"
 TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
@@ -223,12 +268,14 @@ TAG_LIBRARY_TREE_WINDOW = "libraries_tree_window"
 TAG_LIBRARY_NOT_LOADED_DIALOG = "library_not_loaded_dialog"
 TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
 TAG_PATH_MESSAGE_DIALOG = "path_message_dialog"
-TAG_CONFIG_LIBRARY_DIRECTORY = "config_library_directory"
+TAG_ADVANCED_LIBRARY_DIRECTORY = "config_library_directory"
+TAG_EXPLORER_COLLAPSE_ALL = "collapse_all"
 
 # Indices and offsets
 IDX_DIALOG_FIRST_SELECTION = 0
 VAL_GLOBAL_DEFAULT_SLOT = 1
 VAL_GLOBAL_DEFAULT_FLOAT = 0.0
+VAL_GLOBAL_PROGRESS_START = 0.0
 VAL_GLOBAL_PROGRESS_COMPLETE = 1.0
 
 # Dictionary keys
@@ -236,15 +283,10 @@ KEY_DIALOG_SELECTIONS = "selections"
 
 # Main GUI tags
 TAG_WINDOW_MAIN = "main_window"
-TAG_TAB_BAR_MAIN = "main_tab_bar"
+TAG_TABS = "tabs"
+TAG_TAB_MAIN = "tab_main"
 TAG_TAB_INSTRUCTIONS = "tab_instructions"
 TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
-TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
-TAG_CONFIG_PANEL_GROUP = "config_panel_group"
-TAG_INSTRUCTIONS_PANEL_GROUP = "instructions_panel_group"
-TAG_INSTRUCTION_PANEL = "instruction_panel"
-TAG_INSTRUCTION_PANEL_GROUP = "instruction_panel_group"
-TAG_INSTRUCTION_DETAILS_PANEL_GROUP = "instruction_details_panel_group"
 TAG_INSTRUCTION_PLAYER_PANEL = "instruction_player_panel"
 TAG_INSTRUCTION_WAVEFORM_DISPLAY = "instruction_waveform_display"
 TAG_INSTRUCTION_SPECTRUM_DISPLAY = "instruction_spectrum_display"
@@ -260,18 +302,18 @@ TAG_BROWSER_RECONSTRUCTION_DETAILS = "reconstruction_details"
 TAG_BROWSER_FAMITRACKER_EXPORT = "famitracker_export"
 TAG_DIALOG_ERROR_LIBRARY_GENERATION = "error_dialog_library_generation"
 TAG_CONFIG_LOAD_ERROR_DIALOG = "config_load_error_dialog"
-TAG_CONVERTER_WINDOW = "converter_window"
 TAG_CONVERTER_PROGRESS = "converter_progress"
 TAG_CONVERTER_STATUS = "converter_status"
+TAG_CONVERTER_PANEL = "converter_panel"
+TAG_CONVERTER_SUBPANEL = "converter_subpanel"
 TAG_CONVERTER_INPUT_PATH_TEXT = "converter_input_path_text"
 TAG_CONVERTER_OUTPUT_PATH_TEXT = "converter_output_path_text"
-TAG_CONVERTER_LOAD_BUTTON = "converter_load_button"
-TAG_CONVERTER_CANCEL_BUTTON = "converter_cancel_button"
+TAG_CONVERTER_BUTTON_LOAD = "converter_load_button"
+TAG_CONVERTER_BUTTON_CANCEL = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
-TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
+TAG_CONVERTER_BUTTON_CONVERT = "converter_convert_button"
 TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
-TAG_INFO_DIALOG = "info_dialog"
 TAG_ERROR_DIALOG = "error_dialog"
 
 
@@ -283,7 +325,9 @@ MSG_CONVERTER_SUCCESS = "Reconstruction completed successfully!"
 MSG_CONVERTER_CONFIG_NOT_AVAILABLE = "Configuration not available"
 MSG_CONVERTER_COMPLETED = "Reconstruction completed!"
 MSG_CONVERTER_NO_FILES_TO_PROCESS = "No WAV files found to process."
-MSG_CONVERTER_IDLE = "Waiting to start..."
+MSG_CONVERTER_IDLE = "No tasks in progress."
+MSG_CONVERTER_WAITING = "Waiting to start..."
+MSG_CONVERTER_GENERATING_LIBRARY = "Generating instructions library..."
 MSG_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_CONVERTER_CANCELLED = "Conversion cancelled."
 TPL_CONVERTER_STATUS = "Progress: {}/{} files"
@@ -304,10 +348,19 @@ VAL_PLOT_CHILDREN_SLOT = 2
 
 VAL_GLOBAL_FONT_SCALE = 1
 VAL_FONT_SIZE = 22
+VAL_FONT_SIZE_SMALL = 19
+VAL_FONT_SIZE_LARGE = 26
 
 # Font tags
 TAG_FONT_BOLD = "font_bold"
+TAG_FONT_BOLD_SMALL = "font_bold_small"
+TAG_FONT_BOLD_LARGE = "font_bold_large"
 TAG_FONT_REGULAR = "font_regular"
+TAG_FONT_REGULAR_SMALL = "font_regular_small"
+TAG_FONT_REGULAR_LARGE = "font_regular_large"
+TAG_FONT_ICON = "font_icon"
+
+CHR_STAR = 0x2605  # Unicode star character
 
 # Waveform display settings
 DIM_WAVEFORM_DEFAULT_HEIGHT = 300
@@ -327,6 +380,7 @@ SUF_WAVEFORM_POSITION_INDICATOR = "_position_indicator"
 COL_PATH_TEXT = (100, 150, 255)
 COL_PATH_TEXT_HOVER = (150, 200, 255)
 SUF_CONVERTER_HANDLER = "_handler"
+SUF_INFO_DIALOG = "_info_dialog"
 
 # Waveform labels and messages
 LBL_WAVEFORM_DISPLAY = "Waveform display"
@@ -358,15 +412,15 @@ LBL_GLOBAL_EMPTY = ""
 # Audio player constants
 DIM_PLAYER_PANEL_WIDTH = -1
 DIM_PLAYER_PANEL_HEIGHT = 76
-DIM_PLAYER_BUTTON_WIDTH = 80
+DIM_PLAYER_PANEL_CONTROLS_HEIGHT = 32
 LBL_PLAYER_BUTTON_PLAY = "Play"
 LBL_PLAYER_BUTTON_PAUSE = "Pause"
 LBL_PLAYER_BUTTON_RESUME = "Resume"
 LBL_PLAYER_BUTTON_STOP = "Stop"
 MSG_PLAYER_NO_AUDIO_LOADED = "No audio loaded."
 MSG_PLAYER_AUDIO_PLAYBACK_ERROR = "Audio playback error."
-TITLE_DIALOG_NO_AUDIO = "No Audio"
-TITLE_DIALOG_PLAYBACK_ERROR = "Playback error."
+TTL_DIALOG_NO_AUDIO = "No Audio"
+TTL_DIALOG_PLAYBACK_ERROR = "Playback error."
 
 # Instruction panel constants
 LBL_INSTRUCTION_DETAILS = "Instruction details"
@@ -408,6 +462,7 @@ SUF_RECONSTRUCTION_AUDIO = "_audio"
 SUF_RECONSTRUCTION_PLOT = "_plot"
 SUF_SEARCH_INPUT = "_search_input"
 SUF_GROUP = "_group"
+SUF_LABEL = "_label"
 SUF_TRACEBACK = "_traceback"
 SUF_PATH_TEXT = "_path_text"
 SUF_TEXT = "_text"
@@ -434,8 +489,8 @@ MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
 MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE = "Incompatible reconstruction version: {}, expected {}."
 MSG_CONFIG_SAVE_FAILED = "Failed to save configuration."
 MSG_CONFIG_LOAD_FAILED = "Failed to load configuration."
-TITLE_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
-TITLE_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
+TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+TTL_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
 VAL_AUDIO_SOURCE_SELECTOR = "selector"
 LBL_RECONSTRUCTION_GENERATORS = "Generators"
 
@@ -455,7 +510,10 @@ SUF_BAR_PLOT_ZERO_LINE = "_zero_line"
 SUF_SEPARATOR = "_separator"
 SUF_NO_DATA_MESSAGE = "_no_data_message"
 SUF_WINDOW = "_window"
+
+SUF_LEFT_PANEL = "_left_panel"
 SUF_CENTER_PANEL = "_center_panel"
+SUF_RIGHT_PANEL = "_right_panel"
 
 # Spectrum display settings
 LBL_SPECTRUM_DISPLAY = "Spectrum display"
@@ -466,7 +524,7 @@ LBL_SPECTRUM_Y_AXIS = "Frequency"
 LBL_PLOT_SPECTRUM = "Spectrum"
 
 DIM_GRAPH_DEFAULT_WIDTH = -1
-DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT = 300
+DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT = 200
 
 # Boolean text values
 LBL_GLOBAL_YES = "Yes"
@@ -532,19 +590,36 @@ DIM_TABLE_LABEL_WIDTH = 130
 VAL_TABLE_CELL_PADDING = 8, 4
 VAL_TABLE_FRAME_ROUNDING = 4
 
-# Instruction details theme tag
-TAG_THEME_TABLE = "theme_instruction_table"
-
 # Reconstructor panel constants
-TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
-TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
-TAG_RECONSTRUCTOR_BUTTON_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
+TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP = "reconstructor_output_directory_group"
+TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
-LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "Transformation gamma"
+LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "FFT transformation"
 TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"
 TAG_RECONSTRUCTOR_MIXER = "mixer"
+
+# Explorer panel constants
+TAG_EXPLORER_TREE = "explorer_tree"
+TAG_EXPLORER_PANEL = "explorer_panel"
+TAG_EXPLORER_TREE_WINDOW = "explorer_tree_window"
+TAG_EXPLORER_TREE_GROUP = "explorer_tree_group"
+TAG_EXPLORER_CONVERTER_RUNNING = "explorer_converter_running_info_dialog"
+LBL_EXPLORER_FILESYSTEM = "Filesystem"
+LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION = "Load reconstruction"
+LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY = "Load instructions library"
+LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE = "Reconstruct file"
+LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE = "Mark as favorite"
+LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE = "Unmark as favorite"
+LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY = "Set as instructions library directory"
+LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY = "Set as output directory"
+MSG_EXPLORER_CONVERTER_RUNNING = (
+    "A conversion is already running. Please wait for it to complete or cancel the current operation "
+    "before starting a new one."
+)
+TTL_EXPLORER_CONVERTER_RUNNING = "Conversion in progress"
 
 # Browser panel constants
 LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS = "Reconstructions"
@@ -552,7 +627,6 @@ TAG_BROWSER_PANEL = "browser_panel"
 TAG_BROWSER_TREE = "browser_tree"
 TAG_BROWSER_TREE_GROUP = "browser_tree_group"
 TAG_BROWSER_TREE_WINDOW = "browser_tree_window"
-TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
 
 # Node type constants
 NOD_TYPE_ROOT = "root"
@@ -565,12 +639,11 @@ NOD_TYPE_DIRECTORY = "directory"
 NOD_TYPE_FILE = "file"
 
 # Node labels
-NOD_LABEL_NOT_LOADED = "Not loaded"
+NOD_LABEL_NOT_LOADED = "Click to load the library"
 NOD_LABEL_LIBRARIES = "Libraries"
 
 # Bar plot display settings
 LBL_BAR_PLOT_DISPLAY = "Bar plot display"
-LBL_BAR_PLOT_VALUE_LABEL = "Value"
 MSG_BAR_PLOT_NO_DATA = "No data loaded."
 COL_BAR_PLOT_DEFAULT = (100, 200, 255, 255)
 COL_BAR_PLOT_PITCH = (100, 200, 255, 255)
@@ -594,19 +667,57 @@ DIM_BAR_PLOT_DEFAULT_HEIGHT = 200
 
 COL_TEXT_WHITE = (255, 255, 255, 255)
 COL_TEXT_DEFAULT = (220, 220, 220, 255)
+COL_TEXT_DISABLED_DEFAULT = (130, 130, 130, 255)
+
+COL_TEXT_WAVE = (100, 200, 255, 255)
+COL_TEXT_LIBRARY = (150, 255, 150, 255)
+COL_TEXT_RECONSTRUCTION = (255, 200, 100, 255)
+COL_TEXT_FAVORITE = (255, 215, 0, 255)
 
 COL_BUTTON = (54, 54, 72, 255)
 COL_BUTTON_ACTIVE = (90, 90, 120, 255)
 COL_BUTTON_HOVERED = (72, 72, 108, 255)
+COL_BUTTON_LIGHT = (64, 64, 96, 255)
 VAL_BUTTON_FRAME_ROUNDING = 6
 VAL_BUTTON_FRAME_PADDING = 10, 4
 
 COL_ERROR_TEXT = (255, 100, 100, 255)
 COL_TRACEBACK_TEXT = (192, 192, 192, 255)
+COL_BACKGROUND = (36, 36, 36, 255)
+COL_BACKGROUND_DARK = (28, 28, 28, 255)
+COL_BACKGROUND_LIGHT = (44, 44, 44, 255)
 
 VAL_WINDOW_POSITION_X = 200
 VAL_WINDOW_POSITION_Y = 200
 VAL_WINDOW_FULLSCREEN = False
 
-TAG_THEME_BUTTON = "theme_button"
 TAG_THEME_DEFAULT = "theme_default"
+TAG_THEME_CONVERTER = "theme_converter"
+TAG_THEME_TABLE = "theme_table"
+
+# Audio settings panel constants
+TAG_AUDIO_SETTINGS_PANEL = "audio_settings_panel"
+TAG_AUDIO_SETTINGS_WINDOW = "audio_settings_window"
+TAG_AUDIO_SETTINGS_DEVICE_COMBO = "audio_settings_device_combo"
+TAG_AUDIO_SETTINGS_SAMPLE_RATE_COMBO = "audio_settings_sample_rate_combo"
+TAG_AUDIO_SETTINGS_DEVICE_GROUP = "audio_settings_device_group"
+TAG_AUDIO_SETTINGS_SAMPLE_RATE_GROUP = "audio_settings_sample_rate_group"
+TAG_AUDIO_SETTINGS_APPLY_BUTTON = "audio_settings_apply_button"
+TAG_AUDIO_SETTINGS_REFRESH_BUTTON = "audio_settings_refresh_button"
+
+LBL_AUDIO_SETTINGS_TITLE = "Audio settings"
+LBL_AUDIO_SETTINGS_OUTPUT_DEVICE = "Output device"
+LBL_AUDIO_SETTINGS_SAMPLE_RATE = "Sample rate"
+LBL_AUDIO_SETTINGS_APPLY = "Apply"
+LBL_AUDIO_SETTINGS_REFRESH_DEVICES = "Refresh devices"
+
+DIM_AUDIO_SETTINGS_WINDOW_WIDTH = 600
+DIM_AUDIO_SETTINGS_WINDOW_HEIGHT = 0
+DIM_AUDIO_SETTINGS_COMBO_WIDTH = -1
+DIM_AUDIO_SETTINGS_LABEL_WIDTH = 150
+
+SUF_AUDIO_SETTINGS_HZ = " Hz"
+SUF_AUDIO_SETTINGS_BIT = "-bit"
+
+SUF_NODE_HANDLER = "_node_handler"
+SUF_NODE_DUMMY = "_node_dummy"

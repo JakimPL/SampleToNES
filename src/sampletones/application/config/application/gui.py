@@ -1,18 +1,27 @@
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, Field, field_serializer
 
-from ...constants import TAG_TAB_INSTRUCTIONS
+from ...constants import TAG_TAB_MAIN
 
 
 class GUIState(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    current_tab: str = Field(default=TAG_TAB_INSTRUCTIONS, description="The currently selected tab.")
+    current_tab: str = Field(
+        default=TAG_TAB_MAIN,
+        description="The currently selected tab.",
+    )
     current_reconstruction: Optional[Path] = Field(
         default=None,
         description="The currently loaded reconstruction's path.",
+    )
+    advanced_settings: bool = Field(
+        default=False,
+        description="If advanced settings are shown in the config panel.",
+    )
+    autoplay: bool = Field(
+        default=True,
+        description="If samples should autoplay when clicked.",
     )
 
     @field_serializer("current_reconstruction")

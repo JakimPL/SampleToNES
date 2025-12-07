@@ -5,20 +5,27 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import load_yaml, save_yaml, to_path
+from sampletones.utils.logger import logger
 
+from .audio import AudioConfig
+from .favorites import Favorites
 from .gui import GUIState
 from .paths import LastPaths
 from .window import WindowState
 
 
 class ApplicationConfig(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid")
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    window_state: WindowState = Field(
+    audio: AudioConfig = Field(
+        default_factory=AudioConfig,
+        description="The audio configuration settings.",
+    )
+    window: WindowState = Field(
         default_factory=WindowState,
         description="The state of the main application window.",
     )
-    gui_state: GUIState = Field(
+    gui: GUIState = Field(
         default_factory=GUIState,
         description="The state of the graphical user interface.",
     )
@@ -26,10 +33,17 @@ class ApplicationConfig(BaseModel):
         default_factory=LastPaths,
         description="The last used file system paths.",
     )
+    favorites: Favorites = Field(
+        default_factory=Favorites,
+        description="The user's favorite files and recent files.",
+    )
 
     @classmethod
     def default(cls) -> "ApplicationConfig":
         if not APPLICATION_CONFIG_PATH.exists():
+            logger.warning(
+                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist. " "Loading default configuration."
+            )
             return cls()
 
         return cls.load(APPLICATION_CONFIG_PATH)

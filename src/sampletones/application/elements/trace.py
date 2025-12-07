@@ -56,16 +56,16 @@ class GUITraceback:
         GUITraceback.REGISTRY[self._tag] = self
 
     def toggle_visibility(self) -> None:
-        self.set_visible(not self.visible)
+        self.set_visibility(not self.visible)
 
-    def set_visible(self, visible: bool) -> None:
+    def set_visibility(self, visible: bool) -> None:
         dpg.configure_item(self._tag, show=visible)
 
     def show(self) -> None:
-        self.set_visible(True)
+        self.set_visibility(True)
 
     def hide(self) -> None:
-        self.set_visible(False)
+        self.set_visibility(False)
 
     @property
     def visible(self) -> bool:

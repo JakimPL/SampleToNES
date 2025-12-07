@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Tuple
 
 import numpy as np
+
+from sampletones.typehints import Color
 
 from ....constants import COL_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
 
@@ -10,7 +11,7 @@ from ....constants import COL_BAR_PLOT_DEFAULT, VAL_BAR_PLOT_BAR_WEIGHT
 class BarLayer:
     data: np.ndarray
     name: str
-    color: Tuple[int, int, int, int] = COL_BAR_PLOT_DEFAULT
+    color: Color = COL_BAR_PLOT_DEFAULT
     bar_weight: float = VAL_BAR_PLOT_BAR_WEIGHT
 
     x_data: np.ndarray = field(init=False)

@@ -68,12 +68,15 @@ class Features(BaseModel):
         return [value for value in self._feature_map().values() if value is not None]
 
     def save(self, filepath: Path, instrument_name: str) -> None:
-        write_fti(
-            filename=filepath,
-            instrument_name=instrument_name,
-            volume=self.volume,
-            arpeggio=self.arpeggio,
-            pitch=self.pitch,
-            hi_pitch=self.hi_pitch,
-            duty_cycle=self.duty_cycle,
-        )
+        try:
+            write_fti(
+                filename=filepath,
+                instrument_name=instrument_name,
+                volume=self.volume,
+                arpeggio=self.arpeggio,
+                pitch=self.pitch,
+                hi_pitch=self.hi_pitch,
+                duty_cycle=self.duty_cycle,
+            )
+        except (FileNotFoundError, IOError, OSError, PermissionError, IsADirectoryError) as exception:
+            raise IOError(f"Failed to save features to '{filepath}': {exception}") from exception

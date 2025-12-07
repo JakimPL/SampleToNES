@@ -1,13 +1,18 @@
 from types import ModuleType
-from typing import Dict, Generic, Self
+from typing import Any, Dict, Generic, Self, Tuple
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
+from sampletones.typehints import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
 from .typehints import InstructionT
+
+
+def _instruction_data(data: SerializedData) -> "InstructionData[Any]":
+    return InstructionData(**data)
 
 
 class InstructionData(DataModel, Generic[InstructionT]):
@@ -15,6 +20,9 @@ class InstructionData(DataModel, Generic[InstructionT]):
 
     instruction_class: InstructionClassName = Field(..., description="Name of the generator")
     instruction: InstructionT = Field(..., description="Instruction instance")
+
+    def __reduce__(self) -> Tuple[Any, Tuple[SerializedData]]:
+        return (_instruction_data, (dict(self),))
 
     @classmethod
     def create(

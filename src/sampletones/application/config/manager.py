@@ -29,8 +29,8 @@ from ..constants import (
     MSG_CONFIG_INVALID_ERROR,
     MSG_CONFIG_LOAD_ERROR,
     MSG_CONFIG_SAVE_ERROR,
+    TAG_ADVANCED_MAX_WORKERS,
     TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_MAX_WORKERS,
     TAG_CONFIG_NORMALIZE,
     TAG_CONFIG_QUANTIZE,
     TAG_CONFIG_SAMPLE_RATE,
@@ -49,18 +49,20 @@ class ConfigManager:
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[Callable[[], None]] = []
-        self.config_path: Path = Path(CONFIG_PATH)
+        self.config_path: Path = config_path or Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
                 TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
                 TAG_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
-                TAG_CONFIG_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
                 TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
                 TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
                 TAG_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
             "reconstructor": {
                 TAG_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
+            },
+            "advanced": {
+                TAG_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
             },
         }
         self.generator_tags = {
@@ -80,7 +82,7 @@ class ConfigManager:
                 self.load_default_config()
                 logger.error(f"Config file not found: {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
-            except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+            except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
                 show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
@@ -104,7 +106,7 @@ class ConfigManager:
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(self.config_path)
-        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
             show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type

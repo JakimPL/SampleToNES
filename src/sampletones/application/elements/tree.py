@@ -9,7 +9,7 @@ from ..constants import (
     DIM_SEARCH_BUTTON_WIDTH,
     DIM_SEARCH_INPUT_WIDTH,
     LBL_BUTTON_CLEAR_SEARCH,
-    LBL_INPUT_SEARCH,
+    LBL_TREE_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_SEARCH_INPUT,
@@ -27,12 +27,14 @@ class GUITreePanel(GUIPanel):
         parent: str,
         width: int = -1,
         height: int = -1,
+        search_label: str = LBL_TREE_SEARCH,
     ) -> None:
         self.tree = tree
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._on_node_selected: Optional[Callable] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+        self.search_label = search_label
         super().__init__(tag, parent, width, height)
 
     def build_tree(self, tree_root_tag: str) -> None:
@@ -53,7 +55,7 @@ class GUITreePanel(GUIPanel):
         with dpg.group(horizontal=True, parent=parent):
             dpg.add_input_text(
                 tag=self._search_input_tag,
-                hint=LBL_INPUT_SEARCH,
+                hint=self.search_label,
                 callback=self._on_search_changed,
                 width=DIM_SEARCH_INPUT_WIDTH,
             )

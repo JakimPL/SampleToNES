@@ -1,201 +1,327 @@
+import contextlib
+import os
+import sys
 import threading
-from typing import Any, Callable, List, Optional
+from pathlib import Path
+from typing import Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
-import sounddevice as sd
+import pyaudio
 
-from .device import AudioDevice
+from sampletones.audio.io import load_audio
+from sampletones.exceptions import PlaybackError
+from sampletones.utils.logger import logger
+
+from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
+
+CHANNELS = 1
+FORMAT = pyaudio.paFloat32
+CHUNK_SIZE = 1024
+
+
+@contextlib.contextmanager
+def _capture_stderr_to_logger() -> Generator[None, None, None]:
+    stderr_fd = sys.stderr.fileno()
+    original_stderr_fd = os.dup(stderr_fd)
+
+    read_pipe, write_pipe = os.pipe()
+    os.dup2(write_pipe, stderr_fd)
+
+    try:
+        yield
+    finally:
+        os.dup2(original_stderr_fd, stderr_fd)
+        os.close(original_stderr_fd)
+        os.close(write_pipe)
+
+        os.set_blocking(read_pipe, False)
+        try:
+            captured = os.read(read_pipe, 65536).decode("utf-8", errors="replace")
+        except BlockingIOError:
+            captured = ""
+        os.close(read_pipe)
+
+        for line in captured.strip().splitlines():
+            if line.strip():
+                line = line.replace("ALSA lib ", "")
+                logger.warning(f"ALSA: {line.strip()}")
 
 
 class AudioDeviceManager:
     def __init__(self) -> None:
-        self._current_device: Optional[int] = None
-        self._device_sample_rate: Optional[int] = None
-        self._stream: Optional[sd.OutputStream] = None
+        self._pyaudio: Optional[pyaudio.PyAudio] = None
+        self._devices: Dict[int, AudioDevice] = {}
+
+        self._device_index: Optional[int] = None
+        self._sample_rate: Optional[SampleRate] = None
+
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
-        self._is_playing: bool = False
-        self._is_paused: bool = False
-        self._on_position_changed: Optional[Callable[[int], None]] = None
-        self._lock = threading.Lock()
-        self._set_default_device()
+        self._playing: bool = False
+        self._paused: bool = False
+        self._position_callback: Optional[Callable[[int], None]] = None
+        self._playback_thread: Optional[threading.Thread] = None
+        self._stop_flag: bool = False
 
-    def _set_default_device(self) -> None:
-        devices = sd.query_devices()
-        default_output = sd.default.device[1]
+        self.refresh_devices()
+        self._initialize_default_device()
 
-        if default_output is None and devices:
-            for i, device in enumerate(devices):
-                device_any: Any = device
-                if int(device_any["max_output_channels"]) > 0:
-                    default_output = i
-                    break
-
-        if default_output is not None:
-            self.set_device(default_output)
-
-    def _audio_callback(
-        self,
-        outdata: np.ndarray,
-        frames: int,
-        time_info: Any,
-        status: sd.CallbackFlags,
-    ) -> None:
-        should_stop = False
-        callback = None
-        position = 0
-        chunk_size = 0
-        chunk_data = np.array([], dtype=np.float32)
-
-        with self._lock:
-            if self._audio_data is None or not self._is_playing:
-                outdata.fill(0)
+    def reinitialize(self) -> None:
+        with _capture_stderr_to_logger():
+            if self._pyaudio is None:
+                self._pyaudio = pyaudio.PyAudio()
+                logger.debug("AudioDeviceManager initialized")
                 return
 
-            remaining = len(self._audio_data) - self._position
+            self.stop()
+            self._pyaudio.terminate()
+            self._pyaudio = pyaudio.PyAudio()
+            logger.debug("AudioDeviceManager reinitialized")
 
-            if remaining <= 0:
-                outdata.fill(0)
-                self._is_playing = False
-                self._is_paused = False
-                position = len(self._audio_data)
-                self._position = position
-                callback = self._on_position_changed
-                should_stop = True
-            else:
-                chunk_size = min(frames, remaining)
-                chunk_data = self._audio_data[self._position : self._position + chunk_size].copy()
-                self._position += chunk_size
-                position = self._position
-                callback = self._on_position_changed
+    def refresh_devices(self) -> None:
+        self.reinitialize()
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
 
-        if should_stop:
-            if callback:
-                callback(position)
-            raise sd.CallbackStop()
+        try:
+            default_input_index = int(self._pyaudio.get_default_input_device_info()["index"])
+        except IOError:
+            default_input_index = -1
 
-        outdata[:chunk_size] = chunk_data.reshape(-1, 1)
+        try:
+            default_output_index = int(self._pyaudio.get_default_output_device_info()["index"])
+        except IOError:
+            default_output_index = -1
 
-        if chunk_size < frames:
-            outdata[chunk_size:].fill(0)
+        self._devices: Dict[int, AudioDevice] = {}
+        for i in range(self._pyaudio.get_device_count()):
+            info = self._pyaudio.get_device_info_by_index(i)
+            if int(info["maxOutputChannels"]) == 0:
+                continue
 
-        if callback:
-            callback(position)
+            default_sample_rate: int = int(info["defaultSampleRate"])
+            if default_sample_rate not in SAMPLE_RATES:
+                logger.warning(f"Device '{info['name']}' has an uncommon default sample rate {default_sample_rate}")
 
-    def list_devices(self) -> List[AudioDevice]:
-        devices = sd.query_devices()
-        default_input = sd.default.device[0]
-        default_output = sd.default.device[1]
+            supported_rates = self._get_supported_sample_rates(i, default_sample_rate)
+            if not supported_rates:
+                logger.warning(f"Device '{info['name']}' has no supported sample rates, skipping")
+                continue
 
-        result = []
-        for i, device in enumerate(devices):
-            device_any: Any = device
-            max_input_channels = int(device_any["max_input_channels"])
-            max_output_channels = int(device_any["max_output_channels"])
-            device_name = str(device_any["name"])
-
-            result.append(
-                AudioDevice(
-                    index=i,
-                    name=device_name,
-                    is_input=max_input_channels > 0,
-                    is_output=max_output_channels > 0,
-                    is_default_input=i == default_input,
-                    is_default_output=i == default_output,
-                )
+            self._devices[i] = AudioDevice(
+                index=i,
+                name=str(info["name"]),
+                is_input=int(info["maxInputChannels"]) > 0,
+                is_output=True,
+                is_default_input=i == default_input_index,
+                is_default_output=i == default_output_index,
+                default_sample_rate=cast(SampleRate, default_sample_rate),
+                supported_sample_rates=supported_rates,
             )
 
-        return result
+    def _is_sample_rate_supported(self, device_index: int, sample_rate: int) -> bool:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            self._pyaudio.is_format_supported(
+                rate=sample_rate,
+                output_device=device_index,
+                output_channels=CHANNELS,
+                output_format=FORMAT,
+            )
+            return True
+        except ValueError:
+            return False
 
-    def set_device(self, device_index: int) -> None:
+    def _get_supported_sample_rates(self, device_index: int, default_sample_rate: int) -> List[SampleRate]:
+        supported_rates: List[SampleRate] = []
+        candidate_rates = sorted(set(SAMPLE_RATES) | {default_sample_rate})
+        for rate in candidate_rates:
+            if self._is_sample_rate_supported(device_index, rate):
+                supported_rates.append(cast(SampleRate, rate))
+
+        return supported_rates
+
+    def _initialize_default_device(self) -> None:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            info = self._pyaudio.get_default_output_device_info()
+            device_index = int(info["index"])
+            if device_index in self._devices:
+                device = self._devices[device_index]
+                self._device_index = device_index
+                self._sample_rate = device.default_sample_rate
+        except IOError:
+            logger.warning("No default output device found")
+
+    @property
+    def device_index(self) -> int:
+        if self._device_index is None:
+            raise ValueError("No audio device selected")
+
+        return self._device_index
+
+    @device_index.setter
+    def device_index(self, value: int) -> None:
+        if value not in self._devices:
+            raise ValueError(f"Device with index {value} not found")
+
         self.stop()
-        self._current_device = device_index
-        device_info = sd.query_devices(device_index)
-        device_info_any: Any = device_info
-        self._device_sample_rate = int(device_info_any["default_samplerate"])
+        device = self._devices[value]
+        self._device_index = value
+        self._sample_rate = device.default_sample_rate
 
-    def get_device(self) -> Optional[int]:
-        return self._current_device
+    @property
+    def device_name(self) -> str:
+        return self._devices[self.device_index].name
+
+    @property
+    def sample_rate(self) -> SampleRate:
+        if self._sample_rate is None:
+            raise ValueError("No audio device selected")
+
+        return self._sample_rate
+
+    @sample_rate.setter
+    def sample_rate(self, value: SampleRate) -> None:
+        if not value in SAMPLE_RATES:
+            raise ValueError(f"Sample rate {value} is not valid")
+
+        device = self._devices[self.device_index]
+        if value not in device.supported_sample_rates:
+            raise ValueError(f"Sample rate {value} not supported by device {device.name}")
+
+        self._sample_rate = value
+
+    def get_current_device(self) -> CurrentDevice:
+        return CurrentDevice(
+            device_index=self.device_index,
+            name=self.device_name,
+            sample_rate=self.sample_rate,
+        )
+
+    def set_current_device(self, current_device: CurrentDevice) -> None:
+        device_index = self.find_device_by_name(current_device.name)
+        if device_index is not None:
+            return self.configure_device(
+                device_index=current_device.device_index,
+                sample_rate=current_device.sample_rate,
+            )
+
+        logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        return None
+
+    def find_device_by_name(self, name: str) -> Optional[AudioDevice]:
+        for device in self._devices.values():
+            if device.name == name:
+                return device
+
+        return None
+
+    def list_devices(self) -> Dict[int, AudioDevice]:
+        return dict(self._devices)
+
+    def configure_device(self, device_index: int, sample_rate: SampleRate) -> None:
+        if device_index not in self._devices:
+            logger.error(f"Audio device with index {device_index} not found")
+            return
+
+        device = self._devices[device_index]
+        if sample_rate not in device.supported_sample_rates:
+            fallback_rate = device.default_sample_rate
+            logger.warning(
+                f"Sample rate {sample_rate} not supported by device {device.name}. " f"Falling back to {fallback_rate}"
+            )
+            sample_rate = fallback_rate
+
+        self.stop()
+        self.device_index = device_index
+        self.sample_rate = sample_rate
+        logger.info(f"Audio device configured: {self.device_name} (index={device_index}, sample_rate={sample_rate})")
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
-        self._on_position_changed = callback
-
-    def get_position(self) -> int:
-        return self._position
+        self._position_callback = callback
 
     def set_position(self, position: int) -> None:
-        with self._lock:
-            assert self._audio_data is not None
+        if self._audio_data is not None:
             self._position = max(0, min(position, len(self._audio_data)))
-            callback = self._on_position_changed
-            current_position = self._position
 
-        if callback:
-            callback(current_position)
+    def play_file(self, filepath: Path) -> None:
+        audio = load_audio(filepath, normalize=False, quantize=False)
+        self.play(audio)
 
-    def play(self, audio: np.ndarray, from_position: Optional[int] = None) -> None:
-        with self._lock:
-            if self._stream is not None:
-                stream = self._stream
-                self._stream = None
-            else:
-                stream = None
+    def play(self, audio: np.ndarray) -> None:
+        self.stop()
+        self._audio_data = audio.astype(np.float32)
+        self._position = 0
+        self._playing = True
+        self._paused = False
+        self._stop_flag = False
+        self._playback_thread = threading.Thread(target=self._playback_worker, daemon=True)
+        self._playback_thread.start()
 
-        if stream is not None:
-            stream.stop()
-            stream.close()
-
-        with self._lock:
-            self._audio_data = audio
-            self._position = from_position if from_position is not None else 0
-            self._is_playing = True
-            self._is_paused = False
-
-            self._stream = sd.OutputStream(
-                samplerate=self._device_sample_rate,
-                channels=1,
-                callback=self._audio_callback,
-                device=self._current_device,
-                dtype=np.float32,
+    def _playback_worker(self) -> None:
+        assert self._pyaudio is not None, "PyAudio instance is not initialized"
+        try:
+            stream = self._pyaudio.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=self.sample_rate,
+                output=True,
+                output_device_index=self._device_index,
             )
-            self._stream.start()
+        except OSError as exception:
+            raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
+
+        while not self._stop_flag and self._audio_data is not None:
+            if self._paused:
+                continue
+
+            remaining = len(self._audio_data) - self._position
+            if remaining <= 0:
+                break
+
+            chunk_size = min(CHUNK_SIZE, remaining)
+            chunk = self._audio_data[self._position : self._position + chunk_size]
+            stream.write(chunk.tobytes())
+            self._position += chunk_size
+
+            if self._position_callback:
+                self._position_callback(self._position)
+
+        stream.stop_stream()
+        stream.close()
+        self._reset()
+
+    def _reset(self) -> None:
+        self._playing = False
+        self._paused = False
+        self._position = 0
+        self._audio_data = None
+
+        if self._position_callback:
+            self._position_callback(0)
 
     def pause(self) -> None:
-        with self._lock:
-            self._is_playing = False
-            self._is_paused = True
+        self._paused = True
 
     def resume(self) -> None:
-        with self._lock:
-            self._is_playing = True
-            self._is_paused = False
+        self._paused = False
 
     def stop(self) -> None:
-        with self._lock:
-            self._is_playing = False
-            self._is_paused = False
-            self._position = 0
+        self._stop_flag = True
+        if self._playback_thread is not None:
+            self._playback_thread.join(timeout=1.0)
 
-            if self._stream is not None:
-                stream = self._stream
-                self._stream = None
-            else:
-                stream = None
-
-            self._audio_data = None
-            callback = self._on_position_changed
-
-        if stream is not None:
-            stream.stop()
-            stream.close()
-
-        if callback:
-            callback(0)
+        self._playback_thread = None
+        self._reset()
 
     def is_playing(self) -> bool:
-        with self._lock:
-            return self._is_playing
+        return self._playing
 
     def is_paused(self) -> bool:
-        with self._lock:
-            return self._is_paused
+        return self._paused
+
+    def terminate(self) -> None:
+        if self._pyaudio is not None:
+            self.stop()
+            self._pyaudio.terminate()
+            self._pyaudio = None

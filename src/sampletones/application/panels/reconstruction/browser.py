@@ -17,8 +17,6 @@ from ...browser.manager import BrowserManager
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_PANEL_LIBRARY_HEIGHT,
-    DIM_PANEL_LIBRARY_WIDTH,
     LBL_BROWSER_RECONSTRUCTIONS,
     LBL_BUTTON_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCT_FILE,
@@ -32,6 +30,7 @@ from ...constants import (
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
     NOD_TYPE_DIRECTORY,
+    SUF_LEFT_PANEL,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
     TAG_BROWSER_BUTTON_REFRESH_LIST,
@@ -40,10 +39,11 @@ from ...constants import (
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
-    TAG_FONT_BOLD,
-    TAG_RECONSTRUCTOR_PANEL_GROUP,
+    TAG_TAB_RECONSTRUCTIONS,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
@@ -69,48 +69,58 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
-            parent=TAG_RECONSTRUCTOR_PANEL_GROUP,
-            width=DIM_PANEL_LIBRARY_WIDTH,
-            height=DIM_PANEL_LIBRARY_HEIGHT,
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_LEFT_PANEL}",
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, width=self.width, height=self.height, parent=self.parent):
-            section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+        with dpg.child_window(
+            tag=self.tag,
+            width=self.width,
+            height=self.height,
+            parent=self.parent,
+            border=False,
+        ):
+            self._create_section_text()
+            self._create_browser_controls()
+            self._create_tree_window()
 
-            dpg.add_separator()
-            with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
-                    label=LBL_BUTTON_REFRESH_LIST,
-                    width=-1,
-                    callback=self._refresh_tree,
-                )
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
-                    label=LBL_BUTTON_RECONSTRUCT_FILE,
-                    width=-1,
-                    callback=self._reconstruct_file,
-                    bold=True,
-                )
-                GUIButton(
-                    tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-                    label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
-                    width=-1,
-                    callback=self._reconstruct_directory,
-                    bold=True,
-                )
+        self.initialize_tree()
 
-            dpg.add_separator()
-            self.create_search(self.tag)
-            dpg.add_separator()
-            with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
-                with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
-                    with dpg.tree_node(
-                        label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True
-                    ):
-                        pass
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+
+    def _create_browser_controls(self) -> None:
+        dpg.add_separator()
+        with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
+                label=LBL_BUTTON_REFRESH_LIST,
+                width=-1,
+                callback=self._refresh_tree,
+            )
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+                label=LBL_BUTTON_RECONSTRUCT_FILE,
+                width=-1,
+                callback=self._reconstruct_file,
+                font=Font.BOLD,
+            )
+            GUIButton(
+                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+                label=LBL_BUTTON_RECONSTRUCT_DIRECTORY,
+                width=-1,
+                callback=self._reconstruct_directory,
+                font=Font.BOLD,
+            )
+
+    def _create_tree_window(self) -> None:
+        dpg.add_separator()
+        self.create_search(self.tag)
+        with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
+            with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
+                with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
+                    pass
 
     def refresh(self) -> None:
         self._refresh_tree()
@@ -124,6 +134,7 @@ class GUIBrowserPanel(GUITreePanel):
         if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
+                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 for child in node.children:
                     self._build_tree_node(child, node_tag)
         else:
@@ -135,6 +146,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
+            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
     def initialize_tree(self) -> None:
         self._refresh_tree()
@@ -170,7 +182,7 @@ class GUIBrowserPanel(GUITreePanel):
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             show_file_not_found_dialog(filepath, MSG_RECONSTRUCTION_FILE_NOT_FOUND)
             return
-        except (IOError, IsADirectoryError, OSError, PermissionError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
             show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
             return
@@ -195,8 +207,8 @@ class GUIBrowserPanel(GUITreePanel):
             show_error_dialog(
                 exception,
                 MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
-                    exception.expected_version,
                     exception.actual_version,
+                    exception.expected_version,
                 ),
             )
             return

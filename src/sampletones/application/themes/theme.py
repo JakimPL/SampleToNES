@@ -1,15 +1,53 @@
-from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Dict, ItemsView, KeysView, List, Union, ValuesView
 
 import dearpygui.dearpygui as dpg
 
+from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
 
-@dataclass(frozen=True)
+
 class Theme:
-    tag: str
+    REGISTRY: Dict[str, "Theme"] = {}
 
-    def create(self) -> None:
-        raise NotImplementedError("Subclasses must implement _create method")
+    tag: str
+    _theme: ThemeItems
+
+    def __init__(self) -> None:
+        Theme.REGISTRY[self.tag] = self
+
+    def __new__(cls) -> "Theme":
+        if cls.tag in cls.REGISTRY:
+            return cls.REGISTRY[cls.tag]
+
+        instance = super(Theme, cls).__new__(cls)
+        return instance
+
+    @classmethod
+    def keys(cls) -> KeysView[ThemeParameter]:
+        return cls._theme.items.keys()
+
+    @classmethod
+    def items(cls) -> ItemsView[ThemeParameter, List[Union[ThemeColor, ThemeStyle]]]:
+        return cls._theme.items.items()
+
+    @classmethod
+    def values(cls) -> ValuesView[List[Union[ThemeColor, ThemeStyle]]]:
+        return cls._theme.items.values()
+
+    def create(self, override: bool = False) -> None:
+        if not override and dpg.does_item_exist(self.tag):
+            return
+
+        if override and dpg.does_item_exist(self.tag):
+            dpg.delete_item(self.tag)
+
+        with dpg.theme(tag=self.tag):
+            for parameter, items in self.items():
+                with dpg.theme_component(parameter.item_type, enabled_state=parameter.enabled_state):
+                    for item in items:
+                        if isinstance(item, ThemeColor):
+                            dpg.add_theme_color(item.key, item.color)
+                        elif isinstance(item, ThemeStyle):
+                            dpg.add_theme_style(item.key, item.x, item.y)
 
     @staticmethod
     def create_before_bind(func: Callable[..., Any]) -> Callable[..., Any]:

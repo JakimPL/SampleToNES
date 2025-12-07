@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from ...constants import (
     DIM_WINDOW_MAIN_HEIGHT,
@@ -10,8 +10,6 @@ from ...constants import (
 
 
 class WindowState(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
     width: int = Field(default=DIM_WINDOW_MAIN_WIDTH, description="The width of the main application window.")
     height: int = Field(default=DIM_WINDOW_MAIN_HEIGHT, description="The height of the main application window.")
     x: int = Field(default=VAL_WINDOW_POSITION_X, description="The x-coordinate of the main application window.")

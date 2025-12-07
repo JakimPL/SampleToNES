@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from sampletones.constants.enums import FeatureKey
+from sampletones.typehints import Color
 
 from ..constants import (
     COL_BAR_PLOT_ARPEGGIO,
@@ -26,7 +27,7 @@ from ..constants import (
 class FeaturePlotConfig:
     feature_key: FeatureKey
     label: str
-    color: Tuple[int, int, int, int]
+    color: Color
     y_min: float
     y_max: float
     y_ticks: Optional[Tuple[int, ...]]

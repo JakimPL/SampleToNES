@@ -22,18 +22,20 @@ from ...constants import (
     SUF_GRAPH_RAW_DATA,
     SUF_GRAPH_RAW_DATA_GROUP,
     SUF_NO_DATA_MESSAGE,
+    SUF_RIGHT_PANEL,
     SUF_SEPARATOR,
     SUF_WINDOW,
-    TAG_FONT_BOLD,
     TAG_RECONSTRUCTION_DETAILS_GENERATORS,
     TAG_RECONSTRUCTION_DETAILS_PANEL,
-    TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
     TAG_RECONSTRUCTION_DETAILS_TAB_BAR,
     TAG_RECONSTRUCTION_EXPORT_FTI_BUTTON,
     TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
+    TAG_TAB_RECONSTRUCTIONS,
     VAL_PLOT_WIDTH_FULL,
 )
 from ...elements.button import GUIButton
+from ...elements.fonts.font import Font
+from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.bar import GUIBarPlotDisplay
 from ...elements.panel import GUIPanel
 from ...reconstruction.config import (
@@ -61,31 +63,44 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_RECONSTRUCTION_DETAILS_PANEL,
-            parent=TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP,
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_RIGHT_PANEL}",
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, parent=self.parent):
-            section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
-            dpg.bind_item_font(section_text, TAG_FONT_BOLD)
+        with dpg.child_window(
+            tag=self.tag,
+            parent=self.parent,
+            width=self.width,
+            height=self.height,
+            border=False,
+        ):
+            self._create_section_text()
+            self._create_export_button()
+            self._create_details_panel()
 
-            GUIButton(
-                tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
-                label=LBL_RECONSTRUCTION_EXPORT_FTIS,
-                width=-1,
-                callback=self._export_instruments,
-                enabled=False,
-                show=False,
-                bold=True,
-            )
-            dpg.add_separator()
+    def _create_section_text(self) -> None:
+        section_text = dpg.add_text(LBL_RECONSTRUCTION_DETAILS)
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-            dpg.add_separator(tag=self.export_button_separator_tag, show=False)
-            dpg.add_text(
-                tag=self.no_data_message_tag,
-                default_value=MSG_RECONSTRUCTION_NO_DATA,
-                show=True,
-            )
+    def _create_export_button(self) -> None:
+        dpg.add_separator()
+        GUIButton(
+            tag=TAG_RECONSTRUCTION_EXPORT_FTIS_BUTTON,
+            label=LBL_RECONSTRUCTION_EXPORT_FTIS,
+            width=-1,
+            callback=self._export_instruments,
+            enabled=False,
+            show=False,
+            font=Font.BOLD,
+        )
+
+    def _create_details_panel(self) -> None:
+        dpg.add_separator(tag=self.export_button_separator_tag, show=False)
+        dpg.add_text(
+            tag=self.no_data_message_tag,
+            default_value=MSG_RECONSTRUCTION_NO_DATA,
+            show=True,
+        )
 
     def set_callbacks(
         self,
@@ -112,6 +127,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:
         self._clear_tabs()
 
+        dpg.add_separator(tag=self.export_button_separator_tag, parent=self.tag)
         dpg.add_text(LBL_RECONSTRUCTION_GENERATORS, tag=TAG_RECONSTRUCTION_DETAILS_GENERATORS, parent=self.tag)
         with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag):
             for generator_name in feature_data.get_generator_names():
@@ -207,8 +223,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             max_tick = step * 4
             y_ticks = tuple(range(-max_tick, max_tick + 1, step))
 
-        y_min -= 1.0
-        y_max += 1.0
+        gap = max(1.0, y_min * 0.1, y_max * 0.1)
+        y_min = int(np.floor(y_min - gap))
+        y_max = int(np.ceil(y_max + gap))
 
         plot = GUIBarPlotDisplay(
             tag=plot_tag,

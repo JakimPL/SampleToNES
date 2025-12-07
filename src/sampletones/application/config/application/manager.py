@@ -1,13 +1,14 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager, CurrentDevice
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
 
-from ...constants import TAG_TAB_BAR_MAIN
+from ...constants import TAG_TABS
 from .config import ApplicationConfig
 
 
@@ -26,28 +27,39 @@ class ApplicationConfigManager:
         width: int,
         height: int,
     ) -> None:
-        self.config.window_state.fullscreen = fullscreen
+        self.config.window.fullscreen = fullscreen
         if not fullscreen:
-            self.config.window_state.x = x
-            self.config.window_state.y = y
-            self.config.window_state.width = width
-            self.config.window_state.height = height
+            self.config.window.x = x
+            self.config.window.y = y
+            self.config.window.width = width
+            self.config.window.height = height
 
     def load_window_state(self) -> None:
         window_x, window_y = dpg.get_viewport_pos()
-        if not self.config.window_state.fullscreen:
-            self.config.window_state.x = int(window_x)
-            self.config.window_state.y = int(window_y)
-            self.config.window_state.width = dpg.get_viewport_width()
-            self.config.window_state.height = dpg.get_viewport_height()
+        if not self.config.window.fullscreen:
+            self.config.window.x = int(window_x)
+            self.config.window.y = int(window_y)
+            self.config.window.width = dpg.get_viewport_width()
+            self.config.window.height = dpg.get_viewport_height()
 
     def save_current_tab(self) -> None:
-        current_tab = dpg.get_value(TAG_TAB_BAR_MAIN)
+        current_tab = dpg.get_value(TAG_TABS)
         current_tab = dpg.get_item_alias(current_tab)
-        self.config.gui_state.current_tab = current_tab
+        self.config.gui.current_tab = current_tab
+
+    def toggle_show_advanced_settings(self) -> bool:
+        self.config.gui.advanced_settings = not self.config.gui.advanced_settings
+        return self.config.gui.advanced_settings
+
+    def toggle_autoplay(self) -> bool:
+        self.config.gui.autoplay = not self.config.gui.autoplay
+        return self.config.gui.autoplay
+
+    def toggle_favorite(self, path: Path) -> None:
+        self.config.favorites.toggle_favorite(path)
 
     def load_current_tab(self) -> str:
-        return self.config.gui_state.current_tab
+        return self.config.gui.current_tab
 
     def set_config_path(self, path: Path) -> None:
         self.config.last_paths.config = get_directory(path)
@@ -80,7 +92,10 @@ class ApplicationConfigManager:
         return self.config.last_paths.audio
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.config.gui_state.current_reconstruction = path
+        self.config.gui.current_reconstruction = path
+
+    def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
+        self.config.audio.set_current_device(audio_device_manager)
 
     def save_config(self) -> None:
         self.load_window_state()
@@ -89,7 +104,7 @@ class ApplicationConfigManager:
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(APPLICATION_CONFIG_PATH)
-        except (IOError, OSError, PermissionError, IsADirectoryError) as exception:
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception, f"File error while saving application config from {APPLICATION_CONFIG_PATH}"
             )
@@ -97,21 +112,45 @@ class ApplicationConfigManager:
             logger.error_with_traceback(exception, f"Failed to save application config to {APPLICATION_CONFIG_PATH}")
 
     @property
-    def is_fullscreen(self) -> bool:
-        return self.config.window_state.fullscreen
+    def fullscreen(self) -> bool:
+        return self.config.window.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self.config.window_state.x
+        return self.config.window.x
 
     @property
     def window_y(self) -> int:
-        return self.config.window_state.y
+        return self.config.window.y
 
     @property
     def window_width(self) -> int:
-        return self.config.window_state.width
+        return self.config.window.width
 
     @property
     def window_height(self) -> int:
-        return self.config.window_state.height
+        return self.config.window.height
+
+    @property
+    def current_tab(self) -> str:
+        return self.config.gui.current_tab
+
+    @property
+    def current_reconstruction(self) -> Optional[Path]:
+        return self.config.gui.current_reconstruction
+
+    @property
+    def current_audio_device(self) -> CurrentDevice:
+        return self.config.audio.current_device
+
+    @property
+    def advanced_settings(self) -> bool:
+        return self.config.gui.advanced_settings
+
+    @property
+    def autoplay(self) -> bool:
+        return self.config.gui.autoplay
+
+    @property
+    def favorites(self) -> Set[Path]:
+        return self.config.favorites.paths

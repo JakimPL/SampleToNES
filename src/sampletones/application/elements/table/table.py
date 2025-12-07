@@ -1,15 +1,14 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from ...constants import (
-    COL_TABLE_LABEL,
-    COL_TABLE_VALUE,
-    DIM_TABLE_LABEL_WIDTH,
-    TAG_FONT_BOLD,
-)
+from sampletones.typehints import Color, SerializedData
+
+from ...constants import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_LABEL_WIDTH
 from ...themes.table import TableTheme
 from ...themes.theme import Theme
+from ..fonts.font import Font
+from ..fonts.registry import FontRegistry
 from .cell import TableCell
 
 
@@ -30,8 +29,8 @@ class GUITable:
         borders_outer_vertical: bool = True,
         row_background: bool = True,
         resizable: bool = False,
-        label_color: Tuple[int, int, int, int] = COL_TABLE_LABEL,
-        value_color: Tuple[int, int, int, int] = COL_TABLE_VALUE,
+        label_color: Color = COL_TABLE_LABEL,
+        value_color: Color = COL_TABLE_VALUE,
         bold_labels: bool = True,
         theme: Theme = TableTheme(),
     ) -> None:
@@ -43,7 +42,7 @@ class GUITable:
         self._bold_labels = bold_labels
         self._theme = theme
 
-        table_kwargs: Dict[str, Any] = {
+        table_kwargs: SerializedData = {
             "tag": tag,
             "header_row": header_row,
             "borders_innerH": borders_inner_horizontal,
@@ -75,11 +74,15 @@ class GUITable:
         with dpg.table_row():
             label_text = dpg.add_text(cell.label)
             if self._bold_labels:
-                dpg.bind_item_font(label_text, TAG_FONT_BOLD)
+                FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
+            else:
+                FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
+
             dpg.configure_item(label_text, color=self._label_color)
 
             value_text = dpg.add_text(cell.value)
             dpg.configure_item(value_text, color=self._value_color)
+            FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
 
     @classmethod
     def delete(cls, tag: str) -> None:
@@ -100,7 +103,7 @@ class GUITable:
     def hide(self) -> None:
         dpg.configure_item(self._tag, show=False)
 
-    def set_visible(self, visible: bool) -> None:
+    def set_visibility(self, visible: bool) -> None:
         dpg.configure_item(self._tag, show=visible)
 
     def is_visible(self) -> bool:

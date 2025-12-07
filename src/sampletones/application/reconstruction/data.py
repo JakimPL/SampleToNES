@@ -36,7 +36,7 @@ class ReconstructionData(BaseModel):
                 normalize=normalize,
                 quantize=quantize,
             )
-        except (IOError, FileNotFoundError, IsADirectoryError, OSError, PermissionError):
+        except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError):
             logger.warning(f"Could not load original audio from {audio_filepath}. Using silent audio instead")
             original_audio = np.zeros_like(reconstruction.approximation)
 

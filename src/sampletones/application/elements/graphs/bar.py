@@ -3,12 +3,13 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones.typehints import Color
+
 from ...constants import (
     COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
     LBL_BAR_PLOT_DISPLAY,
-    LBL_BAR_PLOT_VALUE_LABEL,
     SUF_BAR_PLOT_ZERO_LINE,
     VAL_BAR_PLOT_DEFAULT_X_MIN,
     VAL_BAR_PLOT_DEFAULT_Y_MAX,
@@ -68,18 +69,23 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
 
     def _create_content(self) -> None:
         with dpg.plot(
+            tag=self.plot_tag,
             label=self.label,
             height=self.height,
             width=self.width,
-            tag=self.plot_tag,
             anti_aliased=True,
+            border=False,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag)
+            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_BAR_PLOT_VALUE_LABEL, tag=self.y_axis_tag)
+            dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag)
 
     def load_data(
-        self, data: np.ndarray, name: str, color: Tuple[int, int, int, int], y_ticks: Optional[Tuple[int, ...]] = None
+        self,
+        data: np.ndarray,
+        name: str,
+        color: Color,
+        y_ticks: Optional[Tuple[int, ...]] = None,
     ) -> None:
         self.clear_layers()
         self.current_data = data
@@ -102,7 +108,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             dpg.add_bar_series(
                 layer.x_data,
                 layer.y_data,
-                label=layer.name,
+                # label=layer.name,
                 parent=self.y_axis_tag,
                 tag=series_tag,
                 weight=layer.bar_weight,
