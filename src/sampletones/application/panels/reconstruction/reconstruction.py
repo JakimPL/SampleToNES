@@ -116,21 +116,25 @@ class GUIReconstructionPanel(GUIPanel):
         self._clear_display()
 
     def _create_audio_panel(self) -> None:
+        dpg.add_separator()
         with dpg.child_window(
             tag=self.audio_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
+            border=False,
         ):
             self._create_audio_source_radio_buttons()
             self._create_export_wav_button()
 
     def _create_plot_panel(self) -> None:
+        dpg.add_separator()
         with dpg.child_window(
             tag=self.plot_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
+            border=False,
         ):
             self._create_waveform_display()
             self._create_generator_checkboxes()

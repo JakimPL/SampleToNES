@@ -82,6 +82,7 @@ class GUIAudioPlayerPanel(GUIPanel):
             height=self.height,
             no_scroll_with_mouse=True,
             no_scrollbar=True,
+            border=False,
         ):
             self._create_controls()
             dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)

@@ -78,6 +78,7 @@ class GUIBrowserPanel(GUITreePanel):
             width=self.width,
             height=self.height,
             parent=self.parent,
+            border=False,
         ):
             self._create_section_text()
             self._create_browser_controls()

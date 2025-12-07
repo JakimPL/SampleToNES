@@ -71,11 +71,13 @@ class GUIInstructionPanel(GUIPanel):
         self._create_spectrum_display()
 
     def _create_waveform_display(self) -> None:
+        dpg.add_separator()
         with dpg.child_window(
             tag=self.waveform_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
+            border=False,
         ):
             self.waveform_display = GUIWaveformDisplay(
                 tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
@@ -86,11 +88,13 @@ class GUIInstructionPanel(GUIPanel):
             )
 
     def _create_spectrum_display(self) -> None:
+        dpg.add_separator()
         with dpg.child_window(
             tag=self.spectrum_tag,
             parent=self.parent,
             no_scrollbar=True,
             auto_resize_y=True,
+            border=False,
         ):
             self.spectrum_display = GUISpectrumDisplay(
                 tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,

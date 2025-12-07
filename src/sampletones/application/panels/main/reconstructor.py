@@ -61,6 +61,7 @@ class GUIReconstructorPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
+            border=True,
         ):
             self._create_section_text()
             self._create_generator_selection()

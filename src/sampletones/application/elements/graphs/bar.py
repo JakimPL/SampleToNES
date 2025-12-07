@@ -69,11 +69,12 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
 
     def _create_content(self) -> None:
         with dpg.plot(
+            tag=self.plot_tag,
             label=self.label,
             height=self.height,
             width=self.width,
-            tag=self.plot_tag,
             anti_aliased=True,
+            border=False,
         ):
             dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)

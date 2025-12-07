@@ -67,7 +67,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
-        with dpg.child_window(tag=self.tag, parent=self.parent):
+        with dpg.child_window(
+            tag=self.tag,
+            parent=self.parent,
+            width=self.width,
+            height=self.height,
+            border=False,
+        ):
             self._create_section_text()
             self._create_export_button()
             self._create_details_panel()

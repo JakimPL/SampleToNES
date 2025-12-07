@@ -24,14 +24,13 @@ from .config.manager import ConfigManager
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
+    DIM_PANEL_EXPLORER_HEIGHT,
+    DIM_PANEL_EXPLORER_WIDTH,
     DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
     DIM_PANEL_LEFT_HEIGHT,
     DIM_PANEL_LEFT_WIDTH,
-    DIM_PANEL_MAIN_LEFT_HEIGHT,
-    DIM_PANEL_MAIN_LEFT_WIDTH,
     DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
     DIM_PANEL_RIGHT_HEIGHT,
-    DIM_PANEL_RIGHT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
     DIM_WINDOW_MAIN_WIDTH,
     FLAG_WINDOW_PRIMARY_ENABLED,
@@ -500,18 +499,16 @@ class GUI:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
-                        width=DIM_PANEL_MAIN_LEFT_WIDTH,
-                        height=DIM_PANEL_MAIN_LEFT_HEIGHT,
+                        width=DIM_PANEL_EXPLORER_WIDTH,
+                        height=DIM_PANEL_EXPLORER_HEIGHT,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
-                        border=False,
                     ):
                         self._create_main_left_panel()
 
                     with dpg.child_window(
                         tag=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
                         no_scroll_with_mouse=True,
-                        border=False,
                     ):
                         self._create_main_panel()
 
@@ -522,10 +519,10 @@ class GUI:
         left_content_builder: Callable[[], None],
         center_content_builder: Callable[[], None],
         right_content_builder: Callable[[], None],
-        left_panel_height: int,
         right_panel_height: int,
+        right_panel_width: int,
         left_panel_width: int = DIM_PANEL_LEFT_WIDTH,
-        right_panel_width: int = DIM_PANEL_RIGHT_WIDTH,
+        left_panel_height: int = DIM_PANEL_LEFT_HEIGHT,
     ) -> None:
         with dpg.tab(tag=tab_tag, label=label):
             with dpg.table(
@@ -544,14 +541,12 @@ class GUI:
                         height=left_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
-                        border=False,
                     ):
                         left_content_builder()
 
                     with dpg.child_window(
                         tag=f"{tab_tag}{SUF_CENTER_PANEL}",
                         no_scroll_with_mouse=True,
-                        border=False,
                     ):
                         center_content_builder()
 
@@ -561,7 +556,6 @@ class GUI:
                         height=right_panel_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
-                        border=False,
                     ):
                         right_content_builder()
 
@@ -572,7 +566,6 @@ class GUI:
             left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
-            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
         )
@@ -584,7 +577,6 @@ class GUI:
             left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
-            left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
             right_panel_width=DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
         )

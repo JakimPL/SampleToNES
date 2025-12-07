@@ -38,13 +38,14 @@ class GUIMainPanel(GUIPanel):
                 tag=TAG_PANEL_MAIN_SETTINGS,
                 parent=self.tag,
                 width=-1,
-                height=-DIM_PANEL_CONVERTER_HEIGHT - 4,
+                height=-DIM_PANEL_CONVERTER_HEIGHT - 8,
+                border=False,
             ):
                 self._create_settings()
 
             self._create_converter()
 
-    @table_wrapper(columns=2, height=0)
+    @table_wrapper(columns=2, height=-1)
     def _create_settings(self) -> None:
         with dpg.table_cell(tag=TAG_PANEL_MAIN_CONFIG_CELL):
             self.config_panel.create_panel()

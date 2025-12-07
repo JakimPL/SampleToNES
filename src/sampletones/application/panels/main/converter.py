@@ -17,7 +17,6 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_CONVERTER_BUTTON_HEIGHT,
     DIM_CONVERTER_BUTTON_WIDTH,
-    DIM_PANEL_CONVERTER_HEIGHT,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
@@ -87,7 +86,6 @@ class GUIConverterPanel(GUIPanel):
         super().__init__(
             tag=TAG_CONVERTER_PANEL,
             parent=TAG_PANEL_MAIN,
-            height=DIM_PANEL_CONVERTER_HEIGHT,
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
@@ -131,6 +129,7 @@ class GUIConverterPanel(GUIPanel):
             parent=self.parent,
             width=self.width,
             height=self.height,
+            border=False,
         ):
             self._create_section_text()
             self._create_export_button()
