@@ -17,6 +17,7 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_CONVERTER_BUTTON_HEIGHT,
     DIM_CONVERTER_BUTTON_WIDTH,
+    DIM_PANEL_CONVERTER_HEIGHT,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
@@ -86,6 +87,7 @@ class GUIConverterPanel(GUIPanel):
         super().__init__(
             tag=TAG_CONVERTER_PANEL,
             parent=TAG_PANEL_MAIN,
+            height=DIM_PANEL_CONVERTER_HEIGHT,
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
@@ -160,6 +162,7 @@ class GUIConverterPanel(GUIPanel):
             prefix=MSG_INPUT_PATH_PREFIX,
             tag=TAG_CONVERTER_INPUT_PATH_TEXT,
             parent=TAG_CONVERTER_SUBPANEL,
+            font=Font.REGULAR_SMALL,
         )
 
         self.output_path_text = GUIPathText(
@@ -167,6 +170,7 @@ class GUIConverterPanel(GUIPanel):
             prefix=MSG_OUTPUT_PATH_PREFIX,
             tag=TAG_CONVERTER_OUTPUT_PATH_TEXT,
             parent=TAG_CONVERTER_SUBPANEL,
+            font=Font.REGULAR_SMALL,
         )
 
     def _create_conversion_status(self) -> None:

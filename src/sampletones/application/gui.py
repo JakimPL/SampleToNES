@@ -98,6 +98,7 @@ from .elements.fonts.registry import FontRegistry
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
+from .panels.main.advanced import GUIAdvancedSettingsPanel
 from .panels.main.config import GUIConfigPanel
 from .panels.main.converter import GUIConverterPanel
 from .panels.main.explorer import GUIExplorerPanel
@@ -134,11 +135,6 @@ class GUI:
             self.audio_device_manager,
             self.application_config_manager,
         )
-        self.config_panel: GUIConfigPanel = GUIConfigPanel(
-            self.config_manager,
-            self.application_config_manager,
-        )
-        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
@@ -152,10 +148,20 @@ class GUI:
             self.audio_device_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
+        self.config_panel: GUIConfigPanel = GUIConfigPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
+        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
+        self.advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.converter_panel: GUIConverterPanel = GUIConverterPanel(self.config_manager)
         self.main_panel: GUIMainPanel = GUIMainPanel(
             self.config_panel,
             self.reconstructor_panel,
+            self.advanced_settings_panel,
             self.converter_panel,
         )
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
@@ -174,8 +180,8 @@ class GUI:
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
-        self._create_main_window()
         self._set_viewport()
+        self._create_main_window()
         self._setup_dearpygui()
         self.set_callbacks()
         self.config_manager.update_gui()
@@ -305,10 +311,8 @@ class GUI:
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
+        self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
-        self.config_panel.set_callbacks(
-            on_update_library_directory=self.library_panel.refresh,
-        )
         self.explorer_panel.set_callbacks(
             on_wave_file_clicked=self._assign_file_to_converter,
             on_directory_clicked=self._assign_directory_to_converter,
@@ -316,16 +320,13 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory,
             on_load_reconstruction=self._load_reconstruction,
             on_load_library=self._load_library,
-            on_set_as_library_directory=self.config_panel.change_library_directory,
-            on_set_as_output_directory=self.reconstructor_panel.change_output_directory,
+            on_set_as_library_directory=self.advanced_settings_panel.change_library_directory,
+            on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
             is_converter_running=self.converter_panel.is_converter_running,
         )
         self.library_panel.set_callbacks(
             on_instruction_selected=self._on_instruction_selected,
-            on_apply_library_config=self.config_panel.apply_library_config,
-        )
-        self.reconstructor_panel.set_callbacks(
-            on_update_output_directory=self.browser_panel.refresh,
+            on_apply_library_config=self.advanced_settings_panel.apply_library_config,
         )
         self.browser_panel.set_callbacks(
             on_reconstruction_loaded=self._on_reconstruction_loaded,
@@ -1022,7 +1023,7 @@ class GUI:
 
     def _update_advanced_settings_menu_item(self) -> None:
         advanced_settings = self.application_config_manager.advanced_settings
-        self.config_panel.set_advanced_settings_visibility(advanced_settings)
+        self.advanced_settings_panel.set_visibility(advanced_settings)
         dpg_set_value(TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
     @staticmethod

@@ -103,7 +103,7 @@ class GUITable:
     def hide(self) -> None:
         dpg.configure_item(self._tag, show=False)
 
-    def set_visible(self, visible: bool) -> None:
+    def set_visibility(self, visible: bool) -> None:
         dpg.configure_item(self._tag, show=visible)
 
     def is_visible(self) -> bool:

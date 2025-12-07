@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -65,5 +65,6 @@ class FontRegistry:
         return cls.get_font(font).font_resource
 
     @classmethod
-    def bind_to_item(cls, item: Sender, font: Font) -> None:
-        dpg.bind_item_font(item, cls.get_tag(font))
+    def bind_to_item(cls, item: Optional[Sender], font: Font) -> None:
+        if item is not None and dpg.does_item_exist(item):
+            dpg.bind_item_font(item, cls.get_tag(font))

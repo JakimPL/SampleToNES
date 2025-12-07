@@ -17,18 +17,20 @@ DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH = 420
 # File dialog dimensions
 DIM_DIALOG_TRACEBACK_HEIGHT = 400
 DIM_DIALOG_TRACEBACK_WIDTH = 0
-DIM_DIALOG_FILE_WIDTH = 600
+DIM_DIALOG_FILE_WIDTH = 720
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_WIDTH = 350
 DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH = 600
 DIM_DIALOG_ERROR_HEIGHT = 120
 DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
-DIM_PANEL_CONVERTER_HEIGHT = 296
+DIM_PANEL_CONFIG_HEIGHT = 262
+DIM_PANEL_CONVERTER_HEIGHT = 260
+DIM_PANEL_ADVANCED_HEIGHT = 174
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
-DIM_CONVERTER_BUTTON_HEIGHT = 60
+DIM_CONVERTER_BUTTON_HEIGHT = 45
 DIM_INPUT_WIDTH = -180
 
 # Search UI dimensions
@@ -37,7 +39,7 @@ DIM_SEARCH_BUTTON_WIDTH = -1
 DIM_COPY_BUTTON_WIDTH = 60
 
 # Input validation ranges
-RNG_CONFIG_MIN_WORKERS = 1
+RNG_ADVANCED_MIN_WORKERS = 1
 
 # GUI Labels
 TTL_WINDOW_MAIN = "SampleToNES"
@@ -89,15 +91,15 @@ LBL_TAB_RECONSTRUCTIONS = "Reconstructions"
 
 # Section headers
 LBL_SECTION_CONFIG_GENERAL_SETTINGS = "General settings"
+LBL_SECTION_CONFIG_ADVANCED = "Advanced settings"
 LBL_SECTION_CONFIG_LIBRARY_SETTINGS = "Instructions library settings"
 LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION = "Generators"
-LBL_SECTION_CONFIG_LIBRARY_DIRECTORY = "Instructions data directory"
 LBL_SECTION_CONVERTER = "Converter"
 
 # Button labels
 LBL_BUTTON_COLLAPSE_ALL = "Collapse all"
-LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "Select output directory"
-LBL_BUTTON_CONFIG_SELECT_LIBRARY_DIRECTORY = "Select instructions directory"
+LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY = "Select output directory"
+LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY = "Select instructions data directory"
 LBL_BUTTON_GENERATE_LIBRARY = "Generate library"
 LBL_BUTTON_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_BUTTON_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
@@ -120,7 +122,7 @@ LBL_CHECKBOX_PULSE_2 = "Pulse 2"
 LBL_CHECKBOX_NOISE = "Noise"
 
 # Input field labels
-LBL_CONFIG_INPUT_MAX_WORKERS = "Workers"
+LBL_ADVANCED_INPUT_MAX_WORKERS = "Workers"
 LBL_CONFIG_INPUT_SAMPLE_RATE = "Sample rate"
 LBL_CONFIG_INPUT_CHANGE_RATE = "NES frequency"
 
@@ -142,7 +144,7 @@ SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}_show_traceback"
 # Tooltip labels
 LBL_TOOLTIP_CONFIG_NORMALIZE = "Normalize audio to ensure consistent volume levels."
 LBL_TOOLTIP_CONFIG_QUANTIZE = "Quantize audio samples to 5-bit resolution."
-LBL_TOOLTIP_CONFIG_MAX_WORKERS = "Set the number parallel workers for audio processing tasks."
+LBL_TOOLTIP_ADVANCED_MAX_WORKERS = "Set the number parallel workers for audio processing tasks."
 LBL_TOOLTIP_CONFIG_SAMPLE_RATE = "Set the sample rate (in Hz) for audio processing."
 LBL_TOOLTIP_CONFIG_CHANGE_RATE = "Set the NES refresh rate (in Hz) for audio processing. NTSC = 60 Hz, PAL = 50 Hz."
 LBL_TOOLTIP_TRANSFORMATION_GAMMA = (
@@ -232,6 +234,8 @@ TPL_GROUP_LABEL = "{} ({} item(s))"
 
 # GUI element tags
 TAG_PANEL_MAIN = "main_panel"
+TAG_PANEL_MAIN_ADVANCED = "main_panel_advanced"
+TAG_PANEL_ADVANCED = "advanced_panel"
 TAG_PANEL_MAIN_SETTINGS = "main_panel_settings"
 TAG_PANEL_MAIN_CONFIG_CELL = "main_panel_config_cell"
 TAG_PANEL_MAIN_RECONSTRUCTOR_CELL = "main_panel_reconstructor_cell"
@@ -243,19 +247,19 @@ TAG_BROWSER_CONTROLS_GROUP = "browser_controls_group"
 TAG_LIBRARY_BUTTON_GENERATE = "library_generate_button"
 TAG_LIBRARY_BUTTON_REFRESH = "library_refresh_button"
 TAG_LIBRARY_PROGRESS = "library_progress"
-TAG_CONFIG_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
+TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY = "library_directory_display"
 TAG_BROWSER_BUTTON_REFRESH_LIST = "browser_refresh_list_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_FILE = "browser_reconstruct_file_button"
 TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY = "browser_reconstruct_directory_button"
-TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
+TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY = "output_directory_display"
 TAG_CONFIG_STATUS_POPUP = "config_status_popup"
-TAG_CONFIG_PANEL = "config_panel"
+TAG_PANEL_CONFIG = "config_panel"
 TAG_CONFIG_PREVIEW = "config_preview"
 TAG_CONFIG_NORMALIZE = "normalize"
 TAG_CONFIG_QUANTIZE = "quantize"
-TAG_CONFIG_MAX_WORKERS = "max_workers"
+TAG_ADVANCED_MAX_WORKERS = "max_workers"
 TAG_CONFIG_PATHS_GROUP = "config_paths_group"
-TAG_CONFIG_LIBRARY_DIRECTORY_GROUP = "config_paths_instructions_group"
+TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP = "config_paths_instructions_group"
 TAG_CONFIG_SAMPLE_RATE = "sample_rate"
 TAG_CONFIG_CHANGE_RATE = "change_rate"
 TAG_LIBRARY_TREE = "libraries_tree"
@@ -264,7 +268,7 @@ TAG_LIBRARY_TREE_WINDOW = "libraries_tree_window"
 TAG_LIBRARY_NOT_LOADED_DIALOG = "library_not_loaded_dialog"
 TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
 TAG_PATH_MESSAGE_DIALOG = "path_message_dialog"
-TAG_CONFIG_LIBRARY_DIRECTORY = "config_library_directory"
+TAG_ADVANCED_LIBRARY_DIRECTORY = "config_library_directory"
 TAG_EXPLORER_COLLAPSE_ALL = "collapse_all"
 
 # Indices and offsets
@@ -458,6 +462,7 @@ SUF_RECONSTRUCTION_AUDIO = "_audio"
 SUF_RECONSTRUCTION_PLOT = "_plot"
 SUF_SEARCH_INPUT = "_search_input"
 SUF_GROUP = "_group"
+SUF_LABEL = "_label"
 SUF_TRACEBACK = "_traceback"
 SUF_PATH_TEXT = "_path_text"
 SUF_TEXT = "_text"
@@ -587,10 +592,9 @@ VAL_TABLE_FRAME_ROUNDING = 4
 
 # Reconstructor panel constants
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
-TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP = "reconstructor_output_directory_group"
-TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
+TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP = "reconstructor_output_directory_group"
+TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
-LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY = "Output directory"
 LBL_SLIDER_RECONSTRUCTOR_MIXER = "Mixer volume"
 LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA = "FFT transformation"
 TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"

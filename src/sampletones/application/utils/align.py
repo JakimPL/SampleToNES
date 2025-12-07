@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 
 def table_wrapper(
-    rows: int = 1,
     columns: int = 2,
     width: int = -1,
     height: int = -1,

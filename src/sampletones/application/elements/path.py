@@ -13,7 +13,10 @@ from ..constants import (
     COL_PATH_TEXT_HOVER,
     SUF_CONVERTER_HANDLER,
     SUF_GROUP,
+    SUF_LABEL,
 )
+from ..elements.fonts.font import Font
+from ..elements.fonts.registry import FontRegistry
 from ..utils.dpg import dpg_delete_item, dpg_set_value
 from ..utils.tooltip import show_tooltip
 
@@ -25,19 +28,23 @@ class GUIPathText:
         path: Optional[Path],
         parent: str,
         prefix: Optional[str] = None,
+        font: Optional[Font] = None,
         color: Tuple[int, int, int] = COL_PATH_TEXT,
         hover_color: Tuple[int, int, int] = COL_PATH_TEXT_HOVER,
     ) -> None:
         self.tag = tag
         self.path = path or Path()
         self.display_text = shorten_path(self.path)
-        self.prefix = prefix
+        self.label = prefix
+
         self.tooltip: Optional[Sender] = None
 
+        self.font = font
         self.color = color
         self.hover_color = hover_color
 
         self.parent = parent
+        self.label_tag = f"{tag}{SUF_LABEL}"
         self.handler_tag = f"{tag}{SUF_CONVERTER_HANDLER}"
         self.group_tag = f"{tag}{SUF_GROUP}"
 
@@ -45,10 +52,10 @@ class GUIPathText:
         self._create_handler()
 
     def _create_text(self) -> None:
-        parent = self.group_tag if self.prefix is not None else self.parent
-        if self.prefix is not None:
+        parent = self.group_tag if self.label is not None else self.parent
+        if self.label is not None:
             dpg.add_group(horizontal=True, tag=self.group_tag, parent=self.parent)
-            dpg.add_text(self.prefix, parent=self.group_tag)
+            dpg.add_text(self.label, tag=self.label_tag, parent=self.group_tag)
 
         dpg.add_text(
             self.display_text,
@@ -56,6 +63,10 @@ class GUIPathText:
             parent=parent,
             color=self.color,
         )
+
+        if self.font is not None:
+            FontRegistry.bind_to_item(self.label_tag, self.font)
+            FontRegistry.bind_to_item(self.tag, self.font)
 
         self.tooltip = show_tooltip(self.tag, self.path_text)
 

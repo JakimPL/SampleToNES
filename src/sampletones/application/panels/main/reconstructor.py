@@ -1,58 +1,44 @@
-from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
-from sampletones.utils import to_path
 
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_DIALOG_FILE_HEIGHT,
-    DIM_DIALOG_FILE_WIDTH,
     DIM_INPUT_WIDTH,
+    DIM_PANEL_CONFIG_HEIGHT,
     FLAG_CHECKBOX_DEFAULT_ENABLED,
-    LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
     LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION,
-    LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY,
     LBL_SECTION_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_RECONSTRUCTOR_MIXER,
-    TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
     TAG_RECONSTRUCTOR_PANEL,
-    TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
     TPL_RECONSTRUCTION_GEN_TAG,
-    TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
 )
-from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
-from ...elements.path import GUIPathText
 from ...utils.dpg import dpg_set_value
-from ...utils.file import file_dialog_handler
 from ...utils.tooltip import show_tooltip
 
 
 class GUIReconstructorPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
-        self.output_path_text: Optional[GUIPathText] = None
-
-        self._on_update_output_directory: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
+            height=DIM_PANEL_CONFIG_HEIGHT,
         )
 
     def create_panel(self) -> None:
@@ -66,7 +52,6 @@ class GUIReconstructorPanel(GUIPanel):
             self._create_section_text()
             self._create_generator_selection()
             self._create_mixer_slider()
-            self._create_output_directory_section()
             self._create_tooltips()
 
         self._register_callbacks()
@@ -111,26 +96,6 @@ class GUIReconstructorPanel(GUIPanel):
             width=DIM_INPUT_WIDTH,
         )
 
-    def _create_output_directory_section(self) -> None:
-        with dpg.group(tag=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP):
-            dpg.add_separator()
-            dpg.add_text(LBL_SECTION_RECONSTRUCTOR_OUTPUT_DIRECTORY)
-            GUIButton(
-                tag=TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-                label=LBL_BUTTON_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY,
-                parent=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
-                width=-1,
-                callback=self._select_output_directory_dialog,
-            )
-
-            output_directory = self.config_manager.get_output_directory()
-            self.output_path_text = GUIPathText(
-                tag=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY,
-                parent=TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP,
-                path=output_directory,
-            )
-            FontRegistry.bind_to_item(TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_DISPLAY, Font.REGULAR_SMALL)
-
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
 
@@ -159,32 +124,6 @@ class GUIReconstructorPanel(GUIPanel):
 
         return gui_values
 
-    def _select_output_directory_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
-            callback=self._handle_select_output_directory,
-            directory_selector=True,
-            default_path=str(self.config_manager.get_output_directory()),
-        ):
-            pass
-
-    @file_dialog_handler
-    def _handle_select_output_directory(self, directory_path: Path) -> None:
-        self.change_output_directory(directory_path)
-
-    def change_output_directory(self, directory_path: Path) -> None:
-        self.config_manager.output_directory = directory_path
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
-
-        if self.output_path_text is not None:
-            self.output_path_text.set_path(directory_path)
-
-        if self._on_update_output_directory:
-            self._on_update_output_directory()
-
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:
             return
@@ -198,14 +137,3 @@ class GUIReconstructorPanel(GUIPanel):
 
         for generator_tag, generator in self.config_manager.generator_tags.items():
             dpg_set_value(generator_tag, generator in config.generation.generators)
-
-        output_directory = to_path(config.general.output_directory)
-        if self.output_path_text:
-            self.output_path_text.set_path(output_directory)
-
-    def set_callbacks(
-        self,
-        on_update_output_directory: Optional[Callable[[], None]] = None,
-    ) -> None:
-        if on_update_output_directory is not None:
-            self._on_update_output_directory = on_update_output_directory
