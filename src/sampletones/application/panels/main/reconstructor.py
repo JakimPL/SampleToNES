@@ -82,6 +82,7 @@ class GUIReconstructorPanel(GUIPanel):
     def _create_generator_selection(self) -> None:
         dpg.add_separator()
         dpg.add_text(LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION)
+
         dpg.add_checkbox(
             label=LBL_CHECKBOX_PULSE_1,
             default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,

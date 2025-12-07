@@ -284,6 +284,7 @@ class GUIExplorerPanel(GUITreePanel):
                 case paths.EXT_FILE_LIBRARY:
                     return self._load_library(user_data)
                 case paths.EXT_FILE_WAVE:
+
                     if self._on_wave_file_clicked is not None:
                         self._on_wave_file_clicked(user_data.filepath)
                     return self._schedule_autoplay(user_data)
@@ -309,14 +310,21 @@ class GUIExplorerPanel(GUITreePanel):
     def _on_directory_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
-            if self._on_directory_clicked is not None:
-                self._on_directory_clicked(user_data.filepath)
-            return self._toggle_directory_expansion(user_data)
+            return self._directory_node_clicked(user_data)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_directory_context_menu(user_data)
 
         return None
+
+    def _directory_node_clicked(self, node: FileSystemNode) -> None:
+        self._toggle_directory_expansion(node)
+        has_content = self.explorer_manager.has_relevant_content(node.filepath)
+        if not has_content:
+            return
+
+        if self._on_directory_clicked is not None:
+            self._on_directory_clicked(node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         filepath = node.filepath
@@ -396,6 +404,7 @@ class GUIExplorerPanel(GUITreePanel):
                 label="",
                 tag=dummy_tag,
                 parent=node_tag,
+                leaf=True,
             )
 
     def _add_context_menu_text(self, node: FileSystemNode) -> None:
