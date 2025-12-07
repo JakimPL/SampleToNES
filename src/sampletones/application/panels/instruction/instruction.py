@@ -13,13 +13,14 @@ from ...constants import (
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTION_WAVEFORM,
+    SUF_CENTER_PANEL,
     SUF_INSTRUCTION_SPECTRUM,
     SUF_INSTRUCTION_WAVEFORM,
     TAG_INSTRUCTION_PANEL,
-    TAG_INSTRUCTION_PANEL_GROUP,
     TAG_INSTRUCTION_PLAYER_PANEL,
     TAG_INSTRUCTION_SPECTRUM_DISPLAY,
     TAG_INSTRUCTION_WAVEFORM_DISPLAY,
+    TAG_TAB_INSTRUCTIONS,
     VAL_PLOT_WIDTH_FULL,
 )
 from ...elements.graphs.spectrum import GUISpectrumDisplay
@@ -48,7 +49,7 @@ class GUIInstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_INSTRUCTION_PANEL,
-            parent=TAG_INSTRUCTION_PANEL_GROUP,
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_CENTER_PANEL}",
         )
 
     def set_callbacks(

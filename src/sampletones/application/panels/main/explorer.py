@@ -19,8 +19,6 @@ from ...constants import (
     COL_TEXT_LIBRARY,
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
-    DIM_PANEL_EXPLORER_HEIGHT,
-    DIM_PANEL_EXPLORER_WIDTH,
     LBL_BUTTON_COLLAPSE_ALL,
     LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
     LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
@@ -36,15 +34,16 @@ from ...constants import (
     NOD_TYPE_DIRECTORY,
     NOD_TYPE_FILE,
     NOD_TYPE_ROOT,
+    SUF_LEFT_PANEL,
     SUF_NODE_DUMMY,
     SUF_NODE_HANDLER,
     TAG_EXPLORER_COLLAPSE_ALL,
     TAG_EXPLORER_CONVERTER_RUNNING,
     TAG_EXPLORER_PANEL,
-    TAG_EXPLORER_PANEL_GROUP,
     TAG_EXPLORER_TREE,
     TAG_EXPLORER_TREE_GROUP,
     TAG_EXPLORER_TREE_WINDOW,
+    TAG_TAB_MAIN,
     TTL_EXPLORER_CONVERTER_RUNNING,
 )
 from ...elements.button import GUIButton
@@ -84,9 +83,7 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self.explorer_manager.tree,
             tag=TAG_EXPLORER_PANEL,
-            parent=TAG_EXPLORER_PANEL_GROUP,
-            width=DIM_PANEL_EXPLORER_WIDTH,
-            height=DIM_PANEL_EXPLORER_HEIGHT,
+            parent=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
             search_label=LBL_TREE_FILTER,
         )
 
@@ -100,6 +97,8 @@ class GUIExplorerPanel(GUITreePanel):
             self._create_section_text()
             self._create_collapse_button()
             self._create_tree_window()
+
+        self.initialize_tree()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_EXPLORER_FILESYSTEM)

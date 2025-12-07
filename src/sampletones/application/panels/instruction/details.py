@@ -10,13 +10,14 @@ from ...constants import (
     LBL_INSTRUCTION_GENERAL_HEADER,
     LBL_INSTRUCTION_PARAMETERS_HEADER,
     MSG_INSTRUCTION_NO_SELECTION,
+    SUF_RIGHT_PANEL,
     TAG_INSTRUCTION_DETAILS,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
     TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
-    TAG_INSTRUCTION_PANEL,
+    TAG_TAB_INSTRUCTIONS,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -34,7 +35,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_INSTRUCTION_DETAILS,
-            parent=TAG_INSTRUCTION_PANEL,
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_RIGHT_PANEL}",
         )
 
     def create_panel(self) -> None:

@@ -28,8 +28,6 @@ from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_PANEL_LIBRARY_HEIGHT,
-    DIM_PANEL_LIBRARY_WIDTH,
     LBL_BUTTON_GENERATE_LIBRARY,
     LBL_BUTTON_REFRESH_LIBRARIES,
     LBL_BUTTON_REGENERATE_LIBRARY,
@@ -52,8 +50,8 @@ from ...constants import (
     MSG_LIBRARY_NOT_LOADED,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
+    SUF_LEFT_PANEL,
     TAG_CONVERTER_PANEL,
-    TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_LIBRARY_BUTTON_GENERATE,
     TAG_LIBRARY_BUTTON_REFRESH,
     TAG_LIBRARY_CONTROLS_GROUP,
@@ -63,6 +61,7 @@ from ...constants import (
     TAG_LIBRARY_TREE,
     TAG_LIBRARY_TREE_GROUP,
     TAG_LIBRARY_TREE_WINDOW,
+    TAG_TAB_INSTRUCTIONS,
     TPL_LIBRARY_EXISTS,
     TPL_LIBRARY_GENERATION_PROGRESS,
     TPL_LIBRARY_LOADED,
@@ -111,11 +110,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._on_library_loaded: Optional[OnLibraryLoadedCallback] = None
 
         super().__init__(
-            tree=self.library_manager.tree,
+            self.library_manager.tree,
             tag=TAG_LIBRARY_PANEL,
-            parent=TAG_INSTRUCTIONS_PANEL_GROUP,
-            width=DIM_PANEL_LIBRARY_WIDTH,
-            height=DIM_PANEL_LIBRARY_HEIGHT,
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_LEFT_PANEL}",
         )
 
     def create_panel(self) -> None:
@@ -129,6 +126,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_status()
             self._create_library_controls()
             self._create_library_tree()
+
+        self.initialize_libraries()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_LIBRARY_LIBRARIES)

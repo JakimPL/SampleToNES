@@ -24,12 +24,12 @@ from .config.manager import ConfigManager
 from .constants import (
     DIM_DIALOG_FILE_HEIGHT,
     DIM_DIALOG_FILE_WIDTH,
-    DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
+    DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
     DIM_PANEL_LEFT_HEIGHT,
     DIM_PANEL_LEFT_WIDTH,
     DIM_PANEL_MAIN_LEFT_HEIGHT,
     DIM_PANEL_MAIN_LEFT_WIDTH,
-    DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
+    DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
     DIM_PANEL_RIGHT_HEIGHT,
     DIM_PANEL_RIGHT_WIDTH,
     DIM_WINDOW_MAIN_HEIGHT,
@@ -67,12 +67,7 @@ from .constants import (
     SUF_CENTER_PANEL,
     SUF_LEFT_PANEL,
     SUF_RIGHT_PANEL,
-    TAG_BROWSER_PANEL_GROUP,
-    TAG_CONFIG_PANEL_GROUP,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_CONVERTER_PANEL_GROUP,
-    TAG_EXPLORER_PANEL_GROUP,
-    TAG_INSTRUCTIONS_PANEL_GROUP,
     TAG_MENU_ITEM_AUTOPLAY,
     TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
@@ -85,7 +80,6 @@ from .constants import (
     TAG_MENU_ITEM_RECONSTRUCT_FILE,
     TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_ITEM_STOP,
-    TAG_RECONSTRUCTOR_PANEL_GROUP,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
@@ -577,7 +571,7 @@ class GUI:
             right_content_builder=self.reconstruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
-            right_panel_width=DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH,
+            right_panel_width=DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
         )
 
     def _create_instructions_tab(self) -> None:
@@ -589,33 +583,22 @@ class GUI:
             right_content_builder=self.instruction_details_panel.create_panel,
             left_panel_height=DIM_PANEL_LEFT_HEIGHT,
             right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
-            right_panel_width=DIM_PANEL_INSTRUCTION_DETAILS_WIDTH,
+            right_panel_width=DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
         )
 
     def _create_instructions_left_panel(self) -> None:
-        with dpg.group(tag=TAG_INSTRUCTIONS_PANEL_GROUP):
-            self.library_panel.create_panel()
-            self.library_panel.initialize_libraries()
+        self.library_panel.create_panel()
 
     def _create_reconstructions_left_panel(self) -> None:
-        with dpg.group(tag=TAG_BROWSER_PANEL_GROUP):
-            self.browser_panel.create_panel()
-            self.browser_panel.initialize_tree()
+        self.browser_panel.create_panel()
 
     def _create_main_left_panel(self) -> None:
-        with dpg.group(tag=TAG_EXPLORER_PANEL_GROUP):
-            self.explorer_panel.create_panel()
-            self.explorer_panel.initialize_tree()
+        self.explorer_panel.create_panel()
 
     def _create_main_panel(self) -> None:
-        with dpg.group(tag=TAG_CONFIG_PANEL_GROUP):
-            self.config_panel.create_panel()
-
-        with dpg.group(tag=TAG_RECONSTRUCTOR_PANEL_GROUP):
-            self.reconstructor_panel.create_panel()
-
-        with dpg.group(tag=TAG_CONVERTER_PANEL_GROUP):
-            self.converter_panel.create_panel()
+        self.config_panel.create_panel()
+        self.reconstructor_panel.create_panel()
+        self.converter_panel.create_panel()
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(

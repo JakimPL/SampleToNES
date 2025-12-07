@@ -17,8 +17,6 @@ from ...browser.manager import BrowserManager
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_PANEL_LIBRARY_HEIGHT,
-    DIM_PANEL_LIBRARY_WIDTH,
     LBL_BROWSER_RECONSTRUCTIONS,
     LBL_BUTTON_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCT_FILE,
@@ -32,15 +30,16 @@ from ...constants import (
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
     NOD_TYPE_DIRECTORY,
+    SUF_LEFT_PANEL,
     TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
     TAG_BROWSER_BUTTON_REFRESH_LIST,
     TAG_BROWSER_CONTROLS_GROUP,
     TAG_BROWSER_PANEL,
-    TAG_BROWSER_PANEL_GROUP,
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
+    TAG_TAB_RECONSTRUCTIONS,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -70,9 +69,7 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
-            parent=TAG_BROWSER_PANEL_GROUP,
-            width=DIM_PANEL_LIBRARY_WIDTH,
-            height=DIM_PANEL_LIBRARY_HEIGHT,
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_LEFT_PANEL}",
         )
 
     def create_panel(self) -> None:
@@ -85,6 +82,8 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_section_text()
             self._create_browser_controls()
             self._create_tree_window()
+
+        self.initialize_tree()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_BROWSER_RECONSTRUCTIONS)

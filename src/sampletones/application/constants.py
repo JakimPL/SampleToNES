@@ -11,19 +11,12 @@ DIM_PANEL_LEFT_WIDTH = 360
 DIM_PANEL_LEFT_HEIGHT = -1
 DIM_PANEL_RIGHT_WIDTH = 460
 DIM_PANEL_RIGHT_HEIGHT = -1
-DIM_PANEL_INSTRUCTION_DETAILS_WIDTH = 360
-DIM_PANEL_RECONSTRUCTION_DETAILS_WIDTH = 420
-DIM_PANEL_CONFIG_WIDTH = 0
-DIM_PANEL_CONFIG_HEIGHT = 0
-DIM_PANEL_LIBRARY_WIDTH = 0
-DIM_PANEL_LIBRARY_HEIGHT = -1
-DIM_PANEL_RECONSTRUCTOR_HEIGHT = 0
-DIM_PANEL_RECONSTRUCTOR_WIDTH = 0
-DIM_PANEL_EXPLORER_WIDTH = 0
-DIM_PANEL_EXPLORER_HEIGHT = -1
-DIM_DIALOG_TRACEBACK_HEIGHT = 400
+DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH = 360
+DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH = 420
 
 # File dialog dimensions
+DIM_DIALOG_TRACEBACK_HEIGHT = 400
+DIM_DIALOG_TRACEBACK_WIDTH = 0
 DIM_DIALOG_FILE_WIDTH = 600
 DIM_DIALOG_FILE_HEIGHT = 400
 DIM_DIALOG_WIDTH = 350
@@ -31,8 +24,6 @@ DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_ERROR_WIDTH = 600
 DIM_DIALOG_ERROR_HEIGHT = 120
 DIM_DIALOG_ERROR_WIDTH_WRAP = DIM_DIALOG_ERROR_WIDTH - 10
-DIM_DIALOG_CONVERTER_WIDTH = 800
-DIM_DIALOG_CONVERTER_HEIGHT = 0
 
 # UI element dimensions
 DIM_CONVERTER_BUTTON_WIDTH = -1
@@ -240,6 +231,7 @@ TPL_GROUP_LABEL = "{} ({} item(s))"
 
 # GUI element tags
 TAG_LIBRARY_PANEL = "library_panel"
+TAG_INSTRUCTION_PANEL = "instruction_panel"
 TAG_LIBRARY_STATUS = "library_status"
 TAG_LIBRARY_CONTROLS_GROUP = "library_controls_group"
 TAG_BROWSER_CONTROLS_GROUP = "browser_controls_group"
@@ -286,12 +278,6 @@ TAG_TABS = "tabs"
 TAG_TAB_MAIN = "tab_main"
 TAG_TAB_INSTRUCTIONS = "tab_instructions"
 TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
-TAG_GLOBAL_LEFT_PANELS_GROUP = "left_panels_group"
-TAG_CONFIG_PANEL_GROUP = "config_panel_group"
-TAG_INSTRUCTIONS_PANEL_GROUP = "instructions_panel_group"
-TAG_INSTRUCTION_PANEL = "instruction_panel"
-TAG_INSTRUCTION_PANEL_GROUP = "instruction_panel_group"
-TAG_INSTRUCTION_DETAILS_PANEL_GROUP = "instruction_details_panel_group"
 TAG_INSTRUCTION_PLAYER_PANEL = "instruction_player_panel"
 TAG_INSTRUCTION_WAVEFORM_DISPLAY = "instruction_waveform_display"
 TAG_INSTRUCTION_SPECTRUM_DISPLAY = "instruction_spectrum_display"
@@ -317,9 +303,7 @@ TAG_CONVERTER_BUTTON_LOAD = "converter_load_button"
 TAG_CONVERTER_BUTTON_CANCEL = "converter_cancel_button"
 TAG_CONVERTER_ERROR_DIALOG = "converter_error_dialog"
 TAG_CONVERTER_SUCCESS_DIALOG = "converter_success_dialog"
-TAG_CONVERTER_PANEL_GROUP = "converter_panel_group"
 TAG_CONVERTER_BUTTON_CONVERT = "converter_convert_button"
-TAG_RECONSTRUCTION_DETAILS_PANEL_GROUP = "reconstruction_details_panel_group"
 TAG_FILE_NOT_FOUND_DIALOG = "file_not_found_dialog"
 TAG_ERROR_DIALOG = "error_dialog"
 
@@ -597,9 +581,7 @@ VAL_TABLE_CELL_PADDING = 8, 4
 VAL_TABLE_FRAME_ROUNDING = 4
 
 # Reconstructor panel constants
-TAG_RECONSTRUCTION_PANEL_GROUP = "reconstruction_panel_group"
 TAG_RECONSTRUCTOR_PANEL = "reconstructor_panel"
-TAG_RECONSTRUCTOR_PANEL_GROUP = "reconstructor_panel_group"
 TAG_RECONSTRUCTOR_OUTPUT_DIRECTORY_GROUP = "reconstructor_output_directory_group"
 TAG_RECONSTRUCTOR_SELECT_OUTPUT_DIRECTORY = "reconstructor_select_output_directory_button"
 LBL_SECTION_RECONSTRUCTOR_SETTINGS = "Reconstructor settings"
@@ -610,7 +592,6 @@ TAG_CONFIG_TRANSFORMATION_GAMMA = "transformation_gamma"
 TAG_RECONSTRUCTOR_MIXER = "mixer"
 
 # Explorer panel constants
-TAG_EXPLORER_PANEL_GROUP = "explorer_panel_group"
 TAG_EXPLORER_TREE = "explorer_tree"
 TAG_EXPLORER_PANEL = "explorer_panel"
 TAG_EXPLORER_TREE_WINDOW = "explorer_tree_window"
@@ -637,7 +618,6 @@ TAG_BROWSER_PANEL = "browser_panel"
 TAG_BROWSER_TREE = "browser_tree"
 TAG_BROWSER_TREE_GROUP = "browser_tree_group"
 TAG_BROWSER_TREE_WINDOW = "browser_tree_window"
-TAG_BROWSER_PANEL_GROUP = "browser_panel_group"
 
 # Node type constants
 NOD_TYPE_ROOT = "root"
