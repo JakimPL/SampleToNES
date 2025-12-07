@@ -8,8 +8,8 @@ from sampletones.typehints import Sender, SerializedData
 
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_INPUT_WIDTH,
-    DIM_PANEL_CONFIG_HEIGHT,
+    DIM_INPUT_WIDTH_DEFAULT,
+    DIM_PANEL_HEIGHT_MAIN_CONFIG,
     FLAG_CHECKBOX_DEFAULT_ENABLED,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
@@ -38,7 +38,7 @@ class GUIReconstructorPanel(GUIPanel):
         super().__init__(
             tag=TAG_RECONSTRUCTOR_PANEL,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-            height=DIM_PANEL_CONFIG_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
         )
 
     def create_panel(self) -> None:
@@ -93,7 +93,7 @@ class GUIReconstructorPanel(GUIPanel):
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=MIXER,
-            width=DIM_INPUT_WIDTH,
+            width=DIM_INPUT_WIDTH_DEFAULT,
         )
 
     def _create_tooltips(self) -> None:

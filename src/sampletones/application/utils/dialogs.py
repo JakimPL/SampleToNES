@@ -8,11 +8,11 @@ from sampletones.library import InstructionLibraryKey
 from ..constants import (
     COL_ERROR_TEXT,
     COL_PATH_TEXT,
-    DIM_DIALOG_ERROR_HEIGHT,
-    DIM_DIALOG_ERROR_WIDTH,
-    DIM_DIALOG_ERROR_WIDTH_WRAP,
-    DIM_DIALOG_HEIGHT,
-    DIM_DIALOG_WIDTH,
+    DIM_DIALOG_HEIGHT_DEFAULT,
+    DIM_DIALOG_HEIGHT_ERROR,
+    DIM_DIALOG_WIDTH_DEFAULT,
+    DIM_DIALOG_WIDTH_ERROR,
+    DIM_DIALOG_WIDTH_ERROR_WRAP,
     LBL_BUTTON_HIDE_TRACEBACK,
     LBL_BUTTON_OK,
     LBL_BUTTON_SHOW_TRACEBACK,
@@ -44,8 +44,8 @@ def show_modal_dialog(
     tag: str,
     title: str,
     content: Callable[[str], None],
-    width: int = DIM_DIALOG_WIDTH,
-    height: int = DIM_DIALOG_HEIGHT,
+    width: int = DIM_DIALOG_WIDTH_DEFAULT,
+    height: int = DIM_DIALOG_HEIGHT_DEFAULT,
     modal: bool = True,
 ) -> None:
     dpg_delete_item(tag)
@@ -74,7 +74,7 @@ def show_info_dialog(tag: str, message: str, title: str) -> None:
         dpg.add_text(
             message,
             parent=parent,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
 
     info_tag = f"{tag}{SUF_INFO_DIALOG}"
@@ -93,7 +93,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
         label=TTL_DIALOG_ERROR,
         tag=TAG_ERROR_DIALOG,
         modal=True,
-        min_size=(DIM_DIALOG_ERROR_WIDTH, DIM_DIALOG_ERROR_HEIGHT),
+        min_size=(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
         autosize=True,
         on_close=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
     ):
@@ -101,7 +101,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             dpg.add_text(
                 message,
                 parent=TAG_ERROR_DIALOG,
-                wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+                wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
             )
 
         group_tag = f"{TAG_ERROR_DIALOG}{SUF_GROUP}"
@@ -114,7 +114,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             dpg.add_text(
                 str(exception),
                 parent=group_tag,
-                wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+                wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
                 color=COL_ERROR_TEXT,
             )
 
@@ -160,13 +160,13 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         dpg.add_text(
             message,
             parent=parent,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
         dpg.add_text(
             str(filepath),
             parent=parent,
             color=COL_PATH_TEXT,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
 
     show_modal_dialog(
@@ -181,7 +181,7 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
         dpg.add_text(
             MSG_LIBRARY_NOT_LOADED.format(library_key=key),
             parent=parent,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
 
     show_modal_dialog(
@@ -197,7 +197,7 @@ def show_reconstruction_not_loaded_dialog() -> None:
         dpg.add_text(
             MSG_RECONSTRUCTION_NO_DATA,
             parent=parent,
-            wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
 
     show_modal_dialog(
@@ -217,7 +217,7 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
             dpg.add_text(
                 message,
                 parent=group_tag,
-                wrap=DIM_DIALOG_ERROR_WIDTH_WRAP,
+                wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
             )
             GUIPathText(
                 tag=f"{group_tag}{SUF_PATH_TEXT}",

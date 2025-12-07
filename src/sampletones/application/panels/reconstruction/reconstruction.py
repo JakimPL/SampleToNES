@@ -14,8 +14,8 @@ from sampletones.utils.logger import logger
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_DIALOG_FILE_HEIGHT,
-    DIM_DIALOG_FILE_WIDTH,
+    DIM_DIALOG_HEIGHT_FILE,
+    DIM_DIALOG_WIDTH_FILE,
     DIM_WAVEFORM_DEFAULT_HEIGHT,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
@@ -326,8 +326,8 @@ class GUIReconstructionPanel(GUIPanel):
         self._pending_generator_name = generator_name
         with dpg.file_dialog(
             label=TTL_DIALOG_EXPORT_FTI,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_export_instrument,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=instrument_name,
@@ -392,8 +392,8 @@ class GUIReconstructionPanel(GUIPanel):
 
         with dpg.file_dialog(
             label=TTL_DIALOG_EXPORT_FTI,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_export_instruments,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             directory_selector=True,
@@ -437,8 +437,8 @@ class GUIReconstructionPanel(GUIPanel):
 
         with dpg.file_dialog(
             label=TTL_DIALOG_EXPORT_WAV,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_wav_export,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=filename,

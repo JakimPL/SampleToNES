@@ -15,9 +15,9 @@ from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_CONVERTER_BUTTON_HEIGHT,
-    DIM_CONVERTER_BUTTON_WIDTH,
-    DIM_PANEL_CONVERTER_HEIGHT,
+    DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
+    DIM_BUTTON_WIDTH_MAIN_CONVERTER,
+    DIM_PANEL_HEIGHT_MAIN_CONVERTER,
     LBL_BUTTON_CANCEL,
     LBL_BUTTON_CLOSE,
     LBL_BUTTON_CONVERTER_CONVERT_DIRECTORY,
@@ -87,7 +87,7 @@ class GUIConverterPanel(GUIPanel):
         super().__init__(
             tag=TAG_CONVERTER_PANEL,
             parent=TAG_PANEL_MAIN,
-            height=DIM_PANEL_CONVERTER_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_CONVERTER,
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
@@ -149,8 +149,8 @@ class GUIConverterPanel(GUIPanel):
         GUIButton(
             label=label,
             tag=TAG_CONVERTER_BUTTON_CONVERT,
-            width=DIM_CONVERTER_BUTTON_WIDTH,
-            height=DIM_CONVERTER_BUTTON_HEIGHT,
+            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
+            height=DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
             font=Font.BOLD_LARGE,
             enabled=enabled,
             callback=self._prepare_conversion,
@@ -291,14 +291,14 @@ class GUIConverterPanel(GUIPanel):
         GUIButton(
             label=LBL_BUTTON_LOAD,
             tag=TAG_CONVERTER_BUTTON_LOAD,
-            width=DIM_CONVERTER_BUTTON_WIDTH,
+            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
             callback=self._on_load_clicked,
             enabled=False,
         )
         GUIButton(
             label=LBL_BUTTON_CANCEL,
             tag=TAG_CONVERTER_BUTTON_CANCEL,
-            width=DIM_CONVERTER_BUTTON_WIDTH,
+            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
             callback=self._on_cancel_clicked,
         )
 

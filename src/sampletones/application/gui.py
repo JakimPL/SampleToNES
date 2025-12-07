@@ -22,39 +22,39 @@ from sampletones.utils.logger import logger
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
 from .constants import (
-    DIM_DIALOG_FILE_HEIGHT,
-    DIM_DIALOG_FILE_WIDTH,
-    DIM_PANEL_EXPLORER_HEIGHT,
-    DIM_PANEL_EXPLORER_WIDTH,
-    DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
-    DIM_PANEL_LEFT_HEIGHT,
-    DIM_PANEL_LEFT_WIDTH,
-    DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
-    DIM_PANEL_RIGHT_HEIGHT,
-    DIM_WINDOW_MAIN_HEIGHT,
-    DIM_WINDOW_MAIN_WIDTH,
+    DIM_DIALOG_HEIGHT_FILE,
+    DIM_DIALOG_WIDTH_FILE,
+    DIM_PANEL_HEIGHT_LEFT,
+    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
+    DIM_PANEL_HEIGHT_RIGHT,
+    DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
+    DIM_PANEL_WIDTH_LEFT,
+    DIM_PANEL_WIDTH_MAIN_EXPLORER,
+    DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
+    DIM_WINDOW_HEIGHT,
+    DIM_WINDOW_WIDTH,
     FLAG_WINDOW_PRIMARY_ENABLED,
-    LBL_MENU_FILE,
-    LBL_MENU_ITEM_AUDIO_SETTINGS,
-    LBL_MENU_ITEM_AUTOPLAY,
-    LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
-    LBL_MENU_ITEM_EXIT,
-    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
-    LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
-    LBL_MENU_ITEM_FULLSCREEN,
-    LBL_MENU_ITEM_LOAD_CONFIG,
-    LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
-    LBL_MENU_ITEM_PAUSE,
-    LBL_MENU_ITEM_PLAY,
-    LBL_MENU_ITEM_PLAY_FROM_START,
-    LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
-    LBL_MENU_ITEM_RECONSTRUCT_FILE,
-    LBL_MENU_ITEM_SAVE_CONFIG,
-    LBL_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
-    LBL_MENU_ITEM_STOP,
-    LBL_MENU_PLAYBACK,
-    LBL_MENU_RECONSTRUCTION,
-    LBL_MENU_VIEW,
+    LBL_MENU_GROUP_FILE,
+    LBL_MENU_GROUP_PLAYBACK,
+    LBL_MENU_GROUP_RECONSTRUCTION,
+    LBL_MENU_GROUP_VIEW,
+    LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_FILE_EXIT,
+    LBL_MENU_ITEM_FILE_LOAD_CONFIG,
+    LBL_MENU_ITEM_FILE_SAVE_CONFIG,
+    LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    LBL_MENU_ITEM_PLAYBACK_PAUSE,
+    LBL_MENU_ITEM_PLAYBACK_PLAY,
+    LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    LBL_MENU_ITEM_PLAYBACK_STOP,
+    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
+    LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+    LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    LBL_MENU_ITEM_VIEW_FULLSCREEN,
+    LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
@@ -67,18 +67,18 @@ from .constants import (
     SUF_LEFT_PANEL,
     SUF_RIGHT_PANEL,
     TAG_CONFIG_STATUS_POPUP,
-    TAG_MENU_ITEM_AUTOPLAY,
-    TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
-    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
-    TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
-    TAG_MENU_ITEM_FULLSCREEN,
-    TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
-    TAG_MENU_ITEM_PLAY,
-    TAG_MENU_ITEM_PLAY_FROM_START,
-    TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
-    TAG_MENU_ITEM_RECONSTRUCT_FILE,
-    TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
-    TAG_MENU_ITEM_STOP,
+    TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    TAG_MENU_ITEM_PLAYBACK_PLAY,
+    TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    TAG_MENU_ITEM_PLAYBACK_STOP,
+    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    TAG_MENU_ITEM_VIEW_FULLSCREEN,
+    TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
@@ -208,8 +208,8 @@ class GUI:
 
         dpg.create_viewport(
             title=TTL_WINDOW_MAIN,
-            width=DIM_WINDOW_MAIN_WIDTH,
-            height=DIM_WINDOW_MAIN_HEIGHT,
+            width=DIM_WINDOW_WIDTH,
+            height=DIM_WINDOW_HEIGHT,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
             x_pos=self.application_config_manager.window_x,
@@ -365,106 +365,106 @@ class GUI:
 
     def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
-            with dpg.menu(label=LBL_MENU_FILE):
+            with dpg.menu(label=LBL_MENU_GROUP_FILE):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_CONFIGURATION,
-                    label=LBL_MENU_ITEM_SAVE_CONFIG,
+                    label=LBL_MENU_ITEM_FILE_SAVE_CONFIG,
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.LOAD_CONFIGURATION,
-                    label=LBL_MENU_ITEM_LOAD_CONFIG,
+                    label=LBL_MENU_ITEM_FILE_LOAD_CONFIG,
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.AUDIO_SETTINGS,
-                    label=LBL_MENU_ITEM_AUDIO_SETTINGS,
+                    label=LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXIT,
-                    label=LBL_MENU_ITEM_EXIT,
+                    label=LBL_MENU_ITEM_FILE_EXIT,
                 )
-            with dpg.menu(label=LBL_MENU_RECONSTRUCTION):
+            with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_CLOSE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_CLOSE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_LOAD_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_LOAD_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
                     enabled=not self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
-                    tag=TAG_MENU_ITEM_RECONSTRUCT_FILE,
-                    label=LBL_MENU_ITEM_RECONSTRUCT_FILE,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_DIRECTORY,
-                    tag=TAG_MENU_ITEM_RECONSTRUCT_DIRECTORY,
-                    label=LBL_MENU_ITEM_RECONSTRUCT_DIRECTORY,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
-                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
-                    label=LBL_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
                     enabled=self._is_reconstruction_loaded(),
                 )
-            with dpg.menu(label=LBL_MENU_PLAYBACK):
+            with dpg.menu(label=LBL_MENU_GROUP_PLAYBACK):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.PLAY,
-                    tag=TAG_MENU_ITEM_PLAY,
+                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY,
                     label=self._get_play_label(),
                     enabled=self._is_play_or_pause_enabled(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.PLAY_FROM_START,
-                    tag=TAG_MENU_ITEM_PLAY_FROM_START,
-                    label=LBL_MENU_ITEM_PLAY_FROM_START,
+                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+                    label=LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
                     enabled=self._is_play_or_pause_enabled(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.STOP,
-                    tag=TAG_MENU_ITEM_STOP,
-                    label=LBL_MENU_ITEM_STOP,
+                    tag=TAG_MENU_ITEM_PLAYBACK_STOP,
+                    label=LBL_MENU_ITEM_PLAYBACK_STOP,
                     enabled=self._is_stop_enabled(),
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_AUTOPLAY,
-                    tag=TAG_MENU_ITEM_AUTOPLAY,
-                    label=LBL_MENU_ITEM_AUTOPLAY,
+                    tag=TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
+                    label=LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
                     check=True,
                 )
-            with dpg.menu(label=LBL_MENU_VIEW):
+            with dpg.menu(label=LBL_MENU_GROUP_VIEW):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-                    tag=TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
-                    label=LBL_MENU_ITEM_SHOW_ADVANCED_SETTINGS,
+                    tag=TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+                    label=LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
                     check=True,
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_FULLSCREEN,
-                    tag=TAG_MENU_ITEM_FULLSCREEN,
-                    label=LBL_MENU_ITEM_FULLSCREEN,
+                    tag=TAG_MENU_ITEM_VIEW_FULLSCREEN,
+                    label=LBL_MENU_ITEM_VIEW_FULLSCREEN,
                     check=True,
                 )
 
     def _update_menu(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
         self._update_playback_menu_items()
         self._update_fullscreen_menu_item()
         self._update_advanced_settings_menu_item()
@@ -500,8 +500,8 @@ class GUI:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
-                        width=DIM_PANEL_EXPLORER_WIDTH,
-                        height=DIM_PANEL_EXPLORER_HEIGHT,
+                        width=DIM_PANEL_WIDTH_MAIN_EXPLORER,
+                        height=DIM_PANEL_HEIGHT_MAIN_EXPLORER,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
@@ -522,8 +522,8 @@ class GUI:
         right_content_builder: Callable[[], None],
         right_panel_height: int,
         right_panel_width: int,
-        left_panel_width: int = DIM_PANEL_LEFT_WIDTH,
-        left_panel_height: int = DIM_PANEL_LEFT_HEIGHT,
+        left_panel_width: int = DIM_PANEL_WIDTH_LEFT,
+        left_panel_height: int = DIM_PANEL_HEIGHT_LEFT,
     ) -> None:
         with dpg.tab(tag=tab_tag, label=label):
             with dpg.table(
@@ -567,8 +567,8 @@ class GUI:
             left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
-            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
-            right_panel_width=DIM_PANEL_RECONSTRUCTIONS_DETAILS_WIDTH,
+            right_panel_height=DIM_PANEL_HEIGHT_RIGHT,
+            right_panel_width=DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
         )
 
     def _create_instructions_tab(self) -> None:
@@ -578,8 +578,8 @@ class GUI:
             left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
-            right_panel_height=DIM_PANEL_RIGHT_HEIGHT,
-            right_panel_width=DIM_PANEL_INSTRUCTIONS_DETAILS_WIDTH,
+            right_panel_height=DIM_PANEL_HEIGHT_RIGHT,
+            right_panel_width=DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
         )
 
     def _create_instructions_left_panel(self) -> None:
@@ -597,8 +597,8 @@ class GUI:
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SAVE_CONFIG,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_save_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_filename=VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
@@ -620,8 +620,8 @@ class GUI:
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_LOAD_CONFIG,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_load_config,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_config_path()),
@@ -650,8 +650,8 @@ class GUI:
         self._generate_library_if_not_loaded()
         with dpg.file_dialog(
             label=TTL_DIALOG_RECONSTRUCT_FILE,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_reconstruct_file,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
@@ -666,8 +666,8 @@ class GUI:
         self._generate_library_if_not_loaded()
         dpg.add_file_dialog(
             label=TTL_DIALOG_RECONSTRUCT_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_reconstruct_directory,
             directory_selector=True,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
@@ -677,8 +677,8 @@ class GUI:
     def _load_reconstruction_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_LOAD_RECONSTRUCTION,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_load_reconstruction,
             file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
@@ -871,7 +871,7 @@ class GUI:
             loaded = self.instruction_panel.player_panel.is_loaded()
 
         is_playing = loaded and playing
-        return LBL_MENU_ITEM_PAUSE if is_playing else LBL_MENU_ITEM_PLAY
+        return LBL_MENU_ITEM_PLAYBACK_PAUSE if is_playing else LBL_MENU_ITEM_PLAYBACK_PLAY
 
     def _is_play_or_pause_enabled(self) -> bool:
         current_tab_tag = self._get_current_tab()
@@ -995,7 +995,7 @@ class GUI:
 
     def _update_fullscreen_menu_item(self) -> None:
         fullscreen = self.application_config_manager.fullscreen
-        dpg_set_value(TAG_MENU_ITEM_FULLSCREEN, fullscreen)
+        dpg_set_value(TAG_MENU_ITEM_VIEW_FULLSCREEN, fullscreen)
 
     def _toggle_autoplay(
         self,
@@ -1007,10 +1007,12 @@ class GUI:
         self._update_playback_menu_items()
 
     def _update_playback_menu_items(self) -> None:
-        dpg_configure_item(TAG_MENU_ITEM_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
-        dpg_configure_item(TAG_MENU_ITEM_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled())
-        dpg_configure_item(TAG_MENU_ITEM_STOP, enabled=self._is_stop_enabled())
-        dpg_set_value(TAG_MENU_ITEM_AUTOPLAY, self.application_config_manager.autoplay)
+        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
+        dpg_configure_item(
+            TAG_MENU_ITEM_PLAYBACK_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled()
+        )
+        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_STOP, enabled=self._is_stop_enabled())
+        dpg_set_value(TAG_MENU_ITEM_PLAYBACK_AUTOPLAY, self.application_config_manager.autoplay)
 
     def _toggle_advanced_settings(
         self,
@@ -1024,7 +1026,7 @@ class GUI:
     def _update_advanced_settings_menu_item(self) -> None:
         advanced_settings = self.application_config_manager.advanced_settings
         self.advanced_settings_panel.set_visibility(advanced_settings)
-        dpg_set_value(TAG_MENU_ITEM_SHOW_ADVANCED_SETTINGS, advanced_settings)
+        dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:

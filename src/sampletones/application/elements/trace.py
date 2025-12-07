@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from ..constants import (
     COL_TRACEBACK_TEXT,
-    DIM_DIALOG_TRACEBACK_HEIGHT,
+    DIM_DIALOG_HEIGHT_TRACEBACK,
     LBL_BUTTON_TRACEBACK_COPY,
     SUF_BUTTON_COPY,
     SUF_TEXT,
@@ -40,7 +40,7 @@ class GUITraceback:
                 default_value=self._text,
                 multiline=True,
                 readonly=True,
-                height=DIM_DIALOG_TRACEBACK_HEIGHT,
+                height=DIM_DIALOG_HEIGHT_TRACEBACK,
                 width=-1,
             )
 

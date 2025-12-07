@@ -10,7 +10,7 @@ from sampletones.utils import hash_model, pitch_to_name
 
 from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
-    DIM_COPY_BUTTON_WIDTH,
+    DIM_BUTTON_WIDTH_COPY,
     LBL_BUTTON_COPY,
     LBL_RECONSTRUCTION_DETAILS,
     LBL_RECONSTRUCTION_EXPORT_FTI,
@@ -256,7 +256,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             GUIButton(
                 tag=copy_button_tag,
                 label=LBL_BUTTON_COPY,
-                width=DIM_COPY_BUTTON_WIDTH,
+                width=DIM_BUTTON_WIDTH_COPY,
                 callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
             )
 

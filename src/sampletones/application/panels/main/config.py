@@ -19,8 +19,8 @@ from sampletones.typehints import Sender, SerializedData
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_INPUT_WIDTH,
-    DIM_PANEL_CONFIG_HEIGHT,
+    DIM_INPUT_WIDTH_DEFAULT,
+    DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_NORMALIZE_AUDIO,
     LBL_CHECKBOX_QUANTIZE_AUDIO,
     LBL_CONFIG_INPUT_CHANGE_RATE,
@@ -60,7 +60,7 @@ class GUIConfigPanel(GUIPanel):
         super().__init__(
             tag=TAG_PANEL_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
-            height=DIM_PANEL_CONFIG_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
         )
 
     def create_panel(self) -> None:
@@ -104,7 +104,7 @@ class GUIConfigPanel(GUIPanel):
             tag=TAG_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
-            width=DIM_INPUT_WIDTH,
+            width=DIM_INPUT_WIDTH_DEFAULT,
         )
         dpg.add_input_int(
             label=LBL_CONFIG_INPUT_CHANGE_RATE,
@@ -112,14 +112,14 @@ class GUIConfigPanel(GUIPanel):
             tag=TAG_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
-            width=DIM_INPUT_WIDTH,
+            width=DIM_INPUT_WIDTH_DEFAULT,
         )
         dpg.add_slider_int(
             label=LBL_SLIDER_CONFIG_TRANSFORMATION_GAMMA,
             tag=TAG_CONFIG_TRANSFORMATION_GAMMA,
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
-            width=DIM_INPUT_WIDTH,
+            width=DIM_INPUT_WIDTH_DEFAULT,
         )
 
     def _create_tooltips(self) -> None:

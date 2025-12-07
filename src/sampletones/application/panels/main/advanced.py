@@ -11,16 +11,15 @@ from sampletones.utils import to_path
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants import (
-    DIM_DIALOG_FILE_HEIGHT,
-    DIM_DIALOG_FILE_WIDTH,
-    DIM_INPUT_WIDTH,
-    DIM_PANEL_ADVANCED_HEIGHT,
+    DIM_DIALOG_HEIGHT_FILE,
+    DIM_DIALOG_WIDTH_FILE,
+    DIM_INPUT_WIDTH_DEFAULT,
+    DIM_PANEL_HEIGHT_MAIN_ADVANCED,
     LBL_ADVANCED_INPUT_MAX_WORKERS,
     LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY,
     LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY,
     LBL_SECTION_CONFIG_ADVANCED,
     LBL_TOOLTIP_ADVANCED_MAX_WORKERS,
-    RNG_ADVANCED_MIN_WORKERS,
     TAG_ADVANCED_LIBRARY_DIRECTORY,
     TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
     TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
@@ -32,6 +31,7 @@ from ...constants import (
     TAG_PANEL_MAIN_SETTINGS,
     TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
     TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
+    VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -62,7 +62,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         super().__init__(
             tag=TAG_PANEL_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
-            height=DIM_PANEL_ADVANCED_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
         )
 
     def create_panel(self) -> None:
@@ -95,8 +95,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             label=LBL_ADVANCED_INPUT_MAX_WORKERS,
             default_value=MAX_WORKERS,
             tag=TAG_ADVANCED_MAX_WORKERS,
-            min_value=RNG_ADVANCED_MIN_WORKERS,
-            width=DIM_INPUT_WIDTH,
+            min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
+            width=DIM_INPUT_WIDTH_DEFAULT,
         )
 
     def _create_library_directory_selection(self) -> None:
@@ -181,8 +181,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_library_directory,
             directory_selector=True,
             default_path=str(self.application_config_manager.get_library_path()),
@@ -208,8 +208,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _select_output_directory_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_output_directory,
             directory_selector=True,
             default_path=str(self.config_manager.get_output_directory()),

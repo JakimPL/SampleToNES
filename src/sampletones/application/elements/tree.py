@@ -6,8 +6,8 @@ from sampletones.tree import Tree, TreeNode
 from sampletones.typehints import Sender
 
 from ..constants import (
-    DIM_SEARCH_BUTTON_WIDTH,
-    DIM_SEARCH_INPUT_WIDTH,
+    DIM_BUTTON_WIDTH_SEARCH,
+    DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
     MSG_GLOBAL_NO_RESULTS_FOUND,
@@ -57,13 +57,13 @@ class GUITreePanel(GUIPanel):
                 tag=self._search_input_tag,
                 hint=self.search_label,
                 callback=self._on_search_changed,
-                width=DIM_SEARCH_INPUT_WIDTH,
+                width=DIM_INPUT_WIDTH_SEARCH,
             )
             GUIButton(
                 label=LBL_BUTTON_CLEAR_SEARCH,
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,
-                width=DIM_SEARCH_BUTTON_WIDTH,
+                width=DIM_BUTTON_WIDTH_SEARCH,
             )
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
