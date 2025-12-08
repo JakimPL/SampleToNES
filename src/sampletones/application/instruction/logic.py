@@ -6,19 +6,19 @@ from sampletones.library import InstructionLibraryFragment
 from sampletones.utils import hash_model, pitch_to_name
 
 from ..constants import (
-    FMT_INSTRUCTION_DUTY_CYCLE,
-    FMT_INSTRUCTION_FREQUENCY,
-    FMT_INSTRUCTION_PERIOD,
-    FMT_INSTRUCTION_PITCH,
+    LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE,
+    LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+    LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
+    LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
+    LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
+    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
+    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES,
     LBL_GLOBAL_NO,
     LBL_GLOBAL_YES,
-    LBL_INSTRUCTION_FREQUENCY,
-    LBL_INSTRUCTION_GENERATOR,
-    LBL_INSTRUCTION_NAME,
-    LBL_INSTRUCTION_SAMPLE_LENGTH,
-    MSG_INSTRUCTION_NO_FREQUENCY,
-    SUF_INSTRUCTION_SAMPLE_LENGTH,
-    VAL_INSTRUCTION_FLOAT_PRECISION,
+    TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+    TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD,
+    TPL_CELL_INSTRUCTIONS_DETAILS_PITCH,
+    VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT,
 )
 from ..elements.table.cell import TableCell
 from .data import InstructionPanelData
@@ -69,39 +69,39 @@ class InstructionDetailsLogic:
             fragment = self.current_data.fragment
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_GENERATOR,
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
                     value=fragment.generator_class,
                 )
             )
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_FREQUENCY,
-                    value=FMT_INSTRUCTION_FREQUENCY.format(fragment.frequency),
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+                    value=TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY.format(fragment.frequency),
                 )
             )
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_SAMPLE_LENGTH,
-                    value=f"{fragment.length}{SUF_INSTRUCTION_SAMPLE_LENGTH}",
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
+                    value=f"{fragment.length}{LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES}",
                 )
             )
         else:
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_GENERATOR,
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
                     value=self.current_data.generator_class_name,
                 )
             )
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_NAME,
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
                     value=self.current_data.instruction.name,
                 )
             )
             rows.append(
                 TableCell(
-                    label=LBL_INSTRUCTION_FREQUENCY,
-                    value=MSG_INSTRUCTION_NO_FREQUENCY,
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+                    value=LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
                 )
             )
 
@@ -131,18 +131,18 @@ class InstructionDetailsLogic:
         value: Union[float, bool, List[Any], Tuple[Any, ...], str, int],
     ) -> str:
         if name == "pitch" and isinstance(value, (int, float)):
-            return FMT_INSTRUCTION_PITCH.format(pitch_to_name(round(value)), value)
+            return TPL_CELL_INSTRUCTIONS_DETAILS_PITCH.format(pitch_to_name(round(value)), value)
 
         if name == "duty_cycle" and isinstance(value, int):
             duty_cycle = DUTY_CYCLES[value] * 100
-            return FMT_INSTRUCTION_DUTY_CYCLE.format(duty_cycle, value)
+            return LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE.format(duty_cycle, value)
 
         if name == "period" and isinstance(value, int):
             period = NOISE_PERIODS[value]
-            return FMT_INSTRUCTION_PERIOD.format(period, value)
+            return TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD.format(period, value)
 
         if isinstance(value, float):
-            return f"{value:.{VAL_INSTRUCTION_FLOAT_PRECISION}f}"
+            return f"{value:.{VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT}f}"
 
         if isinstance(value, bool):
             return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO

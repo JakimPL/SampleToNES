@@ -6,9 +6,9 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
-    LBL_INSTRUCTION_GENERAL_HEADER,
-    LBL_INSTRUCTION_PARAMETERS_HEADER,
+    LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
     LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
+    LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
     MSG_INSTRUCTIONS_DETAILS_NO_SELECTION,
     SUF_PANEL_RIGHT,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
@@ -58,14 +58,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg.add_text(MSG_INSTRUCTIONS_DETAILS_NO_SELECTION, tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO)
 
         dpg.add_text(
-            LBL_INSTRUCTION_GENERAL_HEADER,
+            LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
             tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
             show=False,
         )
         FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
 
         dpg.add_text(
-            LBL_INSTRUCTION_PARAMETERS_HEADER,
+            LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
             tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
             show=False,
         )
