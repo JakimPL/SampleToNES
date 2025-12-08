@@ -41,7 +41,6 @@ from ...constants import (
     MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED,
     MSG_INSTRUCTIONS_LIBRARY_GENERATION_SAVING,
     MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
-    MSG_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
@@ -62,11 +61,12 @@ from ...constants import (
     TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
     TAG_TREE_INSTRUCTIONS_LIBRARY,
     TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
+    TPL_GLOBAL_TIME_ESTIMATION,
     TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS,
+    TPL_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED,
     TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS,
-    TPL_TIME_ESTIMATION,
     TTL_DIALOG_LIBRARY_GENERATION_STATUS,
     VAL_GLOBAL_DEFAULT_FLOAT,
     VAL_GLOBAL_PROGRESS_COMPLETE,
@@ -279,7 +279,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             )
             show_error_dialog(
                 exception,
-                MSG_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR.format(
+                TPL_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR.format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -433,7 +433,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             creator.completed_instructions, creator.total_instructions
         )
         if eta_string:
-            status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
+            status_text += TPL_GLOBAL_TIME_ESTIMATION.format(eta_string=eta_string)
 
         dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, status_text)
 

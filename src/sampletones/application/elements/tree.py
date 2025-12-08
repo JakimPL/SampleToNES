@@ -12,7 +12,7 @@ from ..constants import (
     LBL_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
-    SUF_SEARCH_INPUT,
+    SUF_TREE_SEARCH_INPUT,
 )
 from ..utils.dpg import dpg_delete_children
 from .button import GUIButton
@@ -49,7 +49,7 @@ class GUITreePanel(GUIPanel):
             self._build_tree_node(child, tree_root_tag)
 
     def create_search(self, parent: str) -> None:
-        self._search_input_tag = f"{self.tag}{SUF_SEARCH_INPUT}"
+        self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
         self._search_button_tag = f"{self.tag}{SUF_BUTTON_SEARCH}"
 
         with dpg.group(horizontal=True, parent=parent):

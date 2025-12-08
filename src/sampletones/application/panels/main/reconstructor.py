@@ -10,7 +10,6 @@ from ...config.manager import ConfigManager
 from ...constants import (
     DIM_INPUT_WIDTH_DEFAULT,
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
-    FLAG_CHECKBOX_DEFAULT_ENABLED,
     LBL_CHECKBOX_NOISE,
     LBL_CHECKBOX_PULSE_1,
     LBL_CHECKBOX_PULSE_2,
@@ -22,7 +21,8 @@ from ...constants import (
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_RECONSTRUCTOR_MIXER,
     TAG_RECONSTRUCTOR_PANEL,
-    TPL_RECONSTRUCTION_GEN_TAG,
+    TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
+    VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -66,23 +66,23 @@ class GUIReconstructorPanel(GUIPanel):
 
         dpg.add_checkbox(
             label=LBL_CHECKBOX_PULSE_1,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE1.value),
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_PULSE_2,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE2.value),
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_TRIANGLE,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.TRIANGLE.value),
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_NOISE,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
         )
 
     def _create_mixer_slider(self) -> None:

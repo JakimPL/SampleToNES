@@ -7,7 +7,7 @@ from sampletones.typehints import SerializedData
 from ...constants import (
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
-    LBL_WAVEFORM_DISPLAY,
+    LBL_PLOT_LABEL_WAVEFORM,
     SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
     SUF_GRAPH_LEGEND,
@@ -29,7 +29,7 @@ class GUIGraphDisplay(GUIPanel):
         parent: str,
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = LBL_WAVEFORM_DISPLAY,
+        label: str = LBL_PLOT_LABEL_WAVEFORM,
         x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
         x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
         y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN,

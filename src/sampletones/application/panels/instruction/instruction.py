@@ -10,9 +10,9 @@ from sampletones.library import InstructionLibraryFragment
 from sampletones.utils.logger import logger
 
 from ...constants import (
-    DIM_WAVEFORM_DEFAULT_HEIGHT,
-    LBL_INSTRUCTION_SPECTRUM,
-    LBL_INSTRUCTION_WAVEFORM,
+    DIM_WAVEFORM_HEIGHT,
+    LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+    LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     SUF_CENTER_PANEL,
     SUF_INSTRUCTION_SPECTRUM,
     SUF_INSTRUCTION_WAVEFORM,
@@ -21,7 +21,7 @@ from ...constants import (
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     TAG_TAB_INSTRUCTIONS,
-    VAL_PLOT_WIDTH_FULL,
+    VAL_PLOT_WIDTH_GLOBAL_FULL,
 )
 from ...elements.graphs.spectrum import GUISpectrumDisplay
 from ...elements.graphs.waveform import GUIWaveformDisplay
@@ -81,10 +81,10 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.waveform_display = GUIWaveformDisplay(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
-                width=VAL_PLOT_WIDTH_FULL,
-                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+                width=VAL_PLOT_WIDTH_GLOBAL_FULL,
+                height=DIM_WAVEFORM_HEIGHT,
                 parent=self.waveform_tag,
-                label=LBL_INSTRUCTION_WAVEFORM,
+                label=LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
             )
 
     def _create_spectrum_display(self) -> None:
@@ -98,10 +98,10 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.spectrum_display = GUISpectrumDisplay(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-                width=VAL_PLOT_WIDTH_FULL,
-                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+                width=VAL_PLOT_WIDTH_GLOBAL_FULL,
+                height=DIM_WAVEFORM_HEIGHT,
                 parent=self.spectrum_tag,
-                label=LBL_INSTRUCTION_SPECTRUM,
+                label=LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
             )
 
     def _create_player_panel(self) -> None:

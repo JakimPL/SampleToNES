@@ -6,10 +6,10 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
-    LBL_INSTRUCTION_DETAILS,
     LBL_INSTRUCTION_GENERAL_HEADER,
     LBL_INSTRUCTION_PARAMETERS_HEADER,
-    MSG_INSTRUCTION_NO_SELECTION,
+    LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
+    MSG_INSTRUCTIONS_DETAILS_NO_SELECTION,
     SUF_RIGHT_PANEL,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
@@ -50,12 +50,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
             self._create_instruction_tables()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
+        section_text = dpg.add_text(LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_instruction_tables(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO)
+        dpg.add_text(MSG_INSTRUCTIONS_DETAILS_NO_SELECTION, tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO)
 
         dpg.add_text(
             LBL_INSTRUCTION_GENERAL_HEADER,

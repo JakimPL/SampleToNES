@@ -33,7 +33,6 @@ from .constants import (
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
-    FLAG_WINDOW_PRIMARY_ENABLED,
     LBL_MENU_GROUP_FILE,
     LBL_MENU_GROUP_PLAYBACK,
     LBL_MENU_GROUP_RECONSTRUCTION,
@@ -91,8 +90,9 @@ from .constants import (
     TTL_DIALOG_RECONSTRUCT_FILE,
     TTL_DIALOG_SAVE_CONFIG,
     TTL_WINDOW_MAIN,
-    VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
-    VAL_DIALOG_FILE_COUNT_SINGLE,
+    VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
+    VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+    VAL_WINDOW_PRIMARY,
 )
 from .elements.fonts.registry import FontRegistry
 from .panels.instruction.details import GUIInstructionDetailsPanel
@@ -361,7 +361,7 @@ class GUI:
             self._create_menu_bar()
             self._create_tabs()
 
-        dpg.set_primary_window(TAG_WINDOW_MAIN, FLAG_WINDOW_PRIMARY_ENABLED)
+        dpg.set_primary_window(TAG_WINDOW_MAIN, VAL_WINDOW_PRIMARY)
 
     def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
@@ -600,8 +600,8 @@ class GUI:
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_save_config,
-            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
-            default_filename=VAL_DIALOG_DEFAULT_FILENAME_CONFIG,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            default_filename=VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
             default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
@@ -623,7 +623,7 @@ class GUI:
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_load_config,
-            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
@@ -653,7 +653,7 @@ class GUI:
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_reconstruct_file,
-            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_WAVE)
@@ -680,7 +680,7 @@ class GUI:
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_load_reconstruction,
-            file_count=VAL_DIALOG_FILE_COUNT_SINGLE,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)

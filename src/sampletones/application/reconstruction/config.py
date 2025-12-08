@@ -9,11 +9,11 @@ from ..constants import (
     COL_BAR_PLOT_DUTY_CYCLE,
     COL_BAR_PLOT_PITCH,
     COL_BAR_PLOT_VOLUME,
-    LBL_RECONSTRUCTION_ARPEGGIO_PLOT,
-    LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT,
-    LBL_RECONSTRUCTION_HI_PITCH_PLOT,
-    LBL_RECONSTRUCTION_PITCH_PLOT,
-    LBL_RECONSTRUCTION_VOLUME_PLOT,
+    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
+    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
+    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_HI_PITCH,
+    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_PITCH,
+    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_VOLUME,
     VAL_BAR_PLOT_DUTY_CYCLE_Y_MAX,
     VAL_BAR_PLOT_DUTY_CYCLE_Y_MIN,
     VAL_BAR_PLOT_PITCH_Y_MAX,
@@ -36,7 +36,7 @@ class FeaturePlotConfig:
 FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     FeatureKey.VOLUME: FeaturePlotConfig(
         feature_key=FeatureKey.VOLUME,
-        label=LBL_RECONSTRUCTION_VOLUME_PLOT,
+        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_VOLUME,
         color=COL_BAR_PLOT_VOLUME,
         y_min=VAL_BAR_PLOT_VOLUME_Y_MIN,
         y_max=VAL_BAR_PLOT_VOLUME_Y_MAX,
@@ -44,7 +44,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     ),
     FeatureKey.ARPEGGIO: FeaturePlotConfig(
         feature_key=FeatureKey.ARPEGGIO,
-        label=LBL_RECONSTRUCTION_ARPEGGIO_PLOT,
+        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
         color=COL_BAR_PLOT_ARPEGGIO,
         y_min=-1.0,
         y_max=-1.0,
@@ -52,7 +52,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     ),
     FeatureKey.PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.PITCH,
-        label=LBL_RECONSTRUCTION_PITCH_PLOT,
+        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_PITCH,
         color=COL_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
@@ -60,7 +60,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     ),
     FeatureKey.HI_PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.HI_PITCH,
-        label=LBL_RECONSTRUCTION_HI_PITCH_PLOT,
+        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_HI_PITCH,
         color=COL_BAR_PLOT_PITCH,
         y_min=VAL_BAR_PLOT_PITCH_Y_MIN,
         y_max=VAL_BAR_PLOT_PITCH_Y_MAX,
@@ -68,7 +68,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
     ),
     FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
         feature_key=FeatureKey.DUTY_CYCLE,
-        label=LBL_RECONSTRUCTION_DUTY_CYCLE_PLOT,
+        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
         color=COL_BAR_PLOT_DUTY_CYCLE,
         y_min=VAL_BAR_PLOT_DUTY_CYCLE_Y_MIN,
         y_max=VAL_BAR_PLOT_DUTY_CYCLE_Y_MAX,

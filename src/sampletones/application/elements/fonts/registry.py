@@ -13,10 +13,10 @@ from ...constants import (
     TAG_FONT_REGULAR,
     TAG_FONT_REGULAR_LARGE,
     TAG_FONT_REGULAR_SMALL,
+    VAL_FONT_SCALE,
     VAL_FONT_SIZE,
     VAL_FONT_SIZE_LARGE,
     VAL_FONT_SIZE_SMALL,
-    VAL_GLOBAL_FONT_SCALE,
 )
 from ...resources.items import FontResource
 from ...resources.resources import get_font_path
@@ -46,7 +46,7 @@ class FontRegistry:
 
             dpg.bind_font(TAG_FONT_REGULAR)
 
-        dpg.set_global_font_scale(VAL_GLOBAL_FONT_SCALE)
+        dpg.set_global_font_scale(VAL_FONT_SCALE)
 
     @classmethod
     def get_font(cls, font: Font) -> FontData:

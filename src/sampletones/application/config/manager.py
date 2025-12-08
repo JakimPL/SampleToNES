@@ -36,7 +36,7 @@ from ..constants import (
     TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
     TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
     TAG_RECONSTRUCTOR_MIXER,
-    TPL_RECONSTRUCTION_GEN_TAG,
+    TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
 )
 from ..utils.dialogs import show_error_dialog
 
@@ -66,7 +66,8 @@ class ConfigManager:
             },
         }
         self.generator_tags = {
-            TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
+            TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value): generator
+            for generator in GeneratorName
         }
 
         self.initialize(config_path)

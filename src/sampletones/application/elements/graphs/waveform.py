@@ -13,15 +13,15 @@ from ...constants import (
     COL_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
     DIM_GRAPH_DEFAULT_WIDTH,
+    LBL_BUTTON_WAVEFORM_RESET_ALL,
+    LBL_BUTTON_WAVEFORM_RESET_X,
+    LBL_BUTTON_WAVEFORM_RESET_Y,
     LBL_GRAPH_WAVEFORM_ORIGINAL,
     LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
-    LBL_WAVEFORM_AMPLITUDE_LABEL,
-    LBL_WAVEFORM_BUTTON_RESET_ALL,
-    LBL_WAVEFORM_BUTTON_RESET_X,
-    LBL_WAVEFORM_BUTTON_RESET_Y,
-    LBL_WAVEFORM_DISPLAY,
-    LBL_WAVEFORM_SAMPLE_LAYER_NAME,
-    LBL_WAVEFORM_TIME_LABEL,
+    LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
+    LBL_PLOT_AXIS_WAVEFORM_TIME,
+    LBL_PLOT_LABEL_WAVEFORM,
+    LBL_PLOT_NAME_WAVEFORM_SAMPLE,
     SUF_BUTTON_RESET_ALL,
     SUF_BUTTON_RESET_X,
     SUF_BUTTON_RESET_Y,
@@ -65,7 +65,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         parent: str,
         width: int = DIM_GRAPH_DEFAULT_WIDTH,
         height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = LBL_WAVEFORM_DISPLAY,
+        label: str = LBL_PLOT_LABEL_WAVEFORM,
         x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
         x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
         y_min: float = -1.0,
@@ -121,8 +121,8 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             pan_button=-1,
         ):
             dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
+            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_AXIS_WAVEFORM_TIME, tag=self.x_axis_tag)
+            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE, tag=self.y_axis_tag)
 
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
@@ -133,21 +133,21 @@ class GUIWaveformDisplay(GUIGraphDisplay):
     def _create_controls(self) -> None:
         GUIButton(
             tag=self.reset_x_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_X,
+            label=LBL_BUTTON_WAVEFORM_RESET_X,
             callback=self._reset_x_axis,
             width=-1,
             font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_y_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_Y,
+            label=LBL_BUTTON_WAVEFORM_RESET_Y,
             callback=self._reset_y_axis,
             width=-1,
             font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_all_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_ALL,
+            label=LBL_BUTTON_WAVEFORM_RESET_ALL,
             callback=self._reset_all_axes,
             width=-1,
             font=Font.REGULAR_SMALL,
@@ -161,7 +161,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.add_layer(
             WaveformLayer(
                 fragment=fragment,
-                name=LBL_WAVEFORM_SAMPLE_LAYER_NAME,
+                name=LBL_PLOT_NAME_WAVEFORM_SAMPLE,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )

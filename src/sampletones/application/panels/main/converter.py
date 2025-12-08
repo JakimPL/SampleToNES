@@ -24,17 +24,17 @@ from ...constants import (
     LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE,
     LBL_BUTTON_MAIN_CONVERTER_LOAD,
     LBL_SECTION_MAIN_CONVERTER,
-    MSG_CONVERTER_CANCELLED,
-    MSG_CONVERTER_CANCELLING,
-    MSG_CONVERTER_COMPLETED,
-    MSG_CONVERTER_ERROR,
-    MSG_CONVERTER_GENERATING_LIBRARY,
-    MSG_CONVERTER_IDLE,
-    MSG_CONVERTER_NO_FILES_TO_PROCESS,
-    MSG_CONVERTER_SUCCESS,
-    MSG_CONVERTER_WAITING,
-    MSG_INPUT_PATH_PREFIX,
-    MSG_OUTPUT_PATH_PREFIX,
+    MSG_MAIN_CONVERTER_CANCELLED,
+    MSG_MAIN_CONVERTER_CANCELLING,
+    MSG_MAIN_CONVERTER_ERROR,
+    MSG_MAIN_CONVERTER_GENERATING_LIBRARY,
+    MSG_MAIN_CONVERTER_IDLE,
+    MSG_MAIN_CONVERTER_INPUT,
+    MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
+    MSG_MAIN_CONVERTER_OUTPUT,
+    MSG_MAIN_CONVERTER_RECONSTRUCTION_COMPLETED,
+    MSG_MAIN_CONVERTER_SUCCESS,
+    MSG_MAIN_CONVERTER_WAITING,
     TAG_BUTTON_MAIN_CONVERTER_CANCEL,
     TAG_BUTTON_MAIN_CONVERTER_CONVERT,
     TAG_BUTTON_MAIN_CONVERTER_LOAD,
@@ -46,8 +46,8 @@ from ...constants import (
     TAG_PROGRESS_MAIN_CONVERTER,
     TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
     TAG_TEXT_MAIN_CONVERTER_STATUS,
-    TPL_CONVERTER_STATUS,
-    TPL_TIME_ESTIMATION,
+    TPL_GLOBAL_TIME_ESTIMATION,
+    TPL_MAIN_CONVERTER_PROGRESS,
     TTL_DIALOG_CONVERTER,
     VAL_GLOBAL_PROGRESS_COMPLETE,
     VAL_GLOBAL_PROGRESS_START,
@@ -100,7 +100,7 @@ class GUIConverterPanel(GUIPanel):
 
         if not self.is_converter_running():
             self._set_conversion_subpanel_visible(False)
-            dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_IDLE)
+            dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_IDLE)
 
         if convert:
             self._prepare_conversion()
@@ -161,7 +161,7 @@ class GUIConverterPanel(GUIPanel):
     def _create_paths(self) -> None:
         self.input_path_text = GUIPathText(
             path=self.input_path,
-            prefix=MSG_INPUT_PATH_PREFIX,
+            prefix=MSG_MAIN_CONVERTER_INPUT,
             tag=TAG_PATH_MAIN_CONVERTER_INPUT_PATH,
             parent=TAG_GROUP_MAIN_CONVERTER,
             font=Font.REGULAR_SMALL,
@@ -169,7 +169,7 @@ class GUIConverterPanel(GUIPanel):
 
         self.output_path_text = GUIPathText(
             path=self.config_manager.get_output_directory(),
-            prefix=MSG_OUTPUT_PATH_PREFIX,
+            prefix=MSG_MAIN_CONVERTER_OUTPUT,
             tag=TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
             parent=TAG_GROUP_MAIN_CONVERTER,
             font=Font.REGULAR_SMALL,
@@ -183,7 +183,7 @@ class GUIConverterPanel(GUIPanel):
         ):
             dpg.add_separator()
             dpg.add_text(
-                MSG_CONVERTER_WAITING,
+                MSG_MAIN_CONVERTER_WAITING,
                 tag=TAG_TEXT_MAIN_CONVERTER_STATUS,
                 parent=TAG_GROUP_MAIN_CONVERTER,
             )
@@ -225,7 +225,7 @@ class GUIConverterPanel(GUIPanel):
 
     def _wait_for_library_and_start(self) -> None:
         if self._is_library_loaded is not None and not self._is_library_loaded():
-            dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_GENERATING_LIBRARY)
+            dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
             dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
         else:
             self._start_conversion()
@@ -235,10 +235,10 @@ class GUIConverterPanel(GUIPanel):
             return self.config_manager.get_config()
         except RuntimeError as exception:
             logger.error("Config not initialized")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
         except Exception as exception:
             logger.error("Failed to get config")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
 
         return None
 
@@ -249,15 +249,15 @@ class GUIConverterPanel(GUIPanel):
             self.is_file = input_path.is_file()
         except FileNotFoundError as exception:
             logger.error("Input file does not exist")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
             return False
         except OSError as exception:
             logger.error("Invalid path")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
             return False
         except Exception as exception:
             logger.error("Failed to determine output path")
-            show_error_dialog(exception, MSG_CONVERTER_ERROR)
+            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
             return False
 
         self._update_paths()
@@ -307,18 +307,18 @@ class GUIConverterPanel(GUIPanel):
         )
 
     def _set_status_completed(self) -> None:
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_COMPLETED)
+        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_RECONSTRUCTION_COMPLETED)
         self._set_conversion_panel_enabled(True)
 
     def _set_status_cancelling(self) -> None:
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_CANCELLING)
+        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_CANCELLING)
 
     def _set_status_cancelled(self) -> None:
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_CANCELLED)
+        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_CANCELLED)
         self._set_conversion_panel_enabled(True)
 
     def _set_status_failed(self) -> None:
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_ERROR)
+        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_ERROR)
         self._set_conversion_panel_enabled(True)
 
     def _set_status_running(self, task_progress: TaskProgress) -> None:
@@ -378,7 +378,7 @@ class GUIConverterPanel(GUIPanel):
     def _reset_progress(self) -> None:
         dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, VAL_GLOBAL_PROGRESS_START)
         dpg_configure_item(TAG_PROGRESS_MAIN_CONVERTER, overlay="0%")
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_CONVERTER_WAITING)
+        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_WAITING)
 
     def _rename_cancel_to_close(self) -> None:
         dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, VAL_GLOBAL_PROGRESS_START)
@@ -416,16 +416,16 @@ class GUIConverterPanel(GUIPanel):
         if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
-                lambda: show_info_dialog(self.tag, MSG_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_CONVERTER),
+                lambda: show_info_dialog(self.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_CONVERTER),
             )
             return
 
         self._set_status_failed()
-        show_error_dialog(exception, MSG_CONVERTER_ERROR)
+        show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
 
     def _show_success_dialog(self) -> None:
         def content(parent: str) -> None:
-            dpg.add_text(MSG_CONVERTER_SUCCESS, parent=parent)
+            dpg.add_text(MSG_MAIN_CONVERTER_SUCCESS, parent=parent)
 
         show_modal_dialog(
             tag=TAG_DIALOG_MAIN_CONVERTER_SUCCESS,
@@ -443,9 +443,9 @@ class GUIConverterPanel(GUIPanel):
         dpg_configure_item(TAG_PROGRESS_MAIN_CONVERTER, overlay=percent_string)
         self.system_progress.set(task_progress.completed, task_progress.total)
 
-        status_text = TPL_CONVERTER_STATUS.format(self.converter.completed_files, self.converter.total_files)
+        status_text = TPL_MAIN_CONVERTER_PROGRESS.format(self.converter.completed_files, self.converter.total_files)
         if eta_string:
-            status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
+            status_text += TPL_GLOBAL_TIME_ESTIMATION.format(eta_string=eta_string)
 
         dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, status_text)
 
