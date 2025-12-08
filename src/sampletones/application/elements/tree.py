@@ -25,6 +25,7 @@ from ..constants.main import (
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
+from ..themes.default import DefaultTheme
 from ..themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
 from ..themes.nodes.file import (
     LibraryFileNodeTheme,
@@ -240,9 +241,6 @@ class GUITreePanel(GUIPanel):
         return False
 
     def _toggle_favorite(self, node: FileSystemNode) -> None:
-        if self.application_config_manager is None:
-            return
-
         self.application_config_manager.toggle_favorite(node.filepath)
 
     def _apply_node_theme(
@@ -278,16 +276,17 @@ class GUITreePanel(GUIPanel):
         has_content = self._has_relevant_content(node)
         is_favorite = self._is_node_favorite(node)
 
-        theme: Optional[Theme] = None
+        theme: Theme
         if is_favorite:
             theme = FavoriteNodeTheme()
         elif not has_content:
             theme = NoContentFileNodeTheme()
         elif has_favorite_ancestor:
             theme = FavoriteChildNodeTheme()
+        else:
+            theme = DefaultTheme()
 
-        if theme is not None:
-            theme.bind_to_item(node_tag)
+        theme.bind_to_item(node_tag)
 
     def _apply_file_node_theme(
         self,
@@ -297,7 +296,7 @@ class GUITreePanel(GUIPanel):
     ) -> None:
         is_favorite = self._is_node_favorite(node)
 
-        theme: Optional[Theme] = None
+        theme: Theme
         if is_favorite:
             theme = FavoriteNodeTheme()
         else:
@@ -308,18 +307,20 @@ class GUITreePanel(GUIPanel):
                     theme = LibraryFileNodeTheme()
                 case paths.EXT_FILE_WAVE:
                     theme = WaveFileNodeTheme()
-                case _ if has_favorite_ancestor:
-                    theme = FavoriteChildNodeTheme()
+                case _:
+                    if has_favorite_ancestor:
+                        theme = FavoriteChildNodeTheme()
+                    else:
+                        theme = DefaultTheme()
 
-        if theme is not None:
-            theme.bind_to_item(node_tag)
+        theme.bind_to_item(node_tag)
 
     def _apply_other_node_theme(
         self,
         node_tag: str,
         node: TreeNode,
     ) -> None:
-        theme: Optional[Theme] = None
+        theme: Theme
         match node.node_type:
             case NodeType.LIBRARY:
                 theme = LibraryLibraryNodeTheme()
@@ -329,23 +330,31 @@ class GUITreePanel(GUIPanel):
                 theme = LibraryGroupNodeTheme()
             case NodeType.INSTRUCTION:
                 theme = LibraryInstructionNodeTheme()
+            case _:
+                theme = DefaultTheme()
 
-        if theme is not None:
-            theme.bind_to_item(node_tag)
+        theme.bind_to_item(node_tag)
 
     def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
         node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
             return
 
-        self._apply_node_theme(node_tag, node, has_favorite_ancestor)
+        self._apply_node_theme(
+            node_tag,
+            node,
+            has_favorite_ancestor=has_favorite_ancestor,
+        )
         if node.node_type == NodeType.DIRECTORY:
             is_favorite = self._is_node_favorite(node)
             child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
 
             for child in node.children:
                 if isinstance(child, FileSystemNode):
-                    self._reapply_theme_recursively(child, child_has_favorite_ancestor)
+                    self._reapply_theme_recursively(
+                        child,
+                        has_favorite_ancestor=child_has_favorite_ancestor,
+                    )
 
     def _context_mark_as_favorite(self, node: TreeNode) -> None:
         if not isinstance(node, FileSystemNode):
