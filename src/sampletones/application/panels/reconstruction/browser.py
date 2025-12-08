@@ -207,11 +207,9 @@ class GUIBrowserPanel(GUITreePanel):
         dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
 
     def _refresh_tree(self) -> None:
-        self._set_browser_tree_enabled(False)
         output_directory = self.config_manager.get_output_directory()
         self.browser_manager.set_output_directory(output_directory)
         self._rebuild_tree()
-        self._set_browser_tree_enabled(True)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)

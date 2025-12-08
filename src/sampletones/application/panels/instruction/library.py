@@ -188,9 +188,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _rebuild_tree(self) -> None:
         self.library_manager.rebuild_tree()
-        self._set_library_tree_enabled(False)
         self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
-        self._set_library_tree_enabled(True)
         self.update_status()
 
     def initialize_libraries(self) -> None:
@@ -239,13 +237,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
 
     def _refresh_libraries(self) -> None:
-        self._set_library_tree_enabled(False)
-        try:
-            self.library_manager.gather_available_libraries()
-            self._sync_with_config_key()
-            self._rebuild_tree()
-        finally:
-            self._set_library_tree_enabled(True)
+        self.library_manager.gather_available_libraries()
+        self._sync_with_config_key()
+        self._rebuild_tree()
 
     def _sync_with_config_key(self) -> None:
         config_key = self.config_manager.key
@@ -450,18 +444,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
         self._set_library_tree_enabled(False)
-        try:
-            self._load_library(library_key)
-            self._set_current_library(
-                library_key,
-                load_if_needed=False,
-                apply_config=True,
-            )
-            self._rebuild_tree()
-            if self._on_library_loaded:
-                self._on_library_loaded(library_key)
-        finally:
-            self._set_library_tree_enabled(True)
+        self._load_library(library_key)
+        self._set_current_library(
+            library_key,
+            load_if_needed=False,
+            apply_config=True,
+        )
+        self._rebuild_tree()
+        if self._on_library_loaded:
+            self._on_library_loaded(library_key)
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
