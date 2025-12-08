@@ -15,12 +15,12 @@ from ...constants import (
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
     LBL_SECTION_MAIN_RECONSTRUCTOR,
-    LBL_SECTION_RECONSTRUCTOR_SETTINGS,
-    LBL_SLIDER_RECONSTRUCTOR_MIXER,
+    LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS,
+    LBL_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
     LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER,
+    TAG_PANEL_MAIN_RECONSTRUCTOR,
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-    TAG_RECONSTRUCTOR_MIXER,
-    TAG_RECONSTRUCTOR_PANEL,
+    TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
     TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
     VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
 )
@@ -36,7 +36,7 @@ class GUIReconstructorPanel(GUIPanel):
         self.config_manager = config_manager
 
         super().__init__(
-            tag=TAG_RECONSTRUCTOR_PANEL,
+            tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
         )
@@ -57,7 +57,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._register_callbacks()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_generator_selection(self) -> None:
@@ -88,8 +88,8 @@ class GUIReconstructorPanel(GUIPanel):
     def _create_mixer_slider(self) -> None:
         dpg.add_separator()
         dpg.add_slider_float(
-            label=LBL_SLIDER_RECONSTRUCTOR_MIXER,
-            tag=TAG_RECONSTRUCTOR_MIXER,
+            label=LBL_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+            tag=TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=MIXER,
@@ -97,7 +97,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
+        show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["reconstructor"].keys():

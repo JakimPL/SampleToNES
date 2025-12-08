@@ -32,8 +32,8 @@ from sampletones.tree import (
 from sampletones.utils import pitch_to_name, to_path
 
 from ..constants import (
-    NOD_LABEL_LIBRARIES,
-    NOD_LABEL_NOT_LOADED,
+    LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
+    LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
     NOD_TYPE_GENERATOR,
     NOD_TYPE_GROUP,
     NOD_TYPE_INSTRUCTION,
@@ -282,7 +282,7 @@ class InstructionsLibraryManager:
         return instructions
 
     def rebuild_tree(self) -> None:
-        root = TreeNode(NOD_LABEL_LIBRARIES, node_type=NOD_TYPE_ROOT)
+        root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NOD_TYPE_ROOT)
 
         for library_key in sorted(self.library_files.keys(), key=self.get_display_name_from_key):
             self._build_library_node(library_key, root)
@@ -302,7 +302,10 @@ class InstructionsLibraryManager:
 
     def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
         return LibraryNode(
-            NOD_LABEL_NOT_LOADED, node_type=NOD_TYPE_LIBRARY_PLACEHOLDER, library_key=parent.library_key, parent=parent
+            LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
+            node_type=NOD_TYPE_LIBRARY_PLACEHOLDER,
+            library_key=parent.library_key,
+            parent=parent,
         )
 
     def _build_generator_nodes(self, library_key: InstructionLibraryKey, parent: TreeNode) -> None:

@@ -20,8 +20,8 @@ from ...constants import (
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
-    LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
+    LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
     MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
@@ -31,15 +31,15 @@ from ...constants import (
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
     SUF_PANEL_LEFT,
-    TAG_BROWSER_PANEL,
-    TAG_BROWSER_TREE,
-    TAG_BROWSER_TREE_GROUP,
-    TAG_BROWSER_TREE_WINDOW,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
     TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS,
+    TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE,
+    TAG_PANEL_RECONSTRUCTIONS_BROWSER,
     TAG_TAB_RECONSTRUCTIONS,
+    TAG_TREE_RECONSTRUCTIONS_BROWSER,
+    TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -68,7 +68,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         super().__init__(
             tree=self.browser_manager.tree,
-            tag=TAG_BROWSER_PANEL,
+            tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
         )
 
@@ -117,16 +117,20 @@ class GUIBrowserPanel(GUITreePanel):
     def _create_tree_window(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_BROWSER_TREE_WINDOW):
-            with dpg.group(tag=TAG_BROWSER_TREE_GROUP):
-                with dpg.tree_node(label=LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS, tag=TAG_BROWSER_TREE, default_open=True):
+        with dpg.child_window(tag=TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE):
+            with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE):
+                with dpg.tree_node(
+                    label=LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
+                    tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
+                    default_open=True,
+                ):
                     pass
 
     def refresh(self) -> None:
         self._refresh_tree()
 
     def _rebuild_tree(self) -> None:
-        self.build_tree(TAG_BROWSER_TREE)
+        self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
@@ -152,7 +156,7 @@ class GUIBrowserPanel(GUITreePanel):
         self._refresh_tree()
 
     def _set_browser_tree_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=enabled)
+        dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
 
     def _refresh_tree(self) -> None:
         self._set_browser_tree_enabled(False)
@@ -226,10 +230,10 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
         if self._on_reconstruction_loaded:
-            dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=False)
+            dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=False)
             self._set_browser_tree_enabled(False)
             self._on_reconstruction_loaded(reconstruction_data)
-            dpg.configure_item(TAG_BROWSER_TREE_GROUP, enabled=True)
+            dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=True)
 
         self.application_config_manager.set_current_reconstruction(filepath)
 

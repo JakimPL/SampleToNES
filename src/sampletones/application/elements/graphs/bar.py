@@ -9,11 +9,11 @@ from ...constants import (
     COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
-    LBL_BAR_PLOT_DISPLAY,
+    LBL_PLOT_LABEL_BAR,
     SUF_BAR_PLOT_ZERO_LINE,
-    VAL_BAR_PLOT_DEFAULT_X_MIN,
-    VAL_BAR_PLOT_DEFAULT_Y_MAX,
-    VAL_BAR_PLOT_DEFAULT_Y_MIN,
+    VAL_BAR_PLOT_MAX_Y,
+    VAL_BAR_PLOT_MIN_X,
+    VAL_BAR_PLOT_MIN_Y,
     VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
@@ -45,11 +45,11 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         parent: str,
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
-        label: str = LBL_BAR_PLOT_DISPLAY,
+        label: str = LBL_PLOT_LABEL_BAR,
         x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = VAL_BAR_PLOT_DEFAULT_Y_MIN,
-        y_max: float = VAL_BAR_PLOT_DEFAULT_Y_MAX,
+        y_min: float = VAL_BAR_PLOT_MIN_Y,
+        y_max: float = VAL_BAR_PLOT_MAX_Y,
     ):
         self.current_data: Optional[np.ndarray] = None
         self.y_ticks: Optional[Tuple[int, ...]] = None
@@ -92,7 +92,7 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
 
         self.add_layer(BarLayer(data=data, name=name, color=color))
 
-        self.x_min = VAL_BAR_PLOT_DEFAULT_X_MIN
+        self.x_min = VAL_BAR_PLOT_MIN_X
         self.x_max = float(len(data))
 
         self._update_axes_limits()

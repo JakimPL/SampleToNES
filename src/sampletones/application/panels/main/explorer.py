@@ -20,31 +20,31 @@ from ...constants import (
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-    LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
-    LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
-    LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE,
-    LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
-    LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
-    LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY,
-    LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY,
-    LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
-    LBL_EXPLORER_FILESYSTEM,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
+    LBL_SECTION_MAIN_EXPLORER,
     LBL_TREE_FILTER,
-    MSG_EXPLORER_CONVERTER_RUNNING,
+    MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     NOD_TYPE_DIRECTORY,
     NOD_TYPE_FILE,
     NOD_TYPE_ROOT,
-    SUF_NODE_DUMMY,
-    SUF_NODE_HANDLER,
+    SUF_MAIN_EXPLORER_NODE_DUMMY,
+    SUF_MAIN_EXPLORER_NODE_HANDLER,
     SUF_PANEL_LEFT,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-    TAG_EXPLORER_CONVERTER_RUNNING,
-    TAG_EXPLORER_PANEL,
-    TAG_EXPLORER_TREE,
-    TAG_EXPLORER_TREE_GROUP,
-    TAG_EXPLORER_TREE_WINDOW,
+    TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+    TAG_GROUP_MAIN_EXPLORER_TREE,
+    TAG_PANEL_MAIN_EXPLORER,
     TAG_TAB_MAIN,
-    TTL_EXPLORER_CONVERTER_RUNNING,
+    TAG_TREE_MAIN_EXPLORER,
+    TAG_WINDOW_MAIN_EXPLORER_TREE,
+    TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -82,7 +82,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         super().__init__(
             tree=self.explorer_manager.tree,
-            tag=TAG_EXPLORER_PANEL,
+            tag=TAG_PANEL_MAIN_EXPLORER,
             parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
             search_label=LBL_TREE_FILTER,
         )
@@ -102,7 +102,7 @@ class GUIExplorerPanel(GUITreePanel):
         self.initialize_tree()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_EXPLORER_FILESYSTEM)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_collapse_button(self) -> None:
@@ -118,9 +118,9 @@ class GUIExplorerPanel(GUITreePanel):
     def _create_tree_window(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_EXPLORER_TREE_WINDOW):
-            with dpg.group(tag=TAG_EXPLORER_TREE_GROUP):
-                with dpg.tree_node(label=LBL_EXPLORER_FILESYSTEM, tag=TAG_EXPLORER_TREE, default_open=True):
+        with dpg.child_window(tag=TAG_WINDOW_MAIN_EXPLORER_TREE):
+            with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_TREE):
+                with dpg.tree_node(label=LBL_SECTION_MAIN_EXPLORER, tag=TAG_TREE_MAIN_EXPLORER, default_open=True):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
@@ -134,7 +134,7 @@ class GUIExplorerPanel(GUITreePanel):
         self._refresh_tree()
 
     def _rebuild_tree(self) -> None:
-        self.build_tree(TAG_EXPLORER_TREE)
+        self.build_tree(TAG_TREE_MAIN_EXPLORER)
 
     def _refresh_tree(self) -> None:
         self._set_explorer_tree_enabled(False)
@@ -145,7 +145,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._set_explorer_tree_enabled(True)
 
     def _set_explorer_tree_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(TAG_EXPLORER_TREE_GROUP, enabled=enabled)
+        dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
 
     def _apply_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
         if node.node_type == NOD_TYPE_DIRECTORY:
@@ -199,7 +199,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
+        handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
         if node.node_type == NOD_TYPE_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
 
@@ -219,7 +219,7 @@ class GUIExplorerPanel(GUITreePanel):
 
                 dpg.add_tree_node(
                     label="",
-                    tag=f"{node_tag}{SUF_NODE_DUMMY}",
+                    tag=f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}",
                     parent=tree_node_tag,
                     show=not self.explorer_manager.is_directory_expanded(node.filepath),
                 )
@@ -399,7 +399,7 @@ class GUIExplorerPanel(GUITreePanel):
             for child in node.children:
                 self._build_tree_node(child, node_tag)
         else:
-            dummy_tag = f"{node_tag}{SUF_NODE_DUMMY}"
+            dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
             dpg.add_tree_node(
                 label="",
                 tag=dummy_tag,
@@ -422,9 +422,9 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            LBL_EXPLORER_CONTEXT_ITEM_UNMARK_AS_FAVORITE
+            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
             if node.filepath in self.application_config_manager.favorites
-            else LBL_EXPLORER_CONTEXT_ITEM_MARK_AS_FAVORITE
+            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
         )
         dpg.add_menu_item(
             label=label,
@@ -447,17 +447,17 @@ class GUIExplorerPanel(GUITreePanel):
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
                     dpg.add_menu_item(
-                        label=LBL_EXPLORER_CONTEXT_ITEM_LOAD_RECONSTRUCTION,
+                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
                         callback=lambda: self._load_reconstruction(node),
                     )
                 case paths.EXT_FILE_LIBRARY:
                     dpg.add_menu_item(
-                        label=LBL_EXPLORER_CONTEXT_ITEM_LOAD_LIBRARY,
+                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
                         callback=lambda: self._load_library(node),
                     )
                 case paths.EXT_FILE_WAVE:
                     dpg.add_menu_item(
-                        label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_FILE,
+                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
                         callback=lambda: self._context_reconstruct_file(node),
                     )
 
@@ -477,19 +477,19 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_text(node)
             dpg.add_separator()
             dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_RECONSTRUCT_DIRECTORY,
+                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
                 callback=lambda: self._context_reconstruct_directory(node),
             )
 
             self._add_context_menu_favorite_item(node)
             dpg.add_separator()
             dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_SET_AS_OUTPUT_DIRECTORY,
+                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
                 callback=lambda: self._context_set_as_output_directory(node),
             )
 
             dpg.add_menu_item(
-                label=LBL_EXPLORER_CONTEXT_ITEM_SET_AS_LIBRARY_DIRECTORY,
+                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
                 callback=lambda: self._context_set_as_library_directory(node),
             )
 
@@ -498,9 +498,9 @@ class GUIExplorerPanel(GUITreePanel):
             if self._is_converter_running():
                 logger.warning("Conversion is already running. Wait or cancel the current operation.")
                 show_info_dialog(
-                    tag=TAG_EXPLORER_CONVERTER_RUNNING,
-                    message=MSG_EXPLORER_CONVERTER_RUNNING,
-                    title=TTL_EXPLORER_CONVERTER_RUNNING,
+                    tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                    message=MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                    title=TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
                 )
                 return True
 

@@ -6,8 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.library import InstructionLibraryKey
 
 from ..constants import (
-    COL_ERROR_TEXT,
     COL_PATH_TEXT,
+    COL_TEXT_ERROR,
     DIM_DIALOG_HEIGHT_DEFAULT,
     DIM_DIALOG_HEIGHT_ERROR,
     DIM_DIALOG_WIDTH_DEFAULT,
@@ -109,13 +109,13 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             dpg.add_text(
                 f"{str(type(exception).__name__)}: ",
                 parent=group_tag,
-                color=COL_ERROR_TEXT,
+                color=COL_TEXT_ERROR,
             )
             dpg.add_text(
                 str(exception),
                 parent=group_tag,
                 wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
-                color=COL_ERROR_TEXT,
+                color=COL_TEXT_ERROR,
             )
 
         traceback = GUITraceback(

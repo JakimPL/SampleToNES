@@ -9,7 +9,7 @@ from sampletones.reconstruction import Reconstruction
 from sampletones.utils import hash_model, pitch_to_name
 
 from ...constants import (
-    DIM_BAR_PLOT_DEFAULT_HEIGHT,
+    DIM_BAR_PLOT_HEIGHT,
     DIM_BUTTON_WIDTH_COPY,
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
@@ -235,7 +235,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             tag=plot_tag,
             parent=parent,
             width=VAL_PLOT_WIDTH_GLOBAL_FULL,
-            height=DIM_BAR_PLOT_DEFAULT_HEIGHT,
+            height=DIM_BAR_PLOT_HEIGHT,
             label=config.label,
             y_min=y_min,
             y_max=y_max,
