@@ -7,14 +7,14 @@ from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
 
 from ...constants import (
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
-    LBL_PLOT_SPECTRUM,
-    LBL_SPECTRUM_DISPLAY,
-    LBL_SPECTRUM_X_AXIS,
-    LBL_SPECTRUM_Y_AXIS,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
+    LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+    LBL_PLOT_AXIS_SPECTRUM_X,
+    LBL_PLOT_LABEL_SPECTRUM,
+    LBL_PLOT_NAME_SPECTRUM,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_X,
 )
 from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
 from .graph import GUIGraphDisplay
@@ -36,11 +36,11 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = LBL_SPECTRUM_DISPLAY,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
+        label: str = LBL_PLOT_LABEL_SPECTRUM,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = MIN_FREQUENCY,
         y_max: float = DEFAULT_SAMPLE_RATE / 2,
     ) -> None:
@@ -70,8 +70,10 @@ class GUISpectrumDisplay(GUIGraphDisplay):
             no_inputs=True,
             pan_button=-1,
         ):
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_SPECTRUM_X_AXIS, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_SPECTRUM_Y_AXIS, tag=self.y_axis_tag, scale=dpg.mvPlotScale_Log10)
+            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvYAxis, label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY, tag=self.y_axis_tag, scale=dpg.mvPlotScale_Log10
+            )
 
     def load_library_fragment(
         self,
@@ -85,7 +87,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         self.add_layer(
             SpectrumLayer(
                 fragment=fragment,
-                name=LBL_PLOT_SPECTRUM,
+                name=LBL_PLOT_NAME_SPECTRUM,
                 sample_rate=sample_rate,
                 frame_length=frame_length,
             )

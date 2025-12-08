@@ -23,16 +23,16 @@ from ...constants import (
     LBL_CHECKBOX_PULSE_2,
     LBL_CHECKBOX_TRIANGLE,
     LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
-    LBL_RADIO_ORIGINAL_AUDIO,
-    LBL_RADIO_RECONSTRUCTION_AUDIO,
+    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
+    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
     LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
-    MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE,
-    MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
-    MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE,
-    MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
-    MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
-    MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
-    SUF_CENTER_PANEL,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+    SUF_PANEL_CENTER,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
@@ -46,10 +46,10 @@ from ...constants import (
     TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
     TTL_DIALOG_EXPORT_FTI,
     TTL_DIALOG_EXPORT_WAV,
-    TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
-    VAL_AUDIO_SOURCE_SELECTOR,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
     VAL_PLOT_WIDTH_GLOBAL_FULL,
+    VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -91,7 +91,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
-            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_CENTER_PANEL}",
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:
@@ -154,12 +154,15 @@ class GUIReconstructionPanel(GUIPanel):
             horizontal=True, parent=self.audio_tag, tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
         ):
             radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
-                VAL_AUDIO_SOURCE_SELECTOR
+                VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
             )
             dpg.add_radio_button(
-                items=[LBL_RADIO_RECONSTRUCTION_AUDIO, LBL_RADIO_ORIGINAL_AUDIO],
+                items=[
+                    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
+                    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
+                ],
                 tag=radio_button_tag,
-                default_value=LBL_RADIO_RECONSTRUCTION_AUDIO,
+                default_value=LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
                 enabled=False,
@@ -240,7 +243,7 @@ class GUIReconstructionPanel(GUIPanel):
         self._update_reconstruction_display()
 
     def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
-        if app_data == LBL_RADIO_ORIGINAL_AUDIO:
+        if app_data == LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO:
             self.current_audio_source = AudioSourceType.ORIGINAL
         else:
             self.current_audio_source = AudioSourceType.RECONSTRUCTION
@@ -272,7 +275,9 @@ class GUIReconstructionPanel(GUIPanel):
             if is_available:
                 dpg_set_value(tag, True)
 
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(VAL_AUDIO_SOURCE_SELECTOR)
+        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
+            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+        )
         dpg_configure_item(radio_tag, enabled=True)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=True)
 
@@ -295,9 +300,11 @@ class GUIReconstructionPanel(GUIPanel):
             dpg_set_value(tag, False)
 
     def _reset_audio_source_radio(self) -> None:
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(VAL_AUDIO_SOURCE_SELECTOR)
+        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
+            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+        )
         dpg_configure_item(radio_tag, enabled=False)
-        dpg_set_value(radio_tag, LBL_RADIO_RECONSTRUCTION_AUDIO)
+        dpg_set_value(radio_tag, LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
@@ -354,16 +361,16 @@ class GUIReconstructionPanel(GUIPanel):
             self.save_instrument_feature(filepath, instrument_name, generator_name)
             logger.info(f"Exported instrument feature to FTI: {filepath}")
             show_message_with_path_dialog(
-                TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
-                MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+                TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
+                MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
                 filepath,
             )
         except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED)
 
         self.application_config_manager.set_instrument_path(filepath.parent)
 
@@ -377,16 +384,16 @@ class GUIReconstructionPanel(GUIPanel):
             self.save_instrument_features(directory)
             logger.info(f"Exported instrument features to FTI: {directory}")
             show_message_with_path_dialog(
-                TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS,
-                MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
+                TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
+                MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
                 directory,
             )
         except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED)
 
         self.application_config_manager.set_instrument_path(directory.parent)
 
@@ -464,11 +471,11 @@ class GUIReconstructionPanel(GUIPanel):
             logger.info(f"Exported reconstruction to WAV: {filepath}")
             show_message_with_path_dialog(
                 TTL_DIALOG_EXPORT_WAV,
-                MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+                MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
                 filepath,
             )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
 
         self.application_config_manager.set_audio_path(filepath)

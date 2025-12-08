@@ -34,9 +34,9 @@ from ...constants import (
     NOD_TYPE_DIRECTORY,
     NOD_TYPE_FILE,
     NOD_TYPE_ROOT,
-    SUF_LEFT_PANEL,
     SUF_NODE_DUMMY,
     SUF_NODE_HANDLER,
+    SUF_PANEL_LEFT,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_EXPLORER_CONVERTER_RUNNING,
     TAG_EXPLORER_PANEL,
@@ -83,7 +83,7 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self.explorer_manager.tree,
             tag=TAG_EXPLORER_PANEL,
-            parent=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
+            parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
             search_label=LBL_TREE_FILTER,
         )
 

@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.ffts import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
 
-from ....constants import VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_LOG_OFFSET
+from ....constants import VAL_MAX_SPECTRUM_GRAYSCALE, VAL_OFFSET_SPECTRUM_LOG
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class SpectrumLayer:
     name: str
     sample_rate: int
     frame_length: int
-    color: Tuple[int, int, int] = VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_GRAYSCALE_MAX, VAL_SPECTRUM_GRAYSCALE_MAX
+    color: Tuple[int, int, int] = VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE
 
     frequencies: np.ndarray = field(init=False)
     spectrum: np.ndarray = field(init=False)
@@ -24,7 +24,7 @@ class SpectrumLayer:
 
     def __post_init__(self) -> None:
         spectrum = self.fragment.feature
-        total_energy = np.sqrt(np.sum(spectrum**2)) + VAL_SPECTRUM_LOG_OFFSET
+        total_energy = np.sqrt(np.sum(spectrum**2)) + VAL_OFFSET_SPECTRUM_LOG
         normalized_spectrum = spectrum / total_energy
         frequencies = calculate_frequencies(self.frame_length, self.sample_rate)
         object.__setattr__(self, "frequencies", frequencies)
@@ -63,4 +63,4 @@ class SpectrumLayer:
 
     def brightness(self, index: int) -> int:
         energy: float = self.spectrum[index]
-        return round(VAL_SPECTRUM_GRAYSCALE_MAX * energy)
+        return round(VAL_MAX_SPECTRUM_GRAYSCALE * energy)

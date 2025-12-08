@@ -49,7 +49,7 @@ from ...constants import (
     MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
-    SUF_LEFT_PANEL,
+    SUF_PANEL_LEFT,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
@@ -112,7 +112,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super().__init__(
             self.library_manager.tree,
             tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_LEFT_PANEL}",
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
         )
 
     def create_panel(self) -> None:

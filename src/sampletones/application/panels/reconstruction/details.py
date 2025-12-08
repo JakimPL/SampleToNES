@@ -11,19 +11,19 @@ from sampletones.utils import hash_model, pitch_to_name
 from ...constants import (
     DIM_BAR_PLOT_DEFAULT_HEIGHT,
     DIM_BUTTON_WIDTH_COPY,
-    LBL_BUTTON_COPY,
+    LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
-    LBL_RECONSTRUCTION_GENERATORS,
+    LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS,
-    MSG_RECONSTRUCTION_NO_DATA,
+    MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
     SUF_GRAPH_RAW_DATA,
     SUF_GRAPH_RAW_DATA_GROUP,
-    SUF_NO_DATA_MESSAGE,
-    SUF_RIGHT_PANEL,
-    SUF_SEPARATOR,
-    SUF_WINDOW,
+    SUF_PANEL_RIGHT,
+    SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
+    SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
+    SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
     TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
     TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
     TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -55,15 +55,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
 
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
-        self.no_data_message_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_NO_DATA_MESSAGE}"
-        self.export_button_separator_tag = f"{TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI}{SUF_SEPARATOR}"
+        self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
+        self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
 
         self._on_instrument_export: Optional[Callable[[GeneratorName], None]] = None
         self._on_instruments_export: Optional[Callable[[], None]] = None
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
-            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_RIGHT_PANEL}",
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
     def create_panel(self) -> None:
@@ -98,7 +98,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg.add_separator(tag=self.export_button_separator_tag, show=False)
         dpg.add_text(
             tag=self.no_data_message_tag,
-            default_value=MSG_RECONSTRUCTION_NO_DATA,
+            default_value=MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
             show=True,
         )
 
@@ -128,14 +128,18 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._clear_tabs()
 
         dpg.add_separator(tag=self.export_button_separator_tag, parent=self.tag)
-        dpg.add_text(LBL_RECONSTRUCTION_GENERATORS, tag=TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, parent=self.tag)
+        dpg.add_text(
+            LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+            tag=TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+            parent=self.tag,
+        )
         with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag):
             for generator_name in feature_data.get_generator_names():
                 self._create_generator_tab(generator_name, feature_data)
 
     def _create_generator_tab(self, generator_name: GeneratorName, feature_data: FeatureData) -> None:
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
-        window_tag = f"{tab_tag}{SUF_WINDOW}"
+        window_tag = f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
 
         with dpg.tab(label=generator_name, parent=self.tab_bar_tag, tag=tab_tag):
             self.generator_plots[generator_name] = {}
@@ -191,7 +195,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         parent: str,
     ) -> Optional[GUIBarPlotDisplay]:
         config = FEATURE_PLOT_CONFIGS[feature_key]
-        plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
+        plot_tag = f"{self.tag}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
 
         if data.size == 0:
             return None
@@ -255,7 +259,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         with dpg.group(tag=group_tag, parent=parent, horizontal=True):
             GUIButton(
                 tag=copy_button_tag,
-                label=LBL_BUTTON_COPY,
+                label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
                 width=DIM_BUTTON_WIDTH_COPY,
                 callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
             )
@@ -269,7 +273,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(text, LBL_BUTTON_COPY, button_tag)
+        copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
 
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)

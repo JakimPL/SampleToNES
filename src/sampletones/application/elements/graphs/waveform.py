@@ -11,8 +11,8 @@ from ...constants import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
     COL_WAVEFORM_LAYER_SAMPLE,
     COL_WAVEFORM_POSITION_INDICATOR,
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
     LBL_BUTTON_WAVEFORM_RESET_ALL,
     LBL_BUTTON_WAVEFORM_RESET_X,
     LBL_BUTTON_WAVEFORM_RESET_Y,
@@ -26,8 +26,8 @@ from ...constants import (
     SUF_BUTTON_RESET_X,
     SUF_BUTTON_RESET_Y,
     SUF_WAVEFORM_POSITION_INDICATOR,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_X,
     VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
@@ -63,11 +63,11 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = -1.0,
         y_max: float = 1.0,
     ):
@@ -167,7 +167,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             )
         )
 
-        self.x_min = VAL_GRAPH_DEFAULT_X_MIN
+        self.x_min = VAL_MIN_GRAPH_DEFAULT_X
         self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
@@ -289,11 +289,11 @@ class GUIWaveformDisplay(GUIGraphDisplay):
     def _reset_x_axis(self) -> None:
         if self.layers:
             max_length = max(len(layer.x_data) for layer in self.layers.values())
-            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
+            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = float(max_length)
         else:
-            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
-            self.x_max = VAL_GRAPH_DEFAULT_X_MAX
+            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
+            self.x_max = VAL_MAX_GRAPH_DEFAULT_X
         self._update_axes_limits()
 
     def _reset_y_axis(self) -> None:

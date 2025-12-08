@@ -5,8 +5,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.typehints import SerializedData
 
 from ...constants import (
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
     LBL_PLOT_LABEL_WAVEFORM,
     SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
@@ -14,8 +14,8 @@ from ...constants import (
     SUF_GRAPH_PLOT,
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_X,
     VAL_WAVEFORM_DEFAULT_Y_MAX,
     VAL_WAVEFORM_DEFAULT_Y_MIN,
 )
@@ -27,11 +27,11 @@ class GUIGraphDisplay(GUIPanel):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = VAL_WAVEFORM_DEFAULT_Y_MIN,
         y_max: float = VAL_WAVEFORM_DEFAULT_Y_MAX,
     ):

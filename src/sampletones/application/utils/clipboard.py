@@ -2,14 +2,14 @@ import threading
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import LBL_COPIED_TOOLTIP
+from ..constants import LBL_BUTTON_GLOBAL_COPIED
 from .dpg import dpg_configure_item
 
 
 def copy_to_clipboard(text: str, label: str, button_tag: str) -> None:
     dpg.set_clipboard_text(text)
 
-    dpg_configure_item(button_tag, label=LBL_COPIED_TOOLTIP)
+    dpg_configure_item(button_tag, label=LBL_BUTTON_GLOBAL_COPIED)
 
     def restore_label() -> None:
         dpg_configure_item(button_tag, label=label)

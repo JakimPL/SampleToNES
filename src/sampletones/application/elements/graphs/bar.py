@@ -7,16 +7,16 @@ from sampletones.typehints import Color
 
 from ...constants import (
     COL_BAR_PLOT_ZERO_LINE,
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
     LBL_BAR_PLOT_DISPLAY,
     SUF_BAR_PLOT_ZERO_LINE,
     VAL_BAR_PLOT_DEFAULT_X_MIN,
     VAL_BAR_PLOT_DEFAULT_Y_MAX,
     VAL_BAR_PLOT_DEFAULT_Y_MIN,
     VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_X,
 )
 from ...utils.dpg import (
     dpg_bind_item_theme,
@@ -43,11 +43,11 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_BAR_PLOT_DISPLAY,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = VAL_BAR_PLOT_DEFAULT_Y_MIN,
         y_max: float = VAL_BAR_PLOT_DEFAULT_Y_MAX,
     ):
@@ -74,7 +74,6 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             height=self.height,
             width=self.width,
             anti_aliased=True,
-            border=False,
         ):
             dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)

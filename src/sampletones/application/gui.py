@@ -57,14 +57,14 @@ from .constants import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
-    MSG_CONFIG_SAVE_FAILED,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
+    MSG_GLOBAL_CONFIG_SAVE_FAILED,
     MSG_LIBRARY_DISPLAY_ERROR,
-    MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE,
-    SUF_CENTER_PANEL,
-    SUF_LEFT_PANEL,
-    SUF_RIGHT_PANEL,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    SUF_PANEL_CENTER,
+    SUF_PANEL_LEFT,
+    SUF_PANEL_RIGHT,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
@@ -499,7 +499,7 @@ class GUI:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_MAIN}{SUF_LEFT_PANEL}",
+                        tag=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
                         width=DIM_PANEL_WIDTH_MAIN_EXPLORER,
                         height=DIM_PANEL_HEIGHT_MAIN_EXPLORER,
                         no_scrollbar=True,
@@ -508,7 +508,7 @@ class GUI:
                         self._create_main_left_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_MAIN}{SUF_CENTER_PANEL}",
+                        tag=f"{TAG_TAB_MAIN}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._create_main_panel()
@@ -537,7 +537,7 @@ class GUI:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{tab_tag}{SUF_LEFT_PANEL}",
+                        tag=f"{tab_tag}{SUF_PANEL_LEFT}",
                         width=left_panel_width,
                         height=left_panel_height,
                         no_scrollbar=True,
@@ -546,13 +546,13 @@ class GUI:
                         left_content_builder()
 
                     with dpg.child_window(
-                        tag=f"{tab_tag}{SUF_CENTER_PANEL}",
+                        tag=f"{tab_tag}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         center_content_builder()
 
                     with dpg.child_window(
-                        tag=f"{tab_tag}{SUF_RIGHT_PANEL}",
+                        tag=f"{tab_tag}{SUF_PANEL_RIGHT}",
                         width=right_panel_width,
                         height=right_panel_height,
                         no_scrollbar=True,
@@ -613,7 +613,7 @@ class GUI:
             self._show_config_status_dialog(MSG_CONFIGURATION_SAVED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
-            show_error_dialog(exception, MSG_CONFIG_SAVE_FAILED)
+            show_error_dialog(exception, MSG_GLOBAL_CONFIG_SAVE_FAILED)
 
         self.application_config_manager.set_config_path(filepath)
 
@@ -635,7 +635,7 @@ class GUI:
             self._show_config_status_dialog(MSG_CONFIGURATION_LOADED_SUCCESSFULLY)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
 
         self.application_config_manager.set_config_path(filepath)
 

@@ -23,14 +23,14 @@ from ...constants import (
     LBL_OUTPUT_AVAILABLE_RECONSTRUCTIONS,
     LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
     MSG_GLOBAL_INVALID_METADATA_ERROR,
-    MSG_RECONSTRUCTION_FILE_LOAD_ERROR,
-    MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
+    MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
-    SUF_LEFT_PANEL,
+    SUF_PANEL_LEFT,
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
@@ -69,7 +69,7 @@ class GUIBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.browser_manager.tree,
             tag=TAG_BROWSER_PANEL,
-            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_LEFT_PANEL}",
+            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
         )
 
     def create_panel(self) -> None:
@@ -184,7 +184,7 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
             return
         except InvalidMetadataError as exception:
             logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
@@ -192,11 +192,11 @@ class GUIBrowserPanel(GUITreePanel):
             return
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES)
             return
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE)
             return
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(
@@ -206,7 +206,7 @@ class GUIBrowserPanel(GUITreePanel):
             )
             show_error_dialog(
                 exception,
-                MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -216,7 +216,7 @@ class GUIBrowserPanel(GUITreePanel):
             logger.error_with_traceback(
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
-            show_error_dialog(exception, MSG_RECONSTRUCTION_FILE_LOAD_ERROR)
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
             return
 
         if not reconstruction_data.reconstruction.audio_filepath.exists():

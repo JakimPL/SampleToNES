@@ -410,32 +410,28 @@ SUF_TRACEBACK = "_traceback"
 SUF_PATH_TEXT = "_path_text"
 SUF_TEXT = "_text"
 LBL_BUTTON_TRACEBACK_COPY = "Copy to clipboard"
-LBL_BUTTON_COPY = "Copy"
-LBL_COPIED_TOOLTIP = "Copied!"
-LBL_RADIO_ORIGINAL_AUDIO = "Original audio"
-LBL_RADIO_RECONSTRUCTION_AUDIO = "Reconstruction"
-LBL_BUTTON_SHOW_TRACEBACK = "Show traceback"
-LBL_BUTTON_HIDE_TRACEBACK = "Hide traceback"
-MSG_RECONSTRUCTION_NO_SELECTION = "No reconstruction selected."
-MSG_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
-MSG_RECONSTRUCTION_EXPORT_SUCCESS = "Reconstruction saved successfully."
-MSG_RECONSTRUCTION_EXPORT_WAV_SUCCESS = "Reconstruction rendered successfully."
-MSG_RECONSTRUCTION_EXPORT_FTI_SUCCESS = "Instrument saved successfully."
-MSG_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instruments saved successfully."
-MSG_RECONSTRUCTION_EXPORT_NO_DATA = "No reconstruction loaded."
-MSG_RECONSTRUCTION_EXPORT_WAV_FAILURE = "Reconstruction failed to save."
-MSG_RECONSTRUCTION_EXPORT_FTI_FAILURE = "Failed to export instrument as FTI."
-MSG_RECONSTRUCTION_EXPORT_FTIS_FAILURE = "Failed to export reconstruction as FTIs."
-MSG_RECONSTRUCTION_FILE_LOAD_ERROR = "Failed to load reconstruction."
-MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_VALUES_FILE = "Reconstruction contains invalid values."
-MSG_RECONSTRUCTION_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
-MSG_RECONSTRUCTION_INCOMPATIBLE_RECONSTRUCTION_FILE = "Incompatible reconstruction version: {}, expected {}."
-MSG_CONFIG_SAVE_FAILED = "Failed to save configuration."
-MSG_CONFIG_LOAD_FAILED = "Failed to load configuration."
-TTL_DIALOG_RECONSTRUCTION_EXPORT_STATUS = "Export status"
-TTL_DIALOG_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
-VAL_AUDIO_SOURCE_SELECTOR = "selector"
-LBL_RECONSTRUCTION_GENERATORS = "Generators"
+LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY = "Copy"
+LBL_BUTTON_GLOBAL_COPIED = "Copied!"
+LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO = "Original audio"
+LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO = "Reconstruction"
+LBL_BUTTON_TRACEBACK_SHOW = "Show traceback"
+LBL_BUTTON_TRACEBACK_HIDE = "Hide traceback"
+MSG_GLOBAL_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS = "Reconstruction rendered successfully."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS = "Instrument saved successfully."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instruments saved successfully."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED = "Reconstruction failed to save."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED = "Failed to export instrument as FTI."
+MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED = "Failed to export reconstruction as FTIs."
+MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR = "Failed to load reconstruction."
+MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES = "Reconstruction contains invalid values."
+MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE = "Invalid reconstruction file."
+MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE = "Incompatible reconstruction version: {}, expected {}."
+MSG_GLOBAL_CONFIG_SAVE_FAILED = "Failed to save configuration."
+TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS = "Export status"
+TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED = "Reconstruction not loaded"
+VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE = "selector"
+LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS = "Generators"
 
 # Waveform layer colors
 COL_WAVEFORM_DEFAULT = (255, 255, 255, 255)
@@ -450,35 +446,32 @@ SUF_GRAPH_INFO = "_info"
 SUF_GRAPH_RAW_DATA = "_raw_data"
 SUF_GRAPH_RAW_DATA_GROUP = "_raw_data_group"
 SUF_BAR_PLOT_ZERO_LINE = "_zero_line"
-SUF_SEPARATOR = "_separator"
-SUF_NO_DATA_MESSAGE = "_no_data_message"
-SUF_WINDOW = "_window"
+SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR = "_separator"
+SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE = "_no_data_message"
+SUF_RECONSTRUCTIONS_DETAILS_WINDOW = "_window"
 
-SUF_LEFT_PANEL = "_left_panel"
-SUF_CENTER_PANEL = "_center_panel"
-SUF_RIGHT_PANEL = "_right_panel"
+SUF_PANEL_LEFT = "_left_panel"
+SUF_PANEL_CENTER = "_center_panel"
+SUF_PANEL_RIGHT = "_right_panel"
 
 # Spectrum display settings
-LBL_SPECTRUM_DISPLAY = "Spectrum display"
-VAL_SPECTRUM_LOG_OFFSET = 1e-2
-VAL_SPECTRUM_GRAYSCALE_MAX = 255
-LBL_SPECTRUM_X_AXIS = ""
-LBL_SPECTRUM_Y_AXIS = "Frequency"
-LBL_PLOT_SPECTRUM = "Spectrum"
+LBL_PLOT_LABEL_SPECTRUM = "Spectrum display"
+VAL_OFFSET_SPECTRUM_LOG = 1e-2
+VAL_MAX_SPECTRUM_GRAYSCALE = 255
+LBL_PLOT_AXIS_SPECTRUM_X = ""
+LBL_PLOT_AXIS_SPECTRUM_FREQUENCY = "Frequency"
+LBL_PLOT_NAME_SPECTRUM = "Spectrum"
 
-DIM_GRAPH_DEFAULT_WIDTH = -1
-DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT = 200
+DIM_GRAPH_WIDTH = -1
+DIM_GRAPH_HEIGHT = 200
 
 # Boolean text values
 LBL_GLOBAL_YES = "Yes"
 LBL_GLOBAL_NO = "No"
 
 # Default axis range
-VAL_GRAPH_DEFAULT_X_MIN = 0.0
-VAL_GRAPH_DEFAULT_X_MAX = 1.0
-
-# Format precision
-VAL_WAVEFORM_FLOAT_PRECISION = 4
+VAL_MIN_GRAPH_DEFAULT_X = 0.0
+VAL_MAX_GRAPH_DEFAULT_X = 1.0
 
 # Audio player component suffixes
 SUF_PLAYER_PLAY = "_play"
@@ -490,10 +483,10 @@ SUF_PLAYER_NO_AUDIO_POPUP = "_no_audio_popup"
 SUF_PLAYER_ERROR_POPUP = "_error_popup"
 
 # Audio player text constants
-LBL_PLAYER_POSITION = "Position: "
-SUF_PLAYER_SAMPLES = " samples"
-LBL_BUTTON_OK = "OK"
-TAG_BUTTON_OK = "button_ok"
+LBL_TEXT_PLAYER_POSITION = "Position: "
+LBL_TEXT_PLAYER_SAMPLES = " samples"
+LBL_BUTTON_GLOBAL_OK = "OK"
+TAG_BUTTON_GLOBAL_OK = "button_ok"
 
 # Instruction display text constants
 LBL_INSTRUCTION_GENERATOR = "Generator"

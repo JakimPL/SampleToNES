@@ -13,11 +13,11 @@ from ..constants import (
     DIM_DIALOG_WIDTH_DEFAULT,
     DIM_DIALOG_WIDTH_ERROR,
     DIM_DIALOG_WIDTH_ERROR_WRAP,
-    LBL_BUTTON_HIDE_TRACEBACK,
-    LBL_BUTTON_OK,
-    LBL_BUTTON_SHOW_TRACEBACK,
+    LBL_BUTTON_GLOBAL_OK,
+    LBL_BUTTON_TRACEBACK_HIDE,
+    LBL_BUTTON_TRACEBACK_SHOW,
+    MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED,
-    MSG_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_OK,
     SUF_BUTTON_SHOW_TRACEBACK,
     SUF_GROUP,
@@ -31,7 +31,7 @@ from ..constants import (
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
     TTL_DIALOG_LIBRARY_NOT_LOADED,
-    TTL_DIALOG_RECONSTRUCTION_NOT_LOADED,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
 )
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
@@ -63,7 +63,7 @@ def show_modal_dialog(
         button_ok_tag = f"{tag}{SUF_BUTTON_OK}"
         GUIButton(
             tag=button_ok_tag,
-            label=LBL_BUTTON_OK,
+            label=LBL_BUTTON_GLOBAL_OK,
             callback=lambda: dpg_delete_item(tag),
             width=-1,
         )
@@ -133,19 +133,19 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
                 traceback.toggle_visibility()
                 dpg_configure_item(
                     show_button_tag,
-                    label=LBL_BUTTON_SHOW_TRACEBACK if not traceback.visible else LBL_BUTTON_HIDE_TRACEBACK,
+                    label=LBL_BUTTON_TRACEBACK_SHOW if not traceback.visible else LBL_BUTTON_TRACEBACK_HIDE,
                 )
 
             GUIButton(
                 tag=show_button_tag,
-                label=LBL_BUTTON_SHOW_TRACEBACK,
+                label=LBL_BUTTON_TRACEBACK_SHOW,
                 width=-1,
                 callback=toggle_traceback,
             )
 
             GUIButton(
                 tag=f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_BUTTON_OK}",
-                label=LBL_BUTTON_OK,
+                label=LBL_BUTTON_GLOBAL_OK,
                 callback=lambda: dpg_delete_item(TAG_DIALOG_GLOBAL_ERROR),
                 width=-1,
             )
@@ -195,14 +195,14 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
 def show_reconstruction_not_loaded_dialog() -> None:
     def content(parent: str) -> None:
         dpg.add_text(
-            MSG_RECONSTRUCTION_NO_DATA,
+            MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
             parent=parent,
             wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )
 
     show_modal_dialog(
         tag=TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
-        title=TTL_DIALOG_RECONSTRUCTION_NOT_LOADED,
+        title=TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
         content=content,
         modal=False,
     )

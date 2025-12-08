@@ -13,7 +13,8 @@ from ..constants import (
     LBL_BUTTON_PLAYER_PLAY,
     LBL_BUTTON_PLAYER_RESUME,
     LBL_BUTTON_PLAYER_STOP,
-    LBL_PLAYER_POSITION,
+    LBL_TEXT_PLAYER_POSITION,
+    LBL_TEXT_PLAYER_SAMPLES,
     MSG_PLAYER_AUDIO_PLAYBACK_ERROR,
     MSG_PLAYER_NO_AUDIO_LOADED,
     SUF_PLAYER_CONTROLS_GROUP,
@@ -22,7 +23,6 @@ from ..constants import (
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
-    SUF_PLAYER_SAMPLES,
     SUF_PLAYER_STOP,
     TTL_DIALOG_PLAYER_NO_AUDIO,
 )
@@ -193,8 +193,8 @@ class GUIAudioPlayerPanel(GUIPanel):
             dpg_set_value(self.position_text_tag, MSG_PLAYER_NO_AUDIO_LOADED)
         else:
             position_text = (
-                f"{LBL_PLAYER_POSITION}{self.audio_player.audio_data.current_position}"
-                f"/{self.audio_player.audio_data.samples}{SUF_PLAYER_SAMPLES}"
+                f"{LBL_TEXT_PLAYER_POSITION}{self.audio_player.audio_data.current_position}"
+                f"/{self.audio_player.audio_data.samples}{LBL_TEXT_PLAYER_SAMPLES}"
             )
             dpg_set_value(self.position_text_tag, position_text)
 
