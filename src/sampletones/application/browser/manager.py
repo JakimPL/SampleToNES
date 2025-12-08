@@ -41,11 +41,7 @@ class BrowserManager:
             if child_node is not None:
                 children_nodes.append(child_node)
 
-        if not children_nodes:
-            return None
-
         directory_node = FileSystemNode(path.name, filepath=path, node_type=NOD_TYPE_GLOBAL_DIRECTORY)
-
         for child_node in children_nodes:
             child_node.parent = directory_node
 

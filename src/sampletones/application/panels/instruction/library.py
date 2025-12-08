@@ -307,7 +307,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library_and_set_current(library_key)
         self.update_status()
 
-    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(
+        self,
+        node: TreeNode,
+        parent: str,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         node_tag = self._generate_node_tag(node)
 
         if node.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER:

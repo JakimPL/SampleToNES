@@ -19,6 +19,8 @@ from ...config.manager import ConfigManager
 from ...constants.general import (
     MSG_GLOBAL_INVALID_METADATA_ERROR,
     NOD_TYPE_GLOBAL_DIRECTORY,
+    NOD_TYPE_GLOBAL_FILE,
+    NOD_TYPE_GLOBAL_ROOT,
     SUF_PANEL_LEFT,
     TAG_TAB_RECONSTRUCTIONS,
 )
@@ -136,15 +138,39 @@ class GUIBrowserPanel(GUITreePanel):
     def _rebuild_tree(self) -> None:
         self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
 
-    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
-        node_tag = self._generate_node_tag(node)
+    def _has_relevant_content(self, node: TreeNode) -> bool:
+        if node.node_type == NOD_TYPE_GLOBAL_FILE:
+            return True
 
-        if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
+        return bool(node.children)
+
+    def _build_tree_node(
+        self,
+        node: TreeNode,
+        parent: str,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        node_tag = self._generate_node_tag(node)
+        if node.node_type == NOD_TYPE_GLOBAL_ROOT:
+            return
+
+        if not isinstance(node, FileSystemNode):
+            return
+
+        is_favorite = node.node_type != NOD_TYPE_GLOBAL_ROOT and self._is_node_favorite(node)
+        has_favorite_ancestor |= is_favorite
+
+        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
+                self._apply_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 for child in node.children:
-                    self._build_tree_node(child, node_tag)
+                    self._build_tree_node(child, node_tag, has_favorite_ancestor)
         else:
             dpg.add_selectable(
                 label=node.name,
@@ -153,6 +179,11 @@ class GUIBrowserPanel(GUITreePanel):
                 user_data=node,
                 tag=node_tag,
                 default_value=False,
+            )
+            self._apply_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
             )
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 

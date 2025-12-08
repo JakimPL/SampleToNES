@@ -159,7 +159,6 @@ class GUIExplorerPanel(GUITreePanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-
         if node.node_type == NOD_TYPE_GLOBAL_ROOT:
             return
 
@@ -168,6 +167,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         is_favorite = node.node_type != NOD_TYPE_GLOBAL_ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
+
         handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
         if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
@@ -220,7 +220,11 @@ class GUIExplorerPanel(GUITreePanel):
                 default_value=False,
             )
 
-            self._apply_node_theme(node_tag, node)
+            self._apply_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+            )
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(

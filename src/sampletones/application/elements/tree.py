@@ -88,7 +88,12 @@ class GUITreePanel(GUIPanel):
                 width=DIM_BUTTON_WIDTH_SEARCH,
             )
 
-    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(
+        self,
+        node: TreeNode,
+        parent: str,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
