@@ -15,6 +15,7 @@ from ...constants.general import (
     COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
     COL_TEXT_FAVORITE,
+    COL_TEXT_FAVORITE_CHILD,
     COL_TEXT_LIBRARY,
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
@@ -150,18 +151,55 @@ class GUIExplorerPanel(GUITreePanel):
     def _set_explorer_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
 
-    def _apply_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
+    def _is_node_favorite(self, node: FileSystemNode) -> bool:
+        if not isinstance(node, FileSystemNode):
+            raise TypeError("Only filepath nodes can be marked as favorite")
+
+        return node.filepath in self.application_config_manager.favorites
+
+    def _has_favorite_ancestor(self, node: FileSystemNode) -> bool:
+        current_node = node.parent
+        while current_node is not None:
+            if not isinstance(current_node, FileSystemNode):
+                break
+
+            if self._is_node_favorite(current_node):
+                return True
+
+            current_node = current_node.parent
+
+        return False
+
+    def _apply_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
-            return self._apply_directory_node_theme(node_tag, node)
+            return self._apply_directory_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+            )
 
         if node.node_type == NOD_TYPE_GLOBAL_FILE:
-            return self._apply_file_node_theme(node_tag, node)
+            return self._apply_file_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+            )
 
         return None
 
-    def _apply_directory_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
+    def _apply_directory_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)
-        is_favorite = node.filepath in self.application_config_manager.favorites
+        is_favorite = self._is_node_favorite(node)
 
         with dpg.theme() as node_theme:
             with dpg.theme_component(dpg.mvTreeNode):
@@ -169,12 +207,18 @@ class GUIExplorerPanel(GUITreePanel):
                     dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE)
                 elif not has_content:
                     dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
+                elif has_favorite_ancestor:
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE_CHILD)
 
         dpg.bind_item_theme(node_tag, node_theme)
 
-    def _apply_file_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
-        is_favorite = node.filepath in self.application_config_manager.favorites
-
+    def _apply_file_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        is_favorite = self._is_node_favorite(node)
         with dpg.theme() as node_theme:
             with dpg.theme_component(dpg.mvSelectable):
                 color: Color = COL_TEXT_DEFAULT
@@ -188,12 +232,19 @@ class GUIExplorerPanel(GUITreePanel):
                             color = COL_TEXT_LIBRARY
                         case paths.EXT_FILE_WAVE:
                             color = COL_TEXT_WAVE
+                        case _ if has_favorite_ancestor:
+                            color = COL_TEXT_FAVORITE_CHILD
 
                 dpg.add_theme_color(dpg.mvThemeCol_Text, color)
 
         dpg.bind_item_theme(node_tag, node_theme)
 
-    def _build_tree_node(self, node: TreeNode, parent: str) -> None:
+    def _build_tree_node(
+        self,
+        node: TreeNode,
+        parent: str,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
         node_tag = self._generate_node_tag(node)
 
         if node.node_type == NOD_TYPE_GLOBAL_ROOT:
@@ -202,6 +253,8 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
+        is_favorite = node.node_type != NOD_TYPE_GLOBAL_ROOT and self._is_node_favorite(node)
+        has_favorite_ancestor |= is_favorite
         handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
         if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
@@ -214,11 +267,19 @@ class GUIExplorerPanel(GUITreePanel):
                 open_on_arrow=False,
             ) as tree_node_tag:
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
-                self._apply_node_theme(node_tag, node)
+                self._apply_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
 
                 if self.explorer_manager.is_directory_expanded(node.filepath):
                     for child in node.children:
-                        self._build_tree_node(child, node_tag)
+                        self._build_tree_node(
+                            child,
+                            node_tag,
+                            has_favorite_ancestor=has_favorite_ancestor,
+                        )
 
                 dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
                 dpg.add_tree_node(
@@ -402,7 +463,11 @@ class GUIExplorerPanel(GUITreePanel):
         dpg_delete_children(node_tag)
         if self.explorer_manager.is_directory_expanded(node.filepath):
             for child in node.children:
-                self._build_tree_node(child, node_tag)
+                self._build_tree_node(
+                    child,
+                    node_tag,
+                    has_favorite_ancestor=self._has_favorite_ancestor(child),
+                )
         else:
             dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
             dpg.add_tree_node(
@@ -413,7 +478,7 @@ class GUIExplorerPanel(GUITreePanel):
             )
 
     def _add_context_menu_text(self, node: FileSystemNode) -> None:
-        is_favorite = node.filepath in self.application_config_manager.favorites
+        is_favorite = self._is_node_favorite(node)
         color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
 
         with dpg.group(horizontal=True):
@@ -428,7 +493,7 @@ class GUIExplorerPanel(GUITreePanel):
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
             LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
-            if node.filepath in self.application_config_manager.favorites
+            if self._is_node_favorite(node)
             else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
         )
         dpg.add_menu_item(
@@ -540,10 +605,24 @@ class GUIExplorerPanel(GUITreePanel):
         if self._on_set_as_library_directory is not None:
             self._on_set_as_library_directory(node.filepath)
 
-    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
+    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
         node_tag = self._generate_node_tag(node)
-        if dpg.does_item_exist(node_tag):
-            self._apply_node_theme(node_tag, node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        self._apply_node_theme(node_tag, node, has_favorite_ancestor)
+
+        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY and self.explorer_manager.is_directory_expanded(node.filepath):
+            is_favorite = self._is_node_favorite(node)
+            child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
+
+            for child in node.children:
+                if isinstance(child, FileSystemNode):
+                    self._reapply_theme_recursively(child, child_has_favorite_ancestor)
+
+    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
+        has_favorite_ancestor = self._has_favorite_ancestor(node)
+        self._reapply_theme_recursively(node, has_favorite_ancestor)
 
     def set_callbacks(
         self,
