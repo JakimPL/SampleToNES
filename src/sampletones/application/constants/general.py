@@ -56,6 +56,7 @@ SUF_PANEL_LEFT = "_left_panel"
 SUF_PANEL_CENTER = "_center_panel"
 SUF_PANEL_RIGHT = "_right_panel"
 SUF_TREE_SEARCH_INPUT = "_search_input"
+SUF_NODE_HANDLER = "_node_handler"
 
 LBL_BUTTON_GLOBAL_OK = "OK"
 LBL_BUTTON_GLOBAL_COPIED = "Copied!"

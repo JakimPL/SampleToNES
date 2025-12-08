@@ -35,7 +35,6 @@ TAG_BUTTON_MAIN_CONVERTER_CANCEL = "button_main_converter_cancel"
 TAG_DIALOG_MAIN_CONVERTER_SUCCESS = "dialog_main_converter_success"
 TAG_BUTTON_MAIN_CONVERTER_CONVERT = "button_main_converter_convert"
 
-SUF_MAIN_EXPLORER_NODE_HANDLER = "_node_handler"
 SUF_MAIN_EXPLORER_NODE_DUMMY = "_node_dummy"
 
 LBL_SECTION_MAIN_EXPLORER = "Filesystem"

@@ -8,6 +8,8 @@ from sampletones.typehints import Sender
 
 from ..config.application.manager import ApplicationConfigManager
 from ..constants.general import (
+    COL_PATH_TEXT_HOVER,
+    COL_TEXT_FAVORITE,
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
@@ -15,7 +17,14 @@ from ..constants.general import (
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_TREE_SEARCH_INPUT,
+    VAL_CHARACTER_STAR,
 )
+from ..constants.main import (
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
+)
+from ..elements.fonts.font import Font
+from ..elements.fonts.registry import FontRegistry
 from ..themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
 from ..themes.nodes.file import (
     LibraryFileNodeTheme,
@@ -33,6 +42,8 @@ from ..themes.theme import Theme
 from ..utils.dpg import dpg_delete_children, dpg_delete_item
 from .button import GUIButton
 from .panel import GUIPanel
+
+ItemClickCallback = Callable[[Sender, Tuple[int, int], Any], None]
 
 
 class GUITreePanel(GUIPanel):
@@ -118,9 +129,9 @@ class GUITreePanel(GUIPanel):
         self,
         tag: str,
         parent: str,
-        item_click_callback: Callable[[Sender, Tuple[int, int], Any], None],
-        item_double_click_callback: Optional[Callable[[Sender, Tuple[int, int], Any], None]],
         node: TreeNode,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
     ) -> None:
         dpg_delete_item(tag)
         with dpg.item_handler_registry(tag=tag):
@@ -151,6 +162,30 @@ class GUITreePanel(GUIPanel):
 
         if self._on_node_selected:
             self._on_node_selected(user_data)
+
+    def _add_context_menu_text(self, node: FileSystemNode) -> None:
+        is_favorite = self._is_node_favorite(node)
+        color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
+
+        with dpg.group(horizontal=True):
+            if is_favorite:
+                star = chr(VAL_CHARACTER_STAR)
+                star_text = dpg.add_text(star, color=color)
+                FontRegistry.bind_to_item(star_text, Font.ICON)
+
+            text = dpg.add_text(node.name, color=color)
+            FontRegistry.bind_to_item(text, Font.BOLD)
+
+    def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
+        label = (
+            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
+            if self._is_node_favorite(node)
+            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
+        )
+        dpg.add_menu_item(
+            label=label,
+            callback=lambda: self._context_mark_as_favorite(node),
+        )
 
     def clear_selection(self) -> None:
         if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
@@ -297,6 +332,31 @@ class GUITreePanel(GUIPanel):
 
         if theme is not None:
             theme.bind_to_item(node_tag)
+
+    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        self._apply_node_theme(node_tag, node, has_favorite_ancestor)
+        if node.node_type == NodeType.DIRECTORY:
+            is_favorite = self._is_node_favorite(node)
+            child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
+
+            for child in node.children:
+                if isinstance(child, FileSystemNode):
+                    self._reapply_theme_recursively(child, child_has_favorite_ancestor)
+
+    def _context_mark_as_favorite(self, node: TreeNode) -> None:
+        if not isinstance(node, FileSystemNode):
+            return
+
+        self._toggle_favorite(node)
+        self._update_favorite_indicator(node)
+
+    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
+        has_favorite_ancestor = self._has_favorite_ancestor(node)
+        self._reapply_theme_recursively(node, has_favorite_ancestor)
 
     def set_tree_callbacks(self, on_node_selected: Optional[Callable[..., Any]] = None) -> None:
         self._on_node_selected = on_node_selected

@@ -11,28 +11,23 @@ from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (
-    COL_PATH_TEXT_HOVER,
-    COL_TEXT_FAVORITE,
     LBL_TREE_FILTER,
+    SUF_NODE_HANDLER,
     SUF_PANEL_LEFT,
     TAG_TAB_MAIN,
-    VAL_CHARACTER_STAR,
 )
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
     LBL_MAIN_EXPLORER_NODE_DUMMY,
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     SUF_MAIN_EXPLORER_NODE_DUMMY,
-    SUF_MAIN_EXPLORER_NODE_HANDLER,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
     TAG_GROUP_MAIN_EXPLORER_TREE,
@@ -68,7 +63,6 @@ class GUIExplorerPanel(GUITreePanel):
         self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
         self._on_load_reconstruction: Optional[OnReconstructPathCallback] = None
         self._on_load_library: Optional[OnReconstructPathCallback] = None
-        self._on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None
         self._on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
         self._on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
         self._is_converter_running: Optional[Callable[[], bool]] = None
@@ -166,7 +160,7 @@ class GUIExplorerPanel(GUITreePanel):
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
 
-        handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
+        handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
 
@@ -204,9 +198,8 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_item_handler_registry(
                 tag=handler_registry_tag,
                 parent=node_tag,
-                item_click_callback=self._on_directory_node_clicked,
-                item_double_click_callback=None,
                 node=node,
+                item_click_callback=self._on_directory_node_clicked,
             )
         else:
             dpg.add_selectable(
@@ -228,9 +221,9 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_item_handler_registry(
                 tag=handler_registry_tag,
                 parent=node_tag,
+                node=node,
                 item_click_callback=self._on_file_node_clicked,
                 item_double_click_callback=self._on_file_node_double_clicked,
-                node=node,
             )
 
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
@@ -256,7 +249,10 @@ class GUIExplorerPanel(GUITreePanel):
         return None
 
     def _on_file_node_double_clicked(
-        self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: FileSystemNode,
     ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
@@ -265,7 +261,12 @@ class GUIExplorerPanel(GUITreePanel):
 
         return None
 
-    def _on_directory_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
+    def _on_directory_node_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: FileSystemNode,
+    ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
             return self._directory_node_clicked(user_data)
@@ -369,30 +370,6 @@ class GUIExplorerPanel(GUITreePanel):
                 leaf=True,
             )
 
-    def _add_context_menu_text(self, node: FileSystemNode) -> None:
-        is_favorite = self._is_node_favorite(node)
-        color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
-
-        with dpg.group(horizontal=True):
-            if is_favorite:
-                star = chr(VAL_CHARACTER_STAR)
-                star_text = dpg.add_text(star, color=color)
-                FontRegistry.bind_to_item(star_text, Font.ICON)
-
-            text = dpg.add_text(node.name, color=color)
-            FontRegistry.bind_to_item(text, Font.BOLD)
-
-    def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
-        label = (
-            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
-            if self._is_node_favorite(node)
-            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
-        )
-        dpg.add_menu_item(
-            label=label,
-            callback=lambda: self._context_mark_as_favorite(node),
-        )
-
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
@@ -482,13 +459,6 @@ class GUIExplorerPanel(GUITreePanel):
         if self._on_reconstruct_directory is not None:
             self._on_reconstruct_directory(node.filepath)
 
-    def _context_mark_as_favorite(self, node: FileSystemNode) -> None:
-        if self._on_toggle_mark_as_favorite is not None:
-            self._on_toggle_mark_as_favorite(node.filepath)
-
-        self._toggle_favorite(node)
-        self._update_favorite_indicator(node)
-
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:
         if self._on_set_as_output_directory is not None:
             self._on_set_as_output_directory(node.filepath)
@@ -496,25 +466,6 @@ class GUIExplorerPanel(GUITreePanel):
     def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
         if self._on_set_as_library_directory is not None:
             self._on_set_as_library_directory(node.filepath)
-
-    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
-        node_tag = self._generate_node_tag(node)
-        if not dpg.does_item_exist(node_tag):
-            return
-
-        self._apply_node_theme(node_tag, node, has_favorite_ancestor)
-
-        if node.node_type == NodeType.DIRECTORY and self.explorer_manager.is_directory_expanded(node.filepath):
-            is_favorite = self._is_node_favorite(node)
-            child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
-
-            for child in node.children:
-                if isinstance(child, FileSystemNode):
-                    self._reapply_theme_recursively(child, child_has_favorite_ancestor)
-
-    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
-        has_favorite_ancestor = self._has_favorite_ancestor(node)
-        self._reapply_theme_recursively(node, has_favorite_ancestor)
 
     def set_callbacks(
         self,
@@ -524,7 +475,6 @@ class GUIExplorerPanel(GUITreePanel):
         on_reconstruct_file: Optional[OnReconstructPathCallback] = None,
         on_load_reconstruction: Optional[OnReconstructPathCallback] = None,
         on_load_library: Optional[OnReconstructPathCallback] = None,
-        on_toggle_mark_as_favorite: Optional[OnReconstructPathCallback] = None,
         on_set_as_output_directory: Optional[OnReconstructPathCallback] = None,
         on_set_as_library_directory: Optional[OnReconstructPathCallback] = None,
         is_converter_running: Optional[Callable[[], bool]] = None,
@@ -541,8 +491,6 @@ class GUIExplorerPanel(GUITreePanel):
             self._on_load_reconstruction = on_load_reconstruction
         if on_load_library is not None:
             self._on_load_library = on_load_library
-        if on_toggle_mark_as_favorite is not None:
-            self._on_toggle_mark_as_favorite = on_toggle_mark_as_favorite
         if on_set_as_output_directory is not None:
             self._on_set_as_output_directory = on_set_as_output_directory
         if on_set_as_library_directory is not None:
