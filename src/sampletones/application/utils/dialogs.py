@@ -23,10 +23,10 @@ from ..constants import (
     SUF_GROUP,
     SUF_INFO_DIALOG,
     SUF_PATH_TEXT,
-    TAG_ERROR_DIALOG,
-    TAG_FILE_NOT_FOUND_DIALOG,
-    TAG_LIBRARY_NOT_LOADED_DIALOG,
-    TAG_PATH_MESSAGE_DIALOG,
+    TAG_DIALOG_GLOBAL_ERROR,
+    TAG_DIALOG_GLOBAL_FILE_NOT_FOUND,
+    TAG_DIALOG_GLOBAL_PATH_MESSAGE,
+    TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
@@ -87,25 +87,25 @@ def show_info_dialog(tag: str, message: str, title: str) -> None:
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
-    dpg_delete_item(TAG_ERROR_DIALOG)
+    dpg_delete_item(TAG_DIALOG_GLOBAL_ERROR)
 
     with dpg.window(
         label=TTL_DIALOG_ERROR,
-        tag=TAG_ERROR_DIALOG,
+        tag=TAG_DIALOG_GLOBAL_ERROR,
         modal=True,
         min_size=(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
         autosize=True,
-        on_close=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
+        on_close=lambda: dpg_delete_item(TAG_DIALOG_GLOBAL_ERROR),
     ):
         if message is not None:
             dpg.add_text(
                 message,
-                parent=TAG_ERROR_DIALOG,
+                parent=TAG_DIALOG_GLOBAL_ERROR,
                 wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
             )
 
-        group_tag = f"{TAG_ERROR_DIALOG}{SUF_GROUP}"
-        with dpg.group(tag=group_tag, parent=TAG_ERROR_DIALOG):
+        group_tag = f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_GROUP}"
+        with dpg.group(tag=group_tag, parent=TAG_DIALOG_GLOBAL_ERROR):
             dpg.add_text(
                 f"{str(type(exception).__name__)}: ",
                 parent=group_tag,
@@ -119,7 +119,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             )
 
         traceback = GUITraceback(
-            parent=TAG_ERROR_DIALOG,
+            parent=TAG_DIALOG_GLOBAL_ERROR,
             exception=exception,
         )
 
@@ -127,7 +127,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         @table_wrapper(columns=2)
         def content(_: None) -> None:
-            show_button_tag = f"{TAG_ERROR_DIALOG}{SUF_BUTTON_SHOW_TRACEBACK}"
+            show_button_tag = f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_BUTTON_SHOW_TRACEBACK}"
 
             def toggle_traceback() -> None:
                 traceback.toggle_visibility()
@@ -144,9 +144,9 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             )
 
             GUIButton(
-                tag=f"{TAG_ERROR_DIALOG}{SUF_BUTTON_OK}",
+                tag=f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_BUTTON_OK}",
                 label=LBL_BUTTON_OK,
-                callback=lambda: dpg_delete_item(TAG_ERROR_DIALOG),
+                callback=lambda: dpg_delete_item(TAG_DIALOG_GLOBAL_ERROR),
                 width=-1,
             )
 
@@ -154,7 +154,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:
-    dpg_delete_item(TAG_FILE_NOT_FOUND_DIALOG)
+    dpg_delete_item(TAG_DIALOG_GLOBAL_FILE_NOT_FOUND)
 
     def content(parent: str) -> None:
         dpg.add_text(
@@ -170,7 +170,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         )
 
     show_modal_dialog(
-        tag=TAG_FILE_NOT_FOUND_DIALOG,
+        tag=TAG_DIALOG_GLOBAL_FILE_NOT_FOUND,
         title=TTL_DIALOG_FILE_NOT_FOUND,
         content=content,
     )
@@ -185,7 +185,7 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
         )
 
     show_modal_dialog(
-        tag=TAG_LIBRARY_NOT_LOADED_DIALOG,
+        tag=TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
         title=TTL_DIALOG_LIBRARY_NOT_LOADED,
         content=content,
         modal=False,
@@ -209,7 +209,7 @@ def show_reconstruction_not_loaded_dialog() -> None:
 
 
 def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
-    dpg_delete_item(TAG_PATH_MESSAGE_DIALOG)
+    dpg_delete_item(TAG_DIALOG_GLOBAL_PATH_MESSAGE)
 
     def content(parent: str) -> None:
         group_tag = f"{parent}{SUF_GROUP}"
@@ -226,7 +226,7 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
             )
 
     show_modal_dialog(
-        tag=TAG_PATH_MESSAGE_DIALOG,
+        tag=TAG_DIALOG_GLOBAL_PATH_MESSAGE,
         title=title,
         content=content,
         modal=False,

@@ -29,12 +29,12 @@ from ..constants import (
     MSG_CONFIGURATION_INVALID_ERROR,
     MSG_CONFIGURATION_LOAD_ERROR,
     MSG_CONFIGURATION_SAVE_ERROR,
-    TAG_ADVANCED_MAX_WORKERS,
-    TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_NORMALIZE,
-    TAG_CONFIG_QUANTIZE,
-    TAG_CONFIG_SAMPLE_RATE,
+    TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
+    TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
+    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
+    TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
     TAG_RECONSTRUCTOR_MIXER,
     TPL_RECONSTRUCTION_GEN_TAG,
 )
@@ -52,17 +52,17 @@ class ConfigManager:
         self.config_path: Path = config_path or Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
-                TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
-                TAG_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
-                TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
-                TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
+                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
+                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
+                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
+                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
                 TAG_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
             "reconstructor": {
                 TAG_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
             },
             "advanced": {
-                TAG_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
+                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
             },
         }
         self.generator_tags = {
@@ -216,8 +216,8 @@ class ConfigManager:
         self.window = Window.from_config(self.config)
 
         return {
-            TAG_CONFIG_SAMPLE_RATE: sample_rate,
-            TAG_CONFIG_CHANGE_RATE: change_rate,
+            TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: sample_rate,
+            TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: change_rate,
             TAG_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
         }
 

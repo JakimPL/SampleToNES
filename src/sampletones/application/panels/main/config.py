@@ -33,12 +33,12 @@ from ...constants import (
     LBL_TOOLTIP_MAIN_CONFIG_QUANTIZE,
     LBL_TOOLTIP_MAIN_CONFIG_SAMPLE_RATE,
     LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA,
-    TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_NORMALIZE,
-    TAG_CONFIG_QUANTIZE,
-    TAG_CONFIG_SAMPLE_RATE,
+    TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
+    TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
     TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_PANEL_CONFIG,
+    TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
+    TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
+    TAG_PANEL_MAIN_CONFIG,
     TAG_PANEL_MAIN_CONFIG_CELL,
 )
 from ...elements.fonts.font import Font
@@ -58,7 +58,7 @@ class GUIConfigPanel(GUIPanel):
         self.application_config_manager = application_config_manager
 
         super().__init__(
-            tag=TAG_PANEL_CONFIG,
+            tag=TAG_PANEL_MAIN_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
         )
@@ -87,12 +87,12 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
             default_value=NORMALIZE,
-            tag=TAG_CONFIG_NORMALIZE,
+            tag=TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
             default_value=QUANTIZE,
-            tag=TAG_CONFIG_QUANTIZE,
+            tag=TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
         )
 
     def _create_library_settings(self) -> None:
@@ -101,7 +101,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_SAMPLE_RATE,
             default_value=DEFAULT_SAMPLE_RATE,
-            tag=TAG_CONFIG_SAMPLE_RATE,
+            tag=TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
             width=DIM_INPUT_WIDTH_DEFAULT,
@@ -109,7 +109,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_CHANGE_RATE,
             default_value=DEFAULT_CHANGE_RATE,
-            tag=TAG_CONFIG_CHANGE_RATE,
+            tag=TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
             width=DIM_INPUT_WIDTH_DEFAULT,
@@ -123,10 +123,10 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_CONFIG_NORMALIZE, LBL_TOOLTIP_MAIN_CONFIG_NORMALIZE)
-        show_tooltip(TAG_CONFIG_QUANTIZE, LBL_TOOLTIP_MAIN_CONFIG_QUANTIZE)
-        show_tooltip(TAG_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_MAIN_CONFIG_SAMPLE_RATE)
-        show_tooltip(TAG_CONFIG_CHANGE_RATE, LBL_TOOLTIP_MAIN_CONFIG_CHANGE_RATE)
+        show_tooltip(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, LBL_TOOLTIP_MAIN_CONFIG_NORMALIZE)
+        show_tooltip(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE, LBL_TOOLTIP_MAIN_CONFIG_QUANTIZE)
+        show_tooltip(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_MAIN_CONFIG_SAMPLE_RATE)
+        show_tooltip(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, LBL_TOOLTIP_MAIN_CONFIG_CHANGE_RATE)
         show_tooltip(TAG_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA)
 
     def _register_callbacks(self) -> None:

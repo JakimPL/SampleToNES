@@ -11,13 +11,13 @@ from ...constants import (
     LBL_INSTRUCTION_PARAMETERS_HEADER,
     MSG_INSTRUCTION_NO_SELECTION,
     SUF_RIGHT_PANEL,
-    TAG_INSTRUCTION_DETAILS,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
-    TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
+    TAG_PANEL_INSTRUCTIONS_DETAILS,
     TAG_TAB_INSTRUCTIONS,
+    TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -34,7 +34,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.params_table: Optional[GUITable] = None
 
         super().__init__(
-            tag=TAG_INSTRUCTION_DETAILS,
+            tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_RIGHT_PANEL}",
         )
 
@@ -55,7 +55,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def _create_instruction_tables(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
+        dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO)
 
         dpg.add_text(
             LBL_INSTRUCTION_GENERAL_HEADER,
@@ -90,12 +90,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self._clear_tables()
 
         if table_data is None:
-            dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=True)
+            dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=False)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=False)
             return
 
-        dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=False)
+        dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=False)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
 

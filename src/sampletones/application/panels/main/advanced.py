@@ -20,15 +20,15 @@ from ...constants import (
     LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
     LBL_SECTION_MAIN_ADVANCED,
     LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS,
-    TAG_ADVANCED_LIBRARY_DIRECTORY,
-    TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-    TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
-    TAG_ADVANCED_MAX_WORKERS,
-    TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
-    TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-    TAG_PANEL_ADVANCED,
+    TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+    TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+    TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
+    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    TAG_PANEL_MAIN_ADVANCED,
     TAG_PANEL_MAIN_SETTINGS,
+    TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
+    TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
     TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
     TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
     VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
@@ -60,7 +60,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         super().__init__(
-            tag=TAG_PANEL_ADVANCED,
+            tag=TAG_PANEL_MAIN_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
             height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
         )
@@ -94,21 +94,21 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
             default_value=MAX_WORKERS,
-            tag=TAG_ADVANCED_MAX_WORKERS,
+            tag=TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
             min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
             width=DIM_INPUT_WIDTH_DEFAULT,
         )
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
+            tag=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_ADVANCED_LIBRARY_DIRECTORY,
-                parent=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
+                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
                 label=LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
                 width=-1,
                 callback=self._select_library_directory_dialog,
@@ -116,37 +116,37 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
             library_directory = self.config_manager.get_library_directory()
             self.library_path_text = GUIPathText(
-                tag=TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-                parent=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
+                tag=TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
+                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
                 path=library_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_output_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+            tag=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
                 label=LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-                parent=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
                 width=-1,
                 callback=self._select_output_directory_dialog,
             )
 
             output_directory = self.config_manager.get_output_directory()
             self.output_path_text = GUIPathText(
-                tag=TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-                parent=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+                tag=TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
+                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
                 path=output_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
+        show_tooltip(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["advanced"].keys():

@@ -51,17 +51,17 @@ from ...constants import (
     NOD_TYPE_LIBRARY,
     NOD_TYPE_LIBRARY_PLACEHOLDER,
     SUF_LEFT_PANEL,
-    TAG_CONVERTER_PANEL,
-    TAG_LIBRARY_BUTTON_GENERATE,
-    TAG_LIBRARY_BUTTON_REFRESH,
-    TAG_LIBRARY_CONTROLS_GROUP,
-    TAG_LIBRARY_PANEL,
-    TAG_LIBRARY_PROGRESS,
-    TAG_LIBRARY_STATUS,
-    TAG_LIBRARY_TREE,
-    TAG_LIBRARY_TREE_GROUP,
-    TAG_LIBRARY_TREE_WINDOW,
+    TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+    TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
+    TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
+    TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE,
+    TAG_PANEL_INSTRUCTIONS_LIBRARY,
+    TAG_PANEL_MAIN_CONVERTER,
+    TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
     TAG_TAB_INSTRUCTIONS,
+    TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+    TAG_TREE_INSTRUCTIONS_LIBRARY,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
     TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED,
@@ -111,7 +111,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super().__init__(
             self.library_manager.tree,
-            tag=TAG_LIBRARY_PANEL,
+            tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_LEFT_PANEL}",
         )
 
@@ -136,24 +136,24 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_status(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED, tag=TAG_LIBRARY_STATUS)
+        dpg.add_text(MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED, tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
 
     def _create_library_controls(self) -> None:
-        with dpg.group(tag=TAG_LIBRARY_CONTROLS_GROUP):
+        with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS):
             dpg.add_progress_bar(
-                tag=TAG_LIBRARY_PROGRESS,
+                tag=TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
                 show=False,
                 width=-1,
                 default_value=VAL_GLOBAL_DEFAULT_FLOAT,
             )
             GUIButton(
-                tag=TAG_LIBRARY_BUTTON_REFRESH,
+                tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
                 label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
                 width=-1,
                 callback=self._refresh_libraries,
             )
             GUIButton(
-                tag=TAG_LIBRARY_BUTTON_GENERATE,
+                tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 width=-1,
                 callback=self.generate_library,
@@ -163,10 +163,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _create_library_tree(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_LIBRARY_TREE_WINDOW):
-            with dpg.group(tag=TAG_LIBRARY_TREE_GROUP):
+        with dpg.child_window(tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE):
+            with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
                 with dpg.tree_node(
-                    label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES, tag=TAG_LIBRARY_TREE, default_open=True
+                    label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
+                    tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
+                    default_open=True,
                 ):
                     pass
 
@@ -176,7 +178,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _rebuild_tree(self) -> None:
         self.library_manager.rebuild_tree()
-        self.build_tree(TAG_LIBRARY_TREE)
+        self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
         self.update_status()
 
     def initialize_libraries(self) -> None:
@@ -190,21 +192,34 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         library_name = self.library_manager.get_display_name_from_key(key)
 
         if self.library_manager.is_library_loaded(key):
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY)
+            dpg_set_value(
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name)
+            )
+            dpg_configure_item(
+                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
+            )
         elif self.library_manager.library_exists_for_key(key):
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY)
+            dpg_set_value(
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name)
+            )
+            dpg_configure_item(
+                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY
+            )
         else:
-            dpg_set_value(TAG_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name))
-            dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY)
+            dpg_set_value(
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name)
+            )
+            dpg_configure_item(
+                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY
+            )
 
         is_generating = self.library_manager.is_generating()
-        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, enabled=not is_generating)
-        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=not is_generating)
+        dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, enabled=not is_generating)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=not is_generating)
 
     def _set_library_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
 
     def _refresh_libraries(self) -> None:
         self._set_library_tree_enabled(False)
@@ -380,15 +395,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             return
 
-        dpg_configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=False)
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATING)
-        dpg_configure_item(TAG_LIBRARY_PROGRESS, show=True)
-        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=False)
-        dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_DEFAULT_FLOAT)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=False)
+        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATING)
+        dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, show=True)
+        dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, show=False)
+        dpg_set_value(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, VAL_GLOBAL_DEFAULT_FLOAT)
         self.library_manager.generate_library(config, window)
 
     def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
-        if not dpg.does_item_exist(TAG_LIBRARY_PROGRESS):
+        if not dpg.does_item_exist(TAG_PROGRESS_INSTRUCTIONS_LIBRARY):
             return
 
         match task_status:
@@ -409,10 +424,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         assert creator is not None, "Library manager creator is not initialized"
         assert self.eta_estimator is not None, "ETA Estimator is not initialized"
 
-        dpg_set_value(TAG_LIBRARY_PROGRESS, task_progress.get_progress())
+        dpg_set_value(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, task_progress.get_progress())
         eta_string = self.eta_estimator.update(creator.completed_instructions)
         percent_string = self.eta_estimator.get_percent_string()
-        dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay=percent_string)
+        dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, overlay=percent_string)
 
         status_text = TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS.format(
             creator.completed_instructions, creator.total_instructions
@@ -420,25 +435,25 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if eta_string:
             status_text += TPL_TIME_ESTIMATION.format(eta_string=eta_string)
 
-        dpg_set_value(TAG_LIBRARY_STATUS, status_text)
+        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, status_text)
 
     def _set_generation_completed(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SAVING)
-        dpg_set_value(TAG_LIBRARY_PROGRESS, VAL_GLOBAL_PROGRESS_COMPLETE)
+        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SAVING)
+        dpg_set_value(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
+        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
 
     def _set_generation_cancelled(self) -> None:
-        dpg_set_value(TAG_LIBRARY_STATUS, "Library generation cancelled.")
+        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, "Library generation cancelled.")
 
     def _on_generation_start(self) -> None:
         assert self.library_manager.creator is not None, "Library manager creator is not initialized"
         self.eta_estimator = ETAEstimator(self.library_manager.creator.total_instructions)
 
     def _on_generation_completed(self) -> None:
-        dpg_configure_item(TAG_LIBRARY_PROGRESS, overlay="100%")
-        if not dpg.get_item_configuration(TAG_CONVERTER_PANEL)["show"]:
+        dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, overlay="100%")
+        if not dpg.get_item_configuration(TAG_PANEL_MAIN_CONVERTER)["show"]:
             show_info_dialog(
                 self.tag, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS
             )
@@ -465,10 +480,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._restore_generation_panel()
 
     def _restore_generation_panel(self) -> None:
-        dpg_configure_item(TAG_LIBRARY_BUTTON_GENERATE, show=True)
-        dpg_configure_item(TAG_LIBRARY_CONTROLS_GROUP, enabled=True)
-        dpg_configure_item(TAG_LIBRARY_TREE_GROUP, enabled=True)
-        dpg_configure_item(TAG_LIBRARY_PROGRESS, show=False)
+        dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, show=True)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=True)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=True)
+        dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, show=False)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
         show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)

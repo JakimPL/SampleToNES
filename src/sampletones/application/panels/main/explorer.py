@@ -37,7 +37,7 @@ from ...constants import (
     SUF_LEFT_PANEL,
     SUF_NODE_DUMMY,
     SUF_NODE_HANDLER,
-    TAG_EXPLORER_COLLAPSE_ALL,
+    TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_EXPLORER_CONVERTER_RUNNING,
     TAG_EXPLORER_PANEL,
     TAG_EXPLORER_TREE,
@@ -108,7 +108,7 @@ class GUIExplorerPanel(GUITreePanel):
     def _create_collapse_button(self) -> None:
         dpg.add_separator()
         GUIButton(
-            tag=TAG_EXPLORER_COLLAPSE_ALL,
+            tag=TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
             label=LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
             parent=self.tag,
             width=-1,

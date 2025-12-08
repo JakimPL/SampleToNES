@@ -16,10 +16,10 @@ from ...constants import (
     SUF_CENTER_PANEL,
     SUF_INSTRUCTION_SPECTRUM,
     SUF_INSTRUCTION_WAVEFORM,
-    TAG_INSTRUCTION_PANEL,
-    TAG_INSTRUCTION_PLAYER_PANEL,
-    TAG_INSTRUCTION_SPECTRUM_DISPLAY,
-    TAG_INSTRUCTION_WAVEFORM_DISPLAY,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     TAG_TAB_INSTRUCTIONS,
     VAL_PLOT_WIDTH_FULL,
 )
@@ -44,11 +44,11 @@ class GUIInstructionPanel(GUIPanel):
         self._on_clear_instruction_details: Optional[Callable[[], None]] = None
         self._on_change_audio_state: Optional[Callable[[], None]] = None
 
-        self.waveform_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_WAVEFORM}"
-        self.spectrum_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_SPECTRUM}"
+        self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_INSTRUCTION_WAVEFORM}"
+        self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_INSTRUCTION_SPECTRUM}"
 
         super().__init__(
-            tag=TAG_INSTRUCTION_PANEL,
+            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_CENTER_PANEL}",
         )
 
@@ -80,7 +80,7 @@ class GUIInstructionPanel(GUIPanel):
             border=False,
         ):
             self.waveform_display = GUIWaveformDisplay(
-                tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
+                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
                 width=VAL_PLOT_WIDTH_FULL,
                 height=DIM_WAVEFORM_DEFAULT_HEIGHT,
                 parent=self.waveform_tag,
@@ -97,7 +97,7 @@ class GUIInstructionPanel(GUIPanel):
             border=False,
         ):
             self.spectrum_display = GUISpectrumDisplay(
-                tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
+                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
                 width=VAL_PLOT_WIDTH_FULL,
                 height=DIM_WAVEFORM_DEFAULT_HEIGHT,
                 parent=self.spectrum_tag,
@@ -106,7 +106,7 @@ class GUIInstructionPanel(GUIPanel):
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_INSTRUCTION_PLAYER_PANEL,
+            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
             parent=self.parent,
             audio_device_manager=self.audio_device_manager,
             on_position_changed=self._on_player_position_changed,

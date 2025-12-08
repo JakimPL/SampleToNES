@@ -31,14 +31,14 @@ from ...constants import (
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     NOD_TYPE_DIRECTORY,
     SUF_LEFT_PANEL,
-    TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-    TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
-    TAG_BROWSER_BUTTON_REFRESH_LIST,
-    TAG_BROWSER_CONTROLS_GROUP,
     TAG_BROWSER_PANEL,
     TAG_BROWSER_TREE,
     TAG_BROWSER_TREE_GROUP,
     TAG_BROWSER_TREE_WINDOW,
+    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
+    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
+    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
+    TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS,
     TAG_TAB_RECONSTRUCTIONS,
 )
 from ...elements.button import GUIButton
@@ -92,22 +92,22 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _create_browser_controls(self) -> None:
         dpg.add_separator()
-        with dpg.group(tag=TAG_BROWSER_CONTROLS_GROUP):
+        with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS):
             GUIButton(
-                tag=TAG_BROWSER_BUTTON_REFRESH_LIST,
+                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
                 label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
                 width=-1,
                 callback=self._refresh_tree,
             )
             GUIButton(
-                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_FILE,
+                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
                 label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
                 width=-1,
                 callback=self._reconstruct_file,
                 font=Font.BOLD,
             )
             GUIButton(
-                tag=TAG_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
                 label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
                 width=-1,
                 callback=self._reconstruct_directory,

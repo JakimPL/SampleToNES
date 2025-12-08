@@ -66,7 +66,7 @@ from .constants import (
     SUF_CENTER_PANEL,
     SUF_LEFT_PANEL,
     SUF_RIGHT_PANEL,
-    TAG_CONFIG_STATUS_POPUP,
+    TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
@@ -690,7 +690,7 @@ class GUI:
             dpg.add_text(message, parent=parent)
 
         show_modal_dialog(
-            tag=TAG_CONFIG_STATUS_POPUP,
+            tag=TAG_DIALOG_GLOBAL_CONFIG_STATUS,
             title=TTL_DIALOG_CONFIG_STATUS,
             content=content,
         )
