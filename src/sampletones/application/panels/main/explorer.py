@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
-from sampletones.tree import FileSystemNode, TreeNode
+from sampletones.tree import FileSystemNode, NodeType, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
@@ -14,9 +14,6 @@ from ...constants.general import (
     COL_PATH_TEXT_HOVER,
     COL_TEXT_FAVORITE,
     LBL_TREE_FILTER,
-    NOD_TYPE_GLOBAL_DIRECTORY,
-    NOD_TYPE_GLOBAL_FILE,
-    NOD_TYPE_GLOBAL_ROOT,
     SUF_PANEL_LEFT,
     TAG_TAB_MAIN,
     VAL_CHARACTER_STAR,
@@ -159,17 +156,17 @@ class GUIExplorerPanel(GUITreePanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-        if node.node_type == NOD_TYPE_GLOBAL_ROOT:
+        if node.node_type == NodeType.ROOT:
             return
 
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = node.node_type != NOD_TYPE_GLOBAL_ROOT and self._is_node_favorite(node)
+        is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
 
         handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
-        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
+        if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
 
             with dpg.tree_node(
@@ -332,7 +329,7 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
         if self.application_config_manager.autoplay:
@@ -344,7 +341,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._pending_autoplay_node = None
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
         if self._check_if_converter_running():
@@ -354,7 +351,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._on_reconstruct_file(node.filepath)
 
     def _toggle_directory_expansion(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_DIRECTORY:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
         node_tag = self._generate_node_tag(node)
@@ -419,7 +416,7 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
         with dpg.window(
@@ -451,7 +448,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_DIRECTORY:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
         with dpg.window(
@@ -529,7 +526,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         self._apply_node_theme(node_tag, node, has_favorite_ancestor)
 
-        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY and self.explorer_manager.is_directory_expanded(node.filepath):
+        if node.node_type == NodeType.DIRECTORY and self.explorer_manager.is_directory_expanded(node.filepath):
             is_favorite = self._is_node_favorite(node)
             child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
 

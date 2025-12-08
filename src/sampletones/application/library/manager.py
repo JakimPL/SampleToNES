@@ -26,20 +26,15 @@ from sampletones.tree import (
     GroupNode,
     InstructionNode,
     LibraryNode,
+    NodeType,
     Tree,
     TreeNode,
 )
 from sampletones.utils import pitch_to_name, to_path
 
-from ..constants.general import NOD_TYPE_GLOBAL_ROOT
 from ..constants.instructions import (
     LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
     LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_GENERATOR,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_GROUP,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_INSTRUCTION,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER,
 )
 
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
@@ -282,7 +277,7 @@ class InstructionsLibraryManager:
         return instructions
 
     def rebuild_tree(self) -> None:
-        root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NOD_TYPE_GLOBAL_ROOT)
+        root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
 
         for library_key in sorted(self.library_files.keys(), key=self.get_display_name_from_key):
             self._build_library_node(library_key, root)
@@ -291,9 +286,7 @@ class InstructionsLibraryManager:
 
     def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
         display_name = self.get_display_name_from_key(library_key)
-        library_node = LibraryNode(
-            display_name, node_type=NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY, library_key=library_key, parent=parent
-        )
+        library_node = LibraryNode(display_name, library_key=library_key, parent=parent)
 
         if self.is_library_loaded(library_key):
             self._build_generator_nodes(library_key, library_node)
@@ -305,7 +298,7 @@ class InstructionsLibraryManager:
     def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
         return LibraryNode(
             LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-            node_type=NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER,
+            node_type=NodeType.PLACEHOLDER,
             library_key=parent.library_key,
             parent=parent,
         )
@@ -319,7 +312,6 @@ class InstructionsLibraryManager:
 
             generator_node = GeneratorNode(
                 generator_name.value.capitalize(),
-                node_type=NOD_TYPE_INSTRUCTIONS_LIBRARY_GENERATOR,
                 generator_name=generator_name,
                 parent=parent,
             )
@@ -340,7 +332,6 @@ class InstructionsLibraryManager:
             group_label = f"{group_key} ({len(instructions)} item(s))"
             group_node = GroupNode(
                 group_label,
-                node_type=NOD_TYPE_INSTRUCTIONS_LIBRARY_GROUP,
                 generator_name=generator_name,
                 group_key=group_key,
                 parent=parent,
@@ -349,7 +340,6 @@ class InstructionsLibraryManager:
             for instruction, fragment in instructions:
                 InstructionNode(
                     instruction.name,
-                    node_type=NOD_TYPE_INSTRUCTIONS_LIBRARY_INSTRUCTION,
                     generator_name=generator_name,
                     generator_class_name=generator_class_name,
                     instruction=instruction,
@@ -362,9 +352,7 @@ class InstructionsLibraryManager:
             return
 
         library_node = self.tree.find_node(
-            lambda node: isinstance(node, LibraryNode)
-            and node.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY
-            and node.library_key == library_key
+            lambda node: isinstance(node, LibraryNode) and node.library_key == library_key
         )
 
         if library_node and isinstance(library_node, LibraryNode):

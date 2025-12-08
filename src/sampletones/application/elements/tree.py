@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants import paths
-from sampletones.tree import FileSystemNode, Tree, TreeNode
+from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones.typehints import Color, Sender
 
 from ..config.application.manager import ApplicationConfigManager
@@ -12,16 +12,18 @@ from ..constants.general import (
     COL_TEXT_DISABLED_DEFAULT,
     COL_TEXT_FAVORITE,
     COL_TEXT_FAVORITE_CHILD,
+    COL_TEXT_FILE_LIBRARY,
+    COL_TEXT_FILE_RECONSTRUCTION,
+    COL_TEXT_FILE_WAVE,
+    COL_TEXT_GENERATOR,
+    COL_TEXT_GROUP,
+    COL_TEXT_INSTRUCTION,
     COL_TEXT_LIBRARY,
-    COL_TEXT_RECONSTRUCTION,
-    COL_TEXT_WAVE,
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
-    NOD_TYPE_GLOBAL_DIRECTORY,
-    NOD_TYPE_GLOBAL_FILE,
     SUF_BUTTON_SEARCH,
     SUF_TREE_SEARCH_INPUT,
 )
@@ -69,6 +71,7 @@ class GUITreePanel(GUIPanel):
 
         for child in root.children:
             self._build_tree_node(child, tree_root_tag)
+            self._apply_other_node_theme(tree_root_tag, root)
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
@@ -156,11 +159,8 @@ class GUITreePanel(GUIPanel):
     def _clear_children(self, tag: str) -> None:
         dpg_delete_children(tag)
 
-    def _is_node_favorite(self, node: FileSystemNode) -> bool:
+    def _is_node_favorite(self, node: TreeNode) -> bool:
         if not isinstance(node, FileSystemNode):
-            raise TypeError("Only filepath nodes can be marked as favorite")
-
-        if self.application_config_manager is None:
             return False
 
         return node.filepath in self.application_config_manager.favorites
@@ -187,22 +187,27 @@ class GUITreePanel(GUIPanel):
     def _apply_node_theme(
         self,
         node_tag: str,
-        node: FileSystemNode,
+        node: TreeNode,
         has_favorite_ancestor: bool = False,
     ) -> None:
-        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
-            return self._apply_directory_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
+        match node.node_type:
+            case NodeType.DIRECTORY:
+                assert isinstance(node, FileSystemNode), "Node needs to be FileSystemNode"
+                return self._apply_directory_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
 
-        if node.node_type == NOD_TYPE_GLOBAL_FILE:
-            return self._apply_file_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
+            case NodeType.FILE:
+                assert isinstance(node, FileSystemNode), "Node needs to be FileSystemNode"
+                return self._apply_file_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
+            case _:
+                return self._apply_other_node_theme(node_tag, node)
 
         return None
 
@@ -241,13 +246,41 @@ class GUITreePanel(GUIPanel):
                 else:
                     match node.filepath.suffix.lower():
                         case paths.EXT_FILE_RECONSTRUCTION:
-                            color = COL_TEXT_RECONSTRUCTION
+                            color = COL_TEXT_FILE_RECONSTRUCTION
                         case paths.EXT_FILE_LIBRARY:
-                            color = COL_TEXT_LIBRARY
+                            color = COL_TEXT_FILE_LIBRARY
                         case paths.EXT_FILE_WAVE:
-                            color = COL_TEXT_WAVE
+                            color = COL_TEXT_FILE_WAVE
                         case _ if has_favorite_ancestor:
                             color = COL_TEXT_FAVORITE_CHILD
+
+                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+
+        dpg.bind_item_theme(node_tag, node_theme)
+
+    def _apply_other_node_theme(
+        self,
+        node_tag: str,
+        node: TreeNode,
+    ) -> None:
+        with dpg.theme() as node_theme:
+            with dpg.theme_component(dpg.mvTreeNode):
+                color: Color = COL_TEXT_DEFAULT
+                match node.node_type:
+                    case NodeType.LIBRARY:
+                        color = COL_TEXT_LIBRARY
+                    case NodeType.GROUP:
+                        color = COL_TEXT_GROUP
+                    case NodeType.GENERATOR:
+                        color = COL_TEXT_GENERATOR
+
+                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+
+            with dpg.theme_component(dpg.mvSelectable):
+                color: Color = COL_TEXT_DEFAULT
+                match node.node_type:
+                    case NodeType.INSTRUCTION:
+                        color = COL_TEXT_INSTRUCTION
 
                 dpg.add_theme_color(dpg.mvThemeCol_Text, color)
 

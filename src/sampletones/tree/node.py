@@ -7,12 +7,14 @@ from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
 from sampletones.instructions import InstructionT
 from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
 
+from .type import NodeType
+
 
 class TreeNode(Node):
     def __init__(
         self,
         name: str,
-        node_type: str,
+        node_type: NodeType,
         parent: Optional["TreeNode"] = None,
     ) -> None:
         super().__init__(name, parent=parent)
@@ -26,7 +28,7 @@ class FileSystemNode(TreeNode):
     def __init__(
         self,
         name: str,
-        node_type: str,
+        node_type: NodeType,
         filepath: Path,
         parent: Optional[TreeNode] = None,
     ) -> None:
@@ -41,8 +43,8 @@ class LibraryNode(TreeNode):
     def __init__(
         self,
         name: str,
-        node_type: str,
         library_key: InstructionLibraryKey,
+        node_type: NodeType = NodeType.LIBRARY,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -56,8 +58,8 @@ class GeneratorNode(TreeNode):
     def __init__(
         self,
         name: str,
-        node_type: str,
         generator_name: LibraryGeneratorName,
+        node_type: NodeType = NodeType.GENERATOR,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -76,9 +78,9 @@ class GroupNode(TreeNode):
     def __init__(
         self,
         name: str,
-        node_type: str,
         generator_name: LibraryGeneratorName,
         group_key: str,
+        node_type: NodeType = NodeType.GROUP,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)
@@ -99,11 +101,11 @@ class InstructionNode(TreeNode, Generic[InstructionT]):
     def __init__(
         self,
         name: str,
-        node_type: str,
         generator_name: LibraryGeneratorName,
         generator_class_name: GeneratorClassName,
         instruction: InstructionT,
         fragment: InstructionLibraryFragment[InstructionT],
+        node_type: NodeType = NodeType.INSTRUCTION,
         parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, node_type=node_type, parent=parent)

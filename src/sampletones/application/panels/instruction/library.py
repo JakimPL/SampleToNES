@@ -21,6 +21,7 @@ from sampletones.tree import (
     GroupNode,
     InstructionNode,
     LibraryNode,
+    NodeType,
     TreeNode,
 )
 from sampletones.typehints import Sender
@@ -54,8 +55,6 @@ from ...constants.instructions import (
     MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOADING,
     MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY,
-    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
@@ -314,8 +313,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         node_tag = self._generate_node_tag(node)
+        if node.node_type == NodeType.ROOT:
+            return
 
-        if node.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER:
+        if node.node_type == NodeType.PLACEHOLDER:
             library_node = self._find_parent_library(node)
             if not library_node:
                 return
@@ -329,6 +330,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
+            self._apply_node_theme(node_tag, node)
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, InstructionNode):
@@ -340,6 +342,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 tag=node_tag,
                 default_value=False,
             )
+            self._apply_node_theme(node_tag, node)
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
@@ -347,6 +350,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             should_expand = is_current or self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+                self._apply_node_theme(node_tag, node)
                 for child in node.children:
                     self._build_tree_node(child, node_tag)
 
@@ -358,9 +362,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _find_parent_library(self, node: TreeNode) -> Optional[LibraryNode]:
         current = node.parent
         while current is not None:
-            if isinstance(current, LibraryNode) and current.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY:
+            if isinstance(current, LibraryNode) and current.node_type == NodeType.LIBRARY:
                 return current
+
             current = current.parent
+
         return None
 
     def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:

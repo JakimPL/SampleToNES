@@ -9,7 +9,7 @@ from sampletones.exceptions import (
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
 )
-from sampletones.tree import FileSystemNode, TreeNode
+from sampletones.tree import FileSystemNode, NodeType, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
@@ -18,9 +18,6 @@ from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants.general import (
     MSG_GLOBAL_INVALID_METADATA_ERROR,
-    NOD_TYPE_GLOBAL_DIRECTORY,
-    NOD_TYPE_GLOBAL_FILE,
-    NOD_TYPE_GLOBAL_ROOT,
     SUF_PANEL_LEFT,
     TAG_TAB_RECONSTRUCTIONS,
 )
@@ -139,7 +136,7 @@ class GUIBrowserPanel(GUITreePanel):
         self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
-        if node.node_type == NOD_TYPE_GLOBAL_FILE:
+        if node.node_type == NodeType.FILE:
             return True
 
         return bool(node.children)
@@ -151,16 +148,16 @@ class GUIBrowserPanel(GUITreePanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-        if node.node_type == NOD_TYPE_GLOBAL_ROOT:
+        if node.node_type == NodeType.ROOT:
             return
 
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = node.node_type != NOD_TYPE_GLOBAL_ROOT and self._is_node_favorite(node)
+        is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
 
-        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
+        if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 self._apply_node_theme(
