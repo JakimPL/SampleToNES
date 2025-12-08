@@ -7,7 +7,7 @@ from sampletones.constants.enums import GeneratorName
 from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Sender
 
-from ...constants import (
+from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
     COL_WAVEFORM_LAYER_SAMPLE,
     COL_WAVEFORM_POSITION_INDICATOR,
@@ -22,9 +22,9 @@ from ...constants import (
     LBL_PLOT_AXIS_WAVEFORM_TIME,
     LBL_PLOT_LABEL_WAVEFORM,
     LBL_PLOT_NAME_WAVEFORM_SAMPLE,
-    SUF_BUTTON_RESET_ALL,
-    SUF_BUTTON_RESET_X,
-    SUF_BUTTON_RESET_Y,
+    SUF_BUTTON_WAVEFORM_RESET_ALL,
+    SUF_BUTTON_WAVEFORM_RESET_X,
+    SUF_BUTTON_WAVEFORM_RESET_Y,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
@@ -76,9 +76,9 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
 
-        self.reset_x_tag = f"{tag}{SUF_BUTTON_RESET_X}"
-        self.reset_y_tag = f"{tag}{SUF_BUTTON_RESET_Y}"
-        self.reset_all_tag = f"{tag}{SUF_BUTTON_RESET_ALL}"
+        self.reset_x_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_X}"
+        self.reset_y_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_Y}"
+        self.reset_all_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_ALL}"
 
         self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"

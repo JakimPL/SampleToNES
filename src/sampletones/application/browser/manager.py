@@ -4,7 +4,7 @@ from typing import Dict, Optional
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
 from sampletones.tree import FileSystemNode, Tree
 
-from ..constants import NOD_TYPE_DIRECTORY, NOD_TYPE_FILE
+from ..constants.general import NOD_TYPE_GLOBAL_DIRECTORY, NOD_TYPE_GLOBAL_FILE
 from ..reconstruction.data import ReconstructionData
 
 
@@ -32,7 +32,7 @@ class BrowserManager:
 
         if path.is_file():
             if path.suffix == EXT_FILE_RECONSTRUCTION:
-                return FileSystemNode(path.stem, filepath=path, node_type=NOD_TYPE_FILE)
+                return FileSystemNode(path.stem, filepath=path, node_type=NOD_TYPE_GLOBAL_FILE)
             return None
 
         children_nodes = []
@@ -44,7 +44,7 @@ class BrowserManager:
         if not children_nodes:
             return None
 
-        directory_node = FileSystemNode(path.name, filepath=path, node_type=NOD_TYPE_DIRECTORY)
+        directory_node = FileSystemNode(path.name, filepath=path, node_type=NOD_TYPE_GLOBAL_DIRECTORY)
 
         for child_node in children_nodes:
             child_node.parent = directory_node

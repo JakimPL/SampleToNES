@@ -5,7 +5,8 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 from sampletones.utils import hash_model, pitch_to_name
 
-from ..constants import (
+from ..constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
+from ..constants.instructions import (
     LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE,
     LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
     LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
@@ -13,8 +14,6 @@ from ..constants import (
     LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
     LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
     LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES,
-    LBL_GLOBAL_NO,
-    LBL_GLOBAL_YES,
     TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
     TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD,
     TPL_CELL_INSTRUCTIONS_DETAILS_PITCH,

@@ -9,19 +9,17 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 from sampletones.utils.logger import logger
 
-from ...constants import (
-    DIM_WAVEFORM_HEIGHT,
+from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
+from ...constants.graphs import DIM_WAVEFORM_HEIGHT, VAL_PLOT_WIDTH_GLOBAL_FULL
+from ...constants.instructions import (
     LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM,
-    SUF_PANEL_CENTER,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
-    TAG_TAB_INSTRUCTIONS,
-    VAL_PLOT_WIDTH_GLOBAL_FULL,
 )
 from ...elements.graphs.spectrum import GUISpectrumDisplay
 from ...elements.graphs.waveform import GUIWaveformDisplay

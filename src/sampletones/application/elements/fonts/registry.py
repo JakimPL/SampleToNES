@@ -4,8 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Sender
 
-from ...constants import (
-    CHR_STAR,
+from ...constants.general import (
     TAG_FONT_BOLD,
     TAG_FONT_BOLD_LARGE,
     TAG_FONT_BOLD_SMALL,
@@ -13,6 +12,7 @@ from ...constants import (
     TAG_FONT_REGULAR,
     TAG_FONT_REGULAR_LARGE,
     TAG_FONT_REGULAR_SMALL,
+    VAL_CHARACTER_STAR,
     VAL_FONT_SCALE,
     VAL_FONT_SIZE,
     VAL_FONT_SIZE_LARGE,
@@ -42,7 +42,7 @@ class FontRegistry:
                 dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
 
             dpg.add_font_range_hint(dpg.mvFontRangeHint_Default, parent=TAG_FONT_ICON)
-            dpg.add_font_chars([CHR_STAR], parent=TAG_FONT_ICON)
+            dpg.add_font_chars([VAL_CHARACTER_STAR], parent=TAG_FONT_ICON)
 
             dpg.bind_font(TAG_FONT_REGULAR)
 

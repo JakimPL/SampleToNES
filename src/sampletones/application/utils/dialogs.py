@@ -5,19 +5,18 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.library import InstructionLibraryKey
 
-from ..constants import (
+from ..constants.general import (
     COL_PATH_TEXT,
     COL_TEXT_ERROR,
-    DIM_DIALOG_HEIGHT_DEFAULT,
+    DIM_DIALOG_HEIGHT,
     DIM_DIALOG_HEIGHT_ERROR,
-    DIM_DIALOG_WIDTH_DEFAULT,
+    DIM_DIALOG_WIDTH,
     DIM_DIALOG_WIDTH_ERROR,
     DIM_DIALOG_WIDTH_ERROR_WRAP,
     LBL_BUTTON_GLOBAL_OK,
     LBL_BUTTON_TRACEBACK_HIDE,
     LBL_BUTTON_TRACEBACK_SHOW,
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
-    MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED,
     SUF_BUTTON_OK,
     SUF_BUTTON_SHOW_TRACEBACK,
     SUF_GROUP,
@@ -26,11 +25,16 @@ from ..constants import (
     TAG_DIALOG_GLOBAL_ERROR,
     TAG_DIALOG_GLOBAL_FILE_NOT_FOUND,
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
-    TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
-    TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
+)
+from ..constants.instructions import (
+    TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
+    TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED,
     TTL_DIALOG_LIBRARY_NOT_LOADED,
+)
+from ..constants.reconstructions import (
+    TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
 )
 from ..elements.button import GUIButton
@@ -44,8 +48,8 @@ def show_modal_dialog(
     tag: str,
     title: str,
     content: Callable[[str], None],
-    width: int = DIM_DIALOG_WIDTH_DEFAULT,
-    height: int = DIM_DIALOG_HEIGHT_DEFAULT,
+    width: int = DIM_DIALOG_WIDTH,
+    height: int = DIM_DIALOG_HEIGHT,
     modal: bool = True,
 ) -> None:
     dpg_delete_item(tag)
@@ -179,7 +183,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
 def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
     def content(parent: str) -> None:
         dpg.add_text(
-            MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED.format(library_key=key),
+            TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED.format(library_key=key),
             parent=parent,
             wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
         )

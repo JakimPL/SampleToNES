@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
 
-from ...constants import (
+from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
     LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,

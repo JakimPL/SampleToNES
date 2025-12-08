@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from ...constants import (
+from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     DIM_PANEL_HEIGHT_MAIN_CONVERTER,
     TAG_PANEL_MAIN,

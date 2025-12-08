@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
+from ..constants.general import (
     COL_BACKGROUND_LIGHT,
     COL_BUTTON_LIGHT,
     COL_TEXT_DISABLED_DEFAULT,

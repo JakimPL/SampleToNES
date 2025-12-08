@@ -16,30 +16,32 @@ from sampletones.utils.logger import logger
 from ...browser.manager import BrowserManager
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants import (
+from ...constants.general import (
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
+    NOD_TYPE_GLOBAL_DIRECTORY,
+    SUF_PANEL_LEFT,
+    TAG_TAB_RECONSTRUCTIONS,
+)
+from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
     LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
     LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
-    MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
-    MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
-    NOD_TYPE_DIRECTORY,
-    SUF_PANEL_LEFT,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
     TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS,
     TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_PANEL_RECONSTRUCTIONS_BROWSER,
-    TAG_TAB_RECONSTRUCTIONS,
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
+    TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -135,7 +137,7 @@ class GUIBrowserPanel(GUITreePanel):
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
-        if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_DIRECTORY:
+        if isinstance(node, FileSystemNode) and node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
@@ -210,7 +212,7 @@ class GUIBrowserPanel(GUITreePanel):
             )
             show_error_dialog(
                 exception,
-                MSG_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
                     exception.actual_version,
                     exception.expected_version,
                 ),

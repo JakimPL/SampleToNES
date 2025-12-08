@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.tree import Tree, TreeNode
 from sampletones.typehints import Sender
 
-from ..constants import (
+from ..constants.general import (
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,

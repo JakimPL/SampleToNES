@@ -10,8 +10,7 @@ from sampletones.typehints import Color, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
-from ...constants import (
-    CHR_STAR,
+from ...constants.general import (
     COL_PATH_TEXT_HOVER,
     COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
@@ -19,6 +18,15 @@ from ...constants import (
     COL_TEXT_LIBRARY,
     COL_TEXT_RECONSTRUCTION,
     COL_TEXT_WAVE,
+    LBL_TREE_FILTER,
+    NOD_TYPE_GLOBAL_DIRECTORY,
+    NOD_TYPE_GLOBAL_FILE,
+    NOD_TYPE_GLOBAL_ROOT,
+    SUF_PANEL_LEFT,
+    TAG_TAB_MAIN,
+    VAL_CHARACTER_STAR,
+)
+from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
@@ -29,19 +37,13 @@ from ...constants import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
     LBL_SECTION_MAIN_EXPLORER,
-    LBL_TREE_FILTER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
-    NOD_TYPE_DIRECTORY,
-    NOD_TYPE_FILE,
-    NOD_TYPE_ROOT,
     SUF_MAIN_EXPLORER_NODE_DUMMY,
     SUF_MAIN_EXPLORER_NODE_HANDLER,
-    SUF_PANEL_LEFT,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
     TAG_GROUP_MAIN_EXPLORER_TREE,
     TAG_PANEL_MAIN_EXPLORER,
-    TAG_TAB_MAIN,
     TAG_TREE_MAIN_EXPLORER,
     TAG_WINDOW_MAIN_EXPLORER_TREE,
     TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
@@ -148,10 +150,10 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
 
     def _apply_node_theme(self, node_tag: str, node: FileSystemNode) -> None:
-        if node.node_type == NOD_TYPE_DIRECTORY:
+        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             return self._apply_directory_node_theme(node_tag, node)
 
-        if node.node_type == NOD_TYPE_FILE:
+        if node.node_type == NOD_TYPE_GLOBAL_FILE:
             return self._apply_file_node_theme(node_tag, node)
 
         return None
@@ -193,14 +195,14 @@ class GUIExplorerPanel(GUITreePanel):
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
-        if node.node_type == NOD_TYPE_ROOT:
+        if node.node_type == NOD_TYPE_GLOBAL_ROOT:
             return
 
         if not isinstance(node, FileSystemNode):
             return
 
         handler_registry_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_HANDLER}"
-        if node.node_type == NOD_TYPE_DIRECTORY:
+        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
 
             with dpg.tree_node(
@@ -349,7 +351,7 @@ class GUIExplorerPanel(GUITreePanel):
         dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
             return
 
         if self.application_config_manager.autoplay:
@@ -361,7 +363,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._pending_autoplay_node = None
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
             return
 
         if self._check_if_converter_running():
@@ -371,7 +373,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._on_reconstruct_file(node.filepath)
 
     def _toggle_directory_expansion(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_DIRECTORY:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_DIRECTORY:
             return
 
         node_tag = self._generate_node_tag(node)
@@ -413,7 +415,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star = chr(CHR_STAR)
+                star = chr(VAL_CHARACTER_STAR)
                 star_text = dpg.add_text(star, color=color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
@@ -432,7 +434,7 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_FILE:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_FILE:
             return
 
         with dpg.window(
@@ -464,7 +466,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_DIRECTORY:
+        if not isinstance(node, FileSystemNode) or node.node_type != NOD_TYPE_GLOBAL_DIRECTORY:
             return
 
         with dpg.window(

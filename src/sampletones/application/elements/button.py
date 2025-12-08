@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import SUF_BUTTON
+from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme
 from ..themes.theme import Theme
 from .fonts.font import Font

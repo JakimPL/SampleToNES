@@ -21,15 +21,13 @@ from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager
-from .constants import (
+from .constants.general import (
     DIM_DIALOG_HEIGHT_FILE,
     DIM_DIALOG_WIDTH_FILE,
     DIM_PANEL_HEIGHT_LEFT,
-    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
     DIM_PANEL_HEIGHT_RIGHT,
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
     DIM_PANEL_WIDTH_LEFT,
-    DIM_PANEL_WIDTH_MAIN_EXPLORER,
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
@@ -60,8 +58,6 @@ from .constants import (
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
     MSG_GLOBAL_CONFIG_SAVE_FAILED,
-    MSG_LIBRARY_DISPLAY_ERROR,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
@@ -85,7 +81,6 @@ from .constants import (
     TAG_WINDOW_MAIN,
     TTL_DIALOG_CONFIG_STATUS,
     TTL_DIALOG_LOAD_CONFIG,
-    TTL_DIALOG_LOAD_RECONSTRUCTION,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
     TTL_DIALOG_SAVE_CONFIG,
@@ -93,6 +88,15 @@ from .constants import (
     VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
     VAL_WINDOW_PRIMARY,
+)
+from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
+from .constants.main import (
+    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
+    DIM_PANEL_WIDTH_MAIN_EXPLORER,
+)
+from .constants.reconstructions import (
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from .elements.fonts.registry import FontRegistry
 from .panels.instruction.details import GUIInstructionDetailsPanel

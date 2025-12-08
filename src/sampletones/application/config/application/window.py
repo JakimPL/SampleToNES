@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from ...constants import (
+from ...constants.general import (
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
     VAL_WINDOW_FULLSCREEN,

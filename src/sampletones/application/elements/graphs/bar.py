@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.typehints import Color
 
-from ...constants import (
+from ...constants.graphs import (
     COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,

@@ -5,10 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.exceptions import PlaybackError
 
-from ..constants import (
+from ..constants.player import (
     DIM_PANEL_HEIGHT_PLAYER,
     DIM_PANEL_WIDTH_PLAYER,
-    DIM_TABLE_HEIGHT_CONTROLS,
+    DIM_TABLE_HEIGHT_PLAYER_CONTROLS,
     LBL_BUTTON_PLAYER_PAUSE,
     LBL_BUTTON_PLAYER_PLAY,
     LBL_BUTTON_PLAYER_RESUME,
@@ -87,7 +87,7 @@ class GUIAudioPlayerPanel(GUIPanel):
             self._create_controls()
             dpg.add_text(MSG_PLAYER_NO_AUDIO_LOADED, tag=self.position_text_tag)
 
-    @table_wrapper(columns=3, height=DIM_TABLE_HEIGHT_CONTROLS)
+    @table_wrapper(columns=3, height=DIM_TABLE_HEIGHT_PLAYER_CONTROLS)
     def _create_controls(self) -> None:
         GUIButton(
             tag=self.play_button_tag,

@@ -10,10 +10,12 @@ from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants import (
+from ...constants.general import (
     DIM_DIALOG_HEIGHT_FILE,
     DIM_DIALOG_WIDTH_FILE,
-    DIM_INPUT_WIDTH_DEFAULT,
+    DIM_INPUT_WIDTH,
+)
+from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
     LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
     LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
@@ -29,8 +31,8 @@ from ...constants import (
     TAG_PANEL_MAIN_SETTINGS,
     TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
     TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-    TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
-    TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
+    TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    TTL_DIALOG_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
     VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
 )
 from ...elements.button import GUIButton
@@ -96,7 +98,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             default_value=MAX_WORKERS,
             tag=TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
             min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
-            width=DIM_INPUT_WIDTH_DEFAULT,
+            width=DIM_INPUT_WIDTH,
         )
 
     def _create_library_directory_selection(self) -> None:
@@ -180,7 +182,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
+            label=TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_library_directory,
@@ -207,7 +209,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _select_output_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
+            label=TTL_DIALOG_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
             width=DIM_DIALOG_WIDTH_FILE,
             height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_output_directory,

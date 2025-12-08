@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
+from ..constants.general import (
     TAG_THEME_TABLE,
     VAL_TABLE_CELL_PADDING,
     VAL_TABLE_FRAME_ROUNDING,

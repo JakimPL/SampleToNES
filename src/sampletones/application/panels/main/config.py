@@ -18,8 +18,8 @@ from sampletones.typehints import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants import (
-    DIM_INPUT_WIDTH_DEFAULT,
+from ...constants.general import DIM_INPUT_WIDTH
+from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
     LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
@@ -104,7 +104,7 @@ class GUIConfigPanel(GUIPanel):
             tag=TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
-            width=DIM_INPUT_WIDTH_DEFAULT,
+            width=DIM_INPUT_WIDTH,
         )
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_CHANGE_RATE,
@@ -112,14 +112,14 @@ class GUIConfigPanel(GUIPanel):
             tag=TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
-            width=DIM_INPUT_WIDTH_DEFAULT,
+            width=DIM_INPUT_WIDTH,
         )
         dpg.add_slider_int(
             label=LBL_SLIDER_MAIN_CONFIG_TRANSFORMATION_GAMMA,
             tag=TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
-            width=DIM_INPUT_WIDTH_DEFAULT,
+            width=DIM_INPUT_WIDTH,
         )
 
     def _create_tooltips(self) -> None:

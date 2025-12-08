@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Color
 
-from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
+from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 
 
 @dataclass(frozen=True)

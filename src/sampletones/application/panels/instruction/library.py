@@ -27,13 +27,20 @@ from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
-from ...constants import (
+from ...constants.general import (
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
+    SUF_PANEL_LEFT,
+    TAG_TAB_INSTRUCTIONS,
+    TPL_GLOBAL_TIME_ESTIMATION,
+    VAL_GLOBAL_DEFAULT_FLOAT,
+    VAL_GLOBAL_PROGRESS_COMPLETE,
+)
+from ...constants.instructions import (
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
     LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
-    MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_FILE_NOT_FOUND,
     MSG_INSTRUCTIONS_LIBRARY_GENERATING,
@@ -45,32 +52,26 @@ from ...constants import (
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOADING,
-    MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED,
     MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
-    NOD_TYPE_LIBRARY,
-    NOD_TYPE_LIBRARY_PLACEHOLDER,
-    SUF_PANEL_LEFT,
+    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY,
+    NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE,
     TAG_PANEL_INSTRUCTIONS_LIBRARY,
-    TAG_PANEL_MAIN_CONVERTER,
     TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
-    TAG_TAB_INSTRUCTIONS,
     TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
     TAG_TREE_INSTRUCTIONS_LIBRARY,
     TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
-    TPL_GLOBAL_TIME_ESTIMATION,
     TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS,
     TPL_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS,
     TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED,
     TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS,
     TTL_DIALOG_LIBRARY_GENERATION_STATUS,
-    VAL_GLOBAL_DEFAULT_FLOAT,
-    VAL_GLOBAL_PROGRESS_COMPLETE,
 )
+from ...constants.main import TAG_PANEL_MAIN_CONVERTER
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -136,7 +137,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_status(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_INSTRUCTIONS_LIBRARY_NOT_LOADED, tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
+        dpg.add_text("", tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS):
@@ -296,7 +297,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
         node_tag = self._generate_node_tag(node)
 
-        if node.node_type == NOD_TYPE_LIBRARY_PLACEHOLDER:
+        if node.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY_PLACEHOLDER:
             library_node = self._find_parent_library(node)
             if not library_node:
                 return
@@ -339,7 +340,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _find_parent_library(self, node: TreeNode) -> Optional[LibraryNode]:
         current = node.parent
         while current is not None:
-            if isinstance(current, LibraryNode) and current.node_type == NOD_TYPE_LIBRARY:
+            if isinstance(current, LibraryNode) and current.node_type == NOD_TYPE_INSTRUCTIONS_LIBRARY_LIBRARY:
                 return current
             current = current.parent
         return None

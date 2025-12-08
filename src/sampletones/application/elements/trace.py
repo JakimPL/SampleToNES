@@ -3,7 +3,7 @@ from typing import Dict
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
+from ..constants.general import (
     COL_TEXT_TRACEBACK,
     DIM_DIALOG_HEIGHT_TRACEBACK,
     LBL_BUTTON_TRACEBACK_COPY,

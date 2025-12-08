@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.ffts import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
 
-from ....constants import VAL_MAX_SPECTRUM_GRAYSCALE, VAL_OFFSET_SPECTRUM_LOG
+from ....constants.graphs import VAL_MAX_SPECTRUM_GRAYSCALE, VAL_OFFSET_SPECTRUM_LOG
 
 
 @dataclass(frozen=True)

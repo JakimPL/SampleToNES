@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import SerializedData
 
-from ...constants import (
+from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
     LBL_PLOT_LABEL_WAVEFORM,

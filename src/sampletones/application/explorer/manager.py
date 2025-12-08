@@ -9,7 +9,12 @@ from sampletones.constants.paths import (
 )
 from sampletones.tree import FileSystemNode, Tree, TreeNode
 
-from ..constants import LBL_TREE_ROOT, NOD_TYPE_DIRECTORY, NOD_TYPE_FILE, NOD_TYPE_ROOT
+from ..constants.general import (
+    LBL_TREE_ROOT,
+    NOD_TYPE_GLOBAL_DIRECTORY,
+    NOD_TYPE_GLOBAL_FILE,
+    NOD_TYPE_GLOBAL_ROOT,
+)
 
 
 class ExplorerManager:
@@ -19,7 +24,7 @@ class ExplorerManager:
         self._expanded_directories: Dict[Path, bool] = {}
 
     def refresh_tree(self) -> None:
-        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NOD_TYPE_ROOT)
+        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NOD_TYPE_GLOBAL_ROOT)
 
         filesystems = self._get_filesystems()
         for filesystem_path in filesystems:
@@ -39,7 +44,7 @@ class ExplorerManager:
         node = FileSystemNode(
             name=directory_path.name or str(directory_path),
             filepath=directory_path,
-            node_type=NOD_TYPE_DIRECTORY,
+            node_type=NOD_TYPE_GLOBAL_DIRECTORY,
         )
 
         if load_children:
@@ -70,7 +75,7 @@ class ExplorerManager:
                     FileSystemNode(
                         name=entry_path.name,
                         filepath=entry_path,
-                        node_type=NOD_TYPE_DIRECTORY,
+                        node_type=NOD_TYPE_GLOBAL_DIRECTORY,
                         parent=directory_node,
                     )
                 elif entry_path.is_file():
@@ -82,7 +87,7 @@ class ExplorerManager:
                         FileSystemNode(
                             name=entry_path.name,
                             filepath=entry_path,
-                            node_type=NOD_TYPE_FILE,
+                            node_type=NOD_TYPE_GLOBAL_FILE,
                             parent=directory_node,
                         )
             except (PermissionError, OSError):
@@ -124,7 +129,7 @@ class ExplorerManager:
                     child.parent = None
 
     def expand_directory(self, directory_node: FileSystemNode) -> None:
-        if directory_node.node_type != NOD_TYPE_DIRECTORY:
+        if directory_node.node_type != NOD_TYPE_GLOBAL_DIRECTORY:
             return
 
         directory_path = directory_node.filepath

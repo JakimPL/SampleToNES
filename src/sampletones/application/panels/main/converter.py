@@ -14,7 +14,12 @@ from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
 from ...config.manager import ConfigManager
-from ...constants import (
+from ...constants.general import (
+    TPL_GLOBAL_TIME_ESTIMATION,
+    VAL_GLOBAL_PROGRESS_COMPLETE,
+    VAL_GLOBAL_PROGRESS_START,
+)
+from ...constants.main import (
     DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
     DIM_BUTTON_WIDTH_MAIN_CONVERTER,
     DIM_PANEL_HEIGHT_MAIN_CONVERTER,
@@ -46,11 +51,8 @@ from ...constants import (
     TAG_PROGRESS_MAIN_CONVERTER,
     TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
     TAG_TEXT_MAIN_CONVERTER_STATUS,
-    TPL_GLOBAL_TIME_ESTIMATION,
     TPL_MAIN_CONVERTER_PROGRESS,
-    TTL_DIALOG_CONVERTER,
-    VAL_GLOBAL_PROGRESS_COMPLETE,
-    VAL_GLOBAL_PROGRESS_START,
+    TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -416,7 +418,9 @@ class GUIConverterPanel(GUIPanel):
         if isinstance(exception, NoFilesToProcessError):
             dpg.set_frame_callback(
                 dpg.get_frame_count() + 1,
-                lambda: show_info_dialog(self.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_CONVERTER),
+                lambda: show_info_dialog(
+                    self.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_MAIN_CONVERTER_PROGRESS
+                ),
             )
             return
 
@@ -429,7 +433,7 @@ class GUIConverterPanel(GUIPanel):
 
         show_modal_dialog(
             tag=TAG_DIALOG_MAIN_CONVERTER_SUCCESS,
-            title=TTL_DIALOG_CONVERTER,
+            title=TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
             content=content,
         )
 

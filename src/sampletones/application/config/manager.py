@@ -25,10 +25,12 @@ from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import SerializedData
 from sampletones.utils.logger import logger
 
-from ..constants import (
+from ..constants.general import (
     MSG_CONFIGURATION_INVALID_ERROR,
     MSG_CONFIGURATION_LOAD_ERROR,
     MSG_CONFIGURATION_SAVE_ERROR,
+)
+from ..constants.main import (
     TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
     TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
     TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,

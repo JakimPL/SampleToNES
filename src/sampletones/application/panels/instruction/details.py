@@ -5,18 +5,17 @@ import dearpygui.dearpygui as dpg
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
-from ...constants import (
+from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
+from ...constants.instructions import (
     LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
     LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
     LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
     MSG_INSTRUCTIONS_DETAILS_NO_SELECTION,
-    SUF_PANEL_RIGHT,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
     TAG_PANEL_INSTRUCTIONS_DETAILS,
-    TAG_TAB_INSTRUCTIONS,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from ...elements.fonts.font import Font

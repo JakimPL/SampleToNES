@@ -8,7 +8,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.typehints import Sender
 from sampletones.utils import get_directory, shorten_path, to_path
 
-from ..constants import (
+from ..constants.general import (
     COL_PATH_TEXT,
     COL_PATH_TEXT_HOVER,
     SUF_GROUP,

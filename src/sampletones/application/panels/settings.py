@@ -6,7 +6,8 @@ from sampletones.audio import SAMPLE_RATES, AudioDevice, AudioDeviceManager, Sam
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
-from ..constants import (
+from ..constants.general import TTL_WINDOW_MAIN
+from ..constants.settings import (
     DIM_COMBO_WIDTH_SETTINGS_AUDIO,
     DIM_TEXT_WIDTH_SETTINGS_AUDIO,
     DIM_WINDOW_HEIGHT_SETTINGS_AUDIO,
@@ -24,7 +25,6 @@ from ..constants import (
     TAG_GROUP_SETTINGS_AUDIO_SAMPLE_RATE,
     TAG_WINDOW_SETTINGS_AUDIO,
     TTL_SETTINGS_AUDIO,
-    TTL_WINDOW_MAIN,
 )
 from ..elements.button import GUIButton
 from ..elements.window import GUIWindow

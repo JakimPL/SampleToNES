@@ -7,13 +7,15 @@ from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
 
 from ...config.manager import ConfigManager
-from ...constants import (
-    DIM_INPUT_WIDTH_DEFAULT,
+from ...constants.general import (
+    DIM_INPUT_WIDTH,
+    LBL_CHECKBOX_GLOBAL_NOISE,
+    LBL_CHECKBOX_GLOBAL_PULSE_1,
+    LBL_CHECKBOX_GLOBAL_PULSE_2,
+    LBL_CHECKBOX_GLOBAL_TRIANGLE,
+)
+from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
-    LBL_CHECKBOX_NOISE,
-    LBL_CHECKBOX_PULSE_1,
-    LBL_CHECKBOX_PULSE_2,
-    LBL_CHECKBOX_TRIANGLE,
     LBL_SECTION_MAIN_RECONSTRUCTOR,
     LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS,
     LBL_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
@@ -65,22 +67,22 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR)
 
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_PULSE_1,
+            label=LBL_CHECKBOX_GLOBAL_PULSE_1,
             default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_PULSE_2,
+            label=LBL_CHECKBOX_GLOBAL_PULSE_2,
             default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_TRIANGLE,
+            label=LBL_CHECKBOX_GLOBAL_TRIANGLE,
             default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_NOISE,
+            label=LBL_CHECKBOX_GLOBAL_NOISE,
             default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
         )
@@ -93,7 +95,7 @@ class GUIReconstructorPanel(GUIPanel):
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=MIXER,
-            width=DIM_INPUT_WIDTH_DEFAULT,
+            width=DIM_INPUT_WIDTH,
         )
 
     def _create_tooltips(self) -> None:
