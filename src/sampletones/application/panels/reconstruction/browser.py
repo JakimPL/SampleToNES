@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -146,6 +146,7 @@ class GUIBrowserPanel(GUITreePanel):
         node: TreeNode,
         parent: str,
         has_favorite_ancestor: bool = False,
+        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:

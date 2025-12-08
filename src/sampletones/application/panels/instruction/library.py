@@ -186,7 +186,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _rebuild_tree(self) -> None:
         self.library_manager.rebuild_tree()
+        self._set_library_tree_enabled(False)
         self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
+        self._set_library_tree_enabled(True)
         self.update_status()
 
     def initialize_libraries(self) -> None:
@@ -310,15 +312,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         node: TreeNode,
         parent: str,
-        has_favorite_ancestor: bool = False,
+        library_node: Optional[LibraryNode] = None,
+        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:
             return
 
         if node.node_type == NodeType.PLACEHOLDER:
-            library_node = self._find_parent_library(node)
-            if not library_node:
+            if library_node is None:
                 return
 
             library_key = library_node.library_key
@@ -346,32 +348,30 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
+            if isinstance(node, LibraryNode):
+                library_node = node
+
             is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
             should_expand = is_current or self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 self._apply_node_theme(node_tag, node)
                 for child in node.children:
-                    self._build_tree_node(child, node_tag)
+                    self._build_tree_node(
+                        child,
+                        node_tag,
+                        library_node=library_node,
+                    )
 
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):
             return False
+
         return node.library_key == self.library_manager.current_library_key
 
-    def _find_parent_library(self, node: TreeNode) -> Optional[LibraryNode]:
-        current = node.parent
-        while current is not None:
-            if isinstance(current, LibraryNode) and current.node_type == NodeType.LIBRARY:
-                return current
-
-            current = current.parent
-
-        return None
-
     def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
+        self._set_library_tree_enabled(False)
         try:
-            self._set_library_tree_enabled(False)
             self._load_library(library_key)
             self._set_current_library(
                 library_key,
@@ -472,7 +472,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_set_value(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, VAL_GLOBAL_PROGRESS_COMPLETE)
 
     def _set_generation_failed(self) -> None:
-        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
+        dpg_set_value(
+            TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+            MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED,
+        )
 
     def _set_generation_cancelled(self) -> None:
         dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, "Library generation cancelled.")
@@ -485,7 +488,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, overlay="100%")
         if not dpg.get_item_configuration(TAG_PANEL_MAIN_CONVERTER)["show"]:
             show_info_dialog(
-                self.tag, MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS, TTL_DIALOG_LIBRARY_GENERATION_STATUS
+                self.tag,
+                MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
+                TTL_DIALOG_LIBRARY_GENERATION_STATUS,
             )
         self._finalize_generation()
 
@@ -495,7 +500,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_generation_cancelled(self) -> None:
         show_info_dialog(
-            self.tag, MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION, TTL_DIALOG_LIBRARY_GENERATION_STATUS
+            self.tag,
+            MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION,
+            TTL_DIALOG_LIBRARY_GENERATION_STATUS,
         )
         self._finalize_generation()
 

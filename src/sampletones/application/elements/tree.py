@@ -1,24 +1,13 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.typehints import Color, Sender
+from sampletones.typehints import Sender
 
 from ..config.application.manager import ApplicationConfigManager
 from ..constants.general import (
-    COL_TEXT_DEFAULT,
-    COL_TEXT_DISABLED_DEFAULT,
-    COL_TEXT_FAVORITE,
-    COL_TEXT_FAVORITE_CHILD,
-    COL_TEXT_FILE_LIBRARY,
-    COL_TEXT_FILE_RECONSTRUCTION,
-    COL_TEXT_FILE_WAVE,
-    COL_TEXT_GENERATOR,
-    COL_TEXT_GROUP,
-    COL_TEXT_INSTRUCTION,
-    COL_TEXT_LIBRARY,
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
@@ -27,7 +16,21 @@ from ..constants.general import (
     SUF_BUTTON_SEARCH,
     SUF_TREE_SEARCH_INPUT,
 )
-from ..utils.dpg import dpg_delete_children
+from ..themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from ..themes.nodes.file import (
+    LibraryFileNodeTheme,
+    NoContentFileNodeTheme,
+    ReconstructionFileNodeTheme,
+    WaveFileNodeTheme,
+)
+from ..themes.nodes.library import (
+    LibraryGeneratorNodeTheme,
+    LibraryGroupNodeTheme,
+    LibraryInstructionNodeTheme,
+    LibraryLibraryNodeTheme,
+)
+from ..themes.theme import Theme
+from ..utils.dpg import dpg_delete_children, dpg_delete_item
 from .button import GUIButton
 from .panel import GUIPanel
 
@@ -71,7 +74,6 @@ class GUITreePanel(GUIPanel):
 
         for child in root.children:
             self._build_tree_node(child, tree_root_tag)
-            self._apply_other_node_theme(tree_root_tag, root)
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
@@ -95,7 +97,7 @@ class GUITreePanel(GUIPanel):
         self,
         node: TreeNode,
         parent: str,
-        has_favorite_ancestor: bool = False,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -112,9 +114,33 @@ class GUITreePanel(GUIPanel):
 
         return False
 
+    def _add_item_handler_registry(
+        self,
+        tag: str,
+        parent: str,
+        item_click_callback: Callable[[Sender, Tuple[int, int], Any], None],
+        item_double_click_callback: Optional[Callable[[Sender, Tuple[int, int], Any], None]],
+        node: TreeNode,
+    ) -> None:
+        dpg_delete_item(tag)
+        with dpg.item_handler_registry(tag=tag):
+            if item_click_callback is not None:
+                dpg.add_item_clicked_handler(
+                    callback=item_click_callback,
+                    user_data=node,
+                )
+            if item_double_click_callback is not None:
+                dpg.add_item_double_clicked_handler(
+                    callback=item_double_click_callback,
+                    user_data=node,
+                )
+
+        dpg.bind_item_handler_registry(parent, tag)
+
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
-        return f"{self.tag}_node_{'_'.join(path_parts)}"
+        tag = f"{self.tag}_node_{'_'.join(path_parts)}"
+        return tag.replace(" ", "_")
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         if self._selected_node_tag and dpg.does_item_exist(self._selected_node_tag):
@@ -190,26 +216,23 @@ class GUITreePanel(GUIPanel):
         node: TreeNode,
         has_favorite_ancestor: bool = False,
     ) -> None:
-        match node.node_type:
-            case NodeType.DIRECTORY:
-                assert isinstance(node, FileSystemNode), "Node needs to be FileSystemNode"
-                return self._apply_directory_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=has_favorite_ancestor,
-                )
+        if isinstance(node, FileSystemNode):
+            match node.node_type:
+                case NodeType.DIRECTORY:
+                    return self._apply_directory_node_theme(
+                        node_tag,
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    )
 
-            case NodeType.FILE:
-                assert isinstance(node, FileSystemNode), "Node needs to be FileSystemNode"
-                return self._apply_file_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=has_favorite_ancestor,
-                )
-            case _:
-                return self._apply_other_node_theme(node_tag, node)
+                case NodeType.FILE:
+                    return self._apply_file_node_theme(
+                        node_tag,
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    )
 
-        return None
+        return self._apply_other_node_theme(node_tag, node)
 
     def _apply_directory_node_theme(
         self,
@@ -220,16 +243,16 @@ class GUITreePanel(GUIPanel):
         has_content = self._has_relevant_content(node)
         is_favorite = self._is_node_favorite(node)
 
-        with dpg.theme() as node_theme:
-            with dpg.theme_component(dpg.mvTreeNode):
-                if is_favorite:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE)
-                elif not has_content:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
-                elif has_favorite_ancestor:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE_CHILD)
+        theme: Optional[Theme] = None
+        if is_favorite:
+            theme = FavoriteNodeTheme()
+        elif not has_content:
+            theme = NoContentFileNodeTheme()
+        elif has_favorite_ancestor:
+            theme = FavoriteChildNodeTheme()
 
-        dpg.bind_item_theme(node_tag, node_theme)
+        if theme is not None:
+            theme.bind_to_item(node_tag)
 
     def _apply_file_node_theme(
         self,
@@ -238,53 +261,42 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         is_favorite = self._is_node_favorite(node)
-        with dpg.theme() as node_theme:
-            with dpg.theme_component(dpg.mvSelectable):
-                color: Color = COL_TEXT_DEFAULT
-                if is_favorite:
-                    color = COL_TEXT_FAVORITE
-                else:
-                    match node.filepath.suffix.lower():
-                        case paths.EXT_FILE_RECONSTRUCTION:
-                            color = COL_TEXT_FILE_RECONSTRUCTION
-                        case paths.EXT_FILE_LIBRARY:
-                            color = COL_TEXT_FILE_LIBRARY
-                        case paths.EXT_FILE_WAVE:
-                            color = COL_TEXT_FILE_WAVE
-                        case _ if has_favorite_ancestor:
-                            color = COL_TEXT_FAVORITE_CHILD
 
-                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+        theme: Optional[Theme] = None
+        if is_favorite:
+            theme = FavoriteNodeTheme()
+        else:
+            match node.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    theme = ReconstructionFileNodeTheme()
+                case paths.EXT_FILE_LIBRARY:
+                    theme = LibraryFileNodeTheme()
+                case paths.EXT_FILE_WAVE:
+                    theme = WaveFileNodeTheme()
+                case _ if has_favorite_ancestor:
+                    theme = FavoriteChildNodeTheme()
 
-        dpg.bind_item_theme(node_tag, node_theme)
+        if theme is not None:
+            theme.bind_to_item(node_tag)
 
     def _apply_other_node_theme(
         self,
         node_tag: str,
         node: TreeNode,
     ) -> None:
-        with dpg.theme() as node_theme:
-            with dpg.theme_component(dpg.mvTreeNode):
-                color: Color = COL_TEXT_DEFAULT
-                match node.node_type:
-                    case NodeType.LIBRARY:
-                        color = COL_TEXT_LIBRARY
-                    case NodeType.GROUP:
-                        color = COL_TEXT_GROUP
-                    case NodeType.GENERATOR:
-                        color = COL_TEXT_GENERATOR
+        theme: Optional[Theme] = None
+        match node.node_type:
+            case NodeType.LIBRARY:
+                theme = LibraryLibraryNodeTheme()
+            case NodeType.GENERATOR:
+                theme = LibraryGeneratorNodeTheme()
+            case NodeType.GROUP:
+                theme = LibraryGroupNodeTheme()
+            case NodeType.INSTRUCTION:
+                theme = LibraryInstructionNodeTheme()
 
-                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
-
-            with dpg.theme_component(dpg.mvSelectable):
-                color: Color = COL_TEXT_DEFAULT
-                match node.node_type:
-                    case NodeType.INSTRUCTION:
-                        color = COL_TEXT_INSTRUCTION
-
-                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
-
-        dpg.bind_item_theme(node_tag, node_theme)
+        if theme is not None:
+            theme.bind_to_item(node_tag)
 
     def set_tree_callbacks(self, on_node_selected: Optional[Callable[..., Any]] = None) -> None:
         self._on_node_selected = on_node_selected

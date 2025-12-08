@@ -47,7 +47,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ...utils.dpg import dpg_delete_children
 
 OnReconstructPathCallback = Callable[[Path], None]
 
@@ -154,6 +154,7 @@ class GUIExplorerPanel(GUITreePanel):
         node: TreeNode,
         parent: str,
         has_favorite_ancestor: bool = False,
+        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:
@@ -231,29 +232,6 @@ class GUIExplorerPanel(GUITreePanel):
                 item_double_click_callback=self._on_file_node_double_clicked,
                 node=node,
             )
-
-    def _add_item_handler_registry(
-        self,
-        tag: str,
-        parent: str,
-        item_click_callback: Callable[[Sender, Tuple[int, int], Any], None],
-        item_double_click_callback: Optional[Callable[[Sender, Tuple[int, int], Any], None]],
-        node: TreeNode,
-    ) -> None:
-        dpg_delete_item(tag)
-        with dpg.item_handler_registry(tag=tag):
-            if item_click_callback is not None:
-                dpg.add_item_clicked_handler(
-                    callback=item_click_callback,
-                    user_data=node,
-                )
-            if item_double_click_callback is not None:
-                dpg.add_item_double_clicked_handler(
-                    callback=item_double_click_callback,
-                    user_data=node,
-                )
-
-        dpg.bind_item_handler_registry(parent, tag)
 
     def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
         mouse_button, _ = app_data
