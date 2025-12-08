@@ -21,8 +21,8 @@ from ...constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
 )
-from ...elements.graphs.spectrum import GUISpectrumDisplay
-from ...elements.graphs.waveform import GUIWaveformDisplay
+from ...elements.graphs.spectrum import GUISpectrumGraph
+from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ..player import GUIAudioPlayerPanel
@@ -34,8 +34,8 @@ class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
         self.audio_device_manager = audio_device_manager
         self.player_panel: GUIAudioPlayerPanel
-        self.waveform_display: GUIWaveformDisplay
-        self.spectrum_display: GUISpectrumDisplay
+        self.waveform_display: GUIWaveformGraph
+        self.spectrum_display: GUISpectrumGraph
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
         self._on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
@@ -77,7 +77,7 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
-            self.waveform_display = GUIWaveformDisplay(
+            self.waveform_display = GUIWaveformGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
                 width=VAL_PLOT_WIDTH_GLOBAL_FULL,
                 height=DIM_WAVEFORM_HEIGHT,
@@ -94,7 +94,7 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
-            self.spectrum_display = GUISpectrumDisplay(
+            self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
                 width=VAL_PLOT_WIDTH_GLOBAL_FULL,
                 height=DIM_WAVEFORM_HEIGHT,

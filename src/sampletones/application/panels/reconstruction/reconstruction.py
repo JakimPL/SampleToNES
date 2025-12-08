@@ -55,7 +55,7 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.graphs.waveform import GUIWaveformDisplay
+from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
@@ -75,7 +75,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
-        self.waveform_display: GUIWaveformDisplay
+        self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
 
         self.reconstruction_data: Optional[ReconstructionData] = None
@@ -181,7 +181,7 @@ class GUIReconstructionPanel(GUIPanel):
         )
 
     def _create_waveform_display(self) -> None:
-        self.waveform_display = GUIWaveformDisplay(
+        self.waveform_display = GUIWaveformGraph(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
             width=VAL_PLOT_WIDTH_GLOBAL_FULL,
             height=DIM_WAVEFORM_HEIGHT,

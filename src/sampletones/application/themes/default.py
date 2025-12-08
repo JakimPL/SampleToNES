@@ -35,13 +35,17 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_ButtonActive, color=COL_BUTTON_ACTIVE),
                 ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_BUTTON_FRAME_ROUNDING),
                 ThemeStyle(
-                    key=dpg.mvStyleVar_FramePadding, x=VAL_BUTTON_FRAME_PADDING[0], y=VAL_BUTTON_FRAME_PADDING[1]
+                    key=dpg.mvStyleVar_FramePadding,
+                    x=VAL_BUTTON_FRAME_PADDING[0],
+                    y=VAL_BUTTON_FRAME_PADDING[1],
                 ),
             ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
                 ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_BUTTON_FRAME_ROUNDING),
                 ThemeStyle(
-                    key=dpg.mvStyleVar_FramePadding, x=VAL_BUTTON_FRAME_PADDING[0], y=VAL_BUTTON_FRAME_PADDING[1]
+                    key=dpg.mvStyleVar_FramePadding,
+                    x=VAL_BUTTON_FRAME_PADDING[0],
+                    y=VAL_BUTTON_FRAME_PADDING[1],
                 ),
             ],
             ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [

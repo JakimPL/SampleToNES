@@ -22,7 +22,7 @@ from ...constants.graphs import (
 from ..panel import GUIPanel
 
 
-class GUIGraphDisplay(GUIPanel):
+class GUIGraph(GUIPanel):
     def __init__(
         self,
         tag: str,

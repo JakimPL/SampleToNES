@@ -12,7 +12,6 @@ from sampletones.utils.logger import logger
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (
     LBL_TREE_FILTER,
-    SUF_NODE_HANDLER,
     SUF_PANEL_LEFT,
     TAG_TAB_MAIN,
 )

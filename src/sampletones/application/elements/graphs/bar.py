@@ -3,14 +3,16 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.typehints import Color
+from sampletones.typehints import Color, Sender
 
 from ...constants.graphs import (
     COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
     LBL_PLOT_LABEL_BAR,
+    SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_ZERO_LINE,
+    VAL_BAR_PLOT_HOVER_ALPHA,
     VAL_BAR_PLOT_MAX_Y,
     VAL_BAR_PLOT_MIN_X,
     VAL_BAR_PLOT_MIN_Y,
@@ -24,11 +26,11 @@ from ...utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
-from .graph import GUIGraphDisplay
+from .graph import GUIGraph
 from .layers.bar import BarLayer
 
 
-class GUIBarPlotDisplay(GUIGraphDisplay):
+class GUIBarGraph(GUIGraph):
     tag: str
     parent: str
     width: int
@@ -54,6 +56,9 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
         self.current_data: Optional[np.ndarray] = None
         self.y_ticks: Optional[Tuple[int, ...]] = None
         self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
+        self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
+        self.hovered_bar_index: Optional[int] = None
+        self.hovered_bar_value: Optional[float] = None
 
         super().__init__(
             tag,
@@ -78,6 +83,9 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
             dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag)
+
+        with dpg.handler_registry():
+            dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
 
     def load_data(
         self,
@@ -120,7 +128,67 @@ class GUIBarPlotDisplay(GUIGraphDisplay):
             dpg_bind_item_theme(series_tag, series_theme)
 
         self._add_zero_line()
+        self._add_hover_bar()
         self._update_axes_limits()
+
+    def _add_hover_bar(self) -> None:
+        if not dpg.does_item_exist(self.y_axis_tag):
+            return
+
+        dpg_delete_item(self.hover_bar_tag)
+
+        if self.hovered_bar_index is None or self.hovered_bar_value is None or self.current_data is None:
+            return
+
+        bar_x = float(self.hovered_bar_index) + 0.5
+        bar_y = self.hovered_bar_value
+
+        dpg.add_bar_series(
+            [bar_x],
+            [bar_y],
+            parent=self.y_axis_tag,
+            tag=self.hover_bar_tag,
+            weight=0.8,
+        )
+
+        layer = next(iter(self.layers.values()))
+        hover_color = (layer.color[0], layer.color[1], layer.color[2], VAL_BAR_PLOT_HOVER_ALPHA)
+
+        with dpg.theme() as hover_theme:
+            with dpg.theme_component(dpg.mvBarSeries):
+                dpg.add_theme_color(dpg.mvPlotCol_Fill, hover_color, category=dpg.mvThemeCat_Plots)
+
+        dpg_bind_item_theme(self.hover_bar_tag, hover_theme)
+
+    def _mouse_move_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+        if not dpg.is_item_hovered(self.plot_tag) or self.current_data is None:
+            if self.hovered_bar_index is not None:
+                self.hovered_bar_index = None
+                self.hovered_bar_value = None
+                self._add_hover_bar()
+            return
+
+        plot_mouse_pos = dpg.get_plot_mouse_pos()
+        if not plot_mouse_pos:
+            return
+
+        mouse_x = plot_mouse_pos[0]
+        mouse_y = plot_mouse_pos[1]
+
+        bar_index = int(mouse_x)
+        if bar_index < 0 or bar_index >= len(self.current_data):
+            if self.hovered_bar_index is not None:
+                self.hovered_bar_index = None
+                self.hovered_bar_value = None
+                self._add_hover_bar()
+            return
+
+        clamped_y = np.clip(mouse_y, self.y_min, self.y_max)
+
+        if self.hovered_bar_index != bar_index or self.hovered_bar_value != clamped_y:
+            self.hovered_bar_index = bar_index
+            self.hovered_bar_value = clamped_y
+            self._add_hover_bar()
 
     def _add_zero_line(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):

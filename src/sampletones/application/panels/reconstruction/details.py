@@ -40,7 +40,7 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.graphs.bar import GUIBarPlotDisplay
+from ...elements.graphs.bar import GUIBarGraph
 from ...elements.panel import GUIPanel
 from ...reconstruction.config import (
     FEATURE_DISPLAY_ORDER,
@@ -56,7 +56,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
         self.reconstruction_hash: str = ""
         self.current_features: Optional[FeatureData] = None
-        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarPlotDisplay]] = {}
+        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
 
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
@@ -197,7 +197,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         feature_key: FeatureKey,
         data: np.ndarray,
         parent: str,
-    ) -> Optional[GUIBarPlotDisplay]:
+    ) -> Optional[GUIBarGraph]:
         config = FEATURE_PLOT_CONFIGS[feature_key]
         plot_tag = f"{self.tag}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
 
@@ -217,7 +217,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
-    ) -> GUIBarPlotDisplay:
+    ) -> GUIBarGraph:
         y_min = config.y_min
         y_max = config.y_max
         y_ticks = config.y_ticks
@@ -235,7 +235,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         y_min = int(np.floor(y_min - gap))
         y_max = int(np.ceil(y_max + gap))
 
-        plot = GUIBarPlotDisplay(
+        plot = GUIBarGraph(
             tag=plot_tag,
             parent=parent,
             width=VAL_PLOT_WIDTH_GLOBAL_FULL,

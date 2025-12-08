@@ -13,15 +13,16 @@ from ...constants.graphs import (
     LBL_PLOT_AXIS_SPECTRUM_X,
     LBL_PLOT_LABEL_SPECTRUM,
     LBL_PLOT_NAME_SPECTRUM,
+    SUF_GRAPH_THEME,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
 )
-from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
-from .graph import GUIGraphDisplay
+from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children, dpg_delete_item
+from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
 
-class GUISpectrumDisplay(GUIGraphDisplay):
+class GUISpectrumGraph(GUIGraph):
     tag: str
     parent: str
     width: int
@@ -72,7 +73,10 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         ):
             dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
             dpg.add_plot_axis(
-                dpg.mvYAxis, label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY, tag=self.y_axis_tag, scale=dpg.mvPlotScale_Log10
+                dpg.mvYAxis,
+                label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+                tag=self.y_axis_tag,
+                scale=dpg.mvPlotScale_Log10,
             )
 
     def load_library_fragment(
@@ -102,6 +106,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
                 series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}"
+                theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
                 dpg.add_bar_series(
                     x=[self.x_max],
                     y=[frequency],
@@ -111,7 +116,9 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                     weight=band_width,
                     horizontal=True,
                 )
-                with dpg.theme() as bar_theme:
+
+                dpg_delete_item(theme_tag)
+                with dpg.theme(tag=theme_tag):
                     with dpg.theme_component(dpg.mvBarSeries):
                         dpg.add_theme_color(
                             dpg.mvPlotCol_Fill,
@@ -119,7 +126,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                             category=dpg.mvThemeCat_Plots,
                         )
 
-                dpg_bind_item_theme(series_tag, bar_theme)
+                dpg_bind_item_theme(series_tag, theme_tag)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)

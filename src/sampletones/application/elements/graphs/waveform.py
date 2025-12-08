@@ -10,7 +10,6 @@ from sampletones.typehints import Sender
 from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
     COL_WAVEFORM_LAYER_SAMPLE,
-    COL_WAVEFORM_POSITION_INDICATOR,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
     LBL_BUTTON_WAVEFORM_RESET_ALL,
@@ -25,16 +24,17 @@ from ...constants.graphs import (
     SUF_BUTTON_WAVEFORM_RESET_ALL,
     SUF_BUTTON_WAVEFORM_RESET_X,
     SUF_BUTTON_WAVEFORM_RESET_Y,
+    SUF_GRAPH_THEME,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
-    VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
+from ...themes.graphs.indicator import IndicatorGraphTheme
 from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
@@ -43,12 +43,12 @@ from ...utils.dpg import (
     dpg_delete_item,
 )
 from ..button import GUIButton
-from .graph import GUIGraphDisplay
+from .graph import GUIGraph
 from .layers.array import ArrayLayer
 from .layers.waveform import WaveformLayer
 
 
-class GUIWaveformDisplay(GUIGraphDisplay):
+class GUIWaveformGraph(GUIGraph):
     tag: str
     parent: str
     width: int
@@ -225,6 +225,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             dpg.add_line_series(
                 layer.x_data,
                 layer.y_data,
@@ -233,11 +234,12 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                 tag=series_tag,
             )
 
-            with dpg.theme() as series_theme:
+            dpg_delete_item(theme_tag)
+            with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):
                     dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
 
-            dpg_bind_item_theme(series_tag, series_theme)
+            dpg_bind_item_theme(series_tag, theme_tag)
 
         self._update_axes_limits()
 
@@ -273,18 +275,7 @@ class GUIWaveformDisplay(GUIGraphDisplay):
                 tag=self.position_indicator_tag,
             )
 
-            with dpg.theme() as indicator_theme:
-                with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(
-                        dpg.mvPlotCol_Line, COL_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
-                    )
-                    dpg.add_theme_style(
-                        dpg.mvPlotStyleVar_LineWeight,
-                        VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
-                        category=dpg.mvThemeCat_Plots,
-                    )
-
-            dpg_bind_item_theme(self.position_indicator_tag, indicator_theme)
+            IndicatorGraphTheme().bind_to_item(self.position_indicator_tag)
 
     def _reset_x_axis(self) -> None:
         if self.layers:
