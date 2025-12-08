@@ -81,6 +81,7 @@ LBL_BUTTON_MAIN_CONVERTER_CANCEL = "Cancel"
 LBL_BUTTON_MAIN_CONVERTER_LOAD = "Load"
 LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE = "Convert sample"
 LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY = "Convert directory"
+LBL_MAIN_EXPLORER_NODE_DUMMY = "loading..."
 
 MSG_MAIN_EXPLORER_CONVERTER_RUNNING = (
     "A conversion is already running. Please wait for it to complete or cancel the current operation "

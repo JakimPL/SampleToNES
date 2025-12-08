@@ -36,6 +36,7 @@ from ...constants.main import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
+    LBL_MAIN_EXPLORER_NODE_DUMMY,
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     SUF_MAIN_EXPLORER_NODE_DUMMY,
@@ -219,12 +220,14 @@ class GUIExplorerPanel(GUITreePanel):
                     for child in node.children:
                         self._build_tree_node(child, node_tag)
 
+                dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
                 dpg.add_tree_node(
-                    label="",
-                    tag=f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}",
+                    label=LBL_MAIN_EXPLORER_NODE_DUMMY,
+                    tag=dummy_node_tag,
                     parent=tree_node_tag,
                     show=not self.explorer_manager.is_directory_expanded(node.filepath),
                 )
+                FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
 
             self._add_item_handler_registry(
                 tag=handler_registry_tag,
