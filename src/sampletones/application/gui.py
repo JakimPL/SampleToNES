@@ -139,7 +139,10 @@ class GUI:
             self.audio_device_manager,
             self.application_config_manager,
         )
-        self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(self.config_manager)
+        self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(

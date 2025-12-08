@@ -26,6 +26,7 @@ from sampletones.tree import (
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
+from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants.general import (
     MSG_GLOBAL_INVALID_METADATA_ERROR,
@@ -92,8 +93,14 @@ OnLibraryLoadedCallback = Callable[[InstructionLibraryKey], None]
 
 
 class GUIInstructionsLibraryPanel(GUITreePanel):
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ) -> None:
         self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
+
         library_directory = config_manager.get_library_directory()
         self.library_manager = InstructionsLibraryManager(
             library_directory,
@@ -114,6 +121,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self.library_manager.tree,
             tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+            application_config_manager=self.application_config_manager,
         )
 
     def create_panel(self) -> None:
@@ -194,7 +202,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         if self.library_manager.is_library_loaded(key):
             dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name)
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name),
             )
             dpg_configure_item(
                 TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
@@ -202,17 +211,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             )
         elif self.library_manager.library_exists_for_key(key):
             dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name)
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name),
             )
             dpg_configure_item(
-                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY
+                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
             )
         else:
             dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name)
+                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name),
             )
             dpg_configure_item(
-                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY
+                TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
             )
 
         is_generating = self.library_manager.is_generating()
@@ -349,7 +362,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         try:
             self._set_library_tree_enabled(False)
             self._load_library(library_key)
-            self._set_current_library(library_key, load_if_needed=False, apply_config=True)
+            self._set_current_library(
+                library_key,
+                load_if_needed=False,
+                apply_config=True,
+            )
             self._rebuild_tree()
             if self._on_library_loaded:
                 self._on_library_loaded(library_key)
@@ -431,7 +448,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, overlay=percent_string)
 
         status_text = TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS.format(
-            creator.completed_instructions, creator.total_instructions
+            creator.completed_instructions,
+            creator.total_instructions,
         )
         if eta_string:
             status_text += TPL_GLOBAL_TIME_ESTIMATION.format(eta_string=eta_string)

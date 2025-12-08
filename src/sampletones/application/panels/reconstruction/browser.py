@@ -61,6 +61,7 @@ class GUIBrowserPanel(GUITreePanel):
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
+
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
@@ -72,6 +73,7 @@ class GUIBrowserPanel(GUITreePanel):
             tree=self.browser_manager.tree,
             tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+            application_config_manager=application_config_manager,
         )
 
     def create_panel(self) -> None:

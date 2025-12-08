@@ -6,19 +6,13 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, TreeNode
-from sampletones.typehints import Color, Sender
+from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (
     COL_PATH_TEXT_HOVER,
-    COL_TEXT_DEFAULT,
-    COL_TEXT_DISABLED_DEFAULT,
     COL_TEXT_FAVORITE,
-    COL_TEXT_FAVORITE_CHILD,
-    COL_TEXT_LIBRARY,
-    COL_TEXT_RECONSTRUCTION,
-    COL_TEXT_WAVE,
     LBL_TREE_FILTER,
     NOD_TYPE_GLOBAL_DIRECTORY,
     NOD_TYPE_GLOBAL_FILE,
@@ -88,6 +82,7 @@ class GUIExplorerPanel(GUITreePanel):
             tree=self.explorer_manager.tree,
             tag=TAG_PANEL_MAIN_EXPLORER,
             parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
+            application_config_manager=application_config_manager,
             search_label=LBL_TREE_FILTER,
         )
 
@@ -148,96 +143,14 @@ class GUIExplorerPanel(GUITreePanel):
         finally:
             self._set_explorer_tree_enabled(True)
 
+    def _has_relevant_content(self, node: TreeNode) -> bool:
+        if isinstance(node, FileSystemNode):
+            return self.explorer_manager.has_relevant_content(node.filepath)
+
+        return True
+
     def _set_explorer_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
-
-    def _is_node_favorite(self, node: FileSystemNode) -> bool:
-        if not isinstance(node, FileSystemNode):
-            raise TypeError("Only filepath nodes can be marked as favorite")
-
-        return node.filepath in self.application_config_manager.favorites
-
-    def _has_favorite_ancestor(self, node: FileSystemNode) -> bool:
-        current_node = node.parent
-        while current_node is not None:
-            if not isinstance(current_node, FileSystemNode):
-                break
-
-            if self._is_node_favorite(current_node):
-                return True
-
-            current_node = current_node.parent
-
-        return False
-
-    def _apply_node_theme(
-        self,
-        node_tag: str,
-        node: FileSystemNode,
-        has_favorite_ancestor: bool = False,
-    ) -> None:
-        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
-            return self._apply_directory_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
-
-        if node.node_type == NOD_TYPE_GLOBAL_FILE:
-            return self._apply_file_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
-
-        return None
-
-    def _apply_directory_node_theme(
-        self,
-        node_tag: str,
-        node: FileSystemNode,
-        has_favorite_ancestor: bool = False,
-    ) -> None:
-        has_content = self.explorer_manager.has_relevant_content(node.filepath)
-        is_favorite = self._is_node_favorite(node)
-
-        with dpg.theme() as node_theme:
-            with dpg.theme_component(dpg.mvTreeNode):
-                if is_favorite:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE)
-                elif not has_content:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
-                elif has_favorite_ancestor:
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE_CHILD)
-
-        dpg.bind_item_theme(node_tag, node_theme)
-
-    def _apply_file_node_theme(
-        self,
-        node_tag: str,
-        node: FileSystemNode,
-        has_favorite_ancestor: bool = False,
-    ) -> None:
-        is_favorite = self._is_node_favorite(node)
-        with dpg.theme() as node_theme:
-            with dpg.theme_component(dpg.mvSelectable):
-                color: Color = COL_TEXT_DEFAULT
-                if is_favorite:
-                    color = COL_TEXT_FAVORITE
-                else:
-                    match node.filepath.suffix.lower():
-                        case paths.EXT_FILE_RECONSTRUCTION:
-                            color = COL_TEXT_RECONSTRUCTION
-                        case paths.EXT_FILE_LIBRARY:
-                            color = COL_TEXT_LIBRARY
-                        case paths.EXT_FILE_WAVE:
-                            color = COL_TEXT_WAVE
-                        case _ if has_favorite_ancestor:
-                            color = COL_TEXT_FAVORITE_CHILD
-
-                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
-
-        dpg.bind_item_theme(node_tag, node_theme)
 
     def _build_tree_node(
         self,
@@ -594,7 +507,7 @@ class GUIExplorerPanel(GUITreePanel):
         if self._on_toggle_mark_as_favorite is not None:
             self._on_toggle_mark_as_favorite(node.filepath)
 
-        self.application_config_manager.toggle_favorite(node.filepath)
+        self._toggle_favorite(node)
         self._update_favorite_indicator(node)
 
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:

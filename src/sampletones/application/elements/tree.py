@@ -1,16 +1,27 @@
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.tree import Tree, TreeNode
-from sampletones.typehints import Sender
+from sampletones.constants import paths
+from sampletones.tree import FileSystemNode, Tree, TreeNode
+from sampletones.typehints import Color, Sender
 
+from ..config.application.manager import ApplicationConfigManager
 from ..constants.general import (
+    COL_TEXT_DEFAULT,
+    COL_TEXT_DISABLED_DEFAULT,
+    COL_TEXT_FAVORITE,
+    COL_TEXT_FAVORITE_CHILD,
+    COL_TEXT_LIBRARY,
+    COL_TEXT_RECONSTRUCTION,
+    COL_TEXT_WAVE,
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
+    NOD_TYPE_GLOBAL_DIRECTORY,
+    NOD_TYPE_GLOBAL_FILE,
     SUF_BUTTON_SEARCH,
     SUF_TREE_SEARCH_INPUT,
 )
@@ -25,17 +36,28 @@ class GUITreePanel(GUIPanel):
         tree: Tree,
         tag: str,
         parent: str,
+        application_config_manager: ApplicationConfigManager,
         width: int = -1,
         height: int = -1,
         search_label: str = LBL_TREE_SEARCH,
     ) -> None:
         self.tree = tree
+        self.application_config_manager = application_config_manager
+
         self._selected_node_tag: Optional[Union[str, int]] = None
-        self._on_node_selected: Optional[Callable] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+
+        self._on_node_selected: Optional[Callable[..., Any]] = None
+
         self.search_label = search_label
-        super().__init__(tag, parent, width, height)
+
+        super().__init__(
+            tag=tag,
+            parent=parent,
+            width=width,
+            height=height,
+        )
 
     def build_tree(self, tree_root_tag: str) -> None:
         self._clear_children(tree_root_tag)
@@ -67,6 +89,9 @@ class GUITreePanel(GUIPanel):
             )
 
     def _build_tree_node(self, node: TreeNode, parent: str) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _has_relevant_content(self, node: TreeNode) -> bool:
         raise NotImplementedError("Subclasses must implement this method")
 
     def _should_expand_node(self, node: TreeNode) -> bool:
@@ -126,5 +151,102 @@ class GUITreePanel(GUIPanel):
     def _clear_children(self, tag: str) -> None:
         dpg_delete_children(tag)
 
-    def set_tree_callbacks(self, on_node_selected: Optional[Callable] = None) -> None:
+    def _is_node_favorite(self, node: FileSystemNode) -> bool:
+        if not isinstance(node, FileSystemNode):
+            raise TypeError("Only filepath nodes can be marked as favorite")
+
+        if self.application_config_manager is None:
+            return False
+
+        return node.filepath in self.application_config_manager.favorites
+
+    def _has_favorite_ancestor(self, node: FileSystemNode) -> bool:
+        current_node = node.parent
+        while current_node is not None:
+            if not isinstance(current_node, FileSystemNode):
+                break
+
+            if self._is_node_favorite(current_node):
+                return True
+
+            current_node = current_node.parent
+
+        return False
+
+    def _toggle_favorite(self, node: FileSystemNode) -> None:
+        if self.application_config_manager is None:
+            return
+
+        self.application_config_manager.toggle_favorite(node.filepath)
+
+    def _apply_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        if node.node_type == NOD_TYPE_GLOBAL_DIRECTORY:
+            return self._apply_directory_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+            )
+
+        if node.node_type == NOD_TYPE_GLOBAL_FILE:
+            return self._apply_file_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+            )
+
+        return None
+
+    def _apply_directory_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        has_content = self._has_relevant_content(node)
+        is_favorite = self._is_node_favorite(node)
+
+        with dpg.theme() as node_theme:
+            with dpg.theme_component(dpg.mvTreeNode):
+                if is_favorite:
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE)
+                elif not has_content:
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_DISABLED_DEFAULT)
+                elif has_favorite_ancestor:
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TEXT_FAVORITE_CHILD)
+
+        dpg.bind_item_theme(node_tag, node_theme)
+
+    def _apply_file_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        is_favorite = self._is_node_favorite(node)
+        with dpg.theme() as node_theme:
+            with dpg.theme_component(dpg.mvSelectable):
+                color: Color = COL_TEXT_DEFAULT
+                if is_favorite:
+                    color = COL_TEXT_FAVORITE
+                else:
+                    match node.filepath.suffix.lower():
+                        case paths.EXT_FILE_RECONSTRUCTION:
+                            color = COL_TEXT_RECONSTRUCTION
+                        case paths.EXT_FILE_LIBRARY:
+                            color = COL_TEXT_LIBRARY
+                        case paths.EXT_FILE_WAVE:
+                            color = COL_TEXT_WAVE
+                        case _ if has_favorite_ancestor:
+                            color = COL_TEXT_FAVORITE_CHILD
+
+                dpg.add_theme_color(dpg.mvThemeCol_Text, color)
+
+        dpg.bind_item_theme(node_tag, node_theme)
+
+    def set_tree_callbacks(self, on_node_selected: Optional[Callable[..., Any]] = None) -> None:
         self._on_node_selected = on_node_selected
