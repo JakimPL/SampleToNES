@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -41,6 +41,8 @@ from ...constants.instructions import (
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
+    LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_INSTRUCTION,
+    LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
     LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
     MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR,
@@ -319,6 +321,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if node.node_type == NodeType.ROOT:
             return
 
+        handler_registry_tag = self._get_handler_registry_tag(node_tag)
         if node.node_type == NodeType.PLACEHOLDER:
             if library_node is None:
                 return
@@ -353,7 +356,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
             is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
             should_expand = is_current or self._should_expand_node(node)
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
+            with dpg.tree_node(
+                label=node.name,
+                tag=node_tag,
+                parent=parent,
+                default_open=should_expand,
+            ):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 self._apply_node_theme(node_tag, node)
                 for child in node.children:
@@ -362,6 +370,77 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                         node_tag,
                         library_node=library_node,
                     )
+
+            if isinstance(node, LibraryNode):
+                self._add_item_handler_registry(
+                    tag=handler_registry_tag,
+                    parent=node_tag,
+                    node=node,
+                    item_click_callback=self._on_library_node_clicked,
+                )
+
+    def _on_library_node_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: LibraryNode,
+    ) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Right:
+            return self._show_library_context_menu(user_data)
+
+        return None
+
+    def _on_instruction_node_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: InstructionNode,
+    ) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Right:
+            return self._show_instruction_context_menu(user_data)
+
+        return None
+
+    def _show_library_context_menu(self, node: LibraryNode) -> None:
+        if not isinstance(node, LibraryNode) or node.node_type != NodeType.LIBRARY:
+            return
+
+        with dpg.window(
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            min_size=(0, 0),
+            modal=False,
+        ):
+            self._add_context_menu_text(node)
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
+                callback=lambda: self._load_library_and_set_current(node.library_key),
+            )
+
+    def _show_instruction_context_menu(self, node: InstructionNode) -> None:
+        if not isinstance(node, InstructionNode) or node.node_type != NodeType.INSTRUCTION:
+            return
+
+        with dpg.window(
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            min_size=(0, 0),
+            modal=False,
+        ):
+            self._add_context_menu_text(node)
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_INSTRUCTION,
+                callback=self._on_selectable_clicked,
+                user_data=node,
+            )
 
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):

@@ -18,7 +18,6 @@ from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants.general import (
     MSG_GLOBAL_INVALID_METADATA_ERROR,
-    SUF_NODE_HANDLER,
     SUF_PANEL_LEFT,
     TAG_TAB_RECONSTRUCTIONS,
 )
@@ -159,8 +158,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
-
-        handler_registry_tag = f"{node_tag}{SUF_NODE_HANDLER}"
+        handler_registry_tag = self._get_handler_registry_tag(node_tag)
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):

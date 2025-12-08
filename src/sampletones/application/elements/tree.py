@@ -16,6 +16,7 @@ from ..constants.general import (
     LBL_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
+    SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
 )
@@ -126,6 +127,9 @@ class GUITreePanel(GUIPanel):
 
         return False
 
+    def _get_handler_registry_tag(self, tag: str) -> str:
+        return f"{tag}{SUF_NODE_HANDLER}"
+
     def _add_item_handler_registry(
         self,
         tag: str,
@@ -164,7 +168,7 @@ class GUITreePanel(GUIPanel):
         if self._on_node_selected:
             self._on_node_selected(user_data)
 
-    def _add_context_menu_text(self, node: FileSystemNode) -> None:
+    def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self._is_node_favorite(node)
         color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
 
