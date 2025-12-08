@@ -29,7 +29,7 @@ class ResourceLoader:
         return None
 
     def _get_package_path(self, resource_name: str) -> Path:
-        module_name = str(self.base_directory).replace("/", ".")
+        module_name = ".".join(self.base_directory.parts)
         return Path(str(resources.files(module_name).joinpath(self.resource_directory, resource_name)))
 
     def get_path(self, resource_name: str) -> str:

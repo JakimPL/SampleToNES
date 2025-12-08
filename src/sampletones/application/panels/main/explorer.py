@@ -127,12 +127,8 @@ class GUIExplorerPanel(GUITreePanel):
         self.build_tree(TAG_TREE_MAIN_EXPLORER)
 
     def _refresh_tree(self) -> None:
-        self._set_explorer_tree_enabled(False)
-        try:
-            self.explorer_manager.refresh_tree()
-            self._rebuild_tree()
-        finally:
-            self._set_explorer_tree_enabled(True)
+        self.explorer_manager.refresh_tree()
+        self._rebuild_tree()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
@@ -288,20 +284,12 @@ class GUIExplorerPanel(GUITreePanel):
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         filepath = node.filepath
         if self._on_load_reconstruction is not None and filepath.exists():
-            self._set_explorer_tree_enabled(False)
-            try:
-                self._on_load_reconstruction(filepath)
-            finally:
-                self._set_explorer_tree_enabled(True)
+            self._on_load_reconstruction(filepath)
 
     def _load_library(self, node: FileSystemNode) -> None:
         filepath = node.filepath
         if self._on_load_library is not None and filepath.exists():
-            self._set_explorer_tree_enabled(False)
-            try:
-                self._on_load_library(filepath)
-            finally:
-                self._set_explorer_tree_enabled(True)
+            self._on_load_library(filepath)
 
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node
