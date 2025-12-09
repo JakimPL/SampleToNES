@@ -198,6 +198,7 @@ class GUI:
     def _setup_dearpygui(self) -> None:
         dpg.setup_dearpygui()
         dpg.show_viewport()
+        dpg.render_dearpygui_frame()
 
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
@@ -228,6 +229,10 @@ class GUI:
             self._enable_fullscreen()
         else:
             self._disable_fullscreen()
+
+        color = self.theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
+        assert color is not None, "Background color is not defined in the main theme"
+        dpg.set_viewport_clear_color(list(color))
 
     def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(

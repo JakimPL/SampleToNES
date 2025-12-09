@@ -127,7 +127,7 @@ class GUITreePanel(GUIPanel):
             return False
 
         for descendant in node.descendants:
-            if self.tree.is_matching_node(descendant):
+            if self.tree.is_node_visible(descendant):
                 return True
 
         return False
@@ -207,19 +207,38 @@ class GUITreePanel(GUIPanel):
             self.apply_filter(query, self._default_search_predicate)
         else:
             self.clear_filter()
-        self._rebuild_tree()
+        self._update_tree_visibility()
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
         self.clear_filter()
-        self._rebuild_tree()
+        self._update_tree_visibility()
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
 
     def _rebuild_tree(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
+
+    def _update_tree_visibility(self) -> None:
+        root = self.tree.get_root()
+        if root is None:
+            return
+
+        for child in root.children:
+            self._update_node_visibility_recursive(child)
+
+    def _update_node_visibility_recursive(self, node: TreeNode) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        is_visible = self.tree.is_node_visible(node)
+        dpg.configure_item(node_tag, show=is_visible)
+
+        for child in node.children:
+            self._update_node_visibility_recursive(child)
 
     def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
         self.tree.apply_filter(query, predicate)

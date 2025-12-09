@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Sequence, Set
+from typing import Callable, Dict, Optional, Sequence
 
 from anytree import PreOrderIter
 from anytree.search import findall
@@ -10,24 +10,19 @@ class Tree:
     def __init__(self, root: Optional[TreeNode] = None) -> None:
         self.root = root
         self._filter_query: Optional[str] = None
-        self._filtered_root: Optional[TreeNode] = None
-        self._matching_nodes: Set[TreeNode] = set()
-        self._original_to_copy: Dict[Optional[TreeNode], TreeNode] = {}
+        self._node_visibility: Dict[TreeNode, bool] = {}
 
     def set_root(self, root: Optional[TreeNode]) -> None:
         self.root = root
         self.clear_filter()
 
     def get_root(self) -> Optional[TreeNode]:
-        if self._filter_query is not None:
-            return self._filtered_root
         return self.root
 
     def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
         if not self.root:
-            self._filtered_root = None
             self._filter_query = query
-            self._matching_nodes = set()
+            self._node_visibility = {}
             return
 
         if not query:
@@ -35,77 +30,63 @@ class Tree:
             return
 
         self._filter_query = query
-        matching_nodes = [node for node in PreOrderIter(self.root) if predicate(node, query)]
-        self._matching_nodes = set(matching_nodes)
+        matching_nodes = {node for node in PreOrderIter(self.root) if predicate(node, query)}
 
         if not matching_nodes:
-            self._filtered_root = None
+            self._node_visibility = {node: False for node in PreOrderIter(self.root)}
             return
 
-        self._filtered_root = self._build_filtered_tree(matching_nodes)
-
-    def _build_filtered_tree(self, matching_nodes: Sequence[TreeNode]) -> Optional[TreeNode]:
-        if not matching_nodes:
-            return None
-
-        nodes_to_include = set(matching_nodes)
+        nodes_to_show = set(matching_nodes)
         for node in matching_nodes:
             current = node.parent
             while current is not None:
-                nodes_to_include.add(current)
+                nodes_to_show.add(current)
                 current = current.parent
 
             for descendant in PreOrderIter(node):
-                nodes_to_include.add(descendant)
+                nodes_to_show.add(descendant)
 
-        node_map: Dict[Optional[TreeNode], TreeNode] = {}
-        for original_node in PreOrderIter(self.root):
-            if original_node in nodes_to_include:
-                parent_copy = node_map.get(original_node.parent) if original_node.parent else None
-                node_copy = original_node.copy(parent=parent_copy)
-                node_map[original_node] = node_copy
-
-        self._original_to_copy = node_map
-        return node_map.get(self.root)
+        self._node_visibility = {node: node in nodes_to_show for node in PreOrderIter(self.root)}
 
     def clear_filter(self) -> None:
         self._filter_query = None
-        self._filtered_root = None
-        self._matching_nodes = set()
-        self._original_to_copy = {}
+        self._node_visibility = {}
 
     def is_filtered(self) -> bool:
         return self._filter_query is not None
 
-    def is_matching_node(self, node: TreeNode) -> bool:
-        if node in self._matching_nodes:
+    def is_node_visible(self, node: TreeNode) -> bool:
+        if not self.is_filtered():
             return True
+        return self._node_visibility.get(node, False)
 
-        for original_node, copied_node in self._original_to_copy.items():
-            if copied_node is node and original_node in self._matching_nodes:
-                return True
-
-        return False
+    def get_node_visibility_map(self) -> Dict[TreeNode, bool]:
+        return self._node_visibility.copy()
 
     def get_filter_query(self) -> Optional[str]:
         return self._filter_query
 
     def find_node(self, predicate: Callable[[TreeNode], bool]) -> Optional[TreeNode]:
-        current_root = self.get_root()
-        if not current_root:
+        if not self.root:
             return None
 
-        results = findall(current_root, filter_=predicate)
+        results = findall(self.root, filter_=predicate)
         return results[0] if results else None
 
     def collect_leaves(self) -> Sequence[TreeNode]:
-        current_root = self.get_root()
-        if not current_root:
+        if not self.root:
             return []
-        return [node for node in PreOrderIter(current_root) if node.is_leaf]
+
+        leaves = [node for node in PreOrderIter(self.root) if node.is_leaf]
+        if self.is_filtered():
+            return [leaf for leaf in leaves if self.is_node_visible(leaf)]
+        return leaves
 
     def collect_all_nodes(self) -> Sequence[TreeNode]:
-        current_root = self.get_root()
-        if not current_root:
+        if not self.root:
             return []
-        return list(PreOrderIter(current_root))
+
+        nodes = list(PreOrderIter(self.root))
+        if self.is_filtered():
+            return [node for node in nodes if self.is_node_visible(node)]
+        return nodes

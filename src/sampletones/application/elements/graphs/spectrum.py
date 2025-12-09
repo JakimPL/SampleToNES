@@ -17,7 +17,7 @@ from ...constants.graphs import (
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
 )
-from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
+from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children, dpg_delete_item
 from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
@@ -117,7 +117,7 @@ class GUISpectrumGraph(GUIGraph):
                     horizontal=True,
                 )
 
-                # dpg_delete_item(theme_tag)
+                dpg_delete_item(theme_tag)
                 with dpg.theme(tag=theme_tag):
                     with dpg.theme_component(dpg.mvBarSeries):
                         dpg.add_theme_color(

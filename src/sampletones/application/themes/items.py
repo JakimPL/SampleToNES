@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Dict, List, NamedTuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -18,13 +19,10 @@ class ThemeStyle(NamedTuple):
     category: int = 0
 
 
-class ThemeParameter(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
-
-    item_type: int = Field(..., description="The Dear PyGui theme component identifier")
-    enabled_state: bool = Field(default=True, description="The enabled state for the theme component")
-
-    __hash__ = object.__hash__  # type: ignore[assignment]
+@dataclass(frozen=True)
+class ThemeParameter:
+    item_type: int
+    enabled_state: bool = True
 
 
 class ThemeItems(BaseModel):

@@ -269,11 +269,11 @@ class GUIWaveformGraph(GUIGraph):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
+        dpg_delete_item(self.position_indicator_tag)
         sample_length = self.sample_length
         if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
 
-            dpg_delete_item(self.position_indicator_tag)
             dpg.add_line_series(
                 [position_x, position_x],
                 [self.y_min, self.y_max],
