@@ -161,7 +161,7 @@ class GUITreePanel(GUIPanel):
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
         tag = f"{self.tag}_node_{'_'.join(path_parts)}"
-        return tag.replace(" ", "_")
+        return tag.replace(" ", "_").lower()
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         if self._selected_node_tag and dpg.does_item_exist(self._selected_node_tag):

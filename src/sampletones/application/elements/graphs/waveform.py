@@ -227,7 +227,7 @@ class GUIWaveformGraph(GUIGraph):
 
         dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             dpg.add_line_series(
                 layer.x_data,

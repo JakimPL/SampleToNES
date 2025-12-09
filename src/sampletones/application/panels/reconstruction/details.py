@@ -238,6 +238,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot = GUIBarGraph(
             tag=plot_tag,
             parent=parent,
+            data_range=config.data_range,
             width=DIM_BAR_PLOT_WIDTH,
             height=DIM_BAR_PLOT_HEIGHT,
             label=config.label,
@@ -251,6 +252,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             color=config.color,
             y_ticks=y_ticks,
         )
+
+        # plot.set_callbacks(on_bar_point_clicked=self._on_bar_point_clicked)
 
         return plot
 

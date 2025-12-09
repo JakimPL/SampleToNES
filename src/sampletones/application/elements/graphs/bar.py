@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -20,6 +20,7 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_X,
 )
 from ...themes.graphs.zero import ZeroLineGraphTheme
+from ...themes.theme import Theme
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
@@ -29,6 +30,8 @@ from ...utils.dpg import (
 )
 from .graph import GUIGraph
 from .layers.bar import BarLayer
+
+OnBarPointClickedCallback = Callable[[np.ndarray], None]
 
 
 class GUIBarGraph(GUIGraph):
@@ -46,6 +49,7 @@ class GUIBarGraph(GUIGraph):
         self,
         tag: str,
         parent: str,
+        data_range: Tuple[int, int],
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_BAR,
@@ -53,14 +57,21 @@ class GUIBarGraph(GUIGraph):
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = VAL_BAR_PLOT_MIN_Y,
         y_max: float = VAL_BAR_PLOT_MAX_Y,
+        zero_line_theme: Theme = ZeroLineGraphTheme(),
     ):
-        self.current_data: Optional[np.ndarray] = None
-        self.y_ticks: Optional[Tuple[int, ...]] = None
-        self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
         self.hover_theme_tag = f"{self.hover_bar_tag}{SUF_GRAPH_THEME}"
         self.hovered_bar_index: Optional[int] = None
         self.hovered_bar_value: Optional[float] = None
+
+        self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
+        self.zero_line_theme = zero_line_theme
+
+        self.data_range = data_range
+        self.y_ticks: Optional[Tuple[int, ...]] = None
+        self.current_data: Optional[np.ndarray] = None
+
+        self._on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
 
         super().__init__(
             tag,
@@ -112,7 +123,10 @@ class GUIBarGraph(GUIGraph):
         if dpg.does_item_exist(self.hover_theme_tag):
             return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
 
-        layer = next(iter(self.layers.values()))
+        layer = self._get_first_layer()
+        if layer is None:
+            raise RuntimeError("No layers available to bind hover theme")
+
         hover_color = (layer.color[0], layer.color[1], layer.color[2], VAL_BAR_PLOT_HOVER_ALPHA)
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
@@ -148,7 +162,7 @@ class GUIBarGraph(GUIGraph):
 
         dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             dpg.add_bar_series(
                 layer.x_data,
@@ -165,7 +179,7 @@ class GUIBarGraph(GUIGraph):
         self._update_axes_limits()
 
     def _add_hover_bar(self) -> None:
-        if not dpg.does_item_exist(self.y_axis_tag):
+        if not dpg.does_item_exist(self.y_axis_tag) or not self._get_first_layer():
             return
 
         if self.hovered_bar_index is None or self.hovered_bar_value is None or self.current_data is None:
@@ -174,53 +188,68 @@ class GUIBarGraph(GUIGraph):
         bar_x = float(self.hovered_bar_index) + 0.5
         bar_y = round(self.hovered_bar_value, 0)
 
-        dpg_delete_item(self.hover_bar_tag)
-        dpg.add_bar_series(
-            [bar_x],
-            [bar_y],
-            tag=self.hover_bar_tag,
-            parent=self.y_axis_tag,
-            weight=0.8,
-        )
+        if dpg.does_item_exist(self.hover_bar_tag):
+            dpg_configure_item(
+                self.hover_bar_tag,
+                x=[bar_x],
+                y=[bar_y],
+            )
+        else:
+            dpg.add_bar_series(
+                [bar_x],
+                [bar_y],
+                tag=self.hover_bar_tag,
+                parent=self.y_axis_tag,
+                weight=0.8,
+            )
 
-        self._bind_hover_theme()
+            self._bind_hover_theme()
+
+    def _delete_hover_bar(self) -> None:
+        self.hovered_bar_index = None
+        self.hovered_bar_value = None
+        dpg_delete_item(self.hover_bar_tag)
+
+    def _get_first_layer(self) -> Optional[BarLayer]:
+        return next(iter(self.layers.values()), None)
 
     def _mouse_move_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
-            if self.hovered_bar_index is not None:
-                self.hovered_bar_index = None
-                self.hovered_bar_value = None
-                self._add_hover_bar()
-            return
+            return self._delete_hover_bar()
 
         plot_mouse_pos = dpg.get_plot_mouse_pos()
         if not plot_mouse_pos:
-            return
+            return self._delete_hover_bar()
 
         mouse_x = plot_mouse_pos[0]
         mouse_y = plot_mouse_pos[1]
-
         bar_index = int(mouse_x)
         if bar_index < 0 or bar_index >= len(self.current_data):
-            if self.hovered_bar_index is not None:
-                self.hovered_bar_index = None
-                self.hovered_bar_value = None
-                self._add_hover_bar()
-            return
+            return self._delete_hover_bar()
 
-        clamped_y = np.clip(mouse_y, self.y_min, self.y_max)
-
+        clamped_y = round(np.clip(mouse_y, *self.data_range))
         if self.hovered_bar_index != bar_index or self.hovered_bar_value != clamped_y:
             self.hovered_bar_index = bar_index
             self.hovered_bar_value = clamped_y
             self._add_hover_bar()
+
+            layer = self._get_first_layer()
+            if layer is None:
+                raise RuntimeError("A layer is expected to be present when handling mouse events")
+
+            if dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+                layer.y_data[bar_index] = clamped_y
+                self._update_display()
+                if self._on_bar_point_clicked is not None:
+                    self._on_bar_point_clicked(layer.y_data)
+
+        return None
 
     def _add_zero_line(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
         dpg_delete_item(self.zero_line_tag)
-
         dpg.add_line_series(
             [self.x_min, self.x_max],
             [0.0, 0.0],
@@ -228,7 +257,7 @@ class GUIBarGraph(GUIGraph):
             tag=self.zero_line_tag,
         )
 
-        ZeroLineGraphTheme().bind_to_item(self.zero_line_tag)
+        self.zero_line_theme.bind_to_item(self.zero_line_tag)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
@@ -238,3 +267,10 @@ class GUIBarGraph(GUIGraph):
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
+
+    def set_callbacks(
+        self,
+        on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None,
+    ) -> None:
+        if on_bar_point_clicked is not None:
+            self._on_bar_point_clicked = on_bar_point_clicked

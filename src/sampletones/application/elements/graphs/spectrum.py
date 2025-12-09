@@ -105,7 +105,7 @@ class GUISpectrumGraph(GUIGraph):
         self._update_axes_limits()
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
-                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}"
+                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
                 theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
                 dpg.add_bar_series(
                     x=[self.x_max],

@@ -31,6 +31,7 @@ class FeaturePlotConfig:
     y_min: float
     y_max: float
     y_ticks: Optional[Tuple[int, ...]]
+    data_range: Tuple[int, int]
 
 
 FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
@@ -41,6 +42,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_VOLUME_Y,
         y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_VOLUME_Y,
         y_ticks=(0, 4, 8, 12, 16),
+        data_range=(0, 15),
     ),
     FeatureKey.ARPEGGIO: FeaturePlotConfig(
         feature_key=FeatureKey.ARPEGGIO,
@@ -49,6 +51,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         y_min=-1.0,
         y_max=-1.0,
         y_ticks=None,
+        data_range=(-128, 127),
     ),
     FeatureKey.PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.PITCH,
@@ -57,6 +60,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_PITCH_Y,
         y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_PITCH_Y,
         y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
+        data_range=(-128, 127),
     ),
     FeatureKey.HI_PITCH: FeaturePlotConfig(
         feature_key=FeatureKey.HI_PITCH,
@@ -65,6 +69,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_PITCH_Y,
         y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_PITCH_Y,
         y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
+        data_range=(-128, 127),
     ),
     FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
         feature_key=FeatureKey.DUTY_CYCLE,
@@ -73,6 +78,7 @@ FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
         y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_DUTY_CYCLE_Y,
         y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_DUTY_CYCLE_Y,
         y_ticks=(0, 1, 2, 3),
+        data_range=(0, 3),
     ),
 }
 
