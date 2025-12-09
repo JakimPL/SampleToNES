@@ -54,12 +54,14 @@ class GUITreePanel(GUIPanel):
         tree: Tree,
         tag: str,
         parent: str,
+        tree_tag: str,
         application_config_manager: ApplicationConfigManager,
         width: int = -1,
         height: int = -1,
         search_label: str = LBL_TREE_SEARCH,
     ) -> None:
         self.tree = tree
+        self.tree_tag = tree_tag
         self.application_config_manager = application_config_manager
 
         self._selected_node_tag: Optional[Union[str, int]] = None
@@ -77,16 +79,19 @@ class GUITreePanel(GUIPanel):
             height=height,
         )
 
-    def build_tree(self, tree_root_tag: str) -> None:
-        self._clear_children(tree_root_tag)
+    def build_tree(self, root_tag: Optional[str] = None) -> None:
+        if root_tag is None:
+            root_tag = self.tree_tag
+
+        self._clear_children(root_tag)
         root = self.tree.get_root()
         if root is None:
             if self.tree.is_filtered():
-                dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=tree_root_tag)
+                dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=root_tag)
             return
 
         for child in root.children:
-            self._build_tree_node(child, tree_root_tag)
+            self._build_tree_node(child, root_tag)
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"

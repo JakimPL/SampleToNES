@@ -69,6 +69,7 @@ class GUIExplorerPanel(GUITreePanel):
             tree=self.explorer_manager.tree,
             tag=TAG_PANEL_MAIN_EXPLORER,
             parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_TREE_MAIN_EXPLORER,
             application_config_manager=application_config_manager,
             search_label=LBL_TREE_FILTER,
         )
@@ -106,7 +107,11 @@ class GUIExplorerPanel(GUITreePanel):
         self.create_search(self.tag)
         with dpg.child_window(tag=TAG_WINDOW_MAIN_EXPLORER_TREE):
             with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_TREE):
-                with dpg.tree_node(label=LBL_SECTION_MAIN_EXPLORER, tag=TAG_TREE_MAIN_EXPLORER, default_open=True):
+                with dpg.tree_node(
+                    label=LBL_SECTION_MAIN_EXPLORER,
+                    tag=self.tree_tag,
+                    default_open=True,
+                ):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
@@ -121,7 +126,7 @@ class GUIExplorerPanel(GUITreePanel):
         self._set_tree_enabled(False)
         try:
             self.explorer_manager.refresh_tree()
-            self.build_tree(TAG_TREE_MAIN_EXPLORER)
+            self.build_tree()
         finally:
             self._set_tree_enabled(True)
 

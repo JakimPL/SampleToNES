@@ -123,6 +123,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self.library_manager.tree,
             tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
             application_config_manager=self.application_config_manager,
         )
 
@@ -178,7 +179,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
                 with dpg.tree_node(
                     label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
-                    tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
+                    tag=self.tree_tag,
                     default_open=True,
                 ):
                     pass
@@ -191,7 +192,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._set_tree_enabled(False)
         try:
             self.library_manager.rebuild_tree()
-            self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
+            self.build_tree()
         finally:
             self._set_tree_enabled(True)
             self.update_status()

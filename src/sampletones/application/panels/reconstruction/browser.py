@@ -74,6 +74,7 @@ class GUIBrowserPanel(GUITreePanel):
             tree=self.browser_manager.tree,
             tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
             application_config_manager=application_config_manager,
         )
 
@@ -126,7 +127,7 @@ class GUIBrowserPanel(GUITreePanel):
             with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE):
                 with dpg.tree_node(
                     label=LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
-                    tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
+                    tag=self.tree_tag,
                     default_open=True,
                 ):
                     pass
@@ -140,7 +141,7 @@ class GUIBrowserPanel(GUITreePanel):
         try:
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
-            self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
+            self.build_tree()
         finally:
             self._set_tree_enabled(True)
 
