@@ -1051,9 +1051,10 @@ class GUI:
     def _update_fps(self) -> None:
         fps = 1.0 / dpg.get_delta_time()
         dpg_set_value(TAG_MENU_TEXT_FPS, TPL_MENU_TEXT_FPS.format(fps=fps))
-        y = dpg.get_item_pos(TAG_MENU_TEXT_FPS)[1]
         width = dpg.get_item_rect_size(TAG_MENU_TEXT_FPS)[0]
-        dpg.set_item_pos(TAG_MENU_TEXT_FPS, (dpg.get_viewport_width() - width - DIM_TEXT_OFFSET_MENU_FPS, y))
+        x: float = float(dpg.get_viewport_width() - width - DIM_TEXT_OFFSET_MENU_FPS)
+        y = float(dpg.get_item_pos(TAG_MENU_TEXT_FPS)[1])
+        dpg.set_item_pos(TAG_MENU_TEXT_FPS, [x, y])
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:

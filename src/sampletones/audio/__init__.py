@@ -4,6 +4,7 @@ from .manager import CHANNELS, CHUNK_SIZE, FORMAT, AudioDeviceManager
 from .processing import (
     clip_audio,
     interpolate,
+    minmax_decimate,
     normalize,
     quantize,
     resample,
@@ -21,6 +22,7 @@ __all__ = [
     "stereo_to_mono",
     "resample",
     "interpolate",
+    "minmax_decimate",
     "normalize",
     "quantize",
     "SampleRate",
