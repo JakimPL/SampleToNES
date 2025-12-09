@@ -49,6 +49,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
+from ...utils.thread import concurrent
 
 OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
 
@@ -88,7 +89,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_browser_controls()
             self._create_tree_window()
 
-        self.initialize_tree()
+        self._rebuild_tree()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
@@ -101,7 +102,7 @@ class GUIBrowserPanel(GUITreePanel):
                 tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
                 label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
                 width=-1,
-                callback=self._refresh_tree,
+                callback=self._rebuild_tree,
             )
             GUIButton(
                 tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
@@ -131,10 +132,17 @@ class GUIBrowserPanel(GUITreePanel):
                     pass
 
     def refresh(self) -> None:
-        self._refresh_tree()
+        self._rebuild_tree()
 
+    @concurrent
     def _rebuild_tree(self) -> None:
-        self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
+        self._set_tree_enabled(False)
+        try:
+            output_directory = self.config_manager.get_output_directory()
+            self.browser_manager.set_output_directory(output_directory)
+            self.build_tree(TAG_TREE_RECONSTRUCTIONS_BROWSER)
+        finally:
+            self._set_tree_enabled(True)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -200,16 +208,8 @@ class GUIBrowserPanel(GUITreePanel):
                 item_click_callback=self._on_reconstruction_node_clicked,
             )
 
-    def initialize_tree(self) -> None:
-        self._refresh_tree()
-
-    def _set_browser_tree_enabled(self, enabled: bool) -> None:
+    def _set_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
-
-    def _refresh_tree(self) -> None:
-        output_directory = self.config_manager.get_output_directory()
-        self.browser_manager.set_output_directory(output_directory)
-        self._rebuild_tree()
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
@@ -287,6 +287,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def load_and_display_reconstruction(self, filepath: Path) -> None:
+        self._set_tree_enabled(False)
         try:
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
         except FileNotFoundError as exception:
@@ -322,18 +323,21 @@ class GUIBrowserPanel(GUITreePanel):
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
             return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+        finally:
+            self._set_tree_enabled(True)
 
+        self._set_tree_enabled(False)
         if not reconstruction_data.reconstruction.audio_filepath.exists():
             show_file_not_found_dialog(
                 reconstruction_data.reconstruction.audio_filepath,
                 MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
             )
 
-        if self._on_reconstruction_loaded:
-            dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=False)
-            self._set_browser_tree_enabled(False)
-            self._on_reconstruction_loaded(reconstruction_data)
-            dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=True)
+        try:
+            if self._on_reconstruction_loaded:
+                self._on_reconstruction_loaded(reconstruction_data)
+        finally:
+            self._set_tree_enabled(True)
 
         return self.application_config_manager.set_current_reconstruction(filepath)
 

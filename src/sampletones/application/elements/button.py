@@ -78,6 +78,9 @@ class GUIButton:
         if self._tag in GUIButton.REGISTRY:
             del GUIButton.REGISTRY[self._tag]
 
+    def is_item_hovered(self) -> Optional[bool]:
+        return dpg.is_item_hovered(self._button_tag)
+
     @property
     def tag(self) -> str:
         return self._tag

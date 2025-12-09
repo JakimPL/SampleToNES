@@ -10,11 +10,7 @@ from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
-from ...constants.general import (
-    LBL_TREE_FILTER,
-    SUF_PANEL_LEFT,
-    TAG_TAB_MAIN,
-)
+from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
@@ -42,6 +38,7 @@ from ...elements.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_delete_children
+from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
 
@@ -88,7 +85,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._create_collapse_button()
             self._create_tree_window()
 
-        self.initialize_tree()
+        self._rebuild_tree()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
@@ -116,18 +113,17 @@ class GUIExplorerPanel(GUITreePanel):
         self.explorer_manager.collapse_all()
         self._rebuild_tree()
 
-    def initialize_tree(self) -> None:
-        self._refresh_tree()
-
     def refresh(self) -> None:
-        self._refresh_tree()
-
-    def _rebuild_tree(self) -> None:
-        self.build_tree(TAG_TREE_MAIN_EXPLORER)
-
-    def _refresh_tree(self) -> None:
-        self.explorer_manager.refresh_tree()
         self._rebuild_tree()
+
+    @concurrent
+    def _rebuild_tree(self) -> None:
+        self._set_tree_enabled(False)
+        try:
+            self.explorer_manager.refresh_tree()
+            self.build_tree(TAG_TREE_MAIN_EXPLORER)
+        finally:
+            self._set_tree_enabled(True)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
@@ -135,7 +131,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         return True
 
-    def _set_explorer_tree_enabled(self, enabled: bool) -> None:
+    def _set_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
 
     def _build_tree_node(

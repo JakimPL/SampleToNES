@@ -25,6 +25,7 @@ from ...utils.dpg import (
     dpg_configure_item,
     dpg_delete_children,
     dpg_delete_item,
+    dpg_is_item_hovered,
 )
 from .graph import GUIGraph
 from .layers.bar import BarLayer
@@ -185,7 +186,7 @@ class GUIBarGraph(GUIGraph):
         self._bind_hover_theme()
 
     def _mouse_move_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or self.current_data is None:
+        if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
             if self.hovered_bar_index is not None:
                 self.hovered_bar_index = None
                 self.hovered_bar_value = None

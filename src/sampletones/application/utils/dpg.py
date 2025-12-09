@@ -70,3 +70,9 @@ def dpg_get_item_label(tag: str, /, *args: Any, **kwargs: Any) -> Optional[str]:
 @dpg_wrapper(button_function=GUIButton.set_value)
 def dpg_set_value(tag: str, value: Any, /, *args: Any, **kwargs: Any) -> None:
     dpg.set_value(tag, value, *args, **kwargs)
+
+
+@dpg_wrapper(button_function=GUIButton.is_item_hovered)
+def dpg_is_item_hovered(tag: str, /, *args: Any, **kwargs: Any) -> Optional[bool]:
+    is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
+    return is_hovered

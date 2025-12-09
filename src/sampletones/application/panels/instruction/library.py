@@ -85,6 +85,7 @@ from ...utils.dialogs import (
     show_info_dialog,
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.thread import concurrent
 
 OnInstructionSelectedCallback = Callable[
     [GeneratorClassName, InstructionUnion, InstructionLibraryFragment[Any], InstructionsLibraryConfig], None
@@ -138,7 +139,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_controls()
             self._create_library_tree()
 
-        self.initialize_libraries()
+        self._refresh_libraries()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_INSTRUCTIONS_LIBRARY_LIBRARIES)
@@ -183,16 +184,17 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     pass
 
     def refresh(self) -> None:
-        self.library_manager.set_library_directory(self.config_manager.get_library_directory())
         self._refresh_libraries()
 
+    @concurrent
     def _rebuild_tree(self) -> None:
-        self.library_manager.rebuild_tree()
-        self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
-        self.update_status()
-
-    def initialize_libraries(self) -> None:
-        self._refresh_libraries()
+        self._set_tree_enabled(False)
+        try:
+            self.library_manager.rebuild_tree()
+            self.build_tree(TAG_TREE_INSTRUCTIONS_LIBRARY)
+        finally:
+            self._set_tree_enabled(True)
+            self.update_status()
 
     def is_loaded(self) -> bool:
         return self.library_manager.is_library_loaded(self.config_manager.key)
@@ -233,10 +235,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, enabled=not is_generating)
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=not is_generating)
 
-    def _set_library_tree_enabled(self, enabled: bool) -> None:
+    def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
 
     def _refresh_libraries(self) -> None:
+        self.library_manager.set_library_directory(self.config_manager.get_library_directory())
         self.library_manager.gather_available_libraries()
         self._sync_with_config_key()
         self._rebuild_tree()
@@ -262,6 +265,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.update_status()
 
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
+        self._set_tree_enabled(False)
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
@@ -298,6 +302,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         except Exception as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
+        finally:
+            self._set_tree_enabled(True)
 
     def load_library_file(self, filepath: Path) -> None:
         library_key = self.library_manager.create_key_from_filename(filepath.name)
@@ -443,7 +449,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         return node.library_key == self.library_manager.current_library_key
 
     def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
-        self._set_library_tree_enabled(False)
         self._load_library(library_key)
         self._set_current_library(
             library_key,
@@ -468,7 +473,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if not isinstance(user_data, InstructionNode):
             return
 
-        self._set_library_tree_enabled(False)
+        self._set_tree_enabled(False)
         try:
             config = self.config_manager.get_config()
             self._on_instruction_selected(
@@ -477,10 +482,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 user_data.fragment,
                 config.library,
             )
-
-            self.update_status()
         finally:
-            self._set_library_tree_enabled(True)
+            self._set_tree_enabled(True)
+            self.update_status()
 
     def generate_library(self) -> None:
         if self.library_manager.is_generating():
