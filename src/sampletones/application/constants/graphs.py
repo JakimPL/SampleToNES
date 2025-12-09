@@ -1,6 +1,7 @@
 from .general import SUF_BUTTON
 
 TAG_THEME_GRAPH_INDICATOR = "theme_graph_indicator"
+TAG_THEME_GRAPH_ZERO_LINE = "theme_zero_line"
 
 SUF_GRAPH_PLOT = "_plot"
 SUF_GRAPH_X_AXIS = "_x_axis"

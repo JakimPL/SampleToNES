@@ -6,20 +6,20 @@ import numpy as np
 from sampletones.typehints import Color, Sender
 
 from ...constants.graphs import (
-    COL_BAR_PLOT_ZERO_LINE,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
     LBL_PLOT_LABEL_BAR,
     SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_ZERO_LINE,
+    SUF_GRAPH_THEME,
     VAL_BAR_PLOT_HOVER_ALPHA,
     VAL_BAR_PLOT_MAX_Y,
     VAL_BAR_PLOT_MIN_X,
     VAL_BAR_PLOT_MIN_Y,
-    VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
 )
+from ...themes.graphs.zero import ZeroLineGraphTheme
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
@@ -57,6 +57,7 @@ class GUIBarGraph(GUIGraph):
         self.y_ticks: Optional[Tuple[int, ...]] = None
         self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
+        self.hover_theme_tag = f"{self.hover_bar_tag}{SUF_GRAPH_THEME}"
         self.hovered_bar_index: Optional[int] = None
         self.hovered_bar_value: Optional[float] = None
 
@@ -87,6 +88,41 @@ class GUIBarGraph(GUIGraph):
         with dpg.handler_registry():
             dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
 
+    def _bind_theme(
+        self,
+        layer: BarLayer,
+        series_tag: str,
+        theme_tag: str,
+    ) -> None:
+        if dpg.does_item_exist(theme_tag):
+            return dpg_bind_item_theme(series_tag, theme_tag)
+
+        with dpg.theme(tag=theme_tag):
+            with dpg.theme_component(dpg.mvBarSeries):
+                dpg.add_theme_color(
+                    dpg.mvPlotCol_Fill,
+                    layer.color,
+                    category=dpg.mvThemeCat_Plots,
+                )
+
+        return dpg_bind_item_theme(series_tag, theme_tag)
+
+    def _bind_hover_theme(self) -> None:
+        if dpg.does_item_exist(self.hover_theme_tag):
+            return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
+
+        layer = next(iter(self.layers.values()))
+        hover_color = (layer.color[0], layer.color[1], layer.color[2], VAL_BAR_PLOT_HOVER_ALPHA)
+        with dpg.theme(tag=self.hover_theme_tag):
+            with dpg.theme_component(dpg.mvBarSeries):
+                dpg.add_theme_color(
+                    dpg.mvPlotCol_Fill,
+                    hover_color,
+                    category=dpg.mvThemeCat_Plots,
+                )
+
+        return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
+
     def load_data(
         self,
         data: np.ndarray,
@@ -112,6 +148,7 @@ class GUIBarGraph(GUIGraph):
         dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
+            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             dpg.add_bar_series(
                 layer.x_data,
                 layer.y_data,
@@ -121,44 +158,31 @@ class GUIBarGraph(GUIGraph):
                 weight=layer.bar_weight,
             )
 
-            with dpg.theme() as series_theme:
-                with dpg.theme_component(dpg.mvBarSeries):
-                    dpg.add_theme_color(dpg.mvPlotCol_Fill, layer.color, category=dpg.mvThemeCat_Plots)
-
-            dpg_bind_item_theme(series_tag, series_theme)
+            self._bind_theme(layer, series_tag, theme_tag)
 
         self._add_zero_line()
-        self._add_hover_bar()
         self._update_axes_limits()
 
     def _add_hover_bar(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        dpg_delete_item(self.hover_bar_tag)
-
         if self.hovered_bar_index is None or self.hovered_bar_value is None or self.current_data is None:
             return
 
         bar_x = float(self.hovered_bar_index) + 0.5
-        bar_y = self.hovered_bar_value
+        bar_y = round(self.hovered_bar_value, 0)
 
+        dpg_delete_item(self.hover_bar_tag)
         dpg.add_bar_series(
             [bar_x],
             [bar_y],
-            parent=self.y_axis_tag,
             tag=self.hover_bar_tag,
+            parent=self.y_axis_tag,
             weight=0.8,
         )
 
-        layer = next(iter(self.layers.values()))
-        hover_color = (layer.color[0], layer.color[1], layer.color[2], VAL_BAR_PLOT_HOVER_ALPHA)
-
-        with dpg.theme() as hover_theme:
-            with dpg.theme_component(dpg.mvBarSeries):
-                dpg.add_theme_color(dpg.mvPlotCol_Fill, hover_color, category=dpg.mvThemeCat_Plots)
-
-        dpg_bind_item_theme(self.hover_bar_tag, hover_theme)
+        self._bind_hover_theme()
 
     def _mouse_move_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         if not dpg.is_item_hovered(self.plot_tag) or self.current_data is None:
@@ -203,16 +227,7 @@ class GUIBarGraph(GUIGraph):
             tag=self.zero_line_tag,
         )
 
-        with dpg.theme() as zero_line_theme:
-            with dpg.theme_component(dpg.mvLineSeries):
-                dpg.add_theme_color(dpg.mvPlotCol_Line, COL_BAR_PLOT_ZERO_LINE, category=dpg.mvThemeCat_Plots)
-                dpg.add_theme_style(
-                    dpg.mvPlotStyleVar_LineWeight,
-                    VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
-                    category=dpg.mvThemeCat_Plots,
-                )
-
-        dpg_bind_item_theme(self.zero_line_tag, zero_line_theme)
+        ZeroLineGraphTheme().bind_to_item(self.zero_line_tag)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)

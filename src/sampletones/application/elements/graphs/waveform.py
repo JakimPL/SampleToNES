@@ -237,7 +237,11 @@ class GUIWaveformGraph(GUIGraph):
             dpg_delete_item(theme_tag)
             with dpg.theme(tag=theme_tag):
                 with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
+                    dpg.add_theme_color(
+                        dpg.mvPlotCol_Line,
+                        layer.color,
+                        category=dpg.mvThemeCat_Plots,
+                    )
 
             dpg_bind_item_theme(series_tag, theme_tag)
 
