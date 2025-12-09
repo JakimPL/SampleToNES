@@ -13,6 +13,7 @@ from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+    LBL_BUTTON_MAIN_EXPLORER_REFRESH,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
@@ -24,7 +25,9 @@ from ...constants.main import (
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     SUF_MAIN_EXPLORER_NODE_DUMMY,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+    TAG_BUTTON_MAIN_EXPLORER_REFRESH,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+    TAG_GROUP_MAIN_EXPLORER_CONTROLS,
     TAG_GROUP_MAIN_EXPLORER_TREE,
     TAG_PANEL_MAIN_EXPLORER,
     TAG_TREE_MAIN_EXPLORER,
@@ -83,7 +86,7 @@ class GUIExplorerPanel(GUITreePanel):
             border=False,
         ):
             self._create_section_text()
-            self._create_collapse_button()
+            self._create_buttons()
             self._create_tree_window()
 
         self._rebuild_tree()
@@ -92,15 +95,23 @@ class GUIExplorerPanel(GUITreePanel):
         section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-    def _create_collapse_button(self) -> None:
+    def _create_buttons(self) -> None:
         dpg.add_separator()
-        GUIButton(
-            tag=TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-            label=LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-            parent=self.tag,
-            width=-1,
-            callback=self.collapse_all,
-        )
+        with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_CONTROLS):
+            GUIButton(
+                tag=TAG_BUTTON_MAIN_EXPLORER_REFRESH,
+                label=LBL_BUTTON_MAIN_EXPLORER_REFRESH,
+                parent=self.tag,
+                width=-1,
+                callback=self.refresh,
+            )
+            GUIButton(
+                tag=TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+                label=LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+                parent=self.tag,
+                width=-1,
+                callback=self.collapse_all,
+            )
 
     def _create_tree_window(self) -> None:
         dpg.add_separator()
@@ -138,6 +149,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
+        dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
 
     def _build_tree_node(
         self,

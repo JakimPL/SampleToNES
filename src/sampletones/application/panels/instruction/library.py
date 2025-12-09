@@ -238,6 +238,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=enabled)
 
     def _refresh_libraries(self) -> None:
         self.library_manager.set_library_directory(self.config_manager.get_library_directory())
@@ -499,7 +500,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             return
 
-        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=False)
         dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, MSG_INSTRUCTIONS_LIBRARY_GENERATING)
         dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, show=True)
         dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, show=False)
@@ -593,7 +593,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _restore_generation_panel(self) -> None:
         dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, show=True)
-        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=True)
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=True)
         dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, show=False)
 

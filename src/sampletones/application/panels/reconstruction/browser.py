@@ -87,7 +87,7 @@ class GUIBrowserPanel(GUITreePanel):
             border=False,
         ):
             self._create_section_text()
-            self._create_browser_controls()
+            self._create_buttons()
             self._create_tree_window()
 
         self._rebuild_tree()
@@ -96,7 +96,7 @@ class GUIBrowserPanel(GUITreePanel):
         section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-    def _create_browser_controls(self) -> None:
+    def _create_buttons(self) -> None:
         dpg.add_separator()
         with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS):
             GUIButton(
@@ -211,6 +211,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
+        dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
