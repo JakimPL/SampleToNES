@@ -10,7 +10,12 @@ from sampletones.library import InstructionLibraryFragment
 from sampletones.utils.logger import logger
 
 from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
-from ...constants.graphs import DIM_WAVEFORM_HEIGHT, VAL_PLOT_WIDTH_GLOBAL_FULL
+from ...constants.graphs import (
+    DIM_SPECTRUM_HEIGHT,
+    DIM_SPECTRUM_WIDTH,
+    DIM_WAVEFORM_HEIGHT,
+    DIM_WAVEFORM_WIDTH,
+)
 from ...constants.instructions import (
     LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
@@ -79,7 +84,7 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.waveform_display = GUIWaveformGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
-                width=VAL_PLOT_WIDTH_GLOBAL_FULL,
+                width=DIM_WAVEFORM_WIDTH,
                 height=DIM_WAVEFORM_HEIGHT,
                 parent=self.waveform_tag,
                 label=LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
@@ -96,8 +101,8 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-                width=VAL_PLOT_WIDTH_GLOBAL_FULL,
-                height=DIM_WAVEFORM_HEIGHT,
+                width=DIM_SPECTRUM_WIDTH,
+                height=DIM_SPECTRUM_HEIGHT,
                 parent=self.spectrum_tag,
                 label=LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
             )

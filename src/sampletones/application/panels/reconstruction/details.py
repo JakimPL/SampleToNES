@@ -17,9 +17,9 @@ from ...constants.general import (
 )
 from ...constants.graphs import (
     DIM_BAR_PLOT_HEIGHT,
+    DIM_BAR_PLOT_WIDTH,
     SUF_GRAPH_RAW_DATA,
     SUF_GRAPH_RAW_DATA_GROUP,
-    VAL_PLOT_WIDTH_GLOBAL_FULL,
 )
 from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
@@ -238,7 +238,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot = GUIBarGraph(
             tag=plot_tag,
             parent=parent,
-            width=VAL_PLOT_WIDTH_GLOBAL_FULL,
+            width=DIM_BAR_PLOT_WIDTH,
             height=DIM_BAR_PLOT_HEIGHT,
             label=config.label,
             y_min=y_min,

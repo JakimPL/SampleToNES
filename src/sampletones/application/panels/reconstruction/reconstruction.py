@@ -24,7 +24,7 @@ from ...constants.general import (
     TAG_TAB_RECONSTRUCTIONS,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
 )
-from ...constants.graphs import DIM_WAVEFORM_HEIGHT, VAL_PLOT_WIDTH_GLOBAL_FULL
+from ...constants.graphs import DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
 from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
     LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
@@ -183,7 +183,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
-            width=VAL_PLOT_WIDTH_GLOBAL_FULL,
+            width=DIM_WAVEFORM_WIDTH,
             height=DIM_WAVEFORM_HEIGHT,
             parent=self.plot_tag,
             label=LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,

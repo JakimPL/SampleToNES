@@ -29,6 +29,7 @@ from .constants.general import (
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
     DIM_PANEL_WIDTH_LEFT,
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
+    DIM_TEXT_OFFSET_MENU_FPS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
     LBL_MENU_GROUP_FILE,
@@ -74,11 +75,13 @@ from .constants.general import (
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+    TAG_MENU_TEXT_FPS,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
     TAG_TABS,
     TAG_WINDOW_MAIN,
+    TPL_MENU_TEXT_FPS,
     TTL_DIALOG_CONFIG_STATUS,
     TTL_DIALOG_LOAD_CONFIG,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
@@ -188,8 +191,8 @@ class GUI:
         self._register_shortcuts()
         self._set_default_theme()
         self._set_viewport()
-        self._create_main_window()
         self._setup_dearpygui()
+        self._create_main_window()
         self.set_callbacks()
         self.config_manager.update_gui()
         self._update_menu()
@@ -471,6 +474,9 @@ class GUI:
                     label=LBL_MENU_ITEM_VIEW_FULLSCREEN,
                     check=True,
                 )
+
+            with dpg.group(horizontal=True, enabled=False):
+                dpg.add_text("", tag=TAG_MENU_TEXT_FPS)
 
     def _update_menu(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
@@ -1021,7 +1027,9 @@ class GUI:
     def _update_playback_menu_items(self) -> None:
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
         dpg_configure_item(
-            TAG_MENU_ITEM_PLAYBACK_PLAY, label=self._get_play_label(), enabled=self._is_play_or_pause_enabled()
+            TAG_MENU_ITEM_PLAYBACK_PLAY,
+            label=self._get_play_label(),
+            enabled=self._is_play_or_pause_enabled(),
         )
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_STOP, enabled=self._is_stop_enabled())
         dpg_set_value(TAG_MENU_ITEM_PLAYBACK_AUTOPLAY, self.application_config_manager.autoplay)
@@ -1040,6 +1048,13 @@ class GUI:
         self.advanced_settings_panel.set_visibility(advanced_settings)
         dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
+    def _update_fps(self) -> None:
+        fps = 1.0 / dpg.get_delta_time()
+        dpg_set_value(TAG_MENU_TEXT_FPS, TPL_MENU_TEXT_FPS.format(fps=fps))
+        y = dpg.get_item_pos(TAG_MENU_TEXT_FPS)[1]
+        width = dpg.get_item_rect_size(TAG_MENU_TEXT_FPS)[0]
+        dpg.set_item_pos(TAG_MENU_TEXT_FPS, (dpg.get_viewport_width() - width - DIM_TEXT_OFFSET_MENU_FPS, y))
+
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:
         _root = tkinter.Tk()
@@ -1051,7 +1066,9 @@ class GUI:
 
     def run(self) -> None:
         try:
-            dpg.start_dearpygui()
+            while dpg.is_dearpygui_running():
+                dpg.render_dearpygui_frame()
+                self._update_fps()
         finally:
             if self.converter_panel and self.converter_panel.converter:
                 self.converter_panel.converter.cleanup()
