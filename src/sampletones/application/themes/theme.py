@@ -45,9 +45,9 @@ class Theme:
                 with dpg.theme_component(parameter.item_type, enabled_state=parameter.enabled_state):
                     for item in items:
                         if isinstance(item, ThemeColor):
-                            dpg.add_theme_color(item.key, item.color)
+                            dpg.add_theme_color(item.key, item.color, category=item.category)
                         elif isinstance(item, ThemeStyle):
-                            dpg.add_theme_style(item.key, item.x, item.y)
+                            dpg.add_theme_style(item.key, item.x, item.y, category=item.category)
 
     @staticmethod
     def create_before_bind(func: Callable[..., Any]) -> Callable[..., Any]:

@@ -35,6 +35,7 @@ from ...constants.graphs import (
 from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
 from ...themes.graphs.indicator import IndicatorGraphTheme
+from ...themes.theme import Theme
 from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
@@ -70,6 +71,7 @@ class GUIWaveformGraph(GUIGraph):
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = -1.0,
         y_max: float = 1.0,
+        indicator_theme: Theme = IndicatorGraphTheme(),
     ):
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
@@ -80,9 +82,10 @@ class GUIWaveformGraph(GUIGraph):
         self.reset_y_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_Y}"
         self.reset_all_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_ALL}"
 
-        self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
+        self.indicator_theme = indicator_theme
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
+        self.current_position: int = 0
 
         super().__init__(
             tag,
@@ -266,20 +269,18 @@ class GUIWaveformGraph(GUIGraph):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        dpg_delete_item(self.position_indicator_tag)
-
         sample_length = self.sample_length
         if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
 
+            dpg_delete_item(self.position_indicator_tag)
             dpg.add_line_series(
                 [position_x, position_x],
                 [self.y_min, self.y_max],
-                parent=self.y_axis_tag,
                 tag=self.position_indicator_tag,
+                parent=self.y_axis_tag,
             )
-
-            IndicatorGraphTheme().bind_to_item(self.position_indicator_tag)
+            self.indicator_theme.bind_to_item(self.position_indicator_tag)
 
     def _reset_x_axis(self) -> None:
         if self.layers:
