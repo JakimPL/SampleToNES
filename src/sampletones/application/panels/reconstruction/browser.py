@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.utils.dpg import dpg_configure_item
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -46,7 +47,7 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.tree import GUITreePanel
+from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from ...utils.thread import concurrent
@@ -65,6 +66,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
+        self.building_tree: bool = False
 
         self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self._on_reconstruct_file: Optional[Callable[[], None]] = None
@@ -137,13 +139,17 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent
     def _rebuild_tree(self) -> None:
+        self.building_tree = True
         self._set_tree_enabled(False)
         try:
+            self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self.build_tree()
         finally:
+            self.building_tree = False
             self._set_tree_enabled(True)
+            self._assign_item_handler_registries()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -159,6 +165,7 @@ class GUIBrowserPanel(GUITreePanel):
         **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
+        self._handlers.clear()
         if node.node_type == NodeType.ROOT:
             return
 
@@ -167,7 +174,6 @@ class GUIBrowserPanel(GUITreePanel):
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
-        handler_registry_tag = self._get_handler_registry_tag(node_tag)
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
@@ -181,8 +187,7 @@ class GUIBrowserPanel(GUITreePanel):
                     self._build_tree_node(child, node_tag, has_favorite_ancestor)
 
             self._add_item_handler_registry(
-                tag=handler_registry_tag,
-                parent=node_tag,
+                node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
             )
@@ -203,15 +208,17 @@ class GUIBrowserPanel(GUITreePanel):
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(
-                tag=handler_registry_tag,
-                parent=node_tag,
+                node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_reconstruction_node_clicked,
             )
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
-        dpg.configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
+        if self.building_tree and enabled:
+            return
+
+        dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
 
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)

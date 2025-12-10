@@ -37,10 +37,10 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.tree import GUITreePanel
+from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_delete_children
+from ...utils.dpg import dpg_configure_item, dpg_delete_children
 from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
@@ -136,10 +136,12 @@ class GUIExplorerPanel(GUITreePanel):
     def _rebuild_tree(self) -> None:
         self._set_tree_enabled(False)
         try:
+            self._delete_item_handler_registries()
             self.explorer_manager.refresh_tree()
             self.build_tree()
         finally:
             self._set_tree_enabled(True)
+            self._assign_item_handler_registries()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
@@ -148,8 +150,8 @@ class GUIExplorerPanel(GUITreePanel):
         return True
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
-        dpg.configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
 
     def _build_tree_node(
         self,
@@ -167,7 +169,6 @@ class GUIExplorerPanel(GUITreePanel):
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
         has_favorite_ancestor |= is_favorite
-        handler_registry_tag = self._get_handler_registry_tag(node_tag)
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
 
@@ -203,8 +204,7 @@ class GUIExplorerPanel(GUITreePanel):
                 FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
 
             self._add_item_handler_registry(
-                tag=handler_registry_tag,
-                parent=node_tag,
+                node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
             )
@@ -226,8 +226,7 @@ class GUIExplorerPanel(GUITreePanel):
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(
-                tag=handler_registry_tag,
-                parent=node_tag,
+                node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_file_node_clicked,
                 item_double_click_callback=self._on_file_node_double_clicked,
@@ -336,16 +335,22 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_currently_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
-        is_currently_expanded &= dpg.get_item_configuration(node_tag).get("open", False)
+        is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+        is_currently_expanded = is_directory_expanded and dpg.get_item_state(node_tag)["activated"]
 
         if is_currently_expanded:
             self.explorer_manager.collapse_directory(node.filepath)
-            self.explorer_manager.clear_directory_children(node)
         else:
-            self.explorer_manager.expand_directory(node)
-
-        self._rebuild_node_subtree(node)
+            if not is_directory_expanded:
+                self.explorer_manager.expand_directory(node)
+                self._set_tree_enabled(False)
+                try:
+                    self._rebuild_node_subtree(node)
+                finally:
+                    self._assign_item_handler_registries()
+                    self._set_tree_enabled(True)
+            else:
+                pass  # collapse nodes
 
     def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
         node_tag = self._generate_node_tag(node)

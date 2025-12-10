@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -6,8 +6,8 @@ from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones.typehints import Sender
 
-from ..config.application.manager import ApplicationConfigManager
-from ..constants.general import (
+from ...config.application.manager import ApplicationConfigManager
+from ...constants.general import (
     COL_PATH_TEXT_HOVER,
     COL_TEXT_FAVORITE,
     DIM_BUTTON_WIDTH_SEARCH,
@@ -20,32 +20,31 @@ from ..constants.general import (
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
 )
-from ..constants.main import (
+from ...constants.main import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
 )
-from ..elements.fonts.font import Font
-from ..elements.fonts.registry import FontRegistry
-from ..themes.default import DefaultTheme
-from ..themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
-from ..themes.nodes.file import (
+from ...themes.default import DefaultTheme
+from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from ...themes.nodes.file import (
     LibraryFileNodeTheme,
     NoContentFileNodeTheme,
     ReconstructionFileNodeTheme,
     WaveFileNodeTheme,
 )
-from ..themes.nodes.library import (
+from ...themes.nodes.library import (
     LibraryGeneratorNodeTheme,
     LibraryGroupNodeTheme,
     LibraryInstructionNodeTheme,
     LibraryLibraryNodeTheme,
 )
-from ..themes.theme import Theme
-from ..utils.dpg import dpg_delete_children, dpg_delete_item
-from .button import GUIButton
-from .panel import GUIPanel
-
-ItemClickCallback = Callable[[Sender, Tuple[int, int], Any], None]
+from ...themes.theme import Theme
+from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ..button import GUIButton
+from ..fonts.font import Font
+from ..fonts.registry import FontRegistry
+from ..panel import GUIPanel
+from .handler import Handler, ItemClickCallback
 
 
 class GUITreePanel(GUIPanel):
@@ -67,6 +66,9 @@ class GUITreePanel(GUIPanel):
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
+
+        self._handlers: Dict[str, Handler] = {}
+        self._new_handlers: Dict[str, Handler] = {}
 
         self._on_node_selected: Optional[Callable[..., Any]] = None
 
@@ -135,28 +137,58 @@ class GUITreePanel(GUIPanel):
     def _get_handler_registry_tag(self, tag: str) -> str:
         return f"{tag}{SUF_NODE_HANDLER}"
 
+    def _delete_item_handler_registry(self, node_tag: str) -> None:
+        handler_tag = self._get_handler_registry_tag(node_tag)
+        dpg_delete_item(handler_tag)
+
+    def _delete_item_handler_registries(self) -> None:
+        for handler in self._handlers.values():
+            dpg_delete_item(handler.tag)
+
+        self._handlers.clear()
+
+    def _assign_item_handler_registries(self) -> None:
+        for handler in self._new_handlers.values():
+            self._create_item_handler_registry(handler)
+            self._bind_item_handler_registry(handler)
+
+        self._new_handlers.clear()
+
+    def _create_item_handler_registry(self, handler: Handler) -> None:
+        dpg_delete_item(handler.tag)
+        with dpg.item_handler_registry(tag=handler.tag):
+            if handler.item_click_callback is not None:
+                dpg.add_item_clicked_handler(
+                    callback=handler.item_click_callback,
+                    user_data=handler.node,
+                )
+            if handler.item_double_click_callback is not None:
+                dpg.add_item_double_clicked_handler(
+                    callback=handler.item_double_click_callback,
+                    user_data=handler.node,
+                )
+
+    def _bind_item_handler_registry(self, handler: Handler) -> None:
+        if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
+            dpg.bind_item_handler_registry(handler.parent, handler.tag)
+
     def _add_item_handler_registry(
         self,
-        tag: str,
-        parent: str,
+        node_tag: str,
         node: TreeNode,
         item_click_callback: Optional[ItemClickCallback] = None,
         item_double_click_callback: Optional[ItemClickCallback] = None,
     ) -> None:
-        dpg_delete_item(tag)
-        with dpg.item_handler_registry(tag=tag):
-            if item_click_callback is not None:
-                dpg.add_item_clicked_handler(
-                    callback=item_click_callback,
-                    user_data=node,
-                )
-            if item_double_click_callback is not None:
-                dpg.add_item_double_clicked_handler(
-                    callback=item_double_click_callback,
-                    user_data=node,
-                )
-
-        dpg.bind_item_handler_registry(parent, tag)
+        tag = self._get_handler_registry_tag(node_tag)
+        handler = Handler(
+            tag=tag,
+            parent=node_tag,
+            node=node,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+        )
+        self._handlers[tag] = handler
+        self._new_handlers[tag] = handler
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]

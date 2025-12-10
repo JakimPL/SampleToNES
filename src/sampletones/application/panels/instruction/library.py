@@ -77,7 +77,7 @@ from ...constants.main import TAG_PANEL_MAIN_CONVERTER
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.tree import GUITreePanel
+from ...elements.tree.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager
 from ...utils.dialogs import (
     show_error_dialog,
@@ -191,10 +191,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _rebuild_tree(self) -> None:
         self._set_tree_enabled(False)
         try:
+            self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()
         finally:
             self._set_tree_enabled(True)
+            self._assign_item_handler_registries()
             self.update_status()
 
     def is_loaded(self) -> bool:
@@ -308,7 +310,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._set_tree_enabled(True)
 
     def load_library_file(self, filepath: Path) -> None:
-        library_key = self.library_manager.create_key_from_filename(filepath.name)
+        try:
+            library_key = self.library_manager.create_key_from_filename(filepath.name)
+        except ValueError as exception:
+            logger.error_with_traceback(exception, f"Invalid library file name format: {filepath.name}")
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
+            return
         self._load_library_and_set_current(library_key)
         self.update_status()
 
@@ -323,7 +330,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if node.node_type == NodeType.ROOT:
             return
 
-        handler_registry_tag = self._get_handler_registry_tag(node_tag)
         if node.node_type == NodeType.PLACEHOLDER:
             if library_node is None:
                 return
@@ -375,8 +381,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
             if isinstance(node, LibraryNode):
                 self._add_item_handler_registry(
-                    tag=handler_registry_tag,
-                    parent=node_tag,
+                    node_tag=node_tag,
                     node=node,
                     item_click_callback=self._on_library_node_clicked,
                 )
