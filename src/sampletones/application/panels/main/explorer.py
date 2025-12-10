@@ -10,7 +10,12 @@ from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
-from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN
+from ...constants.general import (
+    LBL_TREE_FILTER,
+    SUF_PANEL_LEFT,
+    TAG_TAB_MAIN,
+    VAL_TREE_NODE_CHILDREN_SLOT,
+)
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_BUTTON_MAIN_EXPLORER_REFRESH,
@@ -126,32 +131,71 @@ class GUIExplorerPanel(GUITreePanel):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
-        self.explorer_manager.collapse_all()
-        self._rebuild_tree()
+        children = dpg.get_item_children(self.tree_tag, VAL_TREE_NODE_CHILDREN_SLOT)
+        assert children is not None, "Explorer tree has no children."
+        for node_tag in children:
+            dpg.set_value(node_tag, False)
 
     def refresh(self) -> None:
         self._rebuild_tree()
 
     @concurrent
     def _rebuild_tree(self) -> None:
+        if self._building_tree:
+            return
+
         self._set_tree_enabled(False)
+        self._building_tree = True
         try:
             self._delete_item_handler_registries()
             self.explorer_manager.refresh_tree()
             self.build_tree()
+        except SystemError as exception:
+            logger.error_with_traceback(exception, "Failed to rebuild reconstructions browser tree")
         finally:
+            self._building_tree = False
             self._set_tree_enabled(True)
             self._assign_item_handler_registries()
 
-    def _has_relevant_content(self, node: TreeNode) -> bool:
-        if isinstance(node, FileSystemNode):
-            return self.explorer_manager.has_relevant_content(node.filepath)
+    @concurrent
+    def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
+        if self._building_tree:
+            return
 
-        return True
+        self._set_tree_enabled(False)
+        self._building_tree = True
+        try:
+            self._rebuild_node_subtree(node)
+        except SystemError as exception:
+            logger.error_with_traceback(exception, "Failed to rebuild file explorer tree")
+        finally:
+            self._building_tree = False
+            self._set_tree_enabled(True)
+            self._assign_item_handler_registries()
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
-        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
+        dpg.set_value(node_tag, True)
+
+    def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        dpg_delete_children(node_tag)
+        if self.explorer_manager.is_directory_expanded(node.filepath):
+            for child in node.children:
+                self._build_tree_node(
+                    child,
+                    node_tag,
+                    has_favorite_ancestor=self._has_favorite_ancestor(child),
+                )
+        else:
+            dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
+            dpg.add_tree_node(
+                label="",
+                tag=dummy_tag,
+                parent=node_tag,
+                leaf=True,
+            )
 
     def _build_tree_node(
         self,
@@ -171,19 +215,20 @@ class GUIExplorerPanel(GUITreePanel):
         has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
-
+            is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
                 parent=parent,
                 default_open=should_expand,
                 open_on_arrow=False,
+                open_on_double_click=False,
             ) as tree_node_tag:
-                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 self._apply_node_theme(
                     node_tag,
                     node,
                     has_favorite_ancestor=has_favorite_ancestor,
+                    is_node_expanded=is_directory_expanded,
                 )
 
                 if self.explorer_manager.is_directory_expanded(node.filepath):
@@ -223,7 +268,6 @@ class GUIExplorerPanel(GUITreePanel):
                 node,
                 has_favorite_ancestor=has_favorite_ancestor,
             )
-            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(
                 node_tag=node_tag,
@@ -301,6 +345,16 @@ class GUIExplorerPanel(GUITreePanel):
         if self._on_load_library is not None and filepath.exists():
             self._on_load_library(filepath)
 
+    def _has_relevant_content(self, node: TreeNode) -> bool:
+        if isinstance(node, FileSystemNode):
+            return self.explorer_manager.has_relevant_content(node.filepath)
+
+        return True
+
+    def _set_tree_enabled(self, enabled: bool) -> None:
+        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
+        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
+
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node
         dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
@@ -336,43 +390,9 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
-        is_currently_expanded = is_directory_expanded and dpg.get_item_state(node_tag)["activated"]
-
-        if is_currently_expanded:
-            self.explorer_manager.collapse_directory(node.filepath)
-        else:
-            if not is_directory_expanded:
-                self.explorer_manager.expand_directory(node)
-                self._set_tree_enabled(False)
-                try:
-                    self._rebuild_node_subtree(node)
-                finally:
-                    self._assign_item_handler_registries()
-                    self._set_tree_enabled(True)
-            else:
-                pass  # collapse nodes
-
-    def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
-        node_tag = self._generate_node_tag(node)
-        if not dpg.does_item_exist(node_tag):
-            return
-
-        dpg_delete_children(node_tag)
-        if self.explorer_manager.is_directory_expanded(node.filepath):
-            for child in node.children:
-                self._build_tree_node(
-                    child,
-                    node_tag,
-                    has_favorite_ancestor=self._has_favorite_ancestor(child),
-                )
-        else:
-            dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
-            dpg.add_tree_node(
-                label="",
-                tag=dummy_tag,
-                parent=node_tag,
-                leaf=True,
-            )
+        if not is_directory_expanded:
+            self.explorer_manager.expand_directory(node)
+            self._rebuild_directory_node(node, node_tag)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

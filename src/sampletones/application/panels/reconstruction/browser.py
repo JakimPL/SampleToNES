@@ -66,7 +66,6 @@ class GUIBrowserPanel(GUITreePanel):
 
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
-        self.building_tree: bool = False
 
         self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self._on_reconstruct_file: Optional[Callable[[], None]] = None
@@ -139,16 +138,21 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent
     def _rebuild_tree(self) -> None:
-        self.building_tree = True
-        self._set_tree_enabled(False)
+        if self._building_tree:
+            return
+
+        # self._set_tree_enabled(False)
+        self._building_tree = True
         try:
             self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self.build_tree()
+        except SystemError as exception:
+            logger.error_with_traceback(exception, "Failed to rebuild reconstructions browser tree")
         finally:
-            self.building_tree = False
-            self._set_tree_enabled(True)
+            self._building_tree = False
+            # self._set_tree_enabled(True)
             self._assign_item_handler_registries()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
@@ -176,13 +180,17 @@ class GUIBrowserPanel(GUITreePanel):
         has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            with dpg.tree_node(label=node.name, tag=node_tag, parent=parent, default_open=should_expand):
+            with dpg.tree_node(
+                label=node.name,
+                tag=node_tag,
+                parent=parent,
+                default_open=should_expand,
+            ):
                 self._apply_node_theme(
                     node_tag,
                     node,
                     has_favorite_ancestor=has_favorite_ancestor,
                 )
-                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 for child in node.children:
                     self._build_tree_node(child, node_tag, has_favorite_ancestor)
 
@@ -194,10 +202,10 @@ class GUIBrowserPanel(GUITreePanel):
         else:
             dpg.add_selectable(
                 label=node.name,
+                tag=node_tag,
                 parent=parent,
                 callback=self._on_selectable_clicked,
                 user_data=node,
-                tag=node_tag,
                 default_value=False,
             )
             self._apply_node_theme(
@@ -205,7 +213,6 @@ class GUIBrowserPanel(GUITreePanel):
                 node,
                 has_favorite_ancestor=has_favorite_ancestor,
             )
-            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
             self._add_item_handler_registry(
                 node_tag=node_tag,
@@ -214,9 +221,6 @@ class GUIBrowserPanel(GUITreePanel):
             )
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        if self.building_tree and enabled:
-            return
-
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
 

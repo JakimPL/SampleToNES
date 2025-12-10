@@ -189,13 +189,20 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     @concurrent
     def _rebuild_tree(self) -> None:
-        self._set_tree_enabled(False)
+        if self._building_tree:
+            return
+
+        # self._set_tree_enabled(False)
+        self._building_tree = True
         try:
             self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()
+        except SystemError as exception:
+            logger.error_with_traceback(exception, "Failed to rebuild instructions library tree")
         finally:
-            self._set_tree_enabled(True)
+            self._building_tree = False
+            # self._set_tree_enabled(True)
             self._assign_item_handler_registries()
             self.update_status()
 

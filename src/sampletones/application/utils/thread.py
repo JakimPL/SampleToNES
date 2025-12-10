@@ -25,14 +25,16 @@ class SingleThreadExecutor:
 
 
 def concurrent(method: F) -> F:
-    executor_attr = f"_concurrent_executor_{method.__name__}"
+    method_class = method.__qualname__.split(".")[0]
+    method_name = method.__name__
+    executor_attribute = f"_concurrent_executor_{method_class}_{method_name}"
 
     @wraps(method)
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
-        if not hasattr(self, executor_attr):
-            setattr(self, executor_attr, SingleThreadExecutor())
+        if not hasattr(self, executor_attribute):
+            setattr(self, executor_attribute, SingleThreadExecutor())
 
-        executor: SingleThreadExecutor = getattr(self, executor_attr)
+        executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
         def task() -> None:
             method(self, *args, **kwargs)

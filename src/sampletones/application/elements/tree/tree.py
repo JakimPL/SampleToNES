@@ -29,6 +29,7 @@ from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
 from ...themes.nodes.file import (
     LibraryFileNodeTheme,
     NoContentFileNodeTheme,
+    NotExpandedDirectoryNodeTheme,
     ReconstructionFileNodeTheme,
     WaveFileNodeTheme,
 )
@@ -67,6 +68,7 @@ class GUITreePanel(GUIPanel):
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
+        self._building_tree: bool = False
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
 
@@ -308,7 +310,9 @@ class GUITreePanel(GUIPanel):
         node_tag: str,
         node: TreeNode,
         has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
     ) -> None:
+        FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
         if isinstance(node, FileSystemNode):
             match node.node_type:
                 case NodeType.DIRECTORY:
@@ -323,6 +327,7 @@ class GUITreePanel(GUIPanel):
                         node_tag,
                         node,
                         has_favorite_ancestor=has_favorite_ancestor,
+                        is_not_expanded=is_node_expanded,
                     )
 
         return self._apply_other_node_theme(node_tag, node)
@@ -353,6 +358,7 @@ class GUITreePanel(GUIPanel):
         node_tag: str,
         node: FileSystemNode,
         has_favorite_ancestor: bool = False,
+        is_not_expanded: bool = False,
     ) -> None:
         is_favorite = self._is_node_favorite(node)
 
@@ -370,6 +376,8 @@ class GUITreePanel(GUIPanel):
                 case _:
                     if has_favorite_ancestor:
                         theme = FavoriteChildNodeTheme()
+                    elif is_not_expanded:
+                        theme = NotExpandedDirectoryNodeTheme()
                     else:
                         theme = DefaultTheme()
 
