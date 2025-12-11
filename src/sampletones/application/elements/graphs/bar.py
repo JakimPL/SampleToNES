@@ -88,14 +88,15 @@ class GUIBarGraph(GUIGraph):
     def _create_content(self) -> None:
         with dpg.plot(
             tag=self.plot_tag,
+            parent=self.tag,
             label=self.label,
             height=self.height,
             width=self.width,
             anti_aliased=True,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag)
+            dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
+            dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag, parent=self.plot_tag)
+            dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag, parent=self.plot_tag)
 
         with dpg.handler_registry():
             dpg.add_mouse_move_handler(callback=self._mouse_move_callback)

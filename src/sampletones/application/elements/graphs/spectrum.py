@@ -64,17 +64,19 @@ class GUISpectrumGraph(GUIGraph):
     def _create_content(self) -> None:
         with dpg.plot(
             label=self.label,
+            tag=self.plot_tag,
+            parent=self.tag,
             width=self.width,
             height=self.height,
-            tag=self.plot_tag,
             anti_aliased=True,
             no_inputs=True,
             pan_button=-1,
         ):
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
+            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+                parent=self.plot_tag,
                 tag=self.y_axis_tag,
                 scale=dpg.mvPlotScale_Log10,
             )

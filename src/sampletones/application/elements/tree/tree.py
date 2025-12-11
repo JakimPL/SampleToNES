@@ -73,8 +73,6 @@ class GUITreePanel(GUIPanel):
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
 
-        self._on_node_selected: Optional[Callable[..., Any]] = None
-
         self.search_label = search_label
 
         super().__init__(
@@ -208,9 +206,6 @@ class GUITreePanel(GUIPanel):
 
         self._selected_node_tag = sender
         dpg.set_value(sender, True)
-
-        if self._on_node_selected:
-            self._on_node_selected(user_data)
 
     def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self._is_node_favorite(node)
@@ -439,6 +434,3 @@ class GUITreePanel(GUIPanel):
     def _update_favorite_indicator(self, node: FileSystemNode) -> None:
         has_favorite_ancestor = self._has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
-
-    def set_tree_callbacks(self, on_node_selected: Optional[Callable[..., Any]] = None) -> None:
-        self._on_node_selected = on_node_selected

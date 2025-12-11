@@ -3,7 +3,6 @@ from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.utils.dpg import dpg_configure_item
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -50,6 +49,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.data import ReconstructionData
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
+from ...utils.dpg import dpg_configure_item
 from ...utils.thread import concurrent
 
 OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]

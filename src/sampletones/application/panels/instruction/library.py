@@ -492,13 +492,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
+        if isinstance(user_data, InstructionNode):
+            self._load_instruction(user_data)
+
+    def _load_instruction(self, node: InstructionNode) -> None:
         if self._loading_instructions:
             return
 
         if not self._on_instruction_selected:
-            return
-
-        if not isinstance(user_data, InstructionNode):
             return
 
         self._set_tree_enabled(False)
@@ -506,9 +507,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         try:
             config = self.config_manager.get_config()
             self._on_instruction_selected(
-                user_data.generator_class_name,
-                user_data.instruction,
-                user_data.fragment,
+                node.generator_class_name,
+                node.instruction,
+                node.fragment,
                 config.library,
             )
         finally:

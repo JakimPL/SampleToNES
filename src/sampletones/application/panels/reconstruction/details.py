@@ -50,6 +50,7 @@ from ...reconstruction.config import (
 from ...reconstruction.feature import FeatureData
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item
+from ...utils.thread import concurrent
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -284,6 +285,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
 
+    @concurrent(wait=True, method_bound=True)
     def display_reconstruction(self, reconstruction: Reconstruction) -> None:
         feature_data = FeatureData.load(reconstruction)
         self.current_features = feature_data

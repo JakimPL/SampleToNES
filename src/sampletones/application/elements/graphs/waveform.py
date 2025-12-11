@@ -43,6 +43,7 @@ from ...utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from ...utils.thread import concurrent
 from ..button import GUIButton
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
@@ -110,22 +111,32 @@ class GUIWaveformGraph(GUIGraph):
         return 0
 
     def _create_content(self) -> None:
-        with dpg.group(tag=self.controls_tag, horizontal=True):
+        with dpg.group(
+            tag=self.controls_tag,
+            parent=self.tag,
+            horizontal=True,
+        ):
             self._create_controls()
 
         with dpg.plot(
             label=self.label,
+            tag=self.plot_tag,
+            parent=self.tag,
             width=self.width,
             height=self.height,
-            tag=self.plot_tag,
             anti_aliased=True,
             callback=self._plot_callback,
             no_inputs=False,
             pan_button=-1,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_PLOT_AXIS_WAVEFORM_TIME, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE, tag=self.y_axis_tag)
+            dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
+            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_WAVEFORM_TIME, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvYAxis,
+                parent=self.plot_tag,
+                label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
+                tag=self.y_axis_tag,
+            )
 
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
@@ -156,6 +167,7 @@ class GUIWaveformGraph(GUIGraph):
             font=Font.REGULAR_SMALL,
         )
 
+    @concurrent(wait=True, method_bound=True)
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
@@ -175,6 +187,7 @@ class GUIWaveformGraph(GUIGraph):
         self._update_axes_limits()
         self._update_position_indicator()
 
+    @concurrent(wait=True, method_bound=True)
     def load_reconstruction_data(
         self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
     ) -> None:
