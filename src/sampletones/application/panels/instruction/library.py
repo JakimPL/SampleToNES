@@ -113,6 +113,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             on_cancelled=self._on_generation_cancelled,
         )
 
+        self._building_tree: bool = False
+
         self.eta_estimator: Optional[ETAEstimator] = None
 
         self._on_instruction_selected: Optional[OnInstructionSelectedCallback] = None
@@ -198,8 +200,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()
-        except SystemError as exception:
-            logger.error_with_traceback(exception, "Failed to rebuild instructions library tree")
+        except SystemError:
+            logger.warning("Application failed during rebuilding the instructions library tree")
         finally:
             self._building_tree = False
             # self._set_tree_enabled(True)

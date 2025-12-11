@@ -61,6 +61,9 @@ class GUIExplorerPanel(GUITreePanel):
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
 
+        self._building_tree: bool = False
+        self._pending_autoplay_node: Optional[FileSystemNode] = None
+
         self._on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
         self._on_directory_clicked: Optional[OnReconstructPathCallback] = None
         self._on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
@@ -70,8 +73,6 @@ class GUIExplorerPanel(GUITreePanel):
         self._on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
         self._on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
         self._is_converter_running: Optional[Callable[[], bool]] = None
-
-        self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         super().__init__(
             tree=self.explorer_manager.tree,
@@ -150,8 +151,8 @@ class GUIExplorerPanel(GUITreePanel):
             self._delete_item_handler_registries()
             self.explorer_manager.refresh_tree()
             self.build_tree()
-        except SystemError as exception:
-            logger.error_with_traceback(exception, "Failed to rebuild reconstructions browser tree")
+        except SystemError:
+            logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self._building_tree = False
             self._set_tree_enabled(True)
@@ -166,8 +167,8 @@ class GUIExplorerPanel(GUITreePanel):
         self._building_tree = True
         try:
             self._rebuild_node_subtree(node)
-        except SystemError as exception:
-            logger.error_with_traceback(exception, "Failed to rebuild file explorer tree")
+        except SystemError:
+            logger.warning("Application failed during rebuilding the file explorer tree")
         finally:
             self._building_tree = False
             self._set_tree_enabled(True)

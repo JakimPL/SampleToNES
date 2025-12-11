@@ -46,10 +46,13 @@ class FontRegistry:
         with dpg.font_registry():
             for font_data in FontRegistry.REGISTRY.values():
                 dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
+                dpg.add_font_range(0x0100, 0x024F, parent=font_data.tag)
+                dpg.add_font_range(0x1E00, 0x1EFF, parent=font_data.tag)
+                dpg.add_font_range(0x2000, 0x206F, parent=font_data.tag)
+                dpg.add_font_range(0x2C60, 0x2C7F, parent=font_data.tag)
+                dpg.add_font_range(0xA720, 0xA7FF, parent=font_data.tag)
 
-            dpg.add_font_range_hint(dpg.mvFontRangeHint_Default, parent=TAG_FONT_ICON)
             dpg.add_font_chars([VAL_CHARACTER_STAR], parent=TAG_FONT_ICON)
-
             dpg.bind_font(TAG_FONT_REGULAR)
 
         dpg.set_global_font_scale(VAL_FONT_SCALE)

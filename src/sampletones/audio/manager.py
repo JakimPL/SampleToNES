@@ -8,8 +8,9 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
-from sampletones.audio.io import load_audio
+from sampletones.audio import load_audio
 from sampletones.exceptions import PlaybackError
+from sampletones.utils import to_utf8
 from sampletones.utils.logger import logger
 
 from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
@@ -98,24 +99,27 @@ class AudioDeviceManager:
             if int(info["maxOutputChannels"]) == 0:
                 continue
 
+            device_name = to_utf8(str(info["name"]))
             default_sample_rate: int = int(info["defaultSampleRate"])
             if default_sample_rate not in SAMPLE_RATES:
-                logger.warning(f"Device '{info['name']}' has an uncommon default sample rate {default_sample_rate}")
+                logger.warning(f"Device '{device_name}' has an uncommon default sample rate {default_sample_rate}")
 
             supported_rates = self._get_supported_sample_rates(i, default_sample_rate)
             if not supported_rates:
-                logger.warning(f"Device '{info['name']}' has no supported sample rates, skipping")
+                logger.warning(f"Device '{device_name}' has no supported sample rates, skipping")
                 continue
 
+            host_api = int(info["hostApi"])
             self._devices[i] = AudioDevice(
                 index=i,
-                name=str(info["name"]),
+                name=device_name,
                 is_input=int(info["maxInputChannels"]) > 0,
                 is_output=True,
                 is_default_input=i == default_input_index,
                 is_default_output=i == default_output_index,
                 default_sample_rate=cast(SampleRate, default_sample_rate),
                 supported_sample_rates=supported_rates,
+                host_api=host_api,
             )
 
     def _is_sample_rate_supported(self, device_index: int, sample_rate: int) -> bool:
@@ -196,11 +200,12 @@ class AudioDeviceManager:
             device_index=self.device_index,
             name=self.device_name,
             sample_rate=self.sample_rate,
+            host_api=self._devices[self.device_index].host_api,
         )
 
     def set_current_device(self, current_device: CurrentDevice) -> None:
-        device_index = self.find_device_by_name(current_device.name)
-        if device_index is not None:
+        device_index = self.find_device_index(current_device)
+        if device_index != -1:
             return self.configure_device(
                 device_index=current_device.device_index,
                 sample_rate=current_device.sample_rate,
@@ -209,12 +214,12 @@ class AudioDeviceManager:
         logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
         return None
 
-    def find_device_by_name(self, name: str) -> Optional[AudioDevice]:
+    def find_device_index(self, current_device: CurrentDevice) -> int:
         for device in self._devices.values():
-            if device.name == name:
-                return device
+            if device.name == current_device.name and current_device.host_api == device.host_api:
+                return device.index
 
-        return None
+        return -1
 
     def list_devices(self) -> Dict[int, AudioDevice]:
         return dict(self._devices)

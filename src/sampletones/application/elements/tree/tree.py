@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones.typehints import Sender
+from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (
@@ -151,8 +152,12 @@ class GUITreePanel(GUIPanel):
 
     def _assign_item_handler_registries(self) -> None:
         for handler in self._new_handlers.values():
-            self._create_item_handler_registry(handler)
-            self._bind_item_handler_registry(handler)
+            try:
+                self._create_item_handler_registry(handler)
+                self._bind_item_handler_registry(handler)
+            except SystemError:
+                logger.warning(f"Error assigning item handler registry '{handler.tag}'")
+                break
 
         self._new_handlers.clear()
 

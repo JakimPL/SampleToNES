@@ -1,12 +1,18 @@
-from typing import Dict, List, cast
+from typing import Dict, List, Optional, Tuple, Union, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import SAMPLE_RATES, AudioDevice, AudioDeviceManager, SampleRate
+from sampletones.audio import (
+    SAMPLE_RATES,
+    AudioDevice,
+    AudioDeviceManager,
+    CurrentDevice,
+    SampleRate,
+)
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
-from ..constants.general import TTL_WINDOW_MAIN
+from ..constants.general import TTL_WINDOW_MAIN, VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME
 from ..constants.settings import (
     DIM_COMBO_WIDTH_SETTINGS_AUDIO,
     DIM_TEXT_WIDTH_SETTINGS_AUDIO,
@@ -29,7 +35,6 @@ from ..constants.settings import (
 from ..elements.button import GUIButton
 from ..elements.window import GUIWindow
 from ..utils.align import table_wrapper
-from ..utils.dialogs import show_error_dialog
 from ..utils.dpg import dpg_configure_item, dpg_set_value
 
 
@@ -38,9 +43,9 @@ class GUIAudioSettingsWindow(GUIWindow):
         self.audio_device_manager = audio_device_manager
 
         self._devices: Dict[int, AudioDevice] = {}
-        self._device_name_to_device: Dict[str, AudioDevice] = {}
-
+        self._current_device: Optional[CurrentDevice] = None
         self._device_items: List[str] = []
+        self._current_device_index: int = -1
         self._current_device_name: str = ""
         self._current_sample_rate: str = ""
 
@@ -54,12 +59,10 @@ class GUIAudioSettingsWindow(GUIWindow):
     def prepare(self) -> None:
         settings_data = AudioSettingsData.from_device_manager(self.audio_device_manager)
         self._devices = dict(settings_data.devices)
-        self._device_name_to_device = {device.name: device for device in self._devices.values()}
-        self._device_items = [device.name for device in self._devices.values()]
+        self._device_items = list(map(self._get_device_label, self._devices.values()))
 
-        current_device = settings_data.current_device
-        self._current_device_name = current_device.name
-        self._current_sample_rate = f"{current_device.sample_rate}{SUF_SETTINGS_AUDIO_HZ}"
+        self._current_device = settings_data.current_device
+        self._set_device_index_name_and_sample_rate(self._current_device)
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -79,6 +82,26 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         self._update_combos()
 
+    def _get_device_label(self, device: Optional[Union[CurrentDevice, AudioDevice]]) -> str:
+        if device is None:
+            return ""
+
+        device_index = device.index if isinstance(device, AudioDevice) else device.device_index
+        return self._get_device_label_from_index_name(device_index, device.name)
+
+    def _get_device_label_from_index_name(self, device_index: int, device_name: str) -> str:
+        return f"{device_index}{VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME}{device_name}"
+
+    def _retrieve_device_index_and_name(self, device_label: str) -> Tuple[int, str]:
+        separator = VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME
+        index = device_label.find(separator)
+        if index == -1:
+            raise ValueError(f"Invalid device label format: {device_label}")
+
+        device_index = device_label[:index]
+        device_name = device_label[index + len(separator) :]
+        return int(device_index), device_name
+
     def _create_device_selection(self) -> None:
         with dpg.group(tag=TAG_GROUP_SETTINGS_AUDIO_DEVICE, horizontal=True):
             dpg.add_text(LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE)
@@ -88,7 +111,7 @@ class GUIAudioSettingsWindow(GUIWindow):
             dpg.add_combo(
                 tag=TAG_COMBO_SETTINGS_AUDIO_DEVICE,
                 items=self._device_items,
-                default_value=self._current_device_name,
+                default_value=self._get_device_label(self._current_device),
                 width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
                 callback=self._on_device_changed,
             )
@@ -121,8 +144,8 @@ class GUIAudioSettingsWindow(GUIWindow):
             width=-1,
         )
 
-    def _on_device_changed(self, sender: Sender, device_name: str) -> None:
-        self._current_device_name = device_name
+    def _on_device_changed(self, sender: Sender, app_data: str) -> None:
+        self._current_device_index, self._current_device_name = self._retrieve_device_index_and_name(app_data)
         self._update_combos()
 
     def _update_combos(self) -> None:
@@ -130,15 +153,14 @@ class GUIAudioSettingsWindow(GUIWindow):
             return
 
         dpg_configure_item(TAG_COMBO_SETTINGS_AUDIO_DEVICE, items=self._device_items)
-        device = self._device_name_to_device.get(self._current_device_name)
-        if device is None:
-            dpg_set_value(TAG_COMBO_SETTINGS_AUDIO_DEVICE, self._device_items[0] if self._device_items else "")
-            device = self._devices[0]
-        else:
-            dpg_set_value(TAG_COMBO_SETTINGS_AUDIO_DEVICE, self._current_device_name)
+        if self._current_device is None or not self._devices:
+            dpg_set_value(TAG_COMBO_SETTINGS_AUDIO_DEVICE, "")
+            return
 
+        device_label = self._get_device_label_from_index_name(self._current_device_index, self._current_device_name)
+        device = self._devices[self._current_device_index]
         sample_rate_items = [f"{rate}{SUF_SETTINGS_AUDIO_HZ}" for rate in device.supported_sample_rates]
-
+        dpg_set_value(TAG_COMBO_SETTINGS_AUDIO_DEVICE, device_label)
         dpg_configure_item(TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE, items=sample_rate_items)
 
         current_sample_rate_value = dpg.get_value(TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE)
@@ -150,18 +172,12 @@ class GUIAudioSettingsWindow(GUIWindow):
                 dpg_set_value(TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE, sample_rate_items[0])
 
     def _get_selected_device_index(self) -> int:
-        try:
-            device = self._device_name_to_device[self._current_device_name]
-        except KeyError as exception:
-            show_error_dialog(exception, f"Audio device '{self._current_device_name}' not found")
-            return -1
-
-        return device.index
+        return self._retrieve_device_index_and_name(dpg.get_value(TAG_COMBO_SETTINGS_AUDIO_DEVICE))[0]
 
     def _get_selected_sample_rate(self) -> SampleRate:
         sample_rate_string: str = dpg.get_value(TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE)
         sample_rate: int = int(sample_rate_string.replace(SUF_SETTINGS_AUDIO_HZ, ""))
-        assert sample_rate in SAMPLE_RATES
+        assert sample_rate in SAMPLE_RATES, "Unsupported sample rate selected"
         return cast(SampleRate, sample_rate)
 
     def _refresh_devices(self) -> None:
@@ -169,8 +185,16 @@ class GUIAudioSettingsWindow(GUIWindow):
         self.prepare()
         self._update_combos()
 
+    def _set_device_index_name_and_sample_rate(self, current_device: CurrentDevice) -> None:
+        self._current_device_index = current_device.device_index
+        self._current_device_name = current_device.name
+        self._current_sample_rate = f"{current_device.sample_rate}{SUF_SETTINGS_AUDIO_HZ}"
+
     def _apply(self) -> None:
         device_index = self._get_selected_device_index()
         sample_rate = self._get_selected_sample_rate()
         self.audio_device_manager.configure_device(device_index, sample_rate)
+
+        self._current_device = self.audio_device_manager.get_current_device()
+        self._set_device_index_name_and_sample_rate(self._current_device)
         self.hide()

@@ -67,6 +67,8 @@ class GUIBrowserPanel(GUITreePanel):
         output_directory = config_manager.get_output_directory()
         self.browser_manager = BrowserManager(output_directory)
 
+        self._building_tree: bool = False
+
         self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self._on_reconstruct_file: Optional[Callable[[], None]] = None
         self._on_reconstruct_directory: Optional[Callable[[], None]] = None
@@ -148,8 +150,8 @@ class GUIBrowserPanel(GUITreePanel):
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self.build_tree()
-        except SystemError as exception:
-            logger.error_with_traceback(exception, "Failed to rebuild reconstructions browser tree")
+        except SystemError:
+            logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self._building_tree = False
             # self._set_tree_enabled(True)

@@ -7,6 +7,7 @@ from .frequencies import (
     pitch_to_frequency,
     pitch_to_name,
 )
+from .locales import to_utf8
 from .paths import get_directory, shorten_path, to_path
 from .serialization import (
     deserialize_array,
@@ -49,4 +50,5 @@ __all__ = [
     "shorten_path",
     "to_path",
     "get_directory",
+    "to_utf8",
 ]
