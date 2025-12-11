@@ -338,17 +338,13 @@ class GUIBrowserPanel(GUITreePanel):
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
             return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
-        finally:
-            self._set_tree_enabled(True)
+        else:
+            if not reconstruction_data.reconstruction.audio_filepath.exists():
+                show_file_not_found_dialog(
+                    reconstruction_data.reconstruction.audio_filepath,
+                    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+                )
 
-        self._set_tree_enabled(False)
-        if not reconstruction_data.reconstruction.audio_filepath.exists():
-            show_file_not_found_dialog(
-                reconstruction_data.reconstruction.audio_filepath,
-                MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
-            )
-
-        try:
             if self._on_reconstruction_loaded:
                 self._on_reconstruction_loaded(reconstruction_data)
         finally:
