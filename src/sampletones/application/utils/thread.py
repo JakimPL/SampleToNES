@@ -16,9 +16,7 @@ class SingleThreadExecutor:
 
         if current_thread is not None and current_thread.is_alive():
             if wait:
-                print("Waiting for existing thread to finish...")
                 current_thread.join()
-                print("Existing thread has finished.")
             else:
                 return False
 
@@ -54,7 +52,6 @@ def concurrent(
             executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
             def task() -> None:
-                print(executor_attribute)
                 func(self, *args, **kwargs)
 
             executor.execute(task, wait=wait)

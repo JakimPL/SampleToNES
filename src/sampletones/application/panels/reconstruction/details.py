@@ -127,6 +127,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_delete_item(self.export_button_separator_tag)
         dpg_delete_item(self.tab_bar_tag)
         dpg_delete_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS)
+        self._clear_generator_plots()
+
+    def _clear_generator_plots(self) -> None:
+        for plots in self.generator_plots.values():
+            for plot in plots.values():
+                dpg_delete_item(plot.tag)
+                dpg_delete_item(plot.mouse_handler_tag)
+
         self.generator_plots.clear()
 
     def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:
@@ -203,7 +211,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> Optional[GUIBarGraph]:
         config = FEATURE_PLOT_CONFIGS[feature_key]
         plot_tag = f"{self.tag}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
-
         if data.size == 0:
             return None
 
