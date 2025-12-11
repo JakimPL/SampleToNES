@@ -114,7 +114,16 @@ class GUIReconstructionPanel(GUIPanel):
         self._update_reconstruction_display()
 
     def close_reconstruction(self) -> None:
-        self._clear_display()
+        self.reconstruction_data = None
+        self.current_audio_source = AudioSourceType.RECONSTRUCTION
+
+        if self._on_clear_reconstruction_details:
+            self._on_clear_reconstruction_details()
+
+        self.player_panel.clear_audio()
+        self.waveform_display.clear_layers()
+        self._reset_generator_checkboxes()
+        self._reset_audio_source_radio()
 
     def _create_audio_panel(self) -> None:
         dpg.add_separator()
@@ -281,18 +290,6 @@ class GUIReconstructionPanel(GUIPanel):
         )
         dpg_configure_item(radio_tag, enabled=True)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=True)
-
-    def _clear_display(self) -> None:
-        self.reconstruction_data = None
-        self.current_audio_source = AudioSourceType.RECONSTRUCTION
-
-        if self._on_clear_reconstruction_details:
-            self._on_clear_reconstruction_details()
-
-        self.player_panel.clear_audio()
-        self.waveform_display.clear_layers()
-        self._reset_generator_checkboxes()
-        self._reset_audio_source_radio()
 
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:

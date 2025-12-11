@@ -721,6 +721,7 @@ class GUI:
         library_config: InstructionsLibraryConfig,
     ) -> None:
         try:
+            self._close_instruction()
             self.instruction_panel.display_instruction(
                 generator_class_name,
                 instruction,
@@ -824,6 +825,7 @@ class GUI:
 
     def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
         self.audio_device_manager.stop()
+        self._close_reconstruction()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self._update_menu()
 

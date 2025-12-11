@@ -114,6 +114,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
         self._building_tree: bool = False
+        self._loading_instructions: bool = False
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
@@ -189,12 +190,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def refresh(self) -> None:
         self._refresh_libraries()
 
-    @concurrent
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
 
-        # self._set_tree_enabled(False)
         self._building_tree = True
         try:
             self._delete_item_handler_registries()
@@ -204,7 +204,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             logger.warning("Application failed during rebuilding the instructions library tree")
         finally:
             self._building_tree = False
-            # self._set_tree_enabled(True)
             self._assign_item_handler_registries()
             self.update_status()
 
@@ -278,7 +277,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.update_status()
 
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
+        if self._loading_instructions:
+            return
+
         self._set_tree_enabled(False)
+        self._loading_instructions = True
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
@@ -316,15 +319,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
         finally:
+            self._loading_instructions = False
             self._set_tree_enabled(True)
 
     def load_library_file(self, filepath: Path) -> None:
+        if self._loading_instructions:
+            logger.warning("Library is already loading; please wait until it finishes")
+            return
+
         try:
             library_key = self.library_manager.create_key_from_filename(filepath.name)
         except ValueError as exception:
             logger.error_with_traceback(exception, f"Invalid library file name format: {filepath.name}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
             return
+
         self._load_library_and_set_current(library_key)
         self.update_status()
 
@@ -483,6 +492,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
         super()._on_selectable_clicked(sender, app_data, user_data)
 
+        if self._loading_instructions:
+            return
+
         if not self._on_instruction_selected:
             return
 
@@ -490,6 +502,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             return
 
         self._set_tree_enabled(False)
+        self._loading_instructions = True
         try:
             config = self.config_manager.get_config()
             self._on_instruction_selected(
@@ -499,6 +512,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 config.library,
             )
         finally:
+            self._loading_instructions = False
             self._set_tree_enabled(True)
             self.update_status()
 

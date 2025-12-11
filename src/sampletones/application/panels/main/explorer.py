@@ -140,7 +140,7 @@ class GUIExplorerPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
@@ -158,7 +158,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._set_tree_enabled(True)
             self._assign_item_handler_registries()
 
-    @concurrent
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
         if self._building_tree:
             return

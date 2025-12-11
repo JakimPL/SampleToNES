@@ -103,6 +103,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
         modal=True,
         min_size=(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
         autosize=True,
+        no_scrollbar=False,
         on_close=lambda: dpg_delete_item(tag),
     ):
         if message is not None:
@@ -112,7 +113,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
                 wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
             )
 
-        group_tag = f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_GROUP}"
+        group_tag = f"{tag}{SUF_GROUP}"
         with dpg.group(tag=group_tag, parent=tag):
             dpg.add_text(
                 f"{str(type(exception).__name__)}: ",
@@ -127,7 +128,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             )
 
         traceback = GUITraceback(
-            parent=TAG_DIALOG_GLOBAL_ERROR,
+            parent=tag,
             exception=exception,
         )
 
@@ -135,7 +136,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         @table_wrapper(columns=2)
         def content(_: None) -> None:
-            show_button_tag = f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_BUTTON_SHOW_TRACEBACK}"
+            show_button_tag = f"{tag}{SUF_BUTTON_SHOW_TRACEBACK}"
 
             def toggle_traceback() -> None:
                 traceback.toggle_visibility()
@@ -152,9 +153,9 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             )
 
             GUIButton(
-                tag=f"{TAG_DIALOG_GLOBAL_ERROR}{SUF_BUTTON_OK}",
+                tag=f"{tag}{SUF_BUTTON_OK}",
                 label=LBL_BUTTON_GLOBAL_OK,
-                callback=lambda: dpg_delete_item(TAG_DIALOG_GLOBAL_ERROR),
+                callback=lambda: dpg_delete_item(tag),
                 width=-1,
             )
 

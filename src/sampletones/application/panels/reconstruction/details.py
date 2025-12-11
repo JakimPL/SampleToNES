@@ -145,6 +145,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         tab_tag = f"{self.tab_bar_tag}_{generator_name}"
         window_tag = f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
 
+        dpg_delete_item(tab_tag)
+        dpg_delete_item(window_tag)
         with dpg.tab(label=generator_name, parent=self.tab_bar_tag, tag=tab_tag):
             self.generator_plots[generator_name] = {}
             generator_features = feature_data.get_generator_features(generator_name)

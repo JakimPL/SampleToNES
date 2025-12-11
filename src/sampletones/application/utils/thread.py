@@ -1,6 +1,6 @@
 import threading
 from functools import wraps
-from typing import Any, Callable, Optional, TypeVar, cast
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -10,11 +10,19 @@ class SingleThreadExecutor:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
 
-    def execute(self, target: Callable[[], None]) -> bool:
+    def execute(self, target: Callable[[], None], wait: bool = True) -> bool:
         with self._lock:
-            if self._thread is not None and self._thread.is_alive():
+            current_thread = self._thread
+
+        if current_thread is not None and current_thread.is_alive():
+            if wait:
+                print("Waiting for existing thread to finish...")
+                current_thread.join()
+                print("Existing thread has finished.")
+            else:
                 return False
 
+        with self._lock:
             self._thread = threading.Thread(target=target, daemon=True)
             self._thread.start()
             return True
@@ -24,21 +32,33 @@ class SingleThreadExecutor:
             return self._thread is not None and self._thread.is_alive()
 
 
-def concurrent(method: F) -> F:
-    method_class = method.__qualname__.split(".")[0]
-    method_name = method.__name__
-    executor_attribute = f"_concurrent_executor_{method_class}_{method_name}"
+def concurrent(
+    method: Optional[F] = None,
+    *,
+    wait: bool = True,
+    method_bound: bool = False,
+) -> Union[F, Callable[[F], F]]:
+    def decorator(func: F) -> F:
+        method_class = func.__qualname__.split(".")[0]
+        method_name = func.__name__
+        if method_bound:
+            executor_attribute = f"_concurrent_executor_{method_class}_{method_name}"
+        else:
+            executor_attribute = f"_concurrent_executor_{method_class}"
 
-    @wraps(method)
-    def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
-        if not hasattr(self, executor_attribute):
-            setattr(self, executor_attribute, SingleThreadExecutor())
+        @wraps(func)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
+            if not hasattr(self, executor_attribute):
+                setattr(self, executor_attribute, SingleThreadExecutor())
 
-        executor: SingleThreadExecutor = getattr(self, executor_attribute)
+            executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
-        def task() -> None:
-            method(self, *args, **kwargs)
+            def task() -> None:
+                print(executor_attribute)
+                func(self, *args, **kwargs)
 
-        executor.execute(task)
+            executor.execute(task, wait=wait)
 
-    return cast(F, wrapper)
+        return cast(F, wrapper)
+
+    return decorator if method is None else decorator(method)

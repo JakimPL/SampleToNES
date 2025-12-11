@@ -68,6 +68,7 @@ class GUIBrowserPanel(GUITreePanel):
         self.browser_manager = BrowserManager(output_directory)
 
         self._building_tree: bool = False
+        self._loading_reconstruction: bool = False
 
         self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self._on_reconstruct_file: Optional[Callable[[], None]] = None
@@ -138,7 +139,7 @@ class GUIBrowserPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
@@ -301,10 +302,23 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             self._add_context_menu_favorite_item(node)
 
+    @concurrent(wait=True, method_bound=True)
     def load_and_display_reconstruction(self, filepath: Path) -> None:
+        if self._loading_reconstruction:
+            return None
+
         self._set_tree_enabled(False)
+        self._loading_reconstruction = True
         try:
             reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
+            if not reconstruction_data.reconstruction.audio_filepath.exists():
+                show_file_not_found_dialog(
+                    reconstruction_data.reconstruction.audio_filepath,
+                    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+                )
+
+            if self._on_reconstruction_loaded:
+                self._on_reconstruction_loaded(reconstruction_data)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
@@ -338,16 +352,8 @@ class GUIBrowserPanel(GUITreePanel):
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
             return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
-        else:
-            if not reconstruction_data.reconstruction.audio_filepath.exists():
-                show_file_not_found_dialog(
-                    reconstruction_data.reconstruction.audio_filepath,
-                    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
-                )
-
-            if self._on_reconstruction_loaded:
-                self._on_reconstruction_loaded(reconstruction_data)
         finally:
+            self._loading_reconstruction = False
             self._set_tree_enabled(True)
 
         return self.application_config_manager.set_current_reconstruction(filepath)
