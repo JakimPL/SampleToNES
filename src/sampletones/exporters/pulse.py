@@ -4,7 +4,12 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MIN_PITCH
-from sampletones.instructions import InstructionFields, PulseInstruction
+from sampletones.generators import GeneratorTypeUnion, PulseGenerator
+from sampletones.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    PulseInstruction,
+)
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
@@ -73,5 +78,9 @@ class PulseExporter(Exporter[PulseInstruction]):
         )
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return PulseInstruction
+
+    @staticmethod
+    def get_generator_type() -> GeneratorTypeUnion:
+        return PulseGenerator

@@ -6,7 +6,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import MIN_SAMPLE_LENGTH
 from sampletones.ffts import CyclicArray
-from sampletones.instructions import InstructionT
+from sampletones.instructions import InstructionT, InstructionTypeUnion
 from sampletones.timers import TimerT, get_frequency_table
 from sampletones.typehints import Initials
 
@@ -96,5 +96,5 @@ class Generator(Generic[InstructionT, TimerT]):
         raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         raise NotImplementedError("Subclasses must implement this method")

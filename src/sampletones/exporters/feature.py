@@ -51,6 +51,13 @@ class Features(BaseModel):
         return value
 
     def __setitem__(self, feature_key: FeatureKey, value: FeatureValue) -> None:
+        if feature_key == FeatureKey.INITIAL_PITCH:
+            if not isinstance(value, int):
+                raise TypeError(f"Expected int for {feature_key}, got {type(value)}")
+        else:
+            if not isinstance(value, np.ndarray):
+                raise TypeError(f"Expected np.ndarray for {feature_key}, got {type(value)}")
+
         setattr(self, feature_key.name.lower(), value)
 
     def __contains__(self, feature_key: FeatureKey) -> bool:

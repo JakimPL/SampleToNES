@@ -4,7 +4,12 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import NUM_PERIODS
-from sampletones.instructions import InstructionFields, NoiseInstruction
+from sampletones.generators import GeneratorTypeUnion, NoiseGenerator
+from sampletones.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    NoiseInstruction,
+)
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
@@ -73,5 +78,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         )
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return NoiseInstruction
+
+    @staticmethod
+    def get_generator_type() -> GeneratorTypeUnion:
+        return NoiseGenerator

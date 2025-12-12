@@ -4,7 +4,12 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MAX_VOLUME, MIN_PITCH
-from sampletones.instructions import InstructionFields, TriangleInstruction
+from sampletones.generators import GeneratorTypeUnion, TriangleGenerator
+from sampletones.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    TriangleInstruction,
+)
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
@@ -65,5 +70,9 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         )
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return TriangleInstruction
+
+    @staticmethod
+    def get_generator_type() -> GeneratorTypeUnion:
+        return TriangleGenerator

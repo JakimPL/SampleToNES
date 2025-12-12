@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.constants.general import NOISE_PERIODS
+from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model, pitch_to_name
@@ -54,7 +55,7 @@ from ...utils.dpg import dpg_configure_item, dpg_delete_item
 from ...utils.thread import concurrent
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
-OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, FeatureKey, np.ndarray], None]
+OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, np.ndarray], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -273,15 +274,36 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_ticks=y_ticks,
         )
 
+        assert self.current_features is not None, "Current features should not be None when creating feature plots"
+        feature_data = self.current_features.model_copy()
+        features = feature_data.get_generator_features(generator_name)
+        assert features is not None, f"Features for generator {generator_name} should not be None"
+
         plot.set_callbacks(
-            on_bar_point_clicked=lambda data: self._on_bar_point_clicked(generator_name, feature_key, data)
+            on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
+                generator_name,
+                features,
+                feature_key,
+                data,
+            )
         )
 
         return plot
 
-    def _on_bar_point_clicked(self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray) -> None:
+    def _on_bar_point_clicked(
+        self,
+        generator_name: GeneratorName,
+        features: Features,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+    ) -> None:
         if self._on_reconstruction_instrument_updated is not None:
-            self._on_reconstruction_instrument_updated(generator_name, feature_key, data)
+            self._on_reconstruction_instrument_updated(
+                generator_name,
+                features,
+                feature_key,
+                data,
+            )
 
     def _add_raw_data_text(self, plot_tag: str, parent: str, data: np.ndarray) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))

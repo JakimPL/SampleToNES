@@ -75,6 +75,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
+
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
 

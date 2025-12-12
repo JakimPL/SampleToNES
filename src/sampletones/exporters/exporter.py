@@ -3,7 +3,12 @@ from typing import Dict, Generic, Iterable, List, Optional, Union, cast
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
-from sampletones.instructions import InstructionFields, InstructionT
+from sampletones.generators import GeneratorTypeUnion
+from sampletones.instructions import (
+    InstructionFields,
+    InstructionT,
+    InstructionTypeUnion,
+)
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
@@ -131,5 +136,9 @@ class Exporter(Generic[InstructionT]):
         return PhaseTimer.frequency_to_timer(frequency)
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @staticmethod
+    def get_generator_type() -> GeneratorTypeUnion:
         raise NotImplementedError("Subclasses must implement this method")

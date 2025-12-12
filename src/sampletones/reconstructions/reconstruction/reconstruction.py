@@ -40,14 +40,14 @@ from .instructions import InstructionsItem
 
 
 class Reconstruction(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(
         default_factory=default_metadata,
         description="Reconstruction metadata",
     )
     audio_filepath: Path = Field(..., description="Path to the original audio file")
-    config: Config = Field(..., description="Configuration used for reconstruction")
+    config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
     instructions_data: List[InstructionsItem] = Field(..., description="Instructions per generator")
@@ -154,6 +154,51 @@ class Reconstruction(DataModel):
             coefficient=coefficient,
             audio_filepath=path,
         )
+
+    def update_generator_data(
+        self,
+        generator_name: GeneratorName,
+        instructions: List[InstructionUnion],
+        partial_approximation: np.ndarray,
+    ) -> None:
+        array = np.zeros_like(self.approximation)
+        array[: len(partial_approximation)] = partial_approximation[: len(array)]
+
+        new_approximations_data: List[ApproximationsItem] = []
+        for item in self.approximations_data:
+            if item.generator_name == generator_name:
+                new_approximations_data.append(
+                    ApproximationsItem(
+                        generator_name=item.generator_name,
+                        approximation=array,
+                    )
+                )
+            else:
+                new_approximations_data.append(item)
+
+        new_instructions_data: List[InstructionsItem] = []
+        for item in self.instructions_data:
+            if item.generator_name == generator_name:
+                new_instructions_data.append(
+                    InstructionsItem(
+                        generator_name=item.generator_name,
+                        instructions=[
+                            InstructionData(
+                                instruction_class=instruction.class_name(),
+                                instruction=instruction,
+                            )
+                            for instruction in instructions
+                        ],
+                    )
+                )
+            else:
+                new_instructions_data.append(item)
+
+        self.approximations_data = new_approximations_data
+        self.instructions_data = new_instructions_data
+        self.__dict__.pop("approximations", None)
+        self.__dict__.pop("instructions", None)
+        self.approximation = np.sum(np.array(list(self.approximations.values())), axis=0)
 
     def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([], dtype=np.float32))

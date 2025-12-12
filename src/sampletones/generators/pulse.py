@@ -10,7 +10,7 @@ from sampletones.constants.general import (
     MIN_PITCH,
     MIXER_PULSE,
 )
-from sampletones.instructions import PulseInstruction
+from sampletones.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import Initials
 
@@ -87,7 +87,7 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
         return pulse_instructions
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return PulseInstruction
 
     @classmethod

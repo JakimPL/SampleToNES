@@ -116,6 +116,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.data import ReconstructionData
+from .reconstruction.regenerator import Regenerator
 from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
@@ -137,6 +138,7 @@ class GUI:
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
+        self.regenerator: Regenerator = Regenerator()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self.audio_device_manager,
@@ -328,6 +330,10 @@ class GUI:
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
+        self.regenerator.set_callbacks(
+            on_regeneration_finished=self._on_reconstruction_loaded,
+        )
+
         self.explorer_panel.set_callbacks(
             on_wave_file_clicked=self._assign_file_to_converter,
             on_directory_clicked=self._assign_directory_to_converter,
@@ -362,6 +368,7 @@ class GUI:
         self.reconstruction_details_panel.set_callbacks(
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
             on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
+            on_reconstruction_instrument_updated=self.regenerator.regenerate,
         )
         self.converter_panel.set_callbacks(
             on_load_file=self._on_converted_reconstruction_loaded,
@@ -824,6 +831,7 @@ class GUI:
         self._load_reconstruction(filepath)
 
     def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
+        self.regenerator.reconstruction_data = reconstruction_data
         self.audio_device_manager.stop()
         self._close_reconstruction()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)

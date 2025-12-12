@@ -5,7 +5,7 @@ import numpy as np
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
-from sampletones.instructions import NoiseInstruction
+from sampletones.instructions import InstructionTypeUnion, NoiseInstruction
 from sampletones.timers import LFSRTimer
 from sampletones.typehints import Initials
 
@@ -81,7 +81,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
         return noise_instructions
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return NoiseInstruction
 
     @classmethod

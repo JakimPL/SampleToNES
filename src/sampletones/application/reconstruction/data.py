@@ -14,7 +14,7 @@ from .feature import FeatureData
 
 
 class ReconstructionData(BaseModel):
-    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     config: Config
     reconstruction: Reconstruction
