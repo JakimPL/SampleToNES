@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from sampletones.audio import load_audio
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorName
-from sampletones.reconstruction import Reconstruction
+from sampletones.reconstructions import Reconstruction
 from sampletones.utils.logger import logger
 
 from .feature import FeatureData
@@ -23,7 +23,7 @@ class ReconstructionData(BaseModel):
 
     @classmethod
     def load(cls, path: Path) -> Self:
-        reconstruction = Reconstruction.load_and_validate(path)
+        reconstruction = Reconstruction.load(path)
         audio_filepath = reconstruction.audio_filepath
         sample_rate = reconstruction.config.library.sample_rate
         normalize = reconstruction.config.general.normalize

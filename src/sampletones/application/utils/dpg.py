@@ -3,6 +3,8 @@ from typing import Any, Callable, Concatenate, Optional, ParamSpec, TypeVar, cas
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.typehints import Callback
+
 from ..elements.button import GUIButton
 
 P = ParamSpec("P")
@@ -10,7 +12,7 @@ R = TypeVar("R")
 
 
 def dpg_wrapper(
-    button_function: Optional[Callable[..., Any]] = None,
+    button_function: Optional[Callback] = None,
 ) -> Callable[[Callable[Concatenate[str, P], Optional[R]]], Callable[Concatenate[str, P], Optional[R]]]:
     def decorator(function: Callable[Concatenate[str, P], Optional[R]]) -> Callable[Concatenate[str, P], Optional[R]]:
         @functools.wraps(function)
@@ -52,7 +54,7 @@ def dpg_configure_item(tag: str, /, *args: Any, **kwargs: Any) -> None:
 
 
 @dpg_wrapper(button_function=GUIButton.set_item_callback)
-def dpg_set_item_callback(tag: str, callback: Callable[..., Any], /, *args: Any, **kwargs: Any) -> None:
+def dpg_set_item_callback(tag: str, callback: Callback, /, *args: Any, **kwargs: Any) -> None:
     dpg.set_item_callback(tag, callback=callback, *args, **kwargs)
 
 

@@ -1,15 +1,22 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
-from sampletones.instructions import NoiseInstruction
+from sampletones.constants.general import NUM_PERIODS
+from sampletones.instructions import InstructionFields, NoiseInstruction
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):
+    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields] = {
+        FeatureKey.VOLUME: "volume",
+        FeatureKey.ARPEGGIO: "period",
+        FeatureKey.DUTY_CYCLE: "short",
+    }
+
     @staticmethod
     def extract_data(instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
@@ -47,7 +54,7 @@ class NoiseExporter(Exporter[NoiseInstruction]):
     @staticmethod
     def get_feature_map(instructions: List[NoiseInstruction]) -> FeatureMap:
         initial_period, periods, volumes, duty_cycles = NoiseExporter.extract_data(instructions)
-        arpeggio = (np.array(periods) - initial_period) % 16
+        arpeggio = (np.array(periods) - initial_period) % NUM_PERIODS
 
         return {
             FeatureKey.INITIAL_PITCH: initial_period,
@@ -55,6 +62,15 @@ class NoiseExporter(Exporter[NoiseInstruction]):
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }
+
+    @classmethod
+    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> NoiseInstruction:
+        return NoiseInstruction(
+            on=cls._infer_instruction_on(dictionary),
+            period=int(dictionary["period"] % NUM_PERIODS),
+            volume=int(dictionary["volume"]),
+            short=bool(dictionary["short"]),
+        )
 
     @staticmethod
     def get_instruction_type() -> type:

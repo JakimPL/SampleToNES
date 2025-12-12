@@ -30,6 +30,7 @@ from sampletones.tree import (
     Tree,
     TreeNode,
 )
+from sampletones.typehints import VoidCallback
 from sampletones.utils import pitch_to_name, to_path
 
 from ..constants.instructions import (
@@ -44,11 +45,11 @@ class InstructionsLibraryManager:
     def __init__(
         self,
         library_directory: Path,
-        on_generation_start: Optional[Callable[[], None]] = None,
-        on_completed: Optional[Callable[[], None]] = None,
+        on_generation_start: Optional[VoidCallback] = None,
+        on_completed: Optional[VoidCallback] = None,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
+        on_cancelled: Optional[VoidCallback] = None,
     ) -> None:
         self.library = InstructionLibrary(directory=str(library_directory))
         self.library_files: Dict[InstructionLibraryKey, str] = {}
@@ -56,11 +57,11 @@ class InstructionsLibraryManager:
         self.tree = Tree()
         self.creator: Optional[InstructionsLibraryCreator] = None
 
-        self._on_generation_start: Optional[Callable[[], None]] = on_generation_start
-        self._on_generation_completed: Optional[Callable[[], None]] = on_completed
+        self._on_generation_start: Optional[VoidCallback] = on_generation_start
+        self._on_generation_completed: Optional[VoidCallback] = on_completed
         self._on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
         self._on_generation_error: Optional[Callable[[Exception], None]] = on_error
-        self._on_generation_cancelled: Optional[Callable[[], None]] = on_cancelled
+        self._on_generation_cancelled: Optional[VoidCallback] = on_cancelled
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = InstructionLibrary(directory=str(directory))

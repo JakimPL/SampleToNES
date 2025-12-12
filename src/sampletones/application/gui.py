@@ -1,7 +1,7 @@
 import sys
 import tkinter
 from pathlib import Path
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
@@ -16,7 +16,7 @@ from sampletones.constants.paths import (
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender
+from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
@@ -535,9 +535,9 @@ class GUI:
     def _create_layout(
         label: str,
         tab_tag: str,
-        left_content_builder: Callable[[], None],
-        center_content_builder: Callable[[], None],
-        right_content_builder: Callable[[], None],
+        left_content_builder: VoidCallback,
+        center_content_builder: VoidCallback,
+        right_content_builder: VoidCallback,
         right_panel_height: int,
         right_panel_width: int,
         left_panel_width: int = DIM_PANEL_WIDTH_LEFT,

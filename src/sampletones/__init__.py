@@ -14,7 +14,7 @@ if TYPE_CHECKING:
         TriangleInstruction,
     )
     from .library import InstructionLibrary
-    from .reconstruction import Reconstruction, Reconstructor
+    from .reconstructions import Reconstruction, Reconstructor
 
 
 CUPY_AVAILABLE = False  # pylint: disable=invalid-name

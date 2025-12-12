@@ -1,4 +1,5 @@
 from .general import (
+    Callback,
     Color,
     FeatureMap,
     FeatureValue,
@@ -6,6 +7,7 @@ from .general import (
     ReducedObject,
     Sender,
     SerializedData,
+    VoidCallback,
 )
 
 __all__ = [
@@ -16,4 +18,6 @@ __all__ = [
     "ReducedObject",
     "Sender",
     "Color",
+    "Callback",
+    "VoidCallback",
 ]

@@ -6,8 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
-from sampletones.reconstruction import Reconstruction
-from sampletones.typehints import Sender
+from sampletones.reconstructions import Reconstruction
+from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
@@ -82,10 +82,10 @@ class GUIReconstructionPanel(GUIPanel):
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._pending_generator_name: Optional[GeneratorName] = None
 
-        self._on_export_wav: Optional[Callable[[], None]] = None
+        self._on_export_wav: Optional[VoidCallback] = None
         self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
-        self._on_clear_reconstruction_details: Optional[Callable[[], None]] = None
-        self._on_change_audio_state: Optional[Callable[[], None]] = None
+        self._on_clear_reconstruction_details: Optional[VoidCallback] = None
+        self._on_change_audio_state: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
@@ -219,10 +219,10 @@ class GUIReconstructionPanel(GUIPanel):
 
     def set_callbacks(
         self,
-        on_export_wav: Optional[Callable[[], None]] = None,
+        on_export_wav: Optional[VoidCallback] = None,
         on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None,
-        on_clear_reconstruction_details: Optional[Callable[[], None]] = None,
-        on_change_audio_state: Optional[Callable[[], None]] = None,
+        on_clear_reconstruction_details: Optional[VoidCallback] = None,
+        on_change_audio_state: Optional[VoidCallback] = None,
     ) -> None:
         if on_export_wav is not None:
             self._on_export_wav = on_export_wav

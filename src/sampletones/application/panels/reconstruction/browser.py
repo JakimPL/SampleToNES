@@ -10,7 +10,7 @@ from sampletones.exceptions import (
     InvalidReconstructionValuesError,
 )
 from sampletones.tree import FileSystemNode, NodeType, TreeNode
-from sampletones.typehints import Sender
+from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from ...browser.manager import BrowserManager
@@ -71,8 +71,8 @@ class GUIBrowserPanel(GUITreePanel):
         self._loading_reconstruction: bool = False
 
         self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
-        self._on_reconstruct_file: Optional[Callable[[], None]] = None
-        self._on_reconstruct_directory: Optional[Callable[[], None]] = None
+        self._on_reconstruct_file: Optional[VoidCallback] = None
+        self._on_reconstruct_directory: Optional[VoidCallback] = None
 
         super().__init__(
             tree=self.browser_manager.tree,
@@ -361,8 +361,8 @@ class GUIBrowserPanel(GUITreePanel):
     def set_callbacks(
         self,
         on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None,
-        on_reconstruct_file: Optional[Callable[[], None]] = None,
-        on_reconstruct_directory: Optional[Callable[[], None]] = None,
+        on_reconstruct_file: Optional[VoidCallback] = None,
+        on_reconstruct_directory: Optional[VoidCallback] = None,
     ) -> None:
         if on_reconstruction_loaded is not None:
             self._on_reconstruction_loaded = on_reconstruction_loaded

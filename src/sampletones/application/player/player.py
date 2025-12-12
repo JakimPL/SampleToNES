@@ -3,6 +3,7 @@ from typing import Callable, Optional
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
+from sampletones.typehints import VoidCallback
 
 from .data import AudioData
 
@@ -12,7 +13,7 @@ class AudioPlayer:
         self,
         audio_device_manager: AudioDeviceManager,
         on_position_changed: Optional[Callable[[int], None]] = None,
-        on_change_audio_state: Optional[Callable[[], None]] = None,
+        on_change_audio_state: Optional[VoidCallback] = None,
         sample_rate: int = DEFAULT_SAMPLE_RATE,
     ):
         self.audio_device_manager = audio_device_manager

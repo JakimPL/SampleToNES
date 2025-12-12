@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
@@ -22,7 +22,7 @@ from sampletones.constants.general import (
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.ffts import Window
 from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import SerializedData
+from sampletones.typehints import SerializedData, VoidCallback
 from sampletones.utils.logger import logger
 
 from ..constants.general import (
@@ -50,7 +50,7 @@ class ConfigManager:
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
-        self.config_change_callbacks: List[Callable[[], None]] = []
+        self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
@@ -188,7 +188,7 @@ class ConfigManager:
             raise RuntimeError("Library key is not available")
         return InstructionLibraryKey.create(self.config.library, self.window)
 
-    def add_config_change_callback(self, callback: Callable[[], None]) -> None:
+    def add_config_change_callback(self, callback: VoidCallback) -> None:
         self.config_change_callbacks.append(callback)
 
     def update_gui(self) -> None:

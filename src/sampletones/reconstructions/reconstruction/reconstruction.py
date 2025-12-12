@@ -166,8 +166,8 @@ class Reconstruction(DataModel):
         return sum(error.total_error for error in self.errors_data)
 
     @classmethod
-    def load_and_validate(cls, path: Union[str, Path]) -> "Reconstruction":
-        reconstruction = cls.load(path)
+    def load(cls, path: Union[str, Path]) -> "Reconstruction":
+        reconstruction = super().load(path)
         cls.validate_metadata(reconstruction.metadata)
         return reconstruction
 
@@ -211,7 +211,7 @@ class Reconstruction(DataModel):
             exporter_class = self._get_exporter_class(instructions[0])
             exporter: ExporterUnion = exporter_class()
             self._validate_instructions(exporter, instructions)
-            feature: Features = exporter(instructions)  # type: ignore
+            feature: Features = exporter.to_features(instructions)  # type: ignore
             features[name] = feature
 
         return features

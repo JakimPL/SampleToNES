@@ -5,7 +5,8 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.constants.general import NOISE_PERIODS
-from sampletones.reconstruction import Reconstruction
+from sampletones.reconstructions import Reconstruction
+from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model, pitch_to_name
 
 from ...constants.general import (
@@ -52,6 +53,9 @@ from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item
 from ...utils.thread import concurrent
 
+OnInstrumentExportCallback = Callable[[GeneratorName], None]
+OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, FeatureKey, np.ndarray], None]
+
 
 class GUIReconstructionDetailsPanel(GUIPanel):
     def __init__(self) -> None:
@@ -63,8 +67,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
 
-        self._on_instrument_export: Optional[Callable[[GeneratorName], None]] = None
-        self._on_instruments_export: Optional[Callable[[], None]] = None
+        self._on_instrument_export: Optional[OnInstrumentExportCallback] = None
+        self._on_instruments_export: Optional[VoidCallback] = None
+        self._on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -109,11 +114,16 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def set_callbacks(
         self,
-        on_instrument_export: Optional[Callable[[GeneratorName], None]] = None,
-        on_instruments_export: Optional[Callable[[], None]] = None,
+        on_instrument_export: Optional[OnInstrumentExportCallback] = None,
+        on_instruments_export: Optional[VoidCallback] = None,
+        on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None,
     ) -> None:
-        self._on_instrument_export = on_instrument_export
-        self._on_instruments_export = on_instruments_export
+        if on_instrument_export is not None:
+            self._on_instrument_export = on_instrument_export
+        if on_instruments_export is not None:
+            self._on_instruments_export = on_instruments_export
+        if on_reconstruction_instrument_updated is not None:
+            self._on_reconstruction_instrument_updated = on_reconstruction_instrument_updated
 
     def _export_instruments(self) -> None:
         if self._on_instruments_export is not None:
@@ -263,9 +273,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_ticks=y_ticks,
         )
 
-        # plot.set_callbacks(on_bar_point_clicked=self._on_bar_point_clicked)
+        plot.set_callbacks(
+            on_bar_point_clicked=lambda data: self._on_bar_point_clicked(generator_name, feature_key, data)
+        )
 
         return plot
+
+    def _on_bar_point_clicked(self, generator_name: GeneratorName, feature_key: FeatureKey, data: np.ndarray) -> None:
+        if self._on_reconstruction_instrument_updated is not None:
+            self._on_reconstruction_instrument_updated(generator_name, feature_key, data)
 
     def _add_raw_data_text(self, plot_tag: str, parent: str, data: np.ndarray) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))

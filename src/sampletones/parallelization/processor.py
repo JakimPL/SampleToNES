@@ -6,6 +6,7 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
+from sampletones.typehints import Callback, VoidCallback
 from sampletones.utils.logger import BaseLogger
 from sampletones.utils.logger import logger as default_logger
 
@@ -36,11 +37,11 @@ class TaskProcessor(Generic[T]):
         self._pool_lock: threading.Lock = threading.Lock()
         self._exception: Optional[Exception] = None
 
-        self._on_start: Optional[Callable[[], None]] = None
+        self._on_start: Optional[VoidCallback] = None
         self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
         self._on_completed: Optional[Callable[[T], None]] = None
         self._on_error: Optional[Callable[[Exception], None]] = None
-        self._on_cancelled: Optional[Callable[[], None]] = None
+        self._on_cancelled: Optional[VoidCallback] = None
 
     def start(self) -> None:
         self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
@@ -89,11 +90,11 @@ class TaskProcessor(Generic[T]):
 
     def set_callbacks(
         self,
-        on_start: Optional[Callable[[], None]] = None,
+        on_start: Optional[VoidCallback] = None,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_completed: Optional[Callable[[T], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
+        on_cancelled: Optional[VoidCallback] = None,
     ) -> None:
         if on_start is not None:
             self._on_start = on_start
@@ -109,7 +110,7 @@ class TaskProcessor(Generic[T]):
     def _create_tasks(self) -> List[Any]:
         raise NotImplementedError
 
-    def _get_task_function(self) -> Callable[..., Any]:
+    def _get_task_function(self) -> Callback:
         raise NotImplementedError
 
     def _process_results(self, results: List[T]) -> Any:

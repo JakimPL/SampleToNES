@@ -2,7 +2,9 @@ import threading
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, Union, cast
 
-F = TypeVar("F", bound=Callable[..., Any])
+from sampletones.typehints import Callback, VoidCallback
+
+F = TypeVar("F", bound=Callback)
 
 
 class SingleThreadExecutor:
@@ -10,7 +12,7 @@ class SingleThreadExecutor:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
 
-    def execute(self, target: Callable[[], None], wait: bool = True) -> bool:
+    def execute(self, target: VoidCallback, wait: bool = True) -> bool:
         with self._lock:
             current_thread = self._thread
 

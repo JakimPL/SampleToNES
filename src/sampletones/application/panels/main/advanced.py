@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
 from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import Sender, SerializedData
+from sampletones.typehints import Sender, SerializedData, VoidCallback
 from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager
@@ -55,8 +55,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
-        self._on_update_library_directory: Optional[Callable[[], None]] = None
-        self._on_update_output_directory: Optional[Callable[[], None]] = None
+        self._on_update_library_directory: Optional[VoidCallback] = None
+        self._on_update_output_directory: Optional[VoidCallback] = None
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
@@ -257,6 +257,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.library_path_text:
             self.library_path_text.set_path(library_directory)
 
-    def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
+    def set_callbacks(self, on_update_library_directory: Optional[VoidCallback] = None) -> None:
         if on_update_library_directory is not None:
             self._on_update_library_directory = on_update_library_directory

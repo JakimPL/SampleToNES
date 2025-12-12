@@ -33,7 +33,8 @@ class Features(BaseModel):
             duty_cycle=cast(Optional[np.ndarray], feature_map.get(FeatureKey.DUTY_CYCLE)),
         )
 
-    def _feature_map(self) -> Dict[FeatureKey, Optional[FeatureValue]]:
+    @property
+    def feature_map(self) -> Dict[FeatureKey, Optional[FeatureValue]]:
         return {
             FeatureKey.INITIAL_PITCH: self.initial_pitch,
             FeatureKey.VOLUME: self.volume,
@@ -44,7 +45,7 @@ class Features(BaseModel):
         }
 
     def __getitem__(self, feature_key: FeatureKey) -> FeatureValue:
-        value = self._feature_map().get(feature_key)
+        value = self.feature_map.get(feature_key)
         if value is None:
             raise KeyError(feature_key)
         return value
@@ -53,19 +54,19 @@ class Features(BaseModel):
         setattr(self, feature_key.name.lower(), value)
 
     def __contains__(self, feature_key: FeatureKey) -> bool:
-        return feature_key in self._feature_map() and self._feature_map()[feature_key] is not None
+        return feature_key in self.feature_map and self.feature_map[feature_key] is not None
 
     def get(self, feature_key: FeatureKey) -> Optional[FeatureValue]:
-        return self._feature_map().get(feature_key)
+        return self.feature_map.get(feature_key)
 
     def keys(self) -> List[FeatureKey]:
-        return [key for key, value in self._feature_map().items() if value is not None]
+        return [key for key, value in self.feature_map.items() if value is not None]
 
     def items(self) -> List[Tuple[FeatureKey, FeatureValue]]:
-        return [(key, value) for key, value in self._feature_map().items() if value is not None]
+        return [(key, value) for key, value in self.feature_map.items() if value is not None]
 
     def values(self) -> List[FeatureValue]:
-        return [value for value in self._feature_map().values() if value is not None]
+        return [value for value in self.feature_map.values() if value is not None]
 
     def save(self, filepath: Path, instrument_name: str) -> None:
         try:

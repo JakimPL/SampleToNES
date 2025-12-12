@@ -1,6 +1,5 @@
 from typing import (
     Any,
-    Callable,
     Dict,
     ItemsView,
     KeysView,
@@ -13,7 +12,7 @@ from typing import (
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Color
+from sampletones.typehints import Callback, Color
 
 from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
 
@@ -126,7 +125,7 @@ class Theme:
         cls._dictionary = dictionary
 
     @staticmethod
-    def create_before_bind(func: Callable[..., Any]) -> Callable[..., Any]:
+    def create_before_bind(func: Callback) -> Callback:
         def wrapper(self: "Theme", *args: Any, **kwargs: Any) -> Any:
             self.create()
             return func(self, *args, **kwargs)

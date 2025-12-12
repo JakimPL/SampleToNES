@@ -1,6 +1,8 @@
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
+
+from sampletones.typehints import Callback
 
 from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme
@@ -16,7 +18,7 @@ class GUIButton:
         self,
         tag: str,
         label: str,
-        callback: Optional[Callable[..., Any]] = None,
+        callback: Optional[Callback] = None,
         enabled: bool = True,
         font: Font = Font.REGULAR,
         theme: Theme = DefaultTheme(),
@@ -66,7 +68,7 @@ class GUIButton:
     def set_item_label(self, label: str) -> None:
         dpg.set_item_label(self._button_tag, label)
 
-    def set_item_callback(self, callback: Callable[..., Any]) -> None:
+    def set_item_callback(self, callback: Callback) -> None:
         dpg.set_item_callback(self._button_tag, callback)
 
     def set_value(self, value: Any) -> None:

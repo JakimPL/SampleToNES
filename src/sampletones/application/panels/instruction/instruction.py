@@ -7,6 +7,7 @@ from sampletones.configs import InstructionsLibraryConfig
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import VoidCallback
 from sampletones.utils.logger import logger
 
 from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
@@ -44,8 +45,8 @@ class GUIInstructionPanel(GUIPanel):
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
         self._on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
-        self._on_clear_instruction_details: Optional[Callable[[], None]] = None
-        self._on_change_audio_state: Optional[Callable[[], None]] = None
+        self._on_clear_instruction_details: Optional[VoidCallback] = None
+        self._on_change_audio_state: Optional[VoidCallback] = None
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
         self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
@@ -58,8 +59,8 @@ class GUIInstructionPanel(GUIPanel):
     def set_callbacks(
         self,
         on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None,
-        on_clear_instruction_details: Optional[Callable[[], None]] = None,
-        on_change_audio_state: Optional[Callable[[], None]] = None,
+        on_clear_instruction_details: Optional[VoidCallback] = None,
+        on_change_audio_state: Optional[VoidCallback] = None,
     ) -> None:
         if on_display_instruction_details is not None:
             self._on_display_instruction_details = on_display_instruction_details

@@ -1,8 +1,9 @@
-from typing import Generic, List, Optional
+from typing import Dict, Generic, Iterable, List, Optional, Union, cast
 
 import numpy as np
 
-from sampletones.instructions import InstructionT
+from sampletones.constants.enums import FeatureKey
+from sampletones.instructions import InstructionFields, InstructionT
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
@@ -11,6 +12,8 @@ from .feature import Features
 
 
 class Exporter(Generic[InstructionT]):
+    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields]
+
     def to_features(
         self,
         instructions: List[InstructionT],
@@ -29,7 +32,8 @@ class Exporter(Generic[InstructionT]):
 
         for key, value in features.items():
             if isinstance(value, np.ndarray):
-                trimmed_value = trim(value[:last_nonzero_volume_index])
+                array = value[:last_nonzero_volume_index]
+                trimmed_value = trim(array) if key != FeatureKey.ARPEGGIO else array
                 features[key] = trimmed_value
 
         return features
@@ -38,9 +42,88 @@ class Exporter(Generic[InstructionT]):
     def get_feature_map(instructions: List[InstructionT]) -> FeatureMap:
         raise NotImplementedError("Subclasses must implement this method")
 
-    # @staticmethod
-    # def from_features(features: Features) -> List[InstructionT]:
-    #     raise NotImplementedError("Subclasses must implement this method")
+    @classmethod
+    def from_features(cls, features: Features) -> List[InstructionT]:
+        features_map = features.feature_map
+        initial_pitch = features.initial_pitch
+        instructions: List[InstructionT] = []
+        last_instruction: Optional[InstructionT] = None
+        non_empty_arrays: Iterable[np.ndarray] = cast(
+            Iterable[np.ndarray],
+            filter(lambda obj: isinstance(obj, np.ndarray), features_map.values()),
+        )
+        max_length = max(map(len, non_empty_arrays), default=0)
+        for index in range(max_length):
+            instruction_dictionary: Dict[str, Union[bool, int]] = {}
+            for key, array in features_map.items():
+                if key == FeatureKey.INITIAL_PITCH or array is None:
+                    continue
+
+                attribute = cls._remap_feature_key(key)
+                if not attribute:
+                    continue
+
+                value = Exporter.get_value(
+                    attribute,
+                    cast(np.ndarray, array),
+                    last_instruction,
+                    index,
+                )
+
+                if key == FeatureKey.ARPEGGIO:
+                    instruction_dictionary[attribute] = initial_pitch + value
+                else:
+                    instruction_dictionary[attribute] = value
+
+            instruction = cls._features_dictionary_to_instruction(instruction_dictionary)
+            instructions.append(instruction)
+            last_instruction = instruction
+
+        return instructions
+
+    @classmethod
+    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> InstructionT:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    @staticmethod
+    def _infer_instruction_on(dictionary: Dict[str, Union[bool, int]]) -> bool:
+        if "on" in dictionary:
+            return bool(dictionary["on"])
+
+        if "volume" in dictionary:
+            return dictionary["volume"] > 0
+
+        return True
+
+    @classmethod
+    def get_value(
+        cls,
+        attribute: InstructionFields,
+        array: Optional[np.ndarray],
+        last_instruction: Optional[InstructionT],
+        index: int,
+        initial_value: int = 0,
+    ) -> int:
+        if array is None or not array.size:
+            return initial_value
+
+        if index < len(array):
+            return int(array[index])
+
+        if last_instruction is not None:
+            if hasattr(last_instruction, attribute):
+                return int(getattr(last_instruction, attribute))
+
+            raise AttributeError(f"{last_instruction.__class__.__name__} does not have attribute '{attribute}'")
+
+        return initial_value
+
+    @classmethod
+    def _remap_feature_key(cls, feature_key: FeatureKey) -> Optional[InstructionFields]:
+        if not hasattr(cls, "_ATTRIBUTE_MAP"):
+            raise NotImplementedError("Subclasses must define _ATTRIBUTE_MAP")
+
+        return cls._ATTRIBUTE_MAP.get(feature_key)
 
     @staticmethod
     def pitch_to_timer(pitch: int) -> int:

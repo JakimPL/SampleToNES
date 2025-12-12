@@ -1,16 +1,22 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MIN_PITCH
-from sampletones.instructions import PulseInstruction
+from sampletones.instructions import InstructionFields, PulseInstruction
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
 
 
 class PulseExporter(Exporter[PulseInstruction]):
+    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields] = {
+        FeatureKey.VOLUME: "volume",
+        FeatureKey.ARPEGGIO: "pitch",
+        FeatureKey.DUTY_CYCLE: "duty_cycle",
+    }
+
     @staticmethod
     def extract_data(instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
@@ -56,6 +62,15 @@ class PulseExporter(Exporter[PulseInstruction]):
             FeatureKey.ARPEGGIO: arpeggio.astype(np.int8),
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }
+
+    @classmethod
+    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> PulseInstruction:
+        return PulseInstruction(
+            on=cls._infer_instruction_on(dictionary),
+            pitch=int(dictionary["pitch"]),
+            volume=int(dictionary["volume"]),
+            duty_cycle=int(dictionary["duty_cycle"]),
+        )
 
     @staticmethod
     def get_instruction_type() -> type:

@@ -6,10 +6,11 @@ import dearpygui.dearpygui as dpg
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones.reconstruction.converter import (
+from sampletones.reconstructions.converter import (
     ReconstructionConverter,
     get_output_path,
 )
+from sampletones.typehints import VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
@@ -81,9 +82,9 @@ class GUIConverterPanel(GUIPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         self._on_load_file: Optional[Callable[[Path], None]] = None
-        self._on_load_directory: Optional[Callable[[], None]] = None
-        self._on_cancelled: Optional[Callable[[], None]] = None
-        self._generate_library: Optional[Callable[[], None]] = None
+        self._on_load_directory: Optional[VoidCallback] = None
+        self._on_cancelled: Optional[VoidCallback] = None
+        self._generate_library: Optional[VoidCallback] = None
         self._is_library_loaded: Optional[Callable[[], bool]] = None
 
         super().__init__(
@@ -465,9 +466,9 @@ class GUIConverterPanel(GUIPanel):
     def set_callbacks(
         self,
         on_load_file: Optional[Callable[[Path], None]] = None,
-        on_load_directory: Optional[Callable[[], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
-        generate_library: Optional[Callable[[], None]] = None,
+        on_load_directory: Optional[VoidCallback] = None,
+        on_cancelled: Optional[VoidCallback] = None,
+        generate_library: Optional[VoidCallback] = None,
         is_library_loaded: Optional[Callable[[], bool]] = None,
     ) -> None:
         if on_load_file is not None:

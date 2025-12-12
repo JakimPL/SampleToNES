@@ -2,20 +2,18 @@ from typing import Any, Callable, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Sender
+from sampletones.typehints import Callback, Sender
 
 from .keys import Modifier
 from .shortcut import Shortcut, ShortcutId
 
-ShortcutCallback = Callable[..., Any]
-
 
 class ShortcutManager:
     def __init__(self) -> None:
-        self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, ShortcutCallback]] = {}
+        self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
         self._handler_registry: int | None = None
 
-    def register(self, shortcut_id: ShortcutId, shortcut: Shortcut, callback: ShortcutCallback) -> None:
+    def register(self, shortcut_id: ShortcutId, shortcut: Shortcut, callback: Callback) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
 
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
@@ -37,7 +35,7 @@ class ShortcutManager:
         with dpg.handler_registry() as self._handler_registry:
             for shortcut, callback in self._shortcuts.values():
 
-                def handler(shortcut: Shortcut, callback: ShortcutCallback) -> Callable[[Sender, Any, Any], None]:
+                def handler(shortcut: Shortcut, callback: Callback) -> Callable[[Sender, Any, Any], None]:
                     def inner(sender: Sender, app_data: Any, user_data: Any) -> None:
                         self._handle_key(shortcut, callback)
 
@@ -48,7 +46,7 @@ class ShortcutManager:
                     callback=handler(shortcut, callback),
                 )
 
-    def _handle_key(self, shortcut: Shortcut, callback: ShortcutCallback) -> None:
+    def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
         if self._modifiers_match(shortcut.modifiers):
             callback()
 
