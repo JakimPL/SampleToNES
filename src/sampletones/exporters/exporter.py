@@ -11,14 +11,15 @@ from .feature import Features
 
 
 class Exporter(Generic[InstructionT]):
-    def __call__(
+    def to_features(
         self,
         instructions: List[InstructionT],
     ) -> Features:
         feature_map = self.get_feature_map(instructions)
-        return self.to_features(feature_map)
+        return self.from_feature_map_to_features(feature_map)
 
-    def to_features(self, feature_map: FeatureMap) -> Features:
+    @staticmethod
+    def from_feature_map_to_features(feature_map: FeatureMap) -> Features:
         features = Features.from_feature_map(feature_map)
         last_nonzero_volume_index: Optional[int] = None
         try:
@@ -33,8 +34,13 @@ class Exporter(Generic[InstructionT]):
 
         return features
 
-    def get_feature_map(self, instructions: List[InstructionT]) -> FeatureMap:
+    @staticmethod
+    def get_feature_map(instructions: List[InstructionT]) -> FeatureMap:
         raise NotImplementedError("Subclasses must implement this method")
+
+    # @staticmethod
+    # def from_features(features: Features) -> List[InstructionT]:
+    #     raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
     def pitch_to_timer(pitch: int) -> int:

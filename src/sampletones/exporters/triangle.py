@@ -11,7 +11,8 @@ from .exporter import Exporter
 
 
 class TriangleExporter(Exporter[TriangleInstruction]):
-    def extract_data(self, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
+    @staticmethod
+    def extract_data(instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
         initial_pitch = None
 
         pitch = MIN_PITCH
@@ -40,8 +41,9 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes
 
-    def get_feature_map(self, instructions: List[TriangleInstruction]) -> FeatureMap:
-        initial_pitch, pitches, volumes = self.extract_data(instructions)
+    @staticmethod
+    def get_feature_map(instructions: List[TriangleInstruction]) -> FeatureMap:
+        initial_pitch, pitches, volumes = TriangleExporter.extract_data(instructions)
         arpeggio = np.array(pitches) - initial_pitch
 
         return {

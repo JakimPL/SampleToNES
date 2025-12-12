@@ -10,7 +10,8 @@ from .exporter import Exporter
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):
-    def extract_data(self, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
+    @staticmethod
+    def extract_data(instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
 
         period = 0
@@ -43,8 +44,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         initial_period = initial_period if initial_period is not None else 0
         return initial_period, periods, volumes, duty_cycles
 
-    def get_feature_map(self, instructions: List[NoiseInstruction]) -> FeatureMap:
-        initial_period, periods, volumes, duty_cycles = self.extract_data(instructions)
+    @staticmethod
+    def get_feature_map(instructions: List[NoiseInstruction]) -> FeatureMap:
+        initial_period, periods, volumes, duty_cycles = NoiseExporter.extract_data(instructions)
         arpeggio = (np.array(periods) - initial_period) % 16
 
         return {
