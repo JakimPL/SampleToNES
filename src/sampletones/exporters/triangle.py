@@ -63,10 +63,14 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         }
 
     @classmethod
-    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> TriangleInstruction:
+    def _features_dictionary_to_instruction(
+        cls,
+        dictionary: Dict[str, Union[bool, int]],
+        initial_pitch: int,
+    ) -> TriangleInstruction:
         return TriangleInstruction(
             on=cls._infer_instruction_on(dictionary),
-            pitch=int(dictionary["pitch"]),
+            pitch=int(initial_pitch + dictionary["pitch"]),
         )
 
     @staticmethod

@@ -99,7 +99,8 @@ class GUIBarGraph(GUIGraph):
             self._add_zero_line()
 
         with dpg.handler_registry(tag=self.mouse_handler_tag):
-            dpg.add_mouse_move_handler(callback=self._mouse_move_callback)
+            dpg.add_mouse_move_handler(callback=self._mouse_action_callback)
+            dpg.add_mouse_click_handler(callback=self._mouse_action_callback)
 
     def _bind_theme(
         self,
@@ -226,7 +227,7 @@ class GUIBarGraph(GUIGraph):
     def _get_first_layer(self) -> Optional[BarLayer]:
         return next(iter(self.layers.values()), None)
 
-    def _mouse_move_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+    def _mouse_action_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
             return
 
@@ -247,7 +248,7 @@ class GUIBarGraph(GUIGraph):
         if layer is None:
             raise RuntimeError("A layer is expected to be present when handling mouse events")
 
-        if dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
+        if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
             layer.y_data[bar_index] = clamped_y
             self._update_display()
 

@@ -69,10 +69,14 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         }
 
     @classmethod
-    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> NoiseInstruction:
+    def _features_dictionary_to_instruction(
+        cls,
+        dictionary: Dict[str, Union[bool, int]],
+        initial_pitch: int,
+    ) -> NoiseInstruction:
         return NoiseInstruction(
             on=cls._infer_instruction_on(dictionary),
-            period=int(dictionary["period"] % NUM_PERIODS),
+            period=int((initial_pitch + dictionary["period"]) % NUM_PERIODS),
             volume=int(dictionary["volume"]),
             short=bool(dictionary["short"]),
         )

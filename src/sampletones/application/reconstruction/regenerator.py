@@ -35,6 +35,7 @@ class Regenerator:
         generator_class = exporter_class.get_generator_type()
         features[feature_key] = data
 
+        print(self.reconstruction_data.reconstruction.instructions[generator_name])
         instructions = cast(List[InstructionUnion], exporter_class.from_features(features))
         generator = generator_class(config, generator_name)
         audio = self._generate_generator_audio(generator, instructions)

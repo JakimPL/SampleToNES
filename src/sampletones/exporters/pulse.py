@@ -69,10 +69,14 @@ class PulseExporter(Exporter[PulseInstruction]):
         }
 
     @classmethod
-    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> PulseInstruction:
+    def _features_dictionary_to_instruction(
+        cls,
+        dictionary: Dict[str, Union[bool, int]],
+        initial_pitch: int,
+    ) -> PulseInstruction:
         return PulseInstruction(
             on=cls._infer_instruction_on(dictionary),
-            pitch=int(dictionary["pitch"]),
+            pitch=int(initial_pitch + dictionary["pitch"]),
             volume=int(dictionary["volume"]),
             duty_cycle=int(dictionary["duty_cycle"]),
         )

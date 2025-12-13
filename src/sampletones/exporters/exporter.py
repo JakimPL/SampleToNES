@@ -38,7 +38,7 @@ class Exporter(Generic[InstructionT]):
         for key, value in features.items():
             if isinstance(value, np.ndarray):
                 array = value[:last_nonzero_volume_index]
-                trimmed_value = trim(array) if key != FeatureKey.ARPEGGIO else array
+                trimmed_value = trim(array)
                 features[key] = trimmed_value
 
         return features
@@ -73,21 +73,23 @@ class Exporter(Generic[InstructionT]):
                     cast(np.ndarray, array),
                     last_instruction,
                     index,
+                    initial_value=initial_pitch if attribute == "pitch" else 0,
                 )
 
-                if key == FeatureKey.ARPEGGIO:
-                    instruction_dictionary[attribute] = initial_pitch + value
-                else:
-                    instruction_dictionary[attribute] = value
+                instruction_dictionary[attribute] = value
 
-            instruction = cls._features_dictionary_to_instruction(instruction_dictionary)
+            instruction = cls._features_dictionary_to_instruction(instruction_dictionary, initial_pitch)
             instructions.append(instruction)
             last_instruction = instruction
 
         return instructions
 
     @classmethod
-    def _features_dictionary_to_instruction(cls, dictionary: Dict[str, Union[bool, int]]) -> InstructionT:
+    def _features_dictionary_to_instruction(
+        cls,
+        dictionary: Dict[str, Union[bool, int]],
+        initial_pitch: int,
+    ) -> InstructionT:
         raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
@@ -117,7 +119,11 @@ class Exporter(Generic[InstructionT]):
 
         if last_instruction is not None:
             if hasattr(last_instruction, attribute):
-                return int(getattr(last_instruction, attribute))
+                value = int(getattr(last_instruction, attribute))
+                if attribute == "pitch":
+                    value -= initial_value
+
+                return value
 
             raise AttributeError(f"{last_instruction.__class__.__name__} does not have attribute '{attribute}'")
 
