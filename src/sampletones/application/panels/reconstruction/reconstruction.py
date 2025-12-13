@@ -116,7 +116,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def update_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_data = reconstruction_data
-        self._update_reconstruction_display()
+        self._update_reconstruction_display(reconstruction_only=True)
 
     def close_reconstruction(self) -> None:
         self.reconstruction_data = None
@@ -238,22 +238,39 @@ class GUIReconstructionPanel(GUIPanel):
         if on_change_audio_state is not None:
             self._on_change_audio_state = on_change_audio_state
 
+    def _get_generator_tag(self, generator_name: GeneratorName) -> str:
+        return TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name).lower()
+
     def _get_selected_generators(self) -> List[GeneratorName]:
         selected_generators: List[GeneratorName] = []
         for generator_name in GeneratorName:
-            tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
+            tag = self._get_generator_tag(generator_name)
             if dpg.get_value(tag):
                 selected_generators.append(generator_name)
 
         return selected_generators
 
-    def _update_reconstruction_display(self) -> None:
+    def _get_current_generators(self) -> List[GeneratorName]:
+        generators: List[GeneratorName] = []
+        for generator_name in GeneratorName:
+            tag = self._get_generator_tag(generator_name)
+            if dpg.get_value(tag):
+                generators.append(generator_name)
+
+        return generators
+
+    def _update_reconstruction_display(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data:
             return
 
-        selected_generators = self._get_selected_generators()
-        self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
-        self._update_audio_player()
+        if reconstruction_only:
+            selected_generators = self._get_current_generators()
+            self.waveform_display.update_reconstruction_data(self.reconstruction_data, selected_generators)
+        else:
+            selected_generators = self._get_selected_generators()
+            self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
+
+        self._update_audio_player(reconstruction_only=reconstruction_only)
 
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
@@ -265,12 +282,13 @@ class GUIReconstructionPanel(GUIPanel):
             self.current_audio_source = AudioSourceType.RECONSTRUCTION
         self._update_audio_player()
 
-    def _update_audio_player(self) -> None:
-        if not self.reconstruction_data:
+    def _update_audio_player(self, reconstruction_only: bool = False) -> None:
+        if not self.reconstruction_data or (
+            self.current_audio_source == AudioSourceType.ORIGINAL and reconstruction_only
+        ):
             return
 
         sample_rate = self.reconstruction_data.reconstruction.config.sample_rate
-
         if self.current_audio_source == AudioSourceType.ORIGINAL:
             audio_data = AudioData.from_array(self.reconstruction_data.original_audio, sample_rate)
         else:

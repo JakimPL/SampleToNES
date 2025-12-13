@@ -40,7 +40,6 @@ from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
-    dpg_delete_children,
     dpg_delete_item,
 )
 from ...utils.thread import concurrent
@@ -187,14 +186,9 @@ class GUIWaveformGraph(GUIGraph):
         self._update_axes_limits()
         self._update_position_indicator()
 
-    @concurrent(wait=True, method_bound=True)
-    def load_reconstruction_data(
+    def _extract_reconstruction_layer_data(
         self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
-    ) -> None:
-        self.clear_layers()
-        self.current_data = reconstruction_data
-        self.current_position = 0
-
+    ) -> Tuple[np.ndarray, float]:
         if selected_generators is None:
             selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
 
@@ -211,6 +205,49 @@ class GUIWaveformGraph(GUIGraph):
             np.max(np.abs(original_audio / original_audio_coefficient)),
         )
 
+        return approximation / coefficient, coefficient
+
+    @concurrent(wait=True, method_bound=True)
+    def update_reconstruction_data(
+        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+    ) -> None:
+        if not isinstance(self.current_data, ReconstructionData):
+            return
+
+        self.current_data = reconstruction_data
+        approximation_data, _ = self._extract_reconstruction_layer_data(
+            reconstruction_data,
+            selected_generators,
+        )
+
+        reconstruction_layer = ArrayLayer(
+            data=approximation_data,
+            name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
+            color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
+            line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+        )
+
+        self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
+        self._update_display()
+
+    @concurrent(wait=True, method_bound=True)
+    def load_reconstruction_data(
+        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+    ) -> None:
+        self.clear_layers()
+        self.current_data = reconstruction_data
+        self.current_position = 0
+
+        approximation_data, coefficient = self._extract_reconstruction_layer_data(
+            reconstruction_data,
+            selected_generators,
+        )
+
+        original_audio = reconstruction_data.original_audio
+        original_audio_coefficient = 1.0
+        if self.reconstruction_autoscale:
+            original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+
         self.add_layer(
             ArrayLayer(
                 data=original_audio / (coefficient * original_audio_coefficient),
@@ -222,7 +259,7 @@ class GUIWaveformGraph(GUIGraph):
 
         self.add_layer(
             ArrayLayer(
-                data=approximation / coefficient,
+                data=approximation_data,
                 name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
                 color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
@@ -238,26 +275,32 @@ class GUIWaveformGraph(GUIGraph):
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
-            dpg.add_line_series(
-                layer.x_data,
-                layer.y_data,
-                label=layer.name,
-                parent=self.y_axis_tag,
-                tag=series_tag,
-            )
+            if dpg.does_item_exist(series_tag):
+                dpg.configure_item(
+                    series_tag,
+                    x=layer.x_data,
+                    y=layer.y_data,
+                )
+            else:
+                dpg.add_line_series(
+                    layer.x_data,
+                    layer.y_data,
+                    label=layer.name,
+                    parent=self.y_axis_tag,
+                    tag=series_tag,
+                )
 
-            dpg_delete_item(theme_tag)
-            with dpg.theme(tag=theme_tag):
-                with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(
-                        dpg.mvPlotCol_Line,
-                        layer.color,
-                        category=dpg.mvThemeCat_Plots,
-                    )
+            if not dpg.does_item_exist(theme_tag):
+                with dpg.theme(tag=theme_tag):
+                    with dpg.theme_component(dpg.mvLineSeries):
+                        dpg.add_theme_color(
+                            dpg.mvPlotCol_Line,
+                            layer.color,
+                            category=dpg.mvThemeCat_Plots,
+                        )
 
             dpg_bind_item_theme(series_tag, theme_tag)
 
