@@ -114,6 +114,10 @@ class GUIReconstructionPanel(GUIPanel):
         self._update_generator_checkboxes(reconstruction_data)
         self._update_reconstruction_display()
 
+    def update_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_data = reconstruction_data
+        self._update_reconstruction_display()
+
     def close_reconstruction(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
@@ -235,11 +239,12 @@ class GUIReconstructionPanel(GUIPanel):
             self._on_change_audio_state = on_change_audio_state
 
     def _get_selected_generators(self) -> List[GeneratorName]:
-        selected_generators = []
+        selected_generators: List[GeneratorName] = []
         for generator_name in GeneratorName:
             tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
             if dpg.get_value(tag):
                 selected_generators.append(generator_name)
+
         return selected_generators
 
     def _update_reconstruction_display(self) -> None:

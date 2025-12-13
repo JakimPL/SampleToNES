@@ -331,7 +331,7 @@ class GUI:
         self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
         self.regenerator.set_callbacks(
-            on_regeneration_finished=self._on_reconstruction_loaded,
+            on_regeneration_finished=self._on_reconstruction_updated,
         )
 
         self.explorer_panel.set_callbacks(
@@ -836,6 +836,9 @@ class GUI:
         self._close_reconstruction()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self._update_menu()
+
+    def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
+        self.reconstruction_panel.update_reconstruction(reconstruction_data)
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
