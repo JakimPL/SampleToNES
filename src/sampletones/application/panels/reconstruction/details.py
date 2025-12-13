@@ -1,20 +1,30 @@
-from typing import Callable, Dict, Optional, cast
+from typing import Callable, Dict, Optional, Tuple, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
-from sampletones.constants.general import NOISE_PERIODS
+from sampletones.constants.general import (
+    MAX_PERIOD,
+    MAX_PITCH,
+    MIN_PITCH,
+    NOISE_PERIODS,
+    NUM_PERIODS,
+)
 from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
-from sampletones.typehints import VoidCallback
+from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils import hash_model, pitch_to_name
 
 from ...constants.general import (
+    COL_TEXT_DISABLED_DEFAULT,
     DIM_BUTTON_WIDTH_COPY,
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
+    SUF_INPUT,
+    SUF_LABEL,
     SUF_PANEL_RIGHT,
+    SUF_TEXT,
     TAG_TAB_RECONSTRUCTIONS,
 )
 from ...constants.graphs import (
@@ -28,6 +38,8 @@ from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
     LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+    LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PERIOD,
+    LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS,
     SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
@@ -37,7 +49,6 @@ from ...constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_DETAILS,
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
-    TPL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -51,7 +62,7 @@ from ...reconstruction.config import (
 )
 from ...reconstruction.feature import FeatureData
 from ...utils.clipboard import copy_to_clipboard
-from ...utils.dpg import dpg_configure_item, dpg_delete_item
+from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
 from ...utils.thread import concurrent
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
@@ -200,18 +211,61 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     if plot:
                         self.generator_plots[generator_name][feature_key] = plot
 
-    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
+    def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
         if generator_name == GeneratorName.NOISE:
-            pitch_display = f"{initial_pitch:X}"
+            label = LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PERIOD
             display_value = f"p{NOISE_PERIODS[initial_pitch]}"
         else:
-            pitch_display = pitch_to_name(initial_pitch)
-            display_value = str(initial_pitch)
+            label = LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH
+            display_value = pitch_to_name(initial_pitch)
 
-        dpg.add_text(
-            default_value=TPL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH.format(pitch_display, display_value),
-            parent=parent,
-        )
+        return label, f"{display_value:>5}"
+
+    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
+        input_label_tag = f"{parent}{SUF_LABEL}"
+        input_tag = f"{parent}{SUF_INPUT}"
+        display_tag = f"{input_tag}{SUF_TEXT}"
+
+        label, display_value = self._format_initial_pitch(generator_name, initial_pitch)
+        with dpg.group(parent=parent, horizontal=True):
+            with dpg.group(horizontal=True, width=250):
+                dpg.add_text(label, tag=input_label_tag)
+                dpg.add_text(
+                    display_value,
+                    tag=display_tag,
+                    color=COL_TEXT_DISABLED_DEFAULT,
+                )
+            dpg.add_input_int(
+                tag=input_tag,
+                default_value=initial_pitch,
+                width=-1,
+                min_value=MIN_PITCH if generator_name != GeneratorName.NOISE else 0,
+                max_value=MAX_PITCH if generator_name != GeneratorName.NOISE else NUM_PERIODS,
+                callback=self._validate_and_update_initial_pitch_input,
+                user_data=(
+                    generator_name,
+                    input_label_tag,
+                    display_tag,
+                ),
+                on_enter=True,
+            )
+
+    def _validate_and_update_initial_pitch_input(
+        self,
+        sender: Sender,
+        app_data: int,
+        user_data: Tuple[GeneratorName, str, str],
+    ) -> None:
+        generator_name, label_tag, display_tag = user_data
+        if generator_name == GeneratorName.NOISE:
+            value = max(0, min(app_data, MAX_PERIOD))
+        else:
+            value = max(MIN_PITCH, min(app_data, MAX_PITCH))
+
+        label, display_value = self._format_initial_pitch(generator_name, value)
+        dpg.set_value(sender, value)
+        dpg_set_value(label_tag, label)
+        dpg_set_value(display_tag, display_value)
 
     def _create_feature_plot(
         self,

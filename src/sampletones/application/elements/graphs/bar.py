@@ -229,6 +229,7 @@ class GUIBarGraph(GUIGraph):
 
     def _mouse_action_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
+            self._set_hover_bar_position()
             return
 
         plot_mouse_pos = dpg.get_plot_mouse_pos()
