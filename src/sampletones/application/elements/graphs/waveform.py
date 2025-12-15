@@ -40,6 +40,7 @@ from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
+    dpg_delete_children,
     dpg_delete_item,
 )
 from ...utils.thread import concurrent
@@ -270,6 +271,10 @@ class GUIWaveformGraph(GUIGraph):
         self.x_max = float(len(reconstruction_data.original_audio))
         self._update_axes_limits()
         self._update_position_indicator()
+
+    def clear(self) -> None:
+        self.clear_layers()
+        dpg_delete_children(self.y_axis_tag)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):

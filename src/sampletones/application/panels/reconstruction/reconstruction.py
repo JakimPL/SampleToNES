@@ -126,7 +126,7 @@ class GUIReconstructionPanel(GUIPanel):
             self._on_clear_reconstruction_details()
 
         self.player_panel.clear_audio()
-        self.waveform_display.clear_layers()
+        self.waveform_display.clear()
         self._reset_generator_checkboxes()
         self._reset_audio_source_radio()
 
