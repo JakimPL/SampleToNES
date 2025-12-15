@@ -151,12 +151,21 @@ class Reconstruction(DataModel):
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
     ) -> None:
-        max_length = max(len(self.approximation), len(partial_approximation))
+        partial_approximation = np.trim_zeros(partial_approximation, trim="b")
+        trimmed_approximation = np.trim_zeros(self.approximation, trim="b")
+        max_length = max(len(trimmed_approximation), len(partial_approximation))
+
         array = np.zeros(max_length, dtype=np.float32)
         array[: len(partial_approximation)] = partial_approximation
+
+        for item in self.approximations.values():
+            item_length = len(np.trim_zeros(item, trim="b"))
+            max_length = max(max_length, item_length)
+
         new_approximations_data: List[ApproximationsItem] = []
         for item in self.approximations_data:
             if item.generator_name == generator_name:
+                array = pad(array, 0, max_length)
                 new_approximations_data.append(
                     ApproximationsItem(
                         generator_name=item.generator_name,
