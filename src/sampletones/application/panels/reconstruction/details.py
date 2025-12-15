@@ -580,6 +580,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 features,
                 feature_key,
                 data,
+                plot_tag,
             )
         )
 
@@ -606,13 +607,20 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         assert features is not None, f"Features for generator {generator_name} should not be None"
         return features
 
+    def _format_data(self, data: np.ndarray) -> str:
+        string_data = [str(clamp(int(value), -128, 127)) for value in data]
+        return " ".join(string_data)
+
     def _on_bar_point_clicked(
         self,
         generator_name: GeneratorName,
         features: Features,
         feature_key: FeatureKey,
         data: np.ndarray,
+        plot_tag: str,
     ) -> None:
+        raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
+        dpg_set_value(raw_data_tag, self._format_data(data))
         if self._on_reconstruction_instrument_updated is not None:
             self._on_reconstruction_instrument_updated(
                 generator_name,
@@ -631,7 +639,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         parent: str,
         data: np.ndarray,
     ) -> None:
-        raw_data_text = " ".join(map(str, data.tolist()))
+        raw_data_text = self._format_data(data)
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         copy_button_tag = f"{plot_tag}{SUF_BUTTON_COPY}"
         group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
@@ -683,7 +691,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         features = self._get_features(generator_name)
-        dpg.set_value(sender, " ".join(map(str, raw_data.tolist())))
+        dpg.set_value(sender, self._format_data(raw_data))
         if self._on_reconstruction_instrument_updated is not None:
             self._on_reconstruction_instrument_updated(
                 generator_name,
