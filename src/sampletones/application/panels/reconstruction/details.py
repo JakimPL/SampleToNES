@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.typehints import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
@@ -61,6 +61,8 @@ from ...constants.reconstructions import (
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
     TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
     VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE,
+    VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
+    VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -80,7 +82,7 @@ from ...utils.thread import concurrent
 from ...utils.tooltip import show_tooltip
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
-OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, np.ndarray], None]
+OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, FeatureValue], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -376,11 +378,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
         if generator_name == GeneratorName.NOISE:
             pitch_type = "period"
-            example_name = "p508"
+            example_name = VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE
             example_value = NAME_TO_PERIOD[example_name]
         else:
             pitch_type = "pitch"
-            example_name = "C-4"
+            example_name = VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE
             example_value = NAME_TO_PITCH[example_name]
 
         show_tooltip(
@@ -430,6 +432,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         _, display_value = self._format_initial_pitch(generator_name, value)
         dpg_set_value(input_tag, display_value)
         dpg_set_value(value_tag, value)
+        self._on_initial_pitch_changed(generator_name, value)
 
     def _validate_and_update_initial_pitch_input(
         self,
@@ -525,11 +528,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_ticks=y_ticks,
         )
 
-        assert self.current_features is not None, "Current features should not be None when creating feature plots"
-        feature_data = self.current_features.model_copy()
-        features = feature_data.get_generator_features(generator_name)
-        assert features is not None, f"Features for generator {generator_name} should not be None"
-
+        features = self._get_features(generator_name)
         plot.set_callbacks(
             on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
                 generator_name,
@@ -540,6 +539,27 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
         return plot
+
+    def _on_initial_pitch_changed(
+        self,
+        generator_name: GeneratorName,
+        initial_pitch: int,
+    ) -> None:
+        features = self._get_features(generator_name)
+        if self._on_reconstruction_instrument_updated is not None:
+            self._on_reconstruction_instrument_updated(
+                generator_name,
+                features,
+                FeatureKey.INITIAL_PITCH,
+                initial_pitch,
+            )
+
+    def _get_features(self, generator_name: GeneratorName) -> Features:
+        assert self.current_features is not None, "Current features should not be None when creating feature plots"
+        feature_data = self.current_features.model_copy()
+        features = feature_data.get_generator_features(generator_name)
+        assert features is not None, f"Features for generator {generator_name} should not be None"
+        return features
 
     def _on_bar_point_clicked(
         self,

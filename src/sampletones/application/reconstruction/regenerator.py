@@ -6,6 +6,7 @@ from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
 from sampletones.instructions import InstructionUnion
+from sampletones.typehints import FeatureValue
 
 from ..utils.thread import concurrent
 from .data import ReconstructionData
@@ -25,7 +26,7 @@ class Regenerator:
         generator_name: GeneratorName,
         features: Features,
         feature_key: FeatureKey,
-        data: np.ndarray,
+        data: FeatureValue,
     ) -> None:
         if self.reconstruction_data is None:
             raise RuntimeError("No reconstruction available to regenerate.")
