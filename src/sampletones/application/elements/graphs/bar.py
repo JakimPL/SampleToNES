@@ -32,6 +32,7 @@ from .graph import GUIGraph
 from .layers.bar import BarLayer
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
+OnBarPointHoveredCallback = Callable[[Optional[int]], None]
 
 
 class GUIBarGraph(GUIGraph):
@@ -71,6 +72,7 @@ class GUIBarGraph(GUIGraph):
         self.current_data: Optional[np.ndarray] = None
 
         self._on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
+        self._on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
         super().__init__(
             tag,
@@ -215,7 +217,7 @@ class GUIBarGraph(GUIGraph):
     def _set_hover_bar_position(self, index: int = 0, value: float = 0.0) -> None:
         bar_x = float(index) + 0.5
         bar_y = round(value, 0)
-        dpg.configure_item(
+        dpg_configure_item(
             self.hover_bar_tag,
             x=[bar_x],
             y=[bar_y],
@@ -240,10 +242,15 @@ class GUIBarGraph(GUIGraph):
         mouse_y = plot_mouse_pos[1]
         bar_index = int(mouse_x)
         if bar_index < 0 or bar_index >= len(self.current_data):
+            if self._on_bar_point_hovered is not None:
+                self._on_bar_point_hovered(None)
             return
 
         clamped_y = round(np.clip(mouse_y, *self.data_range))
         self._set_hover_bar_position(bar_index, clamped_y)
+
+        if self._on_bar_point_hovered is not None:
+            self._on_bar_point_hovered(bar_index)
 
         layer = self._get_first_layer()
         if layer is None:
@@ -281,6 +288,9 @@ class GUIBarGraph(GUIGraph):
     def set_callbacks(
         self,
         on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None,
+        on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None,
     ) -> None:
         if on_bar_point_clicked is not None:
             self._on_bar_point_clicked = on_bar_point_clicked
+        if on_bar_point_hovered is not None:
+            self._on_bar_point_hovered = on_bar_point_hovered

@@ -25,6 +25,7 @@ from ...constants.graphs import (
     SUF_BUTTON_WAVEFORM_RESET_X,
     SUF_BUTTON_WAVEFORM_RESET_Y,
     SUF_GRAPH_THEME,
+    SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
@@ -35,7 +36,7 @@ from ...constants.graphs import (
 from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
 from ...themes.graphs.indicator import IndicatorGraphTheme
-from ...themes.theme import Theme
+from ...themes.graphs.overlay import OverlayGraphTheme
 from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
@@ -72,7 +73,6 @@ class GUIWaveformGraph(GUIGraph):
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = -1.0,
         y_max: float = 1.0,
-        indicator_theme: Theme = IndicatorGraphTheme(),
     ):
         self.is_dragging = False
         self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
@@ -84,7 +84,11 @@ class GUIWaveformGraph(GUIGraph):
         self.reset_all_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_ALL}"
 
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
-        self.indicator_theme = indicator_theme
+        self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
+
+        self.indicator_theme = IndicatorGraphTheme()
+        self.overlay_theme = OverlayGraphTheme()
+
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
         self.current_position: int = 0
 
@@ -137,6 +141,7 @@ class GUIWaveformGraph(GUIGraph):
                 label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
                 tag=self.y_axis_tag,
             )
+            self._set_overlay_rectangle()
 
         with dpg.handler_registry():
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
@@ -166,6 +171,28 @@ class GUIWaveformGraph(GUIGraph):
             width=-1,
             font=Font.REGULAR_SMALL,
         )
+
+    def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
+        self._set_overlay_rectangle(x_start=start, x_end=end)
+
+    def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
+        if not dpg.does_item_exist(self.overlay_rectangle_tag):
+            dpg.add_shade_series(
+                [x_start, x_end],
+                [self.y_min, self.y_min],
+                y2=[self.y_max, self.y_max],
+                tag=self.overlay_rectangle_tag,
+                parent=self.y_axis_tag,
+            )
+
+            self.overlay_theme.bind_to_item(self.overlay_rectangle_tag)
+        else:
+            dpg.configure_item(
+                self.overlay_rectangle_tag,
+                x=[x_start, x_end],
+                y1=[self.y_min, self.y_min],
+                y2=[self.y_max, self.y_max],
+            )
 
     @concurrent(wait=True, method_bound=True)
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
@@ -275,6 +302,7 @@ class GUIWaveformGraph(GUIGraph):
     def clear(self) -> None:
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
+        self._set_overlay_rectangle()
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):

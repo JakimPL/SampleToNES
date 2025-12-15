@@ -49,7 +49,7 @@ class Regenerator:
         generator: GeneratorUnion,
         instructions: List[InstructionUnion],
     ) -> np.ndarray:
-        return np.concatenate([generator(instruction) for instruction in instructions])  # type: ignore
+        return np.concatenate([generator(instruction, save=True) for instruction in instructions])  # type: ignore
 
     def set_callbacks(self, on_regeneration_finished: Optional[OnRegenerationFinished] = None) -> None:
         if on_regeneration_finished is not None:

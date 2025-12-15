@@ -501,3 +501,16 @@ class GUIReconstructionPanel(GUIPanel):
             show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
 
         self.application_config_manager.set_audio_path(filepath)
+
+    def set_overlay(self, index: Optional[int]) -> None:
+        if self.reconstruction_data is None:
+            return
+
+        if index is None:
+            self.waveform_display.set_overlay_range(0, 0)
+            return
+
+        frame_length = self.reconstruction_data.reconstruction.config.frame_length
+        start = index * frame_length
+        end = start + frame_length
+        self.waveform_display.set_overlay_range(start, end)

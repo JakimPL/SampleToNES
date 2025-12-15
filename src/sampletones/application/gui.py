@@ -371,6 +371,7 @@ class GUI:
             on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
             on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
             on_reconstruction_instrument_updated=self.regenerator.regenerate,
+            on_reconstruction_instrument_hovered=self.reconstruction_panel.set_overlay,
         )
         self.converter_panel.set_callbacks(
             on_load_file=self._on_converted_reconstruction_loaded,

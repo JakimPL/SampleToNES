@@ -90,6 +90,7 @@ from ...utils.tooltip import show_tooltip
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
 OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, FeatureValue], None]
+OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
@@ -112,6 +113,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self._on_instruments_export: Optional[VoidCallback] = None
         self._on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
+        self._on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -159,6 +161,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         on_instrument_export: Optional[OnInstrumentExportCallback] = None,
         on_instruments_export: Optional[VoidCallback] = None,
         on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None,
+        on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None,
     ) -> None:
         if on_instrument_export is not None:
             self._on_instrument_export = on_instrument_export
@@ -166,6 +169,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self._on_instruments_export = on_instruments_export
         if on_reconstruction_instrument_updated is not None:
             self._on_reconstruction_instrument_updated = on_reconstruction_instrument_updated
+        if on_reconstruction_instrument_hovered is not None:
+            self._on_reconstruction_instrument_hovered = on_reconstruction_instrument_hovered
 
     def _export_instruments(self) -> None:
         if self._on_instruments_export is not None:
@@ -581,7 +586,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 feature_key,
                 data,
                 plot_tag,
-            )
+            ),
+            on_bar_point_hovered=self._on_bar_point_hovered,
         )
 
         return plot
@@ -628,6 +634,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 feature_key,
                 data,
             )
+
+    def _on_bar_point_hovered(self, index: Optional[int]) -> None:
+        if self._on_reconstruction_instrument_hovered is not None:
+            self._on_reconstruction_instrument_hovered(index)
 
     def _add_raw_data_text(
         self,
