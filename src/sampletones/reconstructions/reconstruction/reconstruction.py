@@ -24,13 +24,9 @@ from sampletones.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones.instructions import (
-    InstructionData,
-    InstructionUnion,
-    get_instruction_by_type,
-)
+from sampletones.instructions import InstructionUnion, get_instruction_by_type
 from sampletones.typehints import SerializedData
-from sampletones.utils import serialize_array
+from sampletones.utils import pad, serialize_array
 from sampletones.utils.logger import logger
 
 from ..reconstructor.state import ReconstructionState
@@ -103,15 +99,9 @@ class Reconstruction(DataModel):
         instructions_data: List[InstructionsItem] = []
         for generator_name, instructions_list in instructions.items():
             instructions_data.append(
-                InstructionsItem(
+                InstructionsItem.create(
                     generator_name=generator_name,
-                    instructions=[
-                        InstructionData(
-                            instruction_class=instruction.class_name(),
-                            instruction=instruction,
-                        )
-                        for instruction in instructions_list
-                    ],
+                    instructions=instructions_list,
                 )
             )
 
@@ -161,9 +151,9 @@ class Reconstruction(DataModel):
         instructions: List[InstructionUnion],
         partial_approximation: np.ndarray,
     ) -> None:
-        array = np.zeros_like(self.approximation)
-        array[: len(partial_approximation)] = partial_approximation[: len(array)]
-
+        max_length = max(len(self.approximation), len(partial_approximation))
+        array = np.zeros(max_length, dtype=np.float32)
+        array[: len(partial_approximation)] = partial_approximation
         new_approximations_data: List[ApproximationsItem] = []
         for item in self.approximations_data:
             if item.generator_name == generator_name:
@@ -174,21 +164,21 @@ class Reconstruction(DataModel):
                     )
                 )
             else:
-                new_approximations_data.append(item)
+                item_array = pad(item.approximation, 0, max_length)
+                new_approximations_data.append(
+                    ApproximationsItem(
+                        generator_name=item.generator_name,
+                        approximation=item_array,
+                    )
+                )
 
         new_instructions_data: List[InstructionsItem] = []
         for item in self.instructions_data:
             if item.generator_name == generator_name:
                 new_instructions_data.append(
-                    InstructionsItem(
-                        generator_name=item.generator_name,
-                        instructions=[
-                            InstructionData(
-                                instruction_class=instruction.class_name(),
-                                instruction=instruction,
-                            )
-                            for instruction in instructions
-                        ],
+                    InstructionsItem.create(
+                        generator_name=generator_name,
+                        instructions=instructions,
                     )
                 )
             else:
@@ -198,7 +188,8 @@ class Reconstruction(DataModel):
         self.instructions_data = new_instructions_data
         self.__dict__.pop("approximations", None)
         self.__dict__.pop("instructions", None)
-        self.approximation = np.sum(np.array(list(self.approximations.values())), axis=0)
+        approximations = list(self.approximations.values())
+        self.approximation = np.sum(np.array(approximations), axis=0)
 
     def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([], dtype=np.float32))

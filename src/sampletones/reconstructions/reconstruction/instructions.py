@@ -17,6 +17,23 @@ class InstructionsItem(DataModel):
     )
 
     @classmethod
+    def create(
+        cls,
+        generator_name: GeneratorName,
+        instructions: List[InstructionUnion],
+    ) -> "InstructionsItem":
+        return InstructionsItem(
+            generator_name=generator_name,
+            instructions=[
+                InstructionData(
+                    instruction_class=instruction.class_name(),
+                    instruction=instruction,
+                )
+                for instruction in instructions
+            ],
+        )
+
+    @classmethod
     def buffer_builder(cls) -> ModuleType:
         from schemas.reconstruction import FBInstructionsItem
 
