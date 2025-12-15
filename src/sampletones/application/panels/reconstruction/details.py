@@ -60,6 +60,7 @@ from ...constants.reconstructions import (
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
     TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
+    VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -93,6 +94,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
 
         self.initial_pitch_theme = InitialPitchTableTheme()
+        self._initial_pitch_change_object: Optional[str] = None
+        self._initial_pitch_change_timer: Optional[float] = None
 
         self._on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self._on_instruments_export: Optional[VoidCallback] = None
@@ -291,7 +294,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                         value_tag,
                     ),
                 )
-                dpg.add_button(
+                GUIButton(
                     label=VAL_CHARACTER_BUTTON_DECREMENT,
                     tag=decrement_button_tag,
                     width=DIM_BUTTON_INPUT_INT,
@@ -303,7 +306,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                         -1,
                     ),
                 )
-                dpg.add_button(
+                GUIButton(
                     label=VAL_CHARACTER_BUTTON_INCREMENT,
                     tag=increment_button_tag,
                     width=DIM_BUTTON_INPUT_INT,
@@ -331,6 +334,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     value_tag,
                 ),
             )
+            dpg.add_mouse_release_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_mouse_release,
+            )
 
     def _on_mouse_down(
         self,
@@ -338,14 +345,33 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         app_data: Any,
         user_data: Tuple[str, str, GeneratorName, str, str],
     ) -> None:
+        button_item = None
         decrement_button_tag, increment_button_tag, generator_name, input_tag, value_tag = user_data
-
         if dpg.is_item_hovered(decrement_button_tag):
-            pitch_change_data = (generator_name, input_tag, value_tag, -1)
-            self._change_initial_pitch(sender, app_data, pitch_change_data)
+            button_item = decrement_button_tag
+            change = -1
         elif dpg.is_item_hovered(increment_button_tag):
-            pitch_change_data = (generator_name, input_tag, value_tag, 1)
-            self._change_initial_pitch(sender, app_data, pitch_change_data)
+            button_item = increment_button_tag
+            change = 1
+        else:
+            return
+
+        if self._initial_pitch_change_object != button_item or self._initial_pitch_change_timer is None:
+            self._initial_pitch_change_object = button_item
+            self._initial_pitch_change_timer = 3 * VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE
+            return
+
+        self._initial_pitch_change_timer -= dpg.get_delta_time()
+        if self._initial_pitch_change_timer > 0:
+            return
+
+        pitch_change_data = (generator_name, input_tag, value_tag, change)
+        self._change_initial_pitch(sender, app_data, pitch_change_data)
+        self._initial_pitch_change_timer = VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE
+
+    def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        self._initial_pitch_change_timer = None
+        self._initial_pitch_change_object = None
 
     def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
         if generator_name == GeneratorName.NOISE:
