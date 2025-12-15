@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
-from sampletones.constants.general import NOISE_PERIODS
 from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.ffts import Window
 from sampletones.generators import LIBRARY_GENERATOR_CLASS_MAP
@@ -31,7 +30,7 @@ from sampletones.tree import (
     TreeNode,
 )
 from sampletones.typehints import VoidCallback
-from sampletones.utils import pitch_to_name, to_path
+from sampletones.utils import period_to_name, pitch_to_name, to_path
 
 from ..constants.instructions import (
     LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
@@ -266,7 +265,7 @@ class InstructionsLibraryManager:
             if isinstance(instruction, (PulseInstruction, TriangleInstruction)):
                 grouping_key = pitch_to_name(instruction.pitch)
             elif isinstance(instruction, NoiseInstruction):
-                grouping_key = f"p{NOISE_PERIODS[instruction.period]}"
+                grouping_key = period_to_name(instruction.period)
             else:
                 raise TypeError(f"Unsupported instruction type {type(instruction)} for grouping")
 
