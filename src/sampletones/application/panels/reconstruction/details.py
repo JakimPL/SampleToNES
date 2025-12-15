@@ -23,6 +23,8 @@ from ...constants.general import (
     DIM_BUTTON_WIDTH_COPY,
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
+    SUF_DECREMENT,
+    SUF_INCREMENT,
     SUF_INPUT,
     SUF_LABEL,
     SUF_PANEL_RIGHT,
@@ -57,6 +59,7 @@ from ...constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_DETAILS,
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+    TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -73,6 +76,7 @@ from ...themes.table import InitialPitchTableTheme
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
 from ...utils.thread import concurrent
+from ...utils.tooltip import show_tooltip
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
 OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, np.ndarray], None]
@@ -238,6 +242,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         input_tag = f"{parent}{SUF_INPUT}"
         value_tag = f"{input_tag}{SUF_TEXT}"
         table_tag = f"{parent}{SUF_TABLE}"
+        decrement_button_tag = f"{input_tag}{SUF_DECREMENT}"
+        increment_button_tag = f"{input_tag}{SUF_INCREMENT}"
 
         label, display_value = self._format_initial_pitch(generator_name, initial_pitch)
         with dpg.table(
@@ -287,6 +293,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 )
                 dpg.add_button(
                     label=VAL_CHARACTER_BUTTON_DECREMENT,
+                    tag=decrement_button_tag,
                     width=DIM_BUTTON_INPUT_INT,
                     callback=self._change_initial_pitch,
                     user_data=(
@@ -298,6 +305,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 )
                 dpg.add_button(
                     label=VAL_CHARACTER_BUTTON_INCREMENT,
+                    tag=increment_button_tag,
                     width=DIM_BUTTON_INPUT_INT,
                     callback=self._change_initial_pitch,
                     user_data=(
@@ -309,6 +317,54 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 )
 
         self.initial_pitch_theme.bind_to_item(table_tag)
+        self._create_initial_pitch_tooltip(generator_name, input_tag)
+
+        with dpg.handler_registry():
+            dpg.add_mouse_down_handler(
+                button=dpg.mvMouseButton_Left,
+                callback=self._on_mouse_down,
+                user_data=(
+                    decrement_button_tag,
+                    increment_button_tag,
+                    generator_name,
+                    input_tag,
+                    value_tag,
+                ),
+            )
+
+    def _on_mouse_down(
+        self,
+        sender: Sender,
+        app_data: Any,
+        user_data: Tuple[str, str, GeneratorName, str, str],
+    ) -> None:
+        decrement_button_tag, increment_button_tag, generator_name, input_tag, value_tag = user_data
+
+        if dpg.is_item_hovered(decrement_button_tag):
+            pitch_change_data = (generator_name, input_tag, value_tag, -1)
+            self._change_initial_pitch(sender, app_data, pitch_change_data)
+        elif dpg.is_item_hovered(increment_button_tag):
+            pitch_change_data = (generator_name, input_tag, value_tag, 1)
+            self._change_initial_pitch(sender, app_data, pitch_change_data)
+
+    def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
+        if generator_name == GeneratorName.NOISE:
+            pitch_type = "period"
+            example_name = "p508"
+            example_value = NAME_TO_PERIOD[example_name]
+        else:
+            pitch_type = "pitch"
+            example_name = "C-4"
+            example_value = NAME_TO_PITCH[example_name]
+
+        show_tooltip(
+            input_tag,
+            TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH.format(
+                pitch_type,
+                example_name,
+                example_value,
+            ),
+        )
 
     def _change_initial_pitch(
         self,
