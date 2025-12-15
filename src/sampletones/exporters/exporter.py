@@ -3,6 +3,7 @@ from typing import Dict, Generic, Iterable, List, Optional, Union, cast
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
+from sampletones.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion
 from sampletones.instructions import (
     InstructionFields,
@@ -46,6 +47,10 @@ class Exporter(Generic[InstructionT]):
     @staticmethod
     def get_feature_map(instructions: List[InstructionT]) -> FeatureMap:
         raise NotImplementedError("Subclasses must implement this method")
+
+    @staticmethod
+    def is_pitch_valid(pitch: int) -> bool:
+        return MIN_PITCH <= pitch <= MAX_PITCH
 
     @classmethod
     def from_features(cls, features: Features) -> List[InstructionT]:

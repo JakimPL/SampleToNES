@@ -63,6 +63,15 @@ class NoiseInstruction(Instruction):
         return period_distance + volume_distance
 
     @classmethod
+    def null_instruction(cls) -> "NoiseInstruction":
+        return NoiseInstruction(
+            on=False,
+            period=0,
+            volume=0,
+            short=False,
+        )
+
+    @classmethod
     def class_name(cls) -> InstructionClassName:
         return InstructionClassName.NOISE_INSTRUCTION
 

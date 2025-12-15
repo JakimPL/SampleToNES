@@ -41,6 +41,13 @@ class TriangleInstruction(Instruction):
         return abs(pitch1 - pitch2) / PITCH_RANGE
 
     @classmethod
+    def null_instruction(cls) -> "TriangleInstruction":
+        return TriangleInstruction(
+            on=False,
+            pitch=MIN_PITCH,
+        )
+
+    @classmethod
     def class_name(cls) -> InstructionClassName:
         return InstructionClassName.TRIANGLE_INSTRUCTION
 

@@ -72,6 +72,15 @@ class PulseInstruction(Instruction):
         return pitch_distance + volume_distance
 
     @classmethod
+    def null_instruction(cls) -> "PulseInstruction":
+        return PulseInstruction(
+            on=False,
+            pitch=MIN_PITCH,
+            volume=0,
+            duty_cycle=0,
+        )
+
+    @classmethod
     def class_name(cls) -> InstructionClassName:
         return InstructionClassName.PULSE_INSTRUCTION
 

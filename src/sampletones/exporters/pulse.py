@@ -74,9 +74,13 @@ class PulseExporter(Exporter[PulseInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> PulseInstruction:
+        pitch = int(initial_pitch + dictionary["pitch"])
+        if not cls.is_pitch_valid(pitch):
+            return PulseInstruction.null_instruction()
+
         return PulseInstruction(
             on=cls._infer_instruction_on(dictionary),
-            pitch=int(initial_pitch + dictionary["pitch"]),
+            pitch=pitch,
             volume=int(dictionary["volume"]),
             duty_cycle=int(dictionary["duty_cycle"]),
         )
