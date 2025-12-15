@@ -10,6 +10,8 @@ from sampletones.constants.general import (
     NOTE_NAMES,
 )
 
+from .common import clamp
+
 
 def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> float:
     return a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
@@ -35,11 +37,11 @@ def period_to_name(period: int) -> str:
 
 
 def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PITCH) -> int:
-    return max(min_pitch, min(max_pitch, pitch))
+    return clamp(pitch, min_pitch, max_pitch)
 
 
 def clamp_period(period: int, min_period: int = 0, max_period: int = MAX_PERIOD) -> int:
-    return max(min_period, min(max_period, period))
+    return clamp(period, min_period, max_period)
 
 
 MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)

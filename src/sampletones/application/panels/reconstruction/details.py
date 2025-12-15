@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.application.utils.shortcuts.manager import ShortcutManager
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
@@ -11,12 +10,14 @@ from sampletones.typehints import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
+    clamp,
     clamp_period,
     clamp_pitch,
     hash_model,
     period_to_name,
     pitch_to_name,
 )
+from sampletones.utils.logger import logger
 
 from ...constants.general import (
     COL_TEXT_DISABLED_DEFAULT,
@@ -78,9 +79,12 @@ from ...reconstruction.config import (
     FeaturePlotConfig,
 )
 from ...reconstruction.feature import FeatureData
+from ...themes.default import DefaultTheme
+from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
+from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 from ...utils.tooltip import show_tooltip
 
@@ -99,6 +103,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
 
+        self.theme = DefaultTheme()
+        self.invalid_input_theme = InvalidInputTheme()
         self.initial_pitch_theme = InitialPitchTableTheme()
         self._initial_pitch_change_object: Optional[str] = None
         self._initial_pitch_change_timer: Optional[float] = None
@@ -299,7 +305,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     default_value=display_value,
                     width=-1,
                     callback=self._validate_and_update_initial_pitch_input,
-                    on_enter=True,
+                    on_enter=False,
                     user_data=(
                         generator_name,
                         input_tag,
@@ -518,23 +524,18 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return None
 
         plot = self._add_bar_plot(plot_tag, parent, config, data, generator_name, feature_key)
-        self._add_raw_data_text(plot_tag, parent, data)
+        self._add_raw_data_text(generator_name, feature_key, config, plot, plot_tag, parent, data)
 
         return plot
 
-    def _add_bar_plot(
+    def _calculate_plot_limits(
         self,
-        plot_tag: str,
-        parent: str,
         config: FeaturePlotConfig,
         data: np.ndarray,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-    ) -> GUIBarGraph:
+    ) -> Tuple[int, int, Optional[Tuple[int, ...]]]:
         y_min = config.y_min
         y_max = config.y_max
         y_ticks = config.y_ticks
-
         if y_min == -1.0 and y_max == -1.0:
             max_abs_value = float(np.max(np.abs(data)))
             y_min = -max_abs_value
@@ -548,6 +549,18 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         y_min = int(np.floor(y_min - gap))
         y_max = int(np.ceil(y_max + gap))
 
+        return y_min, y_max, y_ticks
+
+    def _add_bar_plot(
+        self,
+        plot_tag: str,
+        parent: str,
+        config: FeaturePlotConfig,
+        data: np.ndarray,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> GUIBarGraph:
+        y_min, y_max, _ = self._calculate_plot_limits(config, data)
         plot = GUIBarGraph(
             tag=plot_tag,
             parent=parent,
@@ -559,13 +572,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             y_max=y_max,
         )
 
-        plot.load_data(
-            data=data,
-            name=f"{generator_name} - {feature_key}",
-            color=config.color,
-            y_ticks=y_ticks,
-        )
-
+        self._load_plot_data(plot, generator_name, feature_key, config, data)
         features = self._get_features(generator_name)
         plot.set_callbacks(
             on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
@@ -614,7 +621,16 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 data,
             )
 
-    def _add_raw_data_text(self, plot_tag: str, parent: str, data: np.ndarray) -> None:
+    def _add_raw_data_text(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        config: FeaturePlotConfig,
+        plot: GUIBarGraph,
+        plot_tag: str,
+        parent: str,
+        data: np.ndarray,
+    ) -> None:
         raw_data_text = " ".join(map(str, data.tolist()))
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         copy_button_tag = f"{plot_tag}{SUF_BUTTON_COPY}"
@@ -632,9 +648,67 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 tag=raw_data_tag,
                 default_value=raw_data_text,
                 width=-1,
-                readonly=True,
                 multiline=False,
+                on_enter=True,
+                decimal=False,
+                callback=self._parse_raw_data_input,
+                user_data=(
+                    generator_name,
+                    feature_key,
+                    config,
+                    plot,
+                ),
             )
+
+        self._setup_input_focus_handlers(raw_data_tag)
+
+    def _parse_raw_data_input(
+        self,
+        sender: Sender,
+        app_data: str,
+        user_data: Tuple[GeneratorName, FeatureKey, FeaturePlotConfig, GUIBarGraph],
+    ) -> None:
+        generator_name, feature_key, config, plot = user_data
+        data_range = config.data_range if config.data_range is not None else (-128, 127)
+        try:
+            raw_data_items = app_data.strip().split()
+            raw_data = np.array(
+                [clamp(int(value), *data_range) for value in raw_data_items],
+                dtype=np.int8,
+            )
+            self.theme.bind_to_item(sender)
+        except ValueError:
+            logger.error(f"Invalid {generator_name.name} data input for {feature_key.name}: {app_data}")
+            self.invalid_input_theme.bind_to_item(sender)
+            return
+
+        features = self._get_features(generator_name)
+        dpg.set_value(sender, " ".join(map(str, raw_data.tolist())))
+        if self._on_reconstruction_instrument_updated is not None:
+            self._on_reconstruction_instrument_updated(
+                generator_name,
+                features,
+                feature_key,
+                raw_data,
+            )
+
+        self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
+
+    def _load_plot_data(
+        self,
+        plot: GUIBarGraph,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        config: FeaturePlotConfig,
+        data: np.ndarray,
+    ) -> None:
+        _, _, y_ticks = self._calculate_plot_limits(config, data)
+        plot.load_data(
+            data=data,
+            name=f"{generator_name} - {feature_key}",
+            color=config.color,
+            y_ticks=y_ticks,
+        )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)

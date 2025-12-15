@@ -25,7 +25,7 @@ class TableTheme(Theme):
     )
 
 
-class InitialPitchTableTheme(TableTheme):
+class InitialPitchTableTheme(Theme):
     tag: str = TAG_THEME_TABLE_RECONSTRUCTION_DETAILS_INITIAL_PITCH
 
     _theme: ThemeItems = ThemeItems(

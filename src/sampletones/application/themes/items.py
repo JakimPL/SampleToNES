@@ -28,6 +28,6 @@ class ThemeParameter:
 class ThemeItems(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    items: Dict[ThemeParameter, List[Union[ThemeColor, ThemeStyle]]] = Field(
+    items: Dict[ThemeParameter, Union[List[ThemeColor], List[ThemeStyle], List[Union[ThemeColor, ThemeStyle]]]] = Field(
         default_factory=dict, description="A dictionary mapping theme parameters to lists of theme colors and styles"
     )
