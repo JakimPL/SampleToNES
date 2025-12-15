@@ -159,7 +159,9 @@ class GUI:
             self.application_config_manager,
             self.audio_device_manager,
         )
-        self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel()
+        self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
+            self.shortcut_manager,
+        )
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
             self.application_config_manager,

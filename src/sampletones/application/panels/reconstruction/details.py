@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones.application.utils.shortcuts.manager import ShortcutManager
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
@@ -24,6 +25,8 @@ from ...constants.general import (
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
+    SUF_HANDLER_FOCUS,
+    SUF_HANDLER_REGISTRY,
     SUF_INCREMENT,
     SUF_INPUT,
     SUF_LABEL,
@@ -86,10 +89,11 @@ OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, F
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
-    def __init__(self) -> None:
+    def __init__(self, shortcut_manager: ShortcutManager) -> None:
         self.reconstruction_hash: str = ""
         self.current_features: Optional[FeatureData] = None
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
+        self._shortcut_manager = shortcut_manager
 
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
@@ -164,6 +168,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
         if self._on_instrument_export is not None:
             self._on_instrument_export(user_data)
+
+    def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
+        self._shortcut_manager.disable()
+
+    def _on_input_unfocused(self, sender: Sender, app_data: Any) -> None:
+        self._shortcut_manager.enable()
 
     def _clear_tabs(self) -> None:
         dpg_delete_item(self.export_button_separator_tag)
@@ -324,7 +334,35 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.initial_pitch_theme.bind_to_item(table_tag)
         self._create_initial_pitch_tooltip(generator_name, input_tag)
 
-        with dpg.handler_registry():
+        self._setup_input_focus_handlers(input_tag)
+        self._setup_button_hold_handlers(
+            decrement_button_tag,
+            increment_button_tag,
+            generator_name,
+            input_tag,
+            value_tag,
+        )
+
+    def _setup_input_focus_handlers(self, input_tag: str) -> None:
+        focus_handler_tag = f"{input_tag}{SUF_HANDLER_FOCUS}"
+        dpg_delete_item(focus_handler_tag)
+        with dpg.item_handler_registry(tag=focus_handler_tag):
+            dpg.add_item_activated_handler(callback=self._on_input_focused)
+            dpg.add_item_deactivated_handler(callback=self._on_input_unfocused)
+
+        dpg.bind_item_handler_registry(input_tag, focus_handler_tag)
+
+    def _setup_button_hold_handlers(
+        self,
+        decrement_button_tag: str,
+        increment_button_tag: str,
+        generator_name: GeneratorName,
+        input_tag: str,
+        value_tag: str,
+    ) -> None:
+        handler_registry_tag = f"{generator_name}{SUF_HANDLER_REGISTRY}".lower()
+        dpg_delete_item(handler_registry_tag)
+        with dpg.handler_registry(tag=handler_registry_tag):
             dpg.add_mouse_down_handler(
                 button=dpg.mvMouseButton_Left,
                 callback=self._on_mouse_down,

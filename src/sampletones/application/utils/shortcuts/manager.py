@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -11,10 +11,17 @@ from .shortcut import Shortcut, ShortcutId
 class ShortcutManager:
     def __init__(self) -> None:
         self._shortcuts: Dict[ShortcutId, Tuple[Shortcut, Callback]] = {}
-        self._handler_registry: int | None = None
+        self._handler_registry: Optional[int] = None
+        self._enabled: bool = True
 
     def register(self, shortcut_id: ShortcutId, shortcut: Shortcut, callback: Callback) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
+
+    def enable(self) -> None:
+        self._enabled = True
+
+    def disable(self) -> None:
+        self._enabled = False
 
     def get_shortcut_display(self, shortcut_id: ShortcutId) -> str:
         if shortcut_id in self._shortcuts:
@@ -47,7 +54,7 @@ class ShortcutManager:
                 )
 
     def _handle_key(self, shortcut: Shortcut, callback: Callback) -> None:
-        if self._modifiers_match(shortcut.modifiers):
+        if self._enabled and self._modifiers_match(shortcut.modifiers):
             callback()
 
     @staticmethod
