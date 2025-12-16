@@ -29,7 +29,6 @@ from .constants.general import (
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
     DIM_PANEL_WIDTH_LEFT,
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
-    DIM_TEXT_OFFSET_MENU_FPS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
     LBL_MENU_GROUP_FILE,
@@ -127,6 +126,7 @@ from .utils.dialogs import (
 )
 from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
+from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
 from .utils.shortcuts.manager import ShortcutManager
 from .utils.shortcuts.shortcut import Shortcut, ShortcutId
@@ -139,6 +139,7 @@ class GUI:
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
         self.regenerator: Regenerator = Regenerator()
+        self.fps_timer: FPSTimer = FPSTimer()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self.audio_device_manager,
@@ -1066,12 +1067,9 @@ class GUI:
         dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
     def _update_fps(self) -> None:
-        fps = 1.0 / dpg.get_delta_time()
+        delta_time = dpg.get_delta_time()
+        fps = self.fps_timer.update(delta_time)
         dpg_set_value(TAG_MENU_TEXT_FPS, TPL_MENU_TEXT_FPS.format(fps=fps))
-        width = dpg.get_item_rect_size(TAG_MENU_TEXT_FPS)[0]
-        x: float = float(dpg.get_viewport_width() - width - DIM_TEXT_OFFSET_MENU_FPS)
-        y = float(dpg.get_item_pos(TAG_MENU_TEXT_FPS)[1])
-        dpg.set_item_pos(TAG_MENU_TEXT_FPS, [x, y])
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:

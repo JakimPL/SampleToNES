@@ -111,6 +111,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
         self.mouse_event_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
+        self._graphs: Dict[str, GUIBarGraph] = {}
+
         self.theme = DefaultTheme()
         self.invalid_input_theme = InvalidInputTheme()
         self.initial_pitch_theme = InitialPitchTableTheme()
@@ -190,8 +192,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _clear_generator_plots(self) -> None:
         for plots in self.generator_plots.values():
             for plot in plots.values():
-                dpg_delete_item(plot.tag)
-                dpg_delete_item(plot.mouse_handler_tag)
+                plot.delete()
+                self._graphs.pop(plot.tag)
 
         self.generator_plots.clear()
 
@@ -598,6 +600,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             on_bar_point_hovered=self._on_bar_point_hovered,
         )
 
+        self._graphs[plot_tag] = plot
         return plot
 
     def _on_initial_pitch_changed(

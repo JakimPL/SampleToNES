@@ -64,6 +64,7 @@ class GUIGraph(GUIPanel):
         self._default_x_range = default_x_range
         self._default_y_range = default_y_range
 
+        self._handlers: List[Sender] = []
         self.layers: SerializedData = {}
         self.current_data: Optional[Any] = None
 
@@ -74,6 +75,12 @@ class GUIGraph(GUIPanel):
             height=height,
             init=True,
         )
+
+    def delete(self) -> None:
+        for handler in self._handlers:
+            dpg.delete_item(handler)
+
+        dpg.delete_item(self.plot_tag)
 
     def create_panel(self) -> None:
         with dpg.group(tag=self.tag, parent=self.parent):
@@ -86,10 +93,12 @@ class GUIGraph(GUIPanel):
         raise NotImplementedError("Subclasses must implement this method")
 
     def _setup_mouse_events(self) -> None:
-        with dpg.handler_registry():
+        with dpg.handler_registry() as mouse_handler:
             dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
             dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
             dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
+
+        self._handlers.append(mouse_handler)
 
     def add_layer(self, layer: Layer) -> None:
         self.layers[layer.name] = layer

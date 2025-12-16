@@ -107,6 +107,11 @@ class GUIWaveformGraph(GUIGraph):
             enable_dragging=enable_dragging,
         )
 
+    def delete(self) -> None:
+        dpg_delete_item(self.position_indicator_tag)
+        dpg_delete_item(self.overlay_rectangle_tag)
+        super().delete()
+
     @property
     def sample_length(self) -> int:
         if isinstance(self.current_data, InstructionLibraryFragment):
