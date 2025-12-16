@@ -81,11 +81,11 @@ class GUIConverterPanel(GUIPanel):
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
-        self._on_load_file: Optional[Callable[[Path], None]] = None
-        self._on_load_directory: Optional[VoidCallback] = None
-        self._on_cancelled: Optional[VoidCallback] = None
-        self._generate_library: Optional[VoidCallback] = None
-        self._is_library_loaded: Optional[Callable[[], bool]] = None
+        self.on_load_file: Optional[Callable[[Path], None]] = None
+        self.on_load_directory: Optional[VoidCallback] = None
+        self.on_cancelled: Optional[VoidCallback] = None
+        self.generate_library: Optional[VoidCallback] = None
+        self.is_library_loaded: Optional[Callable[[], bool]] = None
 
         super().__init__(
             tag=TAG_PANEL_MAIN_CONVERTER,
@@ -123,8 +123,8 @@ class GUIConverterPanel(GUIPanel):
         self._set_conversion_subpanel_visible(True)
         self._reset_progress()
         self._update_paths()
-        if self._generate_library is not None:
-            self._generate_library()
+        if self.generate_library is not None:
+            self.generate_library()
 
         self._wait_for_library_and_start()
 
@@ -227,7 +227,7 @@ class GUIConverterPanel(GUIPanel):
             self.output_path_text.set_path(self.output_path)
 
     def _wait_for_library_and_start(self) -> None:
-        if self._is_library_loaded is not None and not self._is_library_loaded():
+        if self.is_library_loaded is not None and not self.is_library_loaded():
             dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
             dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
         else:
@@ -355,11 +355,11 @@ class GUIConverterPanel(GUIPanel):
         dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=False)
 
         if self.is_file:
-            if self.output_path and self._on_load_file is not None:
-                self._on_load_file(self.output_path)
+            if self.output_path and self.on_load_file is not None:
+                self.on_load_file(self.output_path)
         else:
-            if self._on_load_directory is not None:
-                self._on_load_directory()
+            if self.on_load_directory is not None:
+                self.on_load_directory()
 
         self._on_close()
 
@@ -375,8 +375,8 @@ class GUIConverterPanel(GUIPanel):
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
         dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
-        if self._on_cancelled is not None:
-            self._on_cancelled()
+        if self.on_cancelled is not None:
+            self.on_cancelled()
 
     def _reset_progress(self) -> None:
         dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, VAL_GLOBAL_PROGRESS_START)
@@ -462,22 +462,3 @@ class GUIConverterPanel(GUIPanel):
         dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, VAL_GLOBAL_PROGRESS_COMPLETE)
         dpg_configure_item(TAG_PROGRESS_MAIN_CONVERTER, overlay="100%")
         dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=True)
-
-    def set_callbacks(
-        self,
-        on_load_file: Optional[Callable[[Path], None]] = None,
-        on_load_directory: Optional[VoidCallback] = None,
-        on_cancelled: Optional[VoidCallback] = None,
-        generate_library: Optional[VoidCallback] = None,
-        is_library_loaded: Optional[Callable[[], bool]] = None,
-    ) -> None:
-        if on_load_file is not None:
-            self._on_load_file = on_load_file
-        if on_load_directory is not None:
-            self._on_load_directory = on_load_directory
-        if on_cancelled is not None:
-            self._on_cancelled = on_cancelled
-        if generate_library is not None:
-            self._generate_library = generate_library
-        if is_library_loaded is not None:
-            self._is_library_loaded = is_library_loaded

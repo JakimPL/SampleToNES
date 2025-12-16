@@ -71,8 +71,8 @@ class GUIBarGraph(GUIGraph):
         self.y_ticks: Optional[Tuple[int, ...]] = None
         self.current_data: Optional[np.ndarray] = None
 
-        self._on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
-        self._on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
+        self.on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
+        self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
         super().__init__(
             tag,
@@ -242,15 +242,12 @@ class GUIBarGraph(GUIGraph):
         mouse_y = plot_mouse_pos[1]
         bar_index = int(mouse_x)
         if bar_index < 0 or bar_index >= len(self.current_data):
-            if self._on_bar_point_hovered is not None:
-                self._on_bar_point_hovered(None)
+            self.call(self.on_bar_point_hovered, None)
             return
 
         clamped_y = round(np.clip(mouse_y, *self.data_range))
         self._set_hover_bar_position(bar_index, clamped_y)
-
-        if self._on_bar_point_hovered is not None:
-            self._on_bar_point_hovered(bar_index)
+        self.call(self.on_bar_point_hovered, bar_index)
 
         layer = self._get_first_layer()
         if layer is None:
@@ -259,9 +256,7 @@ class GUIBarGraph(GUIGraph):
         if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
             layer.y_data[bar_index] = clamped_y
             self._update_display()
-
-            if self._on_bar_point_clicked is not None:
-                self._on_bar_point_clicked(layer.y_data)
+            self.call(self.on_bar_point_clicked, layer.y_data)
 
     def _add_zero_line(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag) or dpg.does_item_exist(self.zero_line_tag):
@@ -284,13 +279,3 @@ class GUIBarGraph(GUIGraph):
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
-
-    def set_callbacks(
-        self,
-        on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None,
-        on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None,
-    ) -> None:
-        if on_bar_point_clicked is not None:
-            self._on_bar_point_clicked = on_bar_point_clicked
-        if on_bar_point_hovered is not None:
-            self._on_bar_point_hovered = on_bar_point_hovered

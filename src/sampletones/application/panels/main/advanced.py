@@ -55,8 +55,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
-        self._on_update_library_directory: Optional[VoidCallback] = None
-        self._on_update_output_directory: Optional[VoidCallback] = None
+        self.on_update_library_directory: Optional[VoidCallback] = None
+        self.on_update_output_directory: Optional[VoidCallback] = None
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
@@ -204,8 +204,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.library_path_text:
             self.library_path_text.set_path(directory_path)
 
-        if self._on_update_library_directory is not None:
-            self._on_update_library_directory()
+        if self.on_update_library_directory is not None:
+            self.on_update_library_directory()
 
     def _select_output_directory_dialog(self) -> None:
         with dpg.file_dialog(
@@ -230,8 +230,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.output_path_text is not None:
             self.output_path_text.set_path(directory_path)
 
-        if self._on_update_output_directory:
-            self._on_update_output_directory()
+        if self.on_update_output_directory:
+            self.on_update_output_directory()
 
     def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
@@ -256,7 +256,3 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         library_directory = to_path(config.general.library_directory)
         if self.library_path_text:
             self.library_path_text.set_path(library_directory)
-
-    def set_callbacks(self, on_update_library_directory: Optional[VoidCallback] = None) -> None:
-        if on_update_library_directory is not None:
-            self._on_update_library_directory = on_update_library_directory

@@ -12,7 +12,8 @@ from ...constants.general import (
     TAG_THEME_FILE_RECONSTRUCTION,
     TAG_THEME_FILE_WAVE,
 )
-from ..items import ThemeColor, ThemeItems, ThemeParameter
+from ..items import ThemeItems
+from ..style import ThemeColor, ThemeParameter
 from ..theme import Theme
 
 

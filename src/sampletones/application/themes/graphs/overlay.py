@@ -1,7 +1,8 @@
 import dearpygui.dearpygui as dpg
 
 from ...constants.graphs import COL_WAVEFORM_OVERLAY, TAG_THEME_GRAPH_OVERLAY
-from ..items import ThemeColor, ThemeItems, ThemeParameter
+from ..items import ThemeItems
+from ..style import ThemeColor, ThemeParameter
 from ..theme import Theme
 
 

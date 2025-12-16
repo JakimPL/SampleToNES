@@ -5,7 +5,8 @@ from ...constants.graphs import (
     TAG_THEME_GRAPH_ZERO_LINE,
     VAL_BAR_PLOT_ZERO_LINE_THICKNESS,
 )
-from ..items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
+from ..items import ThemeItems
+from ..style import ThemeColor, ThemeParameter, ThemeStyle
 from ..theme import Theme
 
 

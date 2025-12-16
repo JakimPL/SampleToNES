@@ -44,9 +44,9 @@ class GUIInstructionPanel(GUIPanel):
         self.spectrum_display: GUISpectrumGraph
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
-        self._on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
-        self._on_clear_instruction_details: Optional[VoidCallback] = None
-        self._on_change_audio_state: Optional[VoidCallback] = None
+        self.on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
+        self.on_clear_instruction_details: Optional[VoidCallback] = None
+        self.on_change_audio_state: Optional[VoidCallback] = None
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
         self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
@@ -55,19 +55,6 @@ class GUIInstructionPanel(GUIPanel):
             tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
-
-    def set_callbacks(
-        self,
-        on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None,
-        on_clear_instruction_details: Optional[VoidCallback] = None,
-        on_change_audio_state: Optional[VoidCallback] = None,
-    ) -> None:
-        if on_display_instruction_details is not None:
-            self._on_display_instruction_details = on_display_instruction_details
-        if on_clear_instruction_details is not None:
-            self._on_clear_instruction_details = on_clear_instruction_details
-        if on_change_audio_state is not None:
-            self._on_change_audio_state = on_change_audio_state
 
     def create_panel(self) -> None:
         self._create_player_panel()
@@ -114,7 +101,7 @@ class GUIInstructionPanel(GUIPanel):
             parent=self.parent,
             audio_device_manager=self.audio_device_manager,
             on_position_changed=self._on_player_position_changed,
-            on_change_audio_state=self._on_change_audio_state,
+            on_change_audio_state=self.on_change_audio_state,
         )
 
     def close_instruction(self) -> None:
@@ -122,8 +109,8 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel.disable()
         self.waveform_display.clear_layers()
         self.spectrum_display.clear_layers()
-        if self._on_clear_instruction_details:
-            self._on_clear_instruction_details()
+        if self.on_clear_instruction_details:
+            self.on_clear_instruction_details()
 
         self.player_panel.enable()
 
@@ -140,8 +127,8 @@ class GUIInstructionPanel(GUIPanel):
         self.library_config = library_config
 
         self.player_panel.disable()
-        if self._on_display_instruction_details:
-            self._on_display_instruction_details(generator_class_name, instruction, fragment)
+        if self.on_display_instruction_details:
+            self.on_display_instruction_details(generator_class_name, instruction, fragment)
 
         if fragment:
             sample_rate = library_config.sample_rate
@@ -157,8 +144,8 @@ class GUIInstructionPanel(GUIPanel):
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
-            if self._on_clear_instruction_details:
-                self._on_clear_instruction_details()
+            if self.on_clear_instruction_details:
+                self.on_clear_instruction_details()
 
         self.player_panel.enable()
 

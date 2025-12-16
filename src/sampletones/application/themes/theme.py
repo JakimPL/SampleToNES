@@ -3,7 +3,6 @@ from typing import (
     Dict,
     ItemsView,
     KeysView,
-    List,
     Optional,
     Tuple,
     Union,
@@ -14,9 +13,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Callback, Color
 
-from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
-
-ThemeDictionary = Dict[Tuple[ThemeParameter, int], Union[ThemeColor, ThemeStyle]]
+from .items import ThemeDictionary, ThemeItems, ThemeValue
+from .style import ThemeColor, ThemeParameter, ThemeStyle
 
 
 class Theme:
@@ -96,11 +94,11 @@ class Theme:
         return cls._theme.items.keys()
 
     @classmethod
-    def items(cls) -> ItemsView[ThemeParameter, List[Union[ThemeColor, ThemeStyle]]]:
+    def items(cls) -> ItemsView[ThemeParameter, ThemeValue]:
         return cls._theme.items.items()
 
     @classmethod
-    def values(cls) -> ValuesView[List[Union[ThemeColor, ThemeStyle]]]:
+    def values(cls) -> ValuesView[ThemeValue]:
         return cls._theme.items.values()
 
     @classmethod

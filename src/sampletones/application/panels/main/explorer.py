@@ -64,15 +64,15 @@ class GUIExplorerPanel(GUITreePanel):
         self._building_tree: bool = False
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
-        self._on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
-        self._on_directory_clicked: Optional[OnReconstructPathCallback] = None
-        self._on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
-        self._on_reconstruct_file: Optional[OnReconstructPathCallback] = None
-        self._on_load_reconstruction: Optional[OnReconstructPathCallback] = None
-        self._on_load_library: Optional[OnReconstructPathCallback] = None
-        self._on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
-        self._on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
-        self._is_converter_running: Optional[Callable[[], bool]] = None
+        self.on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
+        self.on_directory_clicked: Optional[OnReconstructPathCallback] = None
+        self.on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
+        self.on_reconstruct_file: Optional[OnReconstructPathCallback] = None
+        self.on_load_reconstruction: Optional[OnReconstructPathCallback] = None
+        self.on_load_library: Optional[OnReconstructPathCallback] = None
+        self.on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
+        self.on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
+        self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
             tree=self.explorer_manager.tree,
@@ -287,8 +287,8 @@ class GUIExplorerPanel(GUITreePanel):
                     return self._load_library(user_data)
                 case paths.EXT_FILE_WAVE:
 
-                    if self._on_wave_file_clicked is not None:
-                        self._on_wave_file_clicked(user_data.filepath)
+                    if self.on_wave_file_clicked is not None:
+                        self.on_wave_file_clicked(user_data.filepath)
                     return self._schedule_autoplay(user_data)
                 case _:
                     logger.warning(f"Unhandled file type clicked: {user_data.filepath.suffix.lower()}")
@@ -333,18 +333,18 @@ class GUIExplorerPanel(GUITreePanel):
         if not has_content:
             return
 
-        if self._on_directory_clicked is not None:
-            self._on_directory_clicked(node.filepath)
+        if self.on_directory_clicked is not None:
+            self.on_directory_clicked(node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         filepath = node.filepath
-        if self._on_load_reconstruction is not None and filepath.exists():
-            self._on_load_reconstruction(filepath)
+        if self.on_load_reconstruction is not None and filepath.exists():
+            self.on_load_reconstruction(filepath)
 
     def _load_library(self, node: FileSystemNode) -> None:
         filepath = node.filepath
-        if self._on_load_library is not None and filepath.exists():
-            self._on_load_library(filepath)
+        if self.on_load_library is not None and filepath.exists():
+            self.on_load_library(filepath)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
@@ -379,8 +379,8 @@ class GUIExplorerPanel(GUITreePanel):
         if self._check_if_converter_running():
             return
 
-        if self._on_reconstruct_file is not None:
-            self._on_reconstruct_file(node.filepath)
+        if self.on_reconstruct_file is not None:
+            self.on_reconstruct_file(node.filepath)
 
     def _toggle_directory_expansion(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -458,8 +458,8 @@ class GUIExplorerPanel(GUITreePanel):
             )
 
     def _check_if_converter_running(self) -> bool:
-        if self._is_converter_running is not None:
-            if self._is_converter_running():
+        if self.is_converter_running is not None:
+            if self.is_converter_running():
                 logger.warning("Conversion is already running. Wait or cancel the current operation.")
                 show_info_dialog(
                     tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
@@ -474,51 +474,20 @@ class GUIExplorerPanel(GUITreePanel):
         if self._check_if_converter_running():
             return
 
-        if self._on_reconstruct_file is not None:
-            self._on_reconstruct_file(node.filepath)
+        if self.on_reconstruct_file is not None:
+            self.on_reconstruct_file(node.filepath)
 
     def _context_reconstruct_directory(self, node: FileSystemNode) -> None:
         if self._check_if_converter_running():
             return
 
-        if self._on_reconstruct_directory is not None:
-            self._on_reconstruct_directory(node.filepath)
+        if self.on_reconstruct_directory is not None:
+            self.on_reconstruct_directory(node.filepath)
 
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:
-        if self._on_set_as_output_directory is not None:
-            self._on_set_as_output_directory(node.filepath)
+        if self.on_set_as_output_directory is not None:
+            self.on_set_as_output_directory(node.filepath)
 
     def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
-        if self._on_set_as_library_directory is not None:
-            self._on_set_as_library_directory(node.filepath)
-
-    def set_callbacks(
-        self,
-        on_wave_file_clicked: Optional[OnReconstructPathCallback] = None,
-        on_directory_clicked: Optional[OnReconstructPathCallback] = None,
-        on_reconstruct_directory: Optional[OnReconstructPathCallback] = None,
-        on_reconstruct_file: Optional[OnReconstructPathCallback] = None,
-        on_load_reconstruction: Optional[OnReconstructPathCallback] = None,
-        on_load_library: Optional[OnReconstructPathCallback] = None,
-        on_set_as_output_directory: Optional[OnReconstructPathCallback] = None,
-        on_set_as_library_directory: Optional[OnReconstructPathCallback] = None,
-        is_converter_running: Optional[Callable[[], bool]] = None,
-    ) -> None:
-        if on_wave_file_clicked is not None:
-            self._on_wave_file_clicked = on_wave_file_clicked
-        if on_directory_clicked is not None:
-            self._on_directory_clicked = on_directory_clicked
-        if on_reconstruct_directory is not None:
-            self._on_reconstruct_directory = on_reconstruct_directory
-        if on_reconstruct_file is not None:
-            self._on_reconstruct_file = on_reconstruct_file
-        if on_load_reconstruction is not None:
-            self._on_load_reconstruction = on_load_reconstruction
-        if on_load_library is not None:
-            self._on_load_library = on_load_library
-        if on_set_as_output_directory is not None:
-            self._on_set_as_output_directory = on_set_as_output_directory
-        if on_set_as_library_directory is not None:
-            self._on_set_as_library_directory = on_set_as_library_directory
-        if is_converter_running is not None:
-            self._is_converter_running = is_converter_running
+        if self.on_set_as_library_directory is not None:
+            self.on_set_as_library_directory(node.filepath)

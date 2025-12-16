@@ -118,9 +118,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
-        self._on_instruction_selected: Optional[OnInstructionSelectedCallback] = None
-        self._on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
-        self._on_library_loaded: Optional[OnLibraryLoadedCallback] = None
+        self.on_instruction_selected: Optional[OnInstructionSelectedCallback] = None
+        self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
+        self.on_library_loaded: Optional[OnLibraryLoadedCallback] = None
 
         super().__init__(
             self.library_manager.tree,
@@ -271,8 +271,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if load_if_needed and not self.library_manager.is_library_loaded(library_key):
             self._load_library(library_key)
 
-        if apply_config and self._on_apply_library_config:
-            self._on_apply_library_config(library_key)
+        if apply_config and self.on_apply_library_config:
+            self.on_apply_library_config(library_key)
 
         self.update_status()
 
@@ -481,8 +481,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             apply_config=True,
         )
         self._rebuild_tree()
-        if self._on_library_loaded:
-            self._on_library_loaded(library_key)
+        if self.on_library_loaded:
+            self.on_library_loaded(library_key)
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
@@ -499,14 +499,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if self._loading_instructions:
             return
 
-        if not self._on_instruction_selected:
+        if not self.on_instruction_selected:
             return
 
         self._set_tree_enabled(False)
         self._loading_instructions = True
         try:
             config = self.config_manager.get_config()
-            self._on_instruction_selected(
+            self.on_instruction_selected(
                 node.generator_class_name,
                 node.instruction,
                 node.fragment,
@@ -629,16 +629,3 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
         self.library_manager.cleanup_creator()
         self._restore_generation_panel()
-
-    def set_callbacks(
-        self,
-        on_instruction_selected: Optional[OnInstructionSelectedCallback] = None,
-        on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None,
-        on_library_loaded: Optional[OnLibraryLoadedCallback] = None,
-    ) -> None:
-        if on_instruction_selected is not None:
-            self._on_instruction_selected = on_instruction_selected
-        if on_apply_library_config is not None:
-            self._on_apply_library_config = on_apply_library_config
-        if on_library_loaded is not None:
-            self._on_library_loaded = on_library_loaded

@@ -7,6 +7,7 @@ from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
 from sampletones.instructions import InstructionUnion
 from sampletones.typehints import FeatureValue
+from sampletones.utils.callbacks import CallbackMixin
 
 from ..utils.thread import concurrent
 from .data import ReconstructionData
@@ -14,7 +15,7 @@ from .data import ReconstructionData
 OnRegenerationFinished = Callable[[ReconstructionData], None]
 
 
-class Regenerator:
+class Regenerator(CallbackMixin):
     def __init__(self) -> None:
         self.reconstruction_data: Optional[ReconstructionData] = None
 
@@ -50,7 +51,3 @@ class Regenerator:
         instructions: List[InstructionUnion],
     ) -> np.ndarray:
         return np.concatenate([generator(instruction, save=True) for instruction in instructions])  # type: ignore
-
-    def set_callbacks(self, on_regeneration_finished: Optional[OnRegenerationFinished] = None) -> None:
-        if on_regeneration_finished is not None:
-            self._on_regeneration_finished = on_regeneration_finished

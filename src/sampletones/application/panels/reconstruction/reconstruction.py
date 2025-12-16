@@ -83,10 +83,10 @@ class GUIReconstructionPanel(GUIPanel):
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._pending_generator_name: Optional[GeneratorName] = None
 
-        self._on_export_wav: Optional[VoidCallback] = None
-        self._on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
-        self._on_clear_reconstruction_details: Optional[VoidCallback] = None
-        self._on_change_audio_state: Optional[VoidCallback] = None
+        self.on_export_wav: Optional[VoidCallback] = None
+        self.on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
+        self.on_clear_reconstruction_details: Optional[VoidCallback] = None
+        self.on_change_audio_state: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
@@ -108,8 +108,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_data = reconstruction_data
         self.config_manager.load_config(reconstruction_data.config)
 
-        if self._on_display_reconstruction_details:
-            self._on_display_reconstruction_details(reconstruction_data.reconstruction)
+        if self.on_display_reconstruction_details:
+            self.on_display_reconstruction_details(reconstruction_data.reconstruction)
 
         self._update_generator_checkboxes(reconstruction_data)
         self._update_reconstruction_display()
@@ -122,8 +122,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
 
-        if self._on_clear_reconstruction_details:
-            self._on_clear_reconstruction_details()
+        if self.on_clear_reconstruction_details:
+            self.on_clear_reconstruction_details()
 
         self.player_panel.clear_audio()
         self.waveform_display.clear()
@@ -160,7 +160,7 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.parent,
             audio_device_manager=self.audio_device_manager,
             on_position_changed=self._on_player_position_changed,
-            on_change_audio_state=self._on_change_audio_state,
+            on_change_audio_state=self.on_change_audio_state,
         )
 
     def _create_audio_source_radio_buttons(self) -> None:
@@ -221,22 +221,6 @@ class GUIReconstructionPanel(GUIPanel):
                     enabled=False,
                     callback=self._on_generator_checkbox_changed,
                 )
-
-    def set_callbacks(
-        self,
-        on_export_wav: Optional[VoidCallback] = None,
-        on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None,
-        on_clear_reconstruction_details: Optional[VoidCallback] = None,
-        on_change_audio_state: Optional[VoidCallback] = None,
-    ) -> None:
-        if on_export_wav is not None:
-            self._on_export_wav = on_export_wav
-        if on_display_reconstruction_details is not None:
-            self._on_display_reconstruction_details = on_display_reconstruction_details
-        if on_clear_reconstruction_details is not None:
-            self._on_clear_reconstruction_details = on_clear_reconstruction_details
-        if on_change_audio_state is not None:
-            self._on_change_audio_state = on_change_audio_state
 
     def _get_generator_tag(self, generator_name: GeneratorName) -> str:
         return TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name).lower()
@@ -458,8 +442,8 @@ class GUIReconstructionPanel(GUIPanel):
         feature.save(filepath, instrument_name)
 
     def _handle_export_wav_button_click(self) -> None:
-        if self._on_export_wav:
-            self._on_export_wav()
+        if self.on_export_wav:
+            self.on_export_wav()
 
     def export_reconstruction_wav_dialog(self) -> None:
         if not self.reconstruction_data:

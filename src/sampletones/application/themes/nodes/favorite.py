@@ -6,7 +6,8 @@ from ...constants.general import (
     TAG_THEME_FAVORITE,
     TAG_THEME_FAVORITE_CHILD,
 )
-from ..items import ThemeColor, ThemeItems, ThemeParameter
+from ..items import ThemeItems
+from ..style import ThemeColor, ThemeParameter
 from ..theme import Theme
 
 

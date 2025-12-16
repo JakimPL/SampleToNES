@@ -9,7 +9,8 @@ from ..constants.reconstructions import (
     TAG_THEME_TABLE_RECONSTRUCTION_DETAILS_INITIAL_PITCH,
     VAL_TABLE_CELL_PADDING_RECONSTRUCTION_DETAILS_INITIAL_PITCH,
 )
-from .items import ThemeItems, ThemeParameter, ThemeStyle
+from .items import ThemeItems
+from .style import ThemeParameter, ThemeStyle
 from .theme import Theme
 
 

@@ -1,7 +1,8 @@
 import dearpygui.dearpygui as dpg
 
 from ..constants.general import COL_BACKGROUND_INPUT_INVALID, TAG_THEME_INPUT_INVALID
-from .items import ThemeColor, ThemeItems, ThemeParameter
+from .items import ThemeItems
+from .style import ThemeColor, ThemeParameter
 from .theme import Theme
 
 

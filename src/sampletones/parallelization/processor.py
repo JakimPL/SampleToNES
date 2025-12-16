@@ -7,6 +7,7 @@ from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
 from sampletones.typehints import Callback, VoidCallback
+from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import BaseLogger
 from sampletones.utils.logger import logger as default_logger
 
@@ -19,7 +20,7 @@ CANCEL_TIMEOUT = 5
 STOP_TIMEOUT = 2
 
 
-class TaskProcessor(Generic[T]):
+class TaskProcessor(Generic[T], CallbackMixin):
     def __init__(self, max_workers: Optional[int] = None, logger: BaseLogger = default_logger) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
@@ -37,11 +38,11 @@ class TaskProcessor(Generic[T]):
         self._pool_lock: threading.Lock = threading.Lock()
         self._exception: Optional[Exception] = None
 
-        self._on_start: Optional[VoidCallback] = None
-        self._on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
-        self._on_completed: Optional[Callable[[T], None]] = None
-        self._on_error: Optional[Callable[[Exception], None]] = None
-        self._on_cancelled: Optional[VoidCallback] = None
+        self.on_start: Optional[VoidCallback] = None
+        self.on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None
+        self.on_completed: Optional[Callable[[T], None]] = None
+        self.on_error: Optional[Callable[[Exception], None]] = None
+        self.on_cancelled: Optional[VoidCallback] = None
 
     def start(self) -> None:
         self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
@@ -88,25 +89,6 @@ class TaskProcessor(Generic[T]):
     def get_status(self) -> TaskStatus:
         return self.status
 
-    def set_callbacks(
-        self,
-        on_start: Optional[VoidCallback] = None,
-        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
-        on_completed: Optional[Callable[[T], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[VoidCallback] = None,
-    ) -> None:
-        if on_start is not None:
-            self._on_start = on_start
-        if on_progress is not None:
-            self._on_progress = on_progress
-        if on_completed is not None:
-            self._on_completed = on_completed
-        if on_error is not None:
-            self._on_error = on_error
-        if on_cancelled is not None:
-            self._on_cancelled = on_cancelled
-
     def _create_tasks(self) -> List[Any]:
         raise NotImplementedError
 
@@ -145,8 +127,8 @@ class TaskProcessor(Generic[T]):
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
 
-        if self._on_start is not None:
-            self._on_start()
+        if self.on_start is not None:
+            self.on_start()
 
         results = []
         try:
@@ -179,7 +161,7 @@ class TaskProcessor(Generic[T]):
         self._complete_process(results)
 
     def _notify_progress(self) -> None:
-        if self._on_progress is None:
+        if self.on_progress is None:
             return
 
         progress = TaskProgress(
@@ -188,7 +170,7 @@ class TaskProcessor(Generic[T]):
             current_item=self.current_item,
         )
 
-        self._on_progress(self.status, progress)
+        self.on_progress(self.status, progress)
         self.logger.debug(f"Status: {self.status}; progress: {progress}")
 
     def _finalize_cancellation(self) -> None:
@@ -201,8 +183,8 @@ class TaskProcessor(Generic[T]):
         self.running = False
         self._notify_progress()
 
-        if self._on_cancelled is not None:
-            self._on_cancelled()
+        if self.on_cancelled is not None:
+            self.on_cancelled()
 
     def _finalize_completion(self, results: List[T]) -> None:
         self.logger.info("Conversion completed successfully")
@@ -212,8 +194,8 @@ class TaskProcessor(Generic[T]):
         self._notify_progress()
 
         processed_result = self._process_results(results)
-        if self._on_completed is not None:
-            self._on_completed(processed_result)
+        if self.on_completed is not None:
+            self.on_completed(processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
         self.logger.error_with_traceback(exception, f"Task failed: {exception}")
@@ -223,8 +205,8 @@ class TaskProcessor(Generic[T]):
         self.running = False
         self._notify_progress()
 
-        if self._on_error is not None:
-            self._on_error(exception)
+        if self.on_error is not None:
+            self.on_error(exception)
 
     def _cleanup(self) -> None:
         if self.future:

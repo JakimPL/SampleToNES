@@ -70,9 +70,9 @@ class GUIBrowserPanel(GUITreePanel):
         self._building_tree: bool = False
         self._loading_reconstruction: bool = False
 
-        self._on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
-        self._on_reconstruct_file: Optional[VoidCallback] = None
-        self._on_reconstruct_directory: Optional[VoidCallback] = None
+        self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
+        self.on_reconstruct_file: Optional[VoidCallback] = None
+        self.on_reconstruct_directory: Optional[VoidCallback] = None
 
         super().__init__(
             tree=self.browser_manager.tree,
@@ -234,12 +234,12 @@ class GUIBrowserPanel(GUITreePanel):
             self.load_and_display_reconstruction(user_data.filepath)
 
     def _reconstruct_file(self) -> None:
-        if self._on_reconstruct_file is not None:
-            self._on_reconstruct_file()
+        if self.on_reconstruct_file is not None:
+            self.on_reconstruct_file()
 
     def _reconstruct_directory(self) -> None:
-        if self._on_reconstruct_directory is not None:
-            self._on_reconstruct_directory()
+        if self.on_reconstruct_directory is not None:
+            self.on_reconstruct_directory()
 
     def _on_directory_node_clicked(
         self,
@@ -317,8 +317,8 @@ class GUIBrowserPanel(GUITreePanel):
                     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
                 )
 
-            if self._on_reconstruction_loaded:
-                self._on_reconstruction_loaded(reconstruction_data)
+            if self.on_reconstruction_loaded:
+                self.on_reconstruction_loaded(reconstruction_data)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
@@ -357,16 +357,3 @@ class GUIBrowserPanel(GUITreePanel):
             self._set_tree_enabled(True)
 
         return self.application_config_manager.set_current_reconstruction(filepath)
-
-    def set_callbacks(
-        self,
-        on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None,
-        on_reconstruct_file: Optional[VoidCallback] = None,
-        on_reconstruct_directory: Optional[VoidCallback] = None,
-    ) -> None:
-        if on_reconstruction_loaded is not None:
-            self._on_reconstruction_loaded = on_reconstruction_loaded
-        if on_reconstruct_file is not None:
-            self._on_reconstruct_file = on_reconstruct_file
-        if on_reconstruct_directory is not None:
-            self._on_reconstruct_directory = on_reconstruct_directory

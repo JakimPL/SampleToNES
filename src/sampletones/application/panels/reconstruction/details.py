@@ -110,10 +110,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._initial_pitch_change_object: Optional[str] = None
         self._initial_pitch_change_timer: Optional[float] = None
 
-        self._on_instrument_export: Optional[OnInstrumentExportCallback] = None
-        self._on_instruments_export: Optional[VoidCallback] = None
-        self._on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
-        self._on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
+        self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
+        self.on_instruments_export: Optional[VoidCallback] = None
+        self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
+        self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -156,29 +156,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=True,
         )
 
-    def set_callbacks(
-        self,
-        on_instrument_export: Optional[OnInstrumentExportCallback] = None,
-        on_instruments_export: Optional[VoidCallback] = None,
-        on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None,
-        on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None,
-    ) -> None:
-        if on_instrument_export is not None:
-            self._on_instrument_export = on_instrument_export
-        if on_instruments_export is not None:
-            self._on_instruments_export = on_instruments_export
-        if on_reconstruction_instrument_updated is not None:
-            self._on_reconstruction_instrument_updated = on_reconstruction_instrument_updated
-        if on_reconstruction_instrument_hovered is not None:
-            self._on_reconstruction_instrument_hovered = on_reconstruction_instrument_hovered
-
     def _export_instruments(self) -> None:
-        if self._on_instruments_export is not None:
-            self._on_instruments_export()
+        if self.on_instruments_export is not None:
+            self.on_instruments_export()
 
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
-        if self._on_instrument_export is not None:
-            self._on_instrument_export(user_data)
+        if self.on_instrument_export is not None:
+            self.on_instrument_export(user_data)
 
     def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
         self._shortcut_manager.disable()
@@ -598,8 +582,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         initial_pitch: int,
     ) -> None:
         features = self._get_features(generator_name)
-        if self._on_reconstruction_instrument_updated is not None:
-            self._on_reconstruction_instrument_updated(
+        if self.on_reconstruction_instrument_updated is not None:
+            self.on_reconstruction_instrument_updated(
                 generator_name,
                 features,
                 FeatureKey.INITIAL_PITCH,
@@ -627,8 +611,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> None:
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         dpg_set_value(raw_data_tag, self._format_data(data))
-        if self._on_reconstruction_instrument_updated is not None:
-            self._on_reconstruction_instrument_updated(
+        if self.on_reconstruction_instrument_updated is not None:
+            self.on_reconstruction_instrument_updated(
                 generator_name,
                 features,
                 feature_key,
@@ -636,8 +620,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
     def _on_bar_point_hovered(self, index: Optional[int]) -> None:
-        if self._on_reconstruction_instrument_hovered is not None:
-            self._on_reconstruction_instrument_hovered(index)
+        if self.on_reconstruction_instrument_hovered is not None:
+            self.on_reconstruction_instrument_hovered(index)
 
     def _add_raw_data_text(
         self,
@@ -702,8 +686,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         features = self._get_features(generator_name)
         dpg.set_value(sender, self._format_data(raw_data))
-        if self._on_reconstruction_instrument_updated is not None:
-            self._on_reconstruction_instrument_updated(
+        if self.on_reconstruction_instrument_updated is not None:
+            self.on_reconstruction_instrument_updated(
                 generator_name,
                 features,
                 feature_key,

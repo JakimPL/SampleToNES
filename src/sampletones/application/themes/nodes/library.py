@@ -10,7 +10,8 @@ from ...constants.instructions import (
     TAG_THEME_INSTRUCTIONS_LIBRARY_INSTRUCTION,
     TAG_THEME_INSTRUCTIONS_LIBRARY_LIBRARY,
 )
-from ..items import ThemeColor, ThemeItems, ThemeParameter
+from ..items import ThemeItems
+from ..style import ThemeColor, ThemeParameter
 from ..theme import Theme
 
 
