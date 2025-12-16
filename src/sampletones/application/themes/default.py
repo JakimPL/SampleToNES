@@ -2,6 +2,7 @@ import dearpygui.dearpygui as dpg
 
 from ..constants.general import (
     COL_BACKGROUND,
+    COL_BACKGROUND_MENU,
     COL_BUTTON,
     COL_BUTTON_ACTIVE,
     COL_BUTTON_HOVERED,
@@ -28,6 +29,8 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DISABLED_DEFAULT),
                 ThemeColor(key=dpg.mvThemeCol_WindowBg, color=COL_BACKGROUND),
                 ThemeColor(key=dpg.mvThemeCol_ChildBg, color=COL_BACKGROUND),
+                ThemeColor(key=dpg.mvThemeCol_PopupBg, color=COL_BACKGROUND_MENU),
+                ThemeColor(key=dpg.mvThemeCol_MenuBarBg, color=COL_BACKGROUND_MENU),
             ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                 ThemeColor(key=dpg.mvThemeCol_Button, color=COL_BUTTON),

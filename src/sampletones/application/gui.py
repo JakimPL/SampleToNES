@@ -119,6 +119,7 @@ from .reconstruction.regenerator import Regenerator
 from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
+from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
     show_error_dialog,
     show_modal_dialog,
@@ -182,6 +183,7 @@ class GUI:
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
         self.theme = DefaultTheme()
+        self.fps_theme = FPSTimerTheme()
 
         self._setup_gui()
         self._load_settings()
@@ -487,8 +489,14 @@ class GUI:
                     check=True,
                 )
 
-            with dpg.group(horizontal=True, enabled=False):
-                dpg.add_text("", tag=TAG_MENU_TEXT_FPS)
+            dpg.add_button(
+                label=TPL_MENU_TEXT_FPS.format(fps=0),
+                tag=TAG_MENU_TEXT_FPS,
+                width=-1,
+                enabled=False,
+            )
+
+            self.fps_theme.bind_to_item(TAG_MENU_TEXT_FPS)
 
     def _update_menu(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
@@ -1069,7 +1077,7 @@ class GUI:
     def _update_fps(self) -> None:
         delta_time = dpg.get_delta_time()
         fps = self.fps_timer.update(delta_time)
-        dpg_set_value(TAG_MENU_TEXT_FPS, TPL_MENU_TEXT_FPS.format(fps=fps))
+        dpg_configure_item(TAG_MENU_TEXT_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:
