@@ -83,7 +83,12 @@ from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
 from ...utils.clipboard import copy_to_clipboard
-from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
+from ...utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_is_item_hovered,
+    dpg_set_value,
+)
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 from ...utils.tooltip import show_tooltip
@@ -103,6 +108,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
+        self.mouse_event_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
         self.theme = DefaultTheme()
         self.invalid_input_theme = InvalidInputTheme()
@@ -132,6 +138,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self._create_export_button()
             self._create_details_panel()
 
+        self._setup_mouse_event_handler()
+
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
@@ -156,13 +164,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=True,
         )
 
+    def _setup_mouse_event_handler(self) -> None:
+        with dpg.handler_registry(tag=self.mouse_event_handler_tag):
+            dpg.add_mouse_move_handler(callback=self._on_mouse_move)
+
     def _export_instruments(self) -> None:
-        if self.on_instruments_export is not None:
-            self.on_instruments_export()
+        self.call(self.on_instruments_export)
 
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
-        if self.on_instrument_export is not None:
-            self.on_instrument_export(user_data)
+        self.call(self.on_instrument_export, user_data)
 
     def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
         self._shortcut_manager.disable()
@@ -203,7 +213,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         dpg_delete_item(tab_tag)
         dpg_delete_item(window_tag)
-        with dpg.tab(label=generator_name, parent=self.tab_bar_tag, tag=tab_tag):
+        with dpg.tab(
+            label=generator_name,
+            tag=tab_tag,
+            parent=self.tab_bar_tag,
+        ):
             self.generator_plots[generator_name] = {}
             generator_features = feature_data.get_generator_features(generator_name)
 
@@ -220,7 +234,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 user_data=generator_name,
             )
 
-            with dpg.child_window(tag=window_tag, parent=tab_tag):
+            with dpg.child_window(
+                tag=window_tag,
+                parent=tab_tag,
+                no_scroll_with_mouse=True,
+            ):
                 initial_pitch = cast(int, generator_features.get(FeatureKey.INITIAL_PITCH))
                 self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
 
@@ -382,6 +400,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> None:
         button_item = None
         decrement_button_tag, increment_button_tag, generator_name, input_tag, value_tag = user_data
+        if not dpg.does_item_exist(decrement_button_tag) or not dpg.does_item_exist(increment_button_tag):
+            dpg_delete_item(sender)
+            return
+
         if dpg.is_item_hovered(decrement_button_tag):
             button_item = decrement_button_tag
             change = -1
@@ -407,6 +429,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._initial_pitch_change_timer = None
         self._initial_pitch_change_object = None
+
+    def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+        if not dpg_is_item_hovered(self.tag):
+            self.call(self.on_reconstruction_instrument_hovered, None)
 
     def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
         if generator_name == GeneratorName.NOISE:
@@ -582,13 +608,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         initial_pitch: int,
     ) -> None:
         features = self._get_features(generator_name)
-        if self.on_reconstruction_instrument_updated is not None:
-            self.on_reconstruction_instrument_updated(
-                generator_name,
-                features,
-                FeatureKey.INITIAL_PITCH,
-                initial_pitch,
-            )
+        self.call(
+            self.on_reconstruction_instrument_updated,
+            generator_name,
+            features,
+            FeatureKey.INITIAL_PITCH,
+            initial_pitch,
+        )
 
     def _get_features(self, generator_name: GeneratorName) -> Features:
         assert self.current_features is not None, "Current features should not be None when creating feature plots"
@@ -611,17 +637,16 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> None:
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         dpg_set_value(raw_data_tag, self._format_data(data))
-        if self.on_reconstruction_instrument_updated is not None:
-            self.on_reconstruction_instrument_updated(
-                generator_name,
-                features,
-                feature_key,
-                data,
-            )
+        self.call(
+            self.on_reconstruction_instrument_updated,
+            generator_name,
+            features,
+            feature_key,
+            data,
+        )
 
     def _on_bar_point_hovered(self, index: Optional[int]) -> None:
-        if self.on_reconstruction_instrument_hovered is not None:
-            self.on_reconstruction_instrument_hovered(index)
+        self.call(self.on_reconstruction_instrument_hovered, index)
 
     def _add_raw_data_text(
         self,
@@ -686,13 +711,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         features = self._get_features(generator_name)
         dpg.set_value(sender, self._format_data(raw_data))
-        if self.on_reconstruction_instrument_updated is not None:
-            self.on_reconstruction_instrument_updated(
-                generator_name,
-                features,
-                feature_key,
-                raw_data,
-            )
+        self.call(
+            self.on_reconstruction_instrument_updated,
+            generator_name,
+            features,
+            feature_key,
+            raw_data,
+        )
 
         self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
 

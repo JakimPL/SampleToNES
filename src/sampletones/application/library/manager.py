@@ -31,6 +31,7 @@ from sampletones.tree import (
 )
 from sampletones.typehints import VoidCallback
 from sampletones.utils import period_to_name, pitch_to_name, to_path
+from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.instructions import (
     LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
@@ -40,7 +41,7 @@ from ..constants.instructions import (
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
 
-class InstructionsLibraryManager:
+class InstructionsLibraryManager(CallbackMixin):
     def __init__(
         self,
         library_directory: Path,
@@ -56,11 +57,11 @@ class InstructionsLibraryManager:
         self.tree = Tree()
         self.creator: Optional[InstructionsLibraryCreator] = None
 
-        self._on_generation_start: Optional[VoidCallback] = on_generation_start
-        self._on_generation_completed: Optional[VoidCallback] = on_completed
-        self._on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
-        self._on_generation_error: Optional[Callable[[Exception], None]] = on_error
-        self._on_generation_cancelled: Optional[VoidCallback] = on_cancelled
+        self.on_generation_start: Optional[VoidCallback] = on_generation_start
+        self.on_generation_completed: Optional[VoidCallback] = on_completed
+        self.on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
+        self.on_generation_error: Optional[Callable[[Exception], None]] = on_error
+        self.on_generation_cancelled: Optional[VoidCallback] = on_cancelled
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = InstructionLibrary(directory=str(directory))
@@ -159,11 +160,11 @@ class InstructionsLibraryManager:
         self.library = InstructionLibrary.from_config(config)
         self.creator = InstructionsLibraryCreator(config, window)
         self.creator.set_callbacks(
-            on_start=self._on_generation_start,
+            on_start=self.on_generation_start,
             on_completed=self._complete_generation,
-            on_error=self._on_generation_error,
-            on_cancelled=self._on_generation_cancelled,
-            on_progress=self._on_generation_progress,
+            on_error=self.on_generation_error,
+            on_cancelled=self.on_generation_cancelled,
+            on_progress=self.on_generation_progress,
         )
 
         self.creator.start()
@@ -174,11 +175,10 @@ class InstructionsLibraryManager:
             self.library.save_data(key, library_data)
             self.current_library_key = key
         except Exception as exception:
-            if self._on_generation_error is not None:
-                self._on_generation_error(exception)
+            self.call(self.on_generation_error, exception)
             raise exception
-        if self._on_generation_completed is not None:
-            self._on_generation_completed()
+
+        self.call(self.on_generation_completed)
 
     def is_generating(self) -> bool:
         return self.creator is not None and self.creator.is_running()

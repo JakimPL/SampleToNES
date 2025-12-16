@@ -4,11 +4,12 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
 from sampletones.typehints import VoidCallback
+from sampletones.utils.callbacks import CallbackMixin
 
 from .data import AudioData
 
 
-class AudioPlayer:
+class AudioPlayer(CallbackMixin):
     def __init__(
         self,
         audio_device_manager: AudioDeviceManager,
@@ -18,8 +19,9 @@ class AudioPlayer:
     ):
         self.audio_device_manager = audio_device_manager
         self.audio_data: AudioData = AudioData.empty(sample_rate)
-        self._on_position_changed = on_position_changed
-        self._on_change_audio_state = on_change_audio_state
+
+        self.on_position_changed = on_position_changed
+        self.on_change_audio_state = on_change_audio_state
 
     def load_audio_data(self, audio_data: AudioData) -> None:
         self.audio_data = audio_data
@@ -31,15 +33,13 @@ class AudioPlayer:
     def _on_device_position_changed(self, position: int) -> None:
         if self.audio_data.is_loaded():
             self.audio_data.set_position(position)
-        if self._on_position_changed is not None:
-            self._on_position_changed(position)
+            self.call(self.on_position_changed, position)
 
     def set_position(self, position: int) -> None:
         if self.audio_data.is_loaded():
             self.audio_data.set_position(position)
             self.audio_device_manager.set_position(position)
-            if self._on_position_changed is not None:
-                self._on_position_changed(position)
+            self.call(self.on_position_changed, position)
 
     def play(self) -> None:
         if not self.audio_data.is_loaded():
@@ -68,9 +68,7 @@ class AudioPlayer:
         self.audio_device_manager.stop()
         if self.audio_data.is_loaded():
             self.audio_data.reset_position()
-        if self._on_position_changed is not None:
-            self._on_position_changed(0)
-
+        self.call(self.on_position_changed, 0)
         self._notify_audio_state_changed()
 
     @property
@@ -82,5 +80,4 @@ class AudioPlayer:
         return self.audio_device_manager.is_paused()
 
     def _notify_audio_state_changed(self) -> None:
-        if self._on_change_audio_state is not None:
-            self._on_change_audio_state()
+        self.call(self.on_change_audio_state)

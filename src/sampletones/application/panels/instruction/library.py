@@ -271,8 +271,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if load_if_needed and not self.library_manager.is_library_loaded(library_key):
             self._load_library(library_key)
 
-        if apply_config and self.on_apply_library_config:
-            self.on_apply_library_config(library_key)
+        if apply_config:
+            self.call(self.on_apply_library_config, library_key)
 
         self.update_status()
 
@@ -481,8 +481,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             apply_config=True,
         )
         self._rebuild_tree()
-        if self.on_library_loaded:
-            self.on_library_loaded(library_key)
+        self.call(self.on_apply_library_config, library_key)
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
@@ -499,14 +498,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if self._loading_instructions:
             return
 
-        if not self.on_instruction_selected:
+        if self.on_instruction_selected is None:
             return
 
         self._set_tree_enabled(False)
         self._loading_instructions = True
         try:
             config = self.config_manager.get_config()
-            self.on_instruction_selected(
+            self.call(
+                self.on_instruction_selected,
                 node.generator_class_name,
                 node.instruction,
                 node.fragment,

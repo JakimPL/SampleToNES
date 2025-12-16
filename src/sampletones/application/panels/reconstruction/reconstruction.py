@@ -108,9 +108,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_data = reconstruction_data
         self.config_manager.load_config(reconstruction_data.config)
 
-        if self.on_display_reconstruction_details:
-            self.on_display_reconstruction_details(reconstruction_data.reconstruction)
-
+        self.call(self.on_display_reconstruction_details, reconstruction_data.reconstruction)
         self._update_generator_checkboxes(reconstruction_data)
         self._update_reconstruction_display()
 
@@ -121,10 +119,7 @@ class GUIReconstructionPanel(GUIPanel):
     def close_reconstruction(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
-
-        if self.on_clear_reconstruction_details:
-            self.on_clear_reconstruction_details()
-
+        self.call(self.on_clear_reconstruction_details)
         self.player_panel.clear_audio()
         self.waveform_display.clear()
         self._reset_generator_checkboxes()
@@ -442,8 +437,7 @@ class GUIReconstructionPanel(GUIPanel):
         feature.save(filepath, instrument_name)
 
     def _handle_export_wav_button_click(self) -> None:
-        if self.on_export_wav:
-            self.on_export_wav()
+        self.call(self.on_export_wav)
 
     def export_reconstruction_wav_dialog(self) -> None:
         if not self.reconstruction_data:

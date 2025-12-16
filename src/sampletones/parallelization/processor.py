@@ -126,9 +126,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self.pool = ProcessPool(max_workers=workers, context=context)
         task_function = self._get_task_function()
         self.future = self.pool.map(task_function, tasks, timeout=None)
-
-        if self.on_start is not None:
-            self.on_start()
+        self.call(self.on_start)
 
         results = []
         try:
@@ -170,7 +168,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
             current_item=self.current_item,
         )
 
-        self.on_progress(self.status, progress)
+        self.call(self.on_progress, self.status, progress)
         self.logger.debug(f"Status: {self.status}; progress: {progress}")
 
     def _finalize_cancellation(self) -> None:
@@ -182,9 +180,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self.cancelling = False
         self.running = False
         self._notify_progress()
-
-        if self.on_cancelled is not None:
-            self.on_cancelled()
+        self.call(self.on_cancelled)
 
     def _finalize_completion(self, results: List[T]) -> None:
         self.logger.info("Conversion completed successfully")
@@ -194,8 +190,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self._notify_progress()
 
         processed_result = self._process_results(results)
-        if self.on_completed is not None:
-            self.on_completed(processed_result)
+        self.call(self.on_completed, processed_result)
 
     def _stop_with_error(self, exception: Exception) -> None:
         self.logger.error_with_traceback(exception, f"Task failed: {exception}")
@@ -204,9 +199,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self.status = TaskStatus.FAILED
         self.running = False
         self._notify_progress()
-
-        if self.on_error is not None:
-            self.on_error(exception)
+        self.call(self.on_error, exception)
 
     def _cleanup(self) -> None:
         if self.future:

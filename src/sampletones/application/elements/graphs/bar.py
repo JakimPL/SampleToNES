@@ -101,8 +101,8 @@ class GUIBarGraph(GUIGraph):
             self._add_zero_line()
 
         with dpg.handler_registry(tag=self.mouse_handler_tag):
-            dpg.add_mouse_move_handler(callback=self._mouse_action_callback)
-            dpg.add_mouse_click_handler(callback=self._mouse_action_callback)
+            dpg.add_mouse_move_handler(callback=self._on_mouse_action)
+            dpg.add_mouse_click_handler(callback=self._on_mouse_action)
 
     def _bind_theme(
         self,
@@ -229,7 +229,7 @@ class GUIBarGraph(GUIGraph):
     def _get_first_layer(self) -> Optional[BarLayer]:
         return next(iter(self.layers.values()), None)
 
-    def _mouse_action_callback(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+    def _on_mouse_action(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
             self._set_hover_bar_position()
             return

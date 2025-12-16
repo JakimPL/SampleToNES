@@ -19,7 +19,7 @@ class Regenerator(CallbackMixin):
     def __init__(self) -> None:
         self.reconstruction_data: Optional[ReconstructionData] = None
 
-        self._on_regeneration_finished: Optional[OnRegenerationFinished] = None
+        self.on_regeneration_finished: Optional[OnRegenerationFinished] = None
 
     @concurrent(wait=False, method_bound=False)
     def regenerate(
@@ -42,8 +42,7 @@ class Regenerator(CallbackMixin):
         audio = self._generate_generator_audio(generator, instructions)
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        if self._on_regeneration_finished is not None:
-            self._on_regeneration_finished(self.reconstruction_data)
+        self.call(self.on_regeneration_finished, self.reconstruction_data)
 
     def _generate_generator_audio(
         self,

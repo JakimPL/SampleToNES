@@ -234,12 +234,10 @@ class GUIBrowserPanel(GUITreePanel):
             self.load_and_display_reconstruction(user_data.filepath)
 
     def _reconstruct_file(self) -> None:
-        if self.on_reconstruct_file is not None:
-            self.on_reconstruct_file()
+        self.call(self.on_reconstruct_file)
 
     def _reconstruct_directory(self) -> None:
-        if self.on_reconstruct_directory is not None:
-            self.on_reconstruct_directory()
+        self.call(self.on_reconstruct_directory)
 
     def _on_directory_node_clicked(
         self,
@@ -317,8 +315,7 @@ class GUIBrowserPanel(GUITreePanel):
                     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
                 )
 
-            if self.on_reconstruction_loaded:
-                self.on_reconstruction_loaded(reconstruction_data)
+            self.call(self.on_reconstruction_loaded, reconstruction_data)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)

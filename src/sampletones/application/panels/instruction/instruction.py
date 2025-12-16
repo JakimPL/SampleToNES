@@ -109,9 +109,7 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel.disable()
         self.waveform_display.clear_layers()
         self.spectrum_display.clear_layers()
-        if self.on_clear_instruction_details:
-            self.on_clear_instruction_details()
-
+        self.call(self.on_clear_instruction_details)
         self.player_panel.enable()
 
     def is_loaded(self) -> bool:
@@ -127,8 +125,7 @@ class GUIInstructionPanel(GUIPanel):
         self.library_config = library_config
 
         self.player_panel.disable()
-        if self.on_display_instruction_details:
-            self.on_display_instruction_details(generator_class_name, instruction, fragment)
+        self.call(self.on_display_instruction_details, generator_class_name, instruction, fragment)
 
         if fragment:
             sample_rate = library_config.sample_rate
@@ -144,8 +141,7 @@ class GUIInstructionPanel(GUIPanel):
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
-            if self.on_clear_instruction_details:
-                self.on_clear_instruction_details()
+            self.call(self.on_clear_instruction_details)
 
         self.player_panel.enable()
 

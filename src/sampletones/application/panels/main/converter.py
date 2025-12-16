@@ -123,9 +123,7 @@ class GUIConverterPanel(GUIPanel):
         self._set_conversion_subpanel_visible(True)
         self._reset_progress()
         self._update_paths()
-        if self.generate_library is not None:
-            self.generate_library()
-
+        self.call(self.generate_library)
         self._wait_for_library_and_start()
 
     def create_panel(self) -> None:
@@ -227,7 +225,7 @@ class GUIConverterPanel(GUIPanel):
             self.output_path_text.set_path(self.output_path)
 
     def _wait_for_library_and_start(self) -> None:
-        if self.is_library_loaded is not None and not self.is_library_loaded():
+        if not self.call(self.is_library_loaded):
             dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
             dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
         else:
@@ -355,11 +353,10 @@ class GUIConverterPanel(GUIPanel):
         dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=False)
 
         if self.is_file:
-            if self.output_path and self.on_load_file is not None:
-                self.on_load_file(self.output_path)
+            if self.output_path:
+                self.call(self.on_load_file, self.output_path)
         else:
-            if self.on_load_directory is not None:
-                self.on_load_directory()
+            self.call(self.on_load_directory)
 
         self._on_close()
 
@@ -375,8 +372,7 @@ class GUIConverterPanel(GUIPanel):
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
         dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
-        if self.on_cancelled is not None:
-            self.on_cancelled()
+        self.call(self.on_cancelled)
 
     def _reset_progress(self) -> None:
         dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, VAL_GLOBAL_PROGRESS_START)

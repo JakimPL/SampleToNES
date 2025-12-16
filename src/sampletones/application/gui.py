@@ -196,8 +196,8 @@ class GUI:
         self._set_default_theme()
         self._set_viewport()
         self._setup_dearpygui()
-        self._create_main_window()
         self.set_callbacks()
+        self._create_main_window()
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
@@ -240,6 +240,7 @@ class GUI:
         color = self.theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
+        dpg.set_viewport_vsync(False)
 
     def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(
