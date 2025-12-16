@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -15,7 +15,9 @@ from ...constants.graphs import (
     LBL_PLOT_NAME_SPECTRUM,
     SUF_GRAPH_THEME,
     VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MAX_GRAPH_DEFAULT_Y,
     VAL_MIN_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_Y,
 )
 from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children, dpg_delete_item
 from .graph import GUIGraph
@@ -44,6 +46,9 @@ class GUISpectrumGraph(GUIGraph):
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = MIN_FREQUENCY,
         y_max: float = DEFAULT_SAMPLE_RATE / 2,
+        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        enable_dragging: bool = True,
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
@@ -59,6 +64,9 @@ class GUISpectrumGraph(GUIGraph):
             x_max,
             y_min,
             y_max,
+            default_x_range=default_x_range,
+            default_y_range=default_y_range,
+            enable_dragging=enable_dragging,
         )
 
     def _create_content(self) -> None:
@@ -92,7 +100,7 @@ class GUISpectrumGraph(GUIGraph):
 
         self.add_layer(
             SpectrumLayer(
-                fragment=fragment,
+                data=fragment,
                 name=LBL_PLOT_NAME_SPECTRUM,
                 sample_rate=sample_rate,
                 frame_length=frame_length,

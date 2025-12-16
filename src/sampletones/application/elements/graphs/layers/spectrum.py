@@ -5,21 +5,23 @@ import numpy as np
 
 from sampletones.ffts import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import Color
 
 from ....constants.graphs import (
     VAL_MAX_SPECTRUM_DISPLAY_BINS,
     VAL_MAX_SPECTRUM_GRAYSCALE,
     VAL_OFFSET_SPECTRUM_LOG,
 )
+from .layer import Layer
 
 
 @dataclass(frozen=True)
-class SpectrumLayer:
-    fragment: InstructionLibraryFragment[Any]
+class SpectrumLayer(Layer):
+    data: InstructionLibraryFragment[Any]
     name: str
     sample_rate: int
     frame_length: int
-    color: Tuple[int, int, int] = VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE
+    color: Color = VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE, VAL_MAX_SPECTRUM_GRAYSCALE
 
     redistribute_to_log_bins: bool = True
 
@@ -29,7 +31,7 @@ class SpectrumLayer:
     brightness_values: Dict[int, int] = field(init=False)
 
     def __post_init__(self) -> None:
-        spectrum = self.fragment.feature
+        spectrum = self.data.feature
         total_energy = np.sqrt(np.sum(spectrum**2)) + VAL_OFFSET_SPECTRUM_LOG
         normalized_spectrum = spectrum / total_energy
         frequencies = calculate_frequencies(self.frame_length, self.sample_rate)
@@ -55,6 +57,9 @@ class SpectrumLayer:
 
         object.__setattr__(self, "frequency_bands", frequency_bands)
         object.__setattr__(self, "brightness_values", brightness_values)
+
+        object.__setattr__(self, "x_data", np.array((0.0, 1.0), dtype=np.float32))
+        object.__setattr__(self, "y_data", np.array(list(frequency_bands.values()), dtype=np.float32))
 
     def __iter__(self) -> Generator[Tuple[float, float, int]]:
         for item in zip(self.frequencies, self.frequency_bands.values(), self.brightness_values.values()):

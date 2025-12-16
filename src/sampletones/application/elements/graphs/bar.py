@@ -18,7 +18,9 @@ from ...constants.graphs import (
     VAL_BAR_PLOT_MIN_X,
     VAL_BAR_PLOT_MIN_Y,
     VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MAX_GRAPH_DEFAULT_Y,
     VAL_MIN_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_Y,
 )
 from ...themes.graphs.zero import ZeroLineGraphTheme
 from ...themes.theme import Theme
@@ -30,6 +32,7 @@ from ...utils.dpg import (
 )
 from .graph import GUIGraph
 from .layers.bar import BarLayer
+from .utils import extend_y_range
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
 OnBarPointHoveredCallback = Callable[[Optional[int]], None]
@@ -58,6 +61,9 @@ class GUIBarGraph(GUIGraph):
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = VAL_BAR_PLOT_MIN_Y,
         y_max: float = VAL_BAR_PLOT_MAX_Y,
+        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        enable_dragging: bool = False,
         zero_line_theme: Theme = ZeroLineGraphTheme(),
     ):
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
@@ -84,6 +90,9 @@ class GUIBarGraph(GUIGraph):
             x_max,
             y_min,
             y_max,
+            default_x_range=default_x_range,
+            default_y_range=default_y_range,
+            enable_dragging=enable_dragging,
         )
 
     def _create_content(self) -> None:
@@ -142,6 +151,9 @@ class GUIBarGraph(GUIGraph):
 
         return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
 
+    def get_y_range(self) -> Tuple[float, float]:
+        return extend_y_range(*self.data_range)
+
     def load_data(
         self,
         data: np.ndarray,
@@ -154,7 +166,13 @@ class GUIBarGraph(GUIGraph):
         self.current_data = data
         self.y_ticks = y_ticks
 
-        self.add_layer(BarLayer(data=data, name=name, color=color))
+        self.add_layer(
+            BarLayer(
+                data=data,
+                name=name,
+                color=color,
+            )
+        )
         self._add_hover_bar()
 
         self.x_min = VAL_BAR_PLOT_MIN_X

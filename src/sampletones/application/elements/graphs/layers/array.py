@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -10,17 +10,15 @@ from ....constants.graphs import (
     VAL_MAX_WAVEFORM_DISPLAY_POINTS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
+from .layer import Layer
 
 
 @dataclass(frozen=True)
-class ArrayLayer:
+class ArrayLayer(Layer):
     data: np.ndarray
     name: str
     color: Color = COL_WAVEFORM_DEFAULT
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
-
-    x_data: np.ndarray = field(init=False)
-    y_data: np.ndarray = field(init=False)
 
     def __post_init__(self) -> None:
         y_data = self.data.astype(np.float32)

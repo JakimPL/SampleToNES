@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender
 
 from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
@@ -28,10 +27,11 @@ from ...constants.graphs import (
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
     VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MAX_GRAPH_DEFAULT_Y,
     VAL_MIN_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
-    VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
@@ -71,12 +71,12 @@ class GUIWaveformGraph(GUIGraph):
         label: str = LBL_PLOT_LABEL_WAVEFORM,
         x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
         x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = -1.0,
-        y_max: float = 1.0,
+        y_min: float = VAL_MIN_GRAPH_DEFAULT_Y,
+        y_max: float = VAL_MAX_GRAPH_DEFAULT_Y,
+        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        enable_dragging: bool = True,
     ):
-        self.is_dragging = False
-        self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
-        self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
 
         self.reset_x_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_X}"
@@ -102,6 +102,9 @@ class GUIWaveformGraph(GUIGraph):
             x_max,
             y_min,
             y_max,
+            default_x_range=default_x_range,
+            default_y_range=default_y_range,
+            enable_dragging=enable_dragging,
         )
 
     @property
@@ -129,7 +132,6 @@ class GUIWaveformGraph(GUIGraph):
             width=self.width,
             height=self.height,
             anti_aliased=True,
-            callback=self._plot_callback,
             no_inputs=False,
             pan_button=-1,
         ):
@@ -142,11 +144,6 @@ class GUIWaveformGraph(GUIGraph):
                 tag=self.y_axis_tag,
             )
             self._set_overlay_rectangle()
-
-        with dpg.handler_registry():
-            dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
-            dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
-            dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
 
     @table_wrapper(columns=3, height=0)
     def _create_controls(self) -> None:
@@ -202,7 +199,7 @@ class GUIWaveformGraph(GUIGraph):
 
         self.add_layer(
             WaveformLayer(
-                fragment=fragment,
+                data=fragment,
                 name=LBL_PLOT_NAME_WAVEFORM_SAMPLE,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
@@ -388,105 +385,3 @@ class GUIWaveformGraph(GUIGraph):
     def _reset_all_axes(self) -> None:
         self._reset_x_axis()
         self._reset_y_axis()
-
-    def _plot_callback(self, sender: Sender, app_data: Any) -> None:
-        pass
-
-    def _clamp_zoom_bounds(
-        self, new_min: float, new_max: float, bound_min: float, bound_max: float
-    ) -> Tuple[float, float]:
-        new_range = new_max - new_min
-        max_range = bound_max - bound_min
-
-        if new_range > max_range:
-            return bound_min, bound_max
-
-        clamped_min = max(bound_min, new_min)
-        clamped_max = min(bound_max, new_max)
-
-        if clamped_max - clamped_min < new_range:
-            if new_min < bound_min:
-                clamped_max = min(bound_max, clamped_min + new_range)
-            elif new_max > bound_max:
-                clamped_min = max(bound_min, clamped_max - new_range)
-
-        return clamped_min, clamped_max
-
-    def _mouse_wheel_callback(self, sender: Sender, app_data: float) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or not self.current_data:
-            return
-
-        plot_mouse_pos = dpg.get_plot_mouse_pos()
-        if not plot_mouse_pos:
-            return
-
-        zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
-        shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-
-        if shift_held:
-            self.y_min, self.y_max = self._zoom_axis(zoom_amount, plot_mouse_pos[1], self.y_min, self.y_max, -1.0, 1.0)
-        else:
-            self.x_min, self.x_max = self._zoom_axis(
-                zoom_amount, plot_mouse_pos[0], self.x_min, self.x_max, 0.0, self.sample_length
-            )
-
-        self._update_axes_limits()
-
-    def _zoom_axis(
-        self,
-        zoom_amount: float,
-        center: float,
-        current_min: float,
-        current_max: float,
-        bound_min: float,
-        bound_max: float,
-    ) -> Tuple[float, float]:
-        current_range = current_max - current_min
-        new_range = current_range / zoom_amount
-        offset = (center - current_min) / current_range if current_range > 0 else 0.5
-
-        new_min = center - new_range * offset
-        new_max = center + new_range * (1 - offset)
-
-        return self._clamp_zoom_bounds(new_min, new_max, bound_min, bound_max)
-
-    def _mouse_drag_callback(self, sender: Sender, app_data: List[Union[int, float]]) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
-            return
-
-        if not self.current_data:
-            return
-
-        x_position = app_data[1]
-        y_position = app_data[2]
-
-        if not self.is_dragging:
-            self.is_dragging = True
-            self.last_mouse_position = x_position, y_position
-            return
-
-        dx_screen = x_position - self.last_mouse_position[0]
-        dy_screen = y_position - self.last_mouse_position[1]
-
-        plot_bounds = dpg.get_item_rect_size(self.plot_tag)
-        if plot_bounds:
-            x_range = self.x_max - self.x_min
-            y_range = self.y_max - self.y_min
-
-            dx_plot = -(dx_screen / plot_bounds[0]) * x_range
-            dy_plot = (dy_screen / plot_bounds[1]) * y_range
-
-            dx_plot = np.clip(dx_plot, -self.x_min, self.sample_length - self.x_max)
-            dy_plot = np.clip(dy_plot, -1.0 - self.y_min, 1.0 - self.y_max)
-
-            new_x_min = self.x_min + dx_plot
-            new_x_max = self.x_max + dx_plot
-            new_y_min = self.y_min + dy_plot
-            new_y_max = self.y_max + dy_plot
-
-            self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
-            self.last_mouse_position = x_position, y_position
-
-    def _mouse_release_callback(self, sender: Sender, app_data: int) -> None:
-        if app_data == dpg.mvMouseButton_Left:
-            self.is_dragging = False

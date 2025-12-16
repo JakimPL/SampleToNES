@@ -72,6 +72,7 @@ from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.bar import GUIBarGraph
+from ...elements.graphs.utils import extend_y_range
 from ...elements.panel import GUIPanel
 from ...reconstruction.config import (
     FEATURE_DISPLAY_ORDER,
@@ -560,10 +561,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             max_tick = step * 4
             y_ticks = tuple(range(-max_tick, max_tick + 1, step))
 
-        gap = max(1.0, y_min * 0.1, y_max * 0.1)
-        y_min = int(np.floor(y_min - gap))
-        y_max = int(np.ceil(y_max + gap))
-
+        y_min, y_max = extend_y_range(y_min, y_max)
         return y_min, y_max, y_ticks
 
     def _add_bar_plot(
