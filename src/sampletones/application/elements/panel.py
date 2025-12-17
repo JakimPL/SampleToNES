@@ -1,7 +1,8 @@
+from ...utils.callbacks import CallbackMixin
 from ..utils.dpg import dpg_configure_item
 
 
-class GUIPanel:
+class GUIPanel(CallbackMixin):
     def __init__(
         self,
         tag: str,
@@ -19,9 +20,6 @@ class GUIPanel:
             self.create_panel()
 
     def create_panel(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
-
-    def set_callbacks(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
     def set_visibility(self, visible: bool) -> None:

@@ -7,22 +7,24 @@ from sampletones.constants.general import MAX_MIXER, MIXER
 from sampletones.typehints import Sender, SerializedData
 
 from ...config.manager import ConfigManager
-from ...constants import (
+from ...constants.general import (
     DIM_INPUT_WIDTH,
-    DIM_PANEL_CONFIG_HEIGHT,
-    FLAG_CHECKBOX_DEFAULT_ENABLED,
-    LBL_CHECKBOX_NOISE,
-    LBL_CHECKBOX_PULSE_1,
-    LBL_CHECKBOX_PULSE_2,
-    LBL_CHECKBOX_TRIANGLE,
-    LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION,
-    LBL_SECTION_RECONSTRUCTOR_SETTINGS,
-    LBL_SLIDER_RECONSTRUCTOR_MIXER,
-    LBL_TOOLTIP_RECONSTRUCTOR_MIXER,
+    LBL_CHECKBOX_GLOBAL_NOISE,
+    LBL_CHECKBOX_GLOBAL_PULSE_1,
+    LBL_CHECKBOX_GLOBAL_PULSE_2,
+    LBL_CHECKBOX_GLOBAL_TRIANGLE,
+)
+from ...constants.main import (
+    DIM_PANEL_HEIGHT_MAIN_CONFIG,
+    LBL_SECTION_MAIN_RECONSTRUCTOR,
+    LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS,
+    LBL_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+    LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER,
+    TAG_PANEL_MAIN_RECONSTRUCTOR,
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-    TAG_RECONSTRUCTOR_MIXER,
-    TAG_RECONSTRUCTOR_PANEL,
-    TPL_RECONSTRUCTION_GEN_TAG,
+    TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+    TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
+    VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -36,9 +38,9 @@ class GUIReconstructorPanel(GUIPanel):
         self.config_manager = config_manager
 
         super().__init__(
-            tag=TAG_RECONSTRUCTOR_PANEL,
+            tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-            height=DIM_PANEL_CONFIG_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
         )
 
     def create_panel(self) -> None:
@@ -57,39 +59,39 @@ class GUIReconstructorPanel(GUIPanel):
         self._register_callbacks()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_RECONSTRUCTOR_SETTINGS)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_generator_selection(self) -> None:
         dpg.add_separator()
-        dpg.add_text(LBL_SECTION_RECONSTRUCTOR_GENERATOR_SELECTION)
+        dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR)
 
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_PULSE_1,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE1.value),
+            label=LBL_CHECKBOX_GLOBAL_PULSE_1,
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_PULSE_2,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.PULSE2.value),
+            label=LBL_CHECKBOX_GLOBAL_PULSE_2,
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_TRIANGLE,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.TRIANGLE.value),
+            label=LBL_CHECKBOX_GLOBAL_TRIANGLE,
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
         )
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_NOISE,
-            default_value=FLAG_CHECKBOX_DEFAULT_ENABLED,
-            tag=TPL_RECONSTRUCTION_GEN_TAG.format(GeneratorName.NOISE.value),
+            label=LBL_CHECKBOX_GLOBAL_NOISE,
+            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
         )
 
     def _create_mixer_slider(self) -> None:
         dpg.add_separator()
         dpg.add_slider_float(
-            label=LBL_SLIDER_RECONSTRUCTOR_MIXER,
-            tag=TAG_RECONSTRUCTOR_MIXER,
+            label=LBL_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+            tag=TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=MIXER,
@@ -97,7 +99,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_RECONSTRUCTOR_MIXER)
+        show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["reconstructor"].keys():

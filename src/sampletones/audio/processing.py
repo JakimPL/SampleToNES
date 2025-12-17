@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import numpy as np
 
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE, QUANTIZATION_LEVELS
@@ -44,6 +46,27 @@ def interpolate(data: np.ndarray, target_length: int) -> np.ndarray:
     interpolated_data: np.ndarray = np.interp(new_indices, original_indices, data)
 
     return interpolated_data.astype(np.float32)
+
+
+def minmax_decimate(data: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np.ndarray]:
+    length = len(data)
+    bucket_size = length / num_buckets
+
+    x_data = np.empty(num_buckets * 2, dtype=np.float32)
+    y_data = np.empty(num_buckets * 2, dtype=np.float32)
+
+    for i in range(num_buckets):
+        start = int(i * bucket_size)
+        end = int((i + 1) * bucket_size)
+        bucket = data[start:end]
+
+        x_pos = (start + end) / 2
+        x_data[i * 2] = x_pos
+        x_data[i * 2 + 1] = x_pos
+        y_data[i * 2] = bucket.min()
+        y_data[i * 2 + 1] = bucket.max()
+
+    return x_data, y_data
 
 
 def normalize(audio: np.ndarray) -> np.ndarray:

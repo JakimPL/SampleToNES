@@ -5,36 +5,38 @@ import numpy as np
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender
 
-from ...constants import (
+from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
     COL_WAVEFORM_LAYER_SAMPLE,
-    COL_WAVEFORM_POSITION_INDICATOR,
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
-    LBL_PLOT_ORIGINAL,
-    LBL_PLOT_RECONSTRUCTION,
-    LBL_WAVEFORM_AMPLITUDE_LABEL,
-    LBL_WAVEFORM_BUTTON_RESET_ALL,
-    LBL_WAVEFORM_BUTTON_RESET_X,
-    LBL_WAVEFORM_BUTTON_RESET_Y,
-    LBL_WAVEFORM_DISPLAY,
-    LBL_WAVEFORM_SAMPLE_LAYER_NAME,
-    LBL_WAVEFORM_TIME_LABEL,
-    SUF_BUTTON_RESET_ALL,
-    SUF_BUTTON_RESET_X,
-    SUF_BUTTON_RESET_Y,
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
+    LBL_BUTTON_WAVEFORM_RESET_ALL,
+    LBL_BUTTON_WAVEFORM_RESET_X,
+    LBL_BUTTON_WAVEFORM_RESET_Y,
+    LBL_GRAPH_WAVEFORM_ORIGINAL,
+    LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
+    LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
+    LBL_PLOT_AXIS_WAVEFORM_TIME,
+    LBL_PLOT_LABEL_WAVEFORM,
+    LBL_PLOT_NAME_WAVEFORM_SAMPLE,
+    SUF_BUTTON_WAVEFORM_RESET_ALL,
+    SUF_BUTTON_WAVEFORM_RESET_X,
+    SUF_BUTTON_WAVEFORM_RESET_Y,
+    SUF_GRAPH_THEME,
+    SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
-    VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MAX_GRAPH_DEFAULT_Y,
+    VAL_MIN_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
-    VAL_WAVEFORM_ZOOM_FACTOR,
 )
 from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
+from ...themes.graphs.indicator import IndicatorGraphTheme
+from ...themes.graphs.overlay import OverlayGraphTheme
 from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
@@ -42,13 +44,14 @@ from ...utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from ...utils.thread import concurrent
 from ..button import GUIButton
-from .graph import GUIGraphDisplay
+from .graph import GUIGraph
 from .layers.array import ArrayLayer
 from .layers.waveform import WaveformLayer
 
 
-class GUIWaveformDisplay(GUIGraphDisplay):
+class GUIWaveformGraph(GUIGraph):
     tag: str
     parent: str
     width: int
@@ -63,26 +66,31 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = LBL_WAVEFORM_DISPLAY,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
-        y_min: float = -1.0,
-        y_max: float = 1.0,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
+        label: str = LBL_PLOT_LABEL_WAVEFORM,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
+        y_min: float = VAL_MIN_GRAPH_DEFAULT_Y,
+        y_max: float = VAL_MAX_GRAPH_DEFAULT_Y,
+        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        enable_dragging: bool = True,
     ):
-        self.is_dragging = False
-        self.last_mouse_position: Tuple[float, float] = (0.0, 0.0)
-        self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self.reconstruction_autoscale = True
 
-        self.reset_x_tag = f"{tag}{SUF_BUTTON_RESET_X}"
-        self.reset_y_tag = f"{tag}{SUF_BUTTON_RESET_Y}"
-        self.reset_all_tag = f"{tag}{SUF_BUTTON_RESET_ALL}"
+        self.reset_x_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_X}"
+        self.reset_y_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_Y}"
+        self.reset_all_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_ALL}"
 
-        self.current_position: int = 0
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
+        self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
+
+        self.indicator_theme = IndicatorGraphTheme()
+        self.overlay_theme = OverlayGraphTheme()
+
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
+        self.current_position: int = 0
 
         super().__init__(
             tag,
@@ -94,7 +102,15 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             x_max,
             y_min,
             y_max,
+            default_x_range=default_x_range,
+            default_y_range=default_y_range,
+            enable_dragging=enable_dragging,
         )
+
+    def delete(self) -> None:
+        dpg_delete_item(self.position_indicator_tag)
+        dpg_delete_item(self.overlay_rectangle_tag)
+        super().delete()
 
     @property
     def sample_length(self) -> int:
@@ -107,52 +123,80 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         return 0
 
     def _create_content(self) -> None:
-        with dpg.group(tag=self.controls_tag, horizontal=True):
+        with dpg.group(
+            tag=self.controls_tag,
+            parent=self.tag,
+            horizontal=True,
+        ):
             self._create_controls()
 
         with dpg.plot(
             label=self.label,
+            tag=self.plot_tag,
+            parent=self.tag,
             width=self.width,
             height=self.height,
-            tag=self.plot_tag,
             anti_aliased=True,
-            callback=self._plot_callback,
             no_inputs=False,
             pan_button=-1,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_WAVEFORM_TIME_LABEL, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_WAVEFORM_AMPLITUDE_LABEL, tag=self.y_axis_tag)
-
-        with dpg.handler_registry():
-            dpg.add_mouse_wheel_handler(callback=self._mouse_wheel_callback)
-            dpg.add_mouse_drag_handler(callback=self._mouse_drag_callback)
-            dpg.add_mouse_release_handler(callback=self._mouse_release_callback)
+            dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
+            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_WAVEFORM_TIME, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvYAxis,
+                parent=self.plot_tag,
+                label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
+                tag=self.y_axis_tag,
+            )
+            self._set_overlay_rectangle()
 
     @table_wrapper(columns=3, height=0)
     def _create_controls(self) -> None:
         GUIButton(
             tag=self.reset_x_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_X,
+            label=LBL_BUTTON_WAVEFORM_RESET_X,
             callback=self._reset_x_axis,
             width=-1,
             font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_y_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_Y,
+            label=LBL_BUTTON_WAVEFORM_RESET_Y,
             callback=self._reset_y_axis,
             width=-1,
             font=Font.REGULAR_SMALL,
         )
         GUIButton(
             tag=self.reset_all_tag,
-            label=LBL_WAVEFORM_BUTTON_RESET_ALL,
+            label=LBL_BUTTON_WAVEFORM_RESET_ALL,
             callback=self._reset_all_axes,
             width=-1,
             font=Font.REGULAR_SMALL,
         )
 
+    def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
+        self._set_overlay_rectangle(x_start=start, x_end=end)
+
+    def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
+        if not dpg.does_item_exist(self.overlay_rectangle_tag):
+            dpg.add_shade_series(
+                [x_start, x_end],
+                [self.y_min, self.y_min],
+                y2=[self.y_max, self.y_max],
+                tag=self.overlay_rectangle_tag,
+                parent=self.y_axis_tag,
+            )
+
+            self.overlay_theme.bind_to_item(self.overlay_rectangle_tag)
+        else:
+            dpg.configure_item(
+                self.overlay_rectangle_tag,
+                x=[x_start, x_end],
+                y1=[self.y_min, self.y_min],
+                y2=[self.y_max, self.y_max],
+            )
+
+    @concurrent(wait=True, method_bound=True)
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
@@ -160,25 +204,21 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.add_layer(
             WaveformLayer(
-                fragment=fragment,
-                name=LBL_WAVEFORM_SAMPLE_LAYER_NAME,
+                data=fragment,
+                name=LBL_PLOT_NAME_WAVEFORM_SAMPLE,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
         )
 
-        self.x_min = VAL_GRAPH_DEFAULT_X_MIN
+        self.x_min = VAL_MIN_GRAPH_DEFAULT_X
         self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
 
-    def load_reconstruction_data(
+    def _extract_reconstruction_layer_data(
         self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
-    ) -> None:
-        self.clear_layers()
-        self.current_data = reconstruction_data
-        self.current_position = 0
-
+    ) -> Tuple[np.ndarray, float]:
         if selected_generators is None:
             selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
 
@@ -195,10 +235,53 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             np.max(np.abs(original_audio / original_audio_coefficient)),
         )
 
+        return approximation / coefficient, coefficient
+
+    @concurrent(wait=True, method_bound=True)
+    def update_reconstruction_data(
+        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+    ) -> None:
+        if not isinstance(self.current_data, ReconstructionData):
+            return
+
+        self.current_data = reconstruction_data
+        approximation_data, _ = self._extract_reconstruction_layer_data(
+            reconstruction_data,
+            selected_generators,
+        )
+
+        reconstruction_layer = ArrayLayer(
+            data=approximation_data,
+            name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
+            color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
+            line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+        )
+
+        self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
+        self._update_display()
+
+    @concurrent(wait=True, method_bound=True)
+    def load_reconstruction_data(
+        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+    ) -> None:
+        self.clear_layers()
+        self.current_data = reconstruction_data
+        self.current_position = 0
+
+        approximation_data, coefficient = self._extract_reconstruction_layer_data(
+            reconstruction_data,
+            selected_generators,
+        )
+
+        original_audio = reconstruction_data.original_audio
+        original_audio_coefficient = 1.0
+        if self.reconstruction_autoscale:
+            original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+
         self.add_layer(
             ArrayLayer(
                 data=original_audio / (coefficient * original_audio_coefficient),
-                name=LBL_PLOT_ORIGINAL,
+                name=LBL_GRAPH_WAVEFORM_ORIGINAL,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
                 line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
             )
@@ -206,8 +289,8 @@ class GUIWaveformDisplay(GUIGraphDisplay):
 
         self.add_layer(
             ArrayLayer(
-                data=approximation / coefficient,
-                name=LBL_PLOT_RECONSTRUCTION,
+                data=approximation_data,
+                name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
                 color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
                 line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
             )
@@ -218,26 +301,43 @@ class GUIWaveformDisplay(GUIGraphDisplay):
         self._update_axes_limits()
         self._update_position_indicator()
 
+    def clear(self) -> None:
+        self.clear_layers()
+        dpg_delete_children(self.y_axis_tag)
+        self._set_overlay_rectangle()
+
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
 
-        dpg_delete_children(self.y_axis_tag)
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}"
-            dpg.add_line_series(
-                layer.x_data,
-                layer.y_data,
-                label=layer.name,
-                parent=self.y_axis_tag,
-                tag=series_tag,
-            )
+            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
+            theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
+            if dpg.does_item_exist(series_tag):
+                dpg.configure_item(
+                    series_tag,
+                    x=layer.x_data,
+                    y=layer.y_data,
+                )
+            else:
+                dpg.add_line_series(
+                    layer.x_data,
+                    layer.y_data,
+                    label=layer.name,
+                    parent=self.y_axis_tag,
+                    tag=series_tag,
+                )
 
-            with dpg.theme() as series_theme:
-                with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(dpg.mvPlotCol_Line, layer.color, category=dpg.mvThemeCat_Plots)
+            if not dpg.does_item_exist(theme_tag):
+                with dpg.theme(tag=theme_tag):
+                    with dpg.theme_component(dpg.mvLineSeries):
+                        dpg.add_theme_color(
+                            dpg.mvPlotCol_Line,
+                            layer.color,
+                            category=dpg.mvThemeCat_Plots,
+                        )
 
-            dpg_bind_item_theme(series_tag, series_theme)
+            dpg_bind_item_theme(series_tag, theme_tag)
 
         self._update_axes_limits()
 
@@ -261,7 +361,6 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             return
 
         dpg_delete_item(self.position_indicator_tag)
-
         sample_length = self.sample_length
         if self.current_position > 0 and self.current_position < sample_length:
             position_x = float(self.current_position)
@@ -269,31 +368,19 @@ class GUIWaveformDisplay(GUIGraphDisplay):
             dpg.add_line_series(
                 [position_x, position_x],
                 [self.y_min, self.y_max],
-                parent=self.y_axis_tag,
                 tag=self.position_indicator_tag,
+                parent=self.y_axis_tag,
             )
-
-            with dpg.theme() as indicator_theme:
-                with dpg.theme_component(dpg.mvLineSeries):
-                    dpg.add_theme_color(
-                        dpg.mvPlotCol_Line, COL_WAVEFORM_POSITION_INDICATOR, category=dpg.mvThemeCat_Plots
-                    )
-                    dpg.add_theme_style(
-                        dpg.mvPlotStyleVar_LineWeight,
-                        VAL_WAVEFORM_POSITION_INDICATOR_THICKNESS,
-                        category=dpg.mvThemeCat_Plots,
-                    )
-
-            dpg_bind_item_theme(self.position_indicator_tag, indicator_theme)
+            self.indicator_theme.bind_to_item(self.position_indicator_tag)
 
     def _reset_x_axis(self) -> None:
         if self.layers:
             max_length = max(len(layer.x_data) for layer in self.layers.values())
-            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
+            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = float(max_length)
         else:
-            self.x_min = VAL_GRAPH_DEFAULT_X_MIN
-            self.x_max = VAL_GRAPH_DEFAULT_X_MAX
+            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
+            self.x_max = VAL_MAX_GRAPH_DEFAULT_X
         self._update_axes_limits()
 
     def _reset_y_axis(self) -> None:
@@ -303,105 +390,3 @@ class GUIWaveformDisplay(GUIGraphDisplay):
     def _reset_all_axes(self) -> None:
         self._reset_x_axis()
         self._reset_y_axis()
-
-    def _plot_callback(self, sender: Sender, app_data: Any) -> None:
-        pass
-
-    def _clamp_zoom_bounds(
-        self, new_min: float, new_max: float, bound_min: float, bound_max: float
-    ) -> Tuple[float, float]:
-        new_range = new_max - new_min
-        max_range = bound_max - bound_min
-
-        if new_range > max_range:
-            return bound_min, bound_max
-
-        clamped_min = max(bound_min, new_min)
-        clamped_max = min(bound_max, new_max)
-
-        if clamped_max - clamped_min < new_range:
-            if new_min < bound_min:
-                clamped_max = min(bound_max, clamped_min + new_range)
-            elif new_max > bound_max:
-                clamped_min = max(bound_min, clamped_max - new_range)
-
-        return clamped_min, clamped_max
-
-    def _mouse_wheel_callback(self, sender: Sender, app_data: float) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or not self.current_data:
-            return
-
-        plot_mouse_pos = dpg.get_plot_mouse_pos()
-        if not plot_mouse_pos:
-            return
-
-        zoom_amount = self.zoom_factor if app_data > 0 else 1.0 / self.zoom_factor
-        shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
-
-        if shift_held:
-            self.y_min, self.y_max = self._zoom_axis(zoom_amount, plot_mouse_pos[1], self.y_min, self.y_max, -1.0, 1.0)
-        else:
-            self.x_min, self.x_max = self._zoom_axis(
-                zoom_amount, plot_mouse_pos[0], self.x_min, self.x_max, 0.0, self.sample_length
-            )
-
-        self._update_axes_limits()
-
-    def _zoom_axis(
-        self,
-        zoom_amount: float,
-        center: float,
-        current_min: float,
-        current_max: float,
-        bound_min: float,
-        bound_max: float,
-    ) -> Tuple[float, float]:
-        current_range = current_max - current_min
-        new_range = current_range / zoom_amount
-        offset = (center - current_min) / current_range if current_range > 0 else 0.5
-
-        new_min = center - new_range * offset
-        new_max = center + new_range * (1 - offset)
-
-        return self._clamp_zoom_bounds(new_min, new_max, bound_min, bound_max)
-
-    def _mouse_drag_callback(self, sender: Sender, app_data: List[Union[int, float]]) -> None:
-        if not dpg.is_item_hovered(self.plot_tag) or not dpg.is_mouse_button_down(dpg.mvMouseButton_Left):
-            return
-
-        if not self.current_data:
-            return
-
-        x_position = app_data[1]
-        y_position = app_data[2]
-
-        if not self.is_dragging:
-            self.is_dragging = True
-            self.last_mouse_position = x_position, y_position
-            return
-
-        dx_screen = x_position - self.last_mouse_position[0]
-        dy_screen = y_position - self.last_mouse_position[1]
-
-        plot_bounds = dpg.get_item_rect_size(self.plot_tag)
-        if plot_bounds:
-            x_range = self.x_max - self.x_min
-            y_range = self.y_max - self.y_min
-
-            dx_plot = -(dx_screen / plot_bounds[0]) * x_range
-            dy_plot = (dy_screen / plot_bounds[1]) * y_range
-
-            dx_plot = np.clip(dx_plot, -self.x_min, self.sample_length - self.x_max)
-            dy_plot = np.clip(dy_plot, -1.0 - self.y_min, 1.0 - self.y_max)
-
-            new_x_min = self.x_min + dx_plot
-            new_x_max = self.x_max + dx_plot
-            new_y_min = self.y_min + dy_plot
-            new_y_max = self.y_max + dy_plot
-
-            self.set_view_bounds(new_x_min, new_x_max, new_y_min, new_y_max)
-            self.last_mouse_position = x_position, y_position
-
-    def _mouse_release_callback(self, sender: Sender, app_data: int) -> None:
-        if app_data == dpg.mvMouseButton_Left:
-            self.is_dragging = False

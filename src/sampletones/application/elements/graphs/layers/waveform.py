@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -6,20 +6,18 @@ import numpy as np
 from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Color
 
-from ....constants import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
+from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
+from .layer import Layer
 
 
 @dataclass(frozen=True)
-class WaveformLayer:
-    fragment: InstructionLibraryFragment[Any]
+class WaveformLayer(Layer):
+    data: InstructionLibraryFragment[Any]
     name: str
     color: Color = COL_WAVEFORM_DEFAULT
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
 
-    x_data: np.ndarray = field(init=False)
-    y_data: np.ndarray = field(init=False)
-
     def __post_init__(self) -> None:
-        data = self.fragment.data.astype(np.float32)
+        data = self.data.data.astype(np.float32)
         object.__setattr__(self, "x_data", np.arange(len(data)).astype(np.float32))
         object.__setattr__(self, "y_data", data)

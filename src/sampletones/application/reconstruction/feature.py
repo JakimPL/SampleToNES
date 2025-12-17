@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
-from sampletones.reconstruction import Reconstruction
+from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import FeatureValue
 
 
@@ -47,12 +47,18 @@ class FeatureData(BaseModel):
         return self.generators.get(generator_name)
 
     def get_feature_for_generator(
-        self, generator_name: GeneratorName, feature_key: FeatureKey
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
     ) -> Optional[FeatureValue]:
         features = self.get_generator_features(generator_name)
         return features.get(feature_key) if features else None
 
-    def has_feature_for_generator(self, generator_name: GeneratorName, feature_key: FeatureKey) -> bool:
+    def has_feature_for_generator(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+    ) -> bool:
         features = self.get_generator_features(generator_name)
         return features.get(feature_key) is not None if features else False
 

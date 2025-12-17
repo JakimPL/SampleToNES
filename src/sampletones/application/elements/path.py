@@ -8,12 +8,12 @@ import dearpygui.dearpygui as dpg
 from sampletones.typehints import Sender
 from sampletones.utils import get_directory, shorten_path, to_path
 
-from ..constants import (
+from ..constants.general import (
     COL_PATH_TEXT,
     COL_PATH_TEXT_HOVER,
-    SUF_CONVERTER_HANDLER,
     SUF_GROUP,
     SUF_LABEL,
+    SUF_PATH_HANDLER,
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
@@ -45,7 +45,7 @@ class GUIPathText:
 
         self.parent = parent
         self.label_tag = f"{tag}{SUF_LABEL}"
-        self.handler_tag = f"{tag}{SUF_CONVERTER_HANDLER}"
+        self.handler_tag = f"{tag}{SUF_PATH_HANDLER}"
         self.group_tag = f"{tag}{SUF_GROUP}"
 
         self._create_text()

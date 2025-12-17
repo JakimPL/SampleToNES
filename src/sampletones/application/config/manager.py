@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
@@ -22,21 +22,23 @@ from sampletones.constants.general import (
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.ffts import Window
 from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import SerializedData
+from sampletones.typehints import SerializedData, VoidCallback
 from sampletones.utils.logger import logger
 
-from ..constants import (
-    MSG_CONFIG_INVALID_ERROR,
-    MSG_CONFIG_LOAD_ERROR,
-    MSG_CONFIG_SAVE_ERROR,
-    TAG_ADVANCED_MAX_WORKERS,
-    TAG_CONFIG_CHANGE_RATE,
-    TAG_CONFIG_NORMALIZE,
-    TAG_CONFIG_QUANTIZE,
-    TAG_CONFIG_SAMPLE_RATE,
-    TAG_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_RECONSTRUCTOR_MIXER,
-    TPL_RECONSTRUCTION_GEN_TAG,
+from ..constants.general import (
+    MSG_CONFIGURATION_INVALID_ERROR,
+    MSG_CONFIGURATION_LOAD_ERROR,
+    MSG_CONFIGURATION_SAVE_ERROR,
+)
+from ..constants.main import (
+    TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
+    TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
+    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
+    TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
+    TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
+    TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+    TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
 )
 from ..utils.dialogs import show_error_dialog
 
@@ -48,25 +50,26 @@ class ConfigManager:
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
-        self.config_change_callbacks: List[Callable[[], None]] = []
+        self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
         self.config_parameters = {
             "config": {
-                TAG_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
-                TAG_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
-                TAG_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
-                TAG_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
-                TAG_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
+                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
+                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
+                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
+                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
+                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
             },
             "reconstructor": {
-                TAG_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
+                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
             },
             "advanced": {
-                TAG_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
+                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
             },
         }
         self.generator_tags = {
-            TPL_RECONSTRUCTION_GEN_TAG.format(generator.value): generator for generator in GeneratorName
+            TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value): generator
+            for generator in GeneratorName
         }
 
         self.initialize(config_path)
@@ -81,19 +84,19 @@ class ConfigManager:
             except FileNotFoundError as exception:
                 self.load_default_config()
                 logger.error(f"Config file not found: {config_path}")
-                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+                show_error_dialog(exception, MSG_CONFIGURATION_LOAD_ERROR)
             except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
-                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+                show_error_dialog(exception, MSG_CONFIGURATION_LOAD_ERROR)
             except ValidationError as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
-                show_error_dialog(exception, MSG_CONFIG_INVALID_ERROR)
+                show_error_dialog(exception, MSG_CONFIGURATION_INVALID_ERROR)
             except Exception as exception:  # TODO: specify exception type
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
-                show_error_dialog(exception, MSG_CONFIG_LOAD_ERROR)
+                show_error_dialog(exception, MSG_CONFIGURATION_LOAD_ERROR)
         else:
             self.load_default_config()
             logger.warning(f"Config file does not exist: {config_path}")
@@ -108,10 +111,10 @@ class ConfigManager:
             self.config.save(self.config_path)
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
-            show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
+            show_error_dialog(exception, MSG_CONFIGURATION_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
-            show_error_dialog(exception, MSG_CONFIG_SAVE_ERROR)
+            show_error_dialog(exception, MSG_CONFIGURATION_SAVE_ERROR)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
         assert self.config is not None, "Config must be loaded before updating from GUI values"
@@ -185,7 +188,7 @@ class ConfigManager:
             raise RuntimeError("Library key is not available")
         return InstructionLibraryKey.create(self.config.library, self.window)
 
-    def add_config_change_callback(self, callback: Callable[[], None]) -> None:
+    def add_config_change_callback(self, callback: VoidCallback) -> None:
         self.config_change_callbacks.append(callback)
 
     def update_gui(self) -> None:
@@ -216,9 +219,9 @@ class ConfigManager:
         self.window = Window.from_config(self.config)
 
         return {
-            TAG_CONFIG_SAMPLE_RATE: sample_rate,
-            TAG_CONFIG_CHANGE_RATE: change_rate,
-            TAG_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
+            TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: sample_rate,
+            TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: change_rate,
+            TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
         }
 
     def load_default_config(self) -> None:

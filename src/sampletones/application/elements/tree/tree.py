@@ -1,0 +1,436 @@
+from typing import Any, Callable, Dict, Optional, Union
+
+import dearpygui.dearpygui as dpg
+
+from sampletones.constants import paths
+from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones.typehints import Sender
+from sampletones.utils.logger import logger
+
+from ...config.application.manager import ApplicationConfigManager
+from ...constants.general import (
+    COL_PATH_TEXT_HOVER,
+    COL_TEXT_FAVORITE,
+    DIM_BUTTON_WIDTH_SEARCH,
+    DIM_INPUT_WIDTH_SEARCH,
+    LBL_BUTTON_TREE_CLEAR_SEARCH,
+    LBL_TREE_SEARCH,
+    MSG_TREE_NO_RESULTS_FOUND,
+    SUF_BUTTON_SEARCH,
+    SUF_NODE_HANDLER,
+    SUF_TREE_SEARCH_INPUT,
+    VAL_CHARACTER_STAR,
+)
+from ...constants.main import (
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
+    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
+)
+from ...themes.default import DefaultTheme
+from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from ...themes.nodes.file import (
+    LibraryFileNodeTheme,
+    NoContentFileNodeTheme,
+    NotExpandedDirectoryNodeTheme,
+    ReconstructionFileNodeTheme,
+    WaveFileNodeTheme,
+)
+from ...themes.nodes.library import (
+    LibraryGeneratorNodeTheme,
+    LibraryGroupNodeTheme,
+    LibraryInstructionNodeTheme,
+    LibraryLibraryNodeTheme,
+)
+from ...themes.theme import Theme
+from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ..button import GUIButton
+from ..fonts.font import Font
+from ..fonts.registry import FontRegistry
+from ..panel import GUIPanel
+from .handler import Handler, ItemClickCallback
+
+
+class GUITreePanel(GUIPanel):
+    def __init__(
+        self,
+        tree: Tree,
+        tag: str,
+        parent: str,
+        tree_tag: str,
+        application_config_manager: ApplicationConfigManager,
+        width: int = -1,
+        height: int = -1,
+        search_label: str = LBL_TREE_SEARCH,
+    ) -> None:
+        self.tree = tree
+        self.tree_tag = tree_tag
+        self.application_config_manager = application_config_manager
+
+        self._selected_node_tag: Optional[Union[str, int]] = None
+        self._search_input_tag: Optional[str] = None
+        self._search_button_tag: Optional[str] = None
+
+        self._building_tree: bool = False
+        self._handlers: Dict[str, Handler] = {}
+        self._new_handlers: Dict[str, Handler] = {}
+
+        self.search_label = search_label
+
+        super().__init__(
+            tag=tag,
+            parent=parent,
+            width=width,
+            height=height,
+        )
+
+    def build_tree(self, root_tag: Optional[str] = None) -> None:
+        if root_tag is None:
+            root_tag = self.tree_tag
+
+        self._clear_children(root_tag)
+        root = self.tree.get_root()
+        if root is None:
+            if self.tree.is_filtered():
+                dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=root_tag)
+            return
+
+        for child in root.children:
+            self._build_tree_node(child, root_tag)
+
+    def create_search(self, parent: str) -> None:
+        self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
+        self._search_button_tag = f"{self.tag}{SUF_BUTTON_SEARCH}"
+
+        with dpg.group(horizontal=True, parent=parent):
+            dpg.add_input_text(
+                tag=self._search_input_tag,
+                hint=self.search_label,
+                callback=self._on_search_changed,
+                width=DIM_INPUT_WIDTH_SEARCH,
+            )
+            GUIButton(
+                label=LBL_BUTTON_TREE_CLEAR_SEARCH,
+                tag=self._search_button_tag,
+                callback=self._on_clear_search_clicked,
+                width=DIM_BUTTON_WIDTH_SEARCH,
+            )
+
+    def _build_tree_node(
+        self,
+        node: TreeNode,
+        parent: str,
+        **kwargs: Any,
+    ) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _has_relevant_content(self, node: TreeNode) -> bool:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _should_expand_node(self, node: TreeNode) -> bool:
+        if not self.tree.is_filtered():
+            return False
+
+        for descendant in node.descendants:
+            if self.tree.is_node_visible(descendant):
+                return True
+
+        return False
+
+    def _get_handler_registry_tag(self, tag: str) -> str:
+        return f"{tag}{SUF_NODE_HANDLER}"
+
+    def _delete_item_handler_registry(self, node_tag: str) -> None:
+        handler_tag = self._get_handler_registry_tag(node_tag)
+        dpg_delete_item(handler_tag)
+
+    def _delete_item_handler_registries(self) -> None:
+        for handler in self._handlers.values():
+            dpg_delete_item(handler.tag)
+
+        self._handlers.clear()
+
+    def _assign_item_handler_registries(self) -> None:
+        for handler in self._new_handlers.values():
+            try:
+                self._create_item_handler_registry(handler)
+                self._bind_item_handler_registry(handler)
+            except SystemError:
+                logger.warning(f"Error assigning item handler registry '{handler.tag}'")
+                break
+
+        self._new_handlers.clear()
+
+    def _create_item_handler_registry(self, handler: Handler) -> None:
+        dpg_delete_item(handler.tag)
+        with dpg.item_handler_registry(tag=handler.tag):
+            if handler.item_click_callback is not None:
+                dpg.add_item_clicked_handler(
+                    callback=handler.item_click_callback,
+                    user_data=handler.node,
+                )
+            if handler.item_double_click_callback is not None:
+                dpg.add_item_double_clicked_handler(
+                    callback=handler.item_double_click_callback,
+                    user_data=handler.node,
+                )
+
+    def _bind_item_handler_registry(self, handler: Handler) -> None:
+        if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
+            dpg.bind_item_handler_registry(handler.parent, handler.tag)
+
+    def _add_item_handler_registry(
+        self,
+        node_tag: str,
+        node: TreeNode,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+    ) -> None:
+        tag = self._get_handler_registry_tag(node_tag)
+        handler = Handler(
+            tag=tag,
+            parent=node_tag,
+            node=node,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+        )
+        self._handlers[tag] = handler
+        self._new_handlers[tag] = handler
+
+    def _generate_node_tag(self, node: TreeNode) -> str:
+        path_parts = [ancestor.name for ancestor in node.path]
+        tag = f"{self.tag}_node_{'_'.join(path_parts)}"
+        return tag.replace(" ", "_").lower()
+
+    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
+        if self._selected_node_tag and dpg.does_item_exist(self._selected_node_tag):
+            dpg.set_value(self._selected_node_tag, False)
+
+        self._selected_node_tag = sender
+        dpg.set_value(sender, True)
+
+    def _add_context_menu_text(self, node: TreeNode) -> None:
+        is_favorite = self._is_node_favorite(node)
+        color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
+
+        with dpg.group(horizontal=True):
+            if is_favorite:
+                star = chr(VAL_CHARACTER_STAR)
+                star_text = dpg.add_text(star, color=color)
+                FontRegistry.bind_to_item(star_text, Font.ICON)
+
+            text = dpg.add_text(node.name, color=color)
+            FontRegistry.bind_to_item(text, Font.BOLD)
+
+    def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
+        label = (
+            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
+            if self._is_node_favorite(node)
+            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
+        )
+        dpg.add_menu_item(
+            label=label,
+            callback=lambda: self._context_mark_as_favorite(node),
+        )
+
+    def clear_selection(self) -> None:
+        if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
+            dpg.set_value(self._selected_node_tag, False)
+        self._selected_node_tag = None
+
+    def _on_search_changed(self, sender: Sender, query: str) -> None:
+        if query:
+            self.apply_filter(query, self._default_search_predicate)
+        else:
+            self.clear_filter()
+        self._update_tree_visibility()
+
+    def _on_clear_search_clicked(self) -> None:
+        if self._search_input_tag is not None:
+            dpg.set_value(self._search_input_tag, "")
+        self.clear_filter()
+        self._update_tree_visibility()
+
+    def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
+        return query.lower() in node.name.lower()
+
+    def _rebuild_tree(self) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _update_tree_visibility(self) -> None:
+        root = self.tree.get_root()
+        if root is None:
+            return
+
+        for child in root.children:
+            self._update_node_visibility_recursive(child)
+
+    def _update_node_visibility_recursive(self, node: TreeNode) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        is_visible = self.tree.is_node_visible(node)
+        dpg.configure_item(node_tag, show=is_visible)
+
+        for child in node.children:
+            self._update_node_visibility_recursive(child)
+
+    def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
+        self.tree.apply_filter(query, predicate)
+
+    def clear_filter(self) -> None:
+        self.tree.clear_filter()
+
+    def _clear_children(self, tag: str) -> None:
+        dpg_delete_children(tag)
+
+    def _is_node_favorite(self, node: TreeNode) -> bool:
+        if not isinstance(node, FileSystemNode):
+            return False
+
+        return node.filepath in self.application_config_manager.favorites
+
+    def _has_favorite_ancestor(self, node: FileSystemNode) -> bool:
+        current_node = node.parent
+        while current_node is not None:
+            if not isinstance(current_node, FileSystemNode):
+                break
+
+            if self._is_node_favorite(current_node):
+                return True
+
+            current_node = current_node.parent
+
+        return False
+
+    def _toggle_favorite(self, node: FileSystemNode) -> None:
+        self.application_config_manager.toggle_favorite(node.filepath)
+
+    def _apply_node_theme(
+        self,
+        node_tag: str,
+        node: TreeNode,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+    ) -> None:
+        FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+        if isinstance(node, FileSystemNode):
+            match node.node_type:
+                case NodeType.DIRECTORY:
+                    return self._apply_directory_node_theme(
+                        node_tag,
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    )
+
+                case NodeType.FILE:
+                    return self._apply_file_node_theme(
+                        node_tag,
+                        node,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                        is_not_expanded=is_node_expanded,
+                    )
+
+        return self._apply_other_node_theme(node_tag, node)
+
+    def _apply_directory_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+    ) -> None:
+        has_content = self._has_relevant_content(node)
+        is_favorite = self._is_node_favorite(node)
+
+        theme: Theme
+        if is_favorite:
+            theme = FavoriteNodeTheme()
+        elif not has_content:
+            theme = NoContentFileNodeTheme()
+        elif has_favorite_ancestor:
+            theme = FavoriteChildNodeTheme()
+        else:
+            theme = DefaultTheme()
+
+        theme.bind_to_item(node_tag)
+
+    def _apply_file_node_theme(
+        self,
+        node_tag: str,
+        node: FileSystemNode,
+        has_favorite_ancestor: bool = False,
+        is_not_expanded: bool = False,
+    ) -> None:
+        is_favorite = self._is_node_favorite(node)
+
+        theme: Theme
+        if is_favorite:
+            theme = FavoriteNodeTheme()
+        else:
+            match node.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    theme = ReconstructionFileNodeTheme()
+                case paths.EXT_FILE_LIBRARY:
+                    theme = LibraryFileNodeTheme()
+                case paths.EXT_FILE_WAVE:
+                    theme = WaveFileNodeTheme()
+                case _:
+                    if has_favorite_ancestor:
+                        theme = FavoriteChildNodeTheme()
+                    elif is_not_expanded:
+                        theme = NotExpandedDirectoryNodeTheme()
+                    else:
+                        theme = DefaultTheme()
+
+        theme.bind_to_item(node_tag)
+
+    def _apply_other_node_theme(
+        self,
+        node_tag: str,
+        node: TreeNode,
+    ) -> None:
+        theme: Theme
+        match node.node_type:
+            case NodeType.LIBRARY:
+                theme = LibraryLibraryNodeTheme()
+            case NodeType.GENERATOR:
+                theme = LibraryGeneratorNodeTheme()
+            case NodeType.GROUP:
+                theme = LibraryGroupNodeTheme()
+            case NodeType.INSTRUCTION:
+                theme = LibraryInstructionNodeTheme()
+            case _:
+                theme = DefaultTheme()
+
+        theme.bind_to_item(node_tag)
+
+    def _reapply_theme_recursively(self, node: FileSystemNode, has_favorite_ancestor: bool = False) -> None:
+        node_tag = self._generate_node_tag(node)
+        if not dpg.does_item_exist(node_tag):
+            return
+
+        self._apply_node_theme(
+            node_tag,
+            node,
+            has_favorite_ancestor=has_favorite_ancestor,
+        )
+        if node.node_type == NodeType.DIRECTORY:
+            is_favorite = self._is_node_favorite(node)
+            child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
+
+            for child in node.children:
+                if isinstance(child, FileSystemNode):
+                    self._reapply_theme_recursively(
+                        child,
+                        has_favorite_ancestor=child_has_favorite_ancestor,
+                    )
+
+    def _context_mark_as_favorite(self, node: TreeNode) -> None:
+        if not isinstance(node, FileSystemNode):
+            return
+
+        self._toggle_favorite(node)
+        self._update_favorite_indicator(node)
+
+    def _update_favorite_indicator(self, node: FileSystemNode) -> None:
+        has_favorite_ancestor = self._has_favorite_ancestor(node)
+        self._reapply_theme_recursively(node, has_favorite_ancestor)

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 
@@ -12,4 +12,7 @@ FeatureValue = Union[int, np.ndarray]
 FeatureMap = Dict[FeatureKey, FeatureValue]
 
 Sender = Union[int, str]
-Color = Tuple[int, int, int, int]
+Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
+
+Callback = Callable[..., Any]
+VoidCallback = Callable[[], None]

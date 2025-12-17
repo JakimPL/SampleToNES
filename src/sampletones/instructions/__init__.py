@@ -6,6 +6,7 @@ from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
 from .typehints import (
     InstructionClass,
+    InstructionFields,
     InstructionT,
     InstructionTypeUnion,
     InstructionUnion,
@@ -23,5 +24,6 @@ __all__ = [
     "InstructionClass",
     "InstructionUnion",
     "InstructionTypeUnion",
+    "InstructionFields",
     "get_instruction_by_type",
 ]

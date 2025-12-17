@@ -5,19 +5,18 @@ import dearpygui.dearpygui as dpg
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
-from ...constants import (
-    LBL_INSTRUCTION_DETAILS,
-    LBL_INSTRUCTION_GENERAL_HEADER,
-    LBL_INSTRUCTION_PARAMETERS_HEADER,
-    MSG_INSTRUCTION_NO_SELECTION,
-    SUF_RIGHT_PANEL,
-    TAG_INSTRUCTION_DETAILS,
+from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
+from ...constants.instructions import (
+    LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
+    LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
+    LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
+    MSG_INSTRUCTIONS_DETAILS_NO_SELECTION,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
-    TAG_INSTRUCTION_DETAILS_INFO,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
-    TAG_TAB_INSTRUCTIONS,
+    TAG_PANEL_INSTRUCTIONS_DETAILS,
+    TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
@@ -34,8 +33,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.params_table: Optional[GUITable] = None
 
         super().__init__(
-            tag=TAG_INSTRUCTION_DETAILS,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_RIGHT_PANEL}",
+            tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
     def create_panel(self) -> None:
@@ -50,22 +49,22 @@ class GUIInstructionDetailsPanel(GUIPanel):
             self._create_instruction_tables()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_INSTRUCTION_DETAILS)
+        section_text = dpg.add_text(LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_instruction_tables(self) -> None:
         dpg.add_separator()
-        dpg.add_text(MSG_INSTRUCTION_NO_SELECTION, tag=TAG_INSTRUCTION_DETAILS_INFO)
+        dpg.add_text(MSG_INSTRUCTIONS_DETAILS_NO_SELECTION, tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO)
 
         dpg.add_text(
-            LBL_INSTRUCTION_GENERAL_HEADER,
+            LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
             tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
             show=False,
         )
         FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
 
         dpg.add_text(
-            LBL_INSTRUCTION_PARAMETERS_HEADER,
+            LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
             tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
             show=False,
         )
@@ -90,12 +89,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self._clear_tables()
 
         if table_data is None:
-            dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=True)
+            dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=False)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=False)
             return
 
-        dpg_configure_item(TAG_INSTRUCTION_DETAILS_INFO, show=False)
+        dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=False)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
 

@@ -24,13 +24,9 @@ from sampletones.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones.instructions import (
-    InstructionData,
-    InstructionUnion,
-    get_instruction_by_type,
-)
+from sampletones.instructions import InstructionUnion, get_instruction_by_type
 from sampletones.typehints import SerializedData
-from sampletones.utils import serialize_array
+from sampletones.utils import pad, serialize_array
 from sampletones.utils.logger import logger
 
 from ..reconstructor.state import ReconstructionState
@@ -40,14 +36,14 @@ from .instructions import InstructionsItem
 
 
 class Reconstruction(DataModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metadata: Metadata = Field(
         default_factory=default_metadata,
         description="Reconstruction metadata",
     )
     audio_filepath: Path = Field(..., description="Path to the original audio file")
-    config: Config = Field(..., description="Configuration used for reconstruction")
+    config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
     instructions_data: List[InstructionsItem] = Field(..., description="Instructions per generator")
@@ -103,15 +99,9 @@ class Reconstruction(DataModel):
         instructions_data: List[InstructionsItem] = []
         for generator_name, instructions_list in instructions.items():
             instructions_data.append(
-                InstructionsItem(
+                InstructionsItem.create(
                     generator_name=generator_name,
-                    instructions=[
-                        InstructionData(
-                            instruction_class=instruction.class_name(),
-                            instruction=instruction,
-                        )
-                        for instruction in instructions_list
-                    ],
+                    instructions=instructions_list,
                 )
             )
 
@@ -155,6 +145,61 @@ class Reconstruction(DataModel):
             audio_filepath=path,
         )
 
+    def update_generator_data(
+        self,
+        generator_name: GeneratorName,
+        instructions: List[InstructionUnion],
+        partial_approximation: np.ndarray,
+    ) -> None:
+        partial_approximation = np.trim_zeros(partial_approximation, trim="b")
+        trimmed_approximation = np.trim_zeros(self.approximation, trim="b")
+        max_length = max(len(trimmed_approximation), len(partial_approximation))
+
+        array = np.zeros(max_length, dtype=np.float32)
+        array[: len(partial_approximation)] = partial_approximation
+
+        for item in self.approximations.values():
+            item_length = len(np.trim_zeros(item, trim="b"))
+            max_length = max(max_length, item_length)
+
+        new_approximations_data: List[ApproximationsItem] = []
+        for item in self.approximations_data:
+            if item.generator_name == generator_name:
+                array = pad(array, 0, max_length)
+                new_approximations_data.append(
+                    ApproximationsItem(
+                        generator_name=item.generator_name,
+                        approximation=array,
+                    )
+                )
+            else:
+                item_array = pad(item.approximation, 0, max_length)
+                new_approximations_data.append(
+                    ApproximationsItem(
+                        generator_name=item.generator_name,
+                        approximation=item_array,
+                    )
+                )
+
+        new_instructions_data: List[InstructionsItem] = []
+        for item in self.instructions_data:
+            if item.generator_name == generator_name:
+                new_instructions_data.append(
+                    InstructionsItem.create(
+                        generator_name=generator_name,
+                        instructions=instructions,
+                    )
+                )
+            else:
+                new_instructions_data.append(item)
+
+        self.approximations_data = new_approximations_data
+        self.instructions_data = new_instructions_data
+        self.__dict__.pop("approximations", None)
+        self.__dict__.pop("instructions", None)
+        approximations = list(self.approximations.values())
+        self.approximation = np.sum(np.array(approximations), axis=0)
+
     def get_generator_approximation(self, generator_name: GeneratorName) -> np.ndarray:
         return self.approximations.get(generator_name, np.array([], dtype=np.float32))
 
@@ -166,8 +211,8 @@ class Reconstruction(DataModel):
         return sum(error.total_error for error in self.errors_data)
 
     @classmethod
-    def load_and_validate(cls, path: Union[str, Path]) -> "Reconstruction":
-        reconstruction = cls.load(path)
+    def load(cls, path: Union[str, Path]) -> "Reconstruction":
+        reconstruction = super().load(path)
         cls.validate_metadata(reconstruction.metadata)
         return reconstruction
 
@@ -211,7 +256,7 @@ class Reconstruction(DataModel):
             exporter_class = self._get_exporter_class(instructions[0])
             exporter: ExporterUnion = exporter_class()
             self._validate_instructions(exporter, instructions)
-            feature: Features = exporter(instructions)  # type: ignore
+            feature: Features = exporter.to_features(instructions)  # type: ignore
             features[name] = feature
 
         return features

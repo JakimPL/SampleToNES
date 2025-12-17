@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -6,22 +6,25 @@ import numpy as np
 from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
 
-from ...constants import (
-    DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-    DIM_GRAPH_DEFAULT_WIDTH,
-    LBL_PLOT_SPECTRUM,
-    LBL_SPECTRUM_DISPLAY,
-    LBL_SPECTRUM_X_AXIS,
-    LBL_SPECTRUM_Y_AXIS,
-    VAL_GRAPH_DEFAULT_X_MAX,
-    VAL_GRAPH_DEFAULT_X_MIN,
+from ...constants.graphs import (
+    DIM_GRAPH_HEIGHT,
+    DIM_GRAPH_WIDTH,
+    LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+    LBL_PLOT_AXIS_SPECTRUM_X,
+    LBL_PLOT_LABEL_SPECTRUM,
+    LBL_PLOT_NAME_SPECTRUM,
+    SUF_GRAPH_THEME,
+    VAL_MAX_GRAPH_DEFAULT_X,
+    VAL_MAX_GRAPH_DEFAULT_Y,
+    VAL_MIN_GRAPH_DEFAULT_X,
+    VAL_MIN_GRAPH_DEFAULT_Y,
 )
-from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
-from .graph import GUIGraphDisplay
+from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children, dpg_delete_item
+from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
 
-class GUISpectrumDisplay(GUIGraphDisplay):
+class GUISpectrumGraph(GUIGraph):
     tag: str
     parent: str
     width: int
@@ -36,13 +39,16 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_DEFAULT_WIDTH,
-        height: int = DIM_GRAPH_DEFAULT_DISPLAY_HEIGHT,
-        label: str = LBL_SPECTRUM_DISPLAY,
-        x_min: float = VAL_GRAPH_DEFAULT_X_MIN,
-        x_max: float = VAL_GRAPH_DEFAULT_X_MAX,
+        width: int = DIM_GRAPH_WIDTH,
+        height: int = DIM_GRAPH_HEIGHT,
+        label: str = LBL_PLOT_LABEL_SPECTRUM,
+        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
+        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
         y_min: float = MIN_FREQUENCY,
         y_max: float = DEFAULT_SAMPLE_RATE / 2,
+        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        enable_dragging: bool = True,
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
@@ -58,20 +64,30 @@ class GUISpectrumDisplay(GUIGraphDisplay):
             x_max,
             y_min,
             y_max,
+            default_x_range=default_x_range,
+            default_y_range=default_y_range,
+            enable_dragging=enable_dragging,
         )
 
     def _create_content(self) -> None:
         with dpg.plot(
             label=self.label,
+            tag=self.plot_tag,
+            parent=self.tag,
             width=self.width,
             height=self.height,
-            tag=self.plot_tag,
             anti_aliased=True,
             no_inputs=True,
             pan_button=-1,
         ):
-            dpg.add_plot_axis(dpg.mvXAxis, label=LBL_SPECTRUM_X_AXIS, tag=self.x_axis_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, label=LBL_SPECTRUM_Y_AXIS, tag=self.y_axis_tag, scale=dpg.mvPlotScale_Log10)
+            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvYAxis,
+                label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+                parent=self.plot_tag,
+                tag=self.y_axis_tag,
+                scale=dpg.mvPlotScale_Log10,
+            )
 
     def load_library_fragment(
         self,
@@ -84,8 +100,8 @@ class GUISpectrumDisplay(GUIGraphDisplay):
 
         self.add_layer(
             SpectrumLayer(
-                fragment=fragment,
-                name=LBL_PLOT_SPECTRUM,
+                data=fragment,
+                name=LBL_PLOT_NAME_SPECTRUM,
                 sample_rate=sample_rate,
                 frame_length=frame_length,
             )
@@ -99,7 +115,8 @@ class GUISpectrumDisplay(GUIGraphDisplay):
         self._update_axes_limits()
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
-                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}"
+                series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
+                theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
                 dpg.add_bar_series(
                     x=[self.x_max],
                     y=[frequency],
@@ -109,7 +126,9 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                     weight=band_width,
                     horizontal=True,
                 )
-                with dpg.theme() as bar_theme:
+
+                dpg_delete_item(theme_tag)
+                with dpg.theme(tag=theme_tag):
                     with dpg.theme_component(dpg.mvBarSeries):
                         dpg.add_theme_color(
                             dpg.mvPlotCol_Fill,
@@ -117,7 +136,7 @@ class GUISpectrumDisplay(GUIGraphDisplay):
                             category=dpg.mvThemeCat_Plots,
                         )
 
-                dpg_bind_item_theme(series_tag, bar_theme)
+                dpg_bind_item_theme(series_tag, theme_tag)
 
     def _update_axes_limits(self) -> None:
         dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)

@@ -5,7 +5,7 @@ import numpy as np
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
-from sampletones.instructions import TriangleInstruction
+from sampletones.instructions import InstructionTypeUnion, TriangleInstruction
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import Initials
 
@@ -74,7 +74,7 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
         return triangle_instructions
 
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return TriangleInstruction
 
     @classmethod

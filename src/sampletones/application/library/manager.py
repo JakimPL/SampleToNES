@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
-from sampletones.constants.general import NOISE_PERIODS
 from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.ffts import Window
 from sampletones.generators import LIBRARY_GENERATOR_CLASS_MAP
@@ -26,34 +25,31 @@ from sampletones.tree import (
     GroupNode,
     InstructionNode,
     LibraryNode,
+    NodeType,
     Tree,
     TreeNode,
 )
-from sampletones.utils import pitch_to_name, to_path
+from sampletones.typehints import VoidCallback
+from sampletones.utils import period_to_name, pitch_to_name, to_path
+from sampletones.utils.callbacks import CallbackMixin
 
-from ..constants import (
-    NOD_LABEL_LIBRARIES,
-    NOD_LABEL_NOT_LOADED,
-    NOD_TYPE_GENERATOR,
-    NOD_TYPE_GROUP,
-    NOD_TYPE_INSTRUCTION,
-    NOD_TYPE_LIBRARY,
-    NOD_TYPE_LIBRARY_PLACEHOLDER,
-    NOD_TYPE_ROOT,
+from ..constants.instructions import (
+    LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
+    LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
 )
 
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
 
-class InstructionsLibraryManager:
+class InstructionsLibraryManager(CallbackMixin):
     def __init__(
         self,
         library_directory: Path,
-        on_generation_start: Optional[Callable[[], None]] = None,
-        on_completed: Optional[Callable[[], None]] = None,
+        on_generation_start: Optional[VoidCallback] = None,
+        on_completed: Optional[VoidCallback] = None,
         on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
         on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[Callable[[], None]] = None,
+        on_cancelled: Optional[VoidCallback] = None,
     ) -> None:
         self.library = InstructionLibrary(directory=str(library_directory))
         self.library_files: Dict[InstructionLibraryKey, str] = {}
@@ -61,11 +57,11 @@ class InstructionsLibraryManager:
         self.tree = Tree()
         self.creator: Optional[InstructionsLibraryCreator] = None
 
-        self._on_generation_start: Optional[Callable[[], None]] = on_generation_start
-        self._on_generation_completed: Optional[Callable[[], None]] = on_completed
-        self._on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
-        self._on_generation_error: Optional[Callable[[Exception], None]] = on_error
-        self._on_generation_cancelled: Optional[Callable[[], None]] = on_cancelled
+        self.on_generation_start: Optional[VoidCallback] = on_generation_start
+        self.on_generation_completed: Optional[VoidCallback] = on_completed
+        self.on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
+        self.on_generation_error: Optional[Callable[[Exception], None]] = on_error
+        self.on_generation_cancelled: Optional[VoidCallback] = on_cancelled
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = InstructionLibrary(directory=str(directory))
@@ -164,11 +160,11 @@ class InstructionsLibraryManager:
         self.library = InstructionLibrary.from_config(config)
         self.creator = InstructionsLibraryCreator(config, window)
         self.creator.set_callbacks(
-            on_start=self._on_generation_start,
+            on_start=self.on_generation_start,
             on_completed=self._complete_generation,
-            on_error=self._on_generation_error,
-            on_cancelled=self._on_generation_cancelled,
-            on_progress=self._on_generation_progress,
+            on_error=self.on_generation_error,
+            on_cancelled=self.on_generation_cancelled,
+            on_progress=self.on_generation_progress,
         )
 
         self.creator.start()
@@ -179,11 +175,10 @@ class InstructionsLibraryManager:
             self.library.save_data(key, library_data)
             self.current_library_key = key
         except Exception as exception:
-            if self._on_generation_error is not None:
-                self._on_generation_error(exception)
+            self.call(self.on_generation_error, exception)
             raise exception
-        if self._on_generation_completed is not None:
-            self._on_generation_completed()
+
+        self.call(self.on_generation_completed)
 
     def is_generating(self) -> bool:
         return self.creator is not None and self.creator.is_running()
@@ -270,7 +265,7 @@ class InstructionsLibraryManager:
             if isinstance(instruction, (PulseInstruction, TriangleInstruction)):
                 grouping_key = pitch_to_name(instruction.pitch)
             elif isinstance(instruction, NoiseInstruction):
-                grouping_key = f"p{NOISE_PERIODS[instruction.period]}"
+                grouping_key = period_to_name(instruction.period)
             else:
                 raise TypeError(f"Unsupported instruction type {type(instruction)} for grouping")
 
@@ -282,7 +277,7 @@ class InstructionsLibraryManager:
         return instructions
 
     def rebuild_tree(self) -> None:
-        root = TreeNode(NOD_LABEL_LIBRARIES, node_type=NOD_TYPE_ROOT)
+        root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
 
         for library_key in sorted(self.library_files.keys(), key=self.get_display_name_from_key):
             self._build_library_node(library_key, root)
@@ -291,7 +286,7 @@ class InstructionsLibraryManager:
 
     def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
         display_name = self.get_display_name_from_key(library_key)
-        library_node = LibraryNode(display_name, node_type=NOD_TYPE_LIBRARY, library_key=library_key, parent=parent)
+        library_node = LibraryNode(display_name, library_key=library_key, parent=parent)
 
         if self.is_library_loaded(library_key):
             self._build_generator_nodes(library_key, library_node)
@@ -302,7 +297,10 @@ class InstructionsLibraryManager:
 
     def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
         return LibraryNode(
-            NOD_LABEL_NOT_LOADED, node_type=NOD_TYPE_LIBRARY_PLACEHOLDER, library_key=parent.library_key, parent=parent
+            LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
+            node_type=NodeType.PLACEHOLDER,
+            library_key=parent.library_key,
+            parent=parent,
         )
 
     def _build_generator_nodes(self, library_key: InstructionLibraryKey, parent: TreeNode) -> None:
@@ -314,7 +312,6 @@ class InstructionsLibraryManager:
 
             generator_node = GeneratorNode(
                 generator_name.value.capitalize(),
-                node_type=NOD_TYPE_GENERATOR,
                 generator_name=generator_name,
                 parent=parent,
             )
@@ -335,7 +332,6 @@ class InstructionsLibraryManager:
             group_label = f"{group_key} ({len(instructions)} item(s))"
             group_node = GroupNode(
                 group_label,
-                node_type=NOD_TYPE_GROUP,
                 generator_name=generator_name,
                 group_key=group_key,
                 parent=parent,
@@ -344,7 +340,6 @@ class InstructionsLibraryManager:
             for instruction, fragment in instructions:
                 InstructionNode(
                     instruction.name,
-                    node_type=NOD_TYPE_INSTRUCTION,
                     generator_name=generator_name,
                     generator_class_name=generator_class_name,
                     instruction=instruction,
@@ -357,9 +352,7 @@ class InstructionsLibraryManager:
             return
 
         library_node = self.tree.find_node(
-            lambda node: isinstance(node, LibraryNode)
-            and node.node_type == NOD_TYPE_LIBRARY
-            and node.library_key == library_key
+            lambda node: isinstance(node, LibraryNode) and node.library_key == library_key
         )
 
         if library_node and isinstance(library_node, LibraryNode):

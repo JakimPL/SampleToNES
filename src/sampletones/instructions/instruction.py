@@ -22,5 +22,9 @@ class Instruction(DataModel):
         raise NotImplementedError("Subclasses must implement __lt__ method")
 
     @classmethod
+    def null_instruction(cls) -> Self:
+        raise NotImplementedError("Subclasses must implement null_instruction method")
+
+    @classmethod
     def class_name(cls) -> InstructionClassName:
         raise NotImplementedError("Subclasses must implement class_name method")

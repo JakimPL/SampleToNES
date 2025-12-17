@@ -1,17 +1,29 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MIN_PITCH
-from sampletones.instructions import PulseInstruction
+from sampletones.generators import GeneratorTypeUnion, PulseGenerator
+from sampletones.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    PulseInstruction,
+)
 from sampletones.typehints import FeatureMap
 
 from .exporter import Exporter
 
 
 class PulseExporter(Exporter[PulseInstruction]):
-    def extract_data(self, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
+    _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields] = {
+        FeatureKey.VOLUME: "volume",
+        FeatureKey.ARPEGGIO: "pitch",
+        FeatureKey.DUTY_CYCLE: "duty_cycle",
+    }
+
+    @staticmethod
+    def extract_data(instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
 
         pitch = MIN_PITCH
@@ -44,8 +56,9 @@ class PulseExporter(Exporter[PulseInstruction]):
         initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes, duty_cycles
 
-    def get_feature_map(self, instructions: List[PulseInstruction]) -> FeatureMap:
-        initial_pitch, pitches, volumes, duty_cycles = self.extract_data(instructions)
+    @staticmethod
+    def get_feature_map(instructions: List[PulseInstruction]) -> FeatureMap:
+        initial_pitch, pitches, volumes, duty_cycles = PulseExporter.extract_data(instructions)
         arpeggio = np.array(pitches) - initial_pitch
 
         return {
@@ -55,6 +68,27 @@ class PulseExporter(Exporter[PulseInstruction]):
             FeatureKey.DUTY_CYCLE: np.array(duty_cycles).astype(np.int8),
         }
 
+    @classmethod
+    def _features_dictionary_to_instruction(
+        cls,
+        dictionary: Dict[str, Union[bool, int]],
+        initial_pitch: int,
+    ) -> PulseInstruction:
+        pitch = int(initial_pitch + dictionary["pitch"])
+        if not cls.is_pitch_valid(pitch):
+            return PulseInstruction.null_instruction()
+
+        return PulseInstruction(
+            on=cls._infer_instruction_on(dictionary),
+            pitch=pitch,
+            volume=int(dictionary["volume"]),
+            duty_cycle=int(dictionary["duty_cycle"]),
+        )
+
     @staticmethod
-    def get_instruction_type() -> type:
+    def get_instruction_type() -> InstructionTypeUnion:
         return PulseInstruction
+
+    @staticmethod
+    def get_generator_type() -> GeneratorTypeUnion:
+        return PulseGenerator

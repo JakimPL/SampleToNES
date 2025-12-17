@@ -8,7 +8,7 @@ from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
 
-from ...constants import TAG_TABS
+from ...constants.general import TAG_TABS
 from .config import ApplicationConfig
 
 

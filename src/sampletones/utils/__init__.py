@@ -1,12 +1,18 @@
-from .common import first_key_for_value, next_power_of_two, pad, trim
+from .common import clamp, first_key_for_value, next_power_of_two, pad, trim
 from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
     MIN_AVAILABLE_FREQUENCY,
+    NAME_TO_PERIOD,
+    NAME_TO_PITCH,
+    clamp_period,
+    clamp_pitch,
     frequency_to_pitch,
+    period_to_name,
     pitch_to_frequency,
     pitch_to_name,
 )
+from .locales import to_utf8
 from .paths import get_directory, shorten_path, to_path
 from .serialization import (
     deserialize_array,
@@ -28,9 +34,13 @@ __all__ = [
     "pad",
     "trim",
     "first_key_for_value",
+    "clamp",
     "pitch_to_frequency",
     "frequency_to_pitch",
+    "clamp_pitch",
+    "clamp_period",
     "pitch_to_name",
+    "period_to_name",
     "dump",
     "save_json",
     "load_json",
@@ -45,8 +55,11 @@ __all__ = [
     "hash_models",
     "MIN_AVAILABLE_FREQUENCY",
     "MAX_AVAILABLE_FREQUENCY",
+    "NAME_TO_PITCH",
+    "NAME_TO_PERIOD",
     "write_fti",
     "shorten_path",
     "to_path",
     "get_directory",
+    "to_utf8",
 ]

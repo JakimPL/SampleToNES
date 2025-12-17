@@ -1,14 +1,15 @@
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
+from ..constants.general import (
     COL_BACKGROUND,
+    COL_BACKGROUND_MENU,
     COL_BUTTON,
     COL_BUTTON_ACTIVE,
     COL_BUTTON_HOVERED,
+    COL_TABLE_BACKGROUND_HEADER,
+    COL_TABLE_BACKGROUND_ROW,
+    COL_TABLE_BACKGROUND_ROW_ALTERNATIVE,
     COL_TABLE_BORDER,
-    COL_TABLE_HEADER_BACKGROUND,
-    COL_TABLE_ROW_ALTERNATIVE_BACKGROUND,
-    COL_TABLE_ROW_BACKGROUND,
     COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
     TAG_THEME_DEFAULT,
@@ -28,6 +29,8 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DISABLED_DEFAULT),
                 ThemeColor(key=dpg.mvThemeCol_WindowBg, color=COL_BACKGROUND),
                 ThemeColor(key=dpg.mvThemeCol_ChildBg, color=COL_BACKGROUND),
+                ThemeColor(key=dpg.mvThemeCol_PopupBg, color=COL_BACKGROUND_MENU),
+                ThemeColor(key=dpg.mvThemeCol_MenuBarBg, color=COL_BACKGROUND_MENU),
             ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                 ThemeColor(key=dpg.mvThemeCol_Button, color=COL_BUTTON),
@@ -35,19 +38,23 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_ButtonActive, color=COL_BUTTON_ACTIVE),
                 ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_BUTTON_FRAME_ROUNDING),
                 ThemeStyle(
-                    key=dpg.mvStyleVar_FramePadding, x=VAL_BUTTON_FRAME_PADDING[0], y=VAL_BUTTON_FRAME_PADDING[1]
+                    key=dpg.mvStyleVar_FramePadding,
+                    x=VAL_BUTTON_FRAME_PADDING[0],
+                    y=VAL_BUTTON_FRAME_PADDING[1],
                 ),
             ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
                 ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_BUTTON_FRAME_ROUNDING),
                 ThemeStyle(
-                    key=dpg.mvStyleVar_FramePadding, x=VAL_BUTTON_FRAME_PADDING[0], y=VAL_BUTTON_FRAME_PADDING[1]
+                    key=dpg.mvStyleVar_FramePadding,
+                    x=VAL_BUTTON_FRAME_PADDING[0],
+                    y=VAL_BUTTON_FRAME_PADDING[1],
                 ),
             ],
             ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [
-                ThemeColor(key=dpg.mvThemeCol_TableHeaderBg, color=COL_TABLE_HEADER_BACKGROUND),
-                ThemeColor(key=dpg.mvThemeCol_TableRowBg, color=COL_TABLE_ROW_BACKGROUND),
-                ThemeColor(key=dpg.mvThemeCol_TableRowBgAlt, color=COL_TABLE_ROW_ALTERNATIVE_BACKGROUND),
+                ThemeColor(key=dpg.mvThemeCol_TableHeaderBg, color=COL_TABLE_BACKGROUND_HEADER),
+                ThemeColor(key=dpg.mvThemeCol_TableRowBg, color=COL_TABLE_BACKGROUND_ROW),
+                ThemeColor(key=dpg.mvThemeCol_TableRowBgAlt, color=COL_TABLE_BACKGROUND_ROW_ALTERNATIVE),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderStrong, color=COL_TABLE_BORDER),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderLight, color=COL_TABLE_BORDER),
             ],

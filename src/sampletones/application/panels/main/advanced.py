@@ -1,37 +1,39 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
 from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import Sender, SerializedData
+from sampletones.typehints import Sender, SerializedData, VoidCallback
 from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants import (
-    DIM_DIALOG_FILE_HEIGHT,
-    DIM_DIALOG_FILE_WIDTH,
+from ...constants.general import (
+    DIM_DIALOG_HEIGHT_FILE,
+    DIM_DIALOG_WIDTH_FILE,
     DIM_INPUT_WIDTH,
-    DIM_PANEL_ADVANCED_HEIGHT,
-    LBL_ADVANCED_INPUT_MAX_WORKERS,
-    LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY,
-    LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-    LBL_SECTION_CONFIG_ADVANCED,
-    LBL_TOOLTIP_ADVANCED_MAX_WORKERS,
-    RNG_ADVANCED_MIN_WORKERS,
-    TAG_ADVANCED_LIBRARY_DIRECTORY,
-    TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-    TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
-    TAG_ADVANCED_MAX_WORKERS,
-    TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-    TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
-    TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-    TAG_PANEL_ADVANCED,
+)
+from ...constants.main import (
+    DIM_PANEL_HEIGHT_MAIN_ADVANCED,
+    LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+    LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    LBL_SECTION_MAIN_ADVANCED,
+    LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS,
+    TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+    TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+    TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
+    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+    TAG_PANEL_MAIN_ADVANCED,
     TAG_PANEL_MAIN_SETTINGS,
-    TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
-    TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
+    TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
+    TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
+    TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+    TTL_DIALOG_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+    VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -53,16 +55,16 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
-        self._on_update_library_directory: Optional[Callable[[], None]] = None
-        self._on_update_output_directory: Optional[Callable[[], None]] = None
+        self.on_update_library_directory: Optional[VoidCallback] = None
+        self.on_update_output_directory: Optional[VoidCallback] = None
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
         super().__init__(
-            tag=TAG_PANEL_ADVANCED,
+            tag=TAG_PANEL_MAIN_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
-            height=DIM_PANEL_ADVANCED_HEIGHT,
+            height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
         )
 
     def create_panel(self) -> None:
@@ -81,7 +83,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._register_callbacks()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_CONFIG_ADVANCED)
+        section_text = dpg.add_text(LBL_SECTION_MAIN_ADVANCED)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     @table_wrapper(columns=2, height=-1)
@@ -92,61 +94,61 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _create_workers_settings(self) -> None:
         dpg.add_separator()
         dpg.add_input_int(
-            label=LBL_ADVANCED_INPUT_MAX_WORKERS,
+            label=LBL_INPUT_MAIN_ADVANCED_MAX_WORKERS,
             default_value=MAX_WORKERS,
-            tag=TAG_ADVANCED_MAX_WORKERS,
-            min_value=RNG_ADVANCED_MIN_WORKERS,
+            tag=TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
             width=DIM_INPUT_WIDTH,
         )
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
+            tag=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_ADVANCED_LIBRARY_DIRECTORY,
-                parent=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
-                label=LBL_BUTTON_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+                label=LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
                 width=-1,
                 callback=self._select_library_directory_dialog,
             )
 
             library_directory = self.config_manager.get_library_directory()
             self.library_path_text = GUIPathText(
-                tag=TAG_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-                parent=TAG_ADVANCED_LIBRARY_DIRECTORY_GROUP,
+                tag=TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
+                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
                 path=library_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_output_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+            tag=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-                label=LBL_BUTTON_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-                parent=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+                label=LBL_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
                 width=-1,
                 callback=self._select_output_directory_dialog,
             )
 
             output_directory = self.config_manager.get_output_directory()
             self.output_path_text = GUIPathText(
-                tag=TAG_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-                parent=TAG_ADVANCED_OUTPUT_DIRECTORY_GROUP,
+                tag=TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
+                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
                 path=output_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_ADVANCED_MAX_WORKERS)
+        show_tooltip(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
 
     def _register_callbacks(self) -> None:
         for tag in self.config_manager.config_parameters["advanced"].keys():
@@ -180,9 +182,9 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_SELECT_LIBRARY_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            label=TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_library_directory,
             directory_selector=True,
             default_path=str(self.application_config_manager.get_library_path()),
@@ -202,14 +204,13 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.library_path_text:
             self.library_path_text.set_path(directory_path)
 
-        if self._on_update_library_directory is not None:
-            self._on_update_library_directory()
+        self.call(self.on_update_library_directory)
 
     def _select_output_directory_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_SELECT_OUTPUT_DIRECTORY,
-            width=DIM_DIALOG_FILE_WIDTH,
-            height=DIM_DIALOG_FILE_HEIGHT,
+            label=TTL_DIALOG_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
             callback=self._handle_select_output_directory,
             directory_selector=True,
             default_path=str(self.config_manager.get_output_directory()),
@@ -228,8 +229,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         if self.output_path_text is not None:
             self.output_path_text.set_path(directory_path)
 
-        if self._on_update_output_directory:
-            self._on_update_output_directory()
+        self.call(self.on_update_output_directory)
 
     def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
@@ -254,7 +254,3 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         library_directory = to_path(config.general.library_directory)
         if self.library_path_text:
             self.library_path_text.set_path(library_directory)
-
-    def set_callbacks(self, on_update_library_directory: Optional[Callable[[], None]] = None) -> None:
-        if on_update_library_directory is not None:
-            self._on_update_library_directory = on_update_library_directory

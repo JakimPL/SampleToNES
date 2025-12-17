@@ -7,6 +7,10 @@ def next_power_of_two(length: int) -> int:
     return 1 << (length - 1).bit_length()
 
 
+def clamp(value: int, min_value: int, max_value: int) -> int:
+    return max(min_value, min(value, max_value))
+
+
 def pad(audio: np.ndarray, left: int, right: int) -> np.ndarray:
     n = len(audio)
     length = right - left

@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Color, SerializedData
 
-from ...constants import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_LABEL_WIDTH
+from ...constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
 from ...themes.table import TableTheme
 from ...themes.theme import Theme
 from ..fonts.font import Font
@@ -21,7 +21,7 @@ class GUITable:
         rows: Tuple[TableCell, ...],
         parent: Optional[str] = None,
         before: Optional[str] = None,
-        label_column_width: int = DIM_TABLE_LABEL_WIDTH,
+        label_column_width: int = DIM_TABLE_WIDTH_LABEL,
         header_row: bool = False,
         borders_inner_horizontal: bool = True,
         borders_outer_horizontal: bool = True,

@@ -22,7 +22,7 @@ from .approximation import ApproximationData
 
 GetCachedApproximationsInstructionsArgument = Tuple[Tuple[InstructionClassName, bytes], ...]
 GetCachedApproximationsGeneratorsArgument = Tuple[GeneratorUnion, ...]
-GetCachedApproximationsCallable = Callable[
+GetCachedApproximationsCallback = Callable[
     [GetCachedApproximationsInstructionsArgument, GetCachedApproximationsGeneratorsArgument], Fragment
 ]
 
@@ -35,7 +35,7 @@ class ReconstructorWorker:
     library_data: InstructionLibraryData
 
     criterion: Criterion = field(init=False)
-    _get_cached_approximations: GetCachedApproximationsCallable = field(init=False)
+    _get_cached_approximations: GetCachedApproximationsCallback = field(init=False)
 
     def __call__(
         self,
@@ -47,7 +47,7 @@ class ReconstructorWorker:
     def __post_init__(self) -> None:
         object.__setattr__(self, "criterion", Criterion(self.config, self.window))
 
-        def _build_get_cached_approximations() -> GetCachedApproximationsCallable:
+        def _build_get_cached_approximations() -> GetCachedApproximationsCallback:
             @lru_cache(maxsize=16)
             def _cached(
                 serialized_instructions: Tuple[Tuple[InstructionClassName, bytes], ...],

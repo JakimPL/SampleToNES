@@ -7,8 +7,10 @@ from .node import (
     TreeNode,
 )
 from .tree import Tree
+from .type import NodeType
 
 __all__ = [
+    "NodeType",
     "Tree",
     "TreeNode",
     "FileSystemNode",

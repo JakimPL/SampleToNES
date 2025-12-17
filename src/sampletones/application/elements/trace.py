@@ -3,14 +3,16 @@ from typing import Dict
 
 import dearpygui.dearpygui as dpg
 
-from ..constants import (
-    COL_TRACEBACK_TEXT,
-    DIM_DIALOG_TRACEBACK_HEIGHT,
+from ..constants.general import (
+    DIM_DIALOG_HEIGHT_TRACEBACK,
     LBL_BUTTON_TRACEBACK_COPY,
     SUF_BUTTON_COPY,
     SUF_TEXT,
     SUF_TRACEBACK,
 )
+from ..themes.default import DefaultTheme
+from ..themes.theme import Theme
+from ..themes.trace import TracebackTheme
 from ..utils.clipboard import copy_to_clipboard
 from .button import GUIButton
 
@@ -22,35 +24,36 @@ class GUITraceback:
         self,
         parent: str,
         exception: Exception,
+        theme: Theme = TracebackTheme(),
+        button_theme: Theme = DefaultTheme(),
     ) -> None:
         self._parent = parent
         self._tag = f"{parent}{SUF_TRACEBACK}]"
         self._text = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+
+        self.theme = theme
         traceback_text_tag = f"{self._tag}{SUF_TEXT}"
         traceback_copy_tag = f"{self._tag}{SUF_BUTTON_COPY}"
 
         with dpg.group(tag=self._tag, parent=parent, show=False):
-            with dpg.theme() as traceback_input_theme:
-                with dpg.theme_component(dpg.mvInputText):
-                    dpg.add_theme_color(dpg.mvThemeCol_Text, COL_TRACEBACK_TEXT)
-
             dpg.add_input_text(
                 tag=traceback_text_tag,
                 parent=self._tag,
                 default_value=self._text,
                 multiline=True,
                 readonly=True,
-                height=DIM_DIALOG_TRACEBACK_HEIGHT,
+                height=DIM_DIALOG_HEIGHT_TRACEBACK,
                 width=-1,
             )
 
-            dpg.bind_item_theme(traceback_text_tag, traceback_input_theme)
+            self.theme.bind_to_item(traceback_text_tag)
 
             GUIButton(
                 tag=traceback_copy_tag,
                 label=LBL_BUTTON_TRACEBACK_COPY,
                 callback=lambda: copy_to_clipboard(self._text, LBL_BUTTON_TRACEBACK_COPY, traceback_copy_tag),
                 width=-1,
+                theme=button_theme,
             )
 
         GUITraceback.REGISTRY[self._tag] = self

@@ -7,24 +7,28 @@ from sampletones.configs import InstructionsLibraryConfig
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import VoidCallback
 from sampletones.utils.logger import logger
 
-from ...constants import (
-    DIM_WAVEFORM_DEFAULT_HEIGHT,
-    LBL_INSTRUCTION_SPECTRUM,
-    LBL_INSTRUCTION_WAVEFORM,
-    SUF_CENTER_PANEL,
-    SUF_INSTRUCTION_SPECTRUM,
-    SUF_INSTRUCTION_WAVEFORM,
-    TAG_INSTRUCTION_PANEL,
-    TAG_INSTRUCTION_PLAYER_PANEL,
-    TAG_INSTRUCTION_SPECTRUM_DISPLAY,
-    TAG_INSTRUCTION_WAVEFORM_DISPLAY,
-    TAG_TAB_INSTRUCTIONS,
-    VAL_PLOT_WIDTH_FULL,
+from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
+from ...constants.graphs import (
+    DIM_SPECTRUM_HEIGHT,
+    DIM_SPECTRUM_WIDTH,
+    DIM_WAVEFORM_HEIGHT,
+    DIM_WAVEFORM_WIDTH,
 )
-from ...elements.graphs.spectrum import GUISpectrumDisplay
-from ...elements.graphs.waveform import GUIWaveformDisplay
+from ...constants.instructions import (
+    LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+    LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+    SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
+    SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+)
+from ...elements.graphs.spectrum import GUISpectrumGraph
+from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ..player import GUIAudioPlayerPanel
@@ -36,34 +40,21 @@ class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
         self.audio_device_manager = audio_device_manager
         self.player_panel: GUIAudioPlayerPanel
-        self.waveform_display: GUIWaveformDisplay
-        self.spectrum_display: GUISpectrumDisplay
+        self.waveform_display: GUIWaveformGraph
+        self.spectrum_display: GUISpectrumGraph
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
-        self._on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
-        self._on_clear_instruction_details: Optional[Callable[[], None]] = None
-        self._on_change_audio_state: Optional[Callable[[], None]] = None
+        self.on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
+        self.on_clear_instruction_details: Optional[VoidCallback] = None
+        self.on_change_audio_state: Optional[VoidCallback] = None
 
-        self.waveform_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_WAVEFORM}"
-        self.spectrum_tag = f"{TAG_INSTRUCTION_PANEL}{SUF_INSTRUCTION_SPECTRUM}"
+        self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
+        self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
 
         super().__init__(
-            tag=TAG_INSTRUCTION_PANEL,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_CENTER_PANEL}",
+            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
+            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
-
-    def set_callbacks(
-        self,
-        on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None,
-        on_clear_instruction_details: Optional[Callable[[], None]] = None,
-        on_change_audio_state: Optional[Callable[[], None]] = None,
-    ) -> None:
-        if on_display_instruction_details is not None:
-            self._on_display_instruction_details = on_display_instruction_details
-        if on_clear_instruction_details is not None:
-            self._on_clear_instruction_details = on_clear_instruction_details
-        if on_change_audio_state is not None:
-            self._on_change_audio_state = on_change_audio_state
 
     def create_panel(self) -> None:
         self._create_player_panel()
@@ -79,12 +70,12 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
-            self.waveform_display = GUIWaveformDisplay(
-                tag=TAG_INSTRUCTION_WAVEFORM_DISPLAY,
-                width=VAL_PLOT_WIDTH_FULL,
-                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+            self.waveform_display = GUIWaveformGraph(
+                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+                width=DIM_WAVEFORM_WIDTH,
+                height=DIM_WAVEFORM_HEIGHT,
                 parent=self.waveform_tag,
-                label=LBL_INSTRUCTION_WAVEFORM,
+                label=LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
             )
 
     def _create_spectrum_display(self) -> None:
@@ -96,21 +87,21 @@ class GUIInstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
-            self.spectrum_display = GUISpectrumDisplay(
-                tag=TAG_INSTRUCTION_SPECTRUM_DISPLAY,
-                width=VAL_PLOT_WIDTH_FULL,
-                height=DIM_WAVEFORM_DEFAULT_HEIGHT,
+            self.spectrum_display = GUISpectrumGraph(
+                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+                width=DIM_SPECTRUM_WIDTH,
+                height=DIM_SPECTRUM_HEIGHT,
                 parent=self.spectrum_tag,
-                label=LBL_INSTRUCTION_SPECTRUM,
+                label=LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
             )
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_INSTRUCTION_PLAYER_PANEL,
+            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
             parent=self.parent,
             audio_device_manager=self.audio_device_manager,
             on_position_changed=self._on_player_position_changed,
-            on_change_audio_state=self._on_change_audio_state,
+            on_change_audio_state=self.on_change_audio_state,
         )
 
     def close_instruction(self) -> None:
@@ -118,9 +109,7 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel.disable()
         self.waveform_display.clear_layers()
         self.spectrum_display.clear_layers()
-        if self._on_clear_instruction_details:
-            self._on_clear_instruction_details()
-
+        self.call(self.on_clear_instruction_details)
         self.player_panel.enable()
 
     def is_loaded(self) -> bool:
@@ -136,8 +125,7 @@ class GUIInstructionPanel(GUIPanel):
         self.library_config = library_config
 
         self.player_panel.disable()
-        if self._on_display_instruction_details:
-            self._on_display_instruction_details(generator_class_name, instruction, fragment)
+        self.call(self.on_display_instruction_details, generator_class_name, instruction, fragment)
 
         if fragment:
             sample_rate = library_config.sample_rate
@@ -153,8 +141,7 @@ class GUIInstructionPanel(GUIPanel):
             audio_data = AudioData.from_library_fragment(fragment, sample_rate)
             self.player_panel.load_audio_data(audio_data)
         else:
-            if self._on_clear_instruction_details:
-                self._on_clear_instruction_details()
+            self.call(self.on_clear_instruction_details)
 
         self.player_panel.enable()
 
