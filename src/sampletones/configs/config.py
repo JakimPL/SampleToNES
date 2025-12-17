@@ -1,12 +1,13 @@
 from pathlib import Path
 from types import ModuleType
-from typing import List, Union
+from typing import List
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel
+from sampletones.typehints import Pathlike
 from sampletones.utils import load_json, save_json, to_path
 
 from .general import GeneralConfig
@@ -33,12 +34,12 @@ class Config(DataModel):
         return cls.load(CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "Config":
+    def load(cls, path: Pathlike) -> "Config":
         path = to_path(path)
         config_dict = load_json(path)
         return cls(**config_dict)
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: Pathlike) -> None:
         path = to_path(path)
         config_dict = self.model_dump()
         save_json(path, config_dict)

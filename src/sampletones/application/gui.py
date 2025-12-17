@@ -134,10 +134,10 @@ from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
-    show_confirmation_dialog,
     show_error_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
+    show_save_confirmation_dialog,
 )
 from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
@@ -784,10 +784,11 @@ class GUI:
                 self._load_reconstruction(filepath)
 
         if self._is_reconstruction_unsaved():
-            show_confirmation_dialog(
+            show_save_confirmation_dialog(
                 tag=TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
                 title=TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
                 message=MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+                on_save=self._save_reconstruction,
                 on_confirm=load_reconstruction,
             )
         else:
@@ -934,15 +935,16 @@ class GUI:
         self._update_menu()
 
     def _save_reconstruction(self) -> None:
-        pass
+        self.reconstruction_panel.save_reconstruction()
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
-            show_confirmation_dialog(
+            show_save_confirmation_dialog(
                 tag=TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
                 title=TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
                 message=MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
                 on_confirm=self._close_reconstruction,
+                on_save=self._save_reconstruction,
             )
         else:
             self._close_reconstruction()
@@ -1027,10 +1029,11 @@ class GUI:
         return loaded and playing
 
     def _show_exit_confirmation_dialog(self, message: str) -> None:
-        show_confirmation_dialog(
+        show_save_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=TTL_DIALOG_EXIT_CONFIRMATION,
             message=message,
+            on_save=self._save_reconstruction,
             on_confirm=self._exit_application,
         )
 

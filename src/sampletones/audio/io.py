@@ -1,12 +1,12 @@
 import warnings
-from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 from scipy.io import wavfile
 
 from sampletones.constants.general import QUANTIZATION_LEVELS
 from sampletones.exceptions import UnsupportedAudioFormatError
+from sampletones.typehints import Pathlike
 
 from .processing import clip_audio
 from .processing import normalize as normalize_audio
@@ -14,12 +14,12 @@ from .processing import quantize as quantize_audio
 from .processing import resample, stereo_to_mono
 
 
-def write_wave(path: Union[str, Path], sample_rate: int, audio: np.ndarray) -> None:
+def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
     audio = clip_audio(audio)
     wavfile.write(path, sample_rate, audio)
 
 
-def read_wave(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
+def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", wavfile.WavFileWarning)
         try:
@@ -43,7 +43,7 @@ def read_wave(path: Union[str, Path]) -> Tuple[np.ndarray, int]:
 
 
 def load_audio(
-    path: Union[str, Path],
+    path: Pathlike,
     target_sample_rate: Optional[int] = None,
     normalize: bool = True,
     quantize: bool = True,

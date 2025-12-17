@@ -1,11 +1,11 @@
 import platform
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Sender
+from sampletones.typehints import Pathlike, Sender
 from sampletones.utils import get_directory, shorten_path, to_path
 
 from ..constants.general import (
@@ -118,7 +118,7 @@ class GUIPathText:
         else:
             subprocess.run(["xdg-open", path_string], check=False)
 
-    def set_path(self, path: Union[str, Path], shorten: bool = True) -> None:
+    def set_path(self, path: Pathlike, shorten: bool = True) -> None:
         self.path = to_path(path)
         self.display_text = shorten_path(self.path) if shorten else str(self.path)
         dpg_set_value(self.tag, self.display_text)

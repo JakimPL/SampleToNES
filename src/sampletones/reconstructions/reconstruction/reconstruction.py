@@ -1,7 +1,7 @@
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Dict, List, Optional, Self, Union
+from typing import Any, Dict, List, Optional, Self
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -25,7 +25,7 @@ from sampletones.exporters import (
     Features,
 )
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Pathlike, SerializedData
 from sampletones.utils import pad, serialize_array
 from sampletones.utils.logger import logger
 
@@ -211,7 +211,7 @@ class Reconstruction(DataModel):
         return sum(error.total_error for error in self.errors_data)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "Reconstruction":
+    def load(cls, path: Pathlike) -> "Reconstruction":
         reconstruction = super().load(path)
         cls.validate_metadata(reconstruction.metadata)
         return reconstruction

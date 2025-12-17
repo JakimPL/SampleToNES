@@ -1,9 +1,7 @@
-from pathlib import Path
-from typing import Union
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
+from sampletones.typehints import Pathlike
 from sampletones.utils import load_yaml, save_yaml, to_path
 from sampletones.utils.logger import logger
 
@@ -49,12 +47,12 @@ class ApplicationConfig(BaseModel):
         return cls.load(APPLICATION_CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> "ApplicationConfig":
+    def load(cls, path: Pathlike) -> "ApplicationConfig":
         path = to_path(path)
         config_dict = load_yaml(path)
         return cls(**config_dict)
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: Pathlike) -> None:
         path = to_path(path)
         config_dict = self.model_dump()
         save_yaml(path, config_dict)

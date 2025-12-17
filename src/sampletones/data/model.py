@@ -20,7 +20,7 @@ from flatbuffers.table import Table
 from pydantic import BaseModel
 
 from sampletones.exceptions import DeserializationError, SerializationError
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Pathlike, SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
 
 FLOAT32_SIZE = 4
@@ -39,12 +39,12 @@ class DataModel(BaseModel):
         root = fb_reader.GetRootAs(buffer, 0)
         return cls.deserialize_inner(root)
 
-    def save(self, path: Union[str, Path]) -> None:
+    def save(self, path: Pathlike) -> None:
         binary = self.serialize()
         save_binary(path, binary)
 
     @classmethod
-    def load(cls, path: Union[str, Path]) -> Self:
+    def load(cls, path: Pathlike) -> Self:
         binary = load_binary(path)
         return cls.deserialize(binary)
 

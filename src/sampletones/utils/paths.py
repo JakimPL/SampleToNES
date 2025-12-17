@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing import Union
+
+from sampletones.typehints import Pathlike
 
 
 def shorten_path(path: Path, levels: int = 5) -> str:
@@ -17,7 +18,7 @@ def shorten_path(path: Path, levels: int = 5) -> str:
     return os.sep.join([root.rstrip(os.sep), first_dir, "..."] + list(last_parts))
 
 
-def to_path(path: Union[str, Path]) -> Path:
+def to_path(path: Pathlike) -> Path:
     if not isinstance(path, (str, Path)):
         raise TypeError(f"Expected path to be str or Path, got {type(path)}")
 
@@ -27,6 +28,6 @@ def to_path(path: Union[str, Path]) -> Path:
     return path
 
 
-def get_directory(path: Union[str, Path]) -> Path:
+def get_directory(path: Pathlike) -> Path:
     path = to_path(path)
     return path if path.is_dir() else path.parent

@@ -355,4 +355,5 @@ class GUIBrowserPanel(GUITreePanel):
             self._loading_reconstruction = False
             self._set_tree_enabled(True)
 
+        logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
         return self.application_config_manager.set_current_reconstruction(filepath)

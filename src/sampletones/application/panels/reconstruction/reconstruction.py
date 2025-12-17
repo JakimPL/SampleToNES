@@ -116,6 +116,14 @@ class GUIReconstructionPanel(GUIPanel):
         self.reconstruction_data = reconstruction_data
         self._update_reconstruction_display(reconstruction_only=True)
 
+    def save_reconstruction(self) -> None:
+        if not self.reconstruction_data:
+            return
+
+        reconstruction = self.reconstruction_data.reconstruction
+        reconstruction.save(self.reconstruction_data.filepath)
+        logger.info(f"Saved reconstruction to: {logger.format_path(self.reconstruction_data.filepath)}")
+
     def close_reconstruction(self) -> None:
         self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
@@ -360,7 +368,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             self.save_instrument_feature(filepath, instrument_name, generator_name)
-            logger.info(f"Exported instrument feature to FTI: {filepath}")
+            logger.info(f"Exported instrument feature to FTI: {logger.format_path(filepath)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
@@ -383,7 +391,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             self.save_instrument_features(directory)
-            logger.info(f"Exported instrument features to FTI: {directory}")
+            logger.info(f"Exported instrument features to FTI: {logger.format_path(directory)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
@@ -468,7 +476,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             write_wave(filepath, sample_rate, partial_approximation)
-            logger.info(f"Exported reconstruction to WAV: {filepath}")
+            logger.info(f"Exported reconstruction to WAV: {logger.format_path(filepath)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_EXPORT_WAV,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,

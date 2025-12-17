@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -16,3 +17,5 @@ Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 
 Callback = Callable[..., Any]
 VoidCallback = Callable[[], None]
+
+Pathlike = Union[str, Path]
