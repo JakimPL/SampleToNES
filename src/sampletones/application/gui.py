@@ -58,10 +58,14 @@ from .constants.general import (
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
     MSG_GLOBAL_CONFIG_SAVE_FAILED,
+    MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
+    MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
+    MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
+    TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
@@ -82,6 +86,7 @@ from .constants.general import (
     TAG_WINDOW_MAIN,
     TPL_MENU_TEXT_FPS,
     TTL_DIALOG_CONFIG_STATUS,
+    TTL_DIALOG_EXIT_CONFIRMATION,
     TTL_DIALOG_LOAD_CONFIG,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
@@ -121,6 +126,7 @@ from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
+    show_confirmation_dialog,
     show_error_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
@@ -204,6 +210,10 @@ class GUI:
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
+        dpg.set_exit_callback(self._on_close)
+
+    def _on_exit(self) -> None:
+        dpg.start_dearpygui()
 
     def _setup_dearpygui(self) -> None:
         dpg.setup_dearpygui()
@@ -233,6 +243,7 @@ class GUI:
             x_pos=self.application_config_manager.window_x,
             y_pos=self.application_config_manager.window_y,
             decorated=not self.application_config_manager.fullscreen,
+            disable_close=True,
         )
 
         if self.application_config_manager.fullscreen:
@@ -264,7 +275,7 @@ class GUI:
         self.shortcut_manager.register(
             ShortcutId.EXIT,
             Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
-            self._exit_application,
+            self._on_close,
         )
         self.shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
@@ -386,7 +397,11 @@ class GUI:
         )
 
     def _create_main_window(self) -> None:
-        with dpg.window(label=TTL_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
+        with dpg.window(
+            label=TTL_WINDOW_MAIN,
+            tag=TAG_WINDOW_MAIN,
+            on_close=self._on_close,
+        ):
             self._create_menu_bar()
             self._create_tabs()
 
@@ -940,9 +955,38 @@ class GUI:
 
         return loaded and playing
 
+    def _show_exit_confirmation_dialog(self, message: str) -> None:
+        show_confirmation_dialog(
+            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            title=TTL_DIALOG_EXIT_CONFIRMATION,
+            message=message,
+            on_confirm=self._exit_application,
+        )
+
+    def _on_close(self) -> None:
+        if self._is_converter_running():
+            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS)
+        elif self._is_library_generating():
+            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS)
+        elif self._is_reconstruction_unsaved():
+            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION)
+        else:
+            self._exit_application()
+
+    def _is_converter_running(self) -> bool:
+        return self.converter_panel.is_converter_running()
+
+    def _is_library_generating(self) -> bool:
+        return self.library_panel.is_library_generating()
+
+    def _is_reconstruction_unsaved(self) -> bool:
+        return False  # TODO: implement unsaved changes tracking
+
     def _exit_application(self) -> None:
-        if self.converter_panel and self.converter_panel.converter:
+        self.audio_device_manager.stop()
+        if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
+
         dpg.stop_dearpygui()
 
     def _enable_fullscreen(self) -> None:

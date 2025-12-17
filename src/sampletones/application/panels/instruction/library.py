@@ -190,6 +190,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def refresh(self) -> None:
         self._refresh_libraries()
 
+    def is_library_generating(self) -> bool:
+        return self.library_manager.is_generating()
+
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:

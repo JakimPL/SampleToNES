@@ -28,6 +28,7 @@ TAG_DIALOG_GLOBAL_CONFIG_STATUS = "dialog_global_config_status"
 TAG_DIALOG_GLOBAL_FILE_NOT_FOUND = "dialog_global_file_not_found"
 TAG_DIALOG_GLOBAL_ERROR = "dialog_global_error"
 TAG_DIALOG_GLOBAL_PATH_MESSAGE = "dialog_global_path_message"
+TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION = "dialog_global_exit_confirmation"
 TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "menu_item_reconstruction_reconstruct_file"
 TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "menu_item_reconstruction_reconstruct_directory"
 TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION = "menu_item_reconstruction_close_reconstruction"
@@ -48,6 +49,7 @@ TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
 SUF_BUTTON = "_button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}_copy"
 SUF_BUTTON_OK = f"{SUF_BUTTON}_ok"
+SUF_BUTTON_CANCEL = f"{SUF_BUTTON}_cancel"
 SUF_BUTTON_SEARCH = f"{SUF_BUTTON}_search"
 SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}_show_traceback"
 SUF_GROUP = "_group"
@@ -70,6 +72,7 @@ SUF_TREE_SEARCH_INPUT = "_search_input"
 SUF_NODE_HANDLER = "_node_handler"
 
 LBL_BUTTON_GLOBAL_OK = "OK"
+LBL_BUTTON_GLOBAL_CANCEL = "Cancel"
 LBL_BUTTON_GLOBAL_COPIED = "Copied!"
 LBL_BUTTON_TRACEBACK_COPY = "Copy to clipboard"
 LBL_BUTTON_TRACEBACK_SHOW = "Show traceback"
@@ -113,6 +116,13 @@ MSG_TREE_NO_RESULTS_FOUND = "No results found."
 MSG_GLOBAL_INVALID_METADATA_ERROR = "Invalid file metadata."
 MSG_GLOBAL_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
 MSG_GLOBAL_CONFIG_SAVE_FAILED = "Failed to save configuration."
+MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS = "A conversion is currently in progress. Are you sure you want to exit?"
+MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS = (
+    "Library generation is currently in progress. Are you sure you want to exit?"
+)
+MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION = (
+    "The current reconstruction has unsaved changes. Are you sure you want to exit?"
+)
 MSG_CONFIGURATION_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIGURATION_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
 MSG_CONFIGURATION_SAVE_ERROR = "Error saving configuration."
@@ -128,6 +138,7 @@ TTL_DIALOG_CONFIG_STATUS = "Configuration status"
 TTL_DIALOG_FILE_NOT_FOUND = "File not found"
 TTL_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
 TTL_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+TTL_DIALOG_EXIT_CONFIRMATION = "Exit"
 
 TPL_GLOBAL_TIME_ESTIMATION = " (ETA: {eta_string})"
 TPL_MENU_TEXT_FPS = "{fps:.0f} FPS"
@@ -142,10 +153,11 @@ DIM_DIALOG_HEIGHT_TRACEBACK = 400
 DIM_DIALOG_WIDTH_TRACEBACK = 0
 DIM_DIALOG_WIDTH_FILE = 720
 DIM_DIALOG_HEIGHT_FILE = 400
-DIM_DIALOG_WIDTH = 350
+DIM_DIALOG_WIDTH = 420
 DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_WIDTH_ERROR = 600
 DIM_DIALOG_HEIGHT_ERROR = 120
+DIM_DIALOG_WIDTH_WRAP = DIM_DIALOG_WIDTH - 10
 DIM_DIALOG_WIDTH_ERROR_WRAP = DIM_DIALOG_WIDTH_ERROR - 10
 DIM_INPUT_WIDTH = -180
 DIM_INPUT_WIDTH_SEARCH = -80
