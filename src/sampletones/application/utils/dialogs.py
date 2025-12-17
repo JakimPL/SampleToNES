@@ -5,6 +5,7 @@ from typing import Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones.library import InstructionLibraryKey
+from sampletones.typehints import Callback
 
 from ..constants.general import (
     COL_PATH_TEXT,
@@ -109,7 +110,7 @@ def show_confirmation_dialog(
     tag: str,
     message: str,
     title: str,
-    on_confirm: Callable[[], None],
+    on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
     height: int = DIM_DIALOG_HEIGHT,
 ) -> None:

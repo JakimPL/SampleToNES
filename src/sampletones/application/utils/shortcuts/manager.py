@@ -33,7 +33,7 @@ class ShortcutManager:
     def add_menu_item(self, shortcut_id: ShortcutId, **kwargs: Any) -> None:
         shortcut, callback = self._shortcuts[shortcut_id]
         dpg.add_menu_item(
-            callback=callback,
+            callback=lambda s, a, u: callback(),
             shortcut=shortcut.get_display_string(),
             **kwargs,
         )

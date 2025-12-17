@@ -386,7 +386,7 @@ class GUI:
             on_directory_clicked=self._assign_directory_to_converter,
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._load_reconstruction,
+            on_load_reconstruction=self._load_reconstruction_with_confirmation,
             on_load_library=self._load_library,
             on_set_as_library_directory=self.advanced_settings_panel.change_library_directory,
             on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
@@ -397,6 +397,7 @@ class GUI:
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
         )
         self.browser_panel.set_callbacks(
+            on_load_reconstruction=self._load_reconstruction_with_confirmation,
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
@@ -575,7 +576,7 @@ class GUI:
 
         current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
-            self.browser_panel.load_and_display_reconstruction(current_reconstruction)
+            self._load_reconstruction(current_reconstruction)
 
     def _create_main_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
@@ -775,16 +776,22 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
-    def _load_reconstruction_with_confirmation(self) -> None:
+    def _load_reconstruction_with_confirmation(self, filepath: Optional[Path] = None) -> None:
+        def load_reconstruction() -> None:
+            if filepath is None:
+                self._load_reconstruction_dialog()
+            else:
+                self._load_reconstruction(filepath)
+
         if self._is_reconstruction_unsaved():
             show_confirmation_dialog(
                 tag=TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
                 title=TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
                 message=MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
-                on_confirm=self._load_reconstruction_dialog,
+                on_confirm=load_reconstruction,
             )
         else:
-            self._load_reconstruction_dialog()
+            load_reconstruction()
 
     def _show_config_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:
@@ -896,7 +903,7 @@ class GUI:
         self._reconstruct_directory(directory_path)
 
     def _load_reconstruction(self, filepath: Path) -> None:
-        self.browser_panel.load_and_display_reconstruction(filepath)
+        self.browser_panel.load_reconstruction(filepath)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
@@ -904,22 +911,14 @@ class GUI:
         self._update_viewport_title(filepath.stem)
         self._update_menu()
 
+    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
+        self.regenerator.reconstruction_data = reconstruction_data
+        self.audio_device_manager.stop()
+        self.reconstruction_panel.display_reconstruction(reconstruction_data)
+
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self._load_reconstruction(filepath)
-
-    def _on_reconstruction_loaded(
-        self,
-        reconstruction_data: ReconstructionData,
-        filepath: Path,
-    ) -> None:
-        self.regenerator.reconstruction_data = reconstruction_data
-        self.audio_device_manager.stop()
-        self._close_reconstruction()
-        self.reconstruction_panel.display_reconstruction(reconstruction_data)
-        self._unsaved_reconstruction_changes = False
-        self._update_viewport_title(filepath.stem)
-        self._update_menu()
 
     def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.update_reconstruction(reconstruction_data)
@@ -928,9 +927,7 @@ class GUI:
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
-        self.browser_panel.load_and_display_reconstruction(filepath)
-        self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
-        self._update_menu()
+        self._load_reconstruction(filepath)
 
     def _close_instruction(self) -> None:
         self.instruction_panel.close_instruction()
@@ -953,6 +950,7 @@ class GUI:
     def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
+        self._unsaved_reconstruction_changes = False
         self._update_menu()
         self._update_viewport_title("")
 
