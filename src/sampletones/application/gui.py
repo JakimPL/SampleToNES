@@ -36,18 +36,19 @@ from .constants.general import (
     LBL_MENU_GROUP_RECONSTRUCTION,
     LBL_MENU_GROUP_VIEW,
     LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_FILE_EXIT,
     LBL_MENU_ITEM_FILE_LOAD_CONFIG,
+    LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
     LBL_MENU_ITEM_FILE_SAVE_CONFIG,
+    LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
     LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     LBL_MENU_ITEM_PLAYBACK_PAUSE,
     LBL_MENU_ITEM_PLAYBACK_PLAY,
     LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     LBL_MENU_ITEM_PLAYBACK_STOP,
-    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-    LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     LBL_MENU_ITEM_VIEW_FULLSCREEN,
@@ -57,23 +58,28 @@ from .constants.general import (
     LBL_TAB_RECONSTRUCTIONS,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
+    MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
     MSG_GLOBAL_CONFIG_SAVE_FAILED,
     MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
     MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
     MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+    MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+    TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+    TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+    TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
     TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-    TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
@@ -85,9 +91,11 @@ from .constants.general import (
     TAG_TABS,
     TAG_WINDOW_MAIN,
     TPL_MENU_TEXT_FPS,
+    TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_CONFIG_STATUS,
     TTL_DIALOG_EXIT_CONFIRMATION,
     TTL_DIALOG_LOAD_CONFIG,
+    TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
     TTL_DIALOG_SAVE_CONFIG,
@@ -220,6 +228,13 @@ class GUI:
         dpg.show_viewport()
         dpg.render_dearpygui_frame()
 
+    def _set_viewport_title(self, name: Optional[str] = None) -> None:
+        if not name:
+            dpg.set_viewport_title(TTL_WINDOW_MAIN)
+            return
+
+        dpg.set_viewport_title(f"{TTL_WINDOW_MAIN} - {name}")
+
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
 
@@ -258,13 +273,28 @@ class GUI:
 
     def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(
-            ShortcutId.SAVE_CONFIGURATION,
+            ShortcutId.SAVE_RECONSTRUCTION,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
+            self._save_reconstruction,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.LOAD_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            self._load_reconstruction_with_confirmation,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.CLOSE_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            self._close_reconstruction_with_confirmation,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.SAVE_CONFIGURATION,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
             self._save_config_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_L, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.SHIFT)),
             self._load_config_dialog,
         )
         self.shortcut_manager.register(
@@ -276,16 +306,6 @@ class GUI:
             ShortcutId.EXIT,
             Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
             self._on_close,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
-            self._close_reconstruction,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.LOAD_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
-            self._load_reconstruction_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.RECONSTRUCT_FILE,
@@ -411,6 +431,25 @@ class GUI:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_GROUP_FILE):
                 self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.CLOSE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+                    enabled=not self._is_reconstruction_loaded(),
+                )
+                dpg.add_separator()
+                self.shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_CONFIGURATION,
                     label=LBL_MENU_ITEM_FILE_SAVE_CONFIG,
                 )
@@ -429,18 +468,6 @@ class GUI:
                     label=LBL_MENU_ITEM_FILE_EXIT,
                 )
             with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
-                    enabled=not self._is_reconstruction_loaded(),
-                )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
@@ -517,7 +544,7 @@ class GUI:
         reconstruction_loaded = self._is_reconstruction_loaded()
         dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
         dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
         self._update_playback_menu_items()
         self._update_fullscreen_menu_item()
         self._update_advanced_settings_menu_item()
@@ -738,6 +765,17 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
+    def _load_reconstruction_with_confirmation(self) -> None:
+        if self._is_reconstruction_unsaved():
+            show_confirmation_dialog(
+                tag=TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+                title=TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
+                message=MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+                on_confirm=self._load_reconstruction_dialog,
+            )
+        else:
+            self._load_reconstruction_dialog()
+
     def _show_config_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent)
@@ -853,17 +891,23 @@ class GUI:
         self.application_config_manager.set_current_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._update_menu()
+        self._set_viewport_title(filepath.stem)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self._load_reconstruction(filepath)
 
-    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
+    def _on_reconstruction_loaded(
+        self,
+        reconstruction_data: ReconstructionData,
+        filepath: Path,
+    ) -> None:
         self.regenerator.reconstruction_data = reconstruction_data
         self.audio_device_manager.stop()
         self._close_reconstruction()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
         self._update_menu()
+        self._set_viewport_title(filepath.stem)
 
     def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.update_reconstruction(reconstruction_data)
@@ -878,10 +922,25 @@ class GUI:
         self.instruction_panel.close_instruction()
         self._update_menu()
 
+    def _save_reconstruction(self) -> None:
+        pass
+
+    def _close_reconstruction_with_confirmation(self) -> None:
+        if self._is_reconstruction_unsaved():
+            show_confirmation_dialog(
+                tag=TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
+                title=TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
+                message=MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
+                on_confirm=self._close_reconstruction,
+            )
+        else:
+            self._close_reconstruction()
+
     def _close_reconstruction(self) -> None:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
         self._update_menu()
+        self._set_viewport_title()
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)

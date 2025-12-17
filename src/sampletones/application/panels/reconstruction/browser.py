@@ -52,7 +52,7 @@ from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from ...utils.dpg import dpg_configure_item
 from ...utils.thread import concurrent
 
-OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
+OnReconstructionLoadedCallback = Callable[[ReconstructionData, Path], None]
 
 
 class GUIBrowserPanel(GUITreePanel):
@@ -315,7 +315,7 @@ class GUIBrowserPanel(GUITreePanel):
                     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
                 )
 
-            self.call(self.on_reconstruction_loaded, reconstruction_data)
+            self.call(self.on_reconstruction_loaded, reconstruction_data, filepath)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)

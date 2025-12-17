@@ -6,6 +6,7 @@
 * Added the main page with filesystem explorer.
 * Added audio settings panel.
 * Implemented instructions library autogeneration.
+* Added editing and saving reconstructions.
 
 ## v0.2.2 [2025-11-21]
 
