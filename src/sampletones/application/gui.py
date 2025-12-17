@@ -16,7 +16,7 @@ from sampletones.constants.paths import (
 from sampletones.exceptions import LibraryDisplayError
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
@@ -67,10 +67,8 @@ from .constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
-    TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
     TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
     TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
@@ -134,6 +132,7 @@ from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
+    show_confirmation_dialog,
     show_error_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
@@ -431,7 +430,6 @@ class GUI:
         with dpg.window(
             label=TTL_WINDOW_MAIN,
             tag=TAG_WINDOW_MAIN,
-            on_close=self._on_close,
         ):
             self._create_menu_bar()
             self._create_tabs()
@@ -552,10 +550,7 @@ class GUI:
             self.fps_theme.bind_to_item(TAG_MENU_TEXT_FPS)
 
     def _update_menu(self) -> None:
-        reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        self._update_reconstruction_menu_items()
         self._update_playback_menu_items()
         self._update_fullscreen_menu_item()
         self._update_advanced_settings_menu_item()
@@ -784,12 +779,11 @@ class GUI:
                 self._load_reconstruction(filepath)
 
         if self._is_reconstruction_unsaved():
-            show_save_confirmation_dialog(
-                tag=TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
-                title=TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
-                message=MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
-                on_save=self._save_reconstruction,
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
+                MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
                 on_confirm=load_reconstruction,
+                on_save=self._save_reconstruction,
             )
         else:
             load_reconstruction()
@@ -939,10 +933,9 @@ class GUI:
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
-            show_save_confirmation_dialog(
-                tag=TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
-                title=TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
-                message=MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
+                MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
                 on_confirm=self._close_reconstruction,
                 on_save=self._save_reconstruction,
             )
@@ -1028,22 +1021,41 @@ class GUI:
 
         return loaded and playing
 
-    def _show_exit_confirmation_dialog(self, message: str) -> None:
-        show_save_confirmation_dialog(
+    def _show_confirmation_dialog(self, message: str) -> None:
+        show_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=TTL_DIALOG_EXIT_CONFIRMATION,
             message=message,
-            on_save=self._save_reconstruction,
             on_confirm=self._exit_application,
+        )
+
+    def _show_save_confirmation_dialog(
+        self,
+        title: str,
+        message: str,
+        on_save: Callback,
+        on_confirm: Callback,
+    ) -> None:
+        show_save_confirmation_dialog(
+            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            title=title,
+            message=message,
+            on_save=on_save,
+            on_confirm=on_confirm,
         )
 
     def _on_close(self) -> None:
         if self._is_reconstruction_unsaved():
-            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION)
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_EXIT_CONFIRMATION,
+                MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+                on_save=self._save_reconstruction,
+                on_confirm=self._exit_application,
+            )
         elif self._is_converter_running():
-            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS)
+            self._show_confirmation_dialog(MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS)
         elif self._is_library_generating():
-            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS)
+            self._show_confirmation_dialog(MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS)
         else:
             self._exit_application()
 
@@ -1167,6 +1179,13 @@ class GUI:
     ) -> None:
         self.application_config_manager.toggle_autoplay()
         self._update_playback_menu_items()
+
+    def _update_reconstruction_menu_items(self) -> None:
+        reconstruction_loaded = self._is_reconstruction_loaded()
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION, enabled=reconstruction_loaded)
 
     def _update_playback_menu_items(self) -> None:
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())

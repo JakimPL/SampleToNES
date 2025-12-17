@@ -172,7 +172,7 @@ def show_save_confirmation_dialog(
             wrap=DIM_DIALOG_WIDTH_WRAP,
         )
 
-        @table_wrapper(columns=2)
+        @table_wrapper(columns=3)
         def buttons(_: None) -> None:
             GUIButton(
                 tag=f"{tag}{SUF_BUTTON_SAVE}",
@@ -181,8 +181,8 @@ def show_save_confirmation_dialog(
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_CANCEL}",
-                label=LBL_BUTTON_GLOBAL_CANCEL,
+                tag=f"{tag}{SUF_BUTTON_OK}",
+                label=LBL_BUTTON_GLOBAL_OK,
                 callback=lambda: [on_confirm(), dpg_delete_item(tag)],
                 width=-1,
             )

@@ -47,11 +47,6 @@ class BrowserManager:
         return directory_node
 
     def load_reconstruction_data(self, filepath: Path) -> ReconstructionData:
-        if filepath in self.file_cache:
-            cached_data = self.file_cache[filepath]
-            if cached_data is not None:
-                return cached_data
-
         if filepath.is_dir():
             raise IsADirectoryError(f"Expected a file but got a directory: {filepath}")
 
@@ -65,6 +60,3 @@ class BrowserManager:
     def get_all_reconstruction_files(self) -> list[Path]:
         file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]
         return [node.filepath for node in file_nodes if node.filepath is not None]
-
-    def clear_cache(self) -> None:
-        self.file_cache.clear()

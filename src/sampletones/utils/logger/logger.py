@@ -61,7 +61,7 @@ class Logger(BaseLogger):
     def format_path(self, filepath: Pathlike) -> str:
         path = Path(filepath).absolute()
         encoded_path = quote(str(path))
-        return f"[link=file://{encoded_path}]{filepath}[/link]"
+        return f'[link=file://{encoded_path}]"{filepath}"[/link]'
 
 
 logger = Logger()
