@@ -199,6 +199,9 @@ class GUI:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
+        self._unsaved_reconstruction_changes: bool = False
+        self._reconstruction_name: Optional[str] = None
+
         self._setup_gui()
         self._load_settings()
 
@@ -228,12 +231,19 @@ class GUI:
         dpg.show_viewport()
         dpg.render_dearpygui_frame()
 
-    def _set_viewport_title(self, name: Optional[str] = None) -> None:
-        if not name:
-            dpg.set_viewport_title(TTL_WINDOW_MAIN)
-            return
+    def _update_viewport_title(self, name: Optional[str] = None) -> None:
+        if name is None:
+            name = self._reconstruction_name
 
-        dpg.set_viewport_title(f"{TTL_WINDOW_MAIN} - {name}")
+        self._reconstruction_name = name
+        if not self._reconstruction_name:
+            base_name = TTL_WINDOW_MAIN
+        else:
+            base_name = f"{TTL_WINDOW_MAIN} - {name}"
+            if self._unsaved_reconstruction_changes and name:
+                base_name += "*"
+
+        dpg.set_viewport_title(base_name)
 
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
@@ -890,8 +900,9 @@ class GUI:
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self.application_config_manager.set_current_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
+        self._unsaved_reconstruction_changes = False
+        self._update_viewport_title(filepath.stem)
         self._update_menu()
-        self._set_viewport_title(filepath.stem)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
@@ -906,11 +917,14 @@ class GUI:
         self.audio_device_manager.stop()
         self._close_reconstruction()
         self.reconstruction_panel.display_reconstruction(reconstruction_data)
+        self._unsaved_reconstruction_changes = False
+        self._update_viewport_title(filepath.stem)
         self._update_menu()
-        self._set_viewport_title(filepath.stem)
 
     def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
         self.reconstruction_panel.update_reconstruction(reconstruction_data)
+        self._unsaved_reconstruction_changes = True
+        self._update_viewport_title()
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
@@ -940,7 +954,7 @@ class GUI:
         self.reconstruction_panel.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
         self._update_menu()
-        self._set_viewport_title()
+        self._update_viewport_title("")
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)
@@ -1023,12 +1037,12 @@ class GUI:
         )
 
     def _on_close(self) -> None:
-        if self._is_converter_running():
+        if self._is_reconstruction_unsaved():
+            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION)
+        elif self._is_converter_running():
             self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS)
         elif self._is_library_generating():
             self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS)
-        elif self._is_reconstruction_unsaved():
-            self._show_exit_confirmation_dialog(MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION)
         else:
             self._exit_application()
 
@@ -1039,7 +1053,7 @@ class GUI:
         return self.library_panel.is_library_generating()
 
     def _is_reconstruction_unsaved(self) -> bool:
-        return False  # TODO: implement unsaved changes tracking
+        return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
         self.audio_device_manager.stop()
