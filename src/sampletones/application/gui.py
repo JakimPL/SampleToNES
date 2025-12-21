@@ -922,7 +922,7 @@ class GUI:
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
-        self._load_reconstruction(filepath)
+        self._load_reconstruction_with_confirmation(filepath)
 
     def _close_instruction(self) -> None:
         self.instruction_panel.close_instruction()

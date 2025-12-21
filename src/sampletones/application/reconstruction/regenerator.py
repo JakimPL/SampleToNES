@@ -39,7 +39,7 @@ class Regenerator(CallbackMixin):
 
         instructions = cast(List[InstructionUnion], exporter_class.from_features(features))
         generator = generator_class(config, generator_name)
-        audio = self._generate_generator_audio(generator, instructions)
+        audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
         self.call(self.on_regeneration_finished, self.reconstruction_data)
