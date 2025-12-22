@@ -4,7 +4,14 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones.configs import InstructionsLibraryConfig
-from sampletones.constants.enums import GeneratorClassName
+from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
+from sampletones.constants.general import (
+    MAX_DUTY_CYCLE,
+    MAX_PERIOD,
+    MAX_PITCH,
+    MAX_VOLUME,
+    MIN_PITCH,
+)
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,
@@ -14,11 +21,9 @@ from sampletones.exceptions import (
 )
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment, InstructionLibraryKey
-from sampletones.parallelization import TaskProgress, TaskStatus
-from sampletones.parallelization.progress import ETAEstimator
+from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.tree import (
     GeneratorNode,
-    GroupNode,
     InstructionNode,
     LibraryNode,
     NodeType,
@@ -38,13 +43,23 @@ from ...constants.general import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from ...constants.instructions import (
+    DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+    DIM_PANEL_HEIGHT_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
     LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_INSTRUCTION,
     LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
     LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
+    LBL_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
     LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+    LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
     MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_FILE_NOT_FOUND,
     MSG_INSTRUCTIONS_LIBRARY_GENERATING,
@@ -65,6 +80,13 @@ from ...constants.instructions import (
     TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
     TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
     TAG_TREE_INSTRUCTIONS_LIBRARY,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+    TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
     TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
     TPL_INSTRUCTIONS_LIBRARY_GENERATION_PROGRESS,
     TPL_INSTRUCTIONS_LIBRARY_INCOMPATIBLE_VERSION_ERROR,
@@ -84,7 +106,7 @@ from ...utils.dialogs import (
     show_file_not_found_dialog,
     show_info_dialog,
 )
-from ...utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.dpg import dpg_configure_item, dpg_delete_children, dpg_set_value
 from ...utils.thread import concurrent
 
 OnInstructionSelectedCallback = Callable[
@@ -115,6 +137,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self._building_tree: bool = False
         self._loading_instructions: bool = False
+        self._loaded_instruction_type: Optional[LibraryGeneratorName] = None
 
         self.eta_estimator: Optional[ETAEstimator] = None
 
@@ -142,6 +165,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_status()
             self._create_library_controls()
             self._create_library_tree()
+            self._create_instructions_choice_panel()
 
         self._refresh_libraries()
 
@@ -178,7 +202,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _create_library_tree(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE):
+        with dpg.child_window(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
+            width=-1,
+            height=-DIM_PANEL_HEIGHT_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE - 8,
+        ):
             with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
                 with dpg.tree_node(
                     label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
@@ -186,6 +214,102 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     default_open=True,
                 ):
                     pass
+
+    def _create_instructions_choice_panel(self) -> None:
+        with dpg.child_window(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            parent=self.tag,
+            width=-1,
+            height=DIM_PANEL_HEIGHT_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        ):
+            self._create_instructions_choice_inputs()
+
+    def _create_instructions_choice_inputs(self) -> None:
+        section_text = dpg.add_text(
+            LBL_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+        )
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        if not self.is_loaded():
+            dpg.add_text("No instruction loaded.")
+            return
+
+        match self._loaded_instruction_type:
+            case LibraryGeneratorName.PULSE:
+                self._create_pulse_instruction_choice_panel()
+            case LibraryGeneratorName.TRIANGLE:
+                self._create_triangle_instruction_choice_panel()
+            case LibraryGeneratorName.NOISE:
+                self._create_noise_instruction_choice_panel()
+
+    def _create_pulse_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            default_value=MIN_PITCH,
+            min_value=MIN_PITCH,
+            max_value=MAX_PITCH,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            default_value=MAX_VOLUME,
+            min_value=0,
+            max_value=MAX_VOLUME,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+            default_value=0,
+            min_value=0,
+            max_value=MAX_DUTY_CYCLE,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+
+    def _create_triangle_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            default_value=MIN_PITCH,
+            min_value=MIN_PITCH,
+            max_value=MAX_PITCH,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+
+    def _create_noise_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            default_value=0,
+            min_value=0,
+            max_value=MAX_PERIOD,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            default_value=MAX_VOLUME,
+            min_value=0,
+            max_value=MAX_VOLUME,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_LIBRARY_INSTRUCTION_CHOICE,
+        )
+        dpg.add_checkbox(
+            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            parent=TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            default_value=False,
+        )
+
+    def _update_instructions_choice_panel(self) -> None:
+        dpg_delete_children(TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE)
+        self._create_instructions_choice_inputs()
 
     def refresh(self) -> None:
         self._refresh_libraries()
@@ -379,7 +503,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._apply_node_theme(node_tag, node)
             FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
-        elif isinstance(node, (LibraryNode, GeneratorNode, GroupNode)):
+        elif isinstance(node, (LibraryNode, GeneratorNode)):
             if isinstance(node, LibraryNode):
                 library_node = node
 
@@ -400,12 +524,31 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                         library_node=library_node,
                     )
 
-            if isinstance(node, LibraryNode):
+            if isinstance(node, GeneratorNode):
+                self._add_item_handler_registry(
+                    node_tag=node_tag,
+                    node=node,
+                    item_click_callback=self._on_generator_node_clicked,
+                )
+
+            elif isinstance(node, LibraryNode):
                 self._add_item_handler_registry(
                     node_tag=node_tag,
                     node=node,
                     item_click_callback=self._on_library_node_clicked,
                 )
+
+    def _on_generator_node_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: GeneratorNode,
+    ) -> None:
+        mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            self._loaded_instruction_type = user_data.generator_name
+
+        self._update_instructions_choice_panel()
 
     def _on_library_node_clicked(
         self,

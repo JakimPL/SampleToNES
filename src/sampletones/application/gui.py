@@ -278,7 +278,6 @@ class GUI:
         color = self.theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
-        dpg.set_viewport_vsync(False)
 
     def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(
