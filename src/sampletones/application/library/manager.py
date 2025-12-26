@@ -175,7 +175,6 @@ class InstructionsLibraryManager(CallbackMixin):
         return self.library.exists(key)
 
     def generate_library(self, config: Config, window: Window) -> None:
-        self.library = InstructionLibrary.from_config(config)
         self.creator = InstructionsLibraryCreator(config, window)
         self.creator.set_callbacks(
             on_start=self.on_generation_start,

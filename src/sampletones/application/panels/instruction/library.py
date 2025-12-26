@@ -210,36 +210,39 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def update_status(self) -> None:
         key = self.config_manager.key
         library_name = self.library_manager.get_display_name_from_key(key)
+        is_generating = self.library_manager.is_generating()
 
         if self.library_manager.is_library_loaded(key):
-            dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
-                TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name),
-            )
+            if not is_generating:
+                dpg_set_value(
+                    TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                    TPL_INSTRUCTIONS_LIBRARY_LIBRARY_LOADED.format(library_name),
+                )
             dpg_configure_item(
                 TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
             )
         elif self.library_manager.library_exists_for_key(key):
-            dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
-                TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name),
-            )
+            if not is_generating:
+                dpg_set_value(
+                    TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                    TPL_INSTRUCTIONS_LIBRARY_LIBRARY_EXISTS.format(library_name),
+                )
             dpg_configure_item(
                 TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
             )
         else:
-            dpg_set_value(
-                TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
-                TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name),
-            )
+            if not is_generating:
+                dpg_set_value(
+                    TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
+                    TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS.format(library_name),
+                )
             dpg_configure_item(
                 TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
                 label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
             )
 
-        is_generating = self.library_manager.is_generating()
         dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, enabled=not is_generating)
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=not is_generating)
 
