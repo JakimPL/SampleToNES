@@ -9,7 +9,6 @@ TAG_PROGRESS_INSTRUCTIONS_LIBRARY = "progress_instructions_library"
 TAG_TREE_INSTRUCTIONS_LIBRARY = "tree_instructions_library"
 TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE = "group_instructions_library_tree"
 TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE = "window_instructions_library_tree"
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE = "window_instructions_library_instructions_choice"
 TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED = "dialog_instructions_library_library_not_loaded"
 TAG_PANEL_INSTRUCTIONS_INSTRUCTION = "panel_instructions_instruction"
 TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER = "panel_instructions_instruction_player"
@@ -25,27 +24,29 @@ TAG_THEME_INSTRUCTIONS_LIBRARY_LIBRARY = "theme_instructions_library_library"
 TAG_THEME_INSTRUCTIONS_LIBRARY_GENERATOR = "theme_instructions_library_generator"
 TAG_THEME_INSTRUCTIONS_LIBRARY_GROUP = "theme_instructions_library_group"
 TAG_THEME_INSTRUCTIONS_LIBRARY_INSTRUCTION = "theme_instructions_library_instruction"
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH = (
-    "window_instructions_library_instructions_choice_pulse_pitch"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH = (
+    "input_instructions_details_instructions_choice_pulse_pitch"
 )
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME = (
-    "window_instructions_library_instructions_choice_pulse_volume"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME = (
+    "input_instructions_details_instructions_choice_pulse_volume"
 )
-TAG_WINDOW_INSTRUCTIONS_LIBRARY_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE = (
-    "window_instructions_library_instructions_choice_pulse_duty_cycle"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE = (
+    "input_instructions_details_instructions_choice_pulse_duty_cycle"
 )
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH = (
-    "window_instructions_library_instructions_choice_triangle_pitch"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH = (
+    "input_instructions_details_instructions_choice_triangle_pitch"
 )
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME = (
-    "window_instructions_library_instructions_choice_noise_volume"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME = (
+    "input_instructions_details_instructions_choice_noise_volume"
 )
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD = (
-    "window_instructions_library_instructions_choice_noise_period"
+TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD = (
+    "input_instructions_details_instructions_choice_noise_period"
 )
-TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT = (
-    "window_instructions_library_instructions_choice_noise_short"
+TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT = (
+    "checkbox_instructions_details_instructions_choice_noise_short"
 )
+TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE = "group_instructions_details_instructions_choice"
+TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES = "group_instructions_details_tables"
 
 SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW = "_waveform_window"
 SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW = "_spectrum_window"
@@ -56,7 +57,6 @@ LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY = "Regenerate instructions"
 LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES = "Refresh instructions data"
 LBL_INSTRUCTIONS_LIBRARY_LIBRARIES = "Instructions data"
 LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES = "Instructions data"
-LBL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE = "Instruction choice"
 LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY = "Click to load the library"
 LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES = "Libraries"
 LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM = "Instruction waveform"
@@ -94,7 +94,7 @@ MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR = "Error while loading the library file
 MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR = "Error while loading library data."
 MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR = "Invalid library data file."
 MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR = "Library data contains invalid values."
-MSG_INSTRUCTIONS_DETAILS_NO_SELECTION = "No instruction selected."
+MSG_INSTRUCTIONS_DETAILS_NO_INSTRUCTION_SELECTED = "No instruction selected."
 
 TTL_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
 TTL_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"
@@ -109,7 +109,7 @@ TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY = "{:.2f} Hz"
 TPL_CELL_INSTRUCTIONS_DETAILS_PITCH = "{} ({})"
 TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD = "p{} ({})"
 
-DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE = 150
+DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE = 105
 DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE = 220
 
 VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT = 4

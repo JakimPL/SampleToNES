@@ -3,6 +3,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, ConfigDict
 
 from sampletones.configs import InstructionsLibraryConfig
+from sampletones.constants.enums import GeneratorClassName
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
@@ -23,5 +24,5 @@ class InstructionPanelData(BaseModel):
         return self.fragment is not None and not self.fragment.empty
 
     @property
-    def generator_class_name(self) -> str:
-        return self.fragment.generator_class.value
+    def generator_class_name(self) -> GeneratorClassName:
+        return self.fragment.generator_class

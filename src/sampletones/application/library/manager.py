@@ -127,6 +127,9 @@ class InstructionsLibraryManager(CallbackMixin):
 
         return self.current_instruction
 
+    def get_current_instruction(self) -> Optional[InstructionPanelData]:
+        return self.current_instruction
+
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self.library.get_path(library_key)
 

@@ -34,7 +34,6 @@ from ...constants.general import (
     VAL_GLOBAL_PROGRESS_COMPLETE,
 )
 from ...constants.instructions import (
-    DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_REGENERATE_LIBRARY,
@@ -176,7 +175,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         with dpg.child_window(
             tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
             width=-1,
-            height=-DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE - 8,
+            height=-1,
         ):
             with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
                 with dpg.tree_node(

@@ -404,7 +404,7 @@ class GUI:
             on_change_audio_state=self._update_menu,
         )
         self.instruction_details_panel.set_callbacks(
-            is_instruction_loaded=self.library_panel.is_loaded,
+            is_instruction_loaded=self.library_panel.library_manager.get_current_instruction,
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,

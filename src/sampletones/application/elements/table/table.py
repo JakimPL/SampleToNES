@@ -7,6 +7,7 @@ from sampletones.typehints import Color, SerializedData
 from ...constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
 from ...themes.table import TableTheme
 from ...themes.theme import Theme
+from ...utils.dpg import dpg_delete_children
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
 from .cell import TableCell
@@ -60,29 +61,45 @@ class GUITable:
         if before is not None:
             table_kwargs["before"] = before
 
-        with dpg.table(**table_kwargs):
-            self._theme.bind_to_item(tag)
-            dpg.add_table_column(width_fixed=True, init_width_or_weight=label_column_width)
-            dpg.add_table_column(width_stretch=True)
-
-            for row in rows:
-                self._add_row(row)
+        table_kwargs["show"] = bool(rows)
+        dpg.add_table(**table_kwargs)
+        self.update_rows(rows)
 
         GUITable.REGISTRY[tag] = self
 
-    def _add_row(self, cell: TableCell) -> None:
-        with dpg.table_row():
-            label_text = dpg.add_text(cell.label)
-            if self._bold_labels:
-                FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
-            else:
-                FontRegistry.bind_to_item(label_text, Font.REGULAR_SMALL)
+    def _reset(self) -> None:
+        dpg_delete_children(self._tag)
+        self._theme.bind_to_item(self._tag)
+        dpg.add_table_column(
+            width_fixed=True,
+            init_width_or_weight=self._label_column_width,
+            parent=self._tag,
+        )
+        dpg.add_table_column(width_stretch=True, parent=self._tag)
 
+    def update_rows(self, rows: Tuple[TableCell, ...] = ()) -> None:
+        self._reset()
+        self._rows = rows
+        for row in rows:
+            self._add_row(row)
+
+        self.set_visibility(bool(rows))
+
+    def clear(self) -> None:
+        self._reset()
+        self._rows = ()
+        self.update_rows()
+
+    def _add_row(self, cell: TableCell) -> None:
+        with dpg.table_row(parent=self._tag):
+            label_text = dpg.add_text(cell.label)
+            label_font = Font.BOLD_SMALL if self._bold_labels else Font.REGULAR_SMALL
+            FontRegistry.bind_to_item(label_text, label_font)
             dpg.configure_item(label_text, color=self._label_color)
 
             value_text = dpg.add_text(cell.value)
-            dpg.configure_item(value_text, color=self._value_color)
             FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
+            dpg.configure_item(value_text, color=self._value_color)
 
     @classmethod
     def delete(cls, tag: str) -> None:
