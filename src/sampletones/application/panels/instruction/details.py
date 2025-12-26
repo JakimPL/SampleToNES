@@ -149,7 +149,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self._update_instructions_choice_panel()
         self._update_tables()
 
-    def _update_tables(self) -> None:
+    def _update_tables(self, clear: bool = True) -> None:
         table_data = self.logic.get_table_data()
         if table_data is None:
             dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
@@ -161,8 +161,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
 
-        self.parameters_table.update_rows(table_data.parameter_rows)
-        self.general_table.update_rows(table_data.general_rows)
+        self.parameters_table.update_rows(table_data.parameter_rows, clear=clear)
+        self.general_table.update_rows(table_data.general_rows, clear=clear)
 
     def _create_instructions_choice_inputs(self) -> None:
         with dpg.child_window(
@@ -301,4 +301,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 )
 
         instruction_data = self.library_manager.load_instruction(instruction)
+        self.logic.current_data = instruction_data
         self.call(self.on_instruction_changed, instruction_data)
+        self._update_tables(clear=False)

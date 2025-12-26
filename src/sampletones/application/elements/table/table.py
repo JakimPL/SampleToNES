@@ -1,8 +1,8 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Color, SerializedData
+from sampletones.typehints import Color, Sender, SerializedData
 
 from ...constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
 from ...themes.table import TableTheme
@@ -36,7 +36,11 @@ class GUITable:
         theme: Theme = TableTheme(),
     ) -> None:
         self._tag = tag
+
         self._rows = rows
+        self._labels: List[Sender] = []
+        self._values: List[Sender] = []
+
         self._label_column_width = label_column_width
         self._label_color = label_color
         self._value_color = value_color
@@ -68,6 +72,10 @@ class GUITable:
         GUITable.REGISTRY[tag] = self
 
     def _reset(self) -> None:
+        self._rows = ()
+        self._labels = []
+        self._values = []
+
         dpg_delete_children(self._tag)
         self._theme.bind_to_item(self._tag)
         dpg.add_table_column(
@@ -77,13 +85,23 @@ class GUITable:
         )
         dpg.add_table_column(width_stretch=True, parent=self._tag)
 
-    def update_rows(self, rows: Tuple[TableCell, ...] = ()) -> None:
-        self._reset()
-        self._rows = rows
+    def update_rows(self, rows: Tuple[TableCell, ...] = (), clear: bool = True) -> None:
+        if clear:
+            self._reset()
+            self._add_rows(rows)
+        else:
+            self._update_values(rows)
+
+        self.set_visibility(bool(rows))
+
+    def _add_rows(self, rows: Tuple[TableCell, ...]) -> None:
         for row in rows:
             self._add_row(row)
 
-        self.set_visibility(bool(rows))
+    def _update_values(self, rows: Tuple[TableCell, ...]) -> None:
+        for i, row in enumerate(rows):
+            value = row.value
+            dpg.set_value(self._values[i], value)
 
     def clear(self) -> None:
         self._reset()
@@ -96,10 +114,12 @@ class GUITable:
             label_font = Font.BOLD_SMALL if self._bold_labels else Font.REGULAR_SMALL
             FontRegistry.bind_to_item(label_text, label_font)
             dpg.configure_item(label_text, color=self._label_color)
+            self._labels.append(label_text)
 
             value_text = dpg.add_text(cell.value)
             FontRegistry.bind_to_item(value_text, Font.REGULAR_SMALL)
             dpg.configure_item(value_text, color=self._value_color)
+            self._values.append(value_text)
 
     @classmethod
     def delete(cls, tag: str) -> None:

@@ -392,7 +392,7 @@ class GUI:
         )
         self.library_panel.set_callbacks(
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
-            on_instruction_loaded=self.instruction_panel.display_instruction,
+            on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(
             on_load_reconstruction=self._load_reconstruction_with_confirmation,
@@ -401,7 +401,6 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
         self.instruction_panel.set_callbacks(
-            on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
         )
@@ -801,10 +800,10 @@ class GUI:
             content=content,
         )
 
-    def _load_instruction(self, instruction_data: InstructionPanelData) -> None:
+    def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
-            self._close_instruction()
             self.instruction_panel.display_instruction(instruction_data)
+            self.instruction_details_panel.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 

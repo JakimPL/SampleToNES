@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -32,8 +32,6 @@ from ...instruction.data import InstructionPanelData
 from ...player.data import AudioData
 from ..player import GUIAudioPlayerPanel
 
-OnDisplayInstructionDetailsCallback = Callable[[InstructionPanelData], None]
-
 
 class GUIInstructionPanel(GUIPanel):
     def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
@@ -43,7 +41,6 @@ class GUIInstructionPanel(GUIPanel):
         self.spectrum_display: GUISpectrumGraph
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
-        self.on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
         self.on_clear_instruction_details: Optional[VoidCallback] = None
         self.on_change_audio_state: Optional[VoidCallback] = None
 
@@ -128,7 +125,6 @@ class GUIInstructionPanel(GUIPanel):
         try:
             self.waveform_display.load_library_fragment(fragment)
             self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
-            self.call(self.on_display_instruction_details, instruction_data)
         except Exception as exception:
             logger.error_with_traceback(exception, "Error while plotting library data")
             self.player_panel.enable()
