@@ -93,18 +93,17 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        library_manager: InstructionsLibraryManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
-
-        library_directory = config_manager.get_library_directory()
-        self.library_manager = InstructionsLibraryManager(
-            library_directory,
+        self.library_manager = library_manager
+        self.library_manager.set_callbacks(
             on_generation_start=self._on_generation_start,
-            on_progress=self._update_status,
-            on_completed=self._on_generation_completed,
-            on_error=self._on_generation_error,
-            on_cancelled=self._on_generation_cancelled,
+            on_generation_progress=self._update_status,
+            on_generation_completed=self._on_generation_completed,
+            on_generation_error=self._on_generation_error,
+            on_generation_cancelled=self._on_generation_cancelled,
         )
 
         self._building_tree: bool = False
@@ -207,9 +206,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._building_tree = False
             self._assign_item_handler_registries()
             self.update_status()
-
-    def is_loaded(self) -> bool:
-        return self.library_manager.is_library_loaded(self.config_manager.key)
 
     def update_status(self) -> None:
         key = self.config_manager.key

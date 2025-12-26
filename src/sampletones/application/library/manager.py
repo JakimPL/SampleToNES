@@ -26,6 +26,7 @@ from sampletones.typehints import VoidCallback
 from sampletones.utils import period_to_name, pitch_to_name, to_path
 from sampletones.utils.callbacks import CallbackMixin
 
+from ..config.manager import ConfigManager
 from ..constants.instructions import (
     LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
     LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
@@ -34,17 +35,14 @@ from ..instruction.data import InstructionPanelData
 
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
+OnGenerationProgressCallback = Callable[[TaskStatus, TaskProgress], None]
+OnGenerationErrorCallback = Callable[[Exception], None]
+
 
 class InstructionsLibraryManager(CallbackMixin):
-    def __init__(
-        self,
-        library_directory: Path,
-        on_generation_start: Optional[VoidCallback] = None,
-        on_completed: Optional[VoidCallback] = None,
-        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[VoidCallback] = None,
-    ) -> None:
+    def __init__(self, config_manager: ConfigManager) -> None:
+        self.config_manager = config_manager
+        library_directory = config_manager.get_library_directory()
         self.library = InstructionLibrary(directory=str(library_directory))
         self.library_files: Dict[InstructionLibraryKey, str] = {}
         self.current_library_key: Optional[InstructionLibraryKey] = None
@@ -53,11 +51,11 @@ class InstructionsLibraryManager(CallbackMixin):
         self.tree = Tree()
         self.creator: Optional[InstructionsLibraryCreator] = None
 
-        self.on_generation_start: Optional[VoidCallback] = on_generation_start
-        self.on_generation_completed: Optional[VoidCallback] = on_completed
-        self.on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
-        self.on_generation_error: Optional[Callable[[Exception], None]] = on_error
-        self.on_generation_cancelled: Optional[VoidCallback] = on_cancelled
+        self.on_generation_start: Optional[VoidCallback] = None
+        self.on_generation_completed: Optional[VoidCallback] = None
+        self.on_generation_progress: Optional[OnGenerationProgressCallback] = None
+        self.on_generation_error: Optional[OnGenerationErrorCallback] = None
+        self.on_generation_cancelled: Optional[VoidCallback] = None
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = InstructionLibrary(directory=str(directory))
@@ -87,7 +85,13 @@ class InstructionsLibraryManager(CallbackMixin):
     def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         return self.library_files.copy()
 
-    def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
+    def is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        if library_key is None:
+            if self.current_library_key is None:
+                return False
+
+            library_key = self.current_library_key
+
         filepath = self.get_path(library_key)
         if not filepath.exists():
             return False

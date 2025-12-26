@@ -110,6 +110,7 @@ from .constants.reconstructions import (
 )
 from .elements.fonts.registry import FontRegistry
 from .instruction.data import InstructionPanelData
+from .library.manager import InstructionsLibraryManager
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
@@ -150,6 +151,9 @@ class GUI:
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
+
+        self.library_manager = InstructionsLibraryManager(self.config_manager)
+
         self.regenerator: Regenerator = Regenerator()
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -160,11 +164,10 @@ class GUI:
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
             self.config_manager,
             self.application_config_manager,
+            self.library_manager,
         )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
-        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel(
-            self.library_panel.library_manager
-        )
+        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel(self.library_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
@@ -405,7 +408,7 @@ class GUI:
             on_change_audio_state=self._update_menu,
         )
         self.instruction_details_panel.set_callbacks(
-            is_instruction_loaded=self.library_panel.library_manager.get_current_instruction,
+            is_instruction_loaded=self.library_manager.get_current_instruction,
             on_instruction_changed=self.instruction_panel.display_instruction,
         )
         self.reconstruction_panel.set_callbacks(
@@ -425,7 +428,7 @@ class GUI:
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
             generate_library=self._generate_library_if_not_loaded,
-            is_library_loaded=self.library_panel.is_loaded,
+            is_library_loaded=self.library_manager.is_library_loaded,
         )
 
     def _create_main_window(self) -> None:
@@ -849,7 +852,7 @@ class GUI:
         return self.reconstruction_panel.is_loaded()
 
     def _is_library_loaded(self) -> bool:
-        return self.library_panel.is_loaded()
+        return self.library_manager.is_library_loaded()
 
     def _generate_library_if_not_loaded(self) -> None:
         if not self._is_library_loaded():
