@@ -162,7 +162,9 @@ class GUI:
             self.application_config_manager,
         )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
-        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
+        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel(
+            self.library_panel.library_manager
+        )
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
@@ -405,6 +407,7 @@ class GUI:
         )
         self.instruction_details_panel.set_callbacks(
             is_instruction_loaded=self.library_panel.library_manager.get_current_instruction,
+            on_instruction_changed=self.instruction_panel.display_instruction,
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,

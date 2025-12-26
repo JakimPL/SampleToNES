@@ -10,6 +10,12 @@ from sampletones.constants.general import (
     MAX_VOLUME,
     MIN_PITCH,
 )
+from sampletones.instructions import (
+    InstructionUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 
 from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (
@@ -48,20 +54,25 @@ from ...elements.panel import GUIPanel
 from ...elements.table.table import GUITable
 from ...instruction.data import InstructionPanelData
 from ...instruction.logic import InstructionDetailsLogic
+from ...library.manager import InstructionsLibraryManager
 from ...utils.dpg import dpg_configure_item, dpg_delete_children
 
 OnInstructionLoaded = Callable[[], Optional[InstructionPanelData]]
+OnInstructionChanged = Callable[[InstructionUnion], None]
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
-    def __init__(self) -> None:
+    def __init__(self, library_manager: InstructionsLibraryManager) -> None:
+        self.library_manager: InstructionsLibraryManager = library_manager
         self.logic = InstructionDetailsLogic()
+
         self.general_table: GUITable
         self.parameters_table: GUITable
 
         self._loaded_instruction_type: Optional[LibraryGeneratorName] = None
 
         self.is_instruction_loaded: Optional[OnInstructionLoaded] = None
+        self.on_instruction_changed: Optional[OnInstructionChanged] = None
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
@@ -165,81 +176,129 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _update_instructions_choice_panel(self) -> None:
         dpg_delete_children(TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
         instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
-        generator_type = instruction_data.generator_class_name if instruction_data else None
-        if generator_type is None:
+        if instruction_data is None:
             return
 
+        generator_type = instruction_data.generator_class_name
+        instruction = instruction_data.instruction
         dpg.add_separator(parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
-                self._create_pulse_instruction_choice_panel()
+                assert isinstance(instruction, PulseInstruction)
+                self._create_pulse_instruction_choice_panel(instruction)
             case GeneratorClassName.TRIANGLE_GENERATOR:
-                self._create_triangle_instruction_choice_panel()
+                assert isinstance(instruction, TriangleInstruction)
+                self._create_triangle_instruction_choice_panel(instruction)
             case GeneratorClassName.NOISE_GENERATOR:
-                self._create_noise_instruction_choice_panel()
+                assert isinstance(instruction, NoiseInstruction)
+                self._create_noise_instruction_choice_panel(instruction)
 
-    def _create_pulse_instruction_choice_panel(self) -> None:
+    def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
-            default_value=MIN_PITCH,
+            default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
-            default_value=MAX_VOLUME,
-            min_value=0,
+            default_value=instruction.volume,
+            min_value=1,
             max_value=MAX_VOLUME,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
-            default_value=0,
+            default_value=instruction.duty_cycle,
             min_value=0,
             max_value=MAX_DUTY_CYCLE,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
 
-    def _create_triangle_instruction_choice_panel(self) -> None:
+    def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
-            default_value=MIN_PITCH,
+            default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
 
-    def _create_noise_instruction_choice_panel(self) -> None:
+    def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
-            default_value=0,
+            default_value=instruction.period,
             min_value=0,
             max_value=MAX_PERIOD,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
-            default_value=MAX_VOLUME,
-            min_value=0,
+            default_value=instruction.volume,
+            min_value=1,
             max_value=MAX_VOLUME,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            callback=self._on_instruction_changed,
         )
         dpg.add_checkbox(
             tag=TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
-            default_value=False,
+            default_value=instruction.short,
+            callback=self._on_instruction_changed,
         )
+
+    def _on_instruction_changed(self) -> None:
+        instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
+        if instruction_data is None:
+            return
+
+        generator_type = instruction_data.generator_class_name
+        match generator_type:
+            case GeneratorClassName.PULSE_GENERATOR:
+                pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH)
+                volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME)
+                duty_cycle = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE)
+                instruction = PulseInstruction(
+                    on=True,
+                    pitch=pitch,
+                    volume=volume,
+                    duty_cycle=duty_cycle,
+                )
+            case GeneratorClassName.TRIANGLE_GENERATOR:
+                pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH)
+                instruction = TriangleInstruction(
+                    on=True,
+                    pitch=pitch,
+                )
+            case GeneratorClassName.NOISE_GENERATOR:
+                period = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD)
+                volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME)
+                short = dpg.get_value(TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT)
+                instruction = NoiseInstruction(
+                    on=True,
+                    period=period,
+                    volume=volume,
+                    short=short,
+                )
+
+        instruction_data = self.library_manager.load_instruction(instruction)
+        self.call(self.on_instruction_changed, instruction_data)

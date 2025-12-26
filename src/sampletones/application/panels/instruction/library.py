@@ -491,9 +491,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         generator_class = GENERATOR_CLASS_MAP[LIBRARY_GENERATOR_CLASS_MAP[library_generator_name]]
         instruction_class = GENERATOR_TO_INSTRUCTION_MAP[generator_class]
         instruction = instruction_class.default_instruction()
-        self._load_instruction(instruction)
+        self.load_instruction(instruction)
 
-    def _load_instruction(self, instruction: InstructionUnion) -> None:
+    def load_instruction(self, instruction: InstructionUnion) -> None:
         if self._loading_instructions:
             return
 
