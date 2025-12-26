@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import ModuleType
 
 from pydantic import Field
@@ -72,11 +74,20 @@ class PulseInstruction(Instruction):
         return pitch_distance + volume_distance
 
     @classmethod
-    def null_instruction(cls) -> "PulseInstruction":
+    def null_instruction(cls) -> PulseInstruction:
         return PulseInstruction(
             on=False,
             pitch=MIN_PITCH,
             volume=0,
+            duty_cycle=0,
+        )
+
+    @classmethod
+    def default_instruction(cls) -> PulseInstruction:
+        return PulseInstruction(
+            on=True,
+            pitch=MIN_PITCH,
+            volume=MAX_VOLUME,
             duty_cycle=0,
         )
 

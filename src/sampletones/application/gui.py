@@ -7,15 +7,12 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
 )
 from sampletones.exceptions import LibraryDisplayError
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -112,6 +109,7 @@ from .constants.reconstructions import (
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from .elements.fonts.registry import FontRegistry
+from .instruction.data import InstructionPanelData
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
@@ -391,8 +389,8 @@ class GUI:
             is_converter_running=self.converter_panel.is_converter_running,
         )
         self.library_panel.set_callbacks(
-            on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
+            on_instruction_loaded=self.instruction_panel.display_instruction,
         )
         self.browser_panel.set_callbacks(
             on_load_reconstruction=self._load_reconstruction_with_confirmation,
@@ -404,6 +402,9 @@ class GUI:
             on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
+        )
+        self.instruction_details_panel.set_callbacks(
+            is_instruction_loaded=self.library_panel.is_loaded,
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
@@ -797,21 +798,10 @@ class GUI:
             content=content,
         )
 
-    def _on_instruction_selected(
-        self,
-        generator_class_name: str,
-        instruction: InstructionUnion,
-        fragment: InstructionLibraryFragment[Any],
-        library_config: InstructionsLibraryConfig,
-    ) -> None:
+    def _load_instruction(self, instruction_data: InstructionPanelData) -> None:
         try:
             self._close_instruction()
-            self.instruction_panel.display_instruction(
-                generator_class_name,
-                instruction,
-                fragment,
-                library_config,
-            )
+            self.instruction_panel.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 

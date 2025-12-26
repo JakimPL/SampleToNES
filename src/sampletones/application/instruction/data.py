@@ -2,6 +2,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from sampletones.configs import InstructionsLibraryConfig
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
 
@@ -9,9 +10,9 @@ from sampletones.library import InstructionLibraryFragment
 class InstructionPanelData(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    generator_class_name: str
     instruction: InstructionUnion
-    fragment: Optional[InstructionLibraryFragment[Any]] = None
+    config: InstructionsLibraryConfig
+    fragment: InstructionLibraryFragment[Any]
 
     @property
     def frequency(self) -> Optional[float]:
@@ -20,3 +21,7 @@ class InstructionPanelData(BaseModel):
     @property
     def has_audio_data(self) -> bool:
         return self.fragment is not None and not self.fragment.empty
+
+    @property
+    def generator_class_name(self) -> str:
+        return self.fragment.generator_class.value

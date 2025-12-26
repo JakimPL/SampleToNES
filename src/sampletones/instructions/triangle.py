@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import ModuleType
 
 from pydantic import Field
@@ -41,9 +43,16 @@ class TriangleInstruction(Instruction):
         return abs(pitch1 - pitch2) / PITCH_RANGE
 
     @classmethod
-    def null_instruction(cls) -> "TriangleInstruction":
+    def null_instruction(cls) -> TriangleInstruction:
         return TriangleInstruction(
             on=False,
+            pitch=MIN_PITCH,
+        )
+
+    @classmethod
+    def default_instruction(cls) -> TriangleInstruction:
+        return TriangleInstruction(
+            on=True,
             pitch=MIN_PITCH,
         )
 

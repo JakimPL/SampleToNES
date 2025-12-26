@@ -1,15 +1,31 @@
-from typing import Any, Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
+from sampletones.constants.enums import LibraryGeneratorName
+from sampletones.constants.general import (
+    MAX_DUTY_CYCLE,
+    MAX_PERIOD,
+    MAX_PITCH,
+    MAX_VOLUME,
+    MIN_PITCH,
+)
 
 from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (
+    DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+    DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+    LBL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
     LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
     LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
     LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
     MSG_INSTRUCTIONS_DETAILS_NO_SELECTION,
     TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
     TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
@@ -17,13 +33,23 @@ from ...constants.instructions import (
     TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
     TAG_PANEL_INSTRUCTIONS_DETAILS,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+    TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.table.table import GUITable
+from ...instruction.data import InstructionPanelData
 from ...instruction.logic import InstructionDetailsLogic
-from ...utils.dpg import dpg_configure_item
+from ...utils.dpg import dpg_configure_item, dpg_delete_children
+
+OnInstructionLoaded = Callable[[], Optional[LibraryGeneratorName]]
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
@@ -31,6 +57,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.logic = InstructionDetailsLogic()
         self.general_table: Optional[GUITable] = None
         self.params_table: Optional[GUITable] = None
+
+        self._loaded_instruction_type: Optional[LibraryGeneratorName] = None
+
+        self.is_instruction_loaded: Optional[OnInstructionLoaded] = None
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
@@ -46,6 +76,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             border=False,
         ):
             self._create_section_text()
+            self._create_instructions_choice_panel()
             self._create_instruction_tables()
 
     def _create_section_text(self) -> None:
@@ -72,11 +103,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def display_instruction(
         self,
-        generator_class_name: str,
-        instruction: InstructionUnion,
-        fragment: Optional[InstructionLibraryFragment[Any]] = None,
+        instruction_data: InstructionPanelData,
     ) -> None:
-        self.logic.set_instruction_data(generator_class_name, instruction, fragment)
+        self.logic.current_data = instruction_data
         self._update_display()
 
     def clear_display(self) -> None:
@@ -120,3 +149,100 @@ class GUIInstructionDetailsPanel(GUIPanel):
         if self.params_table is not None:
             self.params_table.delete_item()
             self.params_table = None
+
+    def _create_instructions_choice_panel(self) -> None:
+        with dpg.child_window(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=self.tag,
+            width=-1,
+            height=DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        ):
+            self._create_instructions_choice_inputs()
+
+    def _create_instructions_choice_inputs(self) -> None:
+        section_text = dpg.add_text(
+            LBL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+        )
+        FontRegistry.bind_to_item(section_text, Font.BOLD)
+        instruction_type: Optional[LibraryGeneratorName] = self.call(self.is_instruction_loaded)
+        if instruction_type is None:
+            dpg.add_text("No instruction loaded.")
+            return
+
+        match instruction_type:
+            case LibraryGeneratorName.PULSE:
+                self._create_pulse_instruction_choice_panel()
+            case LibraryGeneratorName.TRIANGLE:
+                self._create_triangle_instruction_choice_panel()
+            case LibraryGeneratorName.NOISE:
+                self._create_noise_instruction_choice_panel()
+
+    def _create_pulse_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            default_value=MIN_PITCH,
+            min_value=MIN_PITCH,
+            max_value=MAX_PITCH,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            default_value=MAX_VOLUME,
+            min_value=0,
+            max_value=MAX_VOLUME,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+            default_value=0,
+            min_value=0,
+            max_value=MAX_DUTY_CYCLE,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+
+    def _create_triangle_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            default_value=MIN_PITCH,
+            min_value=MIN_PITCH,
+            max_value=MAX_PITCH,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+
+    def _create_noise_instruction_choice_panel(self) -> None:
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            default_value=0,
+            min_value=0,
+            max_value=MAX_PERIOD,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+        dpg.add_slider_int(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            default_value=MAX_VOLUME,
+            min_value=0,
+            max_value=MAX_VOLUME,
+            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+        )
+        dpg.add_checkbox(
+            tag=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            parent=TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            default_value=False,
+        )
+
+    def _update_instructions_choice_panel(self) -> None:
+        dpg_delete_children(TAG_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
+        self._create_instructions_choice_inputs()
