@@ -113,6 +113,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.waveform_display.clear()
         self._reset_generator_checkboxes()
         self._reset_audio_source_radio()
+        self.display_reconstruction()
 
     def _create_audio_panel(self) -> None:
         dpg.add_separator()
@@ -195,7 +196,11 @@ class GUIReconstructionPanel(GUIPanel):
             GeneratorName.NOISE: LBL_CHECKBOX_GLOBAL_NOISE,
         }
 
-        with dpg.group(horizontal=True, parent=self.plot_tag, tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS):
+        with dpg.group(
+            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
+            parent=self.plot_tag,
+            horizontal=True,
+        ):
             for generator_name, label in generator_labels.items():
                 tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
                 dpg.add_checkbox(
@@ -229,6 +234,10 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _update_reconstruction_display(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data:
+            dpg_configure_item(
+                TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+                enabled=False,
+            )
             return
 
         if reconstruction_only:
@@ -239,6 +248,10 @@ class GUIReconstructionPanel(GUIPanel):
             self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
 
         self._update_audio_player(reconstruction_only=reconstruction_only)
+        dpg_configure_item(
+            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            enabled=True,
+        )
 
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
@@ -250,6 +263,7 @@ class GUIReconstructionPanel(GUIPanel):
             self.current_audio_source = AudioSourceType.RECONSTRUCTION
         self._update_audio_player()
 
+    # TODO: move audio logic to the player panel
     def _update_audio_player(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data or (
             self.current_audio_source == AudioSourceType.ORIGINAL and reconstruction_only
@@ -267,7 +281,12 @@ class GUIReconstructionPanel(GUIPanel):
         self.player_panel.load_audio_data(audio_data)
 
     def _update_generator_checkboxes(self) -> None:
+        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
+            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+        )
+
         if not self.reconstruction_data:
+            dpg_configure_item(radio_tag, enabled=False)
             return
 
         available_generators = set(self.reconstruction_data.reconstruction.instructions.keys())
@@ -279,11 +298,7 @@ class GUIReconstructionPanel(GUIPanel):
             if is_available:
                 dpg_set_value(tag, True)
 
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
-            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
-        )
         dpg_configure_item(radio_tag, enabled=True)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=True)
 
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:

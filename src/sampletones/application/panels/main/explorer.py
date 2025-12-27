@@ -255,20 +255,17 @@ class GUIExplorerPanel(GUITreePanel):
                 item_click_callback=self._on_directory_node_clicked,
             )
         else:
-            dpg.add_selectable(
+            with dpg.tree_node(
                 label=node.name,
                 parent=parent,
-                callback=self._on_selectable_clicked,
-                user_data=node,
                 tag=node_tag,
-                default_value=False,
-            )
-
-            self._apply_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
+                leaf=True,
+            ):
+                self._apply_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
 
             self._add_item_handler_registry(
                 node_tag=node_tag,
@@ -277,7 +274,12 @@ class GUIExplorerPanel(GUITreePanel):
                 item_double_click_callback=self._on_file_node_double_clicked,
             )
 
-    def _on_file_node_clicked(self, sender: Sender, app_data: Tuple[int, int], user_data: FileSystemNode) -> None:
+    def _on_file_node_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: FileSystemNode,
+    ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
             match user_data.filepath.suffix.lower():

@@ -24,9 +24,6 @@ class NoContentFileNodeTheme(Theme):
             ThemeParameter(item_type=dpg.mvTreeNode): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DISABLED_DEFAULT),
             ],
-            ThemeParameter(item_type=dpg.mvSelectable): [
-                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DISABLED_DEFAULT),
-            ],
         }
     )
 
@@ -35,7 +32,7 @@ class ReconstructionFileNodeTheme(Theme):
     tag: str = TAG_THEME_FILE_RECONSTRUCTION
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvSelectable): [
+            ThemeParameter(item_type=dpg.mvTreeNode): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_FILE_RECONSTRUCTION),
             ],
         }
@@ -46,7 +43,7 @@ class LibraryFileNodeTheme(Theme):
     tag: str = TAG_THEME_FILE_LIBRARY
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvSelectable): [
+            ThemeParameter(item_type=dpg.mvTreeNode): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_FILE_LIBRARY),
             ],
         }
@@ -57,7 +54,7 @@ class WaveFileNodeTheme(Theme):
     tag: str = TAG_THEME_FILE_WAVE
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvSelectable): [
+            ThemeParameter(item_type=dpg.mvTreeNode): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_FILE_WAVE),
             ],
         }
@@ -69,9 +66,6 @@ class NotExpandedDirectoryNodeTheme(Theme):
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
-                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_FILE_DIRECTORY_NOT_EXPANDED),
-            ],
-            ThemeParameter(item_type=dpg.mvSelectable): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_FILE_DIRECTORY_NOT_EXPANDED),
             ],
         }

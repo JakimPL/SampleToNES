@@ -34,8 +34,6 @@ class Logger(BaseLogger):
             )
             handler.setLevel(level)
             self._logger.addHandler(handler)
-
-            self._handler = handler
             self._initialized = True
 
     def debug(self, message: str) -> None:

@@ -111,6 +111,7 @@ class GUIInstructionPanel(GUIPanel):
     def is_loaded(self) -> bool:
         return self.library_config is not None
 
+    # TODO: move audio logic to the player panel
     def display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
         if instruction_data is None:
             self.close_instruction()

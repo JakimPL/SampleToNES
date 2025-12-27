@@ -1,11 +1,10 @@
-import warnings
 from typing import Optional, Tuple
 
 import numpy as np
 from scipy.io import wavfile
+from soundfile import read as sf_read
 
 from sampletones.constants.general import QUANTIZATION_LEVELS
-from sampletones.exceptions import UnsupportedAudioFormatError
 from sampletones.typehints import Pathlike
 
 from .processing import clip_audio
@@ -20,25 +19,7 @@ def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
 
 
 def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", wavfile.WavFileWarning)
-        try:
-            sample_rate: int
-            audio: np.ndarray
-            sample_rate, audio = wavfile.read(path, mmap=False)
-        except ValueError as exception:
-            raise UnsupportedAudioFormatError(f"Could not read WAV file: {path}") from exception
-
-    if audio.dtype == np.uint8:
-        audio = (audio - 128) / 128.0
-    elif audio.dtype == np.int16:
-        audio = audio / 32768.0
-    elif audio.dtype == np.int32:
-        audio = audio / 2147483648.0
-    elif not np.issubdtype(audio.dtype, np.floating):
-        raise ValueError(f"Unsupported audio data type: {audio.dtype}")
-
-    audio = np.asarray(audio).astype(np.float32)
+    audio, sample_rate = sf_read(path, dtype="float32")
     return audio, sample_rate
 
 

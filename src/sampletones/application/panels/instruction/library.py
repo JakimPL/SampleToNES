@@ -276,6 +276,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self.update_status()
 
+    # TODO: move the loading responsibility outside the panel
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
         if self._loading_instructions:
             return
@@ -352,17 +353,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             if library_node is None:
                 return
 
-            library_key = library_node.library_key
-            dpg.add_selectable(
+            with dpg.tree_node(
                 label=node.name,
                 parent=parent,
-                callback=self._on_load_library_clicked,
-                user_data=library_key,
                 tag=node_tag,
-                default_value=False,
-            )
-            self._apply_node_theme(node_tag, node)
-            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+                leaf=True,
+            ):
+                self._apply_node_theme(node_tag, node)
+                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
 
         elif isinstance(node, (LibraryNode, GeneratorNode)):
             if isinstance(node, LibraryNode):
@@ -415,6 +413,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         user_data: LibraryNode,
     ) -> None:
         mouse_button, _ = app_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            self._load_library_and_set_current(user_data.library_key)
+
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_library_context_menu(user_data)
 
@@ -492,6 +493,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         instruction = instruction_class.default_instruction()
         self.load_instruction(instruction)
 
+    # TODO: move the loading responsibility outside the panel
     def load_instruction(self, instruction: InstructionUnion) -> None:
         if self._loading_instructions:
             return
@@ -506,6 +508,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._set_tree_enabled(True)
             self.update_status()
 
+    # TODO: move the generation responsibility outside the panel
     def generate_library(self) -> None:
         if self.library_manager.is_generating():
             return
