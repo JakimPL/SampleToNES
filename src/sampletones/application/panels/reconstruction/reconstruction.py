@@ -59,6 +59,7 @@ from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
+from ...reconstruction.manager import ReconstructionManager
 from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
@@ -71,15 +72,16 @@ class GUIReconstructionPanel(GUIPanel):
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        reconstruction_manager: ReconstructionManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
+        self.reconstruction_manager = reconstruction_manager
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
 
-        self.reconstruction_data: Optional[ReconstructionData] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._pending_generator_name: Optional[GeneratorName] = None
 
@@ -101,19 +103,11 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_audio_panel()
         self._create_plot_panel()
 
-    def is_loaded(self) -> bool:
-        return self.reconstruction_data is not None
-
-    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
-        self.config_manager.load_config(reconstruction_data.config)
-
-        self.call(self.on_display_reconstruction_details, reconstruction_data.reconstruction)
-        self._update_generator_checkboxes(reconstruction_data)
+    def display_reconstruction(self) -> None:
+        self._update_generator_checkboxes()
         self._update_reconstruction_display()
 
-    def update_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
+    def update_reconstruction(self) -> None:
         self._update_reconstruction_display(reconstruction_only=True)
 
     def save_reconstruction(self) -> None:
@@ -125,7 +119,7 @@ class GUIReconstructionPanel(GUIPanel):
         logger.info(f"Saved reconstruction to: {logger.format_path(self.reconstruction_data.filepath)}")
 
     def close_reconstruction(self) -> None:
-        self.reconstruction_data = None
+        self.reconstruction_manager.close_reconstruction()
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
         self.call(self.on_clear_reconstruction_details)
         self.player_panel.clear_audio()
@@ -285,9 +279,11 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.player_panel.load_audio_data(audio_data)
 
-    def _update_generator_checkboxes(self, reconstruction_data: ReconstructionData) -> None:
-        available_generators = set(reconstruction_data.reconstruction.instructions.keys())
+    def _update_generator_checkboxes(self) -> None:
+        if not self.reconstruction_data:
+            return
 
+        available_generators = set(self.reconstruction_data.reconstruction.instructions.keys())
         for generator_name in GeneratorName:
             tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
             is_available = generator_name in available_generators
@@ -500,3 +496,7 @@ class GUIReconstructionPanel(GUIPanel):
         start = index * frame_length
         end = start + frame_length
         self.waveform_display.set_overlay_range(start, end)
+
+    @property
+    def reconstruction_data(self) -> Optional[ReconstructionData]:
+        return self.reconstruction_manager.current_reconstruction

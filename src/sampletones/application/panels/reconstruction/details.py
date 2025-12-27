@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
-from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
@@ -13,7 +12,6 @@ from sampletones.utils import (
     clamp,
     clamp_period,
     clamp_pitch,
-    hash_model,
     period_to_name,
     pitch_to_name,
 )
@@ -80,6 +78,7 @@ from ...reconstruction.config import (
     FeaturePlotConfig,
 )
 from ...reconstruction.feature import FeatureData
+from ...reconstruction.manager import ReconstructionManager
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
@@ -100,11 +99,15 @@ OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
-    def __init__(self, shortcut_manager: ShortcutManager) -> None:
-        self.reconstruction_hash: str = ""
-        self.current_features: Optional[FeatureData] = None
-        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
+    def __init__(
+        self,
+        shortcut_manager: ShortcutManager,
+        reconstruction_manager: ReconstructionManager,
+    ) -> None:
+        self.reconstruction_manager = reconstruction_manager
         self._shortcut_manager = shortcut_manager
+
+        self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
 
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
@@ -197,9 +200,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self.generator_plots.clear()
 
-    def _create_tabs_for_generators(self, feature_data: FeatureData) -> None:
-        self._clear_tabs()
+    def _create_tabs_for_generators(self) -> None:
+        feature_data = self.current_features
+        if feature_data is None:
+            raise RuntimeError("No feature data is available when trying to create generator tabs")
 
+        self._clear_tabs()
         dpg.add_separator(tag=self.export_button_separator_tag, parent=self.tag)
         dpg.add_text(
             LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
@@ -742,14 +748,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
 
     @concurrent(wait=True, method_bound=True)
-    def display_reconstruction(self, reconstruction: Reconstruction) -> None:
-        feature_data = FeatureData.load(reconstruction)
-        self.current_features = feature_data
-        self.reconstruction_hash = hash_model(reconstruction)
-
+    def display_reconstruction(self) -> None:
         dpg_configure_item(self.no_data_message_tag, show=False)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=True, enabled=True)
-        self._create_tabs_for_generators(feature_data)
+        self._create_tabs_for_generators()
 
     def clear_display(self) -> None:
         self.current_features = None
@@ -759,3 +761,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(self.no_data_message_tag, show=True)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI, show=False)
         dpg_configure_item(self.export_button_separator_tag, show=False)
+
+    @property
+    def current_features(self) -> Optional[FeatureData]:
+        return self.reconstruction_manager.current_features
+
+    @current_features.setter
+    def current_features(self, value: Optional[FeatureData]) -> None:
+        self.reconstruction_manager.current_features = value
+
+    @property
+    def reconstruction_hash(self) -> str:
+        return self.reconstruction_manager.reconstruction_hash

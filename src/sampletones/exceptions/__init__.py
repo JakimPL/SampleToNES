@@ -1,5 +1,5 @@
 from .audio import PlaybackError, UnsupportedAudioFormatError
-from .cupy import CuPyNotInstalledWarning
+from .cuda import CuPyNotInstalledWarning
 from .library import (
     IncompatibleLibraryDataVersionError,
     InstructionTypeMismatchError,

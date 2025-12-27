@@ -13,7 +13,6 @@ from sampletones.tree import FileSystemNode, NodeType, TreeNode
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
 
-from ...browser.manager import BrowserManager
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants.general import (
@@ -31,7 +30,6 @@ from ...constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
-    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
@@ -47,7 +45,9 @@ from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.tree.tree import GUITreePanel
+from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
+from ...reconstruction.manager import ReconstructionManager
 from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from ...utils.dpg import dpg_configure_item
 from ...utils.thread import concurrent
@@ -61,12 +61,13 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        browser_manager: BrowserManager,
+        reconstruction_manager: ReconstructionManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
-
-        output_directory = config_manager.get_output_directory()
-        self.browser_manager = BrowserManager(output_directory)
+        self.browser_manager = browser_manager
+        self.reconstruction_manager = reconstruction_manager
 
         self._building_tree: bool = False
         self._loading_reconstruction: bool = False
@@ -146,7 +147,6 @@ class GUIBrowserPanel(GUITreePanel):
         if self._building_tree:
             return
 
-        # self._set_tree_enabled(False)
         self._building_tree = True
         try:
             self._delete_item_handler_registries()
@@ -157,7 +157,6 @@ class GUIBrowserPanel(GUITreePanel):
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self._building_tree = False
-            # self._set_tree_enabled(True)
             self._assign_item_handler_registries()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
@@ -205,19 +204,17 @@ class GUIBrowserPanel(GUITreePanel):
                 item_click_callback=self._on_directory_node_clicked,
             )
         else:
-            dpg.add_selectable(
+            with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
                 parent=parent,
-                callback=self._on_selectable_clicked,
-                user_data=node,
-                default_value=False,
-            )
-            self._apply_node_theme(
-                node_tag,
-                node,
-                has_favorite_ancestor=has_favorite_ancestor,
-            )
+                leaf=True,
+            ):
+                self._apply_node_theme(
+                    node_tag,
+                    node,
+                    has_favorite_ancestor=has_favorite_ancestor,
+                )
 
             self._add_item_handler_registry(
                 node_tag=node_tag,
@@ -260,10 +257,11 @@ class GUIBrowserPanel(GUITreePanel):
         user_data: FileSystemNode,
     ) -> None:
         mouse_button, _ = app_data
-        if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_reconstruction_context_menu(user_data)
+        if mouse_button == dpg.mvMouseButton_Left:
+            self.load_reconstruction(user_data.filepath)
 
-        return None
+        if mouse_button == dpg.mvMouseButton_Right:
+            self._show_reconstruction_context_menu(user_data)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -297,10 +295,14 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             dpg.add_menu_item(
                 label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
-                callback=lambda s, a, u: self.call(self.on_load_reconstruction, node.filepath),
+                callback=self._on_load_reconstruction,
+                user_data=node,
             )
             dpg.add_separator()
             self._add_context_menu_favorite_item(node)
+
+    def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
+        self.call(self.on_load_reconstruction, user_data.filepath)
 
     @concurrent(wait=True, method_bound=True)
     def load_reconstruction(self, filepath: Path) -> None:
@@ -310,14 +312,7 @@ class GUIBrowserPanel(GUITreePanel):
         self._set_tree_enabled(False)
         self._loading_reconstruction = True
         try:
-            reconstruction_data = self.browser_manager.load_reconstruction_data(filepath)
-            if not reconstruction_data.reconstruction.audio_filepath.exists():
-                show_file_not_found_dialog(
-                    reconstruction_data.reconstruction.audio_filepath,
-                    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
-                )
-
-            self.call(self.on_reconstruction_loaded, reconstruction_data)
+            self.reconstruction_manager.load_reconstruction(filepath)
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)

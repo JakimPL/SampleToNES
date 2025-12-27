@@ -105,6 +105,7 @@ from .constants.main import (
     DIM_PANEL_WIDTH_MAIN_EXPLORER,
 )
 from .constants.reconstructions import (
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
@@ -124,7 +125,8 @@ from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.settings import GUIAudioSettingsWindow
-from .reconstruction.data import ReconstructionData
+from .reconstruction.browser import BrowserManager
+from .reconstruction.manager import ReconstructionManager
 from .reconstruction.regenerator import Regenerator
 from .resources.items import IconResource
 from .resources.resources import get_icon_path
@@ -133,6 +135,7 @@ from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
+    show_file_not_found_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
@@ -153,8 +156,10 @@ class GUI:
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.library_manager = InstructionsLibraryManager(self.config_manager)
+        self.browser_manager = BrowserManager(self.config_manager)
+        self.reconstruction_manager = ReconstructionManager()
+        self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
 
-        self.regenerator: Regenerator = Regenerator()
         self.fps_timer: FPSTimer = FPSTimer()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
@@ -171,14 +176,18 @@ class GUI:
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
+            self.browser_manager,
+            self.reconstruction_manager,
         )
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager,
             self.application_config_manager,
             self.audio_device_manager,
+            self.reconstruction_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
             self.shortcut_manager,
+            self.reconstruction_manager,
         )
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
@@ -378,6 +387,9 @@ class GUI:
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
+        self.reconstruction_manager.set_callbacks(
+            on_reconstruction_loaded=self._on_reconstruction_loaded,
+        )
         self.regenerator.set_callbacks(
             on_regeneration_finished=self._on_reconstruction_updated,
         )
@@ -413,7 +425,6 @@ class GUI:
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
-            on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
             on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
         )
@@ -849,7 +860,7 @@ class GUI:
         return monitors[0] if monitors else None
 
     def _is_reconstruction_loaded(self) -> bool:
-        return self.reconstruction_panel.is_loaded()
+        return self.reconstruction_manager.is_reconstruction_loaded()
 
     def _is_library_loaded(self) -> bool:
         return self.library_manager.is_library_loaded()
@@ -892,25 +903,38 @@ class GUI:
         self._reconstruct_directory(directory_path)
 
     def _load_reconstruction(self, filepath: Path) -> None:
-        self.browser_panel.load_reconstruction(filepath)
-        self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.reconstruction_manager.load_reconstruction(filepath)
+
+    def _on_reconstruction_loaded(self) -> None:
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None:
+            raise RuntimeError("No reconstruction is loaded after loading process")
+
+        if not reconstruction_data.reconstruction.audio_filepath.exists():
+            show_file_not_found_dialog(
+                reconstruction_data.reconstruction.audio_filepath,
+                MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+            )
+
+        self.audio_device_manager.stop()
+        filepath = reconstruction_data.filepath
+        self.config_manager.load_config(reconstruction_data.config)
+
+        self.reconstruction_details_panel.display_reconstruction()
+        self.reconstruction_panel.display_reconstruction()
         self.application_config_manager.set_current_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._unsaved_reconstruction_changes = False
         self._update_viewport_title(filepath.stem)
         self._update_menu()
 
-    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
-        self.regenerator.reconstruction_data = reconstruction_data
-        self.audio_device_manager.stop()
-        self.reconstruction_panel.display_reconstruction(reconstruction_data)
-
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
         self._load_reconstruction(filepath)
 
-    def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_panel.update_reconstruction(reconstruction_data)
+    def _on_reconstruction_updated(self) -> None:
+        self.reconstruction_panel.update_reconstruction()
         self._unsaved_reconstruction_changes = True
         self._update_viewport_title()
 

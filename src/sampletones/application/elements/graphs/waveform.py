@@ -239,7 +239,9 @@ class GUIWaveformGraph(GUIGraph):
 
     @concurrent(wait=True, method_bound=True)
     def update_reconstruction_data(
-        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+        self,
+        reconstruction_data: ReconstructionData,
+        selected_generators: Optional[List[GeneratorName]] = None,
     ) -> None:
         if not isinstance(self.current_data, ReconstructionData):
             return
@@ -262,7 +264,9 @@ class GUIWaveformGraph(GUIGraph):
 
     @concurrent(wait=True, method_bound=True)
     def load_reconstruction_data(
-        self, reconstruction_data: ReconstructionData, selected_generators: Optional[List[GeneratorName]] = None
+        self,
+        reconstruction_data: ReconstructionData,
+        selected_generators: Optional[List[GeneratorName]] = None,
     ) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data

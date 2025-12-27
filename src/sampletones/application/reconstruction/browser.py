@@ -1,17 +1,18 @@
 from pathlib import Path
-from typing import Dict, Optional
+from typing import List, Optional
 
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
 from sampletones.tree import FileSystemNode, NodeType, Tree
 
-from ..reconstruction.data import ReconstructionData
+from ..config.manager import ConfigManager
 
 
 class BrowserManager:
-    def __init__(self, output_directory: Path) -> None:
-        self.output_directory = output_directory
+    def __init__(self, config_manager: ConfigManager) -> None:
+        self.config_manager = config_manager
+        self.output_directory = config_manager.get_output_directory()
+
         self.tree = Tree()
-        self.file_cache: Dict[Path, Optional[ReconstructionData]] = {}
 
     def set_output_directory(self, directory: Path) -> None:
         self.output_directory = directory
@@ -46,17 +47,6 @@ class BrowserManager:
 
         return directory_node
 
-    def load_reconstruction_data(self, filepath: Path) -> ReconstructionData:
-        if filepath.is_dir():
-            raise IsADirectoryError(f"Expected a file but got a directory: {filepath}")
-
-        if not filepath.exists():
-            raise FileNotFoundError(f"Reconstruction file not found: {filepath}")
-
-        data = ReconstructionData.load(filepath)
-        self.file_cache[filepath] = data
-        return data
-
-    def get_all_reconstruction_files(self) -> list[Path]:
+    def get_all_reconstruction_files(self) -> List[Path]:
         file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]
-        return [node.filepath for node in file_nodes if node.filepath is not None]
+        return [node.filepath for node in file_nodes]
