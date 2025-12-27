@@ -174,8 +174,6 @@ class GUIExplorerPanel(GUITreePanel):
             self._set_tree_enabled(True)
             self._assign_item_handler_registries()
 
-        dpg.set_value(node_tag, True)
-
     def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
         node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
@@ -391,7 +389,8 @@ class GUIExplorerPanel(GUITreePanel):
         is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
         if not is_directory_expanded:
             self.explorer_manager.expand_directory(node)
-            self._rebuild_directory_node(node, node_tag)
+
+        self._rebuild_directory_node(node, node_tag)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
