@@ -3,23 +3,13 @@ from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.exceptions import (
-    IncompatibleReconstructionVersionError,
-    InvalidMetadataError,
-    InvalidReconstructionError,
-    InvalidReconstructionValuesError,
-)
 from sampletones.tree import FileSystemNode, NodeType, TreeNode
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import (
-    MSG_GLOBAL_INVALID_METADATA_ERROR,
-    SUF_PANEL_LEFT,
-    TAG_TAB_RECONSTRUCTIONS,
-)
+from ...constants.general import SUF_PANEL_LEFT, TAG_TAB_RECONSTRUCTIONS
 from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
@@ -27,10 +17,6 @@ from ...constants.reconstructions import (
     LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
     LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
     LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
-    MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
-    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
-    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
@@ -39,7 +25,6 @@ from ...constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_BROWSER,
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
-    TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
@@ -48,7 +33,6 @@ from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
-from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog
 from ...utils.dpg import dpg_configure_item
 from ...utils.thread import concurrent
 
@@ -72,7 +56,7 @@ class GUIBrowserPanel(GUITreePanel):
         self._building_tree: bool = False
         self._loading_reconstruction: bool = False
 
-        self.on_load_reconstruction: Optional[OnLoadReconstructionCallback] = None
+        self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self.on_reconstruct_file: Optional[VoidCallback] = None
         self.on_reconstruct_directory: Optional[VoidCallback] = None
@@ -226,12 +210,6 @@ class GUIBrowserPanel(GUITreePanel):
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
 
-    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
-        super()._on_selectable_clicked(sender, app_data, user_data)
-
-        if isinstance(user_data, FileSystemNode):
-            self.call(self.on_load_reconstruction, user_data.filepath)
-
     def _reconstruct_file(self) -> None:
         self.call(self.on_reconstruct_file)
 
@@ -258,7 +236,7 @@ class GUIBrowserPanel(GUITreePanel):
     ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.load_reconstruction(user_data.filepath)
+            self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(user_data)
@@ -302,53 +280,4 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
-        self.call(self.on_load_reconstruction, user_data.filepath)
-
-    @concurrent(wait=True, method_bound=True)
-    def load_reconstruction(self, filepath: Path) -> None:
-        if self._loading_reconstruction:
-            return None
-
-        self._set_tree_enabled(False)
-        self._loading_reconstruction = True
-        try:
-            self.reconstruction_manager.load_reconstruction(filepath)
-        except FileNotFoundError as exception:
-            logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
-            return show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
-        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
-            logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
-            return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
-        except InvalidMetadataError as exception:
-            logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
-            return show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
-        except InvalidReconstructionValuesError as exception:
-            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
-            return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES)
-        except InvalidReconstructionError as exception:
-            logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
-            return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE)
-        except IncompatibleReconstructionVersionError as exception:
-            logger.error_with_traceback(
-                exception,
-                f"Incompatible reconstruction version: {exception.actual_version}"
-                f" != expected {exception.expected_version}",
-            )
-            return show_error_dialog(
-                exception,
-                TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
-                    exception.actual_version,
-                    exception.expected_version,
-                ),
-            )
-        except Exception as exception:
-            logger.error_with_traceback(
-                exception, f"Unexpected error while loading reconstruction data from {filepath}"
-            )
-            return show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
-        finally:
-            self._loading_reconstruction = False
-            self._set_tree_enabled(True)
-
-        logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
-        return self.application_config_manager.set_current_reconstruction(filepath)
+        self.call(self.load_reconstruction_with_confirmation, user_data.filepath)

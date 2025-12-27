@@ -115,6 +115,7 @@ def show_confirmation_dialog(
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
     height: int = DIM_DIALOG_HEIGHT,
+    ok_label: str = LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
 
@@ -129,7 +130,7 @@ def show_confirmation_dialog(
         def buttons(_: None) -> None:
             GUIButton(
                 tag=f"{tag}{SUF_BUTTON_OK}",
-                label=LBL_BUTTON_GLOBAL_OK,
+                label=ok_label,
                 callback=lambda: [on_confirm(), dpg_delete_item(tag)],
                 width=-1,
             )
@@ -162,6 +163,7 @@ def show_save_confirmation_dialog(
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
     height: int = DIM_DIALOG_HEIGHT,
+    ok_label=LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
 
@@ -182,7 +184,7 @@ def show_save_confirmation_dialog(
             )
             GUIButton(
                 tag=f"{tag}{SUF_BUTTON_OK}",
-                label=LBL_BUTTON_GLOBAL_OK,
+                label=ok_label,
                 callback=lambda: [on_confirm(), dpg_delete_item(tag)],
                 width=-1,
             )

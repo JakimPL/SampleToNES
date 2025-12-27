@@ -12,7 +12,13 @@ from sampletones.constants.paths import (
     EXT_FILE_RECONSTRUCTION,
     EXT_FILE_WAVE,
 )
-from sampletones.exceptions import LibraryDisplayError
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+    LibraryDisplayError,
+)
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -28,6 +34,10 @@ from .constants.general import (
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
+    LBL_BUTTON_GLOBAL_CLOSE,
+    LBL_BUTTON_GLOBAL_DISCARD,
+    LBL_BUTTON_GLOBAL_EXIT,
+    LBL_BUTTON_GLOBAL_OK,
     LBL_MENU_GROUP_FILE,
     LBL_MENU_GROUP_PLAYBACK,
     LBL_MENU_GROUP_RECONSTRUCTION,
@@ -60,6 +70,7 @@ from .constants.general import (
     MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
     MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
     MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
@@ -105,8 +116,13 @@ from .constants.main import (
     DIM_PANEL_WIDTH_MAIN_EXPLORER,
 )
 from .constants.reconstructions import (
+    MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from .elements.fonts.registry import FontRegistry
@@ -410,7 +426,7 @@ class GUI:
             on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(
-            on_load_reconstruction=self._load_reconstruction_with_confirmation,
+            load_reconstruction_with_confirmation=self._load_reconstruction_with_confirmation,
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
@@ -800,6 +816,7 @@ class GUI:
                 MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
                 on_confirm=load_reconstruction,
                 on_save=self._save_reconstruction,
+                ok_label=LBL_BUTTON_GLOBAL_DISCARD,
             )
         else:
             load_reconstruction()
@@ -903,7 +920,43 @@ class GUI:
         self._reconstruct_directory(directory_path)
 
     def _load_reconstruction(self, filepath: Path) -> None:
-        self.reconstruction_manager.load_reconstruction(filepath)
+        try:
+            self.reconstruction_manager.load_reconstruction(filepath)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
+            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
+            logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+        except InvalidMetadataError as exception:
+            logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
+            show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
+        except InvalidReconstructionValuesError as exception:
+            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES)
+        except InvalidReconstructionError as exception:
+            logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE)
+        except IncompatibleReconstructionVersionError as exception:
+            logger.error_with_traceback(
+                exception,
+                f"Incompatible reconstruction version: {exception.actual_version}"
+                f" != expected {exception.expected_version}",
+            )
+            show_error_dialog(
+                exception,
+                TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                    exception.actual_version,
+                    exception.expected_version,
+                ),
+            )
+        except Exception as exception:
+            logger.error_with_traceback(
+                exception, f"Unexpected error while loading reconstruction data from {filepath}"
+            )
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+
+        logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
 
     def _on_reconstruction_loaded(self) -> None:
         reconstruction_data = self.reconstruction_manager.current_reconstruction
@@ -956,6 +1009,7 @@ class GUI:
                 MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
                 on_confirm=self._close_reconstruction,
                 on_save=self._save_reconstruction,
+                ok_label=LBL_BUTTON_GLOBAL_CLOSE,
             )
         else:
             self._close_reconstruction()
@@ -1039,12 +1093,13 @@ class GUI:
 
         return loaded and playing
 
-    def _show_confirmation_dialog(self, message: str) -> None:
+    def _show_confirmation_dialog(self, message: str, ok_label: str = LBL_BUTTON_GLOBAL_OK) -> None:
         show_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=TTL_DIALOG_EXIT_CONFIRMATION,
             message=message,
             on_confirm=self._exit_application,
+            ok_label=ok_label,
         )
 
     def _show_save_confirmation_dialog(
@@ -1053,6 +1108,7 @@ class GUI:
         message: str,
         on_save: Callback,
         on_confirm: Callback,
+        ok_label: str = LBL_BUTTON_GLOBAL_OK,
     ) -> None:
         show_save_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
@@ -1060,6 +1116,7 @@ class GUI:
             message=message,
             on_save=on_save,
             on_confirm=on_confirm,
+            ok_label=ok_label,
         )
 
     def _on_close(self) -> None:
@@ -1069,11 +1126,18 @@ class GUI:
                 MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
                 on_save=self._save_reconstruction,
                 on_confirm=self._exit_application,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
             )
         elif self._is_converter_running():
-            self._show_confirmation_dialog(MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS)
+            self._show_confirmation_dialog(
+                MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+            )
         elif self._is_library_generating():
-            self._show_confirmation_dialog(MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS)
+            self._show_confirmation_dialog(
+                MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+            )
         else:
             self._exit_application()
 

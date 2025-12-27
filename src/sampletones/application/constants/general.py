@@ -76,6 +76,9 @@ SUF_TREE_SEARCH_INPUT = "_search_input"
 SUF_NODE_HANDLER = "_node_handler"
 
 LBL_BUTTON_GLOBAL_OK = "OK"
+LBL_BUTTON_GLOBAL_EXIT = "Exit"
+LBL_BUTTON_GLOBAL_DISCARD = "Discard"
+LBL_BUTTON_GLOBAL_CLOSE = "Close"
 LBL_BUTTON_GLOBAL_SAVE = "Save"
 LBL_BUTTON_GLOBAL_CANCEL = "Cancel"
 LBL_BUTTON_GLOBAL_COPIED = "Copied!"
@@ -133,7 +136,7 @@ MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION = (
     "The current reconstruction has unsaved changes. Are you sure you want to close it?"
 )
 MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION = (
-    "The current reconstruction has unsaved changes. Are you sure you want to load a new reconstruction?"
+    "The current reconstruction has unsaved changes. Do you want to save it before loading a new one?"
 )
 MSG_CONFIGURATION_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIGURATION_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
