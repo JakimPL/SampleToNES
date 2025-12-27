@@ -5,6 +5,7 @@ from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
+from sampletones.utils.logger import logger
 
 from .data import ReconstructionData
 from .feature import FeatureData
@@ -18,6 +19,7 @@ class ReconstructionManager(CallbackMixin):
         self.coefficient: float = 1.0
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
+        self.on_reconstruction_closed: Optional[VoidCallback] = None
 
     def load_reconstruction(self, filepath: Path) -> None:
         if filepath.is_dir():
@@ -46,11 +48,20 @@ class ReconstructionManager(CallbackMixin):
     def is_reconstruction_loaded(self) -> bool:
         return self.current_reconstruction is not None
 
+    def save_reconstruction(self) -> None:
+        if not self.current_reconstruction:
+            return
+
+        reconstruction = self.current_reconstruction.reconstruction
+        reconstruction.save(self.current_reconstruction.filepath)
+        logger.info(f"Saved reconstruction to: {logger.format_path(self.current_reconstruction.filepath)}")
+
     def close_reconstruction(self) -> None:
         self.current_reconstruction = None
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
+        self.call(self.on_reconstruction_closed)
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

@@ -405,6 +405,7 @@ class GUI:
 
         self.reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self._on_reconstruction_loaded,
+            on_reconstruction_closed=self._on_reconstruction_closed,
         )
         self.regenerator.set_callbacks(
             on_regeneration_finished=self._on_reconstruction_updated,
@@ -441,7 +442,6 @@ class GUI:
         )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
-            on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
         )
         self.reconstruction_details_panel.set_callbacks(
@@ -963,13 +963,13 @@ class GUI:
         if reconstruction_data is None:
             raise RuntimeError("No reconstruction is loaded after loading process")
 
+        self.audio_device_manager.stop()
         if not reconstruction_data.reconstruction.audio_filepath.exists():
             show_file_not_found_dialog(
                 reconstruction_data.reconstruction.audio_filepath,
                 MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
             )
 
-        self.audio_device_manager.stop()
         filepath = reconstruction_data.filepath
         self.config_manager.load_config(reconstruction_data.config)
 
@@ -1000,7 +1000,7 @@ class GUI:
         self._update_menu()
 
     def _save_reconstruction(self) -> None:
-        self.reconstruction_panel.save_reconstruction()
+        self.reconstruction_manager.save_reconstruction()
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
@@ -1015,7 +1015,11 @@ class GUI:
             self._close_reconstruction()
 
     def _close_reconstruction(self) -> None:
+        self.reconstruction_manager.close_reconstruction()
+
+    def _on_reconstruction_closed(self) -> None:
         self.reconstruction_panel.close_reconstruction()
+        self.reconstruction_details_panel.clear_display()
         self.application_config_manager.set_current_reconstruction(None)
         self._unsaved_reconstruction_changes = False
         self._update_menu()

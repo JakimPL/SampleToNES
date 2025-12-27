@@ -1,12 +1,11 @@
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
-from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
@@ -86,8 +85,6 @@ class GUIReconstructionPanel(GUIPanel):
         self._pending_generator_name: Optional[GeneratorName] = None
 
         self.on_export_wav: Optional[VoidCallback] = None
-        self.on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
-        self.on_clear_reconstruction_details: Optional[VoidCallback] = None
         self.on_change_audio_state: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
@@ -110,18 +107,8 @@ class GUIReconstructionPanel(GUIPanel):
     def update_reconstruction(self) -> None:
         self._update_reconstruction_display(reconstruction_only=True)
 
-    def save_reconstruction(self) -> None:
-        if not self.reconstruction_data:
-            return
-
-        reconstruction = self.reconstruction_data.reconstruction
-        reconstruction.save(self.reconstruction_data.filepath)
-        logger.info(f"Saved reconstruction to: {logger.format_path(self.reconstruction_data.filepath)}")
-
     def close_reconstruction(self) -> None:
-        self.reconstruction_manager.close_reconstruction()
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
-        self.call(self.on_clear_reconstruction_details)
         self.player_panel.clear_audio()
         self.waveform_display.clear()
         self._reset_generator_checkboxes()
