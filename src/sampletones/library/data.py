@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
@@ -105,7 +107,7 @@ class InstructionLibraryData(DataModel):
         return self.data.values()
 
     @classmethod
-    def load(cls, path: Pathlike) -> "InstructionLibraryData":
+    def load(cls, path: Pathlike) -> InstructionLibraryData:
         binary = load_binary(path)
 
         try:

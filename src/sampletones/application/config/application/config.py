@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
@@ -37,7 +39,7 @@ class ApplicationConfig(BaseModel):
     )
 
     @classmethod
-    def default(cls) -> "ApplicationConfig":
+    def default(cls) -> ApplicationConfig:
         if not APPLICATION_CONFIG_PATH.exists():
             logger.warning(
                 f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist. " "Loading default configuration."
@@ -47,7 +49,7 @@ class ApplicationConfig(BaseModel):
         return cls.load(APPLICATION_CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Pathlike) -> "ApplicationConfig":
+    def load(cls, path: Pathlike) -> ApplicationConfig:
         path = to_path(path)
         config_dict = load_yaml(path)
         return cls(**config_dict)

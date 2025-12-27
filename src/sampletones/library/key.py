@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.configs import InstructionsLibraryConfig
@@ -27,12 +29,12 @@ class InstructionLibraryKey(BaseModel):
     filename: str = Field(..., description="Filename representing the key")
 
     @classmethod
-    def from_config(cls, config: Config) -> "InstructionLibraryKey":
+    def from_config(cls, config: Config) -> InstructionLibraryKey:
         window = Window.from_config(config)
         return cls.create(config.library, window)
 
     @classmethod
-    def create(cls, config: InstructionsLibraryConfig, window: Window) -> "InstructionLibraryKey":
+    def create(cls, config: InstructionsLibraryConfig, window: Window) -> InstructionLibraryKey:
         config_hash = hash_model(config)
         filename = cls.get_filename(config, window, config_hash)
         return cls(

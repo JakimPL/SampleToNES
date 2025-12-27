@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional
 
 import numpy as np
@@ -20,7 +22,7 @@ class FFTTransformer(BaseModel):
     )
 
     @classmethod
-    def from_gamma(cls, gamma: int) -> "FFTTransformer":
+    def from_gamma(cls, gamma: int) -> FFTTransformer:
         assert 0 <= gamma <= MAX_TRANSFORMATION_GAMMA, f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]"
         morpher = LinearExponentialMorpher(gamma / MAX_TRANSFORMATION_GAMMA)
         transformations = morpher.transformations

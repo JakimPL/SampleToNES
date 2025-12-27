@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Optional
 
@@ -19,7 +21,7 @@ class TreeNode(Node):
         super().__init__(name, parent=parent)
         self.node_type = node_type
 
-    def copy(self, parent: Optional["TreeNode"] = None) -> "TreeNode":
+    def copy(self, parent: Optional["TreeNode"] = None) -> TreeNode:
         return TreeNode(self.name, node_type=self.node_type, parent=parent)
 
 
@@ -34,7 +36,7 @@ class FileSystemNode(TreeNode):
         super().__init__(name, node_type=node_type, parent=parent)
         self.filepath = filepath
 
-    def copy(self, parent: Optional[TreeNode] = None) -> "FileSystemNode":
+    def copy(self, parent: Optional[TreeNode] = None) -> FileSystemNode:
         return FileSystemNode(self.name, filepath=self.filepath, node_type=self.node_type, parent=parent)
 
 
@@ -49,7 +51,7 @@ class LibraryNode(TreeNode):
         super().__init__(name, node_type=node_type, parent=parent)
         self.library_key = library_key
 
-    def copy(self, parent: Optional[TreeNode] = None) -> "LibraryNode":
+    def copy(self, parent: Optional[TreeNode] = None) -> LibraryNode:
         return LibraryNode(self.name, node_type=self.node_type, library_key=self.library_key, parent=parent)
 
 
@@ -64,7 +66,7 @@ class GeneratorNode(TreeNode):
         super().__init__(name, node_type=node_type, parent=parent)
         self.generator_name = generator_name
 
-    def copy(self, parent: Optional[TreeNode] = None) -> "GeneratorNode":
+    def copy(self, parent: Optional[TreeNode] = None) -> GeneratorNode:
         return GeneratorNode(
             self.name,
             node_type=self.node_type,

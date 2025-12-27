@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, ItemsView, KeysView, Optional, Union, ValuesView
 
@@ -24,7 +26,7 @@ class InstructionLibrary(BaseModel):
         return self.data[key]
 
     @classmethod
-    def from_config(cls, config: Config) -> "InstructionLibrary":
+    def from_config(cls, config: Config) -> InstructionLibrary:
         return cls(directory=str(config.general.library_directory))
 
     def create_key(self, config: Config, window: Window) -> InstructionLibraryKey:

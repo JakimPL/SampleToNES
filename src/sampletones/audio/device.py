@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,10 +16,10 @@ class CurrentDevice(BaseModel):
     device_index: int = Field(..., description="Device index")
     name: str = Field(..., description="Device name")
     sample_rate: SampleRate = Field(..., description="Sample rate")
-    host_api: int = Field(..., description="Host API index")  # Added field
+    host_api: int = Field(..., description="Host API index")
 
     @classmethod
-    def default(cls) -> "CurrentDevice":
+    def default(cls) -> CurrentDevice:
         return cls(
             device_index=-1,
             name="",

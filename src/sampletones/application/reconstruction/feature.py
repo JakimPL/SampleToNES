@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, List, Optional, cast
 
 import numpy as np
@@ -18,7 +20,7 @@ class FeatureData(BaseModel):
         return self.generators[generator_name]
 
     @classmethod
-    def load(cls, reconstruction: Reconstruction) -> "FeatureData":
+    def load(cls, reconstruction: Reconstruction) -> FeatureData:
         exported_features = reconstruction.export()
 
         generators = {}

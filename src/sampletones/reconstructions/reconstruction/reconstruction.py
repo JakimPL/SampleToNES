@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import cached_property
 from pathlib import Path
 from types import ModuleType
@@ -211,7 +213,7 @@ class Reconstruction(DataModel):
         return sum(error.total_error for error in self.errors_data)
 
     @classmethod
-    def load(cls, path: Pathlike) -> "Reconstruction":
+    def load(cls, path: Pathlike) -> Reconstruction:
         reconstruction = super().load(path)
         cls.validate_metadata(reconstruction.metadata)
         return reconstruction

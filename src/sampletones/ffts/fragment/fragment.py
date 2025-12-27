@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import List, Self, Union
 
@@ -23,7 +25,7 @@ class Fragment:
         object.__setattr__(self, "transformer", FFTTransformer.from_gamma(self.config.library.transformation_gamma))
 
     @classmethod
-    def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> "Fragment":
+    def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
         transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
         feature = transformer.calculate(windowed_audio, window.size)
@@ -72,7 +74,7 @@ class Fragment:
             config=first_fragment.config,
         )
 
-    def __sub__(self, other: Self) -> "Fragment":
+    def __sub__(self, other: Self) -> Fragment:
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted.")
 
@@ -97,7 +99,7 @@ class Fragment:
             config=self.config,
         )
 
-    def __mul__(self, scalar: float) -> "Fragment":
+    def __mul__(self, scalar: float) -> Fragment:
         audio = self.audio * scalar
         windowed_audio = self.windowed_audio * scalar
         feature = self.transformer.multiply(self.feature, scalar)
@@ -108,7 +110,7 @@ class Fragment:
             config=self.config,
         )
 
-    def to_cupy(self) -> "Fragment":
+    def to_cupy(self) -> Fragment:
         audio = xp.asarray(self.audio)
         windowed_audio = xp.asarray(self.windowed_audio)
         feature = xp.asarray(self.feature)

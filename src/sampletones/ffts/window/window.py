@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Optional, Tuple, Union
 
@@ -42,8 +44,11 @@ class Window:
 
     @classmethod
     def from_config(
-        cls, config: Union[Config, InstructionsLibraryConfig], on: bool = True, custom_size: Optional[int] = None
-    ) -> "Window":
+        cls,
+        config: Union[Config, InstructionsLibraryConfig],
+        on: bool = True,
+        custom_size: Optional[int] = None,
+    ) -> Window:
         if isinstance(config, InstructionsLibraryConfig):
             return cls(config=config, on=on, custom_size=custom_size)
 

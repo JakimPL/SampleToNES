@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from typing import Optional
 
@@ -7,7 +9,7 @@ from .base import BaseLogger
 class NullLogger(BaseLogger):
     _instance: Optional["NullLogger"] = None
 
-    def __new__(cls) -> "NullLogger":
+    def __new__(cls) -> NullLogger:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

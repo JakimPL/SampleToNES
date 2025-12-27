@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from types import ModuleType
 from typing import List
@@ -27,14 +29,14 @@ class Config(DataModel):
     )
 
     @classmethod
-    def default(cls) -> "Config":
+    def default(cls) -> Config:
         if not CONFIG_PATH.exists():
             return cls()
 
         return cls.load(CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Pathlike) -> "Config":
+    def load(cls, path: Pathlike) -> Config:
         path = to_path(path)
         config_dict = load_json(path)
         return cls(**config_dict)
