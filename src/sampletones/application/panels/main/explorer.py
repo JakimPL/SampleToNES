@@ -223,7 +223,7 @@ class GUIExplorerPanel(GUITreePanel):
                 parent=parent,
                 default_open=should_expand,
                 open_on_arrow=False,
-                open_on_double_click=False,
+                open_on_double_click=True,
             ) as tree_node_tag:
                 self._apply_node_theme(
                     node_tag,
@@ -401,9 +401,12 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+        state = dpg.get_value(node_tag)
         if not is_directory_expanded:
             self.explorer_manager.expand_directory(node)
             self._rebuild_directory_node(node)
+
+        dpg.set_value(node_tag, not state)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
