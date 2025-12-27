@@ -143,7 +143,7 @@ MSG_CONFIGURATION_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
 MSG_CONFIGURATION_SAVE_ERROR = "Error saving configuration."
 MSG_CONFIGURATION_LOAD_ERROR = "Error loading configuration."
 MSG_CONFIGURATION_INVALID_ERROR = "Invalid configuration file."
-
+MSG_AUDIO_PLAYBACK_ERROR = "Audio playback error"
 
 TTL_WINDOW_MAIN = "SampleToNES"
 TTL_DIALOG_SAVE_CONFIG = "Save configuration"

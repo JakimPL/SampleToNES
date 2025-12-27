@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
+from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, TreeNode
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
@@ -132,6 +133,7 @@ class GUIExplorerPanel(GUITreePanel):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
+        self.explorer_manager.collapse_all()
         children = dpg.get_item_children(self.tree_tag, VAL_TREE_NODE_CHILDREN_SLOT)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
@@ -159,7 +161,7 @@ class GUIExplorerPanel(GUITreePanel):
             self._assign_item_handler_registries()
 
     @concurrent(wait=False, method_bound=True)
-    def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
+    def _rebuild_directory_node(self, node: FileSystemNode) -> None:
         if self._building_tree:
             return
 
@@ -282,9 +284,7 @@ class GUIExplorerPanel(GUITreePanel):
         if mouse_button == dpg.mvMouseButton_Left:
             match user_data.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return self._load_reconstruction(user_data)
-                case paths.EXT_FILE_LIBRARY:
-                    return self._load_library(user_data)
+                    return self._schedule_autoplay(user_data)
                 case paths.EXT_FILE_WAVE:
                     self.call(self.on_wave_file_clicked, user_data.filepath)
                     return self._schedule_autoplay(user_data)
@@ -305,8 +305,14 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._pending_autoplay_node = None
-            return self._reconstruct_file(user_data)
+            match user_data.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    self._load_reconstruction(user_data)
+                case paths.EXT_FILE_WAVE:
+                    self._pending_autoplay_node = None
+                    return self._reconstruct_file(user_data)
+                case paths.EXT_FILE_LIBRARY:
+                    return self._load_library(user_data)
 
         return None
 
@@ -326,11 +332,11 @@ class GUIExplorerPanel(GUITreePanel):
         return None
 
     def _directory_node_clicked(self, node: FileSystemNode) -> None:
-        self._toggle_directory_expansion(node)
         has_content = self.explorer_manager.has_relevant_content(node.filepath)
         if not has_content:
             return
 
+        self._toggle_directory_expansion(node)
         self.call(self.on_directory_clicked, node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
@@ -362,7 +368,15 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         if self.application_config_manager.autoplay:
-            self.audio_device_manager.play_file(node.filepath)
+            match node.filepath.suffix.lower():
+                case paths.EXT_FILE_WAVE:
+                    self.audio_device_manager.play_file(node.filepath)
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    try:
+                        reconstruction = Reconstruction.load(node.filepath)
+                        self.audio_device_manager.play(reconstruction.approximation)
+                    except Exception as error:
+                        logger.error(f"Failed to autoplay reconstruction file: {error}")
 
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_node is not None:
@@ -389,8 +403,7 @@ class GUIExplorerPanel(GUITreePanel):
         is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
         if not is_directory_expanded:
             self.explorer_manager.expand_directory(node)
-
-        self._rebuild_directory_node(node, node_tag)
+            self._rebuild_directory_node(node)
 
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

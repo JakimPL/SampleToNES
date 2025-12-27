@@ -63,6 +63,7 @@ from .constants.general import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
+    MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
     MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
@@ -162,6 +163,7 @@ from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
 from .utils.shortcuts.manager import ShortcutManager
 from .utils.shortcuts.shortcut import Shortcut, ShortcutId
+from .utils.thread import concurrent
 
 
 class GUI:
@@ -403,6 +405,9 @@ class GUI:
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
+        self.audio_device_manager.set_callbacks(
+            on_playback_error=self._on_playback_error,
+        )
         self.reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruction_closed=self._on_reconstruction_closed,
@@ -898,6 +903,7 @@ class GUI:
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
 
+    @concurrent(wait=True, method_bound=True)
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
         self.library_panel.load_library_file(filepath)
@@ -919,7 +925,9 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
+    @concurrent(wait=True, method_bound=True)
     def _load_reconstruction(self, filepath: Path) -> None:
+        self.browser_panel.lock()
         try:
             self.reconstruction_manager.load_reconstruction(filepath)
         except FileNotFoundError as exception:
@@ -955,6 +963,8 @@ class GUI:
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
             show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+        finally:
+            self.browser_panel.unlock()
 
         logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
 
@@ -980,6 +990,10 @@ class GUI:
         self._unsaved_reconstruction_changes = False
         self._update_viewport_title(filepath.stem)
         self._update_menu()
+
+    def _on_playback_error(self, exception: Exception) -> None:
+        logger.error_with_traceback(exception, "Playback error occurred")
+        show_error_dialog(exception, MSG_AUDIO_PLAYBACK_ERROR)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:

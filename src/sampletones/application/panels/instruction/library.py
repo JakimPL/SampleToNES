@@ -281,8 +281,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if self._loading_instructions:
             return
 
-        self._set_tree_enabled(False)
-        self._loading_instructions = True
+        self.lock()
         try:
             self.library_manager.load_library(library_key)
         except FileNotFoundError as exception:
@@ -320,8 +319,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
         finally:
-            self._loading_instructions = False
-            self._set_tree_enabled(True)
+            self.unlock()
 
     def load_library_file(self, filepath: Path) -> None:
         if self._loading_instructions:
@@ -621,3 +619,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
         self.library_manager.cleanup_creator()
         self._restore_generation_panel()
+
+    def lock(self) -> None:
+        self._set_tree_enabled(False)
+        self._loading_instructions = True
+
+    def unlock(self) -> None:
+        self._loading_instructions = False
+        self._set_tree_enabled(True)

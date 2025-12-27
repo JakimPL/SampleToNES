@@ -281,3 +281,11 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
         self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
+
+    def lock(self) -> None:
+        self._building_tree = True
+        self._set_tree_enabled(False)
+
+    def unlock(self) -> None:
+        self._building_tree = False
+        self._set_tree_enabled(True)

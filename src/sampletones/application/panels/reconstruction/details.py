@@ -468,6 +468,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         app_data: int,
         user_data: Tuple[GeneratorName, str, str, int],
     ) -> None:
+        if user_data is None:
+            return
+
         generator_name, input_tag, value_tag, change = user_data
         current_name = dpg.get_value(input_tag).strip()
         if generator_name == GeneratorName.NOISE:
