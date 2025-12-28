@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Any, Callable, List, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -16,6 +16,8 @@ from sampletones.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones.typehints import Sender
+from sampletones.utils import clamp
 
 from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (
@@ -266,39 +268,77 @@ class GUIInstructionDetailsPanel(GUIPanel):
             callback=self._on_instruction_changed,
         )
 
-    def _on_instruction_changed(self) -> None:
+    def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
         instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
         if instruction_data is None:
             return
 
+        tags: List[str] = []
+        values: List[Union[int, bool]] = []
         generator_type = instruction_data.generator_class_name
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
                 pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH)
                 volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME)
                 duty_cycle = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE)
+
+                pitch = clamp(pitch, MIN_PITCH, MAX_PITCH)
+                volume = clamp(volume, 1, MAX_VOLUME)
+                duty_cycle = clamp(duty_cycle, 0, MAX_DUTY_CYCLE)
                 instruction = PulseInstruction(
                     on=True,
                     pitch=pitch,
                     volume=volume,
                     duty_cycle=duty_cycle,
                 )
+
+                values = [pitch, volume, duty_cycle]
+                tags = [
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+                ]
             case GeneratorClassName.TRIANGLE_GENERATOR:
                 pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH)
+
+                pitch = clamp(pitch, MIN_PITCH, MAX_PITCH)
                 instruction = TriangleInstruction(
                     on=True,
                     pitch=pitch,
                 )
+
+                values = [pitch]
+                tags = [
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+                ]
             case GeneratorClassName.NOISE_GENERATOR:
                 period = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD)
                 volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME)
                 short = dpg.get_value(TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT)
+
+                period = clamp(period, 0, MAX_PERIOD)
+                volume = clamp(volume, 1, MAX_VOLUME)
+                short = bool(short)
                 instruction = NoiseInstruction(
                     on=True,
                     period=period,
                     volume=volume,
                     short=short,
                 )
+
+                values = [period, volume, short]
+                tags = [
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+                    TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+                    TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+                ]
+
+        for tag, value in zip(tags, values):
+            dpg.set_value(tag, value)
+
+        current_instruction = self.library_manager.current_instruction
+        if current_instruction is not None and current_instruction.instruction == instruction:
+            return
 
         instruction_data = self.library_manager.load_instruction(instruction)
         self.logic.current_data = instruction_data
