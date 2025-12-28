@@ -278,7 +278,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     # TODO: move the loading responsibility outside the panel
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
-        if self._loading_instructions:
+        if self.locked:
             return
 
         self.lock()
@@ -322,7 +322,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self.unlock()
 
     def load_library_file(self, filepath: Path) -> None:
-        if self._loading_instructions:
+        if self.locked:
             logger.warning("Library is already loading; please wait until it finishes")
             return
 
@@ -483,7 +483,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.load_generator(user_data.generator_name)
 
     def load_generator(self, library_generator_name: LibraryGeneratorName) -> None:
-        if self._loading_instructions:
+        if self.locked:
             return
 
         generator_class = GENERATOR_CLASS_MAP[LIBRARY_GENERATOR_CLASS_MAP[library_generator_name]]
@@ -493,17 +493,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     # TODO: move the loading responsibility outside the panel
     def load_instruction(self, instruction: InstructionUnion) -> None:
-        if self._loading_instructions:
+        if self.locked:
             return
 
-        self._set_tree_enabled(False)
-        self._loading_instructions = True
+        self.lock()
         try:
             instruction_data = self.library_manager.load_instruction(instruction)
             self.call(self.on_instruction_loaded, instruction_data)
         finally:
-            self._loading_instructions = False
-            self._set_tree_enabled(True)
+            self.unlock()
             self.update_status()
 
     # TODO: move the generation responsibility outside the panel
@@ -627,3 +625,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def unlock(self) -> None:
         self._loading_instructions = False
         self._set_tree_enabled(True)
+
+    @property
+    def locked(self) -> bool:
+        return self._loading_instructions

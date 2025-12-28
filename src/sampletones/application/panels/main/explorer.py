@@ -144,7 +144,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._building_tree:
+        if self.locked:
             return
 
         self.lock()
@@ -160,18 +160,16 @@ class GUIExplorerPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_directory_node(self, node: FileSystemNode) -> None:
-        if self._building_tree:
+        if self.locked:
             return
 
-        self._set_tree_enabled(False)
-        self._building_tree = True
+        self.lock()
         try:
             self._rebuild_node_subtree(node)
         except SystemError:
             logger.warning("Application failed during rebuilding the file explorer tree")
         finally:
-            self._building_tree = False
-            self._set_tree_enabled(True)
+            self.unlock()
             self._assign_item_handler_registries()
 
     def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
@@ -505,3 +503,7 @@ class GUIExplorerPanel(GUITreePanel):
     def unlock(self) -> None:
         self._building_tree = False
         self._set_tree_enabled(True)
+
+    @property
+    def locked(self) -> bool:
+        return self._building_tree

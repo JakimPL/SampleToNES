@@ -85,12 +85,12 @@ from ...themes.table import InitialPitchTableTheme
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import (
     dpg_configure_item,
+    dpg_delete_children,
     dpg_delete_item,
     dpg_is_item_hovered,
     dpg_set_value,
 )
 from ...utils.shortcuts.manager import ShortcutManager
-from ...utils.thread import concurrent
 from ...utils.tooltip import show_tooltip
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
@@ -187,10 +187,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._shortcut_manager.enable()
 
     def _clear_tabs(self) -> None:
-        dpg_delete_item(self.export_button_separator_tag)
-        dpg_delete_item(self.tab_bar_tag)
-        dpg_delete_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS)
         self._clear_generator_plots()
+        dpg_delete_children(self.tag)
 
     def _clear_generator_plots(self) -> None:
         for plots in self.generator_plots.values():
@@ -236,9 +234,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             button_tag = f"{TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI}_{tab_tag}"
             GUIButton(
                 tag=button_tag,
+                parent=tab_tag,
                 label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
                 width=-1,
-                parent=window_tag,
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
             )
@@ -750,17 +748,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
 
-    @concurrent(wait=True, method_bound=True)
     def display_reconstruction(self) -> None:
         dpg_configure_item(self.no_data_message_tag, show=False)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=True, enabled=True)
-        with dpg.stage() as tabs_stage:
-            self._create_tabs_for_generators()
-
-        dpg.unstage(tabs_stage)
+        self._create_tabs_for_generators()
 
     def clear_display(self) -> None:
-        self.current_features = None
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=False, enabled=False)
 
         self._clear_tabs()

@@ -289,3 +289,7 @@ class GUIBrowserPanel(GUITreePanel):
     def unlock(self) -> None:
         self._building_tree = False
         self._set_tree_enabled(True)
+
+    @property
+    def locked(self) -> bool:
+        return self._building_tree

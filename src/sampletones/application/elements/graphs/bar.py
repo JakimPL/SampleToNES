@@ -96,10 +96,8 @@ class GUIBarGraph(GUIGraph):
         )
 
     def delete(self) -> None:
-        dpg_delete_item(self.zero_line_tag)
-        dpg_delete_item(self.hover_bar_tag)
-        dpg_delete_item(self.mouse_handler_tag)
         super().delete()
+        dpg_delete_item(self.mouse_handler_tag)
 
     def _create_content(self) -> None:
         with dpg.plot(
