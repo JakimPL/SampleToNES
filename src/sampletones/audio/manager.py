@@ -217,7 +217,12 @@ class AudioDeviceManager(CallbackMixin):
                 sample_rate=current_device.sample_rate,
             )
 
-        logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        if current_device.name:
+            logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        else:
+            logger.info("Initializing the default audio device.")
+            self._initialize_default_device()
+
         return None
 
     def find_device_index(self, current_device: CurrentDevice) -> int:

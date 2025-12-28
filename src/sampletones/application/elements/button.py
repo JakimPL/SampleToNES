@@ -18,6 +18,7 @@ class GUIButton:
         self,
         tag: str,
         label: str,
+        parent: Optional[str] = None,
         callback: Optional[Callback] = None,
         enabled: bool = True,
         font: Font = Font.REGULAR,
@@ -25,12 +26,24 @@ class GUIButton:
         **kwargs: Any,
     ) -> None:
         self._tag = tag
+        self._parent = parent
         self._button_tag = f"{tag}{SUF_BUTTON}"
         callback = callback if callback is not None else lambda: None
-        with dpg.group(tag=tag, horizontal=True, enabled=enabled):
+
+        group_kwargs = {
+            "tag": tag,
+            "horizontal": True,
+            "enabled": enabled,
+        }
+
+        if parent is not None:
+            group_kwargs["parent"] = parent
+
+        with dpg.group(**group_kwargs):
             dpg.add_button(
                 label=label,
                 tag=self._button_tag,
+                parent=tag,
                 callback=callback,
                 enabled=enabled,
                 **kwargs,

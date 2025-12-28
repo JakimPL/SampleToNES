@@ -611,7 +611,11 @@ class GUI:
             self._load_reconstruction(current_reconstruction)
 
     def _create_main_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
+        with dpg.tab(
+            label=LBL_TAB_MAIN,
+            tag=TAG_TAB_MAIN,
+            parent=TAG_TABS,
+        ):
             with dpg.table(
                 header_row=False,
                 resizable=False,
@@ -640,6 +644,7 @@ class GUI:
     def _create_layout(
         label: str,
         tab_tag: str,
+        parent: str,
         left_content_builder: VoidCallback,
         center_content_builder: VoidCallback,
         right_content_builder: VoidCallback,
@@ -648,8 +653,13 @@ class GUI:
         left_panel_width: int = DIM_PANEL_WIDTH_LEFT,
         left_panel_height: int = DIM_PANEL_HEIGHT_LEFT,
     ) -> None:
-        with dpg.tab(tag=tab_tag, label=label):
+        with dpg.tab(
+            tag=tab_tag,
+            parent=parent,
+            label=label,
+        ):
             with dpg.table(
+                parent=tab_tag,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -687,6 +697,7 @@ class GUI:
         self._create_layout(
             label=LBL_TAB_RECONSTRUCTIONS,
             tab_tag=TAG_TAB_RECONSTRUCTIONS,
+            parent=TAG_TABS,
             left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
@@ -698,6 +709,7 @@ class GUI:
         self._create_layout(
             label=LBL_TAB_INSTRUCTIONS,
             tab_tag=TAG_TAB_INSTRUCTIONS,
+            parent=TAG_TABS,
             left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
@@ -983,10 +995,10 @@ class GUI:
 
         filepath = reconstruction_data.filepath
         self.config_manager.load_config(reconstruction_data.config)
-
-        self.reconstruction_details_panel.display_reconstruction()
         self.reconstruction_panel.display_reconstruction()
+        self.reconstruction_details_panel.display_reconstruction()
         self.application_config_manager.set_current_reconstruction(filepath)
+
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._unsaved_reconstruction_changes = False
         self._update_viewport_title(filepath.stem)
