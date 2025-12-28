@@ -2,14 +2,16 @@ from typing import Any, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.constants.audio import (
+    DEFAULT_SAMPLE_RATE,
+    MAX_SAMPLE_RATE,
+    MIN_SAMPLE_RATE,
+)
 from sampletones.constants.general import (
     DEFAULT_CHANGE_RATE,
-    DEFAULT_SAMPLE_RATE,
     MAX_CHANGE_RATE,
-    MAX_SAMPLE_RATE,
     MAX_TRANSFORMATION_GAMMA,
     MIN_CHANGE_RATE,
-    MIN_SAMPLE_RATE,
     NORMALIZE,
     QUANTIZE,
 )

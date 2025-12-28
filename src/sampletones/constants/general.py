@@ -2,10 +2,6 @@
 
 from typing import Final, Tuple
 
-DEFAULT_SAMPLE_RATE: Final[int] = 44100
-MIN_SAMPLE_RATE: Final[int] = 8000
-MAX_SAMPLE_RATE: Final[int] = 192000
-
 DEFAULT_CHANGE_RATE: Final[int] = 60  # NTSC frame rate
 MIN_CHANGE_RATE: Final[int] = 15
 MAX_CHANGE_RATE: Final[int] = 600

@@ -4,11 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.configs import InstructionsLibraryConfig
 from sampletones.configs.config import Config
-from sampletones.constants.general import (
-    MAX_SAMPLE_RATE,
-    MAX_TRANSFORMATION_GAMMA,
-    MIN_SAMPLE_RATE,
-)
+from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.ffts import Window
 from sampletones.utils import hash_model
 

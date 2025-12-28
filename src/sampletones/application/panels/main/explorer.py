@@ -147,8 +147,7 @@ class GUIExplorerPanel(GUITreePanel):
         if self._building_tree:
             return
 
-        self._set_tree_enabled(False)
-        self._building_tree = True
+        self.lock()
         try:
             self._delete_item_handler_registries()
             self.explorer_manager.refresh_tree()
@@ -156,8 +155,7 @@ class GUIExplorerPanel(GUITreePanel):
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
-            self._building_tree = False
-            self._set_tree_enabled(True)
+            self.unlock()
             self._assign_item_handler_registries()
 
     @concurrent(wait=False, method_bound=True)
@@ -499,3 +497,11 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
         self.call(self.on_set_as_library_directory, node.filepath)
+
+    def lock(self) -> None:
+        self._set_tree_enabled(False)
+        self._building_tree = True
+
+    def unlock(self) -> None:
+        self._building_tree = False
+        self._set_tree_enabled(True)

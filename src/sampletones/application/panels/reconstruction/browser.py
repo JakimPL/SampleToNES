@@ -203,7 +203,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
-                item_click_callback=self._on_reconstruction_node_clicked,
+                item_double_click_callback=self._on_reconstruction_node_clicked,
             )
 
     def _set_tree_enabled(self, enabled: bool) -> None:

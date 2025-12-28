@@ -1,7 +1,7 @@
 from typing import Callable, Optional
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.constants.general import DEFAULT_SAMPLE_RATE
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.exceptions import PlaybackError
 from sampletones.typehints import VoidCallback
 from sampletones.utils.callbacks import CallbackMixin

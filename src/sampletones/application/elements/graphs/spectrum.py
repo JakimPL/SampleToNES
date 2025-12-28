@@ -3,7 +3,8 @@ from typing import Any, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones.constants.general import MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
 
 from ...constants.graphs import (

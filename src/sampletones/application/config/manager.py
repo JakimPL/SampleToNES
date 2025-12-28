@@ -9,10 +9,10 @@ from sampletones.configs import (
     GenerationConfig,
     InstructionsLibraryConfig,
 )
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
     DEFAULT_CHANGE_RATE,
-    DEFAULT_SAMPLE_RATE,
     MAX_WORKERS,
     MIXER,
     NORMALIZE,

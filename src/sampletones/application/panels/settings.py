@@ -2,13 +2,8 @@ from typing import Dict, List, Optional, Tuple, Union, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import (
-    SAMPLE_RATES,
-    AudioDevice,
-    AudioDeviceManager,
-    CurrentDevice,
-    SampleRate,
-)
+from sampletones.audio import AudioDevice, AudioDeviceManager, CurrentDevice
+from sampletones.constants.audio import SAMPLE_RATES, SampleRate
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData

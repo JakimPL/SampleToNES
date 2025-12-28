@@ -8,13 +8,14 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
-from sampletones.audio import load_audio
+from sampletones.constants.audio import SAMPLE_RATES, SampleRate
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
-from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
+from ..audio import load_audio
+from .device import AudioDevice, CurrentDevice
 
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
