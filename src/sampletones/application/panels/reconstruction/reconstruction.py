@@ -101,8 +101,11 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_plot_panel()
 
     def display_reconstruction(self) -> None:
-        self._update_generator_checkboxes()
-        self._update_reconstruction_display()
+        with dpg.stage() as reconstruction_stage:
+            self._update_generator_checkboxes()
+            self._update_reconstruction_display()
+
+        dpg.unstage(reconstruction_stage)
 
     def update_reconstruction(self) -> None:
         self._update_reconstruction_display(reconstruction_only=True)

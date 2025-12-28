@@ -754,7 +754,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def display_reconstruction(self) -> None:
         dpg_configure_item(self.no_data_message_tag, show=False)
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=True, enabled=True)
-        self._create_tabs_for_generators()
+        with dpg.stage() as tabs_stage:
+            self._create_tabs_for_generators()
+
+        dpg.unstage(tabs_stage)
 
     def clear_display(self) -> None:
         self.current_features = None
