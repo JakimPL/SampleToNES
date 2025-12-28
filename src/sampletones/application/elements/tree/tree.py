@@ -200,13 +200,6 @@ class GUITreePanel(GUIPanel):
         tag = f"{self.tag}_node_{'_'.join(path_parts)}"
         return tag.replace(" ", "_").lower()
 
-    def _on_selectable_clicked(self, sender: Sender, app_data: bool, user_data: TreeNode) -> None:
-        if self._selected_node_tag and dpg.does_item_exist(self._selected_node_tag):
-            dpg.set_value(self._selected_node_tag, False)
-
-        self._selected_node_tag = sender
-        dpg.set_value(sender, True)
-
     def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self._is_node_favorite(node)
         color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
@@ -371,7 +364,7 @@ class GUITreePanel(GUIPanel):
                     theme = ReconstructionFileNodeTheme()
                 case paths.EXT_FILE_LIBRARY:
                     theme = LibraryFileNodeTheme()
-                case paths.EXT_FILE_WAVE:
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
                     theme = WaveFileNodeTheme()
                 case _:
                     if has_favorite_ancestor:

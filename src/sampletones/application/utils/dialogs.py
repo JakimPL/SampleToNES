@@ -1,10 +1,11 @@
 import uuid
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.library import InstructionLibraryKey
+from sampletones.typehints import Callback
 
 from ..constants.general import (
     COL_PATH_TEXT,
@@ -14,11 +15,16 @@ from ..constants.general import (
     DIM_DIALOG_WIDTH,
     DIM_DIALOG_WIDTH_ERROR,
     DIM_DIALOG_WIDTH_ERROR_WRAP,
+    DIM_DIALOG_WIDTH_WRAP,
+    LBL_BUTTON_GLOBAL_CANCEL,
     LBL_BUTTON_GLOBAL_OK,
+    LBL_BUTTON_GLOBAL_SAVE,
     LBL_BUTTON_TRACEBACK_HIDE,
     LBL_BUTTON_TRACEBACK_SHOW,
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
+    SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
+    SUF_BUTTON_SAVE,
     SUF_BUTTON_SHOW_TRACEBACK,
     SUF_GROUP,
     SUF_INFO_DIALOG,
@@ -45,6 +51,12 @@ from .align import table_wrapper
 from .dpg import dpg_configure_item, dpg_delete_item
 
 
+def get_center(width: int, height: int) -> Tuple[int, int]:
+    x = (dpg.get_viewport_width() - width) / 2
+    y = (dpg.get_viewport_height() - height) / 2
+    return round(x), round(y)
+
+
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
     return f"{base_tag}_{dialog_hash}"
@@ -63,6 +75,7 @@ def show_modal_dialog(
         tag=tag,
         modal=modal,
         min_size=(width, height),
+        pos=get_center(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
@@ -95,13 +108,116 @@ def show_info_dialog(tag: str, message: str, title: str) -> None:
     )
 
 
+def show_confirmation_dialog(
+    tag: str,
+    message: str,
+    title: str,
+    on_confirm: Callback,
+    width: int = DIM_DIALOG_WIDTH,
+    height: int = DIM_DIALOG_HEIGHT,
+    ok_label: str = LBL_BUTTON_GLOBAL_OK,
+) -> None:
+    tag = get_dialog_tag(tag)
+
+    def content(parent: str) -> None:
+        dpg.add_text(
+            message,
+            parent=parent,
+            wrap=DIM_DIALOG_WIDTH_WRAP,
+        )
+
+        @table_wrapper(columns=2)
+        def buttons(_: None) -> None:
+            GUIButton(
+                tag=f"{tag}{SUF_BUTTON_OK}",
+                label=ok_label,
+                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                width=-1,
+            )
+            GUIButton(
+                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                label=LBL_BUTTON_GLOBAL_CANCEL,
+                callback=lambda: dpg_delete_item(tag),
+                width=-1,
+            )
+
+        buttons(None)
+
+    with dpg.window(
+        label=title,
+        tag=tag,
+        modal=True,
+        min_size=(width, height),
+        pos=get_center(width, height),
+        no_resize=True,
+        on_close=lambda: dpg_delete_item(tag),
+    ):
+        content(tag)
+
+
+def show_save_confirmation_dialog(
+    tag: str,
+    message: str,
+    title: str,
+    on_save: Callback,
+    on_confirm: Callback,
+    width: int = DIM_DIALOG_WIDTH,
+    height: int = DIM_DIALOG_HEIGHT,
+    ok_label=LBL_BUTTON_GLOBAL_OK,
+) -> None:
+    tag = get_dialog_tag(tag)
+
+    def content(parent: str) -> None:
+        dpg.add_text(
+            message,
+            parent=parent,
+            wrap=DIM_DIALOG_WIDTH_WRAP,
+        )
+
+        @table_wrapper(columns=3)
+        def buttons(_: None) -> None:
+            GUIButton(
+                tag=f"{tag}{SUF_BUTTON_SAVE}",
+                label=LBL_BUTTON_GLOBAL_SAVE,
+                callback=lambda: [on_save(), on_confirm(), dpg_delete_item(tag)],
+                width=-1,
+            )
+            GUIButton(
+                tag=f"{tag}{SUF_BUTTON_OK}",
+                label=ok_label,
+                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                width=-1,
+            )
+            GUIButton(
+                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                label=LBL_BUTTON_GLOBAL_CANCEL,
+                callback=lambda: dpg_delete_item(tag),
+                width=-1,
+            )
+
+        buttons(None)
+
+    with dpg.window(
+        label=title,
+        tag=tag,
+        modal=True,
+        min_size=(width, height),
+        pos=get_center(width, height),
+        no_resize=True,
+        on_close=lambda: dpg_delete_item(tag),
+    ):
+        content(tag)
+
+
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
     tag = get_dialog_tag(TAG_DIALOG_GLOBAL_ERROR)
+
     with dpg.window(
         label=TTL_DIALOG_ERROR,
         tag=tag,
         modal=True,
         min_size=(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
+        pos=get_center(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
         autosize=True,
         no_scrollbar=False,
         on_close=lambda: dpg_delete_item(tag),
@@ -182,6 +298,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         tag=tag,
         title=TTL_DIALOG_FILE_NOT_FOUND,
         content=content,
+        width=DIM_DIALOG_WIDTH_ERROR,
     )
 
 
@@ -200,6 +317,7 @@ def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
         title=TTL_DIALOG_LIBRARY_NOT_LOADED,
         content=content,
         modal=False,
+        width=DIM_DIALOG_WIDTH_ERROR,
     )
 
 
@@ -218,6 +336,7 @@ def show_reconstruction_not_loaded_dialog() -> None:
         title=TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
         content=content,
         modal=False,
+        width=DIM_DIALOG_WIDTH_ERROR,
     )
 
 
@@ -243,4 +362,5 @@ def show_message_with_path_dialog(title: str, message: str, path: Path) -> None:
         title=title,
         content=content,
         modal=False,
+        width=DIM_DIALOG_WIDTH_ERROR,
     )

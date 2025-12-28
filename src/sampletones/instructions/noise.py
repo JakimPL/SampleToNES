@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import ModuleType
 
 from pydantic import Field
@@ -63,11 +65,20 @@ class NoiseInstruction(Instruction):
         return period_distance + volume_distance
 
     @classmethod
-    def null_instruction(cls) -> "NoiseInstruction":
+    def null_instruction(cls) -> NoiseInstruction:
         return NoiseInstruction(
             on=False,
             period=0,
             volume=0,
+            short=False,
+        )
+
+    @classmethod
+    def default_instruction(cls) -> NoiseInstruction:
+        return NoiseInstruction(
+            on=True,
+            period=0,
+            volume=MAX_VOLUME,
             short=False,
         )
 

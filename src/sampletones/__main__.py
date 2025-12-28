@@ -3,6 +3,8 @@ import multiprocessing
 from argparse import RawTextHelpFormatter
 from pathlib import Path
 
+from sampletones.constants.paths import EXT_FILES_AUDIO
+
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
     * reconstruction .json file to load a reconstruction
@@ -57,11 +59,7 @@ def main() -> None:
     output_path = Path(args.output) if args.output else None
 
     from sampletones.configs import Config
-    from sampletones.constants.paths import (
-        EXT_FILE_LIBRARY,
-        EXT_FILE_RECONSTRUCTION,
-        EXT_FILE_WAVE,
-    )
+    from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION
     from sampletones.utils.logger import logger
 
     config = Config.load(config_path) if config_path else Config.default()
@@ -78,7 +76,7 @@ def main() -> None:
         path = Path(args.path)
         if path.is_file():
             suffix = path.suffix.lower()
-            if suffix == EXT_FILE_WAVE:
+            if suffix in EXT_FILES_AUDIO:
                 from sampletones.scripts import reconstruct_file
 
                 return reconstruct_file(path, config, output_path)
@@ -96,8 +94,9 @@ def main() -> None:
                 return load_library(path, config_path)
 
             raise RuntimeError(
-                f"Unsupported file extension, only {EXT_FILE_WAVE}, {EXT_FILE_RECONSTRUCTION}, "
-                f"and {EXT_FILE_LIBRARY} are supported."
+                f"Unsupported file extension, only audio ({', '.join(EXT_FILES_AUDIO)}),"
+                f"{EXT_FILE_RECONSTRUCTION} reconstruction, "
+                f"and {EXT_FILE_LIBRARY} library files are supported."
             )
 
         if path.is_dir():

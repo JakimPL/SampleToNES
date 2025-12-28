@@ -1,12 +1,11 @@
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
-from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
@@ -59,6 +58,7 @@ from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
+from ...reconstruction.manager import ReconstructionManager
 from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
@@ -71,21 +71,20 @@ class GUIReconstructionPanel(GUIPanel):
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        reconstruction_manager: ReconstructionManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
+        self.reconstruction_manager = reconstruction_manager
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
 
-        self.reconstruction_data: Optional[ReconstructionData] = None
         self.current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._pending_generator_name: Optional[GeneratorName] = None
 
         self.on_export_wav: Optional[VoidCallback] = None
-        self.on_display_reconstruction_details: Optional[Callable[[Reconstruction], None]] = None
-        self.on_clear_reconstruction_details: Optional[VoidCallback] = None
         self.on_change_audio_state: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
@@ -101,29 +100,20 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_audio_panel()
         self._create_plot_panel()
 
-    def is_loaded(self) -> bool:
-        return self.reconstruction_data is not None
-
-    def display_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
-        self.config_manager.load_config(reconstruction_data.config)
-
-        self.call(self.on_display_reconstruction_details, reconstruction_data.reconstruction)
-        self._update_generator_checkboxes(reconstruction_data)
+    def display_reconstruction(self) -> None:
+        self._update_generator_checkboxes()
         self._update_reconstruction_display()
 
-    def update_reconstruction(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_data = reconstruction_data
+    def update_reconstruction(self) -> None:
         self._update_reconstruction_display(reconstruction_only=True)
 
     def close_reconstruction(self) -> None:
-        self.reconstruction_data = None
         self.current_audio_source = AudioSourceType.RECONSTRUCTION
-        self.call(self.on_clear_reconstruction_details)
         self.player_panel.clear_audio()
         self.waveform_display.clear()
         self._reset_generator_checkboxes()
         self._reset_audio_source_radio()
+        self.display_reconstruction()
 
     def _create_audio_panel(self) -> None:
         dpg.add_separator()
@@ -206,7 +196,11 @@ class GUIReconstructionPanel(GUIPanel):
             GeneratorName.NOISE: LBL_CHECKBOX_GLOBAL_NOISE,
         }
 
-        with dpg.group(horizontal=True, parent=self.plot_tag, tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS):
+        with dpg.group(
+            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
+            parent=self.plot_tag,
+            horizontal=True,
+        ):
             for generator_name, label in generator_labels.items():
                 tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
                 dpg.add_checkbox(
@@ -240,6 +234,10 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _update_reconstruction_display(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data:
+            dpg_configure_item(
+                TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+                enabled=False,
+            )
             return
 
         if reconstruction_only:
@@ -250,6 +248,10 @@ class GUIReconstructionPanel(GUIPanel):
             self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
 
         self._update_audio_player(reconstruction_only=reconstruction_only)
+        dpg_configure_item(
+            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            enabled=True,
+        )
 
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
@@ -261,6 +263,7 @@ class GUIReconstructionPanel(GUIPanel):
             self.current_audio_source = AudioSourceType.RECONSTRUCTION
         self._update_audio_player()
 
+    # TODO: move audio logic to the player panel
     def _update_audio_player(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data or (
             self.current_audio_source == AudioSourceType.ORIGINAL and reconstruction_only
@@ -277,9 +280,16 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.player_panel.load_audio_data(audio_data)
 
-    def _update_generator_checkboxes(self, reconstruction_data: ReconstructionData) -> None:
-        available_generators = set(reconstruction_data.reconstruction.instructions.keys())
+    def _update_generator_checkboxes(self) -> None:
+        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
+            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+        )
 
+        if not self.reconstruction_data:
+            dpg_configure_item(radio_tag, enabled=False)
+            return
+
+        available_generators = set(self.reconstruction_data.reconstruction.instructions.keys())
         for generator_name in GeneratorName:
             tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
             is_available = generator_name in available_generators
@@ -288,11 +298,7 @@ class GUIReconstructionPanel(GUIPanel):
             if is_available:
                 dpg_set_value(tag, True)
 
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
-            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
-        )
         dpg_configure_item(radio_tag, enabled=True)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=True)
 
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:
@@ -360,7 +366,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             self.save_instrument_feature(filepath, instrument_name, generator_name)
-            logger.info(f"Exported instrument feature to FTI: {filepath}")
+            logger.info(f"Exported instrument feature to FTI: {logger.format_path(filepath)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
@@ -383,7 +389,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             self.save_instrument_features(directory)
-            logger.info(f"Exported instrument features to FTI: {directory}")
+            logger.info(f"Exported instrument features to FTI: {logger.format_path(directory)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
@@ -468,7 +474,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         try:
             write_wave(filepath, sample_rate, partial_approximation)
-            logger.info(f"Exported reconstruction to WAV: {filepath}")
+            logger.info(f"Exported reconstruction to WAV: {logger.format_path(filepath)}")
             show_message_with_path_dialog(
                 TTL_DIALOG_EXPORT_WAV,
                 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
@@ -492,3 +498,7 @@ class GUIReconstructionPanel(GUIPanel):
         start = index * frame_length
         end = start + frame_length
         self.waveform_display.set_overlay_range(start, end)
+
+    @property
+    def reconstruction_data(self) -> Optional[ReconstructionData]:
+        return self.reconstruction_manager.current_reconstruction

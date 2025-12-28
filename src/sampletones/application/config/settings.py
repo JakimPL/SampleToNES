@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict
 
 from pydantic import BaseModel, ConfigDict
@@ -12,7 +14,7 @@ class AudioSettingsData(BaseModel):
     current_device: CurrentDevice
 
     @classmethod
-    def from_device_manager(cls, audio_device_manager: AudioDeviceManager) -> "AudioSettingsData":
+    def from_device_manager(cls, audio_device_manager: AudioDeviceManager) -> AudioSettingsData:
         output_devices = audio_device_manager.list_devices()
         current_device = audio_device_manager.get_current_device()
 

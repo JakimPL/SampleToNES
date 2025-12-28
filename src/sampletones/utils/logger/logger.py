@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import logging
+from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from rich.logging import RichHandler
 
 from sampletones.constants.application import SAMPLETONES_NAME
+from sampletones.typehints import Pathlike
 
 from .base import BaseLogger
 
@@ -12,7 +17,7 @@ class Logger(BaseLogger):
     _instance: Optional["Logger"] = None
     _logger: logging.Logger
 
-    def __new__(cls) -> "Logger":
+    def __new__(cls) -> Logger:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -23,7 +28,7 @@ class Logger(BaseLogger):
             self._logger.setLevel(level)
 
             handler = RichHandler(
-                markup=False,
+                markup=True,
                 show_time=False,
                 show_level=True,
                 show_path=False,
@@ -31,8 +36,6 @@ class Logger(BaseLogger):
             )
             handler.setLevel(level)
             self._logger.addHandler(handler)
-
-            self._handler = handler
             self._initialized = True
 
     def debug(self, message: str) -> None:
@@ -54,6 +57,11 @@ class Logger(BaseLogger):
         if not message:
             message = f"{type(exception).__name__}"
         self._logger.error(message, exc_info=exception, stack_info=True)
+
+    def format_path(self, filepath: Pathlike) -> str:
+        path = Path(filepath).absolute()
+        encoded_path = quote(str(path))
+        return f'[link=file://{encoded_path}]"{filepath}"[/link]'
 
 
 logger = Logger()

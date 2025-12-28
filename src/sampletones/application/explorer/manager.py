@@ -5,7 +5,7 @@ from typing import Dict, List
 from sampletones.constants.paths import (
     EXT_FILE_LIBRARY,
     EXT_FILE_RECONSTRUCTION,
-    EXT_FILE_WAVE,
+    EXT_FILES_AUDIO,
 )
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 
@@ -13,10 +13,11 @@ from ..constants.general import LBL_TREE_ROOT
 
 
 class ExplorerManager:
-    def __init__(self) -> None:
+    def __init__(self, depth: int = 0) -> None:
         self.tree = Tree()
         self.current_directory = Path.cwd()
         self._expanded_directories: Dict[Path, bool] = {}
+        self.depth = depth
 
     def refresh_tree(self) -> None:
         container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NodeType.ROOT)
@@ -34,7 +35,6 @@ class ExplorerManager:
     def _create_directory_node(
         self,
         directory_path: Path,
-        load_children: bool = False,
     ) -> FileSystemNode:
         node = FileSystemNode(
             name=directory_path.name or str(directory_path),
@@ -42,17 +42,19 @@ class ExplorerManager:
             node_type=NodeType.DIRECTORY,
         )
 
-        if load_children:
-            self._load_directory_children(node)
-
+        self._load_directory_children(node)
         return node
 
-    def _load_directory_children(self, directory_node: FileSystemNode) -> None:
+    def _load_directory_children(
+        self,
+        directory_node: FileSystemNode,
+        level: int = 0,
+    ) -> None:
         directory_path = directory_node.filepath
         if not directory_path.is_dir():
             return
 
-        self._expanded_directories[directory_path] = True
+        self._expanded_directories[directory_path] = level == 0
         for existing_child in list(directory_node.children):
             existing_child.parent = None
 
@@ -67,15 +69,20 @@ class ExplorerManager:
                     if entry_path.name.startswith("."):
                         continue
 
-                    FileSystemNode(
+                    child_node = FileSystemNode(
                         name=entry_path.name,
                         filepath=entry_path,
                         node_type=NodeType.DIRECTORY,
                         parent=directory_node,
                     )
+                    if level < self.depth:
+                        self._load_directory_children(
+                            child_node,
+                            level=level + 1,
+                        )
                 elif entry_path.is_file():
                     if entry_path.suffix.lower() in [
-                        EXT_FILE_WAVE,
+                        *EXT_FILES_AUDIO,
                         EXT_FILE_LIBRARY,
                         EXT_FILE_RECONSTRUCTION,
                     ]:
@@ -101,7 +108,7 @@ class ExplorerManager:
                     return True
 
                 if entry_path.is_file() and entry_path.suffix.lower() in [
-                    EXT_FILE_WAVE,
+                    *EXT_FILES_AUDIO,
                     EXT_FILE_LIBRARY,
                     EXT_FILE_RECONSTRUCTION,
                 ]:
@@ -128,11 +135,8 @@ class ExplorerManager:
             return
 
         directory_path = directory_node.filepath
-
-        if self.is_directory_expanded(directory_path):
-            return
-
-        self._load_directory_children(directory_node)
+        if not self.is_directory_expanded(directory_path):
+            self._load_directory_children(directory_node)
 
     def is_directory_expanded(self, directory_path: Path) -> bool:
         return self._expanded_directories.get(directory_path, False)

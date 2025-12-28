@@ -1,11 +1,4 @@
-from .node import (
-    FileSystemNode,
-    GeneratorNode,
-    GroupNode,
-    InstructionNode,
-    LibraryNode,
-    TreeNode,
-)
+from .node import FileSystemNode, GeneratorNode, LibraryNode, TreeNode
 from .tree import Tree
 from .type import NodeType
 
@@ -16,6 +9,4 @@ __all__ = [
     "FileSystemNode",
     "LibraryNode",
     "GeneratorNode",
-    "GroupNode",
-    "InstructionNode",
 ]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import ModuleType
 from typing import List
 
@@ -21,7 +23,7 @@ class InstructionsItem(DataModel):
         cls,
         generator_name: GeneratorName,
         instructions: List[InstructionUnion],
-    ) -> "InstructionsItem":
+    ) -> InstructionsItem:
         return InstructionsItem(
             generator_name=generator_name,
             instructions=[

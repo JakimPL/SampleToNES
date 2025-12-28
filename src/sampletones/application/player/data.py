@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 import numpy as np
@@ -19,7 +21,11 @@ class AudioData(BaseModel):
         return len(self.sample)
 
     @classmethod
-    def from_library_fragment(cls, fragment: InstructionLibraryFragment[Any], sample_rate: int) -> "AudioData":
+    def from_library_fragment(
+        cls,
+        fragment: InstructionLibraryFragment[Any],
+        sample_rate: int,
+    ) -> AudioData:
         audio = fragment.data.copy()
         audio = stereo_to_mono(audio)
         audio = clip_audio(audio)
@@ -31,11 +37,11 @@ class AudioData(BaseModel):
         )
 
     @classmethod
-    def from_array(cls, sample: np.ndarray, sample_rate: int) -> "AudioData":
+    def from_array(cls, sample: np.ndarray, sample_rate: int) -> AudioData:
         return cls(sample=sample.copy(), sample_rate=sample_rate, current_position=0)
 
     @classmethod
-    def empty(cls, sample_rate: int) -> "AudioData":
+    def empty(cls, sample_rate: int) -> AudioData:
         return cls(sample=np.array([], dtype=np.float32), sample_rate=sample_rate, current_position=0)
 
     def is_loaded(self) -> bool:

@@ -1,14 +1,13 @@
 import base64
 import hashlib
 import json
-from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import numpy as np
 import yaml
 from pydantic import BaseModel
 
-from sampletones.typehints import SerializedData
+from sampletones.typehints import Pathlike, SerializedData
 
 JSON_INDENT = 2
 
@@ -17,34 +16,34 @@ def dump(data: Any) -> str:
     return json.dumps(data, separators=(",", ":"))
 
 
-def save_json(filepath: Union[str, Path], data: SerializedData) -> None:
+def save_json(filepath: Pathlike, data: SerializedData) -> None:
     with open(filepath, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=JSON_INDENT)
 
 
-def load_json(filepath: Union[str, Path]) -> SerializedData:
+def load_json(filepath: Pathlike) -> SerializedData:
     with open(filepath, "r", encoding="utf-8") as file:
         data: SerializedData = json.load(file)
         return data
 
 
-def save_yaml(filepath: Union[str, Path], data: SerializedData) -> None:
+def save_yaml(filepath: Pathlike, data: SerializedData) -> None:
     with open(filepath, "w", encoding="utf-8") as file:
         yaml.dump(data, file)
 
 
-def load_yaml(filepath: Union[str, Path]) -> SerializedData:
+def load_yaml(filepath: Pathlike) -> SerializedData:
     with open(filepath, "r", encoding="utf-8") as file:
         data: SerializedData = yaml.safe_load(file)
         return data
 
 
-def save_binary(filepath: Union[str, Path], data: bytes) -> None:
+def save_binary(filepath: Pathlike, data: bytes) -> None:
     with open(filepath, "wb") as file:
         file.write(data)
 
 
-def load_binary(filepath: Union[str, Path]) -> bytes:
+def load_binary(filepath: Pathlike) -> bytes:
     with open(filepath, "rb") as file:
         return file.read()
 

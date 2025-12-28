@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List
 
 import numpy as np
@@ -17,7 +19,7 @@ class FragmentedAudio(BaseModel):
     config: Config = Field(..., description="Configuration")
 
     @classmethod
-    def create(cls, audio: np.ndarray, config: Config, window: Window) -> "FragmentedAudio":
+    def create(cls, audio: np.ndarray, config: Config, window: Window) -> FragmentedAudio:
         length = (audio.shape[0] // window.frame_length) * window.frame_length
         audio = audio[:length].copy()
         count = length // window.frame_length

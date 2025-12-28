@@ -7,16 +7,19 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.configs import InstructionsLibraryConfig
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
-    EXT_FILE_WAVE,
+    EXT_FILES_AUDIO,
 )
-from sampletones.exceptions import LibraryDisplayError
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+    LibraryDisplayError,
+)
+from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
@@ -31,23 +34,28 @@ from .constants.general import (
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
+    LBL_BUTTON_GLOBAL_CLOSE,
+    LBL_BUTTON_GLOBAL_DISCARD,
+    LBL_BUTTON_GLOBAL_EXIT,
+    LBL_BUTTON_GLOBAL_OK,
     LBL_MENU_GROUP_FILE,
     LBL_MENU_GROUP_PLAYBACK,
     LBL_MENU_GROUP_RECONSTRUCTION,
     LBL_MENU_GROUP_VIEW,
     LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_FILE_EXIT,
     LBL_MENU_ITEM_FILE_LOAD_CONFIG,
+    LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
     LBL_MENU_ITEM_FILE_SAVE_CONFIG,
+    LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
     LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     LBL_MENU_ITEM_PLAYBACK_PAUSE,
     LBL_MENU_ITEM_PLAYBACK_PLAY,
     LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     LBL_MENU_ITEM_PLAYBACK_STOP,
-    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-    LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     LBL_MENU_ITEM_VIEW_FULLSCREEN,
@@ -55,21 +63,30 @@ from .constants.general import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
+    MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
+    MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
     MSG_GLOBAL_CONFIG_SAVE_FAILED,
+    MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
+    MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
+    MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+    MSG_GLOBAL_INVALID_METADATA_ERROR,
+    MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
+    TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+    TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+    TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+    TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
     TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
     TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-    TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
@@ -81,8 +98,11 @@ from .constants.general import (
     TAG_TABS,
     TAG_WINDOW_MAIN,
     TPL_MENU_TEXT_FPS,
+    TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_CONFIG_STATUS,
+    TTL_DIALOG_EXIT_CONFIRMATION,
     TTL_DIALOG_LOAD_CONFIG,
+    TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
     TTL_DIALOG_SAVE_CONFIG,
@@ -97,10 +117,18 @@ from .constants.main import (
     DIM_PANEL_WIDTH_MAIN_EXPLORER,
 )
 from .constants.reconstructions import (
+    MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
+    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from .elements.fonts.registry import FontRegistry
+from .instruction.data import InstructionPanelData
+from .library.manager import InstructionsLibraryManager
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
@@ -114,16 +142,20 @@ from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.settings import GUIAudioSettingsWindow
-from .reconstruction.data import ReconstructionData
+from .reconstruction.browser import BrowserManager
+from .reconstruction.manager import ReconstructionManager
 from .reconstruction.regenerator import Regenerator
 from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
 from .utils.dialogs import (
+    show_confirmation_dialog,
     show_error_dialog,
+    show_file_not_found_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
+    show_save_confirmation_dialog,
 )
 from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
@@ -131,6 +163,7 @@ from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
 from .utils.shortcuts.manager import ShortcutManager
 from .utils.shortcuts.shortcut import Shortcut, ShortcutId
+from .utils.thread import concurrent
 
 
 class GUI:
@@ -139,7 +172,12 @@ class GUI:
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
-        self.regenerator: Regenerator = Regenerator()
+
+        self.library_manager = InstructionsLibraryManager(self.config_manager)
+        self.browser_manager = BrowserManager(self.config_manager)
+        self.reconstruction_manager = ReconstructionManager()
+        self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
+
         self.fps_timer: FPSTimer = FPSTimer()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
@@ -149,20 +187,25 @@ class GUI:
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
             self.config_manager,
             self.application_config_manager,
+            self.library_manager,
         )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
-        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
+        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel(self.library_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
+            self.browser_manager,
+            self.reconstruction_manager,
         )
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.config_manager,
             self.application_config_manager,
             self.audio_device_manager,
+            self.reconstruction_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
             self.shortcut_manager,
+            self.reconstruction_manager,
         )
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
@@ -185,6 +228,9 @@ class GUI:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
+        self._unsaved_reconstruction_changes: bool = False
+        self._reconstruction_name: Optional[str] = None
+
         self._setup_gui()
         self._load_settings()
 
@@ -204,11 +250,29 @@ class GUI:
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
+        dpg.set_exit_callback(self._on_close)
+
+    def _on_exit(self) -> None:
+        dpg.start_dearpygui()
 
     def _setup_dearpygui(self) -> None:
         dpg.setup_dearpygui()
         dpg.show_viewport()
         dpg.render_dearpygui_frame()
+
+    def _update_viewport_title(self, name: Optional[str] = None) -> None:
+        if name is None:
+            name = self._reconstruction_name
+
+        self._reconstruction_name = name
+        if not self._reconstruction_name:
+            base_name = TTL_WINDOW_MAIN
+        else:
+            base_name = f"{TTL_WINDOW_MAIN} - {name}"
+            if self._unsaved_reconstruction_changes and name:
+                base_name += "*"
+
+        dpg.set_viewport_title(base_name)
 
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
@@ -233,6 +297,7 @@ class GUI:
             x_pos=self.application_config_manager.window_x,
             y_pos=self.application_config_manager.window_y,
             decorated=not self.application_config_manager.fullscreen,
+            disable_close=True,
         )
 
         if self.application_config_manager.fullscreen:
@@ -243,17 +308,31 @@ class GUI:
         color = self.theme.get_color(dpg.mvAll, dpg.mvThemeCol_WindowBg)
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
-        dpg.set_viewport_vsync(False)
 
     def _register_shortcuts(self) -> None:
         self.shortcut_manager.register(
-            ShortcutId.SAVE_CONFIGURATION,
+            ShortcutId.SAVE_RECONSTRUCTION,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
+            self._save_reconstruction,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.LOAD_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            self._load_reconstruction_with_confirmation,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.CLOSE_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            self._close_reconstruction_with_confirmation,
+        )
+        self.shortcut_manager.register(
+            ShortcutId.SAVE_CONFIGURATION,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
             self._save_config_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_L, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.SHIFT)),
             self._load_config_dialog,
         )
         self.shortcut_manager.register(
@@ -264,17 +343,7 @@ class GUI:
         self.shortcut_manager.register(
             ShortcutId.EXIT,
             Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
-            self._exit_application,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
-            self._close_reconstruction,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.LOAD_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
-            self._load_reconstruction_dialog,
+            self._on_close,
         )
         self.shortcut_manager.register(
             ShortcutId.RECONSTRUCT_FILE,
@@ -336,6 +405,13 @@ class GUI:
         self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
         self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
 
+        self.audio_device_manager.set_callbacks(
+            on_playback_error=self._on_playback_error,
+        )
+        self.reconstruction_manager.set_callbacks(
+            on_reconstruction_loaded=self._on_reconstruction_loaded,
+            on_reconstruction_closed=self._on_reconstruction_closed,
+        )
         self.regenerator.set_callbacks(
             on_regeneration_finished=self._on_reconstruction_updated,
         )
@@ -345,30 +421,32 @@ class GUI:
             on_directory_clicked=self._assign_directory_to_converter,
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._load_reconstruction,
+            on_load_reconstruction=self._load_reconstruction_with_confirmation,
             on_load_library=self._load_library,
             on_set_as_library_directory=self.advanced_settings_panel.change_library_directory,
             on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
             is_converter_running=self.converter_panel.is_converter_running,
         )
         self.library_panel.set_callbacks(
-            on_instruction_selected=self._on_instruction_selected,
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
+            on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(
+            load_reconstruction_with_confirmation=self._load_reconstruction_with_confirmation,
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
         self.instruction_panel.set_callbacks(
-            on_display_instruction_details=self.instruction_details_panel.display_instruction,
             on_clear_instruction_details=self.instruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
         )
+        self.instruction_details_panel.set_callbacks(
+            is_instruction_loaded=self.library_manager.get_current_instruction,
+            on_instruction_changed=self.instruction_panel.display_instruction,
+        )
         self.reconstruction_panel.set_callbacks(
             on_export_wav=self._export_reconstruction_wav_dialog,
-            on_display_reconstruction_details=self.reconstruction_details_panel.display_reconstruction,
-            on_clear_reconstruction_details=self.reconstruction_details_panel.clear_display,
             on_change_audio_state=self._update_menu,
         )
         self.reconstruction_details_panel.set_callbacks(
@@ -382,11 +460,14 @@ class GUI:
             on_load_directory=self.browser_panel.refresh,
             on_cancelled=self.browser_panel.refresh,
             generate_library=self._generate_library_if_not_loaded,
-            is_library_loaded=self.library_panel.is_loaded,
+            is_library_loaded=self.library_manager.is_library_loaded,
         )
 
     def _create_main_window(self) -> None:
-        with dpg.window(label=TTL_WINDOW_MAIN, tag=TAG_WINDOW_MAIN):
+        with dpg.window(
+            label=TTL_WINDOW_MAIN,
+            tag=TAG_WINDOW_MAIN,
+        ):
             self._create_menu_bar()
             self._create_tabs()
 
@@ -395,6 +476,25 @@ class GUI:
     def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
             with dpg.menu(label=LBL_MENU_GROUP_FILE):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.CLOSE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+                    label=LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+                    enabled=not self._is_reconstruction_loaded(),
+                )
+                dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_CONFIGURATION,
                     label=LBL_MENU_ITEM_FILE_SAVE_CONFIG,
@@ -414,18 +514,6 @@ class GUI:
                     label=LBL_MENU_ITEM_FILE_EXIT,
                 )
             with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION,
-                    enabled=not self._is_reconstruction_loaded(),
-                )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
@@ -499,10 +587,7 @@ class GUI:
             self.fps_theme.bind_to_item(TAG_MENU_TEXT_FPS)
 
     def _update_menu(self) -> None:
-        reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        self._update_reconstruction_menu_items()
         self._update_playback_menu_items()
         self._update_fullscreen_menu_item()
         self._update_advanced_settings_menu_item()
@@ -523,7 +608,7 @@ class GUI:
 
         current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
-            self.browser_panel.load_and_display_reconstruction(current_reconstruction)
+            self._load_reconstruction(current_reconstruction)
 
     def _create_main_tab(self) -> None:
         with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
@@ -694,7 +779,8 @@ class GUI:
             file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
-            dpg.add_file_extension(EXT_FILE_WAVE)
+            for extension in EXT_FILES_AUDIO:
+                dpg.add_file_extension(extension)
 
     def _reconstruct_directory_dialog(self) -> None:
         if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
@@ -723,6 +809,24 @@ class GUI:
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
+    def _load_reconstruction_with_confirmation(self, filepath: Optional[Path] = None) -> None:
+        def load_reconstruction() -> None:
+            if filepath is None:
+                self._load_reconstruction_dialog()
+            else:
+                self._load_reconstruction(filepath)
+
+        if self._is_reconstruction_unsaved():
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
+                MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+                on_confirm=load_reconstruction,
+                on_save=self._save_reconstruction,
+                ok_label=LBL_BUTTON_GLOBAL_DISCARD,
+            )
+        else:
+            load_reconstruction()
+
     def _show_config_status_dialog(self, message: str) -> None:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent)
@@ -733,21 +837,10 @@ class GUI:
             content=content,
         )
 
-    def _on_instruction_selected(
-        self,
-        generator_class_name: str,
-        instruction: InstructionUnion,
-        fragment: InstructionLibraryFragment[Any],
-        library_config: InstructionsLibraryConfig,
-    ) -> None:
+    def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
-            self._close_instruction()
-            self.instruction_panel.display_instruction(
-                generator_class_name,
-                instruction,
-                fragment,
-                library_config,
-            )
+            self.instruction_panel.display_instruction(instruction_data)
+            self.instruction_details_panel.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 
@@ -790,10 +883,10 @@ class GUI:
         return monitors[0] if monitors else None
 
     def _is_reconstruction_loaded(self) -> bool:
-        return self.reconstruction_panel.is_loaded()
+        return self.reconstruction_manager.is_reconstruction_loaded()
 
     def _is_library_loaded(self) -> bool:
-        return self.library_panel.is_loaded()
+        return self.library_manager.is_library_loaded()
 
     def _generate_library_if_not_loaded(self) -> None:
         if not self._is_library_loaded():
@@ -811,6 +904,7 @@ class GUI:
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
 
+    @concurrent(wait=True, method_bound=True)
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
         self.library_panel.load_library_file(filepath)
@@ -832,41 +926,119 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
+    @concurrent(wait=True, method_bound=True)
     def _load_reconstruction(self, filepath: Path) -> None:
-        self.browser_panel.load_and_display_reconstruction(filepath)
-        self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.browser_panel.lock()
+        try:
+            self.reconstruction_manager.load_reconstruction(filepath)
+        except FileNotFoundError as exception:
+            logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
+            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
+        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
+            logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+        except InvalidMetadataError as exception:
+            logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
+            show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
+        except InvalidReconstructionValuesError as exception:
+            logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES)
+        except InvalidReconstructionError as exception:
+            logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE)
+        except IncompatibleReconstructionVersionError as exception:
+            logger.error_with_traceback(
+                exception,
+                f"Incompatible reconstruction version: {exception.actual_version}"
+                f" != expected {exception.expected_version}",
+            )
+            show_error_dialog(
+                exception,
+                TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                    exception.actual_version,
+                    exception.expected_version,
+                ),
+            )
+        except Exception as exception:
+            logger.error_with_traceback(
+                exception, f"Unexpected error while loading reconstruction data from {filepath}"
+            )
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+        finally:
+            self.browser_panel.unlock()
+
+        logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
+
+    def _on_reconstruction_loaded(self) -> None:
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is None:
+            raise RuntimeError("No reconstruction is loaded after loading process")
+
+        self.audio_device_manager.stop()
+        if not reconstruction_data.reconstruction.audio_filepath.exists():
+            show_file_not_found_dialog(
+                reconstruction_data.reconstruction.audio_filepath,
+                MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+            )
+
+        filepath = reconstruction_data.filepath
+        self.config_manager.load_config(reconstruction_data.config)
+
+        self.reconstruction_details_panel.display_reconstruction()
+        self.reconstruction_panel.display_reconstruction()
         self.application_config_manager.set_current_reconstruction(filepath)
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
+        self._unsaved_reconstruction_changes = False
+        self._update_viewport_title(filepath.stem)
         self._update_menu()
+
+    def _on_playback_error(self, exception: Exception) -> None:
+        logger.error_with_traceback(exception, "Playback error occurred")
+        show_error_dialog(exception, MSG_AUDIO_PLAYBACK_ERROR)
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
+        self.application_config_manager.set_reconstruction_path(filepath.parent)
         self._load_reconstruction(filepath)
 
-    def _on_reconstruction_loaded(self, reconstruction_data: ReconstructionData) -> None:
-        self.regenerator.reconstruction_data = reconstruction_data
-        self.audio_device_manager.stop()
-        self._close_reconstruction()
-        self.reconstruction_panel.display_reconstruction(reconstruction_data)
-        self._update_menu()
-
-    def _on_reconstruction_updated(self, reconstruction_data: ReconstructionData) -> None:
-        self.reconstruction_panel.update_reconstruction(reconstruction_data)
+    def _on_reconstruction_updated(self) -> None:
+        self.reconstruction_panel.update_reconstruction()
+        self._unsaved_reconstruction_changes = True
+        self._update_viewport_title()
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self.browser_panel.refresh()
-        self.browser_panel.load_and_display_reconstruction(filepath)
-        self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
-        self._update_menu()
+        self._load_reconstruction_with_confirmation(filepath)
 
     def _close_instruction(self) -> None:
         self.instruction_panel.close_instruction()
         self._update_menu()
 
+    def _save_reconstruction(self) -> None:
+        self.reconstruction_manager.save_reconstruction()
+
+    def _close_reconstruction_with_confirmation(self) -> None:
+        if self._is_reconstruction_unsaved():
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
+                MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
+                on_confirm=self._close_reconstruction,
+                on_save=self._save_reconstruction,
+                ok_label=LBL_BUTTON_GLOBAL_CLOSE,
+            )
+        else:
+            self._close_reconstruction()
+
     def _close_reconstruction(self) -> None:
+        self.reconstruction_manager.close_reconstruction()
+
+    def _on_reconstruction_closed(self) -> None:
         self.reconstruction_panel.close_reconstruction()
+        self.reconstruction_details_panel.clear_display()
         self.application_config_manager.set_current_reconstruction(None)
+        self._unsaved_reconstruction_changes = False
         self._update_menu()
+        self._update_viewport_title("")
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)
@@ -940,9 +1112,68 @@ class GUI:
 
         return loaded and playing
 
+    def _show_confirmation_dialog(self, message: str, ok_label: str = LBL_BUTTON_GLOBAL_OK) -> None:
+        show_confirmation_dialog(
+            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            title=TTL_DIALOG_EXIT_CONFIRMATION,
+            message=message,
+            on_confirm=self._exit_application,
+            ok_label=ok_label,
+        )
+
+    def _show_save_confirmation_dialog(
+        self,
+        title: str,
+        message: str,
+        on_save: Callback,
+        on_confirm: Callback,
+        ok_label: str = LBL_BUTTON_GLOBAL_OK,
+    ) -> None:
+        show_save_confirmation_dialog(
+            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            title=title,
+            message=message,
+            on_save=on_save,
+            on_confirm=on_confirm,
+            ok_label=ok_label,
+        )
+
+    def _on_close(self) -> None:
+        if self._is_reconstruction_unsaved():
+            self._show_save_confirmation_dialog(
+                TTL_DIALOG_EXIT_CONFIRMATION,
+                MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+                on_save=self._save_reconstruction,
+                on_confirm=self._exit_application,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+            )
+        elif self._is_converter_running():
+            self._show_confirmation_dialog(
+                MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+            )
+        elif self._is_library_generating():
+            self._show_confirmation_dialog(
+                MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
+                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+            )
+        else:
+            self._exit_application()
+
+    def _is_converter_running(self) -> bool:
+        return self.converter_panel.is_converter_running()
+
+    def _is_library_generating(self) -> bool:
+        return self.library_panel.is_library_generating()
+
+    def _is_reconstruction_unsaved(self) -> bool:
+        return self._unsaved_reconstruction_changes
+
     def _exit_application(self) -> None:
-        if self.converter_panel and self.converter_panel.converter:
+        self.audio_device_manager.stop()
+        if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
+
         dpg.stop_dearpygui()
 
     def _enable_fullscreen(self) -> None:
@@ -1049,6 +1280,13 @@ class GUI:
     ) -> None:
         self.application_config_manager.toggle_autoplay()
         self._update_playback_menu_items()
+
+    def _update_reconstruction_menu_items(self) -> None:
+        reconstruction_loaded = self._is_reconstruction_loaded()
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION, enabled=reconstruction_loaded)
 
     def _update_playback_menu_items(self) -> None:
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())

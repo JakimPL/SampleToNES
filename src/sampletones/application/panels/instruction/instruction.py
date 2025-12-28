@@ -1,12 +1,10 @@
-from typing import Any, Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import InstructionsLibraryConfig
 from sampletones.exceptions import LibraryDisplayError
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import VoidCallback
 from sampletones.utils.logger import logger
 
@@ -30,10 +28,9 @@ from ...constants.instructions import (
 from ...elements.graphs.spectrum import GUISpectrumGraph
 from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
+from ...instruction.data import InstructionPanelData
 from ...player.data import AudioData
 from ..player import GUIAudioPlayerPanel
-
-OnDisplayInstructionDetailsCallback = Callable[[str, InstructionUnion, Optional[InstructionLibraryFragment[Any]]], None]
 
 
 class GUIInstructionPanel(GUIPanel):
@@ -44,7 +41,6 @@ class GUIInstructionPanel(GUIPanel):
         self.spectrum_display: GUISpectrumGraph
         self.library_config: Optional[InstructionsLibraryConfig] = None
 
-        self.on_display_instruction_details: Optional[OnDisplayInstructionDetailsCallback] = None
         self.on_clear_instruction_details: Optional[VoidCallback] = None
         self.on_change_audio_state: Optional[VoidCallback] = None
 
@@ -115,34 +111,28 @@ class GUIInstructionPanel(GUIPanel):
     def is_loaded(self) -> bool:
         return self.library_config is not None
 
-    def display_instruction(
-        self,
-        generator_class_name: str,
-        instruction: InstructionUnion,
-        fragment: InstructionLibraryFragment[Any],
-        library_config: InstructionsLibraryConfig,
-    ) -> None:
-        self.library_config = library_config
+    # TODO: move audio logic to the player panel
+    def display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
+        if instruction_data is None:
+            self.close_instruction()
+            return
+
+        self.library_config = instruction_data.config
+        fragment = instruction_data.fragment
 
         self.player_panel.disable()
-        self.call(self.on_display_instruction_details, generator_class_name, instruction, fragment)
+        sample_rate = self.library_config.sample_rate
+        frame_length = self.library_config.window_size
+        try:
+            self.waveform_display.load_library_fragment(fragment)
+            self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
+        except Exception as exception:
+            logger.error_with_traceback(exception, "Error while plotting library data")
+            self.player_panel.enable()
+            raise LibraryDisplayError("Could not display library data") from exception
 
-        if fragment:
-            sample_rate = library_config.sample_rate
-            frame_length = library_config.window_size
-            try:
-                self.waveform_display.load_library_fragment(fragment)
-                self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
-            except Exception as exception:
-                logger.error_with_traceback(exception, "Error while plotting library data")
-                self.player_panel.enable()
-                raise LibraryDisplayError("Could not display library data") from exception
-
-            audio_data = AudioData.from_library_fragment(fragment, sample_rate)
-            self.player_panel.load_audio_data(audio_data)
-        else:
-            self.call(self.on_clear_instruction_details)
-
+        audio_data = AudioData.from_library_fragment(fragment, sample_rate)
+        self.player_panel.load_audio_data(audio_data)
         self.player_panel.enable()
 
     def _on_player_position_changed(self, position: int) -> None:

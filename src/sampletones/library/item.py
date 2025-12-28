@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import cached_property
 from types import ModuleType
 from typing import Any, Generic, Self, Tuple
@@ -17,7 +19,7 @@ from sampletones.typehints import SerializedData
 from .fragment import InstructionLibraryFragment
 
 
-def _library_item(data: SerializedData) -> "LibraryItem[Any]":
+def _library_item(data: SerializedData) -> LibraryItem[Any]:
     return LibraryItem(**data)
 
 

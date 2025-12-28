@@ -2,6 +2,7 @@ from typing import Any
 
 import dearpygui.dearpygui as dpg
 
+from ..utils.dialogs import get_center
 from ..utils.dpg import dpg_delete_item
 from .panel import GUIPanel
 
@@ -9,8 +10,7 @@ from .panel import GUIPanel
 class GUIWindow(GUIPanel):
     def center(self) -> None:
         width, height = dpg.get_item_rect_size(self.tag)
-        x = (dpg.get_viewport_width() - width) / 2
-        y = (dpg.get_viewport_height() - height) / 2
+        x, y = get_center(width, height)
         dpg.set_item_pos(self.tag, [x, y])
 
     def show(self, *args: Any, **kwargs: Any) -> None:

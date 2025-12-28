@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from types import ModuleType
 from typing import Any, Dict, Generic, Self, Tuple
 
@@ -11,7 +13,7 @@ from .maps import INSTRUCTION_CLASS_MAP
 from .typehints import InstructionT
 
 
-def _instruction_data(data: SerializedData) -> "InstructionData[Any]":
+def _instruction_data(data: SerializedData) -> InstructionData[Any]:
     return InstructionData(**data)
 
 

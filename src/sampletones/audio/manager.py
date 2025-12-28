@@ -11,6 +11,7 @@ import pyaudio
 from sampletones.audio import load_audio
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
+from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
 from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
@@ -18,6 +19,8 @@ from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
 CHUNK_SIZE = 1024
+
+OnPlaybackErrorCallback = Callable[[PlaybackError], None]
 
 
 @contextlib.contextmanager
@@ -48,7 +51,7 @@ def _capture_stderr_to_logger() -> Generator[None, None, None]:
                 logger.warning(f"ALSA: {line.strip()}")
 
 
-class AudioDeviceManager:
+class AudioDeviceManager(CallbackMixin):
     def __init__(self) -> None:
         self._pyaudio: Optional[pyaudio.PyAudio] = None
         self._devices: Dict[int, AudioDevice] = {}
@@ -63,6 +66,8 @@ class AudioDeviceManager:
         self._position_callback: Optional[Callable[[int], None]] = None
         self._playback_thread: Optional[threading.Thread] = None
         self._stop_flag: bool = False
+
+        self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
 
         self.refresh_devices()
         self._initialize_default_device()
@@ -274,7 +279,9 @@ class AudioDeviceManager:
                 output_device_index=self._device_index,
             )
         except OSError as exception:
-            raise PlaybackError(f"Failed to open audio stream: {exception}") from exception
+            playback_error = PlaybackError(f"Failed to open audio stream: {exception}")
+            self.call(self.on_playback_error, playback_error)
+            raise playback_error from exception
 
         while not self._stop_flag and self._audio_data is not None:
             if self._paused:

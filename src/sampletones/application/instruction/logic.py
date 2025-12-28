@@ -1,8 +1,6 @@
 from typing import Any, List, Optional, Tuple, Union
 
 from sampletones.constants.general import DUTY_CYCLES, NOISE_PERIODS
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
 from sampletones.utils import hash_model, pitch_to_name
 
 from ..constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
@@ -26,22 +24,8 @@ from .table import InstructionTableData
 
 class InstructionDetailsLogic:
     def __init__(self) -> None:
-        self.current_data: Optional[InstructionPanelData] = None
-        self.current_hash: str = ""
-
-    def set_instruction_data(
-        self,
-        generator_class_name: str,
-        instruction: InstructionUnion,
-        fragment: Optional[InstructionLibraryFragment[Any]] = None,
-    ) -> InstructionPanelData:
-        self.current_data = InstructionPanelData(
-            generator_class_name=generator_class_name,
-            instruction=instruction,
-            fragment=fragment,
-        )
-        self.current_hash = hash_model(self.current_data)
-        return self.current_data
+        self._current_data: Optional[InstructionPanelData] = None
+        self._current_hash: str = ""
 
     def clear_data(self) -> None:
         self.current_data = None
@@ -150,3 +134,21 @@ class InstructionDetailsLogic:
             return f"[{', '.join(str(element) for element in value)}]"
 
         return str(value)
+
+    @property
+    def current_data(self) -> Optional[InstructionPanelData]:
+        return self._current_data
+
+    @current_data.setter
+    def current_data(self, instruction_data: Optional[InstructionPanelData]) -> None:
+        if instruction_data is None:
+            self._current_data = None
+            self._current_hash = ""
+            return
+
+        self._current_data = instruction_data
+        self._current_hash = hash_model(self._current_data)
+
+    @property
+    def current_hash(self) -> str:
+        return self._current_hash

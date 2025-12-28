@@ -28,10 +28,14 @@ TAG_DIALOG_GLOBAL_CONFIG_STATUS = "dialog_global_config_status"
 TAG_DIALOG_GLOBAL_FILE_NOT_FOUND = "dialog_global_file_not_found"
 TAG_DIALOG_GLOBAL_ERROR = "dialog_global_error"
 TAG_DIALOG_GLOBAL_PATH_MESSAGE = "dialog_global_path_message"
+TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION = "dialog_global_exit_confirmation"
+TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION = "dialog_global_close_unsaved_reconstruction"
+TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION = "dialog_global_load_unsaved_reconstruction"
 TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "menu_item_reconstruction_reconstruct_file"
 TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "menu_item_reconstruction_reconstruct_directory"
-TAG_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION = "menu_item_reconstruction_close_reconstruction"
-TAG_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION = "menu_item_reconstruction_load_reconstruction"
+TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION = "menu_item_reconstruction_save_reconstruction"
+TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION = "menu_item_reconstruction_load_reconstruction"
+TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION = "menu_item_reconstruction_close_reconstruction"
 TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV = "menu_item_reconstruction_export_reconstruction_wav"
 TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS = "menu_item_reconstruction_export_reconstruction_ftis"
 TAG_MENU_ITEM_VIEW_FULLSCREEN = "menu_item_view_fullscreen"
@@ -48,6 +52,8 @@ TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
 SUF_BUTTON = "_button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}_copy"
 SUF_BUTTON_OK = f"{SUF_BUTTON}_ok"
+SUF_BUTTON_SAVE = f"{SUF_BUTTON}_save"
+SUF_BUTTON_CANCEL = f"{SUF_BUTTON}_cancel"
 SUF_BUTTON_SEARCH = f"{SUF_BUTTON}_search"
 SUF_BUTTON_SHOW_TRACEBACK = f"{SUF_BUTTON}_show_traceback"
 SUF_GROUP = "_group"
@@ -70,6 +76,11 @@ SUF_TREE_SEARCH_INPUT = "_search_input"
 SUF_NODE_HANDLER = "_node_handler"
 
 LBL_BUTTON_GLOBAL_OK = "OK"
+LBL_BUTTON_GLOBAL_EXIT = "Exit"
+LBL_BUTTON_GLOBAL_DISCARD = "Discard"
+LBL_BUTTON_GLOBAL_CLOSE = "Close"
+LBL_BUTTON_GLOBAL_SAVE = "Save"
+LBL_BUTTON_GLOBAL_CANCEL = "Cancel"
 LBL_BUTTON_GLOBAL_COPIED = "Copied!"
 LBL_BUTTON_TRACEBACK_COPY = "Copy to clipboard"
 LBL_BUTTON_TRACEBACK_SHOW = "Show traceback"
@@ -92,10 +103,11 @@ LBL_MENU_ITEM_FILE_EXIT = "Exit"
 LBL_MENU_GROUP_RECONSTRUCTION = "Reconstruction"
 LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "Reconstruct file"
 LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
-LBL_MENU_ITEM_RECONSTRUCTION_CLOSE_RECONSTRUCTION = "Close reconstruction"
-LBL_MENU_ITEM_RECONSTRUCTION_LOAD_RECONSTRUCTION = "Load reconstruction"
-LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction as WAV"
-LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction as FTIs"
+LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION = "Save reconstruction"
+LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION = "Load reconstruction"
+LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION = "Close reconstruction"
+LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV = "Export reconstruction to WAV"
+LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS = "Export reconstruction to FTIs"
 LBL_MENU_GROUP_PLAYBACK = "Playback"
 LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START = "Play from start"
 LBL_MENU_ITEM_PLAYBACK_PLAY = "Play"
@@ -113,12 +125,25 @@ MSG_TREE_NO_RESULTS_FOUND = "No results found."
 MSG_GLOBAL_INVALID_METADATA_ERROR = "Invalid file metadata."
 MSG_GLOBAL_RECONSTRUCTION_NO_DATA = "No reconstruction loaded."
 MSG_GLOBAL_CONFIG_SAVE_FAILED = "Failed to save configuration."
+MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS = "A conversion is currently in progress. Are you sure you want to exit?"
+MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS = (
+    "Library generation is currently in progress. Are you sure you want to exit?"
+)
+MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION = (
+    "The current reconstruction has unsaved changes. Are you sure you want to exit?"
+)
+MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION = (
+    "The current reconstruction has unsaved changes. Are you sure you want to close it?"
+)
+MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION = (
+    "The current reconstruction has unsaved changes. Do you want to save it before loading a new one?"
+)
 MSG_CONFIGURATION_SAVED_SUCCESSFULLY = "Configuration saved successfully."
 MSG_CONFIGURATION_LOADED_SUCCESSFULLY = "Configuration loaded successfully."
 MSG_CONFIGURATION_SAVE_ERROR = "Error saving configuration."
 MSG_CONFIGURATION_LOAD_ERROR = "Error loading configuration."
 MSG_CONFIGURATION_INVALID_ERROR = "Invalid configuration file."
-
+MSG_AUDIO_PLAYBACK_ERROR = "Audio playback error"
 
 TTL_WINDOW_MAIN = "SampleToNES"
 TTL_DIALOG_SAVE_CONFIG = "Save configuration"
@@ -128,6 +153,9 @@ TTL_DIALOG_CONFIG_STATUS = "Configuration status"
 TTL_DIALOG_FILE_NOT_FOUND = "File not found"
 TTL_DIALOG_RECONSTRUCT_FILE = "Reconstruct file"
 TTL_DIALOG_RECONSTRUCT_DIRECTORY = "Reconstruct directory"
+TTL_DIALOG_EXIT_CONFIRMATION = "Exit"
+TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION = "Close reconstruction"
+TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION = "Load reconstruction"
 
 TPL_GLOBAL_TIME_ESTIMATION = " (ETA: {eta_string})"
 TPL_MENU_TEXT_FPS = "{fps:.0f} FPS"
@@ -142,10 +170,11 @@ DIM_DIALOG_HEIGHT_TRACEBACK = 400
 DIM_DIALOG_WIDTH_TRACEBACK = 0
 DIM_DIALOG_WIDTH_FILE = 720
 DIM_DIALOG_HEIGHT_FILE = 400
-DIM_DIALOG_WIDTH = 350
+DIM_DIALOG_WIDTH = 420
 DIM_DIALOG_HEIGHT = 0
 DIM_DIALOG_WIDTH_ERROR = 600
 DIM_DIALOG_HEIGHT_ERROR = 120
+DIM_DIALOG_WIDTH_WRAP = DIM_DIALOG_WIDTH - 10
 DIM_DIALOG_WIDTH_ERROR_WRAP = DIM_DIALOG_WIDTH_ERROR - 10
 DIM_INPUT_WIDTH = -180
 DIM_INPUT_WIDTH_SEARCH = -80
@@ -185,7 +214,7 @@ COL_TEXT_DEFAULT = (220, 220, 220, 255)
 COL_TEXT_DISABLED_DEFAULT = (130, 130, 130, 255)
 COL_TEXT_FILE_WAVE = (100, 200, 255, 255)
 COL_TEXT_FILE_LIBRARY = (150, 255, 150, 255)
-COL_TEXT_FILE_RECONSTRUCTION = (200, 200, 255, 255)
+COL_TEXT_FILE_RECONSTRUCTION = (180, 180, 255, 255)
 COL_TEXT_FILE_DIRECTORY_NOT_EXPANDED = (180, 180, 180, 255)
 COL_TEXT_FAVORITE = (255, 215, 110, 255)
 COL_TEXT_FAVORITE_CHILD = (231, 219, 183, 255)

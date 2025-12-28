@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Dict, Final, Literal
 
 
 class LibraryGeneratorName(StrEnum):
@@ -40,7 +41,7 @@ class AudioSourceType(StrEnum):
     ORIGINAL = "original"
 
 
-GENERATOR_ABBREVIATIONS = {
+GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",
     GeneratorName.TRIANGLE: "T",
@@ -48,7 +49,7 @@ GENERATOR_ABBREVIATIONS = {
 }
 
 
-DEFAULT_GENERATORS = [
+DEFAULT_GENERATORS: Final[list[GeneratorName]] = [
     GeneratorName.PULSE1,
     GeneratorName.TRIANGLE,
     GeneratorName.NOISE,

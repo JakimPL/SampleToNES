@@ -60,12 +60,6 @@ class Tree:
             return True
         return self._node_visibility.get(node, False)
 
-    def get_node_visibility_map(self) -> Dict[TreeNode, bool]:
-        return self._node_visibility.copy()
-
-    def get_filter_query(self) -> Optional[str]:
-        return self._filter_query
-
     def find_node(self, predicate: Callable[[TreeNode], bool]) -> Optional[TreeNode]:
         if not self.root:
             return None
@@ -81,12 +75,3 @@ class Tree:
         if self.is_filtered():
             return [leaf for leaf in leaves if self.is_node_visible(leaf)]
         return leaves
-
-    def collect_all_nodes(self) -> Sequence[TreeNode]:
-        if not self.root:
-            return []
-
-        nodes = list(PreOrderIter(self.root))
-        if self.is_filtered():
-            return [node for node in nodes if self.is_node_visible(node)]
-        return nodes

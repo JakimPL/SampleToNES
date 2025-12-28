@@ -13,18 +13,22 @@ class Instruction(DataModel):
 
     @property
     def name(self) -> str:
-        raise NotImplementedError("Subclasses must implement name property")
+        raise NotImplementedError("Subclasses must implement 'name' property")
 
     def distance(self, other: Self) -> float:
-        raise NotImplementedError("Subclasses must implement distance method")
+        raise NotImplementedError("Subclasses must implement 'distance' method")
 
     def __lt__(self, other: Self) -> bool:
-        raise NotImplementedError("Subclasses must implement __lt__ method")
+        raise NotImplementedError("Subclasses must implement '__lt__' method")
 
     @classmethod
     def null_instruction(cls) -> Self:
-        raise NotImplementedError("Subclasses must implement null_instruction method")
+        raise NotImplementedError("Subclasses must implement 'null_instruction' method")
+
+    @classmethod
+    def default_instruction(cls) -> Self:
+        raise NotImplementedError("Subclasses must implement 'default_instruction' method")
 
     @classmethod
     def class_name(cls) -> InstructionClassName:
-        raise NotImplementedError("Subclasses must implement class_name method")
+        raise NotImplementedError("Subclasses must implement 'class_name' method")

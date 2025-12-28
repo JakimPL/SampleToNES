@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, cast
 
@@ -23,7 +25,7 @@ class Features(BaseModel):
     def from_feature_map(
         cls,
         feature_map: FeatureMap,
-    ) -> "Features":
+    ) -> Features:
         return cls(
             initial_pitch=cast(int, feature_map[FeatureKey.INITIAL_PITCH]),
             volume=cast(np.ndarray, feature_map[FeatureKey.VOLUME]),

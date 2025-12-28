@@ -1,12 +1,13 @@
 import struct
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 
+from sampletones.typehints import Pathlike
+
 
 def write_fti(
-    filename: Union[str, Path],
+    filename: Pathlike,
     instrument_name: str,
     volume: Optional[np.ndarray] = None,
     arpeggio: Optional[np.ndarray] = None,

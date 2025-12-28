@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 import numpy as np
 
@@ -10,6 +10,7 @@ from sampletones.exceptions import NoLibraryDataError
 from sampletones.ffts import FragmentedAudio, Window
 from sampletones.generators import MIXER_LEVELS, GeneratorUnion, get_generators_by_names
 from sampletones.library import InstructionLibrary, InstructionLibraryData
+from sampletones.typehints import Pathlike
 from sampletones.utils import to_path
 
 from ..reconstruction.reconstruction import Reconstruction
@@ -51,7 +52,7 @@ class Reconstructor:
         self.window: Window = Window.from_config(self.config)
         self.library_data: InstructionLibraryData = self.load_library(library)
 
-    def __call__(self, path: Union[str, Path]) -> Optional[Reconstruction]:
+    def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
         if not isinstance(path, (str, Path)):
             raise TypeError("Input must be a path to an audio file.")
 

@@ -20,6 +20,7 @@ class ReconstructionData(BaseModel):
     reconstruction: Reconstruction
     original_audio: np.ndarray
     feature_data: FeatureData
+    filepath: Path
 
     @classmethod
     def load(cls, path: Path) -> Self:
@@ -47,6 +48,7 @@ class ReconstructionData(BaseModel):
             reconstruction=reconstruction,
             original_audio=original_audio,
             feature_data=feature_data,
+            filepath=path,
         )
 
     def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:

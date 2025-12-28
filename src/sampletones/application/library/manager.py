@@ -12,6 +12,7 @@ from sampletones.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
+from sampletones.instructions.typehints import InstructionUnion
 from sampletones.library import (
     InstructionLibrary,
     InstructionLibraryData,
@@ -20,48 +21,41 @@ from sampletones.library import (
 )
 from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
-from sampletones.tree import (
-    GeneratorNode,
-    GroupNode,
-    InstructionNode,
-    LibraryNode,
-    NodeType,
-    Tree,
-    TreeNode,
-)
+from sampletones.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
 from sampletones.typehints import VoidCallback
 from sampletones.utils import period_to_name, pitch_to_name, to_path
 from sampletones.utils.callbacks import CallbackMixin
 
+from ..config.manager import ConfigManager
 from ..constants.instructions import (
     LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
     LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
 )
+from ..instruction.data import InstructionPanelData
 
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
 
+OnGenerationProgressCallback = Callable[[TaskStatus, TaskProgress], None]
+OnGenerationErrorCallback = Callable[[Exception], None]
+
 
 class InstructionsLibraryManager(CallbackMixin):
-    def __init__(
-        self,
-        library_directory: Path,
-        on_generation_start: Optional[VoidCallback] = None,
-        on_completed: Optional[VoidCallback] = None,
-        on_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = None,
-        on_error: Optional[Callable[[Exception], None]] = None,
-        on_cancelled: Optional[VoidCallback] = None,
-    ) -> None:
+    def __init__(self, config_manager: ConfigManager) -> None:
+        self.config_manager = config_manager
+        library_directory = config_manager.get_library_directory()
         self.library = InstructionLibrary(directory=str(library_directory))
         self.library_files: Dict[InstructionLibraryKey, str] = {}
         self.current_library_key: Optional[InstructionLibraryKey] = None
+        self.current_instruction: Optional[InstructionPanelData] = None
+
         self.tree = Tree()
         self.creator: Optional[InstructionsLibraryCreator] = None
 
-        self.on_generation_start: Optional[VoidCallback] = on_generation_start
-        self.on_generation_completed: Optional[VoidCallback] = on_completed
-        self.on_generation_progress: Optional[Callable[[TaskStatus, TaskProgress], None]] = on_progress
-        self.on_generation_error: Optional[Callable[[Exception], None]] = on_error
-        self.on_generation_cancelled: Optional[VoidCallback] = on_cancelled
+        self.on_generation_start: Optional[VoidCallback] = None
+        self.on_generation_completed: Optional[VoidCallback] = None
+        self.on_generation_progress: Optional[OnGenerationProgressCallback] = None
+        self.on_generation_error: Optional[OnGenerationErrorCallback] = None
+        self.on_generation_cancelled: Optional[VoidCallback] = None
 
     def set_library_directory(self, directory: Path) -> None:
         self.library = InstructionLibrary(directory=str(directory))
@@ -91,7 +85,13 @@ class InstructionsLibraryManager(CallbackMixin):
     def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         return self.library_files.copy()
 
-    def is_library_loaded(self, library_key: InstructionLibraryKey) -> bool:
+    def is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        if library_key is None:
+            if self.current_library_key is None:
+                return False
+
+            library_key = self.current_library_key
+
         filepath = self.get_path(library_key)
         if not filepath.exists():
             return False
@@ -115,6 +115,24 @@ class InstructionsLibraryManager(CallbackMixin):
         self.library.load_data(library_key)
         self.current_library_key = library_key
         return library_key
+
+    def load_instruction(self, instruction: InstructionUnion) -> Optional[InstructionPanelData]:
+        if not self.current_library_key or not self.is_library_loaded(self.current_library_key):
+            return None
+
+        data = self.library.data[self.current_library_key]
+        fragment = data[instruction]
+        library_config = data.config
+        self.current_instruction = InstructionPanelData(
+            instruction=instruction,
+            config=library_config,
+            fragment=fragment,
+        )
+
+        return self.current_instruction
+
+    def get_current_instruction(self) -> Optional[InstructionPanelData]:
+        return self.current_instruction
 
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
         return self.library.get_path(library_key)
@@ -157,7 +175,6 @@ class InstructionsLibraryManager(CallbackMixin):
         return self.library.exists(key)
 
     def generate_library(self, config: Config, window: Window) -> None:
-        self.library = InstructionLibrary.from_config(config)
         self.creator = InstructionsLibraryCreator(config, window)
         self.creator.set_callbacks(
             on_start=self.on_generation_start,
@@ -310,42 +327,11 @@ class InstructionsLibraryManager(CallbackMixin):
             if not grouped_instructions:
                 continue
 
-            generator_node = GeneratorNode(
+            GeneratorNode(
                 generator_name.value.capitalize(),
                 generator_name=generator_name,
                 parent=parent,
             )
-
-            self._build_group_nodes(generator_name, grouped_instructions, generator_node)
-
-    def _build_group_nodes(
-        self,
-        generator_name: LibraryGeneratorName,
-        grouped_instructions: Dict[str, InstructionsList],
-        parent: TreeNode,
-    ) -> None:
-        generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
-        if not generator_class_name:
-            raise ValueError(f"No generator class name found for {generator_name}")
-
-        for group_key, instructions in grouped_instructions.items():
-            group_label = f"{group_key} ({len(instructions)} item(s))"
-            group_node = GroupNode(
-                group_label,
-                generator_name=generator_name,
-                group_key=group_key,
-                parent=parent,
-            )
-
-            for instruction, fragment in instructions:
-                InstructionNode(
-                    instruction.name,
-                    generator_name=generator_name,
-                    generator_class_name=generator_class_name,
-                    instruction=instruction,
-                    fragment=fragment,
-                    parent=group_node,
-                )
 
     def refresh_library_node(self, library_key: InstructionLibraryKey) -> None:
         if not self.tree.root:

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Final
 
 from sampletones.constants.enums import (
     GeneratorClassName,
@@ -18,13 +18,13 @@ from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
 from .typehints import GeneratorClass
 
-LIBRARY_GENERATOR_CLASS_MAP: Dict[LibraryGeneratorName, GeneratorClassName] = {
+LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {
     LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
     LibraryGeneratorName.TRIANGLE: GeneratorClassName.TRIANGLE_GENERATOR,
     LibraryGeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
 }
 
-GENERATOR_CLASSES: Dict[GeneratorName, GeneratorClass] = {
+GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorClass]] = {
     GeneratorName.PULSE1: PulseGenerator,
     GeneratorName.PULSE2: PulseGenerator,
     GeneratorName.TRIANGLE: TriangleGenerator,
@@ -32,27 +32,27 @@ GENERATOR_CLASSES: Dict[GeneratorName, GeneratorClass] = {
 }
 
 
-GENERATOR_CLASS_MAP: Dict[GeneratorClassName, GeneratorClass] = {
+GENERATOR_CLASS_MAP: Final[Dict[GeneratorClassName, GeneratorClass]] = {
     GeneratorClassName.PULSE_GENERATOR: PulseGenerator,
     GeneratorClassName.TRIANGLE_GENERATOR: TriangleGenerator,
     GeneratorClassName.NOISE_GENERATOR: NoiseGenerator,
 }
 
 
-INSTRUCTION_TO_GENERATOR_MAP: Dict[InstructionClass, GeneratorClass] = {
+INSTRUCTION_TO_GENERATOR_MAP: Final[Dict[InstructionClass, GeneratorClass]] = {
     PulseInstruction: PulseGenerator,
     TriangleInstruction: TriangleGenerator,
     NoiseInstruction: NoiseGenerator,
 }
 
-GENERATOR_TO_INSTRUCTION_MAP: Dict[GeneratorClass, InstructionClass] = {
+GENERATOR_TO_INSTRUCTION_MAP: Final[Dict[GeneratorClass, InstructionClass]] = {
     PulseGenerator: PulseInstruction,
     TriangleGenerator: TriangleInstruction,
     NoiseGenerator: NoiseInstruction,
 }
 
 
-MIXER_LEVELS: Dict[GeneratorClassName, float] = {
+MIXER_LEVELS: Final[Dict[GeneratorClassName, float]] = {
     GeneratorClassName.PULSE_GENERATOR: MIXER_PULSE,
     GeneratorClassName.TRIANGLE_GENERATOR: MIXER_TRIANGLE,
     GeneratorClassName.NOISE_GENERATOR: MIXER_NOISE,

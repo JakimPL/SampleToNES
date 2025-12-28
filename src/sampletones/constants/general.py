@@ -1,75 +1,90 @@
 # Global constants
 
-DEFAULT_SAMPLE_RATE = 44100
-MIN_SAMPLE_RATE = 8000
-MAX_SAMPLE_RATE = 192000
+from typing import Final, Tuple
 
-DEFAULT_CHANGE_RATE = 60  # NTSC frame rate
-MIN_CHANGE_RATE = 15
-MAX_CHANGE_RATE = 600
+DEFAULT_SAMPLE_RATE: Final[int] = 44100
+MIN_SAMPLE_RATE: Final[int] = 8000
+MAX_SAMPLE_RATE: Final[int] = 192000
+
+DEFAULT_CHANGE_RATE: Final[int] = 60  # NTSC frame rate
+MIN_CHANGE_RATE: Final[int] = 15
+MAX_CHANGE_RATE: Final[int] = 600
 
 # Pitches and frequencies
 
-APU_CLOCK = 1789773.0
-MIN_PITCH = 33
-MAX_PITCH = 119
-PITCH_RANGE = MAX_PITCH - MIN_PITCH
+APU_CLOCK: Final[float] = 1789773.0
+MIN_PITCH: Final[int] = 33
+MAX_PITCH: Final[int] = 119
+PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
-MIN_FREQUENCY = APU_CLOCK / 0x8000
-MAX_FREQUENCY = APU_CLOCK / 0x10
+MIN_FREQUENCY: Final[float] = APU_CLOCK / 0x8000
+MAX_FREQUENCY: Final[float] = APU_CLOCK / 0x10
 
-A4_FREQUENCY = 440.0
-A4_PITCH = 69
-NOTE_NAMES = ["C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-"]
+A4_FREQUENCY: Final[float] = 440.0
+A4_PITCH: Final[int] = 69
+NOTE_NAMES: Tuple[str, ...] = (
+    "C-",
+    "C#",
+    "D-",
+    "D#",
+    "E-",
+    "F-",
+    "F#",
+    "G-",
+    "G#",
+    "A-",
+    "A#",
+    "B-",
+)
 
 # Instruction parameters ranges
 
-MIN_VOLUME = 1
-MAX_VOLUME = 15
-VOLUME_RANGE = range(0, MAX_VOLUME + 1)
-MAX_DUTY_CYCLE = 3
+MIN_VOLUME: Final[int] = 1
+MAX_VOLUME: Final[int] = 15
+VOLUME_RANGE: Final[range] = range(0, MAX_VOLUME + 1)
+MAX_DUTY_CYCLE: Final[int] = 3
 
 # Audio import
 
-NORMALIZE = True
-QUANTIZE = True
-QUANTIZATION_LEVELS = 32
+NORMALIZE: Final[bool] = True
+QUANTIZE: Final[bool] = True
+QUANTIZATION_LEVELS: Final[int] = 32
 
 # Library creation
 
-MIN_SAMPLE_LENGTH = 0.05
-MAX_SAMPLE_LENGTH = 1.0
-LIBRARY_PHASES_PER_SAMPLE = 100
+MIN_SAMPLE_LENGTH: Final[float] = 0.05
+MAX_SAMPLE_LENGTH: Final[float] = 1.0
+LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 
 # Calculation methods
 
-TRANSFORMATION_GAMMA = 0
-MAX_TRANSFORMATION_GAMMA = 100
-FIND_BEST_PHASE = True
-FAST_DIFFERENCE = False
+TRANSFORMATION_GAMMA: Final[int] = 0
+MAX_TRANSFORMATION_GAMMA: Final[int] = 100
+FIND_BEST_PHASE: Final[bool] = True
+FAST_DIFFERENCE: Final[bool] = False
 
-RESET_PHASE = False
-FINAL_REGENERATION = True
-SPECTRAL_LOSS_WEIGHT = 0.80
-TEMPORAL_LOSS_WEIGHT = 0.20
+RESET_PHASE: Final[bool] = False
+FINAL_REGENERATION: Final[bool] = True
+SPECTRAL_LOSS_WEIGHT: Final[float] = 0.80
+TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
 
-BATCH_SIZE = 1024
-MAX_WORKERS = 6
+BATCH_SIZE: Final[int] = 1024
+MAX_WORKERS: Final[int] = 6
 
 # Channel-specific constants
 
 ## Pulse channel
 
-DUTY_CYCLES = [0.125, 0.25, 0.5, 0.75]
-DUTY_CYCLES_MAX_DEVIATION = 0.375
+DUTY_CYCLES: Final[Tuple[float, ...]] = (0.125, 0.25, 0.5, 0.75)
+DUTY_CYCLES_MAX_DEVIATION: Final[float] = 0.375
 
 ## Triangle channel
 
-TRIANGLE_OFFSET = 0.5
+TRIANGLE_OFFSET: Final[float] = 0.5
 
 ## Noise channel
 
-NOISE_PERIODS = [
+NOISE_PERIODS: Final[Tuple[int, ...]] = (
     4068,
     2034,
     1016,
@@ -86,20 +101,19 @@ NOISE_PERIODS = [
     16,
     8,
     4,
-]
-NUM_PERIODS = len(NOISE_PERIODS)
-MAX_PERIOD = NUM_PERIODS - 1
+)
+NUM_PERIODS: Final[int] = len(NOISE_PERIODS)
+MAX_PERIOD: Final[int] = NUM_PERIODS - 1
 
-NOISE_SHORT_PERIOD = 93.0
-NOISE_LONG_PERIOD = 32767.0
-
-MAX_LFSR = 0x7FFF
-MAX_LFSR_SHORT = 0x5D
+NOISE_SHORT_PERIOD: Final[float] = 93.0
+NOISE_LONG_PERIOD: Final[float] = 32767.0
+MAX_LFSR: Final[int] = 0x7FFF
+MAX_LFSR_SHORT: Final[int] = 0x5D
 
 # Mixer constants
 
-MIXER = 1.8
-MAX_MIXER = 5.0
-MIXER_PULSE = 0.26395226395226395
-MIXER_TRIANGLE = 0.2987012987012987
-MIXER_NOISE = 0.1733941733941734
+MIXER: Final[float] = 1.8
+MAX_MIXER: Final[float] = 5.0
+MIXER_PULSE: Final[float] = 0.26395226395226395
+MIXER_TRIANGLE: Final[float] = 0.2987012987012987
+MIXER_NOISE: Final[float] = 0.1733941733941734

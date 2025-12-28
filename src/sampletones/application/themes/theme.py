@@ -1,13 +1,6 @@
-from typing import (
-    Any,
-    Dict,
-    ItemsView,
-    KeysView,
-    Optional,
-    Tuple,
-    Union,
-    ValuesView,
-)
+from __future__ import annotations
+
+from typing import Any, Dict, ItemsView, KeysView, Optional, Tuple, Union, ValuesView
 
 import dearpygui.dearpygui as dpg
 
@@ -27,7 +20,7 @@ class Theme:
     def __init__(self) -> None:
         Theme.REGISTRY[self.tag] = self
 
-    def __new__(cls) -> "Theme":
+    def __new__(cls) -> Theme:
         if cls.tag in cls.REGISTRY:
             return cls.REGISTRY[cls.tag]
 

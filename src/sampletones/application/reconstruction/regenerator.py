@@ -11,13 +11,14 @@ from sampletones.utils.callbacks import CallbackMixin
 
 from ..utils.thread import concurrent
 from .data import ReconstructionData
+from .manager import ReconstructionManager
 
 OnRegenerationFinished = Callable[[ReconstructionData], None]
 
 
 class Regenerator(CallbackMixin):
-    def __init__(self) -> None:
-        self.reconstruction_data: Optional[ReconstructionData] = None
+    def __init__(self, reconstruction_manager: ReconstructionManager) -> None:
+        self.reconstruction_manager = reconstruction_manager
 
         self.on_regeneration_finished: Optional[OnRegenerationFinished] = None
 
@@ -39,10 +40,10 @@ class Regenerator(CallbackMixin):
 
         instructions = cast(List[InstructionUnion], exporter_class.from_features(features))
         generator = generator_class(config, generator_name)
-        audio = self._generate_generator_audio(generator, instructions)
+        audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        self.call(self.on_regeneration_finished, self.reconstruction_data)
+        self.call(self.on_regeneration_finished)
 
     def _generate_generator_audio(
         self,
@@ -50,3 +51,7 @@ class Regenerator(CallbackMixin):
         instructions: List[InstructionUnion],
     ) -> np.ndarray:
         return np.concatenate([generator(instruction, save=True) for instruction in instructions])  # type: ignore
+
+    @property
+    def reconstruction_data(self) -> Optional[ReconstructionData]:
+        return self.reconstruction_manager.current_reconstruction
