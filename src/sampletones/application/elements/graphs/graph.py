@@ -119,10 +119,10 @@ class GUIGraph(GUIPanel):
         self._update_display()
 
     def _update_ranges(self, layer: Layer) -> None:
-        x_data_min = layer.x_data.min()
-        x_data_max = layer.x_data.max()
-        y_data_min = layer.y_data.min()
-        y_data_max = layer.y_data.max()
+        x_data_min = layer.x_data.min() if len(layer.x_data) > 0 else VAL_MIN_GRAPH_DEFAULT_X
+        x_data_max = layer.x_data.max() if len(layer.x_data) > 0 else VAL_MAX_GRAPH_DEFAULT_X
+        y_data_min = layer.y_data.min() if len(layer.y_data) > 0 else VAL_MIN_GRAPH_DEFAULT_Y
+        y_data_max = layer.y_data.max() if len(layer.y_data) > 0 else VAL_MAX_GRAPH_DEFAULT_Y
         if self.x_range is None or self.y_range is None:
             self.x_range = (x_data_min, x_data_max)
             self.y_range = (y_data_min, y_data_max)
