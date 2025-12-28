@@ -285,12 +285,9 @@ class GUIExplorerPanel(GUITreePanel):
             match user_data.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
                     return self._schedule_autoplay(user_data)
-                case paths.EXT_FILE_WAVE:
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self.call(self.on_wave_file_clicked, user_data.filepath)
                     return self._schedule_autoplay(user_data)
-                case _:
-                    logger.warning(f"Unhandled file type clicked: {user_data.filepath.suffix.lower()}")
-                    return None
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(user_data)
@@ -308,7 +305,7 @@ class GUIExplorerPanel(GUITreePanel):
             match user_data.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(user_data)
-                case paths.EXT_FILE_WAVE:
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self._pending_autoplay_node = None
                     return self._reconstruct_file(user_data)
                 case paths.EXT_FILE_LIBRARY:
@@ -369,14 +366,14 @@ class GUIExplorerPanel(GUITreePanel):
 
         if self.application_config_manager.autoplay:
             match node.filepath.suffix.lower():
-                case paths.EXT_FILE_WAVE:
-                    self.audio_device_manager.play_file(node.filepath)
                 case paths.EXT_FILE_RECONSTRUCTION:
                     try:
                         reconstruction = Reconstruction.load(node.filepath)
                         self.audio_device_manager.play(reconstruction.approximation)
                     except Exception as error:
                         logger.error(f"Failed to autoplay reconstruction file: {error}")
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                    self.audio_device_manager.play_file(node.filepath)
 
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_node is not None:
@@ -432,7 +429,8 @@ class GUIExplorerPanel(GUITreePanel):
                         label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
                         callback=lambda: self._load_library(node),
                     )
-                case paths.EXT_FILE_WAVE:
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                    self.audio_device_manager.play_file(node.filepath)
                     dpg.add_menu_item(
                         label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
                         callback=lambda: self._context_reconstruct_file(node),

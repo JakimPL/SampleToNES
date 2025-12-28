@@ -5,7 +5,7 @@ from typing import Dict, List
 from sampletones.constants.paths import (
     EXT_FILE_LIBRARY,
     EXT_FILE_RECONSTRUCTION,
-    EXT_FILE_WAVE,
+    EXT_FILES_AUDIO,
 )
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 
@@ -82,7 +82,7 @@ class ExplorerManager:
                         )
                 elif entry_path.is_file():
                     if entry_path.suffix.lower() in [
-                        EXT_FILE_WAVE,
+                        *EXT_FILES_AUDIO,
                         EXT_FILE_LIBRARY,
                         EXT_FILE_RECONSTRUCTION,
                     ]:
@@ -108,7 +108,7 @@ class ExplorerManager:
                     return True
 
                 if entry_path.is_file() and entry_path.suffix.lower() in [
-                    EXT_FILE_WAVE,
+                    *EXT_FILES_AUDIO,
                     EXT_FILE_LIBRARY,
                     EXT_FILE_RECONSTRUCTION,
                 ]:

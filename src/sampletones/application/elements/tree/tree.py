@@ -364,7 +364,7 @@ class GUITreePanel(GUIPanel):
                     theme = ReconstructionFileNodeTheme()
                 case paths.EXT_FILE_LIBRARY:
                     theme = LibraryFileNodeTheme()
-                case paths.EXT_FILE_WAVE:
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
                     theme = WaveFileNodeTheme()
                 case _:
                     if has_favorite_ancestor:

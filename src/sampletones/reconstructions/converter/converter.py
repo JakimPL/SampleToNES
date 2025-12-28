@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants.paths import EXT_FILE_WAVE
+from sampletones.constants.paths import EXT_FILES_AUDIO
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger
@@ -45,7 +45,8 @@ class ReconstructionConverter(TaskProcessor[Path]):
         if self.is_file:
             return [(reconstructor, self.input_path, output_path)]
 
-        self.wav_files = list(self.input_path.rglob(f"*{EXT_FILE_WAVE}"))
+        pattern = f"*{'|*'.join(EXT_FILES_AUDIO)}"
+        self.wav_files = list(self.input_path.rglob(pattern))
         self.wav_files = filter_files(self.wav_files, self.input_path, output_path)
 
         arguments: List[Tuple[Reconstructor, Path, Path]] = []

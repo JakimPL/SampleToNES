@@ -10,7 +10,7 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
-    EXT_FILE_WAVE,
+    EXT_FILES_AUDIO,
 )
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
@@ -779,7 +779,8 @@ class GUI:
             file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
-            dpg.add_file_extension(EXT_FILE_WAVE)
+            for extension in EXT_FILES_AUDIO:
+                dpg.add_file_extension(extension)
 
     def _reconstruct_directory_dialog(self) -> None:
         if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
