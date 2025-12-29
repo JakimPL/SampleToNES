@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -20,6 +20,7 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.tree import GeneratorNode, LibraryNode, NodeType, TreeNode
+from sampletones.tree.traversal import TreeTraversal, traverse
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
@@ -73,6 +74,7 @@ from ...constants.main import TAG_PANEL_MAIN_CONVERTER
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager
 from ...utils.dialogs import (
@@ -336,12 +338,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library_and_set_current(library_key)
         self.update_status()
 
+    @traverse(TreeTraversal.DFS)
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
+        state: TreeNodeState,
         library_node: Optional[LibraryNode] = None,
-        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:
@@ -353,7 +355,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
             with dpg.tree_node(
                 label=node.name,
-                parent=parent,
+                parent=state.parent,
                 tag=node_tag,
                 leaf=True,
             ):
@@ -369,18 +371,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
-                parent=parent,
+                parent=state.parent,
                 default_open=should_expand,
                 leaf=isinstance(node, GeneratorNode),
             ):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 self._apply_node_theme(node_tag, node)
-                for child in node.children:
-                    self._build_tree_node(
-                        child,
-                        node_tag,
-                        library_node=library_node,
-                    )
 
             callback = (
                 self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
@@ -390,6 +386,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 node=node,
                 item_click_callback=callback,
             )
+
+        state.parent = node_tag
 
     def _on_generator_node_clicked(
         self,

@@ -2,9 +2,10 @@ from pathlib import Path
 from typing import List, Optional
 
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
-from sampletones.tree import FileSystemNode, NodeType, Tree
+from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 
 from ..config.manager import ConfigManager
+from ..constants.general import LBL_TREE_ROOT
 
 
 class BrowserManager:
@@ -23,25 +24,28 @@ class BrowserManager:
             self.tree.set_root(None)
             return
 
-        root = self._build_tree(self.output_directory)
-        self.tree.set_root(root)
+        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NodeType.ROOT)
+        for path in sorted(self.output_directory.iterdir()):
+            self._build_tree(path, parent=container_root)
 
-    def _build_tree(self, path: Path) -> Optional[FileSystemNode]:
+        self.tree.set_root(container_root)
+
+    def _build_tree(self, path: Path, parent: Optional[TreeNode] = None) -> Optional[FileSystemNode]:
         if not path.exists():
             return None
 
         if path.is_file():
             if path.suffix == EXT_FILE_RECONSTRUCTION:
-                return FileSystemNode(path.stem, filepath=path, node_type=NodeType.FILE)
+                return FileSystemNode(path.stem, filepath=path, node_type=NodeType.FILE, parent=parent)
             return None
 
         children_nodes = []
         for child_path in sorted(path.iterdir()):
-            child_node = self._build_tree(child_path)
+            child_node = self._build_tree(child_path, parent=parent)
             if child_node is not None:
                 children_nodes.append(child_node)
 
-        directory_node = FileSystemNode(path.name, filepath=path, node_type=NodeType.DIRECTORY)
+        directory_node = FileSystemNode(path.name, filepath=path, node_type=NodeType.DIRECTORY, parent=parent)
         for child_node in children_nodes:
             child_node.parent = directory_node
 

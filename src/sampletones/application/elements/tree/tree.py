@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -47,6 +47,7 @@ from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
 from ..panel import GUIPanel
 from .handler import Handler, ItemClickCallback
+from .state import TreeNodeState
 
 
 class GUITreePanel(GUIPanel):
@@ -93,8 +94,7 @@ class GUITreePanel(GUIPanel):
                 dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=root_tag)
             return
 
-        for child in root.children:
-            self._build_tree_node(child, root_tag)
+        self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
@@ -117,8 +117,7 @@ class GUITreePanel(GUIPanel):
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
-        **kwargs: Any,
+        state: TreeNodeState,
     ) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 

@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.tree import FileSystemNode, NodeType, TreeNode
+from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -29,6 +29,7 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
@@ -136,6 +137,7 @@ class GUIBrowserPanel(GUITreePanel):
             self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
+            self._handlers.clear()
             self.build_tree()
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
@@ -149,15 +151,13 @@ class GUIBrowserPanel(GUITreePanel):
 
         return bool(node.children)
 
+    @traverse(TreeTraversal.BFS)
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
-        has_favorite_ancestor: bool = False,
-        **kwargs: Any,
+        state: TreeNodeState,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-        self._handlers.clear()
         if node.node_type == NodeType.ROOT:
             return
 
@@ -165,22 +165,20 @@ class GUIBrowserPanel(GUITreePanel):
             return
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
-        has_favorite_ancestor |= is_favorite
+        state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
-                parent=parent,
+                parent=state.parent,
                 default_open=should_expand,
             ):
                 self._apply_node_theme(
                     node_tag,
                     node,
-                    has_favorite_ancestor=has_favorite_ancestor,
+                    has_favorite_ancestor=state.has_favorite_ancestor,
                 )
-                for child in node.children:
-                    self._build_tree_node(child, node_tag, has_favorite_ancestor)
 
             self._add_item_handler_registry(
                 node_tag=node_tag,
@@ -191,13 +189,13 @@ class GUIBrowserPanel(GUITreePanel):
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
-                parent=parent,
+                parent=state.parent,
                 leaf=True,
             ):
                 self._apply_node_theme(
                     node_tag,
                     node,
-                    has_favorite_ancestor=has_favorite_ancestor,
+                    has_favorite_ancestor=state.has_favorite_ancestor,
                 )
 
             self._add_item_handler_registry(
@@ -205,6 +203,8 @@ class GUIBrowserPanel(GUITreePanel):
                 node=node,
                 item_double_click_callback=self._on_reconstruction_node_clicked,
             )
+
+        state.parent = node_tag
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)

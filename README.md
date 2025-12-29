@@ -113,10 +113,10 @@ Within each waveform, each instruction data contains spectral information on the
 
 #### File format
 
-Instructions libraries are stored as `.dat` files in the user's documents folder, e.g.:
+Instructions libraries are stored as `.ins` files in the user's documents folder, e.g.:
 
 ```
-sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.dat
+sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
 ```
 
 The configuration is embedded in the file name:
@@ -171,7 +171,7 @@ For now, only `mixer` is present in the main application. Other values are exper
 
 All local files, that is:
 * configuration (`config.json`)
-* libraries (`.dat`)
+* instruction libraries (`.ins`)
 * reconstructions (`.json`)
 
 are stored in the default documents directory. The path depends on the operating system.

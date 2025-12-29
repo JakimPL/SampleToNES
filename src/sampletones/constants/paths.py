@@ -19,7 +19,7 @@ APPLICATION_CONFIG_PATH: Final[Path] = USER_PATH_CONFIG / "sampletones.yaml"
 # File extensions
 EXT_FILE_JSON: Final[str] = ".json"
 EXT_FILE_YAML: Final[str] = ".yaml"
-EXT_FILE_LIBRARY: Final[str] = ".dat"
+EXT_FILE_LIBRARY: Final[str] = ".ins"
 EXT_FILE_INSTRUMENT: Final[str] = ".fti"
 EXT_FILE_RECONSTRUCTION: Final[str] = ".stn"
 EXT_FILE_WAVE: Final[str] = ".wav"

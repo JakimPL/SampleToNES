@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.reconstructions import Reconstruction
-from sampletones.tree import FileSystemNode, NodeType, TreeNode
+from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
@@ -43,6 +43,7 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
@@ -180,10 +181,13 @@ class GUIExplorerPanel(GUITreePanel):
         dpg_delete_children(node_tag)
         if self.explorer_manager.is_directory_expanded(node.filepath):
             for child in node.children:
+                has_favorite_ancestor = self._is_node_favorite(node) or self._has_favorite_ancestor(child)
                 self._build_tree_node(
                     child,
-                    node_tag,
-                    has_favorite_ancestor=self._has_favorite_ancestor(child),
+                    TreeNodeState(
+                        parent=node_tag,
+                        has_favorite_ancestor=has_favorite_ancestor,
+                    ),
                 )
         else:
             dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
@@ -194,12 +198,11 @@ class GUIExplorerPanel(GUITreePanel):
                 leaf=True,
             )
 
+    @traverse(TreeTraversal.BFS)
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
-        has_favorite_ancestor: bool = False,
-        **kwargs: Any,
+        state: TreeNodeState,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:
@@ -209,14 +212,16 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
-        has_favorite_ancestor |= is_favorite
+        state.has_favorite_ancestor |= is_favorite
+
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
             is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+
             with dpg.tree_node(
                 label=node.name,
                 tag=node_tag,
-                parent=parent,
+                parent=state.parent,
                 default_open=should_expand,
                 open_on_arrow=False,
                 open_on_double_click=True,
@@ -224,24 +229,16 @@ class GUIExplorerPanel(GUITreePanel):
                 self._apply_node_theme(
                     node_tag,
                     node,
-                    has_favorite_ancestor=has_favorite_ancestor,
+                    has_favorite_ancestor=state.has_favorite_ancestor,
                     is_node_expanded=is_directory_expanded,
                 )
-
-                if self.explorer_manager.is_directory_expanded(node.filepath):
-                    for child in node.children:
-                        self._build_tree_node(
-                            child,
-                            node_tag,
-                            has_favorite_ancestor=has_favorite_ancestor,
-                        )
 
                 dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
                 dpg.add_tree_node(
                     label=LBL_MAIN_EXPLORER_NODE_DUMMY,
                     tag=dummy_node_tag,
                     parent=tree_node_tag,
-                    show=not self.explorer_manager.is_directory_expanded(node.filepath),
+                    show=not is_directory_expanded,
                 )
                 FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
 
@@ -250,17 +247,18 @@ class GUIExplorerPanel(GUITreePanel):
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
             )
+
         else:
             with dpg.tree_node(
                 label=node.name,
-                parent=parent,
+                parent=state.parent,
                 tag=node_tag,
                 leaf=True,
             ):
                 self._apply_node_theme(
                     node_tag,
                     node,
-                    has_favorite_ancestor=has_favorite_ancestor,
+                    has_favorite_ancestor=state.has_favorite_ancestor,
                 )
 
             self._add_item_handler_registry(
@@ -269,6 +267,8 @@ class GUIExplorerPanel(GUITreePanel):
                 item_click_callback=self._on_file_node_clicked,
                 item_double_click_callback=self._on_file_node_double_clicked,
             )
+
+        state.parent = node_tag
 
     def _on_file_node_clicked(
         self,

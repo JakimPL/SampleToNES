@@ -24,6 +24,7 @@ sampletones.exe
 *.log
 *.npy
 *.dat
+*.ins
 *.stn
 *.fti
 *.lock
