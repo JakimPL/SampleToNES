@@ -62,7 +62,12 @@ from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
 from ...utils.align import table_wrapper
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ...utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
+from ...utils.dpg import (
+    dpg_configure_item,
+    dpg_set_frame_callback,
+    dpg_set_item_callback,
+    dpg_set_value,
+)
 from ...utils.progress import SystemProgress
 
 
@@ -227,7 +232,7 @@ class GUIConverterPanel(GUIPanel):
     def _wait_for_library_and_start(self) -> None:
         if not self.call(self.is_library_loaded):
             dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
-            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
+            dpg_set_frame_callback(self._wait_for_library_and_start, 10)
         else:
             self._start_conversion()
 
@@ -371,7 +376,7 @@ class GUIConverterPanel(GUIPanel):
 
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
-        dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
+        dpg_set_frame_callback(self._on_close, 30)
         self.call(self.on_cancelled)
 
     def _reset_progress(self) -> None:
@@ -413,8 +418,7 @@ class GUIConverterPanel(GUIPanel):
         self.system_progress.error()
         self._rename_cancel_to_close()
         if isinstance(exception, NoFilesToProcessError):
-            dpg.set_frame_callback(
-                dpg.get_frame_count() + 1,
+            dpg_set_frame_callback(
                 lambda: show_info_dialog(
                     self.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_MAIN_CONVERTER_PROGRESS
                 ),

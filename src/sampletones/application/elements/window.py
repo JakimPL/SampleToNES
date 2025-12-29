@@ -3,7 +3,7 @@ from typing import Any
 import dearpygui.dearpygui as dpg
 
 from ..utils.dialogs import get_center
-from ..utils.dpg import dpg_delete_item
+from ..utils.dpg import dpg_delete_item, dpg_set_frame_callback
 from .panel import GUIPanel
 
 
@@ -17,7 +17,7 @@ class GUIWindow(GUIPanel):
         self.hide()
         self.prepare(*args, **kwargs)
         self.create_panel()
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, self.center)
+        dpg_set_frame_callback(self.center)
 
     def hide(self) -> None:
         dpg_delete_item(self.tag)

@@ -3,7 +3,7 @@ from typing import Any, Callable, Concatenate, Optional, ParamSpec, TypeVar, cas
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Callback, Sender
+from sampletones.typehints import Callback, Sender, VoidCallback
 
 from ..elements.button import GUIButton
 
@@ -80,3 +80,7 @@ def dpg_set_value(tag: Sender, value: Any, /, *args: Any, **kwargs: Any) -> None
 def dpg_is_item_hovered(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[bool]:
     is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
     return is_hovered
+
+
+def dpg_set_frame_callback(callback: VoidCallback, frame_count: int = 1) -> None:
+    dpg.set_frame_callback(dpg.get_frame_count() + frame_count, callback)

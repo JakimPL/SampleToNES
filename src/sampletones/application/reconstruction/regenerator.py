@@ -1,8 +1,8 @@
 from typing import Callable, List, Optional, cast
 
-import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones.application.utils.dpg import dpg_set_frame_callback
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
@@ -44,7 +44,7 @@ class Regenerator(CallbackMixin):
         audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self.call(self.on_regeneration_finished))
+        dpg_set_frame_callback(lambda: self.call(self.on_regeneration_finished))
 
     def _generate_generator_audio(
         self,

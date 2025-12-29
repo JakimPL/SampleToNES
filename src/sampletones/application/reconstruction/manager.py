@@ -1,14 +1,13 @@
 from pathlib import Path
 from typing import Optional
 
-import dearpygui.dearpygui as dpg
-
 from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
+from ..utils.dpg import dpg_set_frame_callback
 from .data import ReconstructionData
 from .feature import FeatureData
 
@@ -32,7 +31,7 @@ class ReconstructionManager(CallbackMixin):
 
         self._load_reconstruction_data(filepath)
         self._load_reconstruction_features()
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self.call(self.on_reconstruction_loaded))
+        dpg_set_frame_callback(lambda: self.call(self.on_reconstruction_loaded))
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
         self.current_reconstruction = ReconstructionData.load(filepath)
@@ -63,7 +62,7 @@ class ReconstructionManager(CallbackMixin):
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
-        self.call(self.on_reconstruction_closed)
+        dpg_set_frame_callback(lambda: self.call(self.on_reconstruction_closed))
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

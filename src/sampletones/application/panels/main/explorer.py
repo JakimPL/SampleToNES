@@ -46,7 +46,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_configure_item, dpg_delete_children
+from ...utils.dpg import dpg_configure_item, dpg_delete_children, dpg_set_frame_callback
 from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
@@ -354,7 +354,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node
-        dpg.set_frame_callback(dpg.get_frame_count() + 12, self._execute_autoplay)
+        dpg_set_frame_callback(self._execute_autoplay, 12)
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
