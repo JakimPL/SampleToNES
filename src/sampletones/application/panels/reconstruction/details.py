@@ -89,7 +89,6 @@ from ...utils.dpg import (
     dpg_configure_item,
     dpg_delete_children,
     dpg_delete_item,
-    dpg_is_item_hovered,
     dpg_set_value,
 )
 from ...utils.shortcuts.manager import ShortcutManager
@@ -546,7 +545,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._initial_pitch_change_object = None
 
     def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
-        if not dpg_is_item_hovered(self.tag):
+        tab = dpg.get_value(self.tab_bar_tag)
+        if not tab:
+            self.call(self.on_reconstruction_instrument_hovered, None)
+            return
+
+        tab_tag = dpg.get_item_alias(tab)
+        window_tag = self._get_window_tag(tab_tag)
+        if not tab_tag or (not dpg.is_item_hovered(tab_tag) and not dpg.is_item_hovered(window_tag)):
             self.call(self.on_reconstruction_instrument_hovered, None)
 
     def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:

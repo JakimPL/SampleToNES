@@ -11,25 +11,23 @@ class SingleThreadExecutor:
     def __init__(self) -> None:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        self._pending_task: Optional[VoidCallback] = None
 
     def execute(self, target: VoidCallback, wait: bool = True) -> bool:
         with self._lock:
+            self._pending_task = target
             current_thread = self._thread
 
         if current_thread is not None and current_thread.is_alive():
             if wait:
-                current_thread.join()
-            else:
-                return False
+                self._pending_task = target
+
+            return False
 
         with self._lock:
             self._thread = threading.Thread(target=target, daemon=True)
             self._thread.start()
             return True
-
-    def is_running(self) -> bool:
-        with self._lock:
-            return self._thread is not None and self._thread.is_alive()
 
 
 def concurrent(

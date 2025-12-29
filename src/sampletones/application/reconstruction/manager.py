@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Optional
 
+import dearpygui.dearpygui as dpg
+
 from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model
@@ -30,7 +32,7 @@ class ReconstructionManager(CallbackMixin):
 
         self._load_reconstruction_data(filepath)
         self._load_reconstruction_features()
-        self.call(self.on_reconstruction_loaded)
+        dpg.set_frame_callback(dpg.get_frame_count() + 1, lambda: self.call(self.on_reconstruction_loaded))
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
         self.current_reconstruction = ReconstructionData.load(filepath)
