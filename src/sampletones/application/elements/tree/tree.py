@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -118,6 +118,7 @@ class GUITreePanel(GUIPanel):
         self,
         node: TreeNode,
         state: TreeNodeState,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -164,12 +165,12 @@ class GUITreePanel(GUIPanel):
             if handler.item_click_callback is not None:
                 dpg.add_item_clicked_handler(
                     callback=handler.item_click_callback,
-                    user_data=handler.node,
+                    user_data=(handler.node, handler.parent),
                 )
             if handler.item_double_click_callback is not None:
                 dpg.add_item_double_clicked_handler(
                     callback=handler.item_double_click_callback,
-                    user_data=handler.node,
+                    user_data=(handler.node, handler.parent),
                 )
 
     def _bind_item_handler_registry(self, handler: Handler) -> None:

@@ -127,7 +127,7 @@ class GUIBrowserPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent(wait=False, method_bound=True)
+    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
@@ -138,7 +138,7 @@ class GUIBrowserPanel(GUITreePanel):
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self._handlers.clear()
-            self.build_tree()
+            # self.build_tree()
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:

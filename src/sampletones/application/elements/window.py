@@ -1,17 +1,13 @@
 from typing import Any
 
-import dearpygui.dearpygui as dpg
-
-from ..utils.dialogs import get_center
+from ..utils.dialogs import center_item
 from ..utils.dpg import dpg_delete_item, dpg_set_frame_callback
 from .panel import GUIPanel
 
 
 class GUIWindow(GUIPanel):
     def center(self) -> None:
-        width, height = dpg.get_item_rect_size(self.tag)
-        x, y = get_center(width, height)
-        dpg.set_item_pos(self.tag, [x, y])
+        center_item(self.tag, self.width, self.height)
 
     def show(self, *args: Any, **kwargs: Any) -> None:
         self.hide()

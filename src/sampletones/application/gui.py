@@ -163,7 +163,6 @@ from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
 from .utils.shortcuts.manager import ShortcutManager
 from .utils.shortcuts.shortcut import Shortcut, ShortcutId
-from .utils.thread import concurrent
 
 
 class GUI:
@@ -916,7 +915,6 @@ class GUI:
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
 
-    @concurrent(wait=True, method_bound=True)
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
         self.library_panel.load_library_file(filepath)
@@ -938,7 +936,6 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
-    @concurrent(wait=True, method_bound=True)
     def _load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.lock()
         try:

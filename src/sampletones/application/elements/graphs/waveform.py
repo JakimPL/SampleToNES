@@ -43,6 +43,7 @@ from ...utils.dpg import (
     dpg_configure_item,
     dpg_delete_children,
     dpg_delete_item,
+    dpg_set_frame_callback,
 )
 from ...utils.thread import concurrent
 from ..button import GUIButton
@@ -196,7 +197,6 @@ class GUIWaveformGraph(GUIGraph):
                 y2=[self.y_max, self.y_max],
             )
 
-    @concurrent(wait=True, method_bound=True)
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
@@ -266,7 +266,7 @@ class GUIWaveformGraph(GUIGraph):
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
         self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
         self.layers[LBL_GRAPH_WAVEFORM_ORIGINAL] = sample_layer
-        self._update_display()
+        dpg_set_frame_callback(self._update_display)
 
     def reconstruction_layer(self, data: np.ndarray, coefficient: float = 1.0) -> ArrayLayer:
         return ArrayLayer(
@@ -284,7 +284,6 @@ class GUIWaveformGraph(GUIGraph):
             line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
         )
 
-    @concurrent(wait=True, method_bound=True)
     def load_reconstruction_data(
         self,
         reconstruction_data: ReconstructionData,
@@ -304,11 +303,25 @@ class GUIWaveformGraph(GUIGraph):
 
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
+        dpg_set_frame_callback(
+            lambda: self._add_reconstruction_layers(
+                reconstruction_layer,
+                sample_layer,
+                original_audio,
+            )
+        )
+
+    def _add_reconstruction_layers(
+        self,
+        reconstruction_layer: ArrayLayer,
+        sample_layer: ArrayLayer,
+        original_audio: np.ndarray,
+    ) -> None:
         self.add_layer(reconstruction_layer)
         self.add_layer(sample_layer)
 
         self.x_min = 0.0
-        self.x_max = float(len(reconstruction_data.original_audio))
+        self.x_max = float(len(original_audio))
         self._update_axes_limits()
         self._update_position_indicator()
 

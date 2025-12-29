@@ -143,7 +143,7 @@ class GUIExplorerPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent(wait=False, method_bound=True)
+    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self.locked:
             return
@@ -159,7 +159,6 @@ class GUIExplorerPanel(GUITreePanel):
             self.unlock()
             self._assign_item_handler_registries()
 
-    @concurrent(wait=False, method_bound=True)
     def _rebuild_directory_node(self, node: FileSystemNode) -> None:
         if self.locked:
             return

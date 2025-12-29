@@ -192,12 +192,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def is_library_generating(self) -> bool:
         return self.library_manager.is_generating()
 
-    @concurrent(wait=False, method_bound=True)
+    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
 
-        self._building_tree = True
+        self.lock()
         try:
             self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
@@ -205,7 +205,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         except SystemError:
             logger.warning("Application failed during rebuilding the instructions library tree")
         finally:
-            self._building_tree = False
+            self.unlock()
             self._assign_item_handler_registries()
             self.update_status()
 
@@ -279,6 +279,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.update_status()
 
     # TODO: move the loading responsibility outside the panel
+    @concurrent(wait=False, method_bound=True)
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
         if self.locked:
             return
@@ -374,6 +375,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 parent=state.parent,
                 default_open=should_expand,
                 leaf=isinstance(node, GeneratorNode),
+                open_on_arrow=False,
+                open_on_double_click=True,
             ):
                 FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
                 self._apply_node_theme(node_tag, node)
@@ -393,7 +396,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: GeneratorNode,
+        user_data: Tuple[GeneratorNode, Sender],
     ) -> None:
         mouse_button, _ = app_data
         if mouse_button == dpg.mvMouseButton_Left:
@@ -406,14 +409,19 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: LibraryNode,
+        user_data: Tuple[LibraryNode, Sender],
     ) -> None:
         mouse_button, _ = app_data
+        node, tag = user_data
+        node_open = dpg.get_value(tag)
         if mouse_button == dpg.mvMouseButton_Left:
-            self._load_library_and_set_current(user_data.library_key)
+            if not node_open:
+                self._load_library_and_set_current(node.library_key)
+
+            dpg.set_value(tag, not node_open)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_library_context_menu(user_data)
+            return self._show_library_context_menu(node)
 
         return None
 
@@ -469,8 +477,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             load_if_needed=False,
             apply_config=True,
         )
-        self._rebuild_tree()
+
         self.call(self.on_apply_library_config, library_key)
+        if self.library_manager.current_library_key != library_key:
+            self._rebuild_tree()
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data

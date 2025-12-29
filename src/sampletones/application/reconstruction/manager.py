@@ -31,7 +31,7 @@ class ReconstructionManager(CallbackMixin):
 
         self._load_reconstruction_data(filepath)
         self._load_reconstruction_features()
-        dpg_set_frame_callback(lambda: self.call(self.on_reconstruction_loaded))
+        self.call(self.on_reconstruction_loaded)
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
         self.current_reconstruction = ReconstructionData.load(filepath)
