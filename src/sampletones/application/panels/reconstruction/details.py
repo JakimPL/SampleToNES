@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -25,6 +25,7 @@ from ...constants.general import (
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
+    SUF_GROUP,
     SUF_HANDLER_FOCUS,
     SUF_HANDLER_REGISTRY,
     SUF_INCREMENT,
@@ -40,8 +41,8 @@ from ...constants.general import (
 from ...constants.graphs import (
     DIM_BAR_PLOT_HEIGHT,
     DIM_BAR_PLOT_WIDTH,
+    SUF_GRAPH,
     SUF_GRAPH_RAW_DATA,
-    SUF_GRAPH_RAW_DATA_GROUP,
 )
 from ...constants.reconstructions import (
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
@@ -179,11 +180,23 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=False,
         )
 
-        with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag, show=True):
+        with dpg.tab_bar(tag=self.tab_bar_tag, parent=self.tag, show=False):
             self._create_tabs_for_generators()
 
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
         return f"{self.tab_bar_tag}_{generator_name}"
+
+    def _get_window_tag(self, tab_tag: str) -> str:
+        return f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
+
+    def _get_feature_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GROUP}"
+
+    def _get_feature_text_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_TEXT}"
+
+    def _get_feature_plot_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH}"
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_event_handler_tag):
@@ -219,15 +232,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _create_generator_tab(self, generator_name: GeneratorName) -> None:
         tab_tag = self._get_generator_tab_tag(generator_name)
-        window_tag = f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
+        window_tag = self._get_window_tag(tab_tag)
 
         with dpg.tab(
             label=generator_name,
             tag=tab_tag,
             parent=self.tab_bar_tag,
+            show=False,
         ):
             self.generator_plots[generator_name] = {}
-
             button_tag = f"{TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI}_{tab_tag}"
             GUIButton(
                 tag=button_tag,
@@ -246,18 +259,28 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 initial_pitch = MIN_PITCH if generator_name != GeneratorName.NOISE else MAX_PERIOD
                 self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
 
-                # feature_keys = [
-                #     key
-                #     for key in FEATURE_DISPLAY_ORDER
-                #     if key in generator_features.keys() and key in FEATURE_PLOT_CONFIGS
-                # ]
-
                 for feature_key in FEATURE_DISPLAY_ORDER:
-                    dpg.add_separator(parent=window_tag)
-                    feature_data_array = np.empty(0, dtype=np.int8)
-                    plot = self._create_feature_plot(generator_name, feature_key, feature_data_array, window_tag)
-                    if plot:
+                    feature_group_tag = self._get_feature_group_tag(generator_name, feature_key)
+                    with dpg.group(
+                        tag=feature_group_tag,
+                        parent=window_tag,
+                        show=False,
+                    ):
+                        dpg.add_separator(parent=window_tag)
+                        feature_data_array = np.empty(0, dtype=np.int8)
+                        plot = self._create_feature_plot(generator_name, feature_key, feature_data_array, window_tag)
                         self.generator_plots[generator_name][feature_key] = plot
+
+    def _update_initial_pitch(self, generator_name: GeneratorName, window_tag: str) -> None:
+        features = self._get_features(generator_name)
+        window_tag = self._get_window_tag(self._get_generator_tab_tag(generator_name))
+        initial_pitch = cast(int, features[FeatureKey.INITIAL_PITCH])
+        input_tag = f"{window_tag}{SUF_INPUT}"
+        value_tag = f"{input_tag}{SUF_TEXT}"
+
+        _, display_value = self._format_initial_pitch(generator_name, initial_pitch)
+        dpg_set_value(input_tag, display_value)
+        dpg_set_value(value_tag, initial_pitch)
 
     def _update_generator_plot(
         self,
@@ -282,14 +305,46 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             data,
         )
 
-    def _update_generator_tabs(self) -> None:
+    def update_display(self) -> None:
         feature_data = self.current_features
-        if feature_data is None:
+        clear = feature_data is None
+        dpg_configure_item(self.export_button_separator_tag, show=not clear)
+        dpg_configure_item(self.no_data_message_tag, show=clear)
+        dpg_configure_item(self.tab_bar_tag, show=not clear)
+        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=not clear, enabled=not clear)
+        dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=not clear)
+
+        if clear:
             return
 
         for generator_name in list(GeneratorName):
-            if generator_name not in feature_data.generators:
-                continue
+            if generator_name in feature_data.generators:
+                tab_tag = self._get_generator_tab_tag(generator_name)
+                generator_features = feature_data.get_generator_features(generator_name)
+                if generator_features is None:
+                    dpg_configure_item(tab_tag, show=False)
+                    continue
+
+                dpg_configure_item(tab_tag, show=True)
+                window_tag = self._get_window_tag(tab_tag)
+                self._update_initial_pitch(generator_name, window_tag)
+                feature_keys = [
+                    key
+                    for key in FEATURE_DISPLAY_ORDER
+                    if key in generator_features.keys() and key in FEATURE_PLOT_CONFIGS
+                ]
+                for key in FEATURE_DISPLAY_ORDER:
+                    feature_group_tag = self._get_feature_group_tag(generator_name, key)
+                    if key not in feature_keys:
+                        dpg_configure_item(feature_group_tag, show=False)
+                        continue
+
+                    dpg_configure_item(feature_group_tag, show=True)
+                    self._update_generator_plot(
+                        generator_name,
+                        key,
+                        cast(np.ndarray, generator_features.get(key)),
+                    )
 
     def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
         if generator_name == GeneratorName.NOISE:
@@ -571,13 +626,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         feature_key: FeatureKey,
         data: np.ndarray,
         parent: str,
-    ) -> Optional[GUIBarGraph]:
+    ) -> GUIBarGraph:
         config = FEATURE_PLOT_CONFIGS[feature_key]
-        plot_tag = f"{self.tag}_{self.reconstruction_hash}_{generator_name}_{feature_key}"
-
-        plot = self._add_bar_plot(plot_tag, parent, config, data, generator_name, feature_key)
-        self._add_raw_data_text(generator_name, feature_key, config, plot, plot_tag, parent, data)
-
+        plot = self._add_bar_plot(parent, config, data, generator_name, feature_key)
+        self._add_raw_data_text(parent, generator_name, feature_key, config, plot, data)
         return plot
 
     def _calculate_plot_limits(
@@ -602,13 +654,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _add_bar_plot(
         self,
-        plot_tag: str,
         parent: str,
         config: FeaturePlotConfig,
         data: np.ndarray,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
     ) -> GUIBarGraph:
+        plot_tag = self._get_feature_plot_tag(generator_name, feature_key)
         y_min, y_max, _ = self._calculate_plot_limits(config, data)
         plot = GUIBarGraph(
             tag=plot_tag,
@@ -623,7 +675,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self._graphs[plot_tag] = plot
         if data.size == 0:
-            dpg_configure_item(plot_tag, show=False)
             return plot
 
         self._configure_plot_data(
@@ -705,21 +756,19 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _add_raw_data_text(
         self,
+        parent: str,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
         config: FeaturePlotConfig,
         plot: GUIBarGraph,
-        plot_tag: str,
-        parent: str,
         data: np.ndarray,
     ) -> None:
+        text_group_tag = self._get_feature_text_tag(generator_name, feature_key)
         raw_data_text = self._format_data(data)
-        raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
-        copy_button_tag = f"{plot_tag}{SUF_BUTTON_COPY}"
-        group_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA_GROUP}"
+        raw_data_tag = f"{text_group_tag}{SUF_GRAPH_RAW_DATA}"
+        copy_button_tag = f"{text_group_tag}{SUF_BUTTON_COPY}"
 
-        show = data.size > 0
-        with dpg.group(tag=group_tag, parent=parent, horizontal=True, show=show):
+        with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
             GUIButton(
                 tag=copy_button_tag,
                 label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
@@ -796,19 +845,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
 
-    def display_reconstruction(self) -> None:
-        dpg_configure_item(self.no_data_message_tag, show=False)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=True, enabled=True)
-        self._update_generator_tabs()
-
-    def clear_display(self) -> None:
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=False, enabled=False)
-
-        self._clear_tabs()
-        dpg_configure_item(self.no_data_message_tag, show=True)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI, show=False)
-        dpg_configure_item(self.export_button_separator_tag, show=False)
-
     @property
     def current_features(self) -> Optional[FeatureData]:
         return self.reconstruction_manager.current_features
@@ -816,7 +852,3 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     @current_features.setter
     def current_features(self, value: Optional[FeatureData]) -> None:
         self.reconstruction_manager.current_features = value
-
-    @property
-    def reconstruction_hash(self) -> str:
-        return self.reconstruction_manager.reconstruction_hash

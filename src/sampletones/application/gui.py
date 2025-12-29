@@ -996,7 +996,7 @@ class GUI:
         filepath = reconstruction_data.filepath
         self.config_manager.load_config(reconstruction_data.config)
         self.reconstruction_panel.display_reconstruction()
-        self.reconstruction_details_panel.display_reconstruction()
+        self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(filepath)
 
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
@@ -1046,7 +1046,7 @@ class GUI:
 
     def _on_reconstruction_closed(self) -> None:
         self.reconstruction_panel.close_reconstruction()
-        self.reconstruction_details_panel.clear_display()
+        self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(None)
         self._unsaved_reconstruction_changes = False
         self._update_menu()
