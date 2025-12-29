@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
@@ -65,8 +65,8 @@ class Features(BaseModel):
     def __contains__(self, feature_key: FeatureKey) -> bool:
         return feature_key in self.feature_map and self.feature_map[feature_key] is not None
 
-    def get(self, feature_key: FeatureKey) -> Optional[FeatureValue]:
-        return self.feature_map.get(feature_key)
+    def get(self, feature_key: FeatureKey, default: Optional[Any] = None) -> Optional[FeatureValue]:
+        return self.feature_map.get(feature_key, default)
 
     def keys(self) -> List[FeatureKey]:
         return [key for key, value in self.feature_map.items() if value is not None]

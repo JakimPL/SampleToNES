@@ -192,8 +192,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _get_feature_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
         return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GROUP}"
 
-    def _get_feature_text_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
-        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_TEXT}"
+    def _get_feature_text_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
+        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH_RAW_DATA}"
+
+    def _get_feature_text_tag(self, text_group_tag: str) -> str:
+        return f"{text_group_tag}{SUF_TEXT}"
 
     def _get_feature_plot_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
         return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH}"
@@ -264,11 +267,15 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     with dpg.group(
                         tag=feature_group_tag,
                         parent=window_tag,
-                        show=False,
                     ):
                         dpg.add_separator(parent=window_tag)
                         feature_data_array = np.empty(0, dtype=np.int8)
-                        plot = self._create_feature_plot(generator_name, feature_key, feature_data_array, window_tag)
+                        plot = self._create_feature_display(
+                            generator_name,
+                            feature_key,
+                            feature_data_array,
+                            feature_group_tag,
+                        )
                         self.generator_plots[generator_name][feature_key] = plot
 
     def _update_initial_pitch(self, generator_name: GeneratorName, window_tag: str) -> None:
@@ -305,6 +312,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             data,
         )
 
+    def _update_raw_data_text(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        data: np.ndarray,
+    ) -> None:
+        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
+        raw_data_tag = self._get_feature_text_tag(text_group_tag)
+        raw_data_text = self._format_data(data)
+        dpg_set_value(raw_data_tag, raw_data_text)
+
     def update_display(self) -> None:
         feature_data = self.current_features
         clear = feature_data is None
@@ -318,33 +336,39 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         for generator_name in list(GeneratorName):
-            if generator_name in feature_data.generators:
-                tab_tag = self._get_generator_tab_tag(generator_name)
-                generator_features = feature_data.get_generator_features(generator_name)
-                if generator_features is None:
-                    dpg_configure_item(tab_tag, show=False)
+            tab_tag = self._get_generator_tab_tag(generator_name)
+            if generator_name not in feature_data.generators:
+                dpg_configure_item(tab_tag, show=False)
+                continue
+
+            dpg_configure_item(tab_tag, show=True)
+            generator_features = feature_data.get_generator_features(generator_name)
+            if generator_features is None:
+                dpg_configure_item(tab_tag, show=False)
+                continue
+
+            dpg_configure_item(tab_tag, show=True)
+            window_tag = self._get_window_tag(tab_tag)
+            self._update_initial_pitch(generator_name, window_tag)
+            for key in FEATURE_DISPLAY_ORDER:
+                if key == FeatureKey.INITIAL_PITCH:
                     continue
 
-                dpg_configure_item(tab_tag, show=True)
-                window_tag = self._get_window_tag(tab_tag)
-                self._update_initial_pitch(generator_name, window_tag)
-                feature_keys = [
-                    key
-                    for key in FEATURE_DISPLAY_ORDER
-                    if key in generator_features.keys() and key in FEATURE_PLOT_CONFIGS
-                ]
-                for key in FEATURE_DISPLAY_ORDER:
-                    feature_group_tag = self._get_feature_group_tag(generator_name, key)
-                    if key not in feature_keys:
-                        dpg_configure_item(feature_group_tag, show=False)
-                        continue
+                feature: Optional[np.ndarray] = cast(Optional[np.ndarray], generator_features.get(key))
+                if feature is None:
+                    feature = np.array([], dtype=np.int8)
 
-                    dpg_configure_item(feature_group_tag, show=True)
-                    self._update_generator_plot(
-                        generator_name,
-                        key,
-                        cast(np.ndarray, generator_features.get(key)),
-                    )
+                self._update_generator_plot(
+                    generator_name,
+                    key,
+                    feature,
+                )
+
+                self._update_raw_data_text(
+                    generator_name,
+                    key,
+                    feature,
+                )
 
     def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
         if generator_name == GeneratorName.NOISE:
@@ -620,7 +644,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             value_tag,
         )
 
-    def _create_feature_plot(
+    def _create_feature_display(
         self,
         generator_name: GeneratorName,
         feature_key: FeatureKey,
@@ -763,9 +787,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         plot: GUIBarGraph,
         data: np.ndarray,
     ) -> None:
-        text_group_tag = self._get_feature_text_tag(generator_name, feature_key)
+        text_group_tag = self._get_feature_text_group_tag(generator_name, feature_key)
         raw_data_text = self._format_data(data)
-        raw_data_tag = f"{text_group_tag}{SUF_GRAPH_RAW_DATA}"
+        raw_data_tag = self._get_feature_text_tag(text_group_tag)
         copy_button_tag = f"{text_group_tag}{SUF_BUTTON_COPY}"
 
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):

@@ -88,6 +88,6 @@ FEATURE_DISPLAY_ORDER: List[FeatureKey] = [
     FeatureKey.VOLUME,
     FeatureKey.ARPEGGIO,
     FeatureKey.PITCH,
-    FeatureKey.HI_PITCH,
-    FeatureKey.DUTY_CYCLE,
+    # FeatureKey.HI_PITCH,
+    # FeatureKey.DUTY_CYCLE,
 ]
