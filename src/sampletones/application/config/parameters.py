@@ -1,6 +1,11 @@
-from typing import Literal
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict
 
 
-class ConfigParameter:
-    tag: str
+class ConfigParameter(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str
     section: Literal["general", "library", "generation"]
+    default: Any

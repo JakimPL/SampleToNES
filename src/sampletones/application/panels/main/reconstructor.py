@@ -132,7 +132,7 @@ class GUIReconstructorPanel(GUIPanel):
 
         config = self.config_manager.config
         for tag, info in self.config_manager.config_parameters["reconstructor"].items():
-            section_name = info["section"]
+            section_name = info.section
             section = getattr(config, section_name)
             if hasattr(section, tag):
                 dpg.set_value(tag, getattr(section, tag))

@@ -1,6 +1,6 @@
 import platform
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sampletones.constants.paths import (
     EXT_FILE_LIBRARY,
@@ -24,8 +24,7 @@ class ExplorerManager:
 
         filesystems = self._get_filesystems()
         for filesystem_path in filesystems:
-            filesystem_node = self._create_directory_node(filesystem_path)
-            filesystem_node.parent = container_root
+            filesystem_node = self._create_directory_node(filesystem_path, parent=container_root)
 
             if self._is_ancestor_of_current(filesystem_path):
                 self._expand_path_to_current(filesystem_node)
@@ -35,11 +34,13 @@ class ExplorerManager:
     def _create_directory_node(
         self,
         directory_path: Path,
+        parent: Optional[TreeNode] = None,
     ) -> FileSystemNode:
         node = FileSystemNode(
             name=directory_path.name or str(directory_path),
             filepath=directory_path,
             node_type=NodeType.DIRECTORY,
+            parent=parent,
         )
 
         self._load_directory_children(node)

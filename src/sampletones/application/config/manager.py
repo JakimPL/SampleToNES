@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
+from sampletones.application.config.parameters import ConfigParameter
 from sampletones.configs import (
     Config,
     GeneralConfig,
@@ -52,19 +53,47 @@ class ConfigManager:
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
-        self.config_parameters = {
+        self.config_parameters: Dict[str, Dict[str, ConfigParameter]] = {
             "config": {
-                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
-                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
-                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
-                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
-                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
+                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: ConfigParameter(
+                    name="normalize",
+                    section="general",
+                    default=NORMALIZE,
+                ),
+                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: ConfigParameter(
+                    name="quantize",
+                    section="general",
+                    default=QUANTIZE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: ConfigParameter(
+                    name="sample_rate",
+                    section="library",
+                    default=DEFAULT_SAMPLE_RATE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: ConfigParameter(
+                    name="change_rate",
+                    section="library",
+                    default=DEFAULT_CHANGE_RATE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: ConfigParameter(
+                    name="transformation_gamma",
+                    section="library",
+                    default=TRANSFORMATION_GAMMA,
+                ),
             },
             "reconstructor": {
-                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
+                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: ConfigParameter(
+                    name="mixer",
+                    section="generation",
+                    default=MIXER,
+                ),
             },
             "advanced": {
-                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
+                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: ConfigParameter(
+                    name="max_workers",
+                    section="general",
+                    default=MAX_WORKERS,
+                ),
             },
         }
         self.generator_tags = {
@@ -151,8 +180,8 @@ class ConfigManager:
                 if value is None:
                     continue
 
-                section = str(info["section"])
-                config_data[section][tag] = value
+                section = str(info.section)
+                config_data[section][info.name] = value
 
         return config_data
 

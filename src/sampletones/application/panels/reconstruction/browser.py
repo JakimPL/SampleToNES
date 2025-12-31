@@ -138,7 +138,7 @@ class GUIBrowserPanel(GUITreePanel):
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self._handlers.clear()
-            # self.build_tree()
+            self.build_tree()
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
@@ -220,11 +220,12 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_directory_context_menu(user_data)
+            return self._show_directory_context_menu(node)
 
         return None
 
@@ -232,14 +233,15 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
+            self.call(self.load_reconstruction_with_confirmation, node.filepath)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            self._show_reconstruction_context_menu(user_data)
+            self._show_reconstruction_context_menu(node, node_tag)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -257,7 +259,7 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_separator()
             self._add_context_menu_favorite_item(node)
 
-    def _show_reconstruction_context_menu(self, node: FileSystemNode) -> None:
+    def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
@@ -274,7 +276,7 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_menu_item(
                 label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
                 callback=self._on_load_reconstruction,
-                user_data=node,
+                user_data=(node, node_tag),
             )
             dpg.add_separator()
             self._add_context_menu_favorite_item(node)

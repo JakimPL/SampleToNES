@@ -146,7 +146,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_status(self) -> None:
         dpg.add_separator()
-        dpg.add_text("", tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
+        text = dpg.add_text("", tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
+        FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS):
@@ -344,51 +345,34 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         node: TreeNode,
         state: TreeNodeState,
-        library_node: Optional[LibraryNode] = None,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:
             return
 
-        if node.node_type == NodeType.PLACEHOLDER:
-            if library_node is None:
-                return
+        if isinstance(node, LibraryNode):
+            state.special_node = node
 
-            with dpg.tree_node(
-                label=node.name,
-                parent=state.parent,
-                tag=node_tag,
-                leaf=True,
-            ):
-                self._apply_node_theme(node_tag, node)
-                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+        is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
+        should_expand = is_current or self._should_expand_node(node)
+        with dpg.tree_node(
+            label=node.name,
+            tag=node_tag,
+            parent=state.parent,
+            default_open=should_expand,
+            leaf=isinstance(node, GeneratorNode),
+            open_on_arrow=False,
+            open_on_double_click=True,
+        ):
+            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
+            self._apply_node_theme(node_tag, node)
 
-        elif isinstance(node, (LibraryNode, GeneratorNode)):
-            if isinstance(node, LibraryNode):
-                library_node = node
-
-            is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
-            should_expand = is_current or self._should_expand_node(node)
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
-                parent=state.parent,
-                default_open=should_expand,
-                leaf=isinstance(node, GeneratorNode),
-                open_on_arrow=False,
-                open_on_double_click=True,
-            ):
-                FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
-                self._apply_node_theme(node_tag, node)
-
-            callback = (
-                self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
-            )
-            self._add_item_handler_registry(
-                node_tag=node_tag,
-                node=node,
-                item_click_callback=callback,
-            )
+        callback = self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
+        self._add_item_handler_registry(
+            node_tag=node_tag,
+            node=node,
+            item_click_callback=callback,
+        )
 
         state.parent = node_tag
 
@@ -396,29 +380,29 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: Tuple[GeneratorNode, Sender],
+        user_data: Tuple[GeneratorNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.load_generator(user_data.generator_name)
+            self.load_generator(node.generator_name)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            self._show_generator_context_menu(user_data)
+            self._show_generator_context_menu(node)
 
     def _on_library_node_clicked(
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: Tuple[LibraryNode, Sender],
+        user_data: Tuple[LibraryNode, str],
     ) -> None:
         mouse_button, _ = app_data
         node, tag = user_data
         node_open = dpg.get_value(tag)
         if mouse_button == dpg.mvMouseButton_Left:
-            if not node_open:
-                self._load_library_and_set_current(node.library_key)
-
             dpg.set_value(tag, not node_open)
+            if node_open:
+                self._load_library_and_set_current(node.library_key)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_library_context_menu(node)

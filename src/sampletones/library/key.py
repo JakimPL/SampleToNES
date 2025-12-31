@@ -51,6 +51,5 @@ class InstructionLibraryKey(BaseModel):
             f"cr_{config.change_rate}_"
             f"ws_{window.size}_"
             f"tg_{config.transformation_gamma}_"
-            f"ch_{config_hash}."
-            f"{EXT_FILE_LIBRARY}"
+            f"ch_{config_hash}{EXT_FILE_LIBRARY}"
         )

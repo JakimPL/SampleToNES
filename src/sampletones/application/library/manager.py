@@ -2,16 +2,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
+from sampletones.constants.enums import LibraryGeneratorName
 from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.ffts import Window
-from sampletones.generators import LIBRARY_GENERATOR_CLASS_MAP
-from sampletones.instructions import (
-    Instruction,
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones.instructions import Instruction
 from sampletones.instructions.typehints import InstructionUnion
 from sampletones.library import (
     InstructionLibrary,
@@ -23,14 +17,11 @@ from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
 from sampletones.typehints import VoidCallback
-from sampletones.utils import period_to_name, pitch_to_name, to_path
+from sampletones.utils import to_path
 from sampletones.utils.callbacks import CallbackMixin
 
 from ..config.manager import ConfigManager
-from ..constants.instructions import (
-    LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES,
-    LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-)
+from ..constants.instructions import LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES
 from ..instruction.data import InstructionPanelData
 
 InstructionsList = List[Tuple[Instruction, InstructionLibraryFragment[Any]]]
@@ -140,30 +131,6 @@ class InstructionsLibraryManager(CallbackMixin):
     def get_library_data(self, library_key: InstructionLibraryKey) -> Optional[InstructionLibraryData]:
         return self.library.data.get(library_key)
 
-    def get_library_instructions_by_generator(
-        self, library_key: InstructionLibraryKey, generator_name: LibraryGeneratorName
-    ) -> Dict[str, InstructionsList]:
-        library_data = self.get_library_data(library_key)
-        if not library_data:
-            return {}
-
-        generator_class_name = LIBRARY_GENERATOR_CLASS_MAP.get(generator_name)
-        if not generator_class_name:
-            return {}
-
-        return self._parse_instructions_by_generator(library_data, generator_class_name)
-
-    def get_all_generator_instructions(
-        self,
-        library_key: InstructionLibraryKey,
-    ) -> Dict[LibraryGeneratorName, Dict[str, InstructionsList]]:
-        result = {}
-        for generator_name in LibraryGeneratorName:
-            instructions = self.get_library_instructions_by_generator(library_key, generator_name)
-            if instructions:
-                result[generator_name] = instructions
-        return result
-
     def sync_with_config_key(self, config_key: InstructionLibraryKey) -> Optional[InstructionLibraryKey]:
         if self.library_exists_for_key(config_key):
             self.current_library_key = config_key
@@ -264,35 +231,6 @@ class InstructionsLibraryManager(CallbackMixin):
         key = self.create_key_from_filename(filename)
         return self.get_display_name_from_key(key)
 
-    def _parse_instructions_by_generator(
-        self,
-        library_data: InstructionLibraryData,
-        generator_class_name: GeneratorClassName,
-    ) -> Dict[str, InstructionsList]:
-        generator_data = library_data.filter(generator_class_name)
-        if not generator_data:
-            return {}
-
-        instructions: Dict[str, InstructionsList] = {}
-        sorted_generator_data = dict(sorted(generator_data.items(), key=lambda item: item[0]))
-        for instruction, fragment in sorted_generator_data.items():
-            if not instruction.on:
-                continue
-
-            if isinstance(instruction, (PulseInstruction, TriangleInstruction)):
-                grouping_key = pitch_to_name(instruction.pitch)
-            elif isinstance(instruction, NoiseInstruction):
-                grouping_key = period_to_name(instruction.period)
-            else:
-                raise TypeError(f"Unsupported instruction type {type(instruction)} for grouping")
-
-            if grouping_key not in instructions:
-                instructions[grouping_key] = []
-
-            instructions[grouping_key].append((instruction, fragment))
-
-        return instructions
-
     def rebuild_tree(self) -> None:
         root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
 
@@ -304,29 +242,11 @@ class InstructionsLibraryManager(CallbackMixin):
     def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
         display_name = self.get_display_name_from_key(library_key)
         library_node = LibraryNode(display_name, library_key=library_key, parent=parent)
-
-        if self.is_library_loaded(library_key):
-            self._build_generator_nodes(library_key, library_node)
-        else:
-            self._create_placeholder_node(library_node)
-
+        self._build_generator_nodes(library_node)
         return library_node
 
-    def _create_placeholder_node(self, parent: LibraryNode) -> LibraryNode:
-        return LibraryNode(
-            LBL_NODE_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-            node_type=NodeType.PLACEHOLDER,
-            library_key=parent.library_key,
-            parent=parent,
-        )
-
-    def _build_generator_nodes(self, library_key: InstructionLibraryKey, parent: TreeNode) -> None:
+    def _build_generator_nodes(self, parent: TreeNode) -> None:
         for generator_name in LibraryGeneratorName:
-            grouped_instructions = self.get_library_instructions_by_generator(library_key, generator_name)
-
-            if not grouped_instructions:
-                continue
-
             GeneratorNode(
                 generator_name.value.capitalize(),
                 generator_name=generator_name,
@@ -345,7 +265,4 @@ class InstructionsLibraryManager(CallbackMixin):
             for child in list(library_node.children):
                 child.parent = None
 
-            if self.is_library_loaded(library_key):
-                self._build_generator_nodes(library_key, library_node)
-            else:
-                self._create_placeholder_node(library_node)
+            self._build_generator_nodes(library_node)

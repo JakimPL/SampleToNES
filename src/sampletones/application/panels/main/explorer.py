@@ -159,21 +159,20 @@ class GUIExplorerPanel(GUITreePanel):
             self.unlock()
             self._assign_item_handler_registries()
 
-    def _rebuild_directory_node(self, node: FileSystemNode) -> None:
+    def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
         if self.locked:
             return
 
         self.lock()
         try:
-            self._rebuild_node_subtree(node)
+            self._rebuild_node_subtree(node, node_tag)
         except SystemError:
             logger.warning("Application failed during rebuilding the file explorer tree")
         finally:
             self.unlock()
             self._assign_item_handler_registries()
 
-    def _rebuild_node_subtree(self, node: FileSystemNode) -> None:
-        node_tag = self._generate_node_tag(node)
+    def _rebuild_node_subtree(self, node: FileSystemNode, node_tag: str) -> None:
         if not dpg.does_item_exist(node_tag):
             return
 
@@ -273,19 +272,20 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, Sender],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            match user_data.filepath.suffix.lower():
+            match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return self._schedule_autoplay(user_data)
+                    return self._schedule_autoplay(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.call(self.on_wave_file_clicked, user_data.filepath)
-                    return self._schedule_autoplay(user_data)
+                    self.call(self.on_wave_file_clicked, node.filepath)
+                    return self._schedule_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_file_context_menu(user_data)
+            return self._show_file_context_menu(node)
 
         return None
 
@@ -293,18 +293,19 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, Sender],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            match user_data.filepath.suffix.lower():
+            match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    self._load_reconstruction(user_data)
+                    self._load_reconstruction(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self._pending_autoplay_node = None
-                    return self._reconstruct_file(user_data)
+                    return self._reconstruct_file(node)
                 case paths.EXT_FILE_LIBRARY:
-                    return self._load_library(user_data)
+                    return self._load_library(node)
 
         return None
 
@@ -312,23 +313,24 @@ class GUIExplorerPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            return self._directory_node_clicked(user_data)
+            return self._directory_node_clicked(node, node_tag)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_directory_context_menu(user_data)
+            return self._show_directory_context_menu(node)
 
         return None
 
-    def _directory_node_clicked(self, node: FileSystemNode) -> None:
+    def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)
         if not has_content:
             return
 
-        self._toggle_directory_expansion(node)
+        self._toggle_directory_expansion(node, node_tag)
         self.call(self.on_directory_clicked, node.filepath)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
@@ -384,11 +386,10 @@ class GUIExplorerPanel(GUITreePanel):
 
         self.call(self.on_reconstruct_file, node.filepath)
 
-    def _toggle_directory_expansion(self, node: FileSystemNode) -> None:
+    def _toggle_directory_expansion(self, node: FileSystemNode, node_tag: str) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
-        node_tag = self._generate_node_tag(node)
         if not dpg.does_item_exist(node_tag):
             return
 
@@ -396,7 +397,7 @@ class GUIExplorerPanel(GUITreePanel):
         state = dpg.get_value(node_tag)
         if not is_directory_expanded:
             self.explorer_manager.expand_directory(node)
-            self._rebuild_directory_node(node)
+            self._rebuild_directory_node(node, node_tag)
 
         dpg.set_value(node_tag, not state)
 

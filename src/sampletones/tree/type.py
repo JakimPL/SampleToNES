@@ -9,4 +9,3 @@ class NodeType(StrEnum):
     GROUP = "group"
     GENERATOR = "generator"
     INSTRUCTION = "instruction"
-    PLACEHOLDER = "placeholder"
