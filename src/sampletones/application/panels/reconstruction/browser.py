@@ -35,7 +35,6 @@ from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
 from ...utils.dpg import dpg_configure_item
-from ...utils.thread import concurrent
 
 OnLoadReconstructionCallback = Callable[[Path], None]
 OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
@@ -127,7 +126,6 @@ class GUIBrowserPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return

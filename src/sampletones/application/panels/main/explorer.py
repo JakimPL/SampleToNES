@@ -48,7 +48,6 @@ from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_configure_item, dpg_delete_children, dpg_set_frame_callback
-from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
 
@@ -143,7 +142,6 @@ class GUIExplorerPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
-    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self.locked:
             return

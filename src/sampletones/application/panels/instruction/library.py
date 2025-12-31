@@ -52,7 +52,6 @@ from ...constants.instructions import (
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
-    MSG_INSTRUCTIONS_LIBRARY_LOADING,
     MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
@@ -83,7 +82,6 @@ from ...utils.dialogs import (
     show_info_dialog,
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
-from ...utils.thread import concurrent
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
@@ -138,7 +136,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_controls()
             self._create_library_tree()
 
-        self._refresh_libraries()
+        self._refresh_libraries(load_if_needed=False)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_INSTRUCTIONS_LIBRARY_LIBRARIES)
@@ -193,7 +191,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def is_library_generating(self) -> bool:
         return self.library_manager.is_generating()
 
-    @concurrent(wait=False, method_bound=True)  # TODO: not thread safe
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
@@ -253,17 +250,21 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
         dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=enabled)
 
-    def _refresh_libraries(self) -> None:
+    def _refresh_libraries(self, load_if_needed: bool = True) -> None:
         self.library_manager.set_library_directory(self.config_manager.get_library_directory())
         self.library_manager.gather_available_libraries()
-        self._sync_with_config_key()
+        self._sync_with_config_key(load_if_needed=load_if_needed)
         self._rebuild_tree()
 
-    def _sync_with_config_key(self) -> None:
+    def _sync_with_config_key(self, load_if_needed: bool = True) -> None:
         config_key = self.config_manager.key
         matching_key = self.library_manager.sync_with_config_key(config_key)
         if matching_key:
-            self._set_current_library(matching_key, load_if_needed=True, apply_config=False)
+            self._set_current_library(
+                matching_key,
+                load_if_needed=load_if_needed,
+                apply_config=False,
+            )
 
     def _set_current_library(
         self,
@@ -456,19 +457,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         return node.library_key == self.library_manager.current_library_key
 
     def _load_library_and_set_current(self, library_key: InstructionLibraryKey) -> None:
-        self._load_library(library_key)
         self._set_current_library(
             library_key,
             load_if_needed=True,
             apply_config=True,
         )
-
-        self.call(self.on_apply_library_config, library_key)
-
-    def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
-        library_key = user_data
-        dpg.set_item_label(sender, MSG_INSTRUCTIONS_LIBRARY_LOADING)
-        self._load_library_and_set_current(library_key)
 
     def _on_load_generator(self, sender: Sender, app_data: bool, user_data: GeneratorNode) -> None:
         assert user_data.parent is not None, "Generator node parent is undefined"
@@ -504,6 +497,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         config = self.config_manager.config
         window = self.config_manager.window
+
         if not window:
             exception = WindowNotAvailableError(MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             logger.info("No FFT window available for library generation")
