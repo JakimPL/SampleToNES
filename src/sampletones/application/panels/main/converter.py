@@ -238,7 +238,7 @@ class GUIConverterPanel(GUIPanel):
 
     def _load_config(self) -> Optional[Config]:
         try:
-            return self.config_manager.get_config()
+            return self.config_manager.config
         except RuntimeError as exception:
             logger.error("Config not initialized")
             show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)

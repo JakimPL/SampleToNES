@@ -46,8 +46,9 @@ from ..utils.dialogs import show_error_dialog
 
 class ConfigManager:
     def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.config: Optional[Config] = None
-        self.window: Optional[Window] = None
+        self.config: Config
+        self.window: Window
+
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
@@ -146,8 +147,6 @@ class ConfigManager:
             show_error_dialog(exception, MSG_CONFIGURATION_SAVE_ERROR)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
-        assert self.config is not None, "Config must be loaded before updating from GUI values"
-
         self._update_generators_from_gui_values(gui_values)
         config_data = self._build_config_data_from_values(gui_values)
         config_data["generation"]["generators"] = self.generators
@@ -155,7 +154,6 @@ class ConfigManager:
         general_config_data = {**self.config.general.model_dump(), **config_data["general"]}
         library_config_data = {**self.config.library.model_dump(), **config_data["library"]}
         generation_config_data = {**self.config.generation.model_dump(), **config_data["generation"]}
-
         self.config = Config(
             general=GeneralConfig(**general_config_data),
             library=InstructionsLibraryConfig(**library_config_data),
@@ -191,30 +189,14 @@ class ConfigManager:
 
         self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values[tag]]
 
-    def get_config(self) -> Config:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
-        return self.config
-
-    def get_window(self) -> Window:
-        if self.window is None:
-            raise RuntimeError("Window is not loaded")
-        return self.window
-
     def get_library_directory(self) -> Path:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
     def get_output_directory(self) -> Path:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
 
     @property
     def key(self) -> InstructionLibraryKey:
-        if not self.config or not self.window:
-            raise RuntimeError("Library key is not available")
         return InstructionLibraryKey.create(self.config.library, self.window)
 
     def add_config_change_callback(self, callback: VoidCallback) -> None:

@@ -5,6 +5,7 @@ from sampletones.utils import hash_model, pitch_to_name
 
 from ..constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
 from ..constants.instructions import (
+    LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
     LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE,
     LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
     LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
@@ -26,6 +27,7 @@ class InstructionDetailsLogic:
     def __init__(self) -> None:
         self._current_data: Optional[InstructionPanelData] = None
         self._current_hash: str = ""
+        self._current_change_rate: Optional[int] = None
 
     def clear_data(self) -> None:
         self.current_data = None
@@ -47,9 +49,14 @@ class InstructionDetailsLogic:
             return []
 
         rows: List[TableCell] = []
-
         if self.current_data.fragment:
             fragment = self.current_data.fragment
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
+                    value=str(self._current_change_rate),
+                )
+            )
             rows.append(
                 TableCell(
                     label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
@@ -144,11 +151,17 @@ class InstructionDetailsLogic:
         if instruction_data is None:
             self._current_data = None
             self._current_hash = ""
+            self._current_change_rate = None
             return
 
         self._current_data = instruction_data
         self._current_hash = hash_model(self._current_data)
+        self._current_change_rate = instruction_data.config.change_rate
 
     @property
     def current_hash(self) -> str:
         return self._current_hash
+
+    @property
+    def current_change_rate(self) -> Optional[int]:
+        return self._current_change_rate

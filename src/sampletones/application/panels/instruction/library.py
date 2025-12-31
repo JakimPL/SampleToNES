@@ -280,7 +280,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.update_status()
 
     # TODO: move the loading responsibility outside the panel
-    @concurrent(wait=False, method_bound=True)
     def _load_library(self, library_key: InstructionLibraryKey) -> None:
         if self.locked:
             return
@@ -385,6 +384,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
+            assert node.parent is not None, "Generator node parent is undefined"
+            self._load_library_and_set_current(node.parent.library_key)
             self.load_generator(node.generator_name)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -401,7 +402,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         node_open = dpg.get_value(tag)
         if mouse_button == dpg.mvMouseButton_Left:
             dpg.set_value(tag, not node_open)
-            if node_open:
+            if not node_open:
                 self._load_library_and_set_current(node.library_key)
 
         if mouse_button == dpg.mvMouseButton_Right:
@@ -458,13 +459,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library(library_key)
         self._set_current_library(
             library_key,
-            load_if_needed=False,
+            load_if_needed=True,
             apply_config=True,
         )
 
         self.call(self.on_apply_library_config, library_key)
-        if self.library_manager.current_library_key != library_key:
-            self._rebuild_tree()
 
     def _on_load_library_clicked(self, sender: Sender, app_data: bool, user_data: InstructionLibraryKey) -> None:
         library_key = user_data
@@ -472,6 +471,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library_and_set_current(library_key)
 
     def _on_load_generator(self, sender: Sender, app_data: bool, user_data: GeneratorNode) -> None:
+        assert user_data.parent is not None, "Generator node parent is undefined"
+        self._load_library_and_set_current(user_data.parent.library_key)
         self.load_generator(user_data.generator_name)
 
     def load_generator(self, library_generator_name: LibraryGeneratorName) -> None:
@@ -501,8 +502,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if self.library_manager.is_generating():
             return
 
-        config = self.config_manager.get_config()
-        window = self.config_manager.get_window()
+        config = self.config_manager.config
+        window = self.config_manager.window
         if not window:
             exception = WindowNotAvailableError(MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE)
             logger.info("No FFT window available for library generation")
@@ -565,6 +566,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, "Library generation cancelled.")
 
     def _on_generation_start(self) -> None:
+        self.lock()
         assert self.library_manager.creator is not None, "Library manager creator is not initialized"
         self.eta_estimator = ETAEstimator(self.library_manager.creator.total_instructions)
 
@@ -576,6 +578,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
                 TTL_DIALOG_LIBRARY_GENERATION_STATUS,
             )
+
         self._finalize_generation()
 
     def _on_generation_error(self, exception: Exception) -> None:
@@ -591,14 +594,17 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._finalize_generation()
 
     def _finalize_generation(self) -> None:
-        self._set_current_library(
-            self.config_manager.key,
-            load_if_needed=True,
-            apply_config=False,
-        )
-        self._refresh_libraries()
-        self.library_manager.cleanup_creator()
-        self._restore_generation_panel()
+        try:
+            self._set_current_library(
+                self.config_manager.key,
+                load_if_needed=True,
+                apply_config=False,
+            )
+            self._refresh_libraries()
+            self.library_manager.cleanup_creator()
+            self._restore_generation_panel()
+        finally:
+            self.unlock()
 
     def _restore_generation_panel(self) -> None:
         dpg_configure_item(TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY, show=True)
@@ -606,9 +612,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, show=False)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
-        self.library_manager.cleanup_creator()
-        self._restore_generation_panel()
+        try:
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
+            self.library_manager.cleanup_creator()
+            self._restore_generation_panel()
+        finally:
+            self.unlock()
 
     def lock(self) -> None:
         self._set_tree_enabled(False)
