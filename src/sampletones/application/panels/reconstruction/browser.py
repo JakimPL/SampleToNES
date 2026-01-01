@@ -35,6 +35,7 @@ from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
 from ...utils.dpg import dpg_configure_item
+from ...utils.thread import concurrent
 
 OnLoadReconstructionCallback = Callable[[Path], None]
 OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
@@ -126,6 +127,7 @@ class GUIBrowserPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
@@ -136,7 +138,7 @@ class GUIBrowserPanel(GUITreePanel):
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self._handlers.clear()
-            self.build_tree()
+            # self.build_tree()
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:

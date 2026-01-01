@@ -180,8 +180,9 @@ class GUI:
         self.fps_timer: FPSTimer = FPSTimer()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
-            self.audio_device_manager,
+            self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
         )
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
             self.config_manager,

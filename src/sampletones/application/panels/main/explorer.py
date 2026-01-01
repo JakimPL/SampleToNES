@@ -11,6 +11,7 @@ from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
+from ...config.manager import ConfigManager
 from ...constants.general import (
     LBL_TREE_FILTER,
     SUF_PANEL_LEFT,
@@ -48,6 +49,7 @@ from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_configure_item, dpg_delete_children, dpg_set_frame_callback
+from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
 
@@ -55,10 +57,11 @@ OnReconstructPathCallback = Callable[[Path], None]
 class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
-        audio_device_manager: AudioDeviceManager,
+        config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
     ) -> None:
-        self.explorer_manager = ExplorerManager()
+        self.explorer_manager = ExplorerManager(config_manager)
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
 
@@ -142,6 +145,7 @@ class GUIExplorerPanel(GUITreePanel):
     def refresh(self) -> None:
         self._rebuild_tree()
 
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self.locked:
             return

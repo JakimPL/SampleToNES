@@ -82,6 +82,7 @@ from ...utils.dialogs import (
     show_info_dialog,
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.thread import concurrent
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
 OnApplyLibraryConfigCallback = Callable[[InstructionLibraryKey], None]
@@ -191,6 +192,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def is_library_generating(self) -> bool:
         return self.library_manager.is_generating()
 
+    @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
         if self._building_tree:
             return
