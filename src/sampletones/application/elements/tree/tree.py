@@ -42,8 +42,8 @@ from ...themes.nodes.library import (
     LibraryLibraryNodeTheme,
 )
 from ...themes.theme import Theme
+from ...utils.callbacks import CallbackQueueStop, queued
 from ...utils.dpg import dpg_delete_children, dpg_delete_item
-from ...utils.thread import concurrent
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
@@ -153,17 +153,20 @@ class GUITreePanel(GUIPanel):
 
         self._handlers.clear()
 
-    @concurrent(wait=False, method_bound=True)
     def _assign_item_handler_registries(self) -> None:
         for handler in self._new_handlers.values():
-            try:
-                self._create_item_handler_registry(handler)
-                self._bind_item_handler_registry(handler)
-            except SystemError:
-                logger.warning(f"Error assigning item handler registry '{handler.tag}'")
-                break
+            self._assign_item_handler_registry(handler)
 
         self._new_handlers.clear()
+
+    @queued
+    def _assign_item_handler_registry(self, handler: Handler) -> None:
+        try:
+            self._create_item_handler_registry(handler)
+            self._bind_item_handler_registry(handler)
+        except SystemError as exception:
+            logger.warning(f"Error assigning item handler registry '{handler.tag}'")
+            raise CallbackQueueStop(str(exception)) from exception
 
     def _create_item_handler_registry(self, handler: Handler) -> None:
         dpg_delete_item(handler.tag)

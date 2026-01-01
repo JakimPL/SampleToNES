@@ -359,9 +359,11 @@ class GUIWaveformGraph(GUIGraph):
 
         self._update_axes_limits()
 
-    def _update_axes_limits(self) -> None:
-        dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
-        dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        if x:
+            dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
+        if y:
+            dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
         position_x = float(self.current_position)
         dpg_configure_item(
@@ -393,17 +395,18 @@ class GUIWaveformGraph(GUIGraph):
 
     def _reset_x_axis(self) -> None:
         if self.layers:
-            max_length = max(len(layer.x_data) for layer in self.layers.values())
+            max_length = max(layer.x_data[-1] for layer in self.layers.values())
             self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = float(max_length)
         else:
             self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = VAL_MAX_GRAPH_DEFAULT_X
-        self._update_axes_limits()
+
+        self._update_axes_limits(y=False)
 
     def _reset_y_axis(self) -> None:
         self.y_min, self.y_max = self.default_y_range
-        self._update_axes_limits()
+        self._update_axes_limits(x=False)
 
     def _reset_all_axes(self) -> None:
         self._reset_x_axis()

@@ -6,7 +6,6 @@ from typing import Any, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
-from sampletones.application.elements.button import GUIButton
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
@@ -130,6 +129,7 @@ from .constants.reconstructions import (
     TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
+from .elements.button import GUIButton
 from .elements.fonts.registry import FontRegistry
 from .instruction.data import InstructionPanelData
 from .library.manager import InstructionsLibraryManager
@@ -154,6 +154,7 @@ from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
 from .themes.status import StatusBarTheme
+from .utils.callbacks import CallbackQueue
 from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
@@ -1373,11 +1374,15 @@ class GUI:
         _root.destroy()
         return window_width, window_height
 
+    def frame(self) -> None:
+        dpg.render_dearpygui_frame()
+        CallbackQueue.process()
+        self._update_fps()
+
     def run(self) -> None:
         try:
             while dpg.is_dearpygui_running():
-                dpg.render_dearpygui_frame()
-                self._update_fps()
+                self.frame()
         finally:
             if self.converter_panel and self.converter_panel.converter:
                 self.converter_panel.converter.cleanup()

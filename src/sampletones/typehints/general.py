@@ -16,7 +16,6 @@ Sender = Union[int, str]
 Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 
 Callback = Callable[..., Any]
-DPGCallback = Callable[[Sender, Any, Any], None]
 VoidCallback = Callable[[], None]
 
 Pathlike = Union[str, Path]

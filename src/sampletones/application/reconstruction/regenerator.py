@@ -2,7 +2,6 @@ from typing import Callable, List, Optional, cast
 
 import numpy as np
 
-from sampletones.application.utils.dpg import dpg_set_frame_callback
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
@@ -10,6 +9,7 @@ from sampletones.instructions import InstructionUnion
 from sampletones.typehints import FeatureValue
 from sampletones.utils.callbacks import CallbackMixin
 
+from ..utils.callbacks import CallbackQueue
 from ..utils.thread import concurrent
 from .data import ReconstructionData
 from .manager import ReconstructionManager
@@ -43,12 +43,8 @@ class Regenerator(CallbackMixin):
         generator = generator_class(config, generator_name)
         audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
-        def update_generator_data() -> None:
-            assert self.reconstruction_data is not None, "Reconstruction data should be available here."
-            self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-            self.call(self.on_regeneration_finished)
-
-        dpg_set_frame_callback(update_generator_data)
+        self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
+        CallbackQueue.add(lambda: self.call(self.on_regeneration_finished))
 
     def _generate_generator_audio(
         self,
