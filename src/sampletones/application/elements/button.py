@@ -49,6 +49,7 @@ class GUIButton:
                 **kwargs,
             )
 
+            theme.bind_to_item(self._tag)
             theme.bind_to_item(self._button_tag)
             FontRegistry.bind_to_item(self._button_tag, font)
 

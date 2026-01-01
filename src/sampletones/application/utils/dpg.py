@@ -96,5 +96,4 @@ def dpg_set_frame_callback(
     else:
         wrapper = callback
 
-    with dpg.mutex():
-        dpg.set_frame_callback(frame_count, wrapper)
+    dpg.set_frame_callback(frame_count, wrapper)

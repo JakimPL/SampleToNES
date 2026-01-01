@@ -32,6 +32,9 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_PopupBg, color=COL_BACKGROUND_MENU),
                 ThemeColor(key=dpg.mvThemeCol_MenuBarBg, color=COL_BACKGROUND_MENU),
             ],
+            ThemeParameter(item_type=dpg.mvMenuBar, enabled_state=True): [
+                ThemeColor(key=dpg.mvThemeCol_MenuBarBg, color=COL_BACKGROUND_MENU),
+            ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                 ThemeColor(key=dpg.mvThemeCol_Button, color=COL_BUTTON),
                 ThemeColor(key=dpg.mvThemeCol_ButtonHovered, color=COL_BUTTON_HOVERED),
@@ -57,6 +60,18 @@ class DefaultTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_TableRowBgAlt, color=COL_TABLE_BACKGROUND_ROW_ALTERNATIVE),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderStrong, color=COL_TABLE_BORDER),
                 ThemeColor(key=dpg.mvThemeCol_TableBorderLight, color=COL_TABLE_BORDER),
+            ],
+            ThemeParameter(item_type=dpg.mvRadioButton, enabled_state=True): [
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT),
+            ],
+            ThemeParameter(item_type=dpg.mvRadioButton, enabled_state=False): [
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DISABLED_DEFAULT),
+            ],
+            ThemeParameter(item_type=dpg.mvCheckbox, enabled_state=True): [
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT),
+            ],
+            ThemeParameter(item_type=dpg.mvCheckbox, enabled_state=False): [
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DISABLED_DEFAULT),
             ],
         }
     )

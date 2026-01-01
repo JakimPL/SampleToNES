@@ -151,7 +151,9 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_audio_source_radio_buttons(self) -> None:
         dpg.add_text(LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE)
         with dpg.group(
-            horizontal=True, parent=self.audio_tag, tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+            parent=self.audio_tag,
+            horizontal=True,
         ):
             radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
                 VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE

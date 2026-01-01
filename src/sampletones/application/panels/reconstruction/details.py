@@ -400,63 +400,78 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             dpg.add_table_column(
                 width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
                 width_fixed=True,
+                no_resize=True,
+                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
             )
             dpg.add_table_column(
                 width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
                 width_fixed=True,
+                no_resize=True,
+                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
             )
             dpg.add_table_column(width_stretch=True)
             dpg.add_table_column(
                 width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
                 width_fixed=True,
+                no_resize=True,
+                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
             )
             dpg.add_table_column(
                 width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
                 width_fixed=True,
+                no_resize=True,
+                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
             )
             with dpg.table_row():
-                dpg.add_text(label, tag=input_label_tag)
-                dpg.add_text(
-                    str(initial_pitch),
-                    tag=value_tag,
-                    color=COL_TEXT_DISABLED_DEFAULT,
-                )
-                dpg.add_input_text(
-                    tag=input_tag,
-                    default_value=display_value,
-                    width=-1,
-                    callback=self._validate_and_update_initial_pitch_input,
-                    on_enter=False,
-                    user_data=(
-                        generator_name,
-                        input_tag,
-                        value_tag,
-                    ),
-                )
-                GUIButton(
-                    label=VAL_CHARACTER_BUTTON_DECREMENT,
-                    tag=decrement_button_tag,
-                    width=DIM_BUTTON_INPUT_INT,
-                    callback=self._change_initial_pitch,
-                    user_data=(
-                        generator_name,
-                        input_tag,
-                        value_tag,
-                        -1,
-                    ),
-                )
-                GUIButton(
-                    label=VAL_CHARACTER_BUTTON_INCREMENT,
-                    tag=increment_button_tag,
-                    width=DIM_BUTTON_INPUT_INT,
-                    callback=self._change_initial_pitch,
-                    user_data=(
-                        generator_name,
-                        input_tag,
-                        value_tag,
-                        1,
-                    ),
-                )
+                with dpg.table_cell():
+                    dpg.add_text(label, tag=input_label_tag)
+                with dpg.table_cell():
+                    dpg.add_text(
+                        str(initial_pitch),
+                        tag=value_tag,
+                        color=COL_TEXT_DISABLED_DEFAULT,
+                    )
+                with dpg.table_cell():
+                    dpg.add_input_text(
+                        tag=input_tag,
+                        default_value=display_value,
+                        width=-1,
+                        callback=self._validate_and_update_initial_pitch_input,
+                        on_enter=False,
+                        user_data=(
+                            generator_name,
+                            input_tag,
+                            value_tag,
+                        ),
+                    )
+
+                with dpg.table_cell():
+                    GUIButton(
+                        label=VAL_CHARACTER_BUTTON_DECREMENT,
+                        tag=decrement_button_tag,
+                        width=DIM_BUTTON_INPUT_INT,
+                        callback=self._change_initial_pitch,
+                        user_data=(
+                            generator_name,
+                            input_tag,
+                            value_tag,
+                            -1,
+                        ),
+                    )
+
+                with dpg.table_cell():
+                    GUIButton(
+                        label=VAL_CHARACTER_BUTTON_INCREMENT,
+                        tag=increment_button_tag,
+                        width=DIM_BUTTON_INPUT_INT,
+                        callback=self._change_initial_pitch,
+                        user_data=(
+                            generator_name,
+                            input_tag,
+                            value_tag,
+                            1,
+                        ),
+                    )
 
         self.initial_pitch_theme.bind_to_item(table_tag)
         self._create_initial_pitch_tooltip(generator_name, input_tag)
@@ -614,7 +629,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> None:
         _, display_value = self._format_initial_pitch(generator_name, value)
         dpg_set_value(input_tag, display_value)
-        dpg_set_value(value_tag, value)
+        dpg_set_value(value_tag, str(value))
         self._on_initial_pitch_changed(generator_name, value)
 
     def _validate_and_update_initial_pitch_input(

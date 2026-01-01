@@ -43,9 +43,7 @@ from ...utils.dpg import (
     dpg_configure_item,
     dpg_delete_children,
     dpg_delete_item,
-    dpg_set_frame_callback,
 )
-from ...utils.thread import concurrent
 from ..button import GUIButton
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
@@ -244,7 +242,6 @@ class GUIWaveformGraph(GUIGraph):
 
         return approximation / coefficient, coefficient
 
-    @concurrent(wait=True, method_bound=True)
     def update_reconstruction_data(
         self,
         reconstruction_data: ReconstructionData,
@@ -266,7 +263,7 @@ class GUIWaveformGraph(GUIGraph):
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
         self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
         self.layers[LBL_GRAPH_WAVEFORM_ORIGINAL] = sample_layer
-        dpg_set_frame_callback(self._update_display)
+        self._update_display()
 
     def reconstruction_layer(self, data: np.ndarray, coefficient: float = 1.0) -> ArrayLayer:
         return ArrayLayer(

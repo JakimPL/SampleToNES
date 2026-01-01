@@ -43,8 +43,12 @@ class Regenerator(CallbackMixin):
         generator = generator_class(config, generator_name)
         audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
-        self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        dpg_set_frame_callback(lambda: self.call(self.on_regeneration_finished))
+        def update_generator_data() -> None:
+            assert self.reconstruction_data is not None, "Reconstruction data should be available here."
+            self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
+            self.call(self.on_regeneration_finished)
+
+        dpg_set_frame_callback(update_generator_data)
 
     def _generate_generator_audio(
         self,

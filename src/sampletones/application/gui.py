@@ -6,6 +6,7 @@ from typing import Any, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
+from sampletones.application.elements.button import GUIButton
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.paths import (
     EXT_FILE_JSON,
@@ -32,6 +33,7 @@ from .constants.general import (
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
     DIM_PANEL_WIDTH_LEFT,
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
+    DIM_STATUS_HEIGHT,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
     LBL_BUTTON_GLOBAL_CLOSE,
@@ -92,6 +94,8 @@ from .constants.general import (
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_TEXT_FPS,
+    TAG_STATUS_BAR,
+    TAG_STATUS_WINDOW,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
@@ -149,6 +153,7 @@ from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
+from .themes.status import StatusBarTheme
 from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
@@ -227,6 +232,7 @@ class GUI:
 
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
+        self.status_bar_theme = StatusBarTheme()
 
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
@@ -470,6 +476,7 @@ class GUI:
         ):
             self._create_menu_bar()
             self._create_tabs()
+            self._create_status_bar()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, VAL_WINDOW_PRIMARY)
 
@@ -593,10 +600,39 @@ class GUI:
         self._update_advanced_settings_menu_item()
 
     def _create_tabs(self) -> None:
-        with dpg.tab_bar(tag=TAG_TABS, callback=self._on_tab_changed):
-            self._create_main_tab()
-            self._create_reconstructions_tab()
-            self._create_instructions_tab()
+        with dpg.child_window(
+            height=-DIM_STATUS_HEIGHT,
+            border=False,
+        ):
+            with dpg.tab_bar(
+                tag=TAG_TABS,
+                callback=self._on_tab_changed,
+            ):
+                self._create_main_tab()
+                self._create_reconstructions_tab()
+                self._create_instructions_tab()
+
+    def _create_status_bar(self) -> None:
+        with dpg.child_window(
+            tag=TAG_STATUS_WINDOW,
+            parent=TAG_WINDOW_MAIN,
+            width=-1,
+            height=-1,
+            indent=0,
+            border=False,
+            menubar=True,
+        ):
+            with dpg.menu_bar():
+                GUIButton(
+                    label="",
+                    tag=TAG_STATUS_BAR,
+                    width=-1,
+                    enabled=False,
+                    theme=self.status_bar_theme,
+                    indent=0,
+                )
+
+            self.status_bar_theme.bind_to_item(TAG_STATUS_WINDOW)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
