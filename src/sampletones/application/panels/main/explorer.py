@@ -65,7 +65,6 @@ class GUIExplorerPanel(GUITreePanel):
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
 
-        self._building_tree: bool = False
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         self.on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
@@ -497,15 +496,3 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
         self.call(self.on_set_as_library_directory, node.filepath)
-
-    def lock(self) -> None:
-        self._set_tree_enabled(False)
-        self._building_tree = True
-
-    def unlock(self) -> None:
-        self._building_tree = False
-        self._set_tree_enabled(True)
-
-    @property
-    def locked(self) -> bool:
-        return self._building_tree

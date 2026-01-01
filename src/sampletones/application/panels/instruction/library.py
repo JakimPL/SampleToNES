@@ -107,9 +107,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             on_generation_cancelled=self._on_generation_cancelled,
         )
 
-        self._building_tree: bool = False
-        self._loading_instructions: bool = False
-
         self.eta_estimator: Optional[ETAEstimator] = None
 
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
@@ -194,7 +191,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._building_tree:
+        if self.locked:
             return
 
         self.lock()
@@ -614,15 +611,3 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._restore_generation_panel()
         finally:
             self.unlock()
-
-    def lock(self) -> None:
-        self._set_tree_enabled(False)
-        self._loading_instructions = True
-
-    def unlock(self) -> None:
-        self._loading_instructions = False
-        self._set_tree_enabled(True)
-
-    @property
-    def locked(self) -> bool:
-        return self._loading_instructions

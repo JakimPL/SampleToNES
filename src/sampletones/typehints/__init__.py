@@ -1,6 +1,7 @@
 from .general import (
     Callback,
     Color,
+    DPGCallback,
     FeatureMap,
     FeatureValue,
     Initials,
@@ -20,6 +21,7 @@ __all__ = [
     "Sender",
     "Color",
     "Callback",
+    "DPGCallback",
     "VoidCallback",
     "Pathlike",
 ]

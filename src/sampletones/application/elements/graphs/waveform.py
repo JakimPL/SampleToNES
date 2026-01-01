@@ -303,12 +303,10 @@ class GUIWaveformGraph(GUIGraph):
 
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
-        dpg_set_frame_callback(
-            lambda: self._add_reconstruction_layers(
-                reconstruction_layer,
-                sample_layer,
-                original_audio,
-            )
+        self._add_reconstruction_layers(
+            reconstruction_layer,
+            sample_layer,
+            original_audio,
         )
 
     def _add_reconstruction_layers(
@@ -322,8 +320,7 @@ class GUIWaveformGraph(GUIGraph):
 
         self.x_min = 0.0
         self.x_max = float(len(original_audio))
-        self._update_axes_limits()
-        self._update_position_indicator()
+        self._update_display()
 
     def clear(self) -> None:
         self.clear_layers()

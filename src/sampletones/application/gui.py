@@ -919,6 +919,7 @@ class GUI:
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
         self.library_panel.load_library_file(filepath)
+
         self.config_manager.update_gui()
         self._set_current_tab(TAG_TAB_INSTRUCTIONS)
         self._update_menu()

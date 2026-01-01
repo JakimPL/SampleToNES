@@ -1,3 +1,4 @@
+import threading
 from typing import Any, Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
@@ -42,6 +43,7 @@ from ...themes.nodes.library import (
 )
 from ...themes.theme import Theme
 from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ...utils.thread import concurrent
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
@@ -70,7 +72,10 @@ class GUITreePanel(GUIPanel):
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
-        self._building_tree: bool = False
+        self._lock_counter: int = 0
+        self._lock: bool = False
+        self._thread_lock = threading.RLock()
+
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
 
@@ -148,6 +153,7 @@ class GUITreePanel(GUIPanel):
 
         self._handlers.clear()
 
+    @concurrent(wait=False, method_bound=True)
     def _assign_item_handler_registries(self) -> None:
         for handler in self._new_handlers.values():
             try:
@@ -427,3 +433,25 @@ class GUITreePanel(GUIPanel):
     def _update_favorite_indicator(self, node: FileSystemNode) -> None:
         has_favorite_ancestor = self._has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
+
+    def _set_tree_enabled(self, enabled: bool) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def lock(self) -> None:
+        with self._thread_lock:
+            self._lock_counter += 1
+            self._lock = True
+            self._set_tree_enabled(False)
+
+    def unlock(self) -> None:
+        with self._thread_lock:
+            self._lock_counter -= 1
+            if self._lock_counter <= 0:
+                self._lock_counter = 0
+                self._lock = False
+                self._set_tree_enabled(True)
+
+    @property
+    def locked(self) -> bool:
+        with self._thread_lock:
+            return self._lock

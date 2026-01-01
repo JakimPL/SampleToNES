@@ -54,9 +54,6 @@ class GUIBrowserPanel(GUITreePanel):
         self.browser_manager = browser_manager
         self.reconstruction_manager = reconstruction_manager
 
-        self._building_tree: bool = False
-        self._loading_reconstruction: bool = False
-
         self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self.on_reconstruct_file: Optional[VoidCallback] = None
@@ -129,20 +126,20 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._building_tree:
+        if self._lock:
             return
 
-        self._building_tree = True
+        self.lock()
         try:
             self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self._handlers.clear()
-            # self.build_tree()
+            self.build_tree()
         except SystemError:
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
-            self._building_tree = False
+            self.unlock()
             self._assign_item_handler_registries()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
@@ -283,15 +280,3 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
         self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
-
-    def lock(self) -> None:
-        self._building_tree = True
-        self._set_tree_enabled(False)
-
-    def unlock(self) -> None:
-        self._building_tree = False
-        self._set_tree_enabled(True)
-
-    @property
-    def locked(self) -> bool:
-        return self._building_tree
