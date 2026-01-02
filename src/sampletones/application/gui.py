@@ -250,6 +250,7 @@ class GUI:
 
     def _setup_gui(self) -> None:
         dpg.create_context()
+        dpg_set_frame_callback(self._post_frame)
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
@@ -1386,7 +1387,8 @@ class GUI:
         try:
             while dpg.is_dearpygui_running():
                 self.frame()
-                dpg_set_frame_callback(self._post_frame)
+                self._post_frame()
+                # dpg_set_frame_callback(self._post_frame)
         except KeyboardInterrupt:
             return
         finally:

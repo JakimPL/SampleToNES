@@ -85,6 +85,7 @@ class GUITreePanel(GUIPanel):
         self._lock_counter: int = 0
         self._lock: bool = False
         self._thread_lock = threading.RLock()
+        self._handler_lock = threading.Lock()
 
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
@@ -174,8 +175,9 @@ class GUITreePanel(GUIPanel):
     @queued(priority=False)
     def _assign_item_handler_registry(self, handler: Handler) -> None:
         try:
-            self._create_item_handler_registry(handler)
-            self._bind_item_handler_registry(handler)
+            with self._handler_lock:
+                self._create_item_handler_registry(handler)
+                self._bind_item_handler_registry(handler)
         except SystemError as exception:
             logger.warning(f"Error assigning item handler registry '{handler.tag}'")
             raise CallbackQueueStop(str(exception)) from exception

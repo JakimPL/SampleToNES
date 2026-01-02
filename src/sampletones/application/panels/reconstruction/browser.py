@@ -259,7 +259,8 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.call(self.load_reconstruction_with_confirmation, node.filepath)
+            self._pending_autoplay_node = None
+            self._load_reconstruction(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -300,4 +301,8 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
-        self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
+        self._load_reconstruction(user_data)
+
+    def _load_reconstruction(self, node: FileSystemNode) -> None:
+        self._pending_autoplay_node = None
+        self.call(self.load_reconstruction_with_confirmation, node.filepath)

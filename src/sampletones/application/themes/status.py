@@ -16,7 +16,8 @@ class StatusBarTheme(Theme):
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvAll): [
-                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT),
+                ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
                 ThemeStyle(key=dpg.mvStyleVar_ButtonTextAlign, x=0.0, category=dpg.mvThemeCat_Core),
                 ThemeColor(key=dpg.mvThemeCol_Button, color=COL_BACKGROUND_MENU, category=dpg.mvThemeCat_Core),
                 ThemeColor(
@@ -28,8 +29,13 @@ class StatusBarTheme(Theme):
                 ThemeColor(key=dpg.mvThemeCol_FrameBg, color=COL_BACKGROUND_MENU, category=dpg.mvThemeCat_Core),
                 ThemeColor(key=dpg.mvThemeCol_WindowBg, color=COL_BACKGROUND_MENU, category=dpg.mvThemeCat_Core),
             ],
+            ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
+                ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
+                ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
+            ],
             ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
+                ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DEFAULT, category=dpg.mvThemeCat_Core),
                 ThemeStyle(key=dpg.mvStyleVar_ButtonTextAlign, x=0.0, category=dpg.mvThemeCat_Core),
                 ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=VAL_STATUS_FRAME_ROUNDING),
                 ThemeStyle(

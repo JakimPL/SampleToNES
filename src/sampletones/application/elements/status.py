@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Optional
 
 import dearpygui.dearpygui as dpg
@@ -13,6 +15,14 @@ from .button import GUIButton
 
 
 class GUIStatusBar:
+    _REGISTRY: Optional[GUIStatusBar] = None
+
+    def __new__(cls) -> GUIStatusBar:
+        if cls._REGISTRY is None:
+            cls._REGISTRY = super(GUIStatusBar, cls).__new__(cls)
+
+        return cls._REGISTRY
+
     def __init__(
         self,
         tag: str = TAG_STATUS_BAR,
@@ -53,3 +63,8 @@ class GUIStatusBar:
         else:
             self.message = ""
             self.timer = 0.0
+
+    @classmethod
+    def set(cls, message: str) -> None:
+        if cls._REGISTRY is not None:
+            cls._REGISTRY.update(message=message, delta_time=0.0)

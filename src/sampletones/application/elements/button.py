@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
@@ -12,7 +14,7 @@ from .fonts.registry import FontRegistry
 
 
 class GUIButton:
-    REGISTRY: Dict[str, "GUIButton"] = {}
+    _REGISTRY: Dict[str, GUIButton] = {}
 
     def __init__(
         self,
@@ -53,14 +55,14 @@ class GUIButton:
             theme.bind_to_item(self._button_tag)
             FontRegistry.bind_to_item(self._button_tag, font)
 
-        GUIButton.REGISTRY[tag] = self
+        GUIButton._REGISTRY[tag] = self
 
     @classmethod
     def delete(cls, tag: str) -> None:
-        if tag in cls.REGISTRY:
+        if tag in cls._REGISTRY:
             if dpg.does_item_exist(tag):
                 dpg.delete_item(tag)
-            del cls.REGISTRY[tag]
+            del cls._REGISTRY[tag]
 
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(self._tag, enabled=enabled)
@@ -91,8 +93,8 @@ class GUIButton:
     def delete_item(self) -> None:
         dpg.delete_item(self._button_tag)
         dpg.delete_item(self._tag)
-        if self._tag in GUIButton.REGISTRY:
-            del GUIButton.REGISTRY[self._tag]
+        if self._tag in GUIButton._REGISTRY:
+            del GUIButton._REGISTRY[self._tag]
 
     def is_item_hovered(self) -> Optional[bool]:
         return dpg.is_item_hovered(self._button_tag)
