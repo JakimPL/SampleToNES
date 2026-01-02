@@ -5,8 +5,9 @@ from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Pathlike, Sender
+from sampletones.typehints import Pathlike, Sender, VoidCallback
 from sampletones.utils import get_directory, shorten_path, to_path
+from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.general import (
     COL_PATH_TEXT,
@@ -21,7 +22,7 @@ from ..utils.dpg import dpg_delete_item, dpg_set_frame_callback, dpg_set_value
 from ..utils.tooltip import show_tooltip
 
 
-class GUIPathText:
+class GUIPathText(CallbackMixin):
     def __init__(
         self,
         tag: str,
@@ -47,6 +48,8 @@ class GUIPathText:
         self.label_tag = f"{tag}{SUF_LABEL}"
         self.handler_tag = f"{tag}{SUF_PATH_HANDLER}"
         self.group_tag = f"{tag}{SUF_GROUP}"
+
+        self.on_item_hovered: Optional[VoidCallback] = None
 
         self._create_text()
         self._create_handler()
@@ -96,6 +99,7 @@ class GUIPathText:
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
                 dpg_set_frame_callback(self._check_hover_state)
+                self.call(self.on_item_hovered)
             else:
                 dpg.configure_item(self.tag, color=self.color)
 

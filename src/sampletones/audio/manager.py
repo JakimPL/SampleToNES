@@ -271,6 +271,7 @@ class AudioDeviceManager(CallbackMixin):
         self._playing = True
         self._paused = False
         self._stop_flag = False
+
         self._playback_thread = threading.Thread(target=self._playback_worker, daemon=True)
         self._playback_thread.start()
 

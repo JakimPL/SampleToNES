@@ -129,6 +129,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         self._update_controls()
 
     def play(self) -> None:
+        print("call")
         try:
             self.audio_player.play()
         except PlaybackError as exception:

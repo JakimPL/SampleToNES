@@ -1,5 +1,6 @@
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.constants.general import TAG_STATUS_BAR
 from sampletones.typehints import Sender
 
 from ..elements.fonts.font import Font
@@ -12,3 +13,7 @@ def show_tooltip(parent: str, message: str) -> Sender:
         FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)
 
     return tooltip_text
+
+
+def show_status(message: str) -> None:
+    dpg.set_value(TAG_STATUS_BAR, message)

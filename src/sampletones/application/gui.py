@@ -93,7 +93,6 @@ from .constants.general import (
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_TEXT_FPS,
-    TAG_STATUS_BAR,
     TAG_STATUS_WINDOW,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
@@ -129,8 +128,8 @@ from .constants.reconstructions import (
     TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
-from .elements.button import GUIButton
 from .elements.fonts.registry import FontRegistry
+from .elements.status import GUIStatusBar
 from .instruction.data import InstructionPanelData
 from .library.manager import InstructionsLibraryManager
 from .panels.instruction.details import GUIInstructionDetailsPanel
@@ -153,7 +152,6 @@ from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
-from .themes.status import StatusBarTheme
 from .utils.callbacks import CallbackQueue
 from .utils.dialogs import (
     show_confirmation_dialog,
@@ -233,9 +231,9 @@ class GUI:
         )
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
+        self.status_bar = GUIStatusBar()
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
-        self.status_bar_theme = StatusBarTheme()
 
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
@@ -625,17 +623,7 @@ class GUI:
             border=False,
             menubar=True,
         ):
-            with dpg.menu_bar():
-                GUIButton(
-                    label="",
-                    tag=TAG_STATUS_BAR,
-                    width=-1,
-                    enabled=False,
-                    theme=self.status_bar_theme,
-                    indent=0,
-                )
-
-            self.status_bar_theme.bind_to_item(TAG_STATUS_WINDOW)
+            self.status_bar.create()
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -1362,10 +1350,17 @@ class GUI:
         self.advanced_settings_panel.set_visibility(advanced_settings)
         dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
-    def _update_fps(self) -> None:
-        delta_time = dpg.get_delta_time()
+    def _update_fps(self, delta_time: float) -> None:
         fps = self.fps_timer.update(delta_time)
         dpg_configure_item(TAG_MENU_TEXT_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))
+
+    def _update_status(self) -> None:
+        delta_time = dpg.get_delta_time()
+        self._update_fps(delta_time)
+        self._update_status_bar(delta_time)
+
+    def _update_status_bar(self, delta_time: float) -> None:
+        self.status_bar.update(delta_time=delta_time)
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:
@@ -1379,7 +1374,8 @@ class GUI:
     def frame(self) -> None:
         dpg.render_dearpygui_frame()
         CallbackQueue.process()
-        self._update_fps()
+        self._update_status()
+        self.status_bar.update()
 
     def run(self) -> None:
         try:
