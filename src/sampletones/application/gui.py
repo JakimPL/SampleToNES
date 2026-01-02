@@ -1211,6 +1211,7 @@ class GUI:
         return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
+        CallbackQueue.stop()
         self.audio_device_manager.stop()
         if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
@@ -1380,13 +1381,12 @@ class GUI:
     def _post_frame(self) -> None:
         CallbackQueue.process()
         self._update_status()
-        dpg_set_frame_callback(self._post_frame)
 
     def run(self) -> None:
         try:
-            dpg_set_frame_callback(self._post_frame)
             while dpg.is_dearpygui_running():
                 self.frame()
+                dpg_set_frame_callback(self._post_frame)
         except KeyboardInterrupt:
             return
         finally:

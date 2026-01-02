@@ -47,8 +47,9 @@ from ..constants.reconstructions import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
+from ..utils.callbacks import CallbackQueue
 from .align import table_wrapper
-from .dpg import dpg_configure_item, dpg_delete_item, dpg_set_frame_callback
+from .dpg import dpg_configure_item, dpg_delete_item
 
 
 def get_center(width: int, height: int) -> Tuple[int, int]:
@@ -94,7 +95,7 @@ def show_modal_dialog(
             width=-1,
         )
 
-        dpg_set_frame_callback(lambda: center_item(tag, width, height))
+        CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
 
 
 def show_info_dialog(tag: str, message: str, title: str) -> None:
@@ -160,7 +161,7 @@ def show_confirmation_dialog(
     ):
         content(tag)
 
-    dpg_set_frame_callback(lambda: center_item(tag, width, height))
+    CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
 
 
 def show_save_confirmation_dialog(
@@ -215,7 +216,7 @@ def show_save_confirmation_dialog(
     ):
         content(tag)
 
-    dpg_set_frame_callback(lambda: center_item(tag, width, height))
+    CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
@@ -285,7 +286,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         content(None)
 
-    dpg_set_frame_callback(lambda: center_item(tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR))
+    CallbackQueue.add(lambda: center_item(tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR), priority=True)
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

@@ -44,8 +44,8 @@ from ...themes.nodes.library import (
     LibraryLibraryNodeTheme,
 )
 from ...themes.theme import Theme
-from ...utils.callbacks import CallbackQueueStop, queued
-from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_set_frame_callback
+from ...utils.callbacks import CallbackQueue, CallbackQueueStop, queued
+from ...utils.dpg import dpg_delete_children, dpg_delete_item
 from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
 from ..fonts.font import Font
@@ -257,7 +257,7 @@ class GUITreePanel(GUIPanel):
         else:
             self.clear_filter()
 
-        dpg_set_frame_callback(lambda: self._schedule_update_tree_visibility(query), 12)
+        CallbackQueue.add(lambda: self._schedule_update_tree_visibility(query), priority=True, delay=12)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
@@ -265,7 +265,7 @@ class GUITreePanel(GUIPanel):
 
         self.clear_filter()
 
-        dpg_set_frame_callback(lambda: self._schedule_update_tree_visibility(""), 12)
+        CallbackQueue.add(lambda: self._schedule_update_tree_visibility(""), priority=True, delay=12)
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -458,7 +458,7 @@ class GUITreePanel(GUIPanel):
 
     def _schedule_update_tree_visibility(self, query: str) -> None:
         self._pending_query = query
-        dpg_set_frame_callback(self._execute_update_tree_visibility, 12)
+        CallbackQueue.add(self._execute_update_tree_visibility, priority=True, delay=12)
 
     def _execute_update_tree_visibility(self) -> None:
         if self._pending_query is not None:
@@ -467,7 +467,7 @@ class GUITreePanel(GUIPanel):
 
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node
-        dpg_set_frame_callback(self._execute_autoplay, 12)
+        CallbackQueue.add(self._execute_autoplay, priority=True, delay=12)
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

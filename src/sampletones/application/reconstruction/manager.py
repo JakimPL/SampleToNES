@@ -7,7 +7,7 @@ from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
-from ..utils.dpg import dpg_set_frame_callback
+from ..utils.callbacks import CallbackQueue
 from .data import ReconstructionData
 from .feature import FeatureData
 
@@ -62,7 +62,7 @@ class ReconstructionManager(CallbackMixin):
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
-        dpg_set_frame_callback(lambda: self.call(self.on_reconstruction_closed))
+        CallbackQueue.add(lambda: self.call(self.on_reconstruction_closed), priority=True)
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:
