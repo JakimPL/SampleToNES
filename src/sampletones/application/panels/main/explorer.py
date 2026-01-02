@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
-from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import Sender
 from sampletones.utils.logger import logger
@@ -48,7 +47,7 @@ from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_configure_item, dpg_delete_children, dpg_set_frame_callback
+from ...utils.dpg import dpg_configure_item, dpg_delete_children
 from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
@@ -83,6 +82,7 @@ class GUIExplorerPanel(GUITreePanel):
             parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_MAIN_EXPLORER,
             application_config_manager=application_config_manager,
+            audio_device_manager=audio_device_manager,
             search_label=LBL_TREE_FILTER,
         )
 
@@ -353,30 +353,6 @@ class GUIExplorerPanel(GUITreePanel):
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
         dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
-
-    def _schedule_autoplay(self, node: FileSystemNode) -> None:
-        self._pending_autoplay_node = node
-        dpg_set_frame_callback(self._execute_autoplay, 12)
-
-    def _autoplay_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        if self.application_config_manager.autoplay:
-            match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
-                    try:
-                        reconstruction = Reconstruction.load(node.filepath)
-                        self.audio_device_manager.play(reconstruction.approximation)
-                    except Exception as error:
-                        logger.error(f"Failed to autoplay reconstruction file: {error}")
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.audio_device_manager.play_file(node.filepath)
-
-    def _execute_autoplay(self) -> None:
-        if self._pending_autoplay_node is not None:
-            self._autoplay_file(self._pending_autoplay_node)
-            self._pending_autoplay_node = None
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

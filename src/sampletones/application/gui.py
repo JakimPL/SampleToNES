@@ -193,6 +193,7 @@ class GUI:
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
             self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
             self.library_manager,
         )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
@@ -200,6 +201,7 @@ class GUI:
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
             self.browser_manager,
             self.reconstruction_manager,
         )
@@ -1383,6 +1385,8 @@ class GUI:
         try:
             while dpg.is_dearpygui_running():
                 self.frame()
+        except KeyboardInterrupt:
+            return
         finally:
             if self.converter_panel and self.converter_panel.converter:
                 self.converter_panel.converter.cleanup()

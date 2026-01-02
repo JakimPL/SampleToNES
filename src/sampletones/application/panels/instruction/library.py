@@ -3,6 +3,7 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager
 from sampletones.constants.enums import LibraryGeneratorName
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -94,6 +95,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
         self.config_manager = config_manager
@@ -119,6 +121,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
             application_config_manager=self.application_config_manager,
+            audio_device_manager=audio_device_manager,
         )
 
     def create_panel(self) -> None:

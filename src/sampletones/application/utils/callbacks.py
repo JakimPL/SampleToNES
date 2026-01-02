@@ -1,4 +1,5 @@
 import threading
+import time
 from collections import deque
 from functools import wraps
 from typing import Any, Callable, Deque, Dict, Optional, Tuple, TypeVar, Union, cast
@@ -8,7 +9,8 @@ from sampletones.utils.logger import logger
 
 F = TypeVar("F", bound=Callback)
 
-TASKS_PER_FRAME = 25
+TASKS_PER_FRAME = 2
+TIME_PER_FRAME = 0.002
 
 
 class CallbackQueueStop(Exception):
@@ -20,6 +22,7 @@ class CallbackQueue:
     _main_thread: threading.Thread = threading.main_thread()
     _lock: threading.Lock = threading.Lock()
     _tasks_per_frame: int = TASKS_PER_FRAME
+    _time_per_frame: float = TIME_PER_FRAME
 
     @classmethod
     def add(
@@ -38,11 +41,17 @@ class CallbackQueue:
     @classmethod
     def process(cls) -> None:
         assert threading.current_thread() == cls._main_thread, "Callbacks must be run on the main thread."
-        for _ in range(min(cls._tasks_per_frame, len(cls._callbacks))):
+        if not cls._callbacks:
+            return
+
+        tasks = 0
+        deadline = time.perf_counter() + cls._time_per_frame
+        while (time.perf_counter() < deadline or tasks < cls._tasks_per_frame) and cls._callbacks:
             with cls._lock:
-                callback, args, kwargs = cls._callbacks.pop()
+                callback, args, kwargs = cls._callbacks.popleft()
             try:
                 callback(*args, **kwargs)
+                tasks += 1
             except CallbackQueueStop as exception:
                 logger.error(f"Callback queue processing stopped due to the error: {exception}.")
                 break

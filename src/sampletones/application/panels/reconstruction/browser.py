@@ -3,6 +3,7 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import Sender, VoidCallback
 from sampletones.utils.logger import logger
@@ -46,13 +47,17 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
         browser_manager: BrowserManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
+        self.audio_device_manager = audio_device_manager
         self.browser_manager = browser_manager
         self.reconstruction_manager = reconstruction_manager
+
+        self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
@@ -65,6 +70,7 @@ class GUIBrowserPanel(GUITreePanel):
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
             application_config_manager=application_config_manager,
+            audio_device_manager=audio_device_manager,
         )
 
     def create_panel(self) -> None:
@@ -198,7 +204,8 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
-                item_double_click_callback=self._on_reconstruction_node_clicked,
+                item_click_callback=self._on_reconstruction_node_clicked,
+                item_double_click_callback=self._on_reconstruction_node_double_clicked,
             )
 
         state.parent = node_tag
@@ -235,10 +242,21 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.call(self.load_reconstruction_with_confirmation, node.filepath)
+            self._schedule_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(node, node_tag)
+
+    def _on_reconstruction_node_double_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: Tuple[FileSystemNode, str],
+    ) -> None:
+        mouse_button, _ = app_data
+        node, _ = user_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            self.call(self.load_reconstruction_with_confirmation, node.filepath)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -273,7 +291,7 @@ class GUIBrowserPanel(GUITreePanel):
             dpg.add_menu_item(
                 label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
                 callback=self._on_load_reconstruction,
-                user_data=(node, node_tag),
+                user_data=node,
             )
             dpg.add_separator()
             self._add_context_menu_favorite_item(node)
