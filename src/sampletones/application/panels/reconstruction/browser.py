@@ -36,6 +36,7 @@ from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
 from ...utils.dpg import dpg_configure_item
+from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
 OnLoadReconstructionCallback = Callable[[Path], None]
@@ -48,6 +49,7 @@ class GUIBrowserPanel(GUITreePanel):
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
         browser_manager: BrowserManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
@@ -71,6 +73,7 @@ class GUIBrowserPanel(GUITreePanel):
             tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
+            shortcut_manager=shortcut_manager,
         )
 
     def create_panel(self) -> None:

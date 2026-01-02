@@ -4,6 +4,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Callback, Sender
 
+from ...constants.general import SUF_HANDLER_FOCUS
+from ..dpg import dpg_delete_item
 from .keys import Modifier
 from .shortcut import Shortcut, ShortcutId
 
@@ -74,3 +76,18 @@ class ShortcutManager:
                 alt_pressed == alt_required,
             )
         )
+
+    def setup_input_focus_handlers(self, input_tag: str) -> None:
+        focus_handler_tag = f"{input_tag}{SUF_HANDLER_FOCUS}"
+        dpg_delete_item(focus_handler_tag)
+        with dpg.item_handler_registry(tag=focus_handler_tag):
+            dpg.add_item_activated_handler(callback=self._on_input_focused)
+            dpg.add_item_deactivated_handler(callback=self._on_input_unfocused)
+
+        dpg.bind_item_handler_registry(input_tag, focus_handler_tag)
+
+    def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
+        self.disable()
+
+    def _on_input_unfocused(self, sender: Sender, app_data: Any) -> None:
+        self.enable()

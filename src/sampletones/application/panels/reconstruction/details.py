@@ -26,7 +26,6 @@ from ...constants.general import (
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
     SUF_GROUP,
-    SUF_HANDLER_FOCUS,
     SUF_HANDLER_REGISTRY,
     SUF_INCREMENT,
     SUF_INPUT,
@@ -105,8 +104,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         shortcut_manager: ShortcutManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
+        self.shortcut_manager = shortcut_manager
         self.reconstruction_manager = reconstruction_manager
-        self._shortcut_manager = shortcut_manager
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
 
@@ -209,12 +208,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
         self.call(self.on_instrument_export, user_data)
-
-    def _on_input_focused(self, sender: Sender, app_data: Any) -> None:
-        self._shortcut_manager.disable()
-
-    def _on_input_unfocused(self, sender: Sender, app_data: Any) -> None:
-        self._shortcut_manager.enable()
 
     def _clear_tabs(self) -> None:
         self._clear_generator_plots()
@@ -476,7 +469,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.initial_pitch_theme.bind_to_item(table_tag)
         self._create_initial_pitch_tooltip(generator_name, input_tag)
 
-        self._setup_input_focus_handlers(input_tag)
+        self.shortcut_manager.setup_input_focus_handlers(input_tag)
         self._setup_button_hold_handlers(
             decrement_button_tag,
             increment_button_tag,
@@ -484,15 +477,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             input_tag,
             value_tag,
         )
-
-    def _setup_input_focus_handlers(self, input_tag: str) -> None:
-        focus_handler_tag = f"{input_tag}{SUF_HANDLER_FOCUS}"
-        dpg_delete_item(focus_handler_tag)
-        with dpg.item_handler_registry(tag=focus_handler_tag):
-            dpg.add_item_activated_handler(callback=self._on_input_focused)
-            dpg.add_item_deactivated_handler(callback=self._on_input_unfocused)
-
-        dpg.bind_item_handler_registry(input_tag, focus_handler_tag)
 
     def _setup_button_hold_handlers(
         self,
@@ -837,7 +821,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 ),
             )
 
-        self._setup_input_focus_handlers(raw_data_tag)
+        self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
 
     def _parse_raw_data_input(
         self,

@@ -48,6 +48,7 @@ from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_configure_item, dpg_delete_children
+from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
 OnReconstructPathCallback = Callable[[Path], None]
@@ -59,10 +60,12 @@ class GUIExplorerPanel(GUITreePanel):
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
     ) -> None:
         self.explorer_manager = ExplorerManager(config_manager)
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
+        self.shortcut_manager = shortcut_manager
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
@@ -83,6 +86,7 @@ class GUIExplorerPanel(GUITreePanel):
             tree_tag=TAG_TREE_MAIN_EXPLORER,
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
+            shortcut_manager=shortcut_manager,
             search_label=LBL_TREE_FILTER,
         )
 

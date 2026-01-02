@@ -46,6 +46,7 @@ from ...themes.nodes.library import (
 from ...themes.theme import Theme
 from ...utils.callbacks import CallbackQueueStop, queued
 from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_set_frame_callback
+from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
@@ -63,6 +64,7 @@ class GUITreePanel(GUIPanel):
         tree_tag: str,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
         width: int = -1,
         height: int = -1,
         search_label: str = LBL_TREE_SEARCH,
@@ -71,6 +73,7 @@ class GUITreePanel(GUIPanel):
         self.tree_tag = tree_tag
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
+        self.shortcut_manager = shortcut_manager
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
@@ -124,6 +127,8 @@ class GUITreePanel(GUIPanel):
                 callback=self._on_clear_search_clicked,
                 width=DIM_BUTTON_WIDTH_SEARCH,
             )
+
+        self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
 
     def _build_tree_node(
         self,

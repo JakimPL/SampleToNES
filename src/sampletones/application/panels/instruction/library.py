@@ -83,6 +83,7 @@ from ...utils.dialogs import (
     show_info_dialog,
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
+from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
 OnLoadInstructionCallback = Callable[[InstructionUnion], None]
@@ -96,6 +97,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
     ) -> None:
         self.config_manager = config_manager
@@ -122,6 +124,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             tree_tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
             application_config_manager=self.application_config_manager,
             audio_device_manager=audio_device_manager,
+            shortcut_manager=shortcut_manager,
         )
 
     def create_panel(self) -> None:
