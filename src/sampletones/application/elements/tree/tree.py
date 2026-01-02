@@ -79,6 +79,7 @@ class GUITreePanel(GUIPanel):
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
+        self._pending_query: Optional[str] = None
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         self._lock_counter: int = 0
@@ -247,6 +248,7 @@ class GUITreePanel(GUIPanel):
     def clear_selection(self) -> None:
         if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
             dpg.set_value(self._selected_node_tag, False)
+
         self._selected_node_tag = None
 
     def _on_search_changed(self, sender: Sender, query: str) -> None:
@@ -254,13 +256,16 @@ class GUITreePanel(GUIPanel):
             self.apply_filter(query, self._default_search_predicate)
         else:
             self.clear_filter()
-        self._update_tree_visibility()
+
+        dpg_set_frame_callback(lambda: self._schedule_update_tree_visibility(query), 12)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
+
         self.clear_filter()
-        self._update_tree_visibility()
+
+        dpg_set_frame_callback(lambda: self._schedule_update_tree_visibility(""), 12)
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -450,6 +455,15 @@ class GUITreePanel(GUIPanel):
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         raise NotImplementedError("Subclasses must implement this method")
+
+    def _schedule_update_tree_visibility(self, query: str) -> None:
+        self._pending_query = query
+        dpg_set_frame_callback(self._execute_update_tree_visibility, 12)
+
+    def _execute_update_tree_visibility(self) -> None:
+        if self._pending_query is not None:
+            self._pending_query = None
+            self._update_tree_visibility()
 
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node

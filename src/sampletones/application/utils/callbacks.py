@@ -19,7 +19,6 @@ class CallbackQueueStop(Exception):
 
 class CallbackQueue:
     _callbacks: Deque[Tuple[Callback, Tuple[Any, ...], Dict[str, Any]]] = deque()
-    _main_thread: threading.Thread = threading.main_thread()
     _lock: threading.Lock = threading.Lock()
     _tasks_per_frame: int = TASKS_PER_FRAME
     _time_per_frame: float = TIME_PER_FRAME
@@ -40,7 +39,6 @@ class CallbackQueue:
 
     @classmethod
     def process(cls) -> None:
-        assert threading.current_thread() == cls._main_thread, "Callbacks must be run on the main thread."
         if not cls._callbacks:
             return
 

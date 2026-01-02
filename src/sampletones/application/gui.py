@@ -161,7 +161,7 @@ from .utils.dialogs import (
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
 )
-from .utils.dpg import dpg_configure_item, dpg_set_value
+from .utils.dpg import dpg_configure_item, dpg_set_frame_callback, dpg_set_value
 from .utils.file import file_dialog_handler
 from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
@@ -1376,12 +1376,15 @@ class GUI:
 
     def frame(self) -> None:
         dpg.render_dearpygui_frame()
+
+    def _post_frame(self) -> None:
         CallbackQueue.process()
         self._update_status()
-        self.status_bar.update()
+        dpg_set_frame_callback(self._post_frame)
 
     def run(self) -> None:
         try:
+            dpg_set_frame_callback(self._post_frame)
             while dpg.is_dearpygui_running():
                 self.frame()
         except KeyboardInterrupt:
