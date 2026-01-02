@@ -6,8 +6,8 @@ from ..constants.general import (
     VAL_TABLE_FRAME_ROUNDING,
 )
 from ..constants.reconstructions import (
-    TAG_THEME_TABLE_RECONSTRUCTION_DETAILS_INITIAL_PITCH,
-    VAL_TABLE_CELL_PADDING_RECONSTRUCTION_DETAILS_INITIAL_PITCH,
+    TAG_THEME_TABLE_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
+    VAL_TABLE_CELL_PADDING_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
 )
 from .items import ThemeItems
 from .style import ThemeParameter, ThemeStyle
@@ -27,15 +27,15 @@ class TableTheme(Theme):
 
 
 class InitialPitchTableTheme(Theme):
-    tag: str = TAG_THEME_TABLE_RECONSTRUCTION_DETAILS_INITIAL_PITCH
+    tag: str = TAG_THEME_TABLE_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH
 
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTable): [
                 ThemeStyle(
                     key=dpg.mvStyleVar_CellPadding,
-                    x=VAL_TABLE_CELL_PADDING_RECONSTRUCTION_DETAILS_INITIAL_PITCH[0],
-                    y=VAL_TABLE_CELL_PADDING_RECONSTRUCTION_DETAILS_INITIAL_PITCH[1],
+                    x=VAL_TABLE_CELL_PADDING_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH[0],
+                    y=VAL_TABLE_CELL_PADDING_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH[1],
                 ),
             ],
         }

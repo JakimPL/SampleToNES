@@ -147,7 +147,37 @@ MSG_CONFIGURATION_SAVE_ERROR = "Error saving configuration."
 MSG_CONFIGURATION_LOAD_ERROR = "Error loading configuration."
 MSG_CONFIGURATION_INVALID_ERROR = "Invalid configuration file."
 MSG_AUDIO_PLAYBACK_ERROR = "Audio playback error"
-MSG_STATUS_GLOBAL_PATH = "Click to open path in file explorer."
+MSG_STATUS_PATH = "Click to open path in file explorer."
+MSG_STATUS_TREE_NODE_RECONSTRUCTION_BROWSER_DIRECTORY = (
+    "Click to {expand_or_collapse}. Right-click to open context menu."
+)
+MSG_STATUS_TREE_NODE_MAIN_EXPLORER_DIRECTORY = (
+    "Click to {expand_or_collapse}. Double-click to reconstruct directory. Right-click to open context menu."
+)
+MSG_STATUS_TREE_NODE_MAIN_EXPLORER_AUDIO = (
+    "Click to play audio. Double-click to reconstruct audio file. Right-click to open context menu."
+)
+MSG_STATUS_TREE_NODE_RECONSTRUCTION = (
+    "Click to play reconstruction. Double-click to open reconstruction. Right-click to open context menu."
+)
+MSG_STATUS_TREE_NODE_LIBRARY = "Double-click to open instructions library. Right-click to open context menu."
+MSG_STATUS_TREE_NODE_INSTRUCTIONS_LIBRARY_GENERATOR = "Click to load {generator} instructions for {library_key}."
+MSG_STATUS_TREE_NODE_INSTRUCTIONS_LIBRARY_LIBRARY = "Click to load instructions library."
+MSG_STATUS_WAVEFORM_NAVIGATION = (
+    "Drag to navigate waveform. Scroll to zoom horizontally. CTRL + scroll to zoom vertically."
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE = (
+    'CTRL + click to type value. Enter note name (e.g., "C-4") or MIDI value (72).'
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE = (
+    'CTRL + click to type value. Enter period name (e.g., "p508") or integer value (4).'
+)
+MSG_STATUS_TREE_SEARCH = "Type query to filter nodes."
+MSG_STATUS_INPUT = "CTRL + click to type value."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = "Click to change instrument's {feature_key} value. Drag to navigate waveform. Scroll to zoom horizontally. CTRL + scroll to zoom vertically."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE = "Edit and press ENTER to change instrument's {feature_key}."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE = "Copy sequence to clipboard."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE = "Click to turn {on_or_off} {generator}."
 
 TTL_WINDOW_MAIN = "SampleToNES"
 TTL_DIALOG_SAVE_CONFIG = "Save configuration"
