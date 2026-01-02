@@ -44,7 +44,7 @@ class Regenerator(CallbackMixin):
         audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        CallbackQueue.add(lambda: self.call(self.on_regeneration_finished), priority=True)
+        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=True)
 
     def _generate_generator_audio(
         self,

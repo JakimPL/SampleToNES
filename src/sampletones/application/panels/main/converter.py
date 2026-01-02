@@ -65,7 +65,6 @@ from ...utils.callbacks import CallbackQueue
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
 from ...utils.dpg import (
     dpg_configure_item,
-    dpg_set_frame_callback,
     dpg_set_item_callback,
     dpg_set_value,
 )

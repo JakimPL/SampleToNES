@@ -62,7 +62,7 @@ class ReconstructionManager(CallbackMixin):
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
-        CallbackQueue.add(lambda: self.call(self.on_reconstruction_closed), priority=True)
+        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=True)
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

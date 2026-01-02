@@ -257,7 +257,7 @@ class GUITreePanel(GUIPanel):
         else:
             self.clear_filter()
 
-        CallbackQueue.add(lambda: self._schedule_update_tree_visibility(query), priority=True, delay=12)
+        CallbackQueue.add(self._schedule_update_tree_visibility, query, priority=True, delay=12)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
@@ -265,7 +265,7 @@ class GUITreePanel(GUIPanel):
 
         self.clear_filter()
 
-        CallbackQueue.add(lambda: self._schedule_update_tree_visibility(""), priority=True, delay=12)
+        CallbackQueue.add(self._schedule_update_tree_visibility, "", priority=True, delay=12)
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()

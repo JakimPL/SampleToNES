@@ -95,7 +95,7 @@ def show_modal_dialog(
             width=-1,
         )
 
-        CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
+        CallbackQueue.add(center_item, tag, width, height, priority=True)
 
 
 def show_info_dialog(tag: str, message: str, title: str) -> None:
@@ -161,7 +161,7 @@ def show_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
+    CallbackQueue.add(center_item, tag, width, height, priority=True)
 
 
 def show_save_confirmation_dialog(
@@ -216,7 +216,7 @@ def show_save_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(lambda: center_item(tag, width, height), priority=True)
+    CallbackQueue.add(center_item, tag, width, height, priority=True)
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
@@ -286,7 +286,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         content(None)
 
-    CallbackQueue.add(lambda: center_item(tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR), priority=True)
+    CallbackQueue.add(center_item, tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR, priority=True)
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

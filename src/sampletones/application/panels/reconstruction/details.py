@@ -80,9 +80,11 @@ from ...reconstruction.config import (
 )
 from ...reconstruction.feature import FeatureData
 from ...reconstruction.manager import ReconstructionManager
+from ...reconstruction.update import ReconstructionUpdate
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
+from ...utils.callbacks import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import (
     dpg_configure_item,
@@ -121,6 +123,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.initial_pitch_theme = InitialPitchTableTheme()
         self._initial_pitch_change_object: Optional[str] = None
         self._initial_pitch_change_timer: Optional[float] = None
+
+        self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_instruments_export: Optional[VoidCallback] = None
@@ -725,11 +729,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
     ) -> None:
         self._load_plot_data(plot, generator_name, feature_key, config, data)
-        features = self._get_features(generator_name)
         plot.set_callbacks(
             on_bar_point_clicked=lambda data: self._on_bar_point_clicked(
                 generator_name,
-                features,
                 feature_key,
                 data,
                 plot.plot_tag,
@@ -742,14 +744,32 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         generator_name: GeneratorName,
         initial_pitch: int,
     ) -> None:
-        features = self._get_features(generator_name)
-        self.call(
-            self.on_reconstruction_instrument_updated,
+        self._schedule_on_reconstruction_instrument_updated(
             generator_name,
-            features,
             FeatureKey.INITIAL_PITCH,
             initial_pitch,
         )
+
+    def _schedule_on_reconstruction_instrument_updated(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        data: FeatureValue,
+    ) -> None:
+        self._pending_reconstruction_update = ReconstructionUpdate(generator_name, feature_key, data)
+        CallbackQueue.add(self._on_reconstruction_instrument_updated, priority=True, delay=12)
+
+    def _on_reconstruction_instrument_updated(self) -> None:
+        if self._pending_reconstruction_update is not None:
+            generator_name, feature_key, data = self._pending_reconstruction_update
+            self._pending_reconstruction_update = None
+            self.call(
+                self.on_reconstruction_instrument_updated,
+                generator_name,
+                self._get_features(generator_name),
+                feature_key,
+                data,
+            )
 
     def _get_features(self, generator_name: GeneratorName) -> Features:
         assert self.current_features is not None, "Current features should not be None when creating feature plots"
@@ -765,17 +785,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_bar_point_clicked(
         self,
         generator_name: GeneratorName,
-        features: Features,
         feature_key: FeatureKey,
         data: np.ndarray,
         plot_tag: str,
     ) -> None:
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         dpg_set_value(raw_data_tag, self._format_data(data))
-        self.call(
-            self.on_reconstruction_instrument_updated,
+        self._schedule_on_reconstruction_instrument_updated(
             generator_name,
-            features,
             feature_key,
             data,
         )
@@ -843,12 +860,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self.invalid_input_theme.bind_to_item(sender)
             return
 
-        features = self._get_features(generator_name)
         dpg.set_value(sender, self._format_data(raw_data))
-        self.call(
-            self.on_reconstruction_instrument_updated,
+        self._schedule_on_reconstruction_instrument_updated(
             generator_name,
-            features,
             feature_key,
             raw_data,
         )
