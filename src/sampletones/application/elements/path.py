@@ -50,7 +50,7 @@ class GUIPathText(CallbackMixin):
         self.handler_tag = f"{tag}{SUF_PATH_HANDLER}"
         self.group_tag = f"{tag}{SUF_GROUP}"
 
-        self.on_item_hovered: Optional[VoidCallback] = None
+        self.on_path_hovered: Optional[VoidCallback] = None
 
         self._create_text()
         self._create_handler()
@@ -100,7 +100,7 @@ class GUIPathText(CallbackMixin):
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
                 CallbackQueue.add(self._check_hover_state, priority=True)
-                self.call(self.on_item_hovered)
+                self.call(self.on_path_hovered)
             else:
                 dpg.configure_item(self.tag, color=self.color)
 

@@ -22,7 +22,7 @@ from sampletones.utils.logger import logger
 F = TypeVar("F", bound=Callback)
 
 TASKS_PER_FRAME = 2
-TIME_PER_FRAME = 0.002
+TIME_PER_FRAME = 0.005
 
 
 class CallbackQueueStop(Exception):
@@ -39,7 +39,8 @@ class CallbackTask(NamedTuple):
 class CallbackQueue:
     _callbacks: Deque[CallbackTask] = deque()
     _lock: threading.Lock = threading.Lock()
-    _tasks_per_frame: int = TASKS_PER_FRAME
+    _processing_lock: threading.Lock = threading.Lock()
+    _min_tasks_per_frame: int = TASKS_PER_FRAME
     _time_per_frame: float = TIME_PER_FRAME
     _frame_counter: int = 0
 
@@ -62,6 +63,15 @@ class CallbackQueue:
 
     @classmethod
     def process(cls) -> None:
+        if not cls._processing_lock.acquire(blocking=False):
+            return
+        try:
+            cls._process()
+        finally:
+            cls._processing_lock.release()
+
+    @classmethod
+    def _process(cls) -> None:
         with cls._lock:
             cls._frame_counter += 1
 
@@ -72,24 +82,30 @@ class CallbackQueue:
         stopped = False
         deadline = time.perf_counter() + cls._time_per_frame
         pending_tasks: List[CallbackTask] = []
-        while (time.perf_counter() < deadline or tasks < cls._tasks_per_frame) and cls._callbacks:
+
+        while not stopped:
             with cls._lock:
+                if not cls._callbacks:
+                    break
+
                 task = cls._callbacks.popleft()
-                callback, frame, args, kwargs = task
-                if frame > cls._frame_counter:
-                    pending_tasks.append(task)
-                    continue
+
+            callback, frame, args, kwargs = task
+            if frame > cls._frame_counter:
+                pending_tasks.append(task)
+                continue
 
             tasks += 1
             stopped = cls.run(callback, *args, **kwargs)
+            if time.perf_counter() >= deadline and tasks >= cls._min_tasks_per_frame:
+                break
 
         with cls._lock:
             if stopped:
                 cls.stop()
-                return
-
-            for task in pending_tasks:
-                cls._callbacks.appendleft(task)
+            else:
+                for task in reversed(pending_tasks):
+                    cls._callbacks.appendleft(task)
 
     @classmethod
     def stop(cls) -> None:
@@ -104,6 +120,11 @@ class CallbackQueue:
         except CallbackQueueStop as exception:
             logger.error(f"Callback queue processing stopped due to the error: {exception}.")
             return True
+        except Exception as exception:
+            logger.error_with_traceback(
+                exception, f"Error executing callback {getattr(callback, '__name__', str(callback))}"
+            )
+            return False
 
 
 def queued(

@@ -2,14 +2,14 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.button import GUIButton
-
 from ..constants.general import (
     TAG_STATUS_BAR,
     TAG_STATUS_WINDOW,
     VAL_STATUS_BAR_DISPLAY_TIME,
 )
 from ..themes.status import StatusBarTheme
+from ..utils.dpg import dpg_configure_item
+from .button import GUIButton
 
 
 class GUIStatusBar:
@@ -47,7 +47,7 @@ class GUIStatusBar:
             self.message = message
             self.timer = VAL_STATUS_BAR_DISPLAY_TIME
 
-        dpg.set_value(self.tag, self.message)
+        dpg_configure_item(self.tag, label=self.message)
         if self.timer > 0.0 and delta_time is not None:
             self.timer -= delta_time
         else:

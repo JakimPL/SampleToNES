@@ -1379,8 +1379,8 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        CallbackQueue.add(self._update_status, priority=True)
         CallbackQueue.process()
-        self._update_status()
 
     def run(self) -> None:
         try:

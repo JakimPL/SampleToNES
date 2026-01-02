@@ -166,10 +166,10 @@ class GUITreePanel(GUIPanel):
         self._handlers.clear()
 
     def _assign_item_handler_registries(self) -> None:
-        for handler in self._new_handlers.values():
-            self._assign_item_handler_registry(handler)
-
+        handlers = list(self._new_handlers.values())
         self._new_handlers.clear()
+        for handler in handlers:
+            self._assign_item_handler_registry(handler)
 
     @queued(priority=False)
     def _assign_item_handler_registry(self, handler: Handler) -> None:

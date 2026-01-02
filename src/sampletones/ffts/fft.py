@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 from scipy.fft import rfft, rfftfreq
@@ -7,7 +7,8 @@ from scipy.fft import rfft, rfftfreq
 
 def calculate_fft(audio: np.ndarray, fft_size: Optional[int] = None) -> np.ndarray:
     fft_size = audio.shape[0] if fft_size is None else fft_size
-    return rfft(audio, fft_size)[1:]
+    array = cast(np.ndarray, rfft(audio, fft_size))
+    return array[1:]
 
 
 def calculate_frequencies(fragment_length: int, sample_rate: int) -> np.ndarray:
