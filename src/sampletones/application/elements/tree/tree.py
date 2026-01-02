@@ -159,7 +159,7 @@ class GUITreePanel(GUIPanel):
 
         self._new_handlers.clear()
 
-    @queued
+    @queued(priority=False)
     def _assign_item_handler_registry(self, handler: Handler) -> None:
         try:
             self._create_item_handler_registry(handler)

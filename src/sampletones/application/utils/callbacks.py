@@ -1,9 +1,12 @@
 import threading
 from collections import deque
-from typing import Any, Deque, Dict, Tuple
+from functools import wraps
+from typing import Any, Callable, Deque, Dict, Optional, Tuple, TypeVar, Union, cast
 
 from sampletones.typehints import Callback
 from sampletones.utils.logger import logger
+
+F = TypeVar("F", bound=Callback)
 
 TASKS_PER_FRAME = 25
 
@@ -19,9 +22,18 @@ class CallbackQueue:
     _tasks_per_frame: int = TASKS_PER_FRAME
 
     @classmethod
-    def add(cls, callback: Callback, *args: Any, **kwargs: Any) -> None:
+    def add(
+        cls,
+        callback: Callback,
+        *args: Any,
+        priority: bool = False,
+        **kwargs: Any,
+    ) -> None:
         with cls._lock:
-            cls._callbacks.appendleft((callback, args, kwargs))
+            if priority:
+                cls._callbacks.appendleft((callback, args, kwargs))
+            else:
+                cls._callbacks.append((callback, args, kwargs))
 
     @classmethod
     def process(cls) -> None:
@@ -36,8 +48,23 @@ class CallbackQueue:
                 break
 
 
-def queued(function: Callback) -> Callback:
-    def wrapper(self, *args: Any, **kwargs: Any) -> None:
-        CallbackQueue.add(function, self, *args, **kwargs)
+def queued(
+    method: Optional[F] = None,
+    *,
+    priority: bool = False,
+) -> Union[F, Callable[[F], F]]:
+    def decorator(function: F) -> F:
 
-    return wrapper
+        @wraps(function)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
+            CallbackQueue.add(
+                function,
+                self,
+                *args,
+                priority=priority,
+                **kwargs,
+            )
+
+        return cast(F, wrapper)
+
+    return decorator if method is None else decorator(method)
