@@ -13,7 +13,7 @@ from sampletones.utils.callbacks import CallbackMixin
 from ..constants.general import (
     COL_PATH_TEXT,
     COL_PATH_TEXT_HOVER,
-    MSG_STATUS_GLOBAL_PATH,
+    MSG_STATUS_PATH,
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
@@ -102,7 +102,7 @@ class GUIPathText(CallbackMixin):
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
                 CallbackQueue.add(self._check_hover_state, priority=True)
-                GUIStatusBar.set(MSG_STATUS_GLOBAL_PATH)
+                GUIStatusBar.set(MSG_STATUS_PATH)
             else:
                 dpg.configure_item(self.tag, color=self.color)
 

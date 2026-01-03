@@ -35,7 +35,7 @@ from .layers.bar import BarLayer
 from .utils import extend_y_range
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
-OnBarPointHoveredCallback = Callable[[Optional[int]], None]
+OnBarPointHoveredCallback = Callable[[Optional[str], Optional[int]], None]
 
 
 class GUIBarGraph(GUIGraph):
@@ -263,17 +263,19 @@ class GUIBarGraph(GUIGraph):
         mouse_x = plot_mouse_pos[0]
         mouse_y = plot_mouse_pos[1]
         bar_index = int(mouse_x)
-        if bar_index < 0 or bar_index >= len(self.current_data):
-            self.call(self.on_bar_point_hovered, None)
-            return
-
-        clamped_y = round(np.clip(mouse_y, *self.data_range))
-        self._set_hover_bar_position(bar_index, clamped_y)
-        self.call(self.on_bar_point_hovered, bar_index)
 
         layer = self._get_first_layer()
         if layer is None:
             raise RuntimeError("A layer is expected to be present when handling mouse events")
+
+        name = layer.name
+        if bar_index < 0 or bar_index >= len(self.current_data):
+            self.call(self.on_bar_point_hovered, name, None)
+            return
+
+        clamped_y = round(np.clip(mouse_y, *self.data_range))
+        self._set_hover_bar_position(bar_index, clamped_y)
+        self.call(self.on_bar_point_hovered, name, bar_index)
 
         if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
             layer.y_data[bar_index] = clamped_y

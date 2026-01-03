@@ -164,7 +164,7 @@ MSG_STATUS_TREE_NODE_LIBRARY = "Double-click to open instructions library. Right
 MSG_STATUS_TREE_NODE_INSTRUCTIONS_LIBRARY_GENERATOR = "Click to load {generator} instructions for {library_key}."
 MSG_STATUS_TREE_NODE_INSTRUCTIONS_LIBRARY_LIBRARY = "Click to load instructions library."
 MSG_STATUS_WAVEFORM_NAVIGATION = (
-    "Drag to navigate waveform. Scroll to zoom horizontally. CTRL + scroll to zoom vertically."
+    "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
 )
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE = (
     'CTRL + click to type value. Enter note name (e.g., "C-4") or MIDI value (72).'
@@ -174,8 +174,10 @@ MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE = (
 )
 MSG_STATUS_TREE_SEARCH = "Type query to filter nodes."
 MSG_STATUS_INPUT = "CTRL + click to type value."
-MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = "Click to change instrument's {feature_key} value. Drag to navigate waveform. Scroll to zoom horizontally. CTRL + scroll to zoom vertically."
-MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE = "Edit and press ENTER to change instrument's {feature_key}."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = (
+    "Click to change {instrument_feature}. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE = "Edit and press ENTER to change {instrument_feature}."
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE = "Copy sequence to clipboard."
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE = "Click to turn {on_or_off} {generator}."
 

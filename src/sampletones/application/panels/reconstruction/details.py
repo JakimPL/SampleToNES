@@ -23,6 +23,7 @@ from ...constants.general import (
     DIM_BUTTON_INPUT_INT,
     DIM_BUTTON_WIDTH_COPY,
     MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR,
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
     SUF_GROUP,
@@ -63,7 +64,7 @@ from ...constants.reconstructions import (
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
     TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
-    VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE,
+    VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
@@ -73,6 +74,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.bar import GUIBarGraph
 from ...elements.graphs.utils import extend_y_range
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...reconstruction.config import (
     FEATURE_DISPLAY_ORDER,
     FEATURE_PLOT_CONFIGS,
@@ -532,7 +534,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         if self._initial_pitch_change_object != button_item or self._initial_pitch_change_timer is None:
             self._initial_pitch_change_object = button_item
-            self._initial_pitch_change_timer = 3 * VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE
+            self._initial_pitch_change_timer = 3 * VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
             return
 
         self._initial_pitch_change_timer -= dpg.get_delta_time()
@@ -541,7 +543,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         pitch_change_data = (generator_name, input_tag, value_tag, change)
         self._change_initial_pitch(sender, app_data, pitch_change_data)
-        self._initial_pitch_change_timer = VAL_DELAY_RECONSTRUCTION_DETAILS_INITIAL_PITCH_CHANGE
+        self._initial_pitch_change_timer = VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
 
     def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._initial_pitch_change_timer = None
@@ -797,8 +799,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             data,
         )
 
-    def _on_bar_point_hovered(self, index: Optional[int]) -> None:
+    def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
+        if label is not None:
+            GUIStatusBar.set(MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR.format(instrument_feature=label))
 
     def _add_raw_data_text(
         self,
@@ -878,9 +882,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
+        name = f"{generator_name.capitalize()}: {feature_key.name.replace('_', ' ').capitalize()}"
         plot.load_data(
             data=data,
-            name=f"{generator_name} - {feature_key}",
+            name=name,
             color=config.color,
             y_ticks=y_ticks,
         )
