@@ -15,7 +15,7 @@ from ...constants.general import (
     LBL_TREE_FILTER,
     SUF_PANEL_LEFT,
     TAG_TAB_MAIN,
-    VAL_TREE_NODE_CHILDREN_SLOT,
+    VAL_NODE_CHILDREN_SLOT,
 )
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
@@ -47,7 +47,7 @@ from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_configure_item, dpg_delete_children
+from ...utils.dpg import dpg_configure_item
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
@@ -140,7 +140,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
         self.explorer_manager.collapse_all()
-        children = dpg.get_item_children(self.tree_tag, VAL_TREE_NODE_CHILDREN_SLOT)
+        children = dpg.get_item_children(self.tree_tag, VAL_NODE_CHILDREN_SLOT)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
             dpg.set_value(node_tag, False)
@@ -181,7 +181,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        dpg_delete_children(node_tag)
+        self._delete_children(node_tag)
         if self.explorer_manager.is_directory_expanded(node.filepath):
             for child in node.children:
                 has_favorite_ancestor = self._is_node_favorite(node) or self._has_favorite_ancestor(child)
@@ -250,6 +250,8 @@ class GUIExplorerPanel(GUITreePanel):
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
             )
+
+            self._bind_status_bar_to_directory_node(node_tag)
 
         else:
             with dpg.tree_node(

@@ -38,6 +38,10 @@ LBL_PLOT_AXIS_SPECTRUM_FREQUENCY = "Frequency"
 LBL_PLOT_NAME_SPECTRUM = "Spectrum"
 LBL_PLOT_LABEL_BAR = "Bar plot display"
 
+MSG_STATUS_WAVEFORM_NAVIGATION = (
+    "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
+)
+
 DIM_GRAPH_WIDTH = -1
 DIM_GRAPH_HEIGHT = 292
 DIM_WAVEFORM_WIDTH = DIM_GRAPH_WIDTH

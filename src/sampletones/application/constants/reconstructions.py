@@ -62,6 +62,18 @@ MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS = "Instrument saved succes
 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instruments saved successfully."
 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED = "Failed to export instrument as FTI."
 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED = "Failed to export reconstruction as FTIs."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE = (
+    'CTRL + click to type value. Enter note name (e.g., "C-4") or MIDI value (72).'
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE = (
+    'CTRL + click to type value. Enter period name (e.g., "p508") or integer value (4).'
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = (
+    "Click to change {instrument_feature}. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
+)
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE = "Edit and press ENTER to change {instrument_feature}."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE = "Copy sequence to clipboard."
+MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE = "Click to turn {on_or_off} {generator}."
 
 TTL_DIALOG_LOAD_RECONSTRUCTION = "Load reconstruction"
 TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS = "Export status"

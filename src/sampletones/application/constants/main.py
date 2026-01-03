@@ -101,6 +101,9 @@ MSG_MAIN_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_MAIN_CONVERTER_CANCELLED = "Conversion cancelled."
 MSG_MAIN_CONVERTER_INPUT = "Input:"
 MSG_MAIN_CONVERTER_OUTPUT = "Output:"
+MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO = (
+    "Click to play audio. Double-click to reconstruct audio file. Right-click to open context menu."
+)
 
 TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING = "Conversion in progress"
 TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY = "Select library directory"

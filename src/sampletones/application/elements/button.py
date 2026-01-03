@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Callback
+from sampletones.typehints.general import Sender
 
 from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme
@@ -58,7 +59,18 @@ class GUIButton:
         GUIButton._REGISTRY[tag] = self
 
     @classmethod
-    def delete(cls, tag: str) -> None:
+    def exists(cls, tag: Sender) -> bool:
+        tag = dpg.get_item_alias(tag)
+        return tag in cls._REGISTRY
+
+    @classmethod
+    def get(cls, tag: Sender) -> Optional[GUIButton]:
+        tag = dpg.get_item_alias(tag)
+        return cls._REGISTRY.get(tag)
+
+    @classmethod
+    def delete(cls, tag: Sender) -> None:
+        tag = dpg.get_item_alias(tag)
         if tag in cls._REGISTRY:
             if dpg.does_item_exist(tag):
                 dpg.delete_item(tag)
@@ -86,6 +98,9 @@ class GUIButton:
 
     def set_item_callback(self, callback: Callback) -> None:
         dpg.set_item_callback(self._button_tag, callback)
+
+    def get_value(self) -> Any:
+        return dpg.get_value(self._button_tag)
 
     def set_value(self, value: Any) -> None:
         dpg.set_value(self._button_tag, value)

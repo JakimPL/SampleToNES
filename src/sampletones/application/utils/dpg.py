@@ -19,11 +19,14 @@ def dpg_wrapper(
     ) -> Callable[Concatenate[Sender, P], Optional[R]]:
         @functools.wraps(function)
         def wrapper(tag: Sender, *args: P.args, **kwargs: P.kwargs) -> Optional[R]:
-            if button_function is not None and tag in GUIButton._REGISTRY:
+            if button_function is not None and GUIButton.exists(tag):
                 if dpg.does_item_exist(tag):
-                    button_function(GUIButton._REGISTRY[tag], *args, **kwargs)
+                    button = GUIButton.get(tag)
+                    if button is not None:
+                        button_function(button, *args, **kwargs)
                 else:
                     GUIButton.delete(tag)
+
                 return None
 
             if dpg.does_item_exist(tag):
@@ -74,6 +77,11 @@ def dpg_get_item_label(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[st
 @dpg_wrapper(button_function=GUIButton.set_value)
 def dpg_set_value(tag: Sender, value: Any, /, *args: Any, **kwargs: Any) -> None:
     dpg.set_value(tag, value, *args, **kwargs)
+
+
+@dpg_wrapper(button_function=GUIButton.get_value)
+def dpg_get_value(tag: Sender, /, *args: Any, **kwargs: Any) -> Any:
+    return dpg.get_value(tag, *args, **kwargs)
 
 
 @dpg_wrapper(button_function=GUIButton.is_item_hovered)

@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Callable, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.typehints import Sender
+
 from ..constants.general import (
+    SUF_HANDLER_STATUS,
     TAG_STATUS_BAR,
     TAG_STATUS_WINDOW,
     VAL_STATUS_BAR_DISPLAY_TIME,
 )
 from ..themes.status import StatusBarTheme
-from ..utils.dpg import dpg_configure_item
+from ..utils.dpg import dpg_configure_item, dpg_is_item_hovered
 from .button import GUIButton
 
 
@@ -68,3 +71,35 @@ class GUIStatusBar:
     def set(cls, message: str) -> None:
         if cls._REGISTRY is not None:
             cls._REGISTRY.update(message=message, delta_time=0.0)
+
+    @classmethod
+    def bind_to_item(
+        cls,
+        tag: str,
+        message_or_function: Union[str, Callable[[], str]],
+    ) -> Optional[str]:
+        message_function: Callable[[], str]
+        if isinstance(message_or_function, str):
+
+            def message_function() -> str:
+                return message_or_function
+
+        elif callable(message_or_function):
+            message_function = message_or_function
+        else:
+            raise TypeError("message_or_function must be a string or a callable returning a string.")
+
+        if cls._REGISTRY is not None:
+            handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
+
+            def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:
+                if dpg_is_item_hovered(tag):
+                    message = message_function()
+                    cls.set(message)
+
+            with dpg.handler_registry(tag=handler_tag):
+                dpg.add_mouse_move_handler(callback=on_mouse_action)
+
+            return handler_tag
+
+        return None

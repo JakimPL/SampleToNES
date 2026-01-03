@@ -96,6 +96,8 @@ MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR = "Error while loading library data."
 MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_ERROR = "Invalid library data file."
 MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR = "Library data contains invalid values."
 MSG_INSTRUCTIONS_DETAILS_NO_INSTRUCTION_SELECTED = "No instruction selected."
+MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR = "Click to load {generator} instructions for {library_key}."
+MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY = "Click to load instructions library."
 
 TTL_DIALOG_LIBRARY_NOT_LOADED = "Library not loaded"
 TTL_DIALOG_LIBRARY_GENERATION_STATUS = "Library generation status"

@@ -18,11 +18,14 @@ from ...constants.general import (
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
+    MSG_STATUS_NODE_DIRECTORY,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
+    VAL_TEXT_COLLAPSE,
+    VAL_TEXT_EXPAND,
 )
 from ...constants.main import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
@@ -45,12 +48,13 @@ from ...themes.nodes.library import (
 )
 from ...themes.theme import Theme
 from ...utils.callbacks import CallbackQueue, CallbackQueueStop, queued
-from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_get_value
 from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
 from ..panel import GUIPanel
+from ..status import GUIStatusBar
 from .handler import Handler, ItemClickCallback
 from .state import TreeNodeState
 
@@ -89,6 +93,7 @@ class GUITreePanel(GUIPanel):
 
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
+        self._status_bar_handlers: Dict[str, str] = {}
 
         self.search_label = search_label
 
@@ -166,6 +171,12 @@ class GUITreePanel(GUIPanel):
 
         self._handlers.clear()
 
+    def _delete_status_bar_handler_registries(self) -> None:
+        for handler_tag in self._status_bar_handlers.values():
+            dpg_delete_item(handler_tag)
+
+        self._status_bar_handlers.clear()
+
     def _assign_item_handler_registries(self) -> None:
         handlers = list(self._new_handlers.values())
         self._new_handlers.clear()
@@ -218,6 +229,16 @@ class GUITreePanel(GUIPanel):
         self._handlers[tag] = handler
         self._new_handlers[tag] = handler
 
+    def _bind_status_bar_to_directory_node(self, node_tag) -> None:
+        def message_function() -> str:
+            return MSG_STATUS_NODE_DIRECTORY.format(
+                expand_or_collapse=VAL_TEXT_COLLAPSE if dpg_get_value(node_tag) else VAL_TEXT_EXPAND,
+            )
+
+        handler_tag = GUIStatusBar.bind_to_item(node_tag, message_function)
+        assert handler_tag is not None, "Failed to bind status bar to directory node"
+        self._status_bar_handlers[node_tag] = handler_tag
+
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
         tag = f"{self.tag}_node_{'_'.join(path_parts)}"
@@ -246,6 +267,24 @@ class GUITreePanel(GUIPanel):
             label=label,
             callback=lambda: self._context_mark_as_favorite(node),
         )
+
+    def _delete_children(self, tag: str) -> None:
+        for child in dpg.get_item_children(tag, 1) or []:
+            child_tag = dpg.get_item_alias(child)
+            self._delete_children(child_tag)
+
+            registry_tag = self._get_handler_registry_tag(child_tag)
+            status_bar_tag = self._status_bar_handlers.get(child_tag)
+            if status_bar_tag is not None:
+                dpg_delete_item(status_bar_tag)
+                if child_tag in self._status_bar_handlers:
+                    del self._status_bar_handlers[child_tag]
+
+            dpg_delete_item(registry_tag)
+            if registry_tag in self._handlers:
+                del self._handlers[registry_tag]
+
+            dpg_delete_item(child_tag)
 
     def clear_selection(self) -> None:
         if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
