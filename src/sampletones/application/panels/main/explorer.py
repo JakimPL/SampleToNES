@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -29,6 +29,7 @@ from ...constants.main import (
     LBL_MAIN_EXPLORER_NODE_DUMMY,
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
+    MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO,
     SUF_MAIN_EXPLORER_NODE_DUMMY,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_BUTTON_MAIN_EXPLORER_REFRESH,
@@ -192,7 +193,7 @@ class GUIExplorerPanel(GUITreePanel):
                         has_favorite_ancestor=has_favorite_ancestor,
                     ),
                 )
-        else:
+        elif node.children:
             dummy_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
             dpg.add_tree_node(
                 label="",
@@ -236,22 +237,23 @@ class GUIExplorerPanel(GUITreePanel):
                     is_node_expanded=is_directory_expanded,
                 )
 
-                dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
-                dpg.add_tree_node(
-                    label=LBL_MAIN_EXPLORER_NODE_DUMMY,
-                    tag=dummy_node_tag,
-                    parent=tree_node_tag,
-                    show=not is_directory_expanded,
-                )
-                FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
+                if node.children:
+                    dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
+                    dpg.add_tree_node(
+                        label=LBL_MAIN_EXPLORER_NODE_DUMMY,
+                        tag=dummy_node_tag,
+                        parent=tree_node_tag,
+                        show=not is_directory_expanded,
+                    )
+                    FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
 
+            status_bar_message_function = self._create_status_bar_message_function_for_directory_node(node_tag)
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
+                status_bar_callback=status_bar_message_function,
             )
-
-            self._bind_status_bar_to_directory_node(node_tag)
 
         else:
             with dpg.tree_node(
@@ -266,14 +268,30 @@ class GUIExplorerPanel(GUITreePanel):
                     has_favorite_ancestor=state.has_favorite_ancestor,
                 )
 
+            status_bar_message_function = self._create_status_bar_message_function_for_file_node(node, node_tag)
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_file_node_clicked,
                 item_double_click_callback=self._on_file_node_double_clicked,
+                status_bar_callback=status_bar_message_function,
             )
 
         state.parent = node_tag
+
+    def _create_status_bar_message_function_for_file_node(
+        self,
+        node: FileSystemNode,
+        node_tag: str,
+    ) -> MessageCallback:
+        suffix = node.filepath.suffix.lower()
+        match suffix:
+            case paths.EXT_FILE_RECONSTRUCTION:
+                return self._create_status_bar_message_function_for_reconstruction_node()
+            case suffix if suffix in paths.EXT_FILES_AUDIO:
+                return self._create_status_bar_message_function_for_audio_node(node_tag)
+
+        raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
 
     def _on_file_node_clicked(
         self,
@@ -331,6 +349,9 @@ class GUIExplorerPanel(GUITreePanel):
             return self._show_directory_context_menu(node)
 
         return None
+
+    def _create_status_bar_message_function_for_audio_node(self, node_tag) -> MessageCallback:
+        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)

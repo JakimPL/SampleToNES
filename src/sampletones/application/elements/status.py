@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
 
 from ..constants.general import (
     SUF_HANDLER_STATUS,
@@ -72,13 +72,10 @@ class GUIStatusBar:
         if cls._REGISTRY is not None:
             cls._REGISTRY.update(message=message, delta_time=0.0)
 
-    @classmethod
-    def bind_to_item(
-        cls,
-        tag: str,
-        message_or_function: Union[str, Callable[[], str]],
-    ) -> Optional[str]:
-        message_function: Callable[[], str]
+    @staticmethod
+    def create_message_function(
+        message_or_function: Union[str, MessageCallback],
+    ) -> MessageCallback:
         if isinstance(message_or_function, str):
 
             def message_function() -> str:
@@ -89,6 +86,15 @@ class GUIStatusBar:
         else:
             raise TypeError("message_or_function must be a string or a callable returning a string.")
 
+        return message_function
+
+    @classmethod
+    def bind_to_item(
+        cls,
+        tag: str,
+        message_or_function: Union[str, MessageCallback],
+    ) -> Optional[str]:
+        message_function = cls.create_message_function(message_or_function)
         if cls._REGISTRY is not None:
             handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
 

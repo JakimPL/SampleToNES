@@ -202,7 +202,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self.lock()
         try:
-            self._delete_status_bar_handler_registries()
             self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()

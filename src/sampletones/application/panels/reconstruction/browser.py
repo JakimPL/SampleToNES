@@ -186,10 +186,12 @@ class GUIBrowserPanel(GUITreePanel):
                     has_favorite_ancestor=state.has_favorite_ancestor,
                 )
 
+            status_bar_message_function = self._create_status_bar_message_function_for_directory_node(node_tag)
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_directory_node_clicked,
+                status_bar_callback=status_bar_message_function,
             )
         else:
             with dpg.tree_node(
@@ -204,11 +206,13 @@ class GUIBrowserPanel(GUITreePanel):
                     has_favorite_ancestor=state.has_favorite_ancestor,
                 )
 
+            status_bar_message_function = self._create_status_bar_message_function_for_reconstruction_node()
             self._add_item_handler_registry(
                 node_tag=node_tag,
                 node=node,
                 item_click_callback=self._on_reconstruction_node_clicked,
                 item_double_click_callback=self._on_reconstruction_node_double_clicked,
+                status_bar_callback=status_bar_message_function,
             )
 
         state.parent = node_tag

@@ -7,7 +7,7 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -19,6 +19,7 @@ from ...constants.general import (
     LBL_BUTTON_TREE_CLEAR_SEARCH,
     LBL_TREE_SEARCH,
     MSG_STATUS_NODE_DIRECTORY,
+    MSG_STATUS_NODE_RECONSTRUCTION,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
@@ -93,7 +94,6 @@ class GUITreePanel(GUIPanel):
 
         self._handlers: Dict[str, Handler] = {}
         self._new_handlers: Dict[str, Handler] = {}
-        self._status_bar_handlers: Dict[str, str] = {}
 
         self.search_label = search_label
 
@@ -171,12 +171,6 @@ class GUITreePanel(GUIPanel):
 
         self._handlers.clear()
 
-    def _delete_status_bar_handler_registries(self) -> None:
-        for handler_tag in self._status_bar_handlers.values():
-            dpg_delete_item(handler_tag)
-
-        self._status_bar_handlers.clear()
-
     def _assign_item_handler_registries(self) -> None:
         handlers = list(self._new_handlers.values())
         self._new_handlers.clear()
@@ -190,7 +184,7 @@ class GUITreePanel(GUIPanel):
                 self._create_item_handler_registry(handler)
                 self._bind_item_handler_registry(handler)
         except SystemError as exception:
-            logger.warning(f"Error assigning item handler registry '{handler.tag}'")
+            logger.error_with_traceback(f"Error assigning item handler registry '{handler.tag}'")
             raise CallbackQueueStop(str(exception)) from exception
 
     def _create_item_handler_registry(self, handler: Handler) -> None:
@@ -206,6 +200,11 @@ class GUITreePanel(GUIPanel):
                     callback=handler.item_double_click_callback,
                     user_data=(handler.node, handler.parent),
                 )
+            if handler.status_bar_callback is not None:
+                GUIStatusBar.bind_to_item(
+                    handler.parent,
+                    handler.status_bar_callback,
+                )
 
     def _bind_item_handler_registry(self, handler: Handler) -> None:
         if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
@@ -217,6 +216,7 @@ class GUITreePanel(GUIPanel):
         node: TreeNode,
         item_click_callback: Optional[ItemClickCallback] = None,
         item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
     ) -> None:
         tag = self._get_handler_registry_tag(node_tag)
         handler = Handler(
@@ -225,19 +225,27 @@ class GUITreePanel(GUIPanel):
             node=node,
             item_click_callback=item_click_callback,
             item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
         )
         self._handlers[tag] = handler
         self._new_handlers[tag] = handler
 
-    def _bind_status_bar_to_directory_node(self, node_tag) -> None:
+    def _create_status_bar_message_function(
+        self,
+        message_or_function: Union[str, MessageCallback],
+    ) -> MessageCallback:
+        return GUIStatusBar.create_message_function(message_or_function)
+
+    def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
+        return self._create_status_bar_message_function(MSG_STATUS_NODE_RECONSTRUCTION)
+
+    def _create_status_bar_message_function_for_directory_node(self, node_tag: str) -> MessageCallback:
         def message_function() -> str:
             return MSG_STATUS_NODE_DIRECTORY.format(
                 expand_or_collapse=VAL_TEXT_COLLAPSE if dpg_get_value(node_tag) else VAL_TEXT_EXPAND,
             )
 
-        handler_tag = GUIStatusBar.bind_to_item(node_tag, message_function)
-        assert handler_tag is not None, "Failed to bind status bar to directory node"
-        self._status_bar_handlers[node_tag] = handler_tag
+        return self._create_status_bar_message_function(message_function)
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
@@ -274,12 +282,6 @@ class GUITreePanel(GUIPanel):
             self._delete_children(child_tag)
 
             registry_tag = self._get_handler_registry_tag(child_tag)
-            status_bar_tag = self._status_bar_handlers.get(child_tag)
-            if status_bar_tag is not None:
-                dpg_delete_item(status_bar_tag)
-                if child_tag in self._status_bar_handlers:
-                    del self._status_bar_handlers[child_tag]
-
             dpg_delete_item(registry_tag)
             if registry_tag in self._handlers:
                 del self._handlers[registry_tag]
