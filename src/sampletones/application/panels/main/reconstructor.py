@@ -13,6 +13,7 @@ from ...constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_1,
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
+    MSG_STATUS_INPUT,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -28,6 +29,7 @@ from ...constants.main import (
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
@@ -96,6 +98,8 @@ class GUIReconstructorPanel(GUIPanel):
             default_value=self.config_manager.config.generation.mixer,
             width=DIM_INPUT_WIDTH,
         )
+
+        GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)

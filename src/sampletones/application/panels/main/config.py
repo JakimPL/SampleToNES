@@ -13,7 +13,7 @@ from sampletones.typehints import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import DIM_INPUT_WIDTH
+from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
@@ -39,6 +39,7 @@ from ...constants.main import (
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
@@ -117,6 +118,8 @@ class GUIConfigPanel(GUIPanel):
             max_value=MAX_TRANSFORMATION_GAMMA,
             width=DIM_INPUT_WIDTH,
         )
+
+        GUIStatusBar.bind_to_item(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, LBL_TOOLTIP_MAIN_CONFIG_NORMALIZE)

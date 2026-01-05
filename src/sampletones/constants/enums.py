@@ -35,6 +35,10 @@ class FeatureKey(StrEnum):
     HI_PITCH = "hi_pitch"
     DUTY_CYCLE = "duty_cycle"
 
+    @property
+    def capitalized_name(self) -> str:
+        return self.value.replace("_", " ").capitalize()
+
 
 class AudioSourceType(StrEnum):
     RECONSTRUCTION = "reconstruction"

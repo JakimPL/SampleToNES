@@ -57,6 +57,9 @@ from ...constants.reconstructions import (
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE,
     SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
@@ -261,22 +264,33 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             ):
                 initial_pitch = MIN_PITCH if generator_name != GeneratorName.NOISE else MAX_PERIOD
                 self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
-
                 for feature_key in FEATURE_DISPLAY_ORDER:
-                    feature_group_tag = self._get_feature_group_tag(generator_name, feature_key)
-                    with dpg.group(
-                        tag=feature_group_tag,
-                        parent=window_tag,
-                    ):
-                        dpg.add_separator(parent=window_tag)
-                        feature_data_array = np.empty(0, dtype=np.int8)
-                        plot = self._create_feature_display(
-                            generator_name,
-                            feature_key,
-                            feature_data_array,
-                            feature_group_tag,
-                        )
-                        self.generator_plots[generator_name][feature_key] = plot
+                    self._add_generator_feature_display(
+                        generator_name,
+                        feature_key,
+                        window_tag,
+                    )
+
+    def _add_generator_feature_display(
+        self,
+        generator_name: GeneratorName,
+        feature_key: FeatureKey,
+        window_tag: str,
+    ) -> None:
+        feature_group_tag = self._get_feature_group_tag(generator_name, feature_key)
+        with dpg.group(
+            tag=feature_group_tag,
+            parent=window_tag,
+        ):
+            dpg.add_separator(parent=window_tag)
+            feature_data_array = np.empty(0, dtype=np.int8)
+            plot = self._create_feature_display(
+                generator_name,
+                feature_key,
+                feature_data_array,
+                feature_group_tag,
+            )
+            self.generator_plots[generator_name][feature_key] = plot
 
     def _update_initial_pitch(self, generator_name: GeneratorName, window_tag: str) -> None:
         features = self._get_features(generator_name)
@@ -476,6 +490,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self.initial_pitch_theme.bind_to_item(table_tag)
         self._create_initial_pitch_tooltip(generator_name, input_tag)
+        status_message = (
+            MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE
+            if generator_name != GeneratorName.NOISE
+            else MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE
+        )
+        GUIStatusBar.bind_to_item(input_tag, status_message)
 
         self.shortcut_manager.setup_input_focus_handlers(input_tag)
         self._setup_button_hold_handlers(
@@ -849,6 +869,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
+        GUIStatusBar.bind_to_item(copy_button_tag, MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE)
+        GUIStatusBar.bind_to_item(
+            raw_data_tag,
+            MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE.format(
+                instrument_feature=feature_key.capitalized_name,
+            ),
+        )
 
     def _parse_raw_data_input(
         self,
@@ -888,7 +915,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{generator_name.capitalize()}: {feature_key.name.replace('_', ' ').capitalize()}"
+        name = f"{generator_name.capitalize()}: {feature_key.capitalized_name}"
         plot.load_data(
             data=data,
             name=name,

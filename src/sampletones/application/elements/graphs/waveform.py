@@ -20,6 +20,7 @@ from ...constants.graphs import (
     LBL_PLOT_AXIS_WAVEFORM_TIME,
     LBL_PLOT_LABEL_WAVEFORM,
     LBL_PLOT_NAME_WAVEFORM_SAMPLE,
+    MSG_STATUS_WAVEFORM_NAVIGATION,
     SUF_BUTTON_WAVEFORM_RESET_ALL,
     SUF_BUTTON_WAVEFORM_RESET_X,
     SUF_BUTTON_WAVEFORM_RESET_Y,
@@ -45,6 +46,7 @@ from ...utils.dpg import (
     dpg_delete_item,
 )
 from ..button import GUIButton
+from ..status import GUIStatusBar
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
 from .layers.waveform import WaveformLayer
@@ -148,6 +150,8 @@ class GUIWaveformGraph(GUIGraph):
                 tag=self.y_axis_tag,
             )
             self._set_overlay_rectangle()
+
+        GUIStatusBar.bind_to_item(self.plot_tag, MSG_STATUS_WAVEFORM_NAVIGATION)
 
     @table_wrapper(columns=3, height=0)
     def _create_controls(self) -> None:

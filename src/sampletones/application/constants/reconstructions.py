@@ -63,10 +63,10 @@ MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS = "Reconstruction instrum
 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED = "Failed to export instrument as FTI."
 MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED = "Failed to export reconstruction as FTIs."
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE = (
-    'CTRL + click to type value. Enter note name (e.g., "C-4") or MIDI value (72).'
+    'CTRL + click to type value. Enter note name (e.g. "C-4") or MIDI value (72).'
 )
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE = (
-    'CTRL + click to type value. Enter period name (e.g., "p508") or integer value (4).'
+    'CTRL + click to type value. Enter period name (e.g. "p508") or integer value (4).'
 )
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = (
     "Click to change {instrument_feature}. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."

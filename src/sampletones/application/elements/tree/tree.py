@@ -28,6 +28,7 @@ from ...constants.general import (
     LBL_TREE_SEARCH,
     MSG_STATUS_NODE_DIRECTORY,
     MSG_STATUS_NODE_RECONSTRUCTION,
+    MSG_STATUS_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
@@ -144,6 +145,7 @@ class GUITreePanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
+        GUIStatusBar.bind_to_item(self._search_input_tag, MSG_STATUS_TREE_SEARCH)
 
     def _add_node(
         self,
