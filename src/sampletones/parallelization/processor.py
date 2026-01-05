@@ -45,7 +45,11 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self.on_cancelled: Optional[VoidCallback] = None
 
     def start(self) -> None:
-        self.monitor_thread = threading.Thread(target=self._run_tasks, daemon=True)
+        self.monitor_thread = threading.Thread(
+            target=self._run_tasks,
+            daemon=True,
+            name="TaskProcessorMonitor",
+        )
         self.monitor_thread.start()
 
     def wait(self, timeout: Optional[float] = None) -> None:
@@ -205,7 +209,11 @@ class TaskProcessor(Generic[T], CallbackMixin):
         if self.future:
             self.future.cancel()
 
-        cleanup_thread = threading.Thread(target=self._wait_for_cleanup, daemon=True)
+        cleanup_thread = threading.Thread(
+            target=self._wait_for_cleanup,
+            daemon=True,
+            name="TaskProcessorCleanup",
+        )
         cleanup_thread.start()
 
     def _is_thread_alive(self) -> bool:

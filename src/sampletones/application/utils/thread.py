@@ -23,7 +23,11 @@ class SingleThreadExecutor:
                 return False
 
         with self._lock:
-            self._thread = threading.Thread(target=target, daemon=True)
+            self._thread = threading.Thread(
+                target=target,
+                daemon=True,
+                name="ExecutorWorker",
+            )
             self._thread.start()
             return True
 

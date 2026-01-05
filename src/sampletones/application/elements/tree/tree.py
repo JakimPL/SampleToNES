@@ -184,7 +184,7 @@ class GUITreePanel(GUIPanel):
                 self._create_item_handler_registry(handler)
                 self._bind_item_handler_registry(handler)
         except SystemError as exception:
-            logger.error_with_traceback(f"Error assigning item handler registry '{handler.tag}'")
+            logger.error_with_traceback(exception, f"Error assigning item handler registry '{handler.tag}'")
             raise CallbackQueueStop(str(exception)) from exception
 
     def _create_item_handler_registry(self, handler: Handler) -> None:

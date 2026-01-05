@@ -1,4 +1,5 @@
 import sys
+import threading
 import tkinter
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -161,7 +162,7 @@ from .utils.dialogs import (
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
 )
-from .utils.dpg import dpg_configure_item, dpg_set_frame_callback, dpg_set_value
+from .utils.dpg import dpg_configure_item, dpg_set_value
 from .utils.file import file_dialog_handler
 from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
@@ -238,6 +239,10 @@ class GUI:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
+        self._callback_worker_thread: Optional[threading.Thread] = None
+        self._callback_stop_event: threading.Event = threading.Event()
+        self._callback_frame_event: threading.Condition = threading.Condition()
+
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
 
@@ -250,7 +255,7 @@ class GUI:
 
     def _setup_gui(self) -> None:
         dpg.create_context()
-        dpg_set_frame_callback(self._post_frame)
+        self._start_callback_worker()
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
@@ -262,6 +267,29 @@ class GUI:
         self._update_menu()
         self._restore_current_items()
         dpg.set_exit_callback(self._on_close)
+
+    def _start_callback_worker(self) -> None:
+        self._callback_stop_event.clear()
+        self._callback_worker_thread = threading.Thread(
+            target=self._callback_worker,
+            daemon=True,
+            name="CallbackQueueWorker",
+        )
+        self._callback_worker_thread.start()
+        logger.info("Callback worker thread started")
+
+    def _callback_worker(self) -> None:
+        while not self._callback_stop_event.is_set():
+            CallbackQueue.process()
+            with self._callback_frame_event:
+                self._callback_frame_event.wait(timeout=1.0 / 60.0)
+
+    def _stop_callback_worker(self) -> None:
+        CallbackQueue.stop()
+        self._callback_stop_event.set()
+        if self._callback_worker_thread:
+            self._callback_worker_thread.join(timeout=1.0)
+            logger.info("Callback worker thread stopped")
 
     def _on_exit(self) -> None:
         dpg.start_dearpygui()
@@ -1212,7 +1240,7 @@ class GUI:
         return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
-        CallbackQueue.stop()
+        self._stop_callback_worker()
         self.audio_device_manager.stop()
         if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
@@ -1381,14 +1409,14 @@ class GUI:
 
     def _post_frame(self) -> None:
         CallbackQueue.add(self._update_status, priority=True)
-        CallbackQueue.process()
+        with self._callback_frame_event:
+            self._callback_frame_event.notify()
 
     def run(self) -> None:
         try:
             while dpg.is_dearpygui_running():
                 self.frame()
                 self._post_frame()
-                # dpg_set_frame_callback(self._post_frame)
         except KeyboardInterrupt:
             return
         finally:
