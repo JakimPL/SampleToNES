@@ -84,11 +84,9 @@ from ...constants.main import TAG_PANEL_MAIN_CONVERTER
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.tree.handler import ItemClickCallback
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager
-from ...utils.callbacks.queue import queued
 from ...utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
@@ -217,11 +215,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()
-        except SystemError:
-            logger.warning("Application failed during rebuilding the instructions library tree")
         finally:
             self.unlock()
-            self._assign_item_handler_registries(priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_HANDLER)
             self.update_status()
 
     def update_status(self) -> None:
@@ -357,37 +352,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library_and_set_current(library_key)
         self.update_status()
 
-    @queued(priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE)
-    def _queue_node(
-        self,
-        node: TreeNode,
-        node_tag: str,
-        parent: str,
-        leaf: bool = False,
-        open_on_arrow: bool = False,
-        open_on_double_click: bool = False,
-        should_expand: bool = False,
-        has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
-        item_click_callback: Optional[ItemClickCallback] = None,
-        item_double_click_callback: Optional[ItemClickCallback] = None,
-        status_bar_callback: Optional[MessageCallback] = None,
-    ) -> None:
-        self._add_node(
-            node,
-            node_tag,
-            parent,
-            leaf=leaf,
-            open_on_arrow=open_on_arrow,
-            open_on_double_click=open_on_double_click,
-            should_expand=should_expand,
-            has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
-            item_click_callback=item_click_callback,
-            item_double_click_callback=item_double_click_callback,
-            status_bar_callback=status_bar_callback,
-        )
-
     @traverse(TreeTraversal.DFS)
     def _build_tree_node(
         self,
@@ -418,6 +382,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             open_on_double_click=True,
             item_click_callback=callback,
             status_bar_callback=status_bar_message_function,
+            add_node_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE,
+            add_handler_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_HANDLER,
         )
 
         state.parent = node_tag

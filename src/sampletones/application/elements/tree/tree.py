@@ -27,6 +27,8 @@ from ...constants.general import (
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
     VAL_DELAY_SCHEDULE,
+    VAL_PRIORITY_ADD_HANDLER,
+    VAL_PRIORITY_ADD_NODE,
     VAL_PRIORITY_SCHEDULE,
     VAL_TEXT_COLLAPSE,
     VAL_TEXT_EXPAND,
@@ -97,7 +99,6 @@ class GUITreePanel(GUIPanel):
         self._handler_lock = threading.Lock()
 
         self._handlers: Dict[str, Handler] = {}
-        self._new_handlers: Dict[str, Handler] = {}
 
         self.search_label = search_label
 
@@ -172,12 +173,48 @@ class GUITreePanel(GUIPanel):
                 is_node_expanded=is_node_expanded,
             )
 
-        self._add_item_handler_registry(
+    def _queue_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
+        add_node_priority: int = VAL_PRIORITY_ADD_NODE,
+        add_handler_priority: int = VAL_PRIORITY_ADD_HANDLER,
+    ) -> None:
+        CallbackQueue.add(
+            self._add_node,
+            node,
+            node_tag,
+            parent,
+            leaf=leaf,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            should_expand=should_expand,
+            has_favorite_ancestor=has_favorite_ancestor,
+            is_node_expanded=is_node_expanded,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
+            priority=add_node_priority,
+        )
+
+        CallbackQueue.add(
+            self._add_item_handler_registry,
             node_tag=node_tag,
             node=node,
             item_click_callback=item_click_callback,
             item_double_click_callback=item_double_click_callback,
             status_bar_callback=status_bar_callback,
+            priority=add_handler_priority,
         )
 
     def _build_tree_node(
@@ -204,25 +241,12 @@ class GUITreePanel(GUIPanel):
     def _get_handler_registry_tag(self, tag: str) -> str:
         return f"{tag}{SUF_NODE_HANDLER}"
 
-    def _delete_item_handler_registry(self, node_tag: str) -> None:
-        handler_tag = self._get_handler_registry_tag(node_tag)
-        dpg_delete_item(handler_tag)
-
     def _delete_item_handler_registries(self) -> None:
-        for handler in self._handlers.values():
-            dpg_delete_item(handler.tag)
+        with self._handler_lock:
+            for handler in self._handlers.values():
+                dpg_delete_item(handler.tag)
 
-        self._handlers.clear()
-
-    def _assign_item_handler_registries(self, priority: int) -> None:
-        handlers = list(self._new_handlers.values())
-        self._new_handlers.clear()
-        for handler in handlers:
-            CallbackQueue.add(
-                self._assign_item_handler_registry,
-                handler,
-                priority=priority,
-            )
+            self._handlers.clear()
 
     def _assign_item_handler_registry(self, handler: Handler) -> None:
         try:
@@ -259,6 +283,8 @@ class GUITreePanel(GUIPanel):
                     user_data=(handler.node, handler.parent),
                 )
 
+        self._handlers[handler.tag] = handler
+
     def _bind_item_handler_registry(self, handler: Handler) -> None:
         if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
             dpg.bind_item_handler_registry(handler.parent, handler.tag)
@@ -280,8 +306,7 @@ class GUITreePanel(GUIPanel):
             item_double_click_callback=item_double_click_callback,
             status_bar_callback=status_bar_callback,
         )
-        self._handlers[tag] = handler
-        self._new_handlers[tag] = handler
+        self._assign_item_handler_registry(handler)
 
     def _create_status_bar_message_function(
         self,

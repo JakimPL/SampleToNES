@@ -5,8 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import MessageCallback, Sender, VoidCallback
-from sampletones.utils.logger import logger
+from sampletones.typehints import Sender, VoidCallback
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
@@ -32,13 +31,11 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.tree.handler import ItemClickCallback
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
-from ...utils.callbacks.queue import queued
 from ...utils.dpg import dpg_configure_item
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
@@ -147,50 +144,15 @@ class GUIBrowserPanel(GUITreePanel):
             self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
-            self._handlers.clear()
             self.build_tree()
-        except SystemError:
-            logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self.unlock()
-            self._assign_item_handler_registries(priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
             return True
 
         return bool(node.children)
-
-    @queued(priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE)
-    def _queue_node(
-        self,
-        node: TreeNode,
-        node_tag: str,
-        parent: str,
-        leaf: bool = False,
-        open_on_arrow: bool = False,
-        open_on_double_click: bool = False,
-        should_expand: bool = False,
-        has_favorite_ancestor: bool = False,
-        is_node_expanded: bool = False,
-        item_click_callback: Optional[ItemClickCallback] = None,
-        item_double_click_callback: Optional[ItemClickCallback] = None,
-        status_bar_callback: Optional[MessageCallback] = None,
-    ) -> None:
-        self._add_node(
-            node,
-            node_tag,
-            parent,
-            leaf=leaf,
-            open_on_arrow=open_on_arrow,
-            open_on_double_click=open_on_double_click,
-            should_expand=should_expand,
-            has_favorite_ancestor=has_favorite_ancestor,
-            is_node_expanded=is_node_expanded,
-            item_click_callback=item_click_callback,
-            item_double_click_callback=item_double_click_callback,
-            status_bar_callback=status_bar_callback,
-        )
 
     @traverse(TreeTraversal.BFS)
     def _build_tree_node(
@@ -217,6 +179,8 @@ class GUIBrowserPanel(GUITreePanel):
                 has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_directory_node_clicked,
                 status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
+                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
+                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )
         else:
             self._queue_node(
@@ -228,6 +192,8 @@ class GUIBrowserPanel(GUITreePanel):
                 item_click_callback=self._on_reconstruction_node_clicked,
                 item_double_click_callback=self._on_reconstruction_node_double_clicked,
                 status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
+                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
+                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )
 
         state.parent = node_tag

@@ -16,7 +16,7 @@ from .task import CallbackTask
 F = TypeVar("F", bound=Callback)
 
 TASKS_PER_FRAME = 2
-TIME_PER_FRAME = 1.0 / 90.0
+TIME_PER_FRAME = 1.0 / 120.0
 
 
 class CallbackQueue:
@@ -41,7 +41,7 @@ class CallbackQueue:
             frame = cls._frame_counter + delay
             insertion_order = cls._insertion_counter
             cls._insertion_counter += 1
-            task_priority = CallbackPriority(frame, priority, insertion_order)
+            task_priority = CallbackPriority(priority, frame, insertion_order)
             task = CallbackTask(task_priority, callback, args, kwargs)
             heapq.heappush(cls._callbacks, task)
 
