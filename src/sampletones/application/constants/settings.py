@@ -1,8 +1,10 @@
 TAG_WINDOW_SETTINGS_AUDIO = "window_settings_audio"
 TAG_COMBO_SETTINGS_AUDIO_DEVICE = "combo_settings_audio_device"
 TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE = "combo_settings_audio_sample_rate"
+TAG_COMBO_SETTINGS_AUDIO_BUFFER_SIZE = "combo_settings_audio_buffer_size"
 TAG_GROUP_SETTINGS_AUDIO_DEVICE = "group_settings_audio_device"
 TAG_GROUP_SETTINGS_AUDIO_SAMPLE_RATE = "group_settings_audio_sample_rate"
+TAG_GROUP_SETTINGS_AUDIO_BUFFER_SIZE = "group_settings_audio_buffer_size"
 TAG_BUTTON_SETTINGS_AUDIO_APPLY = "button_settings_audio_apply"
 TAG_BUTTON_SETTINGS_AUDIO_REFRESH = "button_settings_audio_refresh"
 
@@ -11,6 +13,7 @@ SUF_SETTINGS_AUDIO_BIT = "-bit"
 
 LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE = "Output device"
 LBL_TEXT_SETTINGS_AUDIO_SAMPLE_RATE = "Sample rate"
+LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE = "Buffer size"
 LBL_BUTTON_SETTINGS_AUDIO_APPLY = "Apply"
 LBL_BUTTON_SETTINGS_AUDIO_REFRESH_DEVICES = "Refresh devices"
 

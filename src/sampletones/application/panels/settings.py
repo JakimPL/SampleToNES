@@ -3,7 +3,12 @@ from typing import Dict, List, Optional, Tuple, Union, cast
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDevice, AudioDeviceManager, CurrentDevice
-from sampletones.constants.audio import SAMPLE_RATES, SampleRate
+from sampletones.constants.audio import (
+    BUFFER_SIZES,
+    SAMPLE_RATES,
+    BufferSize,
+    SampleRate,
+)
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
@@ -15,13 +20,16 @@ from ..constants.settings import (
     DIM_WINDOW_WIDTH_SETTINGS_AUDIO,
     LBL_BUTTON_SETTINGS_AUDIO_APPLY,
     LBL_BUTTON_SETTINGS_AUDIO_REFRESH_DEVICES,
+    LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE,
     LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE,
     LBL_TEXT_SETTINGS_AUDIO_SAMPLE_RATE,
     SUF_SETTINGS_AUDIO_HZ,
     TAG_BUTTON_SETTINGS_AUDIO_APPLY,
     TAG_BUTTON_SETTINGS_AUDIO_REFRESH,
+    TAG_COMBO_SETTINGS_AUDIO_BUFFER_SIZE,
     TAG_COMBO_SETTINGS_AUDIO_DEVICE,
     TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE,
+    TAG_GROUP_SETTINGS_AUDIO_BUFFER_SIZE,
     TAG_GROUP_SETTINGS_AUDIO_DEVICE,
     TAG_GROUP_SETTINGS_AUDIO_SAMPLE_RATE,
     TAG_WINDOW_SETTINGS_AUDIO,
@@ -43,6 +51,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_device_index: int = -1
         self._current_device_name: str = ""
         self._current_sample_rate: str = ""
+        self._current_buffer_size: str = ""
 
         super().__init__(
             tag=TAG_WINDOW_SETTINGS_AUDIO,
@@ -58,6 +67,7 @@ class GUIAudioSettingsWindow(GUIWindow):
 
         self._current_device = settings_data.current_device
         self._set_device_index_name_and_sample_rate(self._current_device)
+        self._set_buffer_size()
 
     def create_panel(self) -> None:
         with dpg.window(
@@ -72,6 +82,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         ):
             self._create_device_selection()
             self._create_sample_rate_selection()
+            self._create_buffer_size_selection()
             dpg.add_separator()
             self._create_action_buttons()
 
@@ -121,6 +132,19 @@ class GUIAudioSettingsWindow(GUIWindow):
                 tag=TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE,
                 items=[],
                 default_value=self._current_sample_rate,
+                width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
+            )
+
+    def _create_buffer_size_selection(self) -> None:
+        with dpg.group(tag=TAG_GROUP_SETTINGS_AUDIO_BUFFER_SIZE, horizontal=True):
+            dpg.add_text(LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE)
+            dpg.add_spacer(
+                width=DIM_TEXT_WIDTH_SETTINGS_AUDIO - int(dpg.get_text_size(LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE)[0])
+            )
+            dpg.add_combo(
+                tag=TAG_COMBO_SETTINGS_AUDIO_BUFFER_SIZE,
+                items=[str(size) for size in BUFFER_SIZES],
+                default_value=self._current_buffer_size,
                 width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
             )
 
@@ -175,6 +199,12 @@ class GUIAudioSettingsWindow(GUIWindow):
         assert sample_rate in SAMPLE_RATES, "Unsupported sample rate selected"
         return cast(SampleRate, sample_rate)
 
+    def _get_selected_buffer_size(self) -> BufferSize:
+        buffer_size_string: str = dpg.get_value(TAG_COMBO_SETTINGS_AUDIO_BUFFER_SIZE)
+        buffier_size: int = int(buffer_size_string)
+        assert buffier_size in BUFFER_SIZES, "Unsupported buffer size selected"
+        return cast(BufferSize, buffier_size)
+
     def _refresh_devices(self) -> None:
         self.audio_device_manager.refresh_devices()
         self.prepare()
@@ -185,10 +215,16 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_device_name = current_device.name
         self._current_sample_rate = f"{current_device.sample_rate}{SUF_SETTINGS_AUDIO_HZ}"
 
+    def _set_buffer_size(self) -> None:
+        buffer_size = self.audio_device_manager.buffer_size
+        self._current_buffer_size = str(buffer_size)
+
     def _apply(self) -> None:
         device_index = self._get_selected_device_index()
         sample_rate = self._get_selected_sample_rate()
+        buffer_size = self._get_selected_buffer_size()
         self.audio_device_manager.configure_device(device_index, sample_rate)
+        self.audio_device_manager.set_buffer_size(buffer_size)
 
         self._current_device = self.audio_device_manager.get_current_device()
         self._set_device_index_name_and_sample_rate(self._current_device)

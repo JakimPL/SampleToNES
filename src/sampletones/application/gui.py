@@ -253,7 +253,9 @@ class GUI:
 
     def _load_settings(self) -> None:
         audio_device = self.application_config_manager.current_audio_device
+        buffer_size = self.application_config_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
+        self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _setup_gui(self) -> None:
         dpg.create_context()
