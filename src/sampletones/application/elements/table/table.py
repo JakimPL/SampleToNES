@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
@@ -14,7 +16,7 @@ from .cell import TableCell
 
 
 class GUITable:
-    REGISTRY: Dict[str, "GUITable"] = {}
+    _REGISTRY: Dict[str, GUITable] = {}
 
     def __init__(
         self,
@@ -69,7 +71,7 @@ class GUITable:
         dpg.add_table(**table_kwargs)
         self.update_rows(rows)
 
-        GUITable.REGISTRY[tag] = self
+        GUITable._REGISTRY[tag] = self
 
     def _reset(self) -> None:
         self._rows = ()
@@ -123,16 +125,16 @@ class GUITable:
 
     @classmethod
     def delete(cls, tag: str) -> None:
-        if tag in cls.REGISTRY:
+        if tag in cls._REGISTRY:
             if dpg.does_item_exist(tag):
                 dpg.delete_item(tag)
-            del cls.REGISTRY[tag]
+            del cls._REGISTRY[tag]
 
     def delete_item(self) -> None:
         if dpg.does_item_exist(self._tag):
             dpg.delete_item(self._tag)
-        if self._tag in GUITable.REGISTRY:
-            del GUITable.REGISTRY[self._tag]
+        if self._tag in GUITable._REGISTRY:
+            del GUITable._REGISTRY[self._tag]
 
     def show(self) -> None:
         dpg.configure_item(self._tag, show=True)

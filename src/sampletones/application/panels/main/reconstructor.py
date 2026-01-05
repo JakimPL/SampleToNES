@@ -3,7 +3,7 @@ from typing import Any
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.enums import GeneratorName
-from sampletones.constants.general import MAX_MIXER, MIXER
+from sampletones.constants.general import MAX_MIXER
 from sampletones.typehints import Sender, SerializedData
 
 from ...config.manager import ConfigManager
@@ -13,6 +13,7 @@ from ...constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_1,
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
+    MSG_STATUS_INPUT,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -24,11 +25,11 @@ from ...constants.main import (
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
     TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
-    VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
@@ -68,22 +69,22 @@ class GUIReconstructorPanel(GUIPanel):
 
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_PULSE_1,
-            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            default_value=GeneratorName.PULSE1 in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_PULSE_2,
-            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            default_value=GeneratorName.PULSE2 in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_TRIANGLE,
-            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            default_value=GeneratorName.TRIANGLE in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_NOISE,
-            default_value=VAL_CHECKBOX_MAIN_RECONSTRUCTOR_ENABLED,
+            default_value=GeneratorName.NOISE in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
         )
 
@@ -94,9 +95,11 @@ class GUIReconstructorPanel(GUIPanel):
             tag=TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
-            default_value=MIXER,
+            default_value=self.config_manager.config.generation.mixer,
             width=DIM_INPUT_WIDTH,
         )
+
+        GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
@@ -132,10 +135,10 @@ class GUIReconstructorPanel(GUIPanel):
 
         config = self.config_manager.config
         for tag, info in self.config_manager.config_parameters["reconstructor"].items():
-            section_name = info["section"]
+            section_name = info.section
             section = getattr(config, section_name)
-            if hasattr(section, tag):
-                dpg.set_value(tag, getattr(section, tag))
+            if hasattr(section, info.name):
+                dpg.set_value(tag, getattr(section, info.name))
 
         for generator_tag, generator in self.config_manager.generator_tags.items():
             dpg_set_value(generator_tag, generator in config.generation.generators)

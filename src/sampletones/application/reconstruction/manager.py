@@ -7,6 +7,8 @@ from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
+from ..constants.general import VAL_PRIORITY_SCHEDULE
+from ..utils.callbacks.queue import CallbackQueue
 from .data import ReconstructionData
 from .feature import FeatureData
 
@@ -61,7 +63,7 @@ class ReconstructionManager(CallbackMixin):
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
-        self.call(self.on_reconstruction_closed)
+        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=VAL_PRIORITY_SCHEDULE)
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

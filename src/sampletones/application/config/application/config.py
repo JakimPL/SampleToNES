@@ -52,6 +52,9 @@ class ApplicationConfig(BaseModel):
     def load(cls, path: Pathlike) -> ApplicationConfig:
         path = to_path(path)
         config_dict = load_yaml(path)
+        if not config_dict:
+            logger.warning(f"Application config file '{path}' is empty or invalid. Loading default configuration.")
+            return cls()
         return cls(**config_dict)
 
     def save(self, path: Pathlike) -> None:

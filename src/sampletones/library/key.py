@@ -4,11 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.configs import InstructionsLibraryConfig
 from sampletones.configs.config import Config
-from sampletones.constants.general import (
-    MAX_SAMPLE_RATE,
-    MAX_TRANSFORMATION_GAMMA,
-    MIN_SAMPLE_RATE,
-)
+from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
+from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.ffts import Window
 from sampletones.utils import hash_model
 
@@ -53,5 +51,5 @@ class InstructionLibraryKey(BaseModel):
             f"cr_{config.change_rate}_"
             f"ws_{window.size}_"
             f"tg_{config.transformation_gamma}_"
-            f"ch_{config_hash}.dat"
+            f"ch_{config_hash}{EXT_FILE_LIBRARY}"
         )

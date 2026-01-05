@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import traceback
 from typing import Dict
 
@@ -18,7 +20,7 @@ from .button import GUIButton
 
 
 class GUITraceback:
-    REGISTRY: Dict[str, "GUITraceback"] = {}
+    _REGISTRY: Dict[str, GUITraceback] = {}
 
     def __init__(
         self,
@@ -56,7 +58,7 @@ class GUITraceback:
                 theme=button_theme,
             )
 
-        GUITraceback.REGISTRY[self._tag] = self
+        GUITraceback._REGISTRY[self._tag] = self
 
     def toggle_visibility(self) -> None:
         self.set_visibility(not self.visible)

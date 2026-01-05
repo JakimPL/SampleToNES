@@ -2,23 +2,29 @@ import contextlib
 import os
 import sys
 import threading
+from io import DEFAULT_BUFFER_SIZE
 from pathlib import Path
 from typing import Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
 
-from sampletones.audio import load_audio
+from sampletones.constants.audio import (
+    BUFFER_SIZES,
+    SAMPLE_RATES,
+    BufferSize,
+    SampleRate,
+)
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
-from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
+from ..audio import load_audio
+from .device import AudioDevice, CurrentDevice
 
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32
-CHUNK_SIZE = 1024
 
 OnPlaybackErrorCallback = Callable[[PlaybackError], None]
 
@@ -58,6 +64,7 @@ class AudioDeviceManager(CallbackMixin):
 
         self._device_index: Optional[int] = None
         self._sample_rate: Optional[SampleRate] = None
+        self._buffer_size: BufferSize = DEFAULT_BUFFER_SIZE
 
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
@@ -179,6 +186,18 @@ class AudioDeviceManager(CallbackMixin):
         self._sample_rate = device.default_sample_rate
 
     @property
+    def buffer_size(self) -> BufferSize:
+        return self._buffer_size
+
+    @buffer_size.setter
+    def buffer_size(self, value: BufferSize) -> None:
+        if not value in BUFFER_SIZES:
+            buffer_sizes = ", ".join(map(str, BUFFER_SIZES))
+            raise ValueError(f"Buffer size {value} is not valid, must be one of: {buffer_sizes}")
+
+        self._buffer_size = value
+
+    @property
     def device_name(self) -> str:
         return self._devices[self.device_index].name
 
@@ -216,12 +235,22 @@ class AudioDeviceManager(CallbackMixin):
                 sample_rate=current_device.sample_rate,
             )
 
-        logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        if current_device.name:
+            logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+        else:
+            logger.info("Initializing the default audio device.")
+            self._initialize_default_device()
+
         return None
 
-    def find_device_index(self, current_device: CurrentDevice) -> int:
+    def find_device_index(
+        self,
+        current_device: CurrentDevice,
+        host_api_only: bool = True,
+    ) -> int:
         for device in self._devices.values():
-            if device.name == current_device.name and current_device.host_api == device.host_api:
+            valid_name = device.name == current_device.name or not host_api_only
+            if valid_name and current_device.host_api == device.host_api:
                 return device.index
 
         return -1
@@ -245,7 +274,11 @@ class AudioDeviceManager(CallbackMixin):
         self.stop()
         self.device_index = device_index
         self.sample_rate = sample_rate
-        logger.info(f"Audio device configured: {self.device_name} (index={device_index}, sample_rate={sample_rate})")
+        logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")
+
+    def set_buffer_size(self, buffer_size: BufferSize) -> None:
+        self.buffer_size = buffer_size
+        logger.info(f"Audio buffer size set to {buffer_size} samples")
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
         self._position_callback = callback
@@ -265,7 +298,12 @@ class AudioDeviceManager(CallbackMixin):
         self._playing = True
         self._paused = False
         self._stop_flag = False
-        self._playback_thread = threading.Thread(target=self._playback_worker, daemon=True)
+
+        self._playback_thread = threading.Thread(
+            target=self._playback_worker,
+            daemon=True,
+            name="AudioPlaybackWorker",
+        )
         self._playback_thread.start()
 
     def _playback_worker(self) -> None:
@@ -291,7 +329,7 @@ class AudioDeviceManager(CallbackMixin):
             if remaining <= 0:
                 break
 
-            chunk_size = min(CHUNK_SIZE, remaining)
+            chunk_size = min(self._buffer_size, remaining)
             chunk = self._audio_data[self._position : self._position + chunk_size]
             stream.write(chunk.tobytes())
             self._position += chunk_size

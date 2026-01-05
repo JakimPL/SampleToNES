@@ -17,8 +17,11 @@ from sampletones.utils.logger import logger
 from ...config.manager import ConfigManager
 from ...constants.general import (
     TPL_GLOBAL_TIME_ESTIMATION,
+    VAL_DELAY_CANCEL,
+    VAL_DELAY_SCHEDULE,
     VAL_GLOBAL_PROGRESS_COMPLETE,
     VAL_GLOBAL_PROGRESS_START,
+    VAL_PRIORITY_SCHEDULE,
 )
 from ...constants.main import (
     DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
@@ -61,6 +64,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
 from ...utils.align import table_wrapper
+from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
 from ...utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
 from ...utils.progress import SystemProgress
@@ -94,9 +98,7 @@ class GUIConverterPanel(GUIPanel):
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
-        config = self._load_config()
-        if config is None:
-            return
+        config = self._get_config()
 
         if not self._assign_paths(input_path, config):
             return
@@ -118,7 +120,7 @@ class GUIConverterPanel(GUIPanel):
             logger.warning("Conversion is already in progress")
             return
 
-        self.config = self._load_config()
+        self.config = self._get_config()
         self._set_conversion_panel_enabled(False)
         self._set_conversion_subpanel_visible(True)
         self._reset_progress()
@@ -227,21 +229,16 @@ class GUIConverterPanel(GUIPanel):
     def _wait_for_library_and_start(self) -> None:
         if not self.call(self.is_library_loaded):
             dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
-            dpg.set_frame_callback(dpg.get_frame_count() + 10, self._wait_for_library_and_start)
+            CallbackQueue.add(
+                self._wait_for_library_and_start,
+                priority=VAL_PRIORITY_SCHEDULE,
+                delay=VAL_DELAY_SCHEDULE,
+            )
         else:
             self._start_conversion()
 
-    def _load_config(self) -> Optional[Config]:
-        try:
-            return self.config_manager.get_config()
-        except RuntimeError as exception:
-            logger.error("Config not initialized")
-            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
-        except Exception as exception:
-            logger.error("Failed to get config")
-            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
-
-        return None
+    def _get_config(self) -> Config:
+        return self.config_manager.config.model_copy()
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
@@ -371,7 +368,11 @@ class GUIConverterPanel(GUIPanel):
 
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
-        dpg.set_frame_callback(dpg.get_frame_count() + 30, self._on_close)
+        CallbackQueue.add(
+            self._on_close,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_CANCEL,
+        )
         self.call(self.on_cancelled)
 
     def _reset_progress(self) -> None:
@@ -413,11 +414,10 @@ class GUIConverterPanel(GUIPanel):
         self.system_progress.error()
         self._rename_cancel_to_close()
         if isinstance(exception, NoFilesToProcessError):
-            dpg.set_frame_callback(
-                dpg.get_frame_count() + 1,
-                lambda: show_info_dialog(
-                    self.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_MAIN_CONVERTER_PROGRESS
-                ),
+            show_info_dialog(
+                self.tag,
+                MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
+                TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
             )
             return
 

@@ -1,6 +1,6 @@
 import platform
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from sampletones.constants.paths import (
     EXT_FILE_LIBRARY,
@@ -9,13 +9,19 @@ from sampletones.constants.paths import (
 )
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 
+from ..config.manager import ConfigManager
 from ..constants.general import LBL_TREE_ROOT
 
 
 class ExplorerManager:
-    def __init__(self, depth: int = 0) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        depth: int = 0,
+    ) -> None:
         self.tree = Tree()
-        self.current_directory = Path.cwd()
+        self.config_manager = config_manager
+
         self._expanded_directories: Dict[Path, bool] = {}
         self.depth = depth
 
@@ -24,22 +30,24 @@ class ExplorerManager:
 
         filesystems = self._get_filesystems()
         for filesystem_path in filesystems:
-            filesystem_node = self._create_directory_node(filesystem_path)
-            filesystem_node.parent = container_root
+            filesystem_node = self._create_directory_node(filesystem_path, parent=container_root)
 
-            if self._is_ancestor_of_current(filesystem_path):
-                self._expand_path_to_current(filesystem_node)
+            selected_path = self._get_ancestor_of_selected(filesystem_path)
+            if selected_path is not None:
+                self._expand_path_to_selected(filesystem_node, selected_path)
 
         self.tree.set_root(container_root)
 
     def _create_directory_node(
         self,
         directory_path: Path,
+        parent: Optional[TreeNode] = None,
     ) -> FileSystemNode:
         node = FileSystemNode(
             name=directory_path.name or str(directory_path),
             filepath=directory_path,
             node_type=NodeType.DIRECTORY,
+            parent=parent,
         )
 
         self._load_directory_children(node)
@@ -165,16 +173,19 @@ class ExplorerManager:
                 drives.append(drive)
         return drives
 
-    def _is_ancestor_of_current(self, path: Path) -> bool:
-        try:
-            self.current_directory.relative_to(path)
-            return True
-        except ValueError:
-            return False
+    def _get_ancestor_of_selected(self, path: Path) -> Optional[Path]:
+        for selected_path in self.selected_directories:
+            try:
+                selected_path.relative_to(path)
+                return selected_path
+            except ValueError:
+                continue
 
-    def _expand_path_to_current(self, filesystem_node: FileSystemNode) -> None:
+        return None
+
+    def _expand_path_to_selected(self, filesystem_node: FileSystemNode, selected_path: Path) -> None:
         try:
-            relative_parts = self.current_directory.relative_to(filesystem_node.filepath).parts
+            relative_parts = selected_path.relative_to(filesystem_node.filepath).parts
         except ValueError:
             return
 
@@ -191,3 +202,11 @@ class ExplorerManager:
                     break
             else:
                 break
+
+    @property
+    def selected_directories(self) -> List[Path]:
+        return [
+            Path.cwd(),
+            self.config_manager.get_library_directory(),
+            self.config_manager.get_output_directory(),
+        ]

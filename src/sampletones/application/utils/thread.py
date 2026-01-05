@@ -23,13 +23,13 @@ class SingleThreadExecutor:
                 return False
 
         with self._lock:
-            self._thread = threading.Thread(target=target, daemon=True)
+            self._thread = threading.Thread(
+                target=target,
+                daemon=True,
+                name="ExecutorWorker",
+            )
             self._thread.start()
             return True
-
-    def is_running(self) -> bool:
-        with self._lock:
-            return self._thread is not None and self._thread.is_alive()
 
 
 def concurrent(
@@ -38,15 +38,15 @@ def concurrent(
     wait: bool = True,
     method_bound: bool = False,
 ) -> Union[F, Callable[[F], F]]:
-    def decorator(func: F) -> F:
-        method_class = func.__qualname__.split(".")[0]
-        method_name = func.__name__
+    def decorator(function: F) -> F:
+        method_class = function.__qualname__.split(".")[0]
+        method_name = function.__name__
         if method_bound:
             executor_attribute = f"_concurrent_executor_{method_class}_{method_name}"
         else:
             executor_attribute = f"_concurrent_executor_{method_class}"
 
-        @wraps(func)
+        @wraps(function)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
             if not hasattr(self, executor_attribute):
                 setattr(self, executor_attribute, SingleThreadExecutor())
@@ -54,7 +54,7 @@ def concurrent(
             executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
             def task() -> None:
-                func(self, *args, **kwargs)
+                function(self, *args, **kwargs)
 
             executor.execute(task, wait=wait)
 

@@ -11,18 +11,18 @@ from .style import ThemeColor, ThemeParameter, ThemeStyle
 
 
 class Theme:
-    REGISTRY: Dict[str, "Theme"] = {}
+    _REGISTRY: Dict[str, Theme] = {}
 
     tag: str
     _theme: ThemeItems
     _dictionary: ThemeDictionary
 
     def __init__(self) -> None:
-        Theme.REGISTRY[self.tag] = self
+        Theme._REGISTRY[self.tag] = self
 
     def __new__(cls) -> Theme:
-        if cls.tag in cls.REGISTRY:
-            return cls.REGISTRY[cls.tag]
+        if cls.tag in cls._REGISTRY:
+            return cls._REGISTRY[cls.tag]
 
         instance = super(Theme, cls).__new__(cls)
         return instance

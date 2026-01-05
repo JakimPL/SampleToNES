@@ -1,11 +1,11 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.tree import FileSystemNode, NodeType, TreeNode
+from sampletones.audio import AudioDeviceManager
+from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import Sender, VoidCallback
-from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
@@ -25,15 +25,19 @@ from ...constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_BROWSER,
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
+    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
+    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
 from ...utils.dpg import dpg_configure_item
+from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
 OnLoadReconstructionCallback = Callable[[Path], None]
@@ -45,16 +49,18 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
         browser_manager: BrowserManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
+        self.audio_device_manager = audio_device_manager
         self.browser_manager = browser_manager
         self.reconstruction_manager = reconstruction_manager
 
-        self._building_tree: bool = False
-        self._loading_reconstruction: bool = False
+        self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
@@ -67,6 +73,8 @@ class GUIBrowserPanel(GUITreePanel):
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
             application_config_manager=application_config_manager,
+            audio_device_manager=audio_device_manager,
+            shortcut_manager=shortcut_manager,
         )
 
     def create_panel(self) -> None:
@@ -128,20 +136,17 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._building_tree:
+        if self._lock:
             return
 
-        self._building_tree = True
+        self.lock()
         try:
             self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self.build_tree()
-        except SystemError:
-            logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
-            self._building_tree = False
-            self._assign_item_handler_registries()
+            self.unlock()
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
@@ -149,15 +154,13 @@ class GUIBrowserPanel(GUITreePanel):
 
         return bool(node.children)
 
+    @traverse(TreeTraversal.BFS)
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
-        has_favorite_ancestor: bool = False,
-        **kwargs: Any,
+        state: TreeNodeState,
     ) -> None:
         node_tag = self._generate_node_tag(node)
-        self._handlers.clear()
         if node.node_type == NodeType.ROOT:
             return
 
@@ -165,46 +168,35 @@ class GUIBrowserPanel(GUITreePanel):
             return
 
         is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
-        has_favorite_ancestor |= is_favorite
+        state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
-                parent=parent,
-                default_open=should_expand,
-            ):
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=has_favorite_ancestor,
-                )
-                for child in node.children:
-                    self._build_tree_node(child, node_tag, has_favorite_ancestor)
-
-            self._add_item_handler_registry(
-                node_tag=node_tag,
+            self._queue_node(
                 node=node,
+                node_tag=node_tag,
+                parent=state.parent,
+                should_expand=should_expand,
+                has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_directory_node_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
+                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
+                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )
         else:
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
-                parent=parent,
-                leaf=True,
-            ):
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=has_favorite_ancestor,
-                )
-
-            self._add_item_handler_registry(
-                node_tag=node_tag,
+            self._queue_node(
                 node=node,
+                node_tag=node_tag,
+                parent=state.parent,
+                leaf=True,
+                has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_reconstruction_node_clicked,
+                item_double_click_callback=self._on_reconstruction_node_double_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
+                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
+                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )
+
+        state.parent = node_tag
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
@@ -220,11 +212,12 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Right:
-            return self._show_directory_context_menu(user_data)
+            return self._show_directory_context_menu(node)
 
         return None
 
@@ -232,14 +225,27 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         sender: Sender,
         app_data: Tuple[int, int],
-        user_data: FileSystemNode,
+        user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
+            self._schedule_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
-            self._show_reconstruction_context_menu(user_data)
+            self._show_reconstruction_context_menu(node, node_tag)
+
+    def _on_reconstruction_node_double_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+        user_data: Tuple[FileSystemNode, str],
+    ) -> None:
+        mouse_button, _ = app_data
+        node, _ = user_data
+        if mouse_button == dpg.mvMouseButton_Left:
+            self._pending_autoplay_node = None
+            self._load_reconstruction(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -254,10 +260,10 @@ class GUIBrowserPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
+            self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
 
-    def _show_reconstruction_context_menu(self, node: FileSystemNode) -> None:
+    def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
@@ -280,12 +286,8 @@ class GUIBrowserPanel(GUITreePanel):
             self._add_context_menu_favorite_item(node)
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
-        self.call(self.load_reconstruction_with_confirmation, user_data.filepath)
+        self._load_reconstruction(user_data)
 
-    def lock(self) -> None:
-        self._building_tree = True
-        self._set_tree_enabled(False)
-
-    def unlock(self) -> None:
-        self._building_tree = False
-        self._set_tree_enabled(True)
+    def _load_reconstruction(self, node: FileSystemNode) -> None:
+        self._pending_autoplay_node = None
+        self.call(self.load_reconstruction_with_confirmation, node.filepath)

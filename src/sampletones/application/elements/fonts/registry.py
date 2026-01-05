@@ -28,7 +28,7 @@ from .font import Font
 
 
 class FontRegistry:
-    REGISTRY: Dict[Font, FontData] = {
+    _REGISTRY: Dict[Font, FontData] = {
         Font.REGULAR: FontData(TAG_FONT_REGULAR, VAL_FONT_SIZE, FontResource.REGULAR),
         Font.REGULAR_SMALL: FontData(TAG_FONT_REGULAR_SMALL, VAL_FONT_SIZE_SMALL, FontResource.REGULAR),
         Font.REGULAR_LARGE: FontData(TAG_FONT_REGULAR_LARGE, VAL_FONT_SIZE_LARGE, FontResource.REGULAR),
@@ -44,7 +44,7 @@ class FontRegistry:
     @staticmethod
     def register_fonts() -> None:
         with dpg.font_registry():
-            for font_data in FontRegistry.REGISTRY.values():
+            for font_data in FontRegistry._REGISTRY.values():
                 dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
                 dpg.add_font_range(0x0100, 0x024F, parent=font_data.tag)
                 dpg.add_font_range(0x1E00, 0x1EFF, parent=font_data.tag)
@@ -59,7 +59,7 @@ class FontRegistry:
 
     @classmethod
     def get_font(cls, font: Font) -> FontData:
-        return cls.REGISTRY[font]
+        return cls._REGISTRY[font]
 
     @classmethod
     def get_tag(cls, font: Font) -> str:

@@ -1,4 +1,5 @@
 from .audio import PlaybackError, UnsupportedAudioFormatError
+from .callback import CallbackQueueStop
 from .cuda import CuPyNotInstalledWarning
 from .library import (
     IncompatibleLibraryDataVersionError,
@@ -42,4 +43,5 @@ __all__ = [
     "DeserializationError",
     "InvalidMetadataError",
     "CuPyNotInstalledWarning",
+    "CallbackQueueStop",
 ]

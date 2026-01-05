@@ -2,7 +2,8 @@ from typing import Tuple
 
 import numpy as np
 
-from sampletones.constants.general import DEFAULT_SAMPLE_RATE, QUANTIZATION_LEVELS
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones.constants.general import QUANTIZATION_LEVELS
 from sampletones.utils.logger import logger
 
 
@@ -17,7 +18,11 @@ def stereo_to_mono(audio: np.ndarray) -> np.ndarray:
     return audio
 
 
-def resample(audio: np.ndarray, original_sample_rate: int, target_sample_rate: int = DEFAULT_SAMPLE_RATE) -> np.ndarray:
+def resample(
+    audio: np.ndarray,
+    original_sample_rate: int,
+    target_sample_rate: int = DEFAULT_SAMPLE_RATE,
+) -> np.ndarray:
     if original_sample_rate == target_sample_rate:
         return audio
 

@@ -1,10 +1,12 @@
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.general import DEFAULT_SAMPLE_RATE, MIN_FREQUENCY
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones.constants.general import MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import Color
 
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
@@ -19,7 +21,7 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_Y,
 )
-from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children, dpg_delete_item
+from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
 from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
@@ -53,6 +55,8 @@ class GUISpectrumGraph(GUIGraph):
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
         self.current_library_fragment: Optional[InstructionLibraryFragment[Any]] = None
+
+        self.themes: Dict[Color, str] = {}
 
         super().__init__(
             tag,
@@ -107,6 +111,23 @@ class GUISpectrumGraph(GUIGraph):
             )
         )
 
+    def _create_brightness_theme(self, color: Color, brightness: float) -> str:
+        color = (color[0], color[1], color[2], round(brightness))
+        if color in self.themes:
+            return self.themes[color]
+
+        theme_tag = f"{self.tag}{SUF_GRAPH_THEME}_{color[0]}_{color[1]}_{color[2]}_{color[3]}"
+        with dpg.theme(tag=theme_tag):
+            with dpg.theme_component(dpg.mvBarSeries):
+                dpg.add_theme_color(
+                    dpg.mvPlotCol_Fill,
+                    color,
+                    category=dpg.mvThemeCat_Plots,
+                )
+
+        self.themes[color] = theme_tag
+        return theme_tag
+
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
@@ -116,7 +137,6 @@ class GUISpectrumGraph(GUIGraph):
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
                 series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
-                theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
                 dpg.add_bar_series(
                     x=[self.x_max],
                     y=[frequency],
@@ -127,15 +147,7 @@ class GUISpectrumGraph(GUIGraph):
                     horizontal=True,
                 )
 
-                dpg_delete_item(theme_tag)
-                with dpg.theme(tag=theme_tag):
-                    with dpg.theme_component(dpg.mvBarSeries):
-                        dpg.add_theme_color(
-                            dpg.mvPlotCol_Fill,
-                            (*layer.color, brightness),
-                            category=dpg.mvThemeCat_Plots,
-                        )
-
+                theme_tag = self._create_brightness_theme(layer.color, brightness)
                 dpg_bind_item_theme(series_tag, theme_tag)
 
     def _update_axes_limits(self) -> None:

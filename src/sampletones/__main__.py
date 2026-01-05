@@ -8,7 +8,7 @@ from sampletones.constants.paths import EXT_FILES_AUDIO
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
     * reconstruction .json file to load a reconstruction
-    * library .dat file to load a library"""
+    * instructions library .ins file to load a library"""
 
 HELP_OUTPUT = """Output path for reconstruction."""
 

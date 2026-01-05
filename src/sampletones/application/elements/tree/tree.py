@@ -1,10 +1,16 @@
+import threading
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
+from sampletones.exceptions import CallbackQueueStop
+from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
+from sampletones.utils import open_path_in_explorer
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -14,17 +20,28 @@ from ...constants.general import (
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
+    LBL_CONTEXT_ITEM_COPY_FILENAME,
+    LBL_CONTEXT_ITEM_COPY_PATH,
+    LBL_CONTEXT_ITEM_MARK_AS_FAVORITE,
+    LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
+    LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
     LBL_TREE_SEARCH,
+    MSG_STATUS_NODE_DIRECTORY,
+    MSG_STATUS_NODE_RECONSTRUCTION,
+    MSG_STATUS_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
+    VAL_DELAY_SCHEDULE,
+    VAL_PRIORITY_ADD_HANDLER,
+    VAL_PRIORITY_ADD_NODE,
+    VAL_PRIORITY_SCHEDULE,
+    VAL_TEXT_COLLAPSE,
+    VAL_TEXT_EXPAND,
 )
-from ...constants.main import (
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
-)
+from ...constants.main import MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY
 from ...themes.default import DefaultTheme
 from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
 from ...themes.nodes.file import (
@@ -41,12 +58,16 @@ from ...themes.nodes.library import (
     LibraryLibraryNodeTheme,
 )
 from ...themes.theme import Theme
-from ...utils.dpg import dpg_delete_children, dpg_delete_item
+from ...utils.callbacks.queue import CallbackQueue
+from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_get_value
+from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
 from ..panel import GUIPanel
+from ..status import GUIStatusBar
 from .handler import Handler, ItemClickCallback
+from .state import TreeNodeState
 
 
 class GUITreePanel(GUIPanel):
@@ -57,6 +78,8 @@ class GUITreePanel(GUIPanel):
         parent: str,
         tree_tag: str,
         application_config_manager: ApplicationConfigManager,
+        audio_device_manager: AudioDeviceManager,
+        shortcut_manager: ShortcutManager,
         width: int = -1,
         height: int = -1,
         search_label: str = LBL_TREE_SEARCH,
@@ -64,14 +87,22 @@ class GUITreePanel(GUIPanel):
         self.tree = tree
         self.tree_tag = tree_tag
         self.application_config_manager = application_config_manager
+        self.audio_device_manager = audio_device_manager
+        self.shortcut_manager = shortcut_manager
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
-        self._building_tree: bool = False
+        self._pending_query: Optional[str] = None
+        self._pending_autoplay_node: Optional[FileSystemNode] = None
+
+        self._lock_counter: int = 0
+        self._lock: bool = False
+        self._thread_lock = threading.RLock()
+        self._handler_lock = threading.Lock()
+
         self._handlers: Dict[str, Handler] = {}
-        self._new_handlers: Dict[str, Handler] = {}
 
         self.search_label = search_label
 
@@ -93,8 +124,7 @@ class GUITreePanel(GUIPanel):
                 dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=root_tag)
             return
 
-        for child in root.children:
-            self._build_tree_node(child, root_tag)
+        self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
 
     def create_search(self, parent: str) -> None:
         self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
@@ -114,10 +144,85 @@ class GUITreePanel(GUIPanel):
                 width=DIM_BUTTON_WIDTH_SEARCH,
             )
 
+        self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
+        GUIStatusBar.bind_to_item(self._search_input_tag, MSG_STATUS_TREE_SEARCH)
+
+    def _add_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+    ) -> None:
+        if not dpg.does_item_exist(parent):
+            return
+
+        with dpg.tree_node(
+            label=node.name,
+            tag=node_tag,
+            parent=parent,
+            default_open=should_expand,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            leaf=leaf,
+        ):
+            self._apply_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+                is_node_expanded=is_node_expanded,
+            )
+
+    def _queue_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
+        add_node_priority: int = VAL_PRIORITY_ADD_NODE,
+        add_handler_priority: int = VAL_PRIORITY_ADD_HANDLER,
+    ) -> None:
+        CallbackQueue.add(
+            self._add_node,
+            node,
+            node_tag,
+            parent,
+            leaf=leaf,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            should_expand=should_expand,
+            has_favorite_ancestor=has_favorite_ancestor,
+            is_node_expanded=is_node_expanded,
+            priority=add_node_priority,
+        )
+
+        CallbackQueue.add(
+            self._add_item_handler_registry,
+            node_tag=node_tag,
+            node=node,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
+            priority=add_handler_priority,
+        )
+
     def _build_tree_node(
         self,
         node: TreeNode,
-        parent: str,
+        state: TreeNodeState,
         **kwargs: Any,
     ) -> None:
         raise NotImplementedError("Subclasses must implement this method")
@@ -138,40 +243,49 @@ class GUITreePanel(GUIPanel):
     def _get_handler_registry_tag(self, tag: str) -> str:
         return f"{tag}{SUF_NODE_HANDLER}"
 
-    def _delete_item_handler_registry(self, node_tag: str) -> None:
-        handler_tag = self._get_handler_registry_tag(node_tag)
-        dpg_delete_item(handler_tag)
-
     def _delete_item_handler_registries(self) -> None:
-        for handler in self._handlers.values():
-            dpg_delete_item(handler.tag)
+        with self._handler_lock:
+            for handler in self._handlers.values():
+                dpg_delete_item(handler.tag)
 
-        self._handlers.clear()
+            self._handlers.clear()
 
-    def _assign_item_handler_registries(self) -> None:
-        for handler in self._new_handlers.values():
-            try:
+    def _assign_item_handler_registry(self, handler: Handler) -> None:
+        try:
+            with self._handler_lock:
                 self._create_item_handler_registry(handler)
                 self._bind_item_handler_registry(handler)
-            except SystemError:
-                logger.warning(f"Error assigning item handler registry '{handler.tag}'")
-                break
-
-        self._new_handlers.clear()
+        except SystemError as exception:
+            logger.error_with_traceback(exception, f"Error assigning item handler registry '{handler.tag}'")
+            raise CallbackQueueStop(str(exception)) from exception
 
     def _create_item_handler_registry(self, handler: Handler) -> None:
         dpg_delete_item(handler.tag)
         with dpg.item_handler_registry(tag=handler.tag):
             if handler.item_click_callback is not None:
+                item_click_callback = handler.item_click_callback
+                status_bar_callback = handler.status_bar_callback
+
+                def single_click_callback(sender: Sender, app_data: Any, user_data: Any) -> None:
+                    item_click_callback(
+                        sender,
+                        app_data,
+                        user_data,
+                    )
+                    if status_bar_callback is not None:
+                        GUIStatusBar.set(status_bar_callback)
+
                 dpg.add_item_clicked_handler(
-                    callback=handler.item_click_callback,
-                    user_data=handler.node,
+                    callback=single_click_callback,
+                    user_data=(handler.node, handler.parent),
                 )
             if handler.item_double_click_callback is not None:
                 dpg.add_item_double_clicked_handler(
                     callback=handler.item_double_click_callback,
-                    user_data=handler.node,
+                    user_data=(handler.node, handler.parent),
                 )
+
+        self._handlers[handler.tag] = handler
 
     def _bind_item_handler_registry(self, handler: Handler) -> None:
         if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
@@ -183,7 +297,11 @@ class GUITreePanel(GUIPanel):
         node: TreeNode,
         item_click_callback: Optional[ItemClickCallback] = None,
         item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
     ) -> None:
+        if not dpg.does_item_exist(node_tag):
+            return
+
         tag = self._get_handler_registry_tag(node_tag)
         handler = Handler(
             tag=tag,
@@ -191,9 +309,29 @@ class GUITreePanel(GUIPanel):
             node=node,
             item_click_callback=item_click_callback,
             item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
         )
-        self._handlers[tag] = handler
-        self._new_handlers[tag] = handler
+        self._assign_item_handler_registry(handler)
+
+    def _create_status_bar_message_function(
+        self,
+        message_or_function: Union[str, MessageCallback],
+    ) -> MessageCallback:
+        return GUIStatusBar.create_message_function(message_or_function)
+
+    def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
+        return self._create_status_bar_message_function(MSG_STATUS_NODE_RECONSTRUCTION)
+
+    def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
+        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)
+
+    def _create_status_bar_message_function_for_directory_node(self, node_tag: str) -> MessageCallback:
+        def message_function() -> str:
+            return MSG_STATUS_NODE_DIRECTORY.format(
+                expand_or_collapse=VAL_TEXT_COLLAPSE if dpg_get_value(node_tag) else VAL_TEXT_EXPAND,
+            )
+
+        return self._create_status_bar_message_function(message_function)
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
@@ -213,20 +351,47 @@ class GUITreePanel(GUIPanel):
             text = dpg.add_text(node.name, color=color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
+    def _add_context_menu_path_items(self, path: Path) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_COPY_FILENAME,
+            callback=lambda: dpg.set_clipboard_text(str(path.name)),
+        )
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_COPY_PATH,
+            callback=lambda: dpg.set_clipboard_text(str(path)),
+        )
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
+            callback=lambda: open_path_in_explorer(path),
+        )
+
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
-            if self._is_node_favorite(node)
-            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
+            LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE if self._is_node_favorite(node) else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
         )
+        dpg.add_separator()
         dpg.add_menu_item(
             label=label,
             callback=lambda: self._context_mark_as_favorite(node),
         )
 
+    def _delete_children(self, tag: str) -> None:
+        for child in dpg.get_item_children(tag, 1) or []:
+            child_tag = dpg.get_item_alias(child)
+            self._delete_children(child_tag)
+
+            registry_tag = self._get_handler_registry_tag(child_tag)
+            dpg_delete_item(registry_tag)
+            if registry_tag in self._handlers:
+                del self._handlers[registry_tag]
+
+            dpg_delete_item(child_tag)
+
     def clear_selection(self) -> None:
         if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):
             dpg.set_value(self._selected_node_tag, False)
+
         self._selected_node_tag = None
 
     def _on_search_changed(self, sender: Sender, query: str) -> None:
@@ -234,13 +399,26 @@ class GUITreePanel(GUIPanel):
             self.apply_filter(query, self._default_search_predicate)
         else:
             self.clear_filter()
-        self._update_tree_visibility()
+
+        CallbackQueue.add(
+            self._schedule_update_tree_visibility,
+            query,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
             dpg.set_value(self._search_input_tag, "")
+
         self.clear_filter()
-        self._update_tree_visibility()
+
+        CallbackQueue.add(
+            self._schedule_update_tree_visibility,
+            "",
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -427,3 +605,66 @@ class GUITreePanel(GUIPanel):
     def _update_favorite_indicator(self, node: FileSystemNode) -> None:
         has_favorite_ancestor = self._has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
+
+    def _set_tree_enabled(self, enabled: bool) -> None:
+        raise NotImplementedError("Subclasses must implement this method")
+
+    def _schedule_update_tree_visibility(self, query: str) -> None:
+        self._pending_query = query
+        CallbackQueue.add(
+            self._execute_update_tree_visibility,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
+
+    def _execute_update_tree_visibility(self) -> None:
+        if self._pending_query is not None:
+            self._pending_query = None
+            self._update_tree_visibility()
+
+    def _schedule_autoplay(self, node: FileSystemNode) -> None:
+        self._pending_autoplay_node = node
+        CallbackQueue.add(
+            self._execute_autoplay,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
+
+    def _autoplay_file(self, node: FileSystemNode) -> None:
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
+            return
+
+        if self.application_config_manager.autoplay:
+            match node.filepath.suffix.lower():
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    try:
+                        reconstruction = Reconstruction.load(node.filepath)
+                        self.audio_device_manager.play(reconstruction.approximation)
+                    except Exception as error:
+                        logger.error(f"Failed to autoplay reconstruction file: {error}")
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                    self.audio_device_manager.play_file(node.filepath)
+
+    def _execute_autoplay(self) -> None:
+        if self._pending_autoplay_node is not None:
+            self._autoplay_file(self._pending_autoplay_node)
+            self._pending_autoplay_node = None
+
+    def lock(self) -> None:
+        with self._thread_lock:
+            self._lock_counter += 1
+            self._lock = True
+            self._set_tree_enabled(False)
+
+    def unlock(self) -> None:
+        with self._thread_lock:
+            self._lock_counter -= 1
+            if self._lock_counter <= 0:
+                self._lock_counter = 0
+                self._lock = False
+                self._set_tree_enabled(True)
+
+    @property
+    def locked(self) -> bool:
+        with self._thread_lock:
+            return self._lock

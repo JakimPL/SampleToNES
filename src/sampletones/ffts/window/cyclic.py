@@ -4,7 +4,7 @@ from typing import Optional, Union
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
-from sampletones.constants.general import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.data import DataModel
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array

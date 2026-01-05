@@ -10,6 +10,7 @@ SUF_GRAPH_Y_AXIS = "_y_axis"
 SUF_GRAPH_LEGEND = "_legend"
 SUF_GRAPH_CONTROLS = "_controls"
 SUF_GRAPH_INFO = "_info"
+SUF_GRAPH = "_graph"
 SUF_GRAPH_RAW_DATA = "_raw_data"
 SUF_GRAPH_RAW_DATA_GROUP = "_raw_data_group"
 SUF_GRAPH_THEME = "_theme"
@@ -36,6 +37,10 @@ LBL_PLOT_AXIS_SPECTRUM_X = ""
 LBL_PLOT_AXIS_SPECTRUM_FREQUENCY = "Frequency"
 LBL_PLOT_NAME_SPECTRUM = "Spectrum"
 LBL_PLOT_LABEL_BAR = "Bar plot display"
+
+MSG_STATUS_WAVEFORM_NAVIGATION = (
+    "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
+)
 
 DIM_GRAPH_WIDTH = -1
 DIM_GRAPH_HEIGHT = 292

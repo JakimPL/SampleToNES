@@ -2,23 +2,18 @@ from typing import Any, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import (
-    DEFAULT_CHANGE_RATE,
-    DEFAULT_SAMPLE_RATE,
     MAX_CHANGE_RATE,
-    MAX_SAMPLE_RATE,
     MAX_TRANSFORMATION_GAMMA,
     MIN_CHANGE_RATE,
-    MIN_SAMPLE_RATE,
-    NORMALIZE,
-    QUANTIZE,
 )
 from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import DIM_INPUT_WIDTH
+from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
@@ -44,6 +39,7 @@ from ...constants.main import (
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
@@ -86,12 +82,12 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
-            default_value=NORMALIZE,
+            default_value=self.config_manager.config.general.normalize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
-            default_value=QUANTIZE,
+            default_value=self.config_manager.config.general.quantize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
         )
 
@@ -100,7 +96,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_text(LBL_SECTION_MAIN_CONFIG_LIBRARY_SETTINGS)
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_SAMPLE_RATE,
-            default_value=DEFAULT_SAMPLE_RATE,
+            default_value=self.config_manager.config.library.sample_rate,
             tag=TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
@@ -108,7 +104,7 @@ class GUIConfigPanel(GUIPanel):
         )
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_CHANGE_RATE,
-            default_value=DEFAULT_CHANGE_RATE,
+            default_value=self.config_manager.config.library.change_rate,
             tag=TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
@@ -117,10 +113,13 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_slider_int(
             label=LBL_SLIDER_MAIN_CONFIG_TRANSFORMATION_GAMMA,
             tag=TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
+            default_value=self.config_manager.config.library.transformation_gamma,
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
             width=DIM_INPUT_WIDTH,
         )
+
+        GUIStatusBar.bind_to_item(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, LBL_TOOLTIP_MAIN_CONFIG_NORMALIZE)
@@ -170,7 +169,7 @@ class GUIConfigPanel(GUIPanel):
 
         config = self.config_manager.config
         for tag, info in self.config_manager.config_parameters["config"].items():
-            section_name = info["section"]
+            section_name = info.section
             section = getattr(config, section_name)
-            if hasattr(section, tag):
-                dpg.set_value(tag, getattr(section, tag))
+            if hasattr(section, info.name):
+                dpg.set_value(tag, getattr(section, info.name))

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Callback
+from sampletones.typehints.general import Sender
 
 from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme
@@ -12,12 +15,13 @@ from .fonts.registry import FontRegistry
 
 
 class GUIButton:
-    REGISTRY: Dict[str, "GUIButton"] = {}
+    _REGISTRY: Dict[str, GUIButton] = {}
 
     def __init__(
         self,
         tag: str,
         label: str,
+        parent: Optional[str] = None,
         callback: Optional[Callback] = None,
         enabled: bool = True,
         font: Font = Font.REGULAR,
@@ -25,28 +29,52 @@ class GUIButton:
         **kwargs: Any,
     ) -> None:
         self._tag = tag
+        self._parent = parent
         self._button_tag = f"{tag}{SUF_BUTTON}"
         callback = callback if callback is not None else lambda: None
-        with dpg.group(tag=tag, horizontal=True, enabled=enabled):
+
+        group_kwargs = {
+            "tag": tag,
+            "horizontal": True,
+            "enabled": enabled,
+        }
+
+        if parent is not None:
+            group_kwargs["parent"] = parent
+
+        with dpg.group(**group_kwargs):
             dpg.add_button(
                 label=label,
                 tag=self._button_tag,
+                parent=tag,
                 callback=callback,
                 enabled=enabled,
                 **kwargs,
             )
 
+            theme.bind_to_item(self._tag)
             theme.bind_to_item(self._button_tag)
             FontRegistry.bind_to_item(self._button_tag, font)
 
-        GUIButton.REGISTRY[tag] = self
+        GUIButton._REGISTRY[tag] = self
 
     @classmethod
-    def delete(cls, tag: str) -> None:
-        if tag in cls.REGISTRY:
+    def exists(cls, tag: Sender) -> bool:
+        tag = dpg.get_item_alias(tag)
+        return tag in cls._REGISTRY
+
+    @classmethod
+    def get(cls, tag: Sender) -> Optional[GUIButton]:
+        tag = dpg.get_item_alias(tag)
+        return cls._REGISTRY.get(tag)
+
+    @classmethod
+    def delete(cls, tag: Sender) -> None:
+        tag = dpg.get_item_alias(tag)
+        if tag in cls._REGISTRY:
             if dpg.does_item_exist(tag):
                 dpg.delete_item(tag)
-            del cls.REGISTRY[tag]
+            del cls._REGISTRY[tag]
 
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(self._tag, enabled=enabled)
@@ -71,14 +99,17 @@ class GUIButton:
     def set_item_callback(self, callback: Callback) -> None:
         dpg.set_item_callback(self._button_tag, callback)
 
+    def get_value(self) -> Any:
+        return dpg.get_value(self._button_tag)
+
     def set_value(self, value: Any) -> None:
         dpg.set_value(self._button_tag, value)
 
     def delete_item(self) -> None:
         dpg.delete_item(self._button_tag)
         dpg.delete_item(self._tag)
-        if self._tag in GUIButton.REGISTRY:
-            del GUIButton.REGISTRY[self._tag]
+        if self._tag in GUIButton._REGISTRY:
+            del GUIButton._REGISTRY[self._tag]
 
     def is_item_hovered(self) -> Optional[bool]:
         return dpg.is_item_hovered(self._button_tag)

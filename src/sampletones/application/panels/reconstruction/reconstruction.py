@@ -3,10 +3,11 @@ from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.elements.status import GUIStatusBar
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.typehints import MessageCallback, Sender, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
@@ -22,6 +23,8 @@ from ...constants.general import (
     SUF_PANEL_CENTER,
     TAG_TAB_RECONSTRUCTIONS,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+    VAL_TEXT_OFF,
+    VAL_TEXT_ON,
 )
 from ...constants.graphs import DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
 from ...constants.reconstructions import (
@@ -36,6 +39,8 @@ from ...constants.reconstructions import (
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
@@ -151,7 +156,9 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_audio_source_radio_buttons(self) -> None:
         dpg.add_text(LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE)
         with dpg.group(
-            horizontal=True, parent=self.audio_tag, tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
+            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+            parent=self.audio_tag,
+            horizontal=True,
         ):
             radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
                 VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
@@ -202,7 +209,7 @@ class GUIReconstructionPanel(GUIPanel):
             horizontal=True,
         ):
             for generator_name, label in generator_labels.items():
-                tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
+                tag = self._get_generator_checkbox_tag(generator_name)
                 dpg.add_checkbox(
                     label=label,
                     tag=tag,
@@ -210,6 +217,26 @@ class GUIReconstructionPanel(GUIPanel):
                     enabled=False,
                     callback=self._on_generator_checkbox_changed,
                 )
+
+                GUIStatusBar.bind_to_item(
+                    tag,
+                    self._create_message_function_for_generator_checkbox(generator_name),
+                )
+
+    def _create_message_function_for_generator_checkbox(self, generator_name: GeneratorName) -> MessageCallback:
+        tag = self._get_generator_checkbox_tag(generator_name)
+        name = generator_name.capitalized
+
+        def message_function() -> str:
+            if dpg.get_item_configuration(tag)["enabled"] is False:
+                return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE.format(generator_name=name)
+
+            return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE.format(
+                generator_name=name,
+                on_or_off=(VAL_TEXT_OFF if dpg.get_value(tag) else VAL_TEXT_ON),
+            )
+
+        return message_function
 
     def _get_generator_tag(self, generator_name: GeneratorName) -> str:
         return TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name).lower()
@@ -300,19 +327,22 @@ class GUIReconstructionPanel(GUIPanel):
 
         dpg_configure_item(radio_tag, enabled=True)
 
+    def _get_generator_checkbox_tag(self, generator_name: GeneratorName) -> str:
+        return TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name.value)
+
     def _reset_generator_checkboxes(self) -> None:
         for generator_name in GeneratorName:
-            tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name)
-            dpg_configure_item(tag, enabled=False, default_value=False)
-            dpg_set_value(tag, False)
+            tag = self._get_generator_checkbox_tag(generator_name)
+            dpg.configure_item(tag, enabled=False, default_value=False)
+            dpg.set_value(tag, False)
 
     def _reset_audio_source_radio(self) -> None:
         radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
             VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
         )
-        dpg_configure_item(radio_tag, enabled=False)
-        dpg_set_value(radio_tag, LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=False)
+        dpg.configure_item(radio_tag, enabled=False)
+        dpg.set_value(radio_tag, LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO)
+        dpg.configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=False)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)

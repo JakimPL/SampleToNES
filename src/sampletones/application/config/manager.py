@@ -9,10 +9,10 @@ from sampletones.configs import (
     GenerationConfig,
     InstructionsLibraryConfig,
 )
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
     DEFAULT_CHANGE_RATE,
-    DEFAULT_SAMPLE_RATE,
     MAX_WORKERS,
     MIXER,
     NORMALIZE,
@@ -25,6 +25,7 @@ from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import SerializedData, VoidCallback
 from sampletones.utils.logger import logger
 
+from ..config.parameters import ConfigParameter
 from ..constants.general import (
     MSG_CONFIGURATION_INVALID_ERROR,
     MSG_CONFIGURATION_LOAD_ERROR,
@@ -45,26 +46,55 @@ from ..utils.dialogs import show_error_dialog
 
 class ConfigManager:
     def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.config: Optional[Config] = None
-        self.window: Optional[Window] = None
+        self.config: Config
+        self.window: Window
+
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
         self.generators: List[GeneratorName] = list(GeneratorName)
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
-        self.config_parameters = {
+        self.config_parameters: Dict[str, Dict[str, ConfigParameter]] = {
             "config": {
-                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: {"section": "general", "default": NORMALIZE},
-                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: {"section": "general", "default": QUANTIZE},
-                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: {"section": "library", "default": DEFAULT_SAMPLE_RATE},
-                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: {"section": "library", "default": DEFAULT_CHANGE_RATE},
-                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: {"section": "library", "default": TRANSFORMATION_GAMMA},
+                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: ConfigParameter(
+                    name="normalize",
+                    section="general",
+                    default=NORMALIZE,
+                ),
+                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: ConfigParameter(
+                    name="quantize",
+                    section="general",
+                    default=QUANTIZE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: ConfigParameter(
+                    name="sample_rate",
+                    section="library",
+                    default=DEFAULT_SAMPLE_RATE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: ConfigParameter(
+                    name="change_rate",
+                    section="library",
+                    default=DEFAULT_CHANGE_RATE,
+                ),
+                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: ConfigParameter(
+                    name="transformation_gamma",
+                    section="library",
+                    default=TRANSFORMATION_GAMMA,
+                ),
             },
             "reconstructor": {
-                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: {"section": "generation", "default": MIXER},
+                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: ConfigParameter(
+                    name="mixer",
+                    section="generation",
+                    default=MIXER,
+                ),
             },
             "advanced": {
-                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: {"section": "general", "default": MAX_WORKERS},
+                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: ConfigParameter(
+                    name="max_workers",
+                    section="general",
+                    default=MAX_WORKERS,
+                ),
             },
         }
         self.generator_tags = {
@@ -117,8 +147,6 @@ class ConfigManager:
             show_error_dialog(exception, MSG_CONFIGURATION_SAVE_ERROR)
 
     def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
-        assert self.config is not None, "Config must be loaded before updating from GUI values"
-
         self._update_generators_from_gui_values(gui_values)
         config_data = self._build_config_data_from_values(gui_values)
         config_data["generation"]["generators"] = self.generators
@@ -126,7 +154,6 @@ class ConfigManager:
         general_config_data = {**self.config.general.model_dump(), **config_data["general"]}
         library_config_data = {**self.config.library.model_dump(), **config_data["library"]}
         generation_config_data = {**self.config.generation.model_dump(), **config_data["generation"]}
-
         self.config = Config(
             general=GeneralConfig(**general_config_data),
             library=InstructionsLibraryConfig(**library_config_data),
@@ -151,8 +178,8 @@ class ConfigManager:
                 if value is None:
                     continue
 
-                section = str(info["section"])
-                config_data[section][tag] = value
+                section = str(info.section)
+                config_data[section][info.name] = value
 
         return config_data
 
@@ -162,30 +189,14 @@ class ConfigManager:
 
         self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values[tag]]
 
-    def get_config(self) -> Config:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
-        return self.config
-
-    def get_window(self) -> Window:
-        if self.window is None:
-            raise RuntimeError("Window is not loaded")
-        return self.window
-
     def get_library_directory(self) -> Path:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
     def get_output_directory(self) -> Path:
-        if self.config is None:
-            raise RuntimeError("Config is not loaded")
         return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
 
     @property
     def key(self) -> InstructionLibraryKey:
-        if not self.config or not self.window:
-            raise RuntimeError("Library key is not available")
         return InstructionLibraryKey.create(self.config.library, self.window)
 
     def add_config_change_callback(self, callback: VoidCallback) -> None:
@@ -226,6 +237,15 @@ class ConfigManager:
 
     def load_default_config(self) -> None:
         self.load_config(Config())
+
+    def load_library_and_generation_config(self, config: Config) -> None:
+        self.load_config(
+            Config(
+                general=self.config.general if self.config else GeneralConfig(),
+                library=config.library,
+                generation=config.generation,
+            )
+        )
 
     def load_config(self, config: Config) -> None:
         self.config = config

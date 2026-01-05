@@ -1,27 +1,30 @@
-import platform
-import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Pathlike, Sender
-from sampletones.utils import get_directory, shorten_path, to_path
+from sampletones.typehints import Pathlike, Sender, VoidCallback
+from sampletones.utils import open_path_in_explorer, shorten_path, to_path
+from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.general import (
     COL_PATH_TEXT,
     COL_PATH_TEXT_HOVER,
+    MSG_STATUS_PATH,
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
+    VAL_PRIORITY_GUI_ACTION,
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
+from ..utils.callbacks.queue import CallbackQueue
 from ..utils.dpg import dpg_delete_item, dpg_set_value
 from ..utils.tooltip import show_tooltip
+from .status import GUIStatusBar
 
 
-class GUIPathText:
+class GUIPathText(CallbackMixin):
     def __init__(
         self,
         tag: str,
@@ -47,6 +50,8 @@ class GUIPathText:
         self.label_tag = f"{tag}{SUF_LABEL}"
         self.handler_tag = f"{tag}{SUF_PATH_HANDLER}"
         self.group_tag = f"{tag}{SUF_GROUP}"
+
+        self.on_path_hovered: Optional[VoidCallback] = None
 
         self._create_text()
         self._create_handler()
@@ -87,7 +92,7 @@ class GUIPathText:
     def _on_hover_start(self) -> None:
         if dpg.does_item_exist(self.tag):
             dpg.configure_item(self.tag, color=self.hover_color)
-            dpg.set_frame_callback(dpg.get_frame_count() + 1, self._check_hover_state)
+            CallbackQueue.add(self._check_hover_state, priority=VAL_PRIORITY_GUI_ACTION)
 
     def _check_hover_state(self) -> None:
         if not dpg.does_item_exist(self.tag):
@@ -95,7 +100,8 @@ class GUIPathText:
 
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                dpg.set_frame_callback(dpg.get_frame_count() + 1, self._check_hover_state)
+                CallbackQueue.add(self._check_hover_state, priority=VAL_PRIORITY_GUI_ACTION)
+                GUIStatusBar.set(MSG_STATUS_PATH)
             else:
                 dpg.configure_item(self.tag, color=self.color)
 
@@ -107,16 +113,7 @@ class GUIPathText:
         if not self.path.exists():
             return
 
-        path_to_open = get_directory(self.path)
-        path_string = str(path_to_open)
-
-        system = platform.system()
-        if system == "Windows":
-            subprocess.run(["explorer", path_string], check=False)
-        elif system == "Darwin":
-            subprocess.run(["open", path_string], check=False)
-        else:
-            subprocess.run(["xdg-open", path_string], check=False)
+        open_path_in_explorer(self.path)
 
     def set_path(self, path: Pathlike, shorten: bool = True) -> None:
         self.path = to_path(path)

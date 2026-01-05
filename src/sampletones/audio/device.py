@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Literal, cast
+from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.constants.general import DEFAULT_SAMPLE_RATE
-
-SampleRate = Literal[8000, 16000, 22050, 44100, 48000, 96000, 192000]
-SAMPLE_RATES: List[SampleRate] = cast(List[SampleRate], SampleRate.__args__)
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE, SampleRate
 
 
 class CurrentDevice(BaseModel):

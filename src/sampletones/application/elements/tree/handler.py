@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional, Tuple
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.tree import TreeNode
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
 
 ItemClickCallback = Callable[[Sender, Tuple[int, int], Any], None]
 
@@ -21,4 +21,8 @@ class Handler(BaseModel):
     item_double_click_callback: Optional[ItemClickCallback] = Field(
         default=None,
         description="Callback for item double-click events.",
+    )
+    status_bar_callback: Optional[MessageCallback] = Field(
+        default=None,
+        description="Callback for updating the status bar with messages.",
     )

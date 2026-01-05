@@ -34,6 +34,7 @@ from ..constants.general import (
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
+    VAL_PRIORITY_SCHEDULE,
 )
 from ..constants.instructions import (
     TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
@@ -47,6 +48,7 @@ from ..constants.reconstructions import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
+from ..utils.callbacks.queue import CallbackQueue
 from .align import table_wrapper
 from .dpg import dpg_configure_item, dpg_delete_item
 
@@ -55,6 +57,12 @@ def get_center(width: int, height: int) -> Tuple[int, int]:
     x = (dpg.get_viewport_width() - width) / 2
     y = (dpg.get_viewport_height() - height) / 2
     return round(x), round(y)
+
+
+def center_item(tag: str, width: int, height: int) -> None:
+    width, height = dpg.get_item_rect_size(tag)
+    x, y = get_center(width, height)
+    dpg.set_item_pos(tag, [x, y])
 
 
 def get_dialog_tag(base_tag: str) -> str:
@@ -75,7 +83,6 @@ def show_modal_dialog(
         tag=tag,
         modal=modal,
         min_size=(width, height),
-        pos=get_center(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
@@ -88,6 +95,8 @@ def show_modal_dialog(
             callback=lambda: dpg_delete_item(tag),
             width=-1,
         )
+
+        CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
 
 
 def show_info_dialog(tag: str, message: str, title: str) -> None:
@@ -148,11 +157,12 @@ def show_confirmation_dialog(
         tag=tag,
         modal=True,
         min_size=(width, height),
-        pos=get_center(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
+
+    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
 
 
 def show_save_confirmation_dialog(
@@ -202,11 +212,12 @@ def show_save_confirmation_dialog(
         tag=tag,
         modal=True,
         min_size=(width, height),
-        pos=get_center(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
+
+    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
@@ -217,7 +228,6 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
         tag=tag,
         modal=True,
         min_size=(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
-        pos=get_center(DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR),
         autosize=True,
         no_scrollbar=False,
         on_close=lambda: dpg_delete_item(tag),
@@ -276,6 +286,14 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
             )
 
         content(None)
+
+    CallbackQueue.add(
+        center_item,
+        tag,
+        DIM_DIALOG_WIDTH_ERROR,
+        DIM_DIALOG_HEIGHT_ERROR,
+        priority=VAL_PRIORITY_SCHEDULE,
+    )
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

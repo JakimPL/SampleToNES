@@ -1,23 +1,21 @@
 from typing import Any
 
-import dearpygui.dearpygui as dpg
-
-from ..utils.dialogs import get_center
+from ..constants.general import VAL_PRIORITY_GUI_ACTION
+from ..utils.callbacks.queue import CallbackQueue
+from ..utils.dialogs import center_item
 from ..utils.dpg import dpg_delete_item
 from .panel import GUIPanel
 
 
 class GUIWindow(GUIPanel):
     def center(self) -> None:
-        width, height = dpg.get_item_rect_size(self.tag)
-        x, y = get_center(width, height)
-        dpg.set_item_pos(self.tag, [x, y])
+        center_item(self.tag, self.width, self.height)
 
     def show(self, *args: Any, **kwargs: Any) -> None:
         self.hide()
         self.prepare(*args, **kwargs)
         self.create_panel()
-        dpg.set_frame_callback(dpg.get_frame_count() + 1, self.center)
+        CallbackQueue.add(self.center, priority=VAL_PRIORITY_GUI_ACTION)
 
     def hide(self) -> None:
         dpg_delete_item(self.tag)

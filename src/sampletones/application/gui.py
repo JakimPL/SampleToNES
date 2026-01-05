@@ -1,4 +1,5 @@
 import sys
+import threading
 import tkinter
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -19,6 +20,7 @@ from sampletones.exceptions import (
     InvalidReconstructionValuesError,
     LibraryDisplayError,
 )
+from sampletones.library.key import InstructionLibraryKey
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -32,6 +34,7 @@ from .constants.general import (
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
     DIM_PANEL_WIDTH_LEFT,
     DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
+    DIM_STATUS_HEIGHT,
     DIM_WINDOW_HEIGHT,
     DIM_WINDOW_WIDTH,
     LBL_BUTTON_GLOBAL_CLOSE,
@@ -92,6 +95,7 @@ from .constants.general import (
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_TEXT_FPS,
+    TAG_STATUS_WINDOW,
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
@@ -109,6 +113,7 @@ from .constants.general import (
     TTL_WINDOW_MAIN,
     VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+    VAL_PRIORITY_UPDATE_STATUS,
     VAL_WINDOW_PRIMARY,
 )
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
@@ -127,6 +132,7 @@ from .constants.reconstructions import (
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from .elements.fonts.registry import FontRegistry
+from .elements.status import GUIStatusBar
 from .instruction.data import InstructionPanelData
 from .library.manager import InstructionsLibraryManager
 from .panels.instruction.details import GUIInstructionDetailsPanel
@@ -149,6 +155,7 @@ from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
+from .utils.callbacks.queue import CallbackQueue
 from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
@@ -163,7 +170,6 @@ from .utils.fps import FPSTimer
 from .utils.shortcuts.keys import Modifier
 from .utils.shortcuts.manager import ShortcutManager
 from .utils.shortcuts.shortcut import Shortcut, ShortcutId
-from .utils.thread import concurrent
 
 
 class GUI:
@@ -181,12 +187,16 @@ class GUI:
         self.fps_timer: FPSTimer = FPSTimer()
 
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
-            self.audio_device_manager,
+            self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
+            self.shortcut_manager,
         )
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
             self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
+            self.shortcut_manager,
             self.library_manager,
         )
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
@@ -194,6 +204,8 @@ class GUI:
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
+            self.audio_device_manager,
+            self.shortcut_manager,
             self.browser_manager,
             self.reconstruction_manager,
         )
@@ -225,8 +237,13 @@ class GUI:
         )
         self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
 
+        self.status_bar = GUIStatusBar()
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
+
+        self._callback_worker_thread: Optional[threading.Thread] = None
+        self._callback_stop_event: threading.Event = threading.Event()
+        self._callback_frame_event: threading.Condition = threading.Condition()
 
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
@@ -236,10 +253,13 @@ class GUI:
 
     def _load_settings(self) -> None:
         audio_device = self.application_config_manager.current_audio_device
+        buffer_size = self.application_config_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
+        self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _setup_gui(self) -> None:
         dpg.create_context()
+        self._start_callback_worker()
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
@@ -251,6 +271,29 @@ class GUI:
         self._update_menu()
         self._restore_current_items()
         dpg.set_exit_callback(self._on_close)
+
+    def _start_callback_worker(self) -> None:
+        self._callback_stop_event.clear()
+        self._callback_worker_thread = threading.Thread(
+            target=self._callback_worker,
+            daemon=True,
+            name="CallbackQueueWorker",
+        )
+        self._callback_worker_thread.start()
+        logger.debug("Callback worker thread started")
+
+    def _callback_worker(self) -> None:
+        while not self._callback_stop_event.is_set():
+            CallbackQueue.process()
+            with self._callback_frame_event:
+                self._callback_frame_event.wait(timeout=1.0 / 60.0)
+
+    def _stop_callback_worker(self) -> None:
+        CallbackQueue.stop()
+        self._callback_stop_event.set()
+        if self._callback_worker_thread:
+            self._callback_worker_thread.join(timeout=1.0)
+            logger.debug("Callback worker thread stopped")
 
     def _on_exit(self) -> None:
         dpg.start_dearpygui()
@@ -425,7 +468,7 @@ class GUI:
             on_load_library=self._load_library,
             on_set_as_library_directory=self.advanced_settings_panel.change_library_directory,
             on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
-            is_converter_running=self.converter_panel.is_converter_running,
+            is_converter_running=self._is_generation_in_progress,
         )
         self.library_panel.set_callbacks(
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
@@ -470,6 +513,7 @@ class GUI:
         ):
             self._create_menu_bar()
             self._create_tabs()
+            self._create_status_bar()
 
         dpg.set_primary_window(TAG_WINDOW_MAIN, VAL_WINDOW_PRIMARY)
 
@@ -593,10 +637,29 @@ class GUI:
         self._update_advanced_settings_menu_item()
 
     def _create_tabs(self) -> None:
-        with dpg.tab_bar(tag=TAG_TABS, callback=self._on_tab_changed):
-            self._create_main_tab()
-            self._create_reconstructions_tab()
-            self._create_instructions_tab()
+        with dpg.child_window(
+            height=-DIM_STATUS_HEIGHT,
+            border=False,
+        ):
+            with dpg.tab_bar(
+                tag=TAG_TABS,
+                callback=self._on_tab_changed,
+            ):
+                self._create_main_tab()
+                self._create_reconstructions_tab()
+                self._create_instructions_tab()
+
+    def _create_status_bar(self) -> None:
+        with dpg.child_window(
+            tag=TAG_STATUS_WINDOW,
+            parent=TAG_WINDOW_MAIN,
+            width=-1,
+            height=-1,
+            indent=0,
+            border=False,
+            menubar=True,
+        ):
+            self.status_bar.create()
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -611,7 +674,11 @@ class GUI:
             self._load_reconstruction(current_reconstruction)
 
     def _create_main_tab(self) -> None:
-        with dpg.tab(label=LBL_TAB_MAIN, tag=TAG_TAB_MAIN):
+        with dpg.tab(
+            label=LBL_TAB_MAIN,
+            tag=TAG_TAB_MAIN,
+            parent=TAG_TABS,
+        ):
             with dpg.table(
                 header_row=False,
                 resizable=False,
@@ -640,6 +707,7 @@ class GUI:
     def _create_layout(
         label: str,
         tab_tag: str,
+        parent: str,
         left_content_builder: VoidCallback,
         center_content_builder: VoidCallback,
         right_content_builder: VoidCallback,
@@ -648,8 +716,13 @@ class GUI:
         left_panel_width: int = DIM_PANEL_WIDTH_LEFT,
         left_panel_height: int = DIM_PANEL_HEIGHT_LEFT,
     ) -> None:
-        with dpg.tab(tag=tab_tag, label=label):
+        with dpg.tab(
+            tag=tab_tag,
+            parent=parent,
+            label=label,
+        ):
             with dpg.table(
+                parent=tab_tag,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -687,6 +760,7 @@ class GUI:
         self._create_layout(
             label=LBL_TAB_RECONSTRUCTIONS,
             tab_tag=TAG_TAB_RECONSTRUCTIONS,
+            parent=TAG_TABS,
             left_content_builder=self._create_reconstructions_left_panel,
             center_content_builder=self.reconstruction_panel.create_panel,
             right_content_builder=self.reconstruction_details_panel.create_panel,
@@ -698,6 +772,7 @@ class GUI:
         self._create_layout(
             label=LBL_TAB_INSTRUCTIONS,
             tab_tag=TAG_TAB_INSTRUCTIONS,
+            parent=TAG_TABS,
             left_content_builder=self._create_instructions_left_panel,
             center_content_builder=self.instruction_panel.create_panel,
             right_content_builder=self.instruction_details_panel.create_panel,
@@ -837,6 +912,9 @@ class GUI:
             content=content,
         )
 
+    def _is_generation_in_progress(self) -> bool:
+        return self.converter_panel.is_converter_running() or self.library_panel.is_library_generating()
+
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
             self.instruction_panel.display_instruction(instruction_data)
@@ -885,18 +963,25 @@ class GUI:
     def _is_reconstruction_loaded(self) -> bool:
         return self.reconstruction_manager.is_reconstruction_loaded()
 
-    def _is_library_loaded(self) -> bool:
-        return self.library_manager.is_library_loaded()
+    def _is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        return self.library_manager.is_library_loaded(library_key)
+
+    def _does_library_exist(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        return self.library_manager.does_library_exist(library_key)
 
     def _generate_library_if_not_loaded(self) -> None:
-        if not self._is_library_loaded():
+        if not self._does_library_exist():
             self.library_panel.generate_library()
 
+        self.library_panel.load_current_library()
+
     def _assign_file_to_converter(self, filepath: Path) -> None:
-        self.converter_panel.set_input_path(filepath, convert=False)
+        if not self._is_generation_in_progress():
+            self.converter_panel.set_input_path(filepath, convert=False)
 
     def _assign_directory_to_converter(self, directory_path: Path) -> None:
-        self.converter_panel.set_input_path(directory_path, convert=False)
+        if not self._is_generation_in_progress():
+            self.converter_panel.set_input_path(directory_path, convert=False)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self.converter_panel.set_input_path(filepath, convert=True)
@@ -904,10 +989,10 @@ class GUI:
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
 
-    @concurrent(wait=True, method_bound=True)
     def _load_library(self, filepath: Path) -> None:
         self.instruction_panel.close_instruction()
         self.library_panel.load_library_file(filepath)
+
         self.config_manager.update_gui()
         self._set_current_tab(TAG_TAB_INSTRUCTIONS)
         self._update_menu()
@@ -926,7 +1011,6 @@ class GUI:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
-    @concurrent(wait=True, method_bound=True)
     def _load_reconstruction(self, filepath: Path) -> None:
         self.browser_panel.lock()
         try:
@@ -982,11 +1066,11 @@ class GUI:
             )
 
         filepath = reconstruction_data.filepath
-        self.config_manager.load_config(reconstruction_data.config)
-
-        self.reconstruction_details_panel.display_reconstruction()
+        self.config_manager.load_library_and_generation_config(reconstruction_data.config)
         self.reconstruction_panel.display_reconstruction()
+        self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(filepath)
+
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._unsaved_reconstruction_changes = False
         self._update_viewport_title(filepath.stem)
@@ -1034,7 +1118,7 @@ class GUI:
 
     def _on_reconstruction_closed(self) -> None:
         self.reconstruction_panel.close_reconstruction()
-        self.reconstruction_details_panel.clear_display()
+        self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(None)
         self._unsaved_reconstruction_changes = False
         self._update_menu()
@@ -1170,6 +1254,7 @@ class GUI:
         return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
+        self._stop_callback_worker()
         self.audio_device_manager.stop()
         if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
@@ -1312,10 +1397,17 @@ class GUI:
         self.advanced_settings_panel.set_visibility(advanced_settings)
         dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
 
-    def _update_fps(self) -> None:
-        delta_time = dpg.get_delta_time()
+    def _update_fps(self, delta_time: float) -> None:
         fps = self.fps_timer.update(delta_time)
         dpg_configure_item(TAG_MENU_TEXT_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))
+
+    def _update_status(self) -> None:
+        delta_time = dpg.get_delta_time()
+        self._update_fps(delta_time)
+        self._update_status_bar(delta_time)
+
+    def _update_status_bar(self, delta_time: float) -> None:
+        self.status_bar.update(delta_time=delta_time)
 
     @staticmethod
     def _get_screen_dimensions() -> Tuple[int, int]:
@@ -1326,11 +1418,21 @@ class GUI:
         _root.destroy()
         return window_width, window_height
 
+    def frame(self) -> None:
+        dpg.render_dearpygui_frame()
+
+    def _post_frame(self) -> None:
+        CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
+        with self._callback_frame_event:
+            self._callback_frame_event.notify()
+
     def run(self) -> None:
         try:
             while dpg.is_dearpygui_running():
-                dpg.render_dearpygui_frame()
-                self._update_fps()
+                self.frame()
+                self._post_frame()
+        except KeyboardInterrupt:
+            return
         finally:
             if self.converter_panel and self.converter_panel.converter:
                 self.converter_panel.converter.cleanup()

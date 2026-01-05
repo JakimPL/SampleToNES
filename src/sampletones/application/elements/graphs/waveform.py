@@ -20,6 +20,7 @@ from ...constants.graphs import (
     LBL_PLOT_AXIS_WAVEFORM_TIME,
     LBL_PLOT_LABEL_WAVEFORM,
     LBL_PLOT_NAME_WAVEFORM_SAMPLE,
+    MSG_STATUS_WAVEFORM_NAVIGATION,
     SUF_BUTTON_WAVEFORM_RESET_ALL,
     SUF_BUTTON_WAVEFORM_RESET_X,
     SUF_BUTTON_WAVEFORM_RESET_Y,
@@ -44,8 +45,8 @@ from ...utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
-from ...utils.thread import concurrent
 from ..button import GUIButton
+from ..status import GUIStatusBar
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
 from .layers.waveform import WaveformLayer
@@ -150,6 +151,8 @@ class GUIWaveformGraph(GUIGraph):
             )
             self._set_overlay_rectangle()
 
+        GUIStatusBar.bind_to_item(self.plot_tag, MSG_STATUS_WAVEFORM_NAVIGATION)
+
     @table_wrapper(columns=3, height=0)
     def _create_controls(self) -> None:
         GUIButton(
@@ -196,7 +199,6 @@ class GUIWaveformGraph(GUIGraph):
                 y2=[self.y_max, self.y_max],
             )
 
-    @concurrent(wait=True, method_bound=True)
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
         self.clear_layers()
         self.current_data = fragment
@@ -244,7 +246,6 @@ class GUIWaveformGraph(GUIGraph):
 
         return approximation / coefficient, coefficient
 
-    @concurrent(wait=True, method_bound=True)
     def update_reconstruction_data(
         self,
         reconstruction_data: ReconstructionData,
@@ -284,7 +285,6 @@ class GUIWaveformGraph(GUIGraph):
             line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
         )
 
-    @concurrent(wait=True, method_bound=True)
     def load_reconstruction_data(
         self,
         reconstruction_data: ReconstructionData,
@@ -304,13 +304,24 @@ class GUIWaveformGraph(GUIGraph):
 
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
+        self._add_reconstruction_layers(
+            reconstruction_layer,
+            sample_layer,
+            original_audio,
+        )
+
+    def _add_reconstruction_layers(
+        self,
+        reconstruction_layer: ArrayLayer,
+        sample_layer: ArrayLayer,
+        original_audio: np.ndarray,
+    ) -> None:
         self.add_layer(reconstruction_layer)
         self.add_layer(sample_layer)
 
         self.x_min = 0.0
-        self.x_max = float(len(reconstruction_data.original_audio))
-        self._update_axes_limits()
-        self._update_position_indicator()
+        self.x_max = float(len(original_audio))
+        self._update_display()
 
     def clear(self) -> None:
         self.clear_layers()
@@ -352,9 +363,11 @@ class GUIWaveformGraph(GUIGraph):
 
         self._update_axes_limits()
 
-    def _update_axes_limits(self) -> None:
-        dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
-        dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        if x:
+            dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
+        if y:
+            dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
 
         position_x = float(self.current_position)
         dpg_configure_item(
@@ -386,17 +399,18 @@ class GUIWaveformGraph(GUIGraph):
 
     def _reset_x_axis(self) -> None:
         if self.layers:
-            max_length = max(len(layer.x_data) for layer in self.layers.values())
+            max_length = max(layer.x_data[-1] for layer in self.layers.values())
             self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = float(max_length)
         else:
             self.x_min = VAL_MIN_GRAPH_DEFAULT_X
             self.x_max = VAL_MAX_GRAPH_DEFAULT_X
-        self._update_axes_limits()
+
+        self._update_axes_limits(y=False)
 
     def _reset_y_axis(self) -> None:
         self.y_min, self.y_max = self.default_y_range
-        self._update_axes_limits()
+        self._update_axes_limits(x=False)
 
     def _reset_all_axes(self) -> None:
         self._reset_x_axis()

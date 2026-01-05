@@ -4,6 +4,7 @@ from typing import Optional, Set
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager, CurrentDevice
+from sampletones.constants.audio import BufferSize
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.utils import get_directory
 from sampletones.utils.logger import logger
@@ -95,7 +96,7 @@ class ApplicationConfigManager:
         self.config.gui.current_reconstruction = path
 
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.config.audio.set_current_device(audio_device_manager)
+        self.config.audio.set_audio_settings(audio_device_manager)
 
     def save_config(self) -> None:
         self.load_window_state()
@@ -142,6 +143,10 @@ class ApplicationConfigManager:
     @property
     def current_audio_device(self) -> CurrentDevice:
         return self.config.audio.current_device
+
+    @property
+    def current_buffer_size(self) -> BufferSize:
+        return self.config.audio.buffer_size
 
     @property
     def advanced_settings(self) -> bool:

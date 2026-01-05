@@ -1,3 +1,4 @@
+import re
 from enum import StrEnum
 from typing import Dict, Final, Literal
 
@@ -13,6 +14,11 @@ class GeneratorName(StrEnum):
     PULSE2 = "pulse2"
     TRIANGLE = "triangle"
     NOISE = "noise"
+
+    @property
+    def capitalized(self) -> str:
+        spaced_value = re.sub(r"(\d+)", r" \1", self.value)
+        return spaced_value.capitalize()
 
 
 class GeneratorClassName(StrEnum):
@@ -34,6 +40,10 @@ class FeatureKey(StrEnum):
     PITCH = "pitch"
     HI_PITCH = "hi_pitch"
     DUTY_CYCLE = "duty_cycle"
+
+    @property
+    def capitalized(self) -> str:
+        return self.value.replace("_", " ").capitalize()
 
 
 class AudioSourceType(StrEnum):

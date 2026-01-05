@@ -1,6 +1,6 @@
-from .device import SAMPLE_RATES, AudioDevice, CurrentDevice, SampleRate
+from .device import AudioDevice, CurrentDevice
 from .io import load_audio, read_wave, write_wave
-from .manager import CHANNELS, CHUNK_SIZE, FORMAT, AudioDeviceManager
+from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .processing import (
     clip_audio,
     interpolate,
@@ -25,9 +25,6 @@ __all__ = [
     "minmax_decimate",
     "normalize",
     "quantize",
-    "SampleRate",
-    "SAMPLE_RATES",
     "CHANNELS",
     "FORMAT",
-    "CHUNK_SIZE",
 ]

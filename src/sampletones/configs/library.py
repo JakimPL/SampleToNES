@@ -3,17 +3,19 @@ from types import ModuleType
 import numpy as np
 from pydantic import ConfigDict, Field
 
+from sampletones.constants.audio import (
+    DEFAULT_SAMPLE_RATE,
+    MAX_SAMPLE_RATE,
+    MIN_SAMPLE_RATE,
+)
 from sampletones.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
     DEFAULT_CHANGE_RATE,
-    DEFAULT_SAMPLE_RATE,
     MAX_CHANGE_RATE,
-    MAX_SAMPLE_RATE,
     MAX_TRANSFORMATION_GAMMA,
     MIN_CHANGE_RATE,
     MIN_FREQUENCY,
-    MIN_SAMPLE_RATE,
     TRANSFORMATION_GAMMA,
 )
 from sampletones.data import DataModel

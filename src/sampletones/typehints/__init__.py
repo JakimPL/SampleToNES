@@ -4,6 +4,7 @@ from .general import (
     FeatureMap,
     FeatureValue,
     Initials,
+    MessageCallback,
     Pathlike,
     ReducedObject,
     Sender,
@@ -21,5 +22,6 @@ __all__ = [
     "Color",
     "Callback",
     "VoidCallback",
+    "MessageCallback",
     "Pathlike",
 ]
