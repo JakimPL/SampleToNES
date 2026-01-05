@@ -276,7 +276,7 @@ class GUI:
             name="CallbackQueueWorker",
         )
         self._callback_worker_thread.start()
-        logger.info("Callback worker thread started")
+        logger.debug("Callback worker thread started")
 
     def _callback_worker(self) -> None:
         while not self._callback_stop_event.is_set():
@@ -288,8 +288,8 @@ class GUI:
         CallbackQueue.stop()
         self._callback_stop_event.set()
         if self._callback_worker_thread:
-            self._callback_worker_thread.join(timeout=1.0)
-            logger.info("Callback worker thread stopped")
+            self._callback_worker_thread.join()
+            logger.debug("Callback worker thread stopped")
 
     def _on_exit(self) -> None:
         dpg.start_dearpygui()
@@ -1408,7 +1408,7 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
-        CallbackQueue.add(self._update_status, priority=True)
+        # CallbackQueue.add(self._update_status, priority=True)
         with self._callback_frame_event:
             self._callback_frame_event.notify()
 

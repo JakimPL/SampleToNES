@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional, Tuple
 
 import numpy as np
@@ -19,6 +20,13 @@ def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
 
 
 def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(f"File '{path}' does not exist")
+
+    if not path.is_file():
+        raise IsADirectoryError(f"Path '{path}' is not a file")
+
     audio, sample_rate = sf_read(path, dtype="float32")
     return audio, sample_rate
 

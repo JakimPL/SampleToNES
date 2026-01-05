@@ -247,7 +247,7 @@ class GUITreePanel(GUIPanel):
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
         return self._create_status_bar_message_function(MSG_STATUS_NODE_RECONSTRUCTION)
 
-    def _create_status_bar_message_function_for_library_node(self, node: TreeNode) -> MessageCallback:
+    def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
         return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)
 
     def _create_status_bar_message_function_for_directory_node(self, node_tag: str) -> MessageCallback:

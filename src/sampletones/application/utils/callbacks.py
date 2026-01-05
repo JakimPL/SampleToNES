@@ -63,12 +63,8 @@ class CallbackQueue:
 
     @classmethod
     def process(cls) -> None:
-        if not cls._processing_lock.acquire(blocking=False):
-            return
-        try:
+        with cls._processing_lock:
             cls._process()
-        finally:
-            cls._processing_lock.release()
 
     @classmethod
     def _process(cls) -> None:
@@ -131,6 +127,7 @@ def queued(
     method: Optional[F] = None,
     *,
     priority: bool = False,
+    delay: int = 0,
 ) -> Union[F, Callable[[F], F]]:
     def decorator(function: F) -> F:
 
@@ -141,6 +138,7 @@ def queued(
                 self,
                 *args,
                 priority=priority,
+                delay=delay,
                 **kwargs,
             )
 
