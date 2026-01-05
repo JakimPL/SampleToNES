@@ -21,7 +21,7 @@ echo "Install additional system dependencies? (y/n)"
 read -r INSTALL_SYS_DEPS
 if [[ "$INSTALL_SYS_DEPS" == "y" || "$INSTALL_SYS_DEPS" == "Y" ]]; then
     sudo apt-get update
-    sudo apt-get install -y python3-tk tk-dev tcl-dev
+    sudo apt-get install -y python3-tk tk-dev tcl-dev libportaudio2 libportaudio-dev
 else
     echo "Warning: Skipping system dependencies installation may lead to build failures."
 fi
