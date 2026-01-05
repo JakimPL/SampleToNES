@@ -31,6 +31,7 @@ from ...constants.general import (
 from ...constants.main import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
+    MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY,
 )
 from ...themes.default import DefaultTheme
 from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
@@ -191,19 +192,26 @@ class GUITreePanel(GUIPanel):
         dpg_delete_item(handler.tag)
         with dpg.item_handler_registry(tag=handler.tag):
             if handler.item_click_callback is not None:
+                item_click_callback = handler.item_click_callback
+                status_bar_callback = handler.status_bar_callback
+
+                def single_click_callback(sender: Sender, app_data: Any, user_data: Any) -> None:
+                    item_click_callback(
+                        sender,
+                        app_data,
+                        user_data,
+                    )
+                    if status_bar_callback is not None:
+                        GUIStatusBar.set(status_bar_callback)
+
                 dpg.add_item_clicked_handler(
-                    callback=handler.item_click_callback,
+                    callback=single_click_callback,
                     user_data=(handler.node, handler.parent),
                 )
             if handler.item_double_click_callback is not None:
                 dpg.add_item_double_clicked_handler(
                     callback=handler.item_double_click_callback,
                     user_data=(handler.node, handler.parent),
-                )
-            if handler.status_bar_callback is not None:
-                GUIStatusBar.bind_to_item(
-                    handler.parent,
-                    handler.status_bar_callback,
                 )
 
     def _bind_item_handler_registry(self, handler: Handler) -> None:
@@ -238,6 +246,9 @@ class GUITreePanel(GUIPanel):
 
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
         return self._create_status_bar_message_function(MSG_STATUS_NODE_RECONSTRUCTION)
+
+    def _create_status_bar_message_function_for_library_node(self, node: TreeNode) -> MessageCallback:
+        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)
 
     def _create_status_bar_message_function_for_directory_node(self, node_tag: str) -> MessageCallback:
         def message_function() -> str:

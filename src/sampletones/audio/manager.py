@@ -225,9 +225,14 @@ class AudioDeviceManager(CallbackMixin):
 
         return None
 
-    def find_device_index(self, current_device: CurrentDevice) -> int:
+    def find_device_index(
+        self,
+        current_device: CurrentDevice,
+        host_api_only: bool = True,
+    ) -> int:
         for device in self._devices.values():
-            if device.name == current_device.name and current_device.host_api == device.host_api:
+            valid_name = device.name == current_device.name or not host_api_only
+            if valid_name and current_device.host_api == device.host_api:
                 return device.index
 
         return -1
@@ -251,7 +256,7 @@ class AudioDeviceManager(CallbackMixin):
         self.stop()
         self.device_index = device_index
         self.sample_rate = sample_rate
-        logger.info(f"Audio device configured: {self.device_name} (index={device_index}, sample_rate={sample_rate})")
+        logger.info(f"Audio device configured: '{self.device_name}' (index={device_index}, sample_rate={sample_rate})")
 
     def set_position_callback(self, callback: Optional[Callable[[int], None]]) -> None:
         self._position_callback = callback

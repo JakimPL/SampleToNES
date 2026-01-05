@@ -51,13 +51,23 @@ class GUIStatusBar:
 
         self.theme.bind_to_item(TAG_STATUS_WINDOW)
 
+    @staticmethod
+    def get_message(message_or_function: Union[str, MessageCallback]) -> str:
+        if isinstance(message_or_function, str):
+            return message_or_function
+
+        if callable(message_or_function):
+            return message_or_function()
+
+        raise TypeError("'message_or_function' must be a string or a callable returning a string.")
+
     def update(
         self,
-        message: Optional[str] = None,
+        message_or_function: Optional[Union[str, MessageCallback]] = None,
         delta_time: Optional[float] = None,
     ) -> None:
-        if message is not None:
-            self.message = message
+        if message_or_function is not None:
+            self.message = self.get_message(message_or_function)
             self.timer = VAL_STATUS_BAR_DISPLAY_TIME
 
         dpg_configure_item(self.tag, label=self.message)
@@ -68,9 +78,15 @@ class GUIStatusBar:
             self.timer = 0.0
 
     @classmethod
-    def set(cls, message: str) -> None:
+    def set(
+        cls,
+        message_or_function: Union[str, MessageCallback],
+    ) -> None:
         if cls._REGISTRY is not None:
-            cls._REGISTRY.update(message=message, delta_time=0.0)
+            cls._REGISTRY.update(
+                message_or_function=message_or_function,
+                delta_time=0.0,
+            )
 
     @staticmethod
     def create_message_function(
@@ -83,8 +99,9 @@ class GUIStatusBar:
 
         elif callable(message_or_function):
             message_function = message_or_function
+
         else:
-            raise TypeError("message_or_function must be a string or a callable returning a string.")
+            raise TypeError("'message_or_function' must be a string or a callable returning a string.")
 
         return message_function
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -22,7 +22,7 @@ from sampletones.library import InstructionLibraryKey
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.tree import GeneratorNode, LibraryNode, NodeType, TreeNode
 from sampletones.tree.traversal import TreeTraversal, traverse
-from sampletones.typehints import Sender
+from sampletones.typehints import MessageCallback, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -54,6 +54,8 @@ from ...constants.instructions import (
     MSG_INSTRUCTIONS_LIBRARY_INVALID_DATA_VALUES_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_WINDOW_NOT_AVAILABLE,
+    MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR,
+    MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
@@ -355,6 +357,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if node.node_type == NodeType.ROOT:
             return
 
+        if not isinstance(node, (LibraryNode, GeneratorNode)):
+            return
+
         if isinstance(node, LibraryNode):
             state.special_node = node
 
@@ -373,13 +378,35 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._apply_node_theme(node_tag, node)
 
         callback = self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
+        status_bar_message_function = self._create_status_bar_message_function_for_instructions_node(node)
         self._add_item_handler_registry(
             node_tag=node_tag,
             node=node,
             item_click_callback=callback,
+            status_bar_callback=status_bar_message_function,
         )
 
         state.parent = node_tag
+
+    def _create_status_bar_message_function_for_instructions_node(
+        self,
+        node: Union[LibraryNode, GeneratorNode],
+    ) -> MessageCallback:
+        match node.node_type:
+            case NodeType.LIBRARY:
+                message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY
+            case NodeType.GENERATOR:
+                parent = node.parent
+                assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
+                assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
+                message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR.format(
+                    generator=node.generator_name,
+                    library_key=parent.library_key.filename,
+                )
+            case _:
+                raise ValueError(f"Unsupported node type '{node.node_type}' for status bar message function")
+
+        return self._create_status_bar_message_function(message)
 
     def _on_generator_node_clicked(
         self,

@@ -104,6 +104,7 @@ MSG_MAIN_CONVERTER_OUTPUT = "Output:"
 MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO = (
     "Click to play audio. Double-click to reconstruct audio file. Right-click to open context menu."
 )
+MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY = "Double-click to open instructions library. Right-click to open context menu."
 
 TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING = "Conversion in progress"
 TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY = "Select library directory"
@@ -123,4 +124,4 @@ DIM_BUTTON_HEIGHT_MAIN_CONVERTER = 45
 DIM_PANEL_HEIGHT_MAIN_ADVANCED = 162
 
 VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS = 1
-VAL_FPS_TIME_INTERVAL = 0.5
+VAL_FPS_TIME_INTERVAL = 2.0

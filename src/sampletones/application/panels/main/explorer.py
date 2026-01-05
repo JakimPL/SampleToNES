@@ -288,6 +288,8 @@ class GUIExplorerPanel(GUITreePanel):
         match suffix:
             case paths.EXT_FILE_RECONSTRUCTION:
                 return self._create_status_bar_message_function_for_reconstruction_node()
+            case paths.EXT_FILE_LIBRARY:
+                return self._create_status_bar_message_function_for_library_node()
             case suffix if suffix in paths.EXT_FILES_AUDIO:
                 return self._create_status_bar_message_function_for_audio_node(node_tag)
 

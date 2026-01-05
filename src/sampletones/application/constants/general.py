@@ -152,7 +152,6 @@ MSG_STATUS_PATH = "Click to open path in file explorer."
 MSG_STATUS_NODE_RECONSTRUCTION = (
     "Click to play reconstruction. Double-click to open reconstruction. Right-click to open context menu."
 )
-MSG_STATUS_NODE_LIBRARY = "Double-click to open instructions library. Right-click to open context menu."
 MSG_STATUS_TREE_SEARCH = "Type query to filter nodes."
 MSG_STATUS_INPUT = "CTRL + click to type value."
 MSG_STATUS_NODE_DIRECTORY = "Click to {expand_or_collapse}. Right-click to open context menu."
