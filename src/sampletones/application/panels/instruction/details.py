@@ -19,7 +19,7 @@ from sampletones.instructions import (
 from sampletones.typehints import Sender
 from sampletones.utils import clamp
 
-from ...constants.general import SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
+from ...constants.general import MSG_STATUS_INPUT, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (
     DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
@@ -53,6 +53,7 @@ from ...constants.instructions import (
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...elements.table.table import GUITable
 from ...instruction.data import InstructionPanelData
 from ...instruction.logic import InstructionDetailsLogic
@@ -227,6 +228,13 @@ class GUIInstructionDetailsPanel(GUIPanel):
             callback=self._on_instruction_changed,
         )
 
+        for tag in [
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+        ]:
+            GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
+
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
@@ -237,6 +245,11 @@ class GUIInstructionDetailsPanel(GUIPanel):
             max_value=MAX_PITCH,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
             callback=self._on_instruction_changed,
+        )
+
+        GUIStatusBar.bind_to_item(
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            MSG_STATUS_INPUT,
         )
 
     def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
@@ -267,6 +280,13 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.short,
             callback=self._on_instruction_changed,
         )
+
+        for tag in [
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+        ]:
+            GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
 
     def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
         instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)

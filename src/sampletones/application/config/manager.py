@@ -3,7 +3,6 @@ from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
-from sampletones.application.config.parameters import ConfigParameter
 from sampletones.configs import (
     Config,
     GeneralConfig,
@@ -26,6 +25,7 @@ from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import SerializedData, VoidCallback
 from sampletones.utils.logger import logger
 
+from ..config.parameters import ConfigParameter
 from ..constants.general import (
     MSG_CONFIGURATION_INVALID_ERROR,
     MSG_CONFIGURATION_LOAD_ERROR,

@@ -1,13 +1,13 @@
 from pathlib import Path
 from typing import Optional
 
-from sampletones.application.constants.general import VAL_PRIORITY_SCHEDULE
 from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
+from ..constants.general import VAL_PRIORITY_SCHEDULE
 from ..utils.callbacks.queue import CallbackQueue
 from .data import ReconstructionData
 from .feature import FeatureData

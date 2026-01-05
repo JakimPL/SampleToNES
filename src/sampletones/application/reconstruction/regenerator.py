@@ -2,7 +2,6 @@ from typing import Callable, List, Optional, cast
 
 import numpy as np
 
-from sampletones.application.constants.general import VAL_PRIORITY_SCHEDULE
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
@@ -10,6 +9,7 @@ from sampletones.instructions import InstructionUnion
 from sampletones.typehints import FeatureValue
 from sampletones.utils.callbacks import CallbackMixin
 
+from ..constants.general import VAL_PRIORITY_SCHEDULE
 from ..utils.callbacks.queue import CallbackQueue
 from ..utils.thread import concurrent
 from .data import ReconstructionData

@@ -3,13 +3,8 @@ from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.status import GUIStatusBar
 from sampletones.typehints import Pathlike, Sender, VoidCallback
-from sampletones.utils import (
-    open_path_in_explorer,
-    shorten_path,
-    to_path,
-)
+from sampletones.utils import open_path_in_explorer, shorten_path, to_path
 from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.general import (
@@ -26,6 +21,7 @@ from ..elements.fonts.registry import FontRegistry
 from ..utils.callbacks.queue import CallbackQueue
 from ..utils.dpg import dpg_delete_item, dpg_set_value
 from ..utils.tooltip import show_tooltip
+from .status import GUIStatusBar
 
 
 class GUIPathText(CallbackMixin):
