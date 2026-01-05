@@ -1,5 +1,3 @@
-import platform
-import subprocess
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -7,7 +5,11 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.application.elements.status import GUIStatusBar
 from sampletones.typehints import Pathlike, Sender, VoidCallback
-from sampletones.utils import get_directory, shorten_path, to_path
+from sampletones.utils import (
+    open_path_in_explorer,
+    shorten_path,
+    to_path,
+)
 from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.general import (
@@ -115,16 +117,7 @@ class GUIPathText(CallbackMixin):
         if not self.path.exists():
             return
 
-        path_to_open = get_directory(self.path)
-        path_string = str(path_to_open)
-
-        system = platform.system()
-        if system == "Windows":
-            subprocess.run(["explorer", path_string], check=False)
-        elif system == "Darwin":
-            subprocess.run(["open", path_string], check=False)
-        else:
-            subprocess.run(["xdg-open", path_string], check=False)
+        open_path_in_explorer(self.path)
 
     def set_path(self, path: Pathlike, shorten: bool = True) -> None:
         self.path = to_path(path)

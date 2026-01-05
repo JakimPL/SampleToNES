@@ -260,7 +260,7 @@ class GUIBrowserPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
+            self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
 
     def _show_reconstruction_context_menu(self, node: FileSystemNode, node_tag: str) -> None:

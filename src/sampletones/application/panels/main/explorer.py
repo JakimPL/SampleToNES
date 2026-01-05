@@ -365,6 +365,26 @@ class GUIExplorerPanel(GUITreePanel):
 
         dpg.set_value(node_tag, not state)
 
+    def _add_context_menu_file_actions(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        suffix = node.filepath.suffix.lower()
+        match suffix:
+            case paths.EXT_FILE_RECONSTRUCTION:
+                dpg.add_menu_item(
+                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
+                    callback=lambda: self._load_reconstruction(node),
+                )
+            case paths.EXT_FILE_LIBRARY:
+                dpg.add_menu_item(
+                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
+                    callback=lambda: self._load_library(node),
+                )
+            case suffix if suffix in paths.EXT_FILES_AUDIO:
+                dpg.add_menu_item(
+                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
+                    callback=lambda: self._context_reconstruct_file(node),
+                )
+
     def _show_file_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
@@ -377,26 +397,35 @@ class GUIExplorerPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
-            match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
-                    dpg.add_menu_item(
-                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
-                        callback=lambda: self._load_reconstruction(node),
-                    )
-                case paths.EXT_FILE_LIBRARY:
-                    dpg.add_menu_item(
-                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
-                        callback=lambda: self._load_library(node),
-                    )
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.audio_device_manager.play_file(node.filepath)
-                    dpg.add_menu_item(
-                        label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
-                        callback=lambda: self._context_reconstruct_file(node),
-                    )
-
+            self._add_context_menu_file_actions(node)
+            self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
+
+    def _add_context_menu_reconstruction_directory(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
+            callback=lambda: self._context_reconstruct_directory(node),
+        )
+
+    def _add_context_menu_reconstruction_file(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
+            callback=lambda: self._context_reconstruct_file(node),
+        )
+
+    def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
+            callback=lambda: self._context_set_as_output_directory(node),
+        )
+
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
+            callback=lambda: self._context_set_as_library_directory(node),
+        )
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -410,23 +439,10 @@ class GUIExplorerPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
-                callback=lambda: self._context_reconstruct_directory(node),
-            )
-
+            self._add_context_menu_reconstruction_directory(node)
+            self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
-                callback=lambda: self._context_set_as_output_directory(node),
-            )
-
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
-                callback=lambda: self._context_set_as_library_directory(node),
-            )
+            self._add_context_menu_set_directory_items(node)
 
     def _check_if_converter_running(self) -> bool:
         if self.is_converter_running is not None:

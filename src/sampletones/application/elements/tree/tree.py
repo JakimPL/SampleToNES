@@ -1,4 +1,5 @@
 import threading
+from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Union
 
 import dearpygui.dearpygui as dpg
@@ -9,6 +10,7 @@ from sampletones.exceptions import CallbackQueueStop
 from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones.typehints import MessageCallback, Sender
+from sampletones.utils import open_path_in_explorer
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -18,6 +20,11 @@ from ...constants.general import (
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
+    LBL_CONTEXT_ITEM_COPY_FILENAME,
+    LBL_CONTEXT_ITEM_COPY_PATH,
+    LBL_CONTEXT_ITEM_MARK_AS_FAVORITE,
+    LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
+    LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
     LBL_TREE_SEARCH,
     MSG_STATUS_NODE_DIRECTORY,
     MSG_STATUS_NODE_RECONSTRUCTION,
@@ -33,11 +40,7 @@ from ...constants.general import (
     VAL_TEXT_COLLAPSE,
     VAL_TEXT_EXPAND,
 )
-from ...constants.main import (
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE,
-    MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY,
-)
+from ...constants.main import MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY
 from ...themes.default import DefaultTheme
 from ...themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
 from ...themes.nodes.file import (
@@ -346,12 +349,26 @@ class GUITreePanel(GUIPanel):
             text = dpg.add_text(node.name, color=color)
             FontRegistry.bind_to_item(text, Font.BOLD)
 
+    def _add_context_menu_path_items(self, path: Path) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_COPY_FILENAME,
+            callback=lambda: dpg.set_clipboard_text(str(path.name)),
+        )
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_COPY_PATH,
+            callback=lambda: dpg.set_clipboard_text(str(path)),
+        )
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
+            callback=lambda: open_path_in_explorer(path),
+        )
+
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            LBL_CONTEXT_ITEM_MAIN_EXPLORER_UNMARK_AS_FAVORITE
-            if self._is_node_favorite(node)
-            else LBL_CONTEXT_ITEM_MAIN_EXPLORER_MARK_AS_FAVORITE
+            LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE if self._is_node_favorite(node) else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
         )
+        dpg.add_separator()
         dpg.add_menu_item(
             label=label,
             callback=lambda: self._context_mark_as_favorite(node),

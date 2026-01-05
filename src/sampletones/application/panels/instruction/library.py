@@ -456,11 +456,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-                callback=lambda: self._load_library_and_set_current(node.library_key),
-            )
+            self._add_context_menu_path_items(self.library_manager.get_path(node.library_key))
+            self._add_context_menu_library_node(node)
+
+    def _add_context_menu_library_node(self, node: LibraryNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
+            callback=lambda: self._load_library_and_set_current(node.library_key),
+        )
 
     def _show_generator_context_menu(self, node: GeneratorNode) -> None:
         if not isinstance(node, GeneratorNode) or node.node_type != NodeType.GENERATOR:
@@ -475,12 +479,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_GENERATOR,
-                callback=self._on_load_generator,
-                user_data=node,
-            )
+            self._add_context_menu_generator_node(node)
+
+    def _add_context_menu_generator_node(self, node: GeneratorNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_GENERATOR,
+            callback=self._on_load_generator,
+            user_data=node,
+        )
 
     def _is_current_library_node(self, node: TreeNode) -> bool:
         if not isinstance(node, LibraryNode):
