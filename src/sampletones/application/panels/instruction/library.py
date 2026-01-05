@@ -365,23 +365,16 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
-        with dpg.tree_node(
-            label=node.name,
-            tag=node_tag,
-            parent=state.parent,
-            default_open=should_expand,
-            leaf=isinstance(node, GeneratorNode),
-            open_on_arrow=False,
-            open_on_double_click=True,
-        ):
-            FontRegistry.bind_to_item(node_tag, Font.REGULAR_SMALL)
-            self._apply_node_theme(node_tag, node)
-
+        leaf = isinstance(node, GeneratorNode)
         callback = self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
         status_bar_message_function = self._create_status_bar_message_function_for_instructions_node(node)
-        self._add_item_handler_registry(
-            node_tag=node_tag,
-            node=node,
+        self._add_node(
+            node,
+            node_tag,
+            state.parent,
+            leaf=leaf,
+            should_expand=should_expand,
+            open_on_double_click=True,
             item_click_callback=callback,
             status_bar_callback=status_bar_message_function,
         )

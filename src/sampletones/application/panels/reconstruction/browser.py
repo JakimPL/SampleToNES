@@ -174,45 +174,25 @@ class GUIBrowserPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
-                parent=state.parent,
-                default_open=should_expand,
-            ):
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=state.has_favorite_ancestor,
-                )
-
-            status_bar_message_function = self._create_status_bar_message_function_for_directory_node(node_tag)
-            self._add_item_handler_registry(
-                node_tag=node_tag,
+            self._add_node(
                 node=node,
+                node_tag=node_tag,
+                parent=state.parent,
+                should_expand=should_expand,
+                has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=status_bar_message_function,
+                status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
             )
         else:
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
+            self._add_node(
+                node=node,
+                node_tag=node_tag,
                 parent=state.parent,
                 leaf=True,
-            ):
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=state.has_favorite_ancestor,
-                )
-
-            status_bar_message_function = self._create_status_bar_message_function_for_reconstruction_node()
-            self._add_item_handler_registry(
-                node_tag=node_tag,
-                node=node,
+                has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_reconstruction_node_clicked,
                 item_double_click_callback=self._on_reconstruction_node_double_clicked,
-                status_bar_callback=status_bar_message_function,
+                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
             )
 
         state.parent = node_tag

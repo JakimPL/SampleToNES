@@ -26,7 +26,6 @@ from ...constants.main import (
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
-    LBL_MAIN_EXPLORER_NODE_DUMMY,
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO,
@@ -221,60 +220,27 @@ class GUIExplorerPanel(GUITreePanel):
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
             is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
-
-            with dpg.tree_node(
-                label=node.name,
-                tag=node_tag,
-                parent=state.parent,
-                default_open=should_expand,
-                open_on_arrow=False,
+            self._add_node(
+                node,
+                node_tag,
+                state.parent,
                 open_on_double_click=True,
-            ) as tree_node_tag:
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=state.has_favorite_ancestor,
-                    is_node_expanded=is_directory_expanded,
-                )
-
-                if node.children:
-                    dummy_node_tag = f"{node_tag}{SUF_MAIN_EXPLORER_NODE_DUMMY}"
-                    dpg.add_tree_node(
-                        label=LBL_MAIN_EXPLORER_NODE_DUMMY,
-                        tag=dummy_node_tag,
-                        parent=tree_node_tag,
-                        show=not is_directory_expanded,
-                    )
-                    FontRegistry.bind_to_item(dummy_node_tag, Font.ITALIC_SMALL)
-
-            status_bar_message_function = self._create_status_bar_message_function_for_directory_node(node_tag)
-            self._add_item_handler_registry(
-                node_tag=node_tag,
-                node=node,
+                should_expand=should_expand,
+                has_favorite_ancestor=state.has_favorite_ancestor,
+                is_node_expanded=is_directory_expanded,
                 item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=status_bar_message_function,
+                status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
             )
-
         else:
-            with dpg.tree_node(
-                label=node.name,
-                parent=state.parent,
-                tag=node_tag,
+            self._add_node(
+                node,
+                node_tag,
+                state.parent,
                 leaf=True,
-            ):
-                self._apply_node_theme(
-                    node_tag,
-                    node,
-                    has_favorite_ancestor=state.has_favorite_ancestor,
-                )
-
-            status_bar_message_function = self._create_status_bar_message_function_for_file_node(node, node_tag)
-            self._add_item_handler_registry(
-                node_tag=node_tag,
-                node=node,
+                has_favorite_ancestor=state.has_favorite_ancestor,
                 item_click_callback=self._on_file_node_clicked,
                 item_double_click_callback=self._on_file_node_double_clicked,
-                status_bar_callback=status_bar_message_function,
+                status_bar_callback=self._create_status_bar_message_function_for_file_node(node, node_tag),
             )
 
         state.parent = node_tag

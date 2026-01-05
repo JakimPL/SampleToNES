@@ -238,6 +238,15 @@ class ConfigManager:
     def load_default_config(self) -> None:
         self.load_config(Config())
 
+    def load_library_and_generation_config(self, config: Config) -> None:
+        self.load_config(
+            Config(
+                general=self.config.general if self.config else GeneralConfig(),
+                library=config.library,
+                generation=config.generation,
+            )
+        )
+
     def load_config(self, config: Config) -> None:
         self.config = config
         self.window = Window.from_config(config)

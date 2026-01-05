@@ -138,6 +138,46 @@ class GUITreePanel(GUIPanel):
 
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
 
+    @queued(priority=False)
+    def _add_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
+    ) -> None:
+        with dpg.tree_node(
+            label=node.name,
+            tag=node_tag,
+            parent=parent,
+            default_open=should_expand,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            leaf=leaf,
+        ):
+            self._apply_node_theme(
+                node_tag,
+                node,
+                has_favorite_ancestor=has_favorite_ancestor,
+                is_node_expanded=is_node_expanded,
+            )
+
+        self._add_item_handler_registry(
+            node_tag=node_tag,
+            node=node,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
+        )
+
     def _build_tree_node(
         self,
         node: TreeNode,
