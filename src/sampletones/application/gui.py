@@ -20,6 +20,7 @@ from sampletones.exceptions import (
     InvalidReconstructionValuesError,
     LibraryDisplayError,
 )
+from sampletones.library.key import InstructionLibraryKey
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -465,7 +466,7 @@ class GUI:
             on_load_library=self._load_library,
             on_set_as_library_directory=self.advanced_settings_panel.change_library_directory,
             on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
-            is_converter_running=self.converter_panel.is_converter_running,
+            is_converter_running=self._is_generation_in_progress,
         )
         self.library_panel.set_callbacks(
             on_apply_library_config=self.advanced_settings_panel.apply_library_config,
@@ -909,6 +910,9 @@ class GUI:
             content=content,
         )
 
+    def _is_generation_in_progress(self) -> bool:
+        return self.converter_panel.is_converter_running() or self.library_panel.is_library_generating()
+
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
             self.instruction_panel.display_instruction(instruction_data)
@@ -957,18 +961,25 @@ class GUI:
     def _is_reconstruction_loaded(self) -> bool:
         return self.reconstruction_manager.is_reconstruction_loaded()
 
-    def _is_library_loaded(self) -> bool:
-        return self.library_manager.is_library_loaded()
+    def _is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        return self.library_manager.is_library_loaded(library_key)
+
+    def _does_library_exist(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        return self.library_manager.does_library_exist(library_key)
 
     def _generate_library_if_not_loaded(self) -> None:
-        if not self._is_library_loaded():
+        if not self._does_library_exist():
             self.library_panel.generate_library()
 
+        self.library_panel.load_current_library()
+
     def _assign_file_to_converter(self, filepath: Path) -> None:
-        self.converter_panel.set_input_path(filepath, convert=False)
+        if not self._is_generation_in_progress():
+            self.converter_panel.set_input_path(filepath, convert=False)
 
     def _assign_directory_to_converter(self, directory_path: Path) -> None:
-        self.converter_panel.set_input_path(directory_path, convert=False)
+        if not self._is_generation_in_progress():
+            self.converter_panel.set_input_path(directory_path, convert=False)
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self.converter_panel.set_input_path(filepath, convert=True)

@@ -98,9 +98,7 @@ class GUIConverterPanel(GUIPanel):
         )
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
-        config = self._load_config()
-        if config is None:
-            return
+        config = self._get_config()
 
         if not self._assign_paths(input_path, config):
             return
@@ -122,7 +120,7 @@ class GUIConverterPanel(GUIPanel):
             logger.warning("Conversion is already in progress")
             return
 
-        self.config = self._load_config()
+        self.config = self._get_config()
         self._set_conversion_panel_enabled(False)
         self._set_conversion_subpanel_visible(True)
         self._reset_progress()
@@ -239,17 +237,8 @@ class GUIConverterPanel(GUIPanel):
         else:
             self._start_conversion()
 
-    def _load_config(self) -> Optional[Config]:
-        try:
-            return self.config_manager.config
-        except RuntimeError as exception:
-            logger.error("Config not initialized")
-            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
-        except Exception as exception:
-            logger.error("Failed to get config")
-            show_error_dialog(exception, MSG_MAIN_CONVERTER_ERROR)
-
-        return None
+    def _get_config(self) -> Config:
+        return self.config_manager.config.model_copy()
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:

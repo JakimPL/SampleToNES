@@ -156,10 +156,10 @@ class GUITreePanel(GUIPanel):
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
-        item_click_callback: Optional[ItemClickCallback] = None,
-        item_double_click_callback: Optional[ItemClickCallback] = None,
-        status_bar_callback: Optional[MessageCallback] = None,
     ) -> None:
+        if not dpg.does_item_exist(parent):
+            return
+
         with dpg.tree_node(
             label=node.name,
             tag=node_tag,
@@ -204,9 +204,6 @@ class GUITreePanel(GUIPanel):
             should_expand=should_expand,
             has_favorite_ancestor=has_favorite_ancestor,
             is_node_expanded=is_node_expanded,
-            item_click_callback=item_click_callback,
-            item_double_click_callback=item_double_click_callback,
-            status_bar_callback=status_bar_callback,
             priority=add_node_priority,
         )
 
@@ -300,6 +297,9 @@ class GUITreePanel(GUIPanel):
         item_double_click_callback: Optional[ItemClickCallback] = None,
         status_bar_callback: Optional[MessageCallback] = None,
     ) -> None:
+        if not dpg.does_item_exist(node_tag):
+            return
+
         tag = self._get_handler_registry_tag(node_tag)
         handler = Handler(
             tag=tag,

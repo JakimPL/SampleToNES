@@ -445,16 +445,15 @@ class GUIExplorerPanel(GUITreePanel):
             self._add_context_menu_set_directory_items(node)
 
     def _check_if_converter_running(self) -> bool:
-        if self.is_converter_running is not None:
-            is_running = self.call(self.is_converter_running)
-            if is_running:
-                logger.warning("Conversion is already running. Wait or cancel the current operation.")
-                show_info_dialog(
-                    tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
-                    message=MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
-                    title=TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
-                )
-                return True
+        is_running = self.call(self.is_converter_running)
+        if is_running:
+            logger.warning("Conversion is already running. Wait or cancel the current operation.")
+            show_info_dialog(
+                tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                message=MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                title=TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+            )
+            return True
 
         return False
 

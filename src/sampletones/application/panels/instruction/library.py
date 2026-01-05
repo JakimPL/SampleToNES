@@ -337,6 +337,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         finally:
             self.unlock()
 
+    def load_current_library(self) -> None:
+        library_key = self.library_manager.get_library_key()
+        if library_key is None:
+            logger.warning("No library key specified for loading")
+            return
+
+        self._load_library_and_set_current(library_key)
+
     def load_library_file(self, filepath: Path) -> None:
         if self.locked:
             logger.warning("Library is already loading; please wait until it finishes")

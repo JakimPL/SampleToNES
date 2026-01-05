@@ -76,18 +76,29 @@ class InstructionsLibraryManager(CallbackMixin):
     def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
         return self.library_files.copy()
 
-    def is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+    def get_library_key(self, library_key: Optional[InstructionLibraryKey] = None) -> Optional[InstructionLibraryKey]:
         if library_key is None:
             if self.current_library_key is None:
-                return False
+                return None
 
             library_key = self.current_library_key
 
-        filepath = self.get_path(library_key)
-        if not filepath.exists():
+        return library_key
+
+    def is_library_loaded(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        library_key = self.get_library_key(library_key)
+        if not self.does_library_exist(library_key):
             return False
 
         return library_key in self.library.data
+
+    def does_library_exist(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
+        library_key = self.get_library_key(library_key)
+        if library_key is None:
+            return False
+
+        filepath = self.get_path(library_key)
+        return filepath.exists()
 
     def load_library(self, library_key: InstructionLibraryKey) -> bool:
         if self.is_library_loaded(library_key):
