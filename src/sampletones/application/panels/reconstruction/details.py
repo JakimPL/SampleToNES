@@ -57,6 +57,7 @@ from ...constants.reconstructions import (
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
     LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR,
+    MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE,
@@ -869,11 +870,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
-        GUIStatusBar.bind_to_item(copy_button_tag, MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE)
+        GUIStatusBar.bind_to_item(copy_button_tag, MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE)
         GUIStatusBar.bind_to_item(
             raw_data_tag,
             MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE.format(
-                instrument_feature=feature_key.capitalized_name,
+                instrument_feature=feature_key.capitalized,
             ),
         )
 
@@ -915,7 +916,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
     ) -> None:
         _, _, y_ticks = self._calculate_plot_limits(config, data)
-        name = f"{generator_name.capitalize()}: {feature_key.capitalized_name}"
+        name = f"{generator_name.capitalize()}: {feature_key.capitalized}"
         plot.load_data(
             data=data,
             name=name,
