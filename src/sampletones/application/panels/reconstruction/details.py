@@ -36,6 +36,8 @@ from ...constants.general import (
     TAG_TAB_RECONSTRUCTIONS,
     VAL_CHARACTER_BUTTON_DECREMENT,
     VAL_CHARACTER_BUTTON_INCREMENT,
+    VAL_DELAY_SCHEDULE,
+    VAL_PRIORITY_SCHEDULE,
 )
 from ...constants.graphs import (
     DIM_BAR_PLOT_HEIGHT,
@@ -86,7 +88,7 @@ from ...reconstruction.update import ReconstructionUpdate
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
-from ...utils.callbacks import CallbackQueue
+from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import (
     dpg_configure_item,
@@ -759,7 +761,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: FeatureValue,
     ) -> None:
         self._pending_reconstruction_update = ReconstructionUpdate(generator_name, feature_key, data)
-        CallbackQueue.add(self._on_reconstruction_instrument_updated, priority=True, delay=12)
+        CallbackQueue.add(
+            self._on_reconstruction_instrument_updated,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _on_reconstruction_instrument_updated(self) -> None:
         if self._pending_reconstruction_update is not None:

@@ -1,65 +1,49 @@
+from __future__ import annotations
+
+import heapq
 import threading
 import time
-from collections import deque
 from functools import wraps
-from typing import (
-    Any,
-    Callable,
-    Deque,
-    Dict,
-    List,
-    NamedTuple,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
+from sampletones.exceptions import CallbackQueueStop
 from sampletones.typehints import Callback
 from sampletones.utils.logger import logger
+
+from .priority import CallbackPriority
+from .task import CallbackTask
 
 F = TypeVar("F", bound=Callback)
 
 TASKS_PER_FRAME = 2
-TIME_PER_FRAME = 0.005
-
-
-class CallbackQueueStop(Exception):
-    pass
-
-
-class CallbackTask(NamedTuple):
-    callback: Callback
-    frame: int
-    args: Tuple[Any, ...]
-    kwargs: Dict[str, Any]
+TIME_PER_FRAME = 1.0 / 90.0
 
 
 class CallbackQueue:
-    _callbacks: Deque[CallbackTask] = deque()
+    _callbacks: List[CallbackTask] = []
     _lock: threading.Lock = threading.Lock()
     _processing_lock: threading.Lock = threading.Lock()
     _min_tasks_per_frame: int = TASKS_PER_FRAME
     _time_per_frame: float = TIME_PER_FRAME
     _frame_counter: int = 0
+    _insertion_counter: int = 0
 
     @classmethod
     def add(
         cls,
         callback: Callback,
         *args: Any,
-        priority: bool = False,
+        priority: int = 0,
         delay: int = 0,
         **kwargs: Any,
     ) -> None:
         with cls._lock:
             frame = cls._frame_counter + delay
-            task = CallbackTask(callback, frame, args, kwargs)
-            if priority:
-                cls._callbacks.appendleft(task)
-            else:
-                cls._callbacks.append(task)
+            insertion_order = cls._insertion_counter
+            cls._insertion_counter += 1
+            task_priority = CallbackPriority(frame, priority, insertion_order)
+            task = CallbackTask(task_priority, callback, args, kwargs)
+            heapq.heappush(cls._callbacks, task)
 
     @classmethod
     def process(cls) -> None:
@@ -84,10 +68,10 @@ class CallbackQueue:
                 if not cls._callbacks:
                     break
 
-                task = cls._callbacks.popleft()
+                task = heapq.heappop(cls._callbacks)
 
-            callback, frame, args, kwargs = task
-            if frame > cls._frame_counter:
+            priority, callback, args, kwargs = task
+            if priority.frame > cls._frame_counter:
                 pending_tasks.append(task)
                 continue
 
@@ -100,8 +84,8 @@ class CallbackQueue:
             if stopped:
                 cls.stop()
             else:
-                for task in reversed(pending_tasks):
-                    cls._callbacks.appendleft(task)
+                for task in pending_tasks:
+                    heapq.heappush(cls._callbacks, task)
 
     @classmethod
     def stop(cls) -> None:
@@ -126,7 +110,7 @@ class CallbackQueue:
 def queued(
     method: Optional[F] = None,
     *,
-    priority: bool = False,
+    priority: int,
     delay: int = 0,
 ) -> Union[F, Callable[[F], F]]:
     def decorator(function: F) -> F:

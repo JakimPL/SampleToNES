@@ -1,13 +1,14 @@
 from pathlib import Path
 from typing import Optional
 
+from sampletones.application.constants.general import VAL_PRIORITY_SCHEDULE
 from sampletones.reconstructions import Reconstruction
 from sampletones.typehints import VoidCallback
 from sampletones.utils import hash_model
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
-from ..utils.callbacks import CallbackQueue
+from ..utils.callbacks.queue import CallbackQueue
 from .data import ReconstructionData
 from .feature import FeatureData
 
@@ -62,7 +63,7 @@ class ReconstructionManager(CallbackMixin):
         self.current_features = None
         self.reconstruction_hash = ""
         self.coefficient = 1.0
-        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=True)
+        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=VAL_PRIORITY_SCHEDULE)
 
     @property
     def reconstruction(self) -> Optional[Reconstruction]:

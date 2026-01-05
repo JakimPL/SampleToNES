@@ -39,13 +39,17 @@ from ...constants.main import (
     TAG_TREE_MAIN_EXPLORER,
     TAG_WINDOW_MAIN_EXPLORER_TREE,
     TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+    VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
+    VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import ItemClickCallback
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
+from ...utils.callbacks.queue import queued
 from ...utils.dialogs import show_info_dialog
 from ...utils.dpg import dpg_configure_item
 from ...utils.shortcuts.manager import ShortcutManager
@@ -162,7 +166,7 @@ class GUIExplorerPanel(GUITreePanel):
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self.unlock()
-            self._assign_item_handler_registries()
+            self._assign_item_handler_registries(priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER)
 
     def _rebuild_directory_node(self, node: FileSystemNode, node_tag: str) -> None:
         if self.locked:
@@ -175,7 +179,7 @@ class GUIExplorerPanel(GUITreePanel):
             logger.warning("Application failed during rebuilding the file explorer tree")
         finally:
             self.unlock()
-            self._assign_item_handler_registries()
+            self._assign_item_handler_registries(priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER)
 
     def _rebuild_node_subtree(self, node: FileSystemNode, node_tag: str) -> None:
         if not dpg.does_item_exist(node_tag):
@@ -201,6 +205,37 @@ class GUIExplorerPanel(GUITreePanel):
                 leaf=True,
             )
 
+    @queued(priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE)
+    def _queue_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
+    ) -> None:
+        self._add_node(
+            node,
+            node_tag,
+            parent,
+            leaf=leaf,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            should_expand=should_expand,
+            has_favorite_ancestor=has_favorite_ancestor,
+            is_node_expanded=is_node_expanded,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
+        )
+
     @traverse(TreeTraversal.BFS)
     def _build_tree_node(
         self,
@@ -220,7 +255,7 @@ class GUIExplorerPanel(GUITreePanel):
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
             is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
-            self._add_node(
+            self._queue_node(
                 node,
                 node_tag,
                 state.parent,
@@ -232,7 +267,7 @@ class GUIExplorerPanel(GUITreePanel):
                 status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
             )
         else:
-            self._add_node(
+            self._queue_node(
                 node,
                 node_tag,
                 state.parent,

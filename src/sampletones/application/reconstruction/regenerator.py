@@ -2,6 +2,7 @@ from typing import Callable, List, Optional, cast
 
 import numpy as np
 
+from sampletones.application.constants.general import VAL_PRIORITY_SCHEDULE
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
@@ -9,7 +10,7 @@ from sampletones.instructions import InstructionUnion
 from sampletones.typehints import FeatureValue
 from sampletones.utils.callbacks import CallbackMixin
 
-from ..utils.callbacks import CallbackQueue
+from ..utils.callbacks.queue import CallbackQueue
 from ..utils.thread import concurrent
 from .data import ReconstructionData
 from .manager import ReconstructionManager
@@ -44,7 +45,7 @@ class Regenerator(CallbackMixin):
         audio = self._generate_generator_audio(generator, instructions) * config.generation.mixer
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=True)
+        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=VAL_PRIORITY_SCHEDULE)
 
     def _generate_generator_audio(
         self,

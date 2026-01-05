@@ -1,0 +1,20 @@
+from __future__ import annotations
+
+from typing import Any, Dict, NamedTuple, Tuple
+
+from sampletones.typehints import Callback
+
+from .priority import CallbackPriority
+
+
+class CallbackTask(NamedTuple):
+    priority: CallbackPriority
+    callback: Callback
+    args: Tuple[Any, ...]
+    kwargs: Dict[str, Any]
+
+    def __lt__(self, other: object) -> bool:
+        if not isinstance(other, CallbackTask):
+            return NotImplemented
+
+        return self.priority < other.priority

@@ -112,6 +112,7 @@ from .constants.general import (
     TTL_WINDOW_MAIN,
     VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+    VAL_PRIORITY_UPDATE_STATUS,
     VAL_WINDOW_PRIMARY,
 )
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
@@ -153,7 +154,7 @@ from .resources.items import IconResource
 from .resources.resources import get_icon_path
 from .themes.default import DefaultTheme
 from .themes.fps import FPSTimerTheme
-from .utils.callbacks import CallbackQueue
+from .utils.callbacks.queue import CallbackQueue
 from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
@@ -1408,7 +1409,7 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
-        CallbackQueue.add(self._update_status, priority=True)
+        CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
         with self._callback_frame_event:
             self._callback_frame_event.notify()
 

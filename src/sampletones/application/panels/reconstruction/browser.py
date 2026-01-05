@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.typehints import MessageCallback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -26,15 +26,19 @@ from ...constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_BROWSER,
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
+    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
+    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
 )
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import ItemClickCallback
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
+from ...utils.callbacks.queue import queued
 from ...utils.dpg import dpg_configure_item
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
@@ -149,13 +153,44 @@ class GUIBrowserPanel(GUITreePanel):
             logger.warning("Application failed during rebuilding the reconstructions browser tree")
         finally:
             self.unlock()
-            self._assign_item_handler_registries()
+            self._assign_item_handler_registries(priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER)
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if node.node_type == NodeType.FILE:
             return True
 
         return bool(node.children)
+
+    @queued(priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE)
+    def _queue_node(
+        self,
+        node: TreeNode,
+        node_tag: str,
+        parent: str,
+        leaf: bool = False,
+        open_on_arrow: bool = False,
+        open_on_double_click: bool = False,
+        should_expand: bool = False,
+        has_favorite_ancestor: bool = False,
+        is_node_expanded: bool = False,
+        item_click_callback: Optional[ItemClickCallback] = None,
+        item_double_click_callback: Optional[ItemClickCallback] = None,
+        status_bar_callback: Optional[MessageCallback] = None,
+    ) -> None:
+        self._add_node(
+            node,
+            node_tag,
+            parent,
+            leaf=leaf,
+            open_on_arrow=open_on_arrow,
+            open_on_double_click=open_on_double_click,
+            should_expand=should_expand,
+            has_favorite_ancestor=has_favorite_ancestor,
+            is_node_expanded=is_node_expanded,
+            item_click_callback=item_click_callback,
+            item_double_click_callback=item_double_click_callback,
+            status_bar_callback=status_bar_callback,
+        )
 
     @traverse(TreeTraversal.BFS)
     def _build_tree_node(
@@ -174,7 +209,7 @@ class GUIBrowserPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
-            self._add_node(
+            self._queue_node(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,
@@ -184,7 +219,7 @@ class GUIBrowserPanel(GUITreePanel):
                 status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
             )
         else:
-            self._add_node(
+            self._queue_node(
                 node=node,
                 node_tag=node_tag,
                 parent=state.parent,

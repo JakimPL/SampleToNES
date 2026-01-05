@@ -5,6 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
+from sampletones.exceptions import CallbackQueueStop
 from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones.typehints import MessageCallback, Sender
@@ -25,6 +26,8 @@ from ...constants.general import (
     SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
+    VAL_DELAY_SCHEDULE,
+    VAL_PRIORITY_SCHEDULE,
     VAL_TEXT_COLLAPSE,
     VAL_TEXT_EXPAND,
 )
@@ -49,7 +52,7 @@ from ...themes.nodes.library import (
     LibraryLibraryNodeTheme,
 )
 from ...themes.theme import Theme
-from ...utils.callbacks import CallbackQueue, CallbackQueueStop, queued
+from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_get_value
 from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
@@ -138,7 +141,6 @@ class GUITreePanel(GUIPanel):
 
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
 
-    @queued(priority=False)
     def _add_node(
         self,
         node: TreeNode,
@@ -212,13 +214,16 @@ class GUITreePanel(GUIPanel):
 
         self._handlers.clear()
 
-    def _assign_item_handler_registries(self) -> None:
+    def _assign_item_handler_registries(self, priority: int) -> None:
         handlers = list(self._new_handlers.values())
         self._new_handlers.clear()
         for handler in handlers:
-            self._assign_item_handler_registry(handler)
+            CallbackQueue.add(
+                self._assign_item_handler_registry,
+                handler,
+                priority=priority,
+            )
 
-    @queued(priority=False)
     def _assign_item_handler_registry(self, handler: Handler) -> None:
         try:
             with self._handler_lock:
@@ -351,7 +356,12 @@ class GUITreePanel(GUIPanel):
         else:
             self.clear_filter()
 
-        CallbackQueue.add(self._schedule_update_tree_visibility, query, priority=True, delay=12)
+        CallbackQueue.add(
+            self._schedule_update_tree_visibility,
+            query,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
@@ -359,7 +369,12 @@ class GUITreePanel(GUIPanel):
 
         self.clear_filter()
 
-        CallbackQueue.add(self._schedule_update_tree_visibility, "", priority=True, delay=12)
+        CallbackQueue.add(
+            self._schedule_update_tree_visibility,
+            "",
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -552,7 +567,11 @@ class GUITreePanel(GUIPanel):
 
     def _schedule_update_tree_visibility(self, query: str) -> None:
         self._pending_query = query
-        CallbackQueue.add(self._execute_update_tree_visibility, priority=True, delay=12)
+        CallbackQueue.add(
+            self._execute_update_tree_visibility,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _execute_update_tree_visibility(self) -> None:
         if self._pending_query is not None:
@@ -561,7 +580,11 @@ class GUITreePanel(GUIPanel):
 
     def _schedule_autoplay(self, node: FileSystemNode) -> None:
         self._pending_autoplay_node = node
-        CallbackQueue.add(self._execute_autoplay, priority=True, delay=12)
+        CallbackQueue.add(
+            self._execute_autoplay,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_SCHEDULE,
+        )
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:

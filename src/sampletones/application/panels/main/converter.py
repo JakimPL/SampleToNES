@@ -17,8 +17,11 @@ from sampletones.utils.logger import logger
 from ...config.manager import ConfigManager
 from ...constants.general import (
     TPL_GLOBAL_TIME_ESTIMATION,
+    VAL_DELAY_CANCEL,
+    VAL_DELAY_SCHEDULE,
     VAL_GLOBAL_PROGRESS_COMPLETE,
     VAL_GLOBAL_PROGRESS_START,
+    VAL_PRIORITY_SCHEDULE,
 )
 from ...constants.main import (
     DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
@@ -61,13 +64,9 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
 from ...utils.align import table_wrapper
-from ...utils.callbacks import CallbackQueue
+from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ...utils.dpg import (
-    dpg_configure_item,
-    dpg_set_item_callback,
-    dpg_set_value,
-)
+from ...utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
 from ...utils.progress import SystemProgress
 
 
@@ -232,7 +231,11 @@ class GUIConverterPanel(GUIPanel):
     def _wait_for_library_and_start(self) -> None:
         if not self.call(self.is_library_loaded):
             dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, MSG_MAIN_CONVERTER_GENERATING_LIBRARY)
-            CallbackQueue.add(self._wait_for_library_and_start, priority=True, delay=10)
+            CallbackQueue.add(
+                self._wait_for_library_and_start,
+                priority=VAL_PRIORITY_SCHEDULE,
+                delay=VAL_DELAY_SCHEDULE,
+            )
         else:
             self._start_conversion()
 
@@ -376,7 +379,11 @@ class GUIConverterPanel(GUIPanel):
 
     def _on_cancellation_complete(self) -> None:
         self._rename_cancel_to_close()
-        CallbackQueue.add(self._on_close, priority=True, delay=30)
+        CallbackQueue.add(
+            self._on_close,
+            priority=VAL_PRIORITY_SCHEDULE,
+            delay=VAL_DELAY_CANCEL,
+        )
         self.call(self.on_cancelled)
 
     def _reset_progress(self) -> None:
