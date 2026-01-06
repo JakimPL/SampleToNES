@@ -24,6 +24,7 @@ class CallbackQueue:
     _insertion_counter: int = 0
     _worker_thread: Optional[threading.Thread] = None
     _stop_event: threading.Event = threading.Event()
+    _frame_updated: bool = False
 
     @classmethod
     def start(cls) -> None:
@@ -44,8 +45,6 @@ class CallbackQueue:
         while not cls._stop_event.is_set():
             cls.process()
             cls._stop_event.wait(timeout=0.01)
-
-    _frame_updated: bool = False
 
     @classmethod
     def add(
