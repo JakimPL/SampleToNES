@@ -1,4 +1,5 @@
-from ...utils.callbacks import CallbackMixin
+from sampletones.utils.callbacks import CallbackMixin
+
 from ..utils.dpg import dpg_configure_item
 
 

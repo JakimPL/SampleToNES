@@ -2,8 +2,9 @@ import gc
 from pathlib import Path
 from typing import Tuple
 
-from ...exceptions import UnsupportedAudioFormatError
-from ...utils.logger import logger
+from sampletones.exceptions import UnsupportedAudioFormatError
+from sampletones.utils.logger import logger
+
 from ..reconstructor.reconstructor import Reconstructor
 
 

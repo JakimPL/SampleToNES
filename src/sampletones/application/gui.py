@@ -66,6 +66,7 @@ from .constants.general import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
+    MSG_ALL_AUDIO_FORMATS,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
@@ -830,6 +831,8 @@ class GUI:
             file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
+            all_file_extensions = ",".join(EXT_FILES_AUDIO)
+            dpg.add_file_extension(f"{MSG_ALL_AUDIO_FORMATS}{{{all_file_extensions}}}", color=(0, 255, 255, 255))
             for extension in EXT_FILES_AUDIO:
                 dpg.add_file_extension(extension)
 
