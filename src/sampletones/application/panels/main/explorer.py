@@ -29,6 +29,7 @@ from ...constants.main import (
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO,
+    MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_BUTTON_MAIN_EXPLORER_REFRESH,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
@@ -249,7 +250,7 @@ class GUIExplorerPanel(GUITreePanel):
             case paths.EXT_FILE_LIBRARY:
                 return self._create_status_bar_message_function_for_library_node()
             case suffix if suffix in paths.EXT_FILES_AUDIO:
-                return self._create_status_bar_message_function_for_audio_node(node_tag)
+                return self._create_status_bar_message_function_for_audio_node()
 
         raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
 
@@ -310,8 +311,14 @@ class GUIExplorerPanel(GUITreePanel):
 
         return None
 
-    def _create_status_bar_message_function_for_audio_node(self, node_tag) -> MessageCallback:
-        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO)
+    def _create_status_bar_message_function_for_audio_node(self) -> MessageCallback:
+        def message_function() -> str:
+            if self.application_config_manager.autoplay:
+                return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO
+
+            return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY
+
+        return self._create_status_bar_message_function(message_function)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)

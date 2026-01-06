@@ -28,6 +28,7 @@ from ...constants.general import (
     LBL_TREE_SEARCH,
     MSG_STATUS_NODE_DIRECTORY,
     MSG_STATUS_NODE_RECONSTRUCTION,
+    MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY,
     MSG_STATUS_TREE_SEARCH,
     MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
@@ -320,7 +321,13 @@ class GUITreePanel(GUIPanel):
         return GUIStatusBar.create_message_function(message_or_function)
 
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
-        return self._create_status_bar_message_function(MSG_STATUS_NODE_RECONSTRUCTION)
+        def message_function() -> str:
+            if self.application_config_manager.autoplay:
+                return MSG_STATUS_NODE_RECONSTRUCTION
+
+            return MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY
+
+        return self._create_status_bar_message_function(message_function)
 
     def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
         return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)

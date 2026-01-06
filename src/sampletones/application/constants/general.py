@@ -155,9 +155,9 @@ MSG_CONFIGURATION_LOAD_ERROR = "Error loading configuration."
 MSG_CONFIGURATION_INVALID_ERROR = "Invalid configuration file."
 MSG_AUDIO_PLAYBACK_ERROR = "Audio playback error"
 MSG_STATUS_PATH = "Click to open path in file explorer."
-MSG_STATUS_NODE_RECONSTRUCTION = (
-    "Click to play reconstruction. Double-click to open reconstruction. Right-click to open context menu."
-)
+MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY = "Double-click to open reconstruction. Right-click to open context menu."
+MSG_STATUS_NODE_RECONSTRUCTION = f"Click to play reconstruction. {MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY}"
+
 MSG_STATUS_TREE_SEARCH = "Type query to filter nodes."
 MSG_STATUS_INPUT = "CTRL + click to type value."
 MSG_STATUS_NODE_DIRECTORY = "Click to {expand_or_collapse}. Right-click to open context menu."
