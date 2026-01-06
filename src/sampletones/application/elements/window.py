@@ -1,7 +1,8 @@
 from typing import Any
 
+from ..utils.callbacks.frame import FrameCallbackManager
 from ..utils.dialogs import center_item
-from ..utils.dpg import dpg_delete_item, dpg_set_frame_callback
+from ..utils.dpg import dpg_delete_item
 from .panel import GUIPanel
 
 
@@ -13,7 +14,7 @@ class GUIWindow(GUIPanel):
         self.hide()
         self.prepare(*args, **kwargs)
         self.create_panel()
-        dpg_set_frame_callback(self.center)
+        FrameCallbackManager.set_frame_callback(self.center)
 
     def hide(self) -> None:
         dpg_delete_item(self.tag)
