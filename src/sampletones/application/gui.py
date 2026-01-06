@@ -285,7 +285,7 @@ class GUI:
     def _callback_worker(self) -> None:
         while not self._callback_stop_event.is_set():
             CallbackQueue.process()
-            self._callback_stop_event.wait(timeout=0.001)
+            self._callback_stop_event.wait(timeout=0.01)
 
     def _stop_callback_worker(self) -> None:
         CallbackQueue.stop()
@@ -1427,6 +1427,7 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        CallbackQueue.notify_frame()
         CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
 
     def run(self) -> None:

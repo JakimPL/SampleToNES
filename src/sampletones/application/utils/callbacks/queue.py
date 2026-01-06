@@ -18,9 +18,11 @@ F = TypeVar("F", bound=Callback)
 class CallbackQueue:
     _callbacks: List[CallbackTask] = []
     _lock: threading.Lock = threading.Lock()
+    _condition: threading.Condition = threading.Condition(_lock)
     _processing_lock: threading.Lock = threading.Lock()
     _frame_counter: int = 0
     _insertion_counter: int = 0
+    _frame_updated: bool = False
 
     @classmethod
     def add(
@@ -31,13 +33,21 @@ class CallbackQueue:
         delay: int = 0,
         **kwargs: Any,
     ) -> None:
-        with cls._lock:
+        with cls._condition:
             frame = cls._frame_counter + delay
             insertion_order = cls._insertion_counter
             cls._insertion_counter += 1
             task_priority = CallbackPriority(priority, frame, insertion_order)
             task = CallbackTask(task_priority, callback, args, kwargs)
             heapq.heappush(cls._callbacks, task)
+            cls._condition.notify()
+
+    @classmethod
+    def notify_frame(cls) -> None:
+        with cls._condition:
+            cls._frame_counter += 1
+            cls._frame_updated = True
+            cls._condition.notify()
 
     @classmethod
     def process(cls) -> None:
@@ -46,37 +56,30 @@ class CallbackQueue:
 
     @classmethod
     def _process(cls) -> None:
-        with cls._lock:
-            cls._frame_counter += 1
+        while True:
+            task = None
+            frame_before = None
 
-        if not cls._callbacks:
-            return
+            with cls._condition:
+                frame_before = cls._frame_counter
 
-        tasks = 0
-        stopped = False
-        pending_tasks: List[CallbackTask] = []
+                if cls._callbacks and cls._callbacks[0].priority.frame <= cls._frame_counter:
+                    task = heapq.heappop(cls._callbacks)
+                else:
+                    cls._condition.wait(timeout=0.01)
+                    continue
 
-        while not stopped:
-            with cls._lock:
-                if not cls._callbacks:
-                    break
+            if task:
+                _, callback, args, kwargs = task
+                stopped = cls.run(callback, *args, **kwargs)
 
-                task = heapq.heappop(cls._callbacks)
+                if stopped:
+                    cls.stop()
+                    return
 
-            priority, callback, args, kwargs = task
-            if priority.frame > cls._frame_counter:
-                pending_tasks.append(task)
-                continue
-
-            tasks += 1
-            stopped = cls.run(callback, *args, **kwargs)
-
-        with cls._lock:
-            if stopped:
-                cls.stop()
-            else:
-                for task in pending_tasks:
-                    heapq.heappush(cls._callbacks, task)
+                with cls._condition:
+                    if cls._frame_counter != frame_before:
+                        return
 
     @classmethod
     def stop(cls) -> None:
