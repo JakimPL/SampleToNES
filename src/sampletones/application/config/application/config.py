@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
+from sampletones.data import Metadata
 from sampletones.typehints import Pathlike
 from sampletones.utils import load_yaml, save_yaml, to_path
 from sampletones.utils.logger import logger
@@ -17,6 +18,10 @@ from .window import WindowState
 class ApplicationConfig(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
+    metadata: Metadata = Field(
+        default_factory=Metadata,
+        description="Metadata about the application configuration.",
+    )
     audio: AudioConfig = Field(
         default_factory=AudioConfig,
         description="The audio configuration settings.",
@@ -42,7 +47,7 @@ class ApplicationConfig(BaseModel):
     def default(cls) -> ApplicationConfig:
         if not APPLICATION_CONFIG_PATH.exists():
             logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist. " "Loading default configuration."
+                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist. Loading default configuration."
             )
             return cls()
 
@@ -55,6 +60,7 @@ class ApplicationConfig(BaseModel):
         if not config_dict:
             logger.warning(f"Application config file '{path}' is empty or invalid. Loading default configuration.")
             return cls()
+
         return cls(**config_dict)
 
     def save(self, path: Pathlike) -> None:

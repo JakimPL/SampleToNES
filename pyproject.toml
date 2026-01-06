@@ -22,6 +22,7 @@ dependencies = [
     "tqdm==4.67.1",
     "pytaskbar; platform_system == 'Windows'",
     "pywin32; platform_system == 'Windows'",
+    "PyYAML==6.0.3",
 ]
 
 [project.scripts]

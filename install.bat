@@ -32,8 +32,10 @@ echo Building executable...
 pyinstaller --name sampletones ^
     --onefile ^
     --distpath . ^
-    --icon assets\icons\sampletones.ico ^
-    --add-data "assets\icons;sampletones\icons" src\sampletones\__main__.py
+    --icon "src\sampletones\assets\icons\sampletones.ico" ^
+    --add-data "src\sampletones\assets\icons;assets\icons" ^
+    --add-data "src\sampletones\assets\fonts;assets\fonts" ^
+    "src\sampletones\__main__.py"
 
 if exist sampletones.exe (
     echo Build complete: .\sampletones.exe

@@ -24,7 +24,7 @@ class SystemProgress:
                 return
 
             self.progress = Progress(hwnd)
-        except (ModuleNotFoundError, ImportError) as exception:
+        except (ImportError, ModuleNotFoundError) as exception:
             logger.warning(f"Could not import Windows progress bar dependencies: {exception}")
         except Exception as exception:  # pylint: disable=broad-except
             self._fallback(exception)
