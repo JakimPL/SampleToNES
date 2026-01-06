@@ -292,8 +292,6 @@ class GUIWaveformGraph(GUIGraph):
     ) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data
-        self.current_position = 0
-
         approximation_data, coefficient = self._extract_reconstruction_layer_data(
             reconstruction_data,
             selected_generators,
@@ -301,7 +299,6 @@ class GUIWaveformGraph(GUIGraph):
 
         original_audio = reconstruction_data.original_audio
         original_audio_coefficient = coefficient * self.get_original_audio_coefficient(reconstruction_data)
-
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
         self._add_reconstruction_layers(
@@ -327,6 +324,10 @@ class GUIWaveformGraph(GUIGraph):
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
         self._set_overlay_rectangle()
+
+    def set_autoscale(self, autoscale: bool) -> None:
+        self.reconstruction_autoscale = autoscale
+        self.load_reconstruction_data(self.current_data)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):

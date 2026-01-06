@@ -28,6 +28,7 @@ from ...constants.general import (
 from ...constants.graphs import DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
 from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+    LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
@@ -41,6 +42,7 @@ from ...constants.reconstructions import (
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
+    SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
     TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
@@ -94,6 +96,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
+        self.autoscale_tag = f"{self.plot_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
@@ -141,6 +144,7 @@ class GUIReconstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
+            self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
 
@@ -185,6 +189,16 @@ class GUIReconstructionPanel(GUIPanel):
             width=-1,
             enabled=False,
         )
+
+    def _create_autoscale_checkbox(self) -> None:
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
+            tag=self.autoscale_tag,
+            parent=self.plot_tag,
+            default_value=True,
+            callback=self._on_autoscale_changed,
+        )
+        FontRegistry.bind_to_item(self.autoscale_tag, Font.REGULAR_SMALL)
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
@@ -515,6 +529,9 @@ class GUIReconstructionPanel(GUIPanel):
             show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
 
         self.application_config_manager.set_audio_path(filepath)
+
+    def _on_autoscale_changed(self, sender: Sender, app_data: bool) -> None:
+        self.waveform_display.set_autoscale(app_data)
 
     def set_overlay(self, index: Optional[int]) -> None:
         if self.reconstruction_data is None:

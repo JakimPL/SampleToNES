@@ -276,14 +276,17 @@ class GUIBrowserPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
-            dpg.add_separator()
-            dpg.add_menu_item(
-                label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
-                callback=self._on_load_reconstruction,
-                user_data=node,
-            )
-            dpg.add_separator()
+            self._add_context_menu_load_reconstruction_item(node)
+            self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
+
+    def _add_context_menu_load_reconstruction_item(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
+            callback=self._on_load_reconstruction,
+            user_data=node,
+        )
 
     def _on_load_reconstruction(self, sender: Sender, app_data: Path, user_data: FileSystemNode) -> None:
         self._load_reconstruction(user_data)
