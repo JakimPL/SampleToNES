@@ -20,7 +20,7 @@ from sampletones.exceptions import (
     InvalidReconstructionValuesError,
     LibraryDisplayError,
 )
-from sampletones.library.key import InstructionLibraryKey
+from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -56,6 +56,7 @@ from .constants.general import (
     LBL_MENU_ITEM_PLAYBACK_PAUSE,
     LBL_MENU_ITEM_PLAYBACK_PLAY,
     LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    LBL_MENU_ITEM_PLAYBACK_RESUME,
     LBL_MENU_ITEM_PLAYBACK_STOP,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
     LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
@@ -243,7 +244,6 @@ class GUI:
 
         self._callback_worker_thread: Optional[threading.Thread] = None
         self._callback_stop_event: threading.Event = threading.Event()
-        self._callback_frame_event: threading.Condition = threading.Condition()
 
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
@@ -285,8 +285,7 @@ class GUI:
     def _callback_worker(self) -> None:
         while not self._callback_stop_event.is_set():
             CallbackQueue.process()
-            with self._callback_frame_event:
-                self._callback_frame_event.wait(timeout=1.0 / 60.0)
+            self._callback_stop_event.wait(timeout=0.001)
 
     def _stop_callback_worker(self) -> None:
         CallbackQueue.stop()
@@ -1163,15 +1162,21 @@ class GUI:
         current_tab_tag = self._get_current_tab()
         playing = False
         loaded = False
+        paused = False
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
             playing = self.reconstruction_panel.player_panel.is_playing()
+            paused = self.reconstruction_panel.player_panel.is_paused()
             loaded = self.reconstruction_panel.player_panel.is_loaded()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             playing = self.instruction_panel.player_panel.is_playing()
+            paused = self.instruction_panel.player_panel.is_paused()
             loaded = self.instruction_panel.player_panel.is_loaded()
 
         is_playing = loaded and playing
-        return LBL_MENU_ITEM_PLAYBACK_PAUSE if is_playing else LBL_MENU_ITEM_PLAYBACK_PLAY
+        if is_playing:
+            return LBL_MENU_ITEM_PLAYBACK_RESUME if paused else LBL_MENU_ITEM_PLAYBACK_PAUSE
+
+        return LBL_MENU_ITEM_PLAYBACK_PLAY
 
     def _is_play_or_pause_enabled(self) -> bool:
         current_tab_tag = self._get_current_tab()
@@ -1423,8 +1428,6 @@ class GUI:
 
     def _post_frame(self) -> None:
         CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
-        with self._callback_frame_event:
-            self._callback_frame_event.notify()
 
     def run(self) -> None:
         try:

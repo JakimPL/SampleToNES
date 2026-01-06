@@ -34,7 +34,6 @@ from ..constants.general import (
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
-    VAL_PRIORITY_SCHEDULE,
 )
 from ..constants.instructions import (
     TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
@@ -48,9 +47,8 @@ from ..constants.reconstructions import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
-from ..utils.callbacks.queue import CallbackQueue
 from .align import table_wrapper
-from .dpg import dpg_configure_item, dpg_delete_item
+from .dpg import dpg_configure_item, dpg_delete_item, dpg_set_frame_callback
 
 
 def get_center(width: int, height: int) -> Tuple[int, int]:
@@ -96,7 +94,7 @@ def show_modal_dialog(
             width=-1,
         )
 
-        CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+        dpg_set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_info_dialog(tag: str, message: str, title: str) -> None:
@@ -162,7 +160,7 @@ def show_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+    dpg_set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_save_confirmation_dialog(
@@ -217,7 +215,7 @@ def show_save_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+    dpg_set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
@@ -287,13 +285,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         content(None)
 
-    CallbackQueue.add(
-        center_item,
-        tag,
-        DIM_DIALOG_WIDTH_ERROR,
-        DIM_DIALOG_HEIGHT_ERROR,
-        priority=VAL_PRIORITY_SCHEDULE,
-    )
+    dpg_set_frame_callback(lambda: center_item(tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR))
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

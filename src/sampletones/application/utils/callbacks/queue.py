@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import heapq
 import threading
-import time
 from functools import wraps
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
@@ -15,16 +14,11 @@ from .task import CallbackTask
 
 F = TypeVar("F", bound=Callback)
 
-TASKS_PER_FRAME = 2
-TIME_PER_FRAME = 1.0 / 120.0
-
 
 class CallbackQueue:
     _callbacks: List[CallbackTask] = []
     _lock: threading.Lock = threading.Lock()
     _processing_lock: threading.Lock = threading.Lock()
-    _min_tasks_per_frame: int = TASKS_PER_FRAME
-    _time_per_frame: float = TIME_PER_FRAME
     _frame_counter: int = 0
     _insertion_counter: int = 0
 
@@ -60,7 +54,6 @@ class CallbackQueue:
 
         tasks = 0
         stopped = False
-        deadline = time.perf_counter() + cls._time_per_frame
         pending_tasks: List[CallbackTask] = []
 
         while not stopped:
@@ -77,8 +70,6 @@ class CallbackQueue:
 
             tasks += 1
             stopped = cls.run(callback, *args, **kwargs)
-            if time.perf_counter() >= deadline and tasks >= cls._min_tasks_per_frame:
-                break
 
         with cls._lock:
             if stopped:

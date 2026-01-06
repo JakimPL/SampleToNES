@@ -66,7 +66,12 @@ from ...elements.path import GUIPathText
 from ...utils.align import table_wrapper
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ...utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
+from ...utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_set_item_callback,
+    dpg_set_value,
+)
 from ...utils.progress import SystemProgress
 
 
@@ -428,6 +433,7 @@ class GUIConverterPanel(GUIPanel):
         def content(parent: str) -> None:
             dpg.add_text(MSG_MAIN_CONVERTER_SUCCESS, parent=parent)
 
+        dpg_delete_item(TAG_DIALOG_MAIN_CONVERTER_SUCCESS)
         show_modal_dialog(
             tag=TAG_DIALOG_MAIN_CONVERTER_SUCCESS,
             title=TTL_DIALOG_MAIN_CONVERTER_PROGRESS,

@@ -3,7 +3,6 @@ from typing import List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.status import GUIStatusBar
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
@@ -61,6 +60,7 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager

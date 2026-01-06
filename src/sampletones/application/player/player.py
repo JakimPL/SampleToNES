@@ -35,6 +35,9 @@ class AudioPlayer(CallbackMixin):
             self.audio_data.set_position(position)
             self.call(self.on_position_changed, position)
 
+        if position == 0:
+            self._notify_audio_state_changed()
+
     def set_position(self, position: int) -> None:
         if self.audio_data.is_loaded():
             self.audio_data.set_position(position)
@@ -68,6 +71,7 @@ class AudioPlayer(CallbackMixin):
         self.audio_device_manager.stop()
         if self.audio_data.is_loaded():
             self.audio_data.reset_position()
+
         self.call(self.on_position_changed, 0)
         self._notify_audio_state_changed()
 
