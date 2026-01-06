@@ -22,6 +22,29 @@ class CallbackQueue:
     _processing_lock: threading.Lock = threading.Lock()
     _frame_counter: int = 0
     _insertion_counter: int = 0
+    _worker_thread: Optional[threading.Thread] = None
+    _stop_event: threading.Event = threading.Event()
+
+    @classmethod
+    def start(cls) -> None:
+        if cls._worker_thread is not None and cls._worker_thread.is_alive():
+            return
+
+        cls._stop_event.clear()
+        cls._worker_thread = threading.Thread(
+            target=cls._worker,
+            daemon=True,
+            name="CallbackQueueWorker",
+        )
+        cls._worker_thread.start()
+        logger.debug("Callback queue worker thread started")
+
+    @classmethod
+    def _worker(cls) -> None:
+        while not cls._stop_event.is_set():
+            cls.process()
+            cls._stop_event.wait(timeout=0.01)
+
     _frame_updated: bool = False
 
     @classmethod
@@ -83,8 +106,14 @@ class CallbackQueue:
 
     @classmethod
     def stop(cls) -> None:
-        with cls._lock:
+        cls._stop_event.set()
+        with cls._condition:
             cls._callbacks.clear()
+            cls._condition.notify()
+
+        if cls._worker_thread and cls._worker_thread.is_alive():
+            cls._worker_thread.join(timeout=1.0)
+            logger.debug("Callback queue worker thread stopped")
 
     @classmethod
     def run(cls, callback: Callback, *args: Any, **kwargs: Any) -> bool:

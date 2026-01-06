@@ -1,5 +1,4 @@
 import sys
-import threading
 import tkinter
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -242,9 +241,6 @@ class GUI:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
-        self._callback_worker_thread: Optional[threading.Thread] = None
-        self._callback_stop_event: threading.Event = threading.Event()
-
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
 
@@ -265,7 +261,7 @@ class GUI:
         self._set_default_theme()
         self._set_viewport()
         self._setup_dearpygui()
-        self.set_callbacks()
+        self._set_callbacks()
         self._create_main_window()
         self.config_manager.update_gui()
         self._update_menu()
@@ -273,26 +269,7 @@ class GUI:
         dpg.set_exit_callback(self._on_close)
 
     def _start_callback_worker(self) -> None:
-        self._callback_stop_event.clear()
-        self._callback_worker_thread = threading.Thread(
-            target=self._callback_worker,
-            daemon=True,
-            name="CallbackQueueWorker",
-        )
-        self._callback_worker_thread.start()
-        logger.debug("Callback worker thread started")
-
-    def _callback_worker(self) -> None:
-        while not self._callback_stop_event.is_set():
-            CallbackQueue.process()
-            self._callback_stop_event.wait(timeout=0.01)
-
-    def _stop_callback_worker(self) -> None:
-        CallbackQueue.stop()
-        self._callback_stop_event.set()
-        if self._callback_worker_thread:
-            self._callback_worker_thread.join(timeout=1.0)
-            logger.debug("Callback worker thread stopped")
+        CallbackQueue.start()
 
     def _on_exit(self) -> None:
         dpg.start_dearpygui()
@@ -440,7 +417,7 @@ class GUI:
 
         self.shortcut_manager.bind_all()
 
-    def set_callbacks(self) -> None:
+    def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
@@ -1259,7 +1236,7 @@ class GUI:
         return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
-        self._stop_callback_worker()
+        CallbackQueue.stop()
         self.audio_device_manager.stop()
         if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
