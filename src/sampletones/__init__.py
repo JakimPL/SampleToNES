@@ -22,7 +22,7 @@ try:
     import cupy as xp
 
     CUPY_AVAILABLE = True  # pylint: disable=invalid-name
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     import warnings
 
     from sampletones.exceptions import CuPyNotInstalledWarning

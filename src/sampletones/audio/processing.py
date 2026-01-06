@@ -31,7 +31,7 @@ def resample(
 
         audio = librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
         return audio
-    except ImportError:
+    except (ImportError, ModuleNotFoundError):
         logger.debug("librosa not available, falling back to scipy interpolation")
 
     ratio = target_sample_rate / original_sample_rate
