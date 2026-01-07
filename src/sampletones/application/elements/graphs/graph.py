@@ -119,6 +119,7 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         FrameCallbackManager.set_frame_callback(lambda: self._release_axes_limits(x=x, y=y))
 
     def _release_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        dpg.split_frame()
         if x:
             dpg.set_axis_limits_auto(self.x_axis_tag)
         if y:

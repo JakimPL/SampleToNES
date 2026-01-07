@@ -3,7 +3,7 @@ from __future__ import annotations
 import heapq
 import threading
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, List
 
 import dearpygui.dearpygui as dpg
 
@@ -20,18 +20,17 @@ class FrameCallback:
 
 
 class FrameCallbackManager:
-    instance: FrameCallbackManager
+    _instances: Dict[type, FrameCallbackManager] = {}
+    _callbacks: List[FrameCallback] = []
+    _lock = threading.Lock()
 
-    def __init__(self) -> None:
-        self._callbacks: List[FrameCallback] = []
+    @classmethod
+    def get_instance(cls) -> FrameCallbackManager:
+        if cls not in cls._instances:
+            instance = cls()
+            cls._instances[cls] = instance
 
-        self._lock = threading.Lock()
-
-    def __new__(cls):
-        if not hasattr(cls, "instance"):
-            cls.instance = super(FrameCallbackManager, cls).__new__(cls)
-
-        return cls.instance
+        return cls._instances[cls]
 
     @classmethod
     def set_frame_callback(
@@ -39,21 +38,22 @@ class FrameCallbackManager:
         callback: VoidCallback,
         frame_count: int = 1,
     ) -> None:
-        self = cls()
         frame_count = dpg.get_frame_count() + max(1, frame_count)
-        with self._lock:
-            heapq.heappush(self._callbacks, FrameCallback(callback, frame_count))
+        frame_callback = FrameCallback(callback, frame_count)
+        with cls._lock:
+            heapq.heappush(cls._callbacks, frame_callback)
 
-        dpg.set_frame_callback(frame_count, self.process)
+        dpg.set_frame_callback(frame_count, cls.process)
 
-    def process(self) -> None:
+    @classmethod
+    def process(cls) -> None:
         current_frame = dpg.get_frame_count()
 
         while True:
-            with self._lock:
-                if not self._callbacks or self._callbacks[0].frame_count > current_frame:
+            with cls._lock:
+                if not cls._callbacks or cls._callbacks[0].frame_count > current_frame:
                     break
 
-                frame_callback = heapq.heappop(self._callbacks)
+                frame_callback = heapq.heappop(cls._callbacks)
 
             frame_callback.callback()

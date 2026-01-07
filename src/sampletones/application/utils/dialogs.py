@@ -134,18 +134,28 @@ def show_confirmation_dialog(
             wrap=DIM_DIALOG_WIDTH_WRAP,
         )
 
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+
+        def disable() -> None:
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            dpg_delete_item(tag)
+
         @table_wrapper(columns=2)
         def buttons(_: None) -> None:
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_OK}",
+                tag=ok_button_tag,
                 label=ok_label,
-                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                tag=cancel_button_tag,
                 label=LBL_BUTTON_GLOBAL_CANCEL,
-                callback=lambda: dpg_delete_item(tag),
+                callback=lambda: [disable(), close()],
                 width=-1,
             )
 
@@ -183,24 +193,36 @@ def show_save_confirmation_dialog(
             wrap=DIM_DIALOG_WIDTH_WRAP,
         )
 
+        save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+
+        def disable() -> None:
+            dpg_configure_item(save_button_tag, enabled=False)
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            dpg_delete_item(tag)
+
         @table_wrapper(columns=3)
         def buttons(_: None) -> None:
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_SAVE}",
+                tag=save_button_tag,
                 label=LBL_BUTTON_GLOBAL_SAVE,
-                callback=lambda: [on_save(), on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_save(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_OK}",
+                tag=ok_button_tag,
                 label=ok_label,
-                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                tag=cancel_button_tag,
                 label=LBL_BUTTON_GLOBAL_CANCEL,
-                callback=lambda: dpg_delete_item(tag),
+                callback=lambda: [disable(), close()],
                 width=-1,
             )
 
