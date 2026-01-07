@@ -20,6 +20,7 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
+from ...utils.callbacks.frame import FrameCallbackManager
 from ..panel import GUIPanel
 from .layers.type import LayerT
 
@@ -109,12 +110,19 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
 
     def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
         if x:
+            dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
             dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
         if y:
+            dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
             dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
 
-        dpg.fit_axis_data(self.x_axis_tag)
-        dpg.fit_axis_data(self.y_axis_tag)
+        FrameCallbackManager.set_frame_callback(lambda: self._release_axes_limits(x=x, y=y))
+
+    def _release_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        if x:
+            dpg.set_axis_limits_auto(self.x_axis_tag)
+        if y:
+            dpg.set_axis_limits_auto(self.y_axis_tag)
 
     @property
     def x_range(self) -> Tuple[float, float]:

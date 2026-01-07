@@ -3,7 +3,7 @@ from typing import Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.typehints import Color
+from sampletones.typehints import Color, Sender
 
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
@@ -21,7 +21,12 @@ from ...constants.graphs import (
 )
 from ...themes.graphs.zero import ZeroLineGraphTheme
 from ...themes.theme import Theme
-from ...utils.dpg import dpg_bind_item_theme, dpg_configure_item, dpg_delete_item
+from ...utils.dpg import (
+    dpg_bind_item_theme,
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_is_item_hovered,
+)
 from .graph import GUIGraph
 from .layers.bar import BarLayer
 
@@ -85,6 +90,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             width=self.width,
             anti_aliased=True,
             no_box_select=True,
+            pan_button=dpg.mvMouseButton_Middle,
             zoom_rate=self.zoom_factor,  # type: ignore
         ):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
@@ -103,7 +109,12 @@ class GUIBarGraph(GUIGraph[BarLayer]):
                 range_fit=False,
             )
             self._add_zero_line()
-            self._update_axes_limits()
+
+        self._update_axes_limits()
+
+        with dpg.handler_registry(tag=self.mouse_handler_tag):
+            dpg.add_mouse_move_handler(callback=self._on_mouse_action)
+            dpg.add_mouse_click_handler(callback=self._on_mouse_action)
 
     def _bind_theme(
         self,
@@ -188,12 +199,11 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             )
 
             self._bind_theme(layer, series_tag, theme_tag)
-
-        self._update_ranges()
+            self._update_ranges()
 
     def _update_ranges(self) -> None:
         x_min = -0.5
-        x_max = max(
+        x_max = 1.0 + max(
             (layer.x_data.max() for layer in self.layers.values() if layer.x_data.size > 0),
             default=VAL_MAX_GRAPH_DEFAULT_X,
         )
@@ -208,9 +218,6 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             self._set_layer(layer, series_tag, theme_tag)
-
-        self._update_axes_limits()
-        self._update_ticks()
 
     def _add_hover_bar(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag) or not self._get_first_layer():
@@ -257,16 +264,48 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
         self.zero_line_theme.bind_to_item(self.zero_line_tag)
 
-    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x:
-            dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
-        if y:
-            dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
-
-        dpg.fit_axis_data(self.x_axis_tag)
-        dpg.fit_axis_data(self.y_axis_tag)
-
     def _update_ticks(self) -> None:
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
+
+    def _on_mouse_action(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+        if (
+            dpg.is_key_down(dpg.mvKey_LControl)
+            or dpg.is_key_down(dpg.mvKey_RControl)
+            or dpg.is_key_down(dpg.mvKey_LShift)
+            or dpg.is_key_down(dpg.mvKey_RShift)
+            or dpg.is_key_down(dpg.mvKey_LAlt)
+            or dpg.is_key_down(dpg.mvKey_RAlt)
+        ):
+            return
+
+        if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
+            self._set_hover_bar_position()
+            return
+
+        plot_mouse_pos = dpg.get_plot_mouse_pos()
+        if not plot_mouse_pos:
+            return
+
+        mouse_x = plot_mouse_pos[0]
+        mouse_y = plot_mouse_pos[1]
+        bar_index = int(mouse_x)
+
+        layer = self._get_first_layer()
+        if layer is None:
+            raise RuntimeError("A layer is expected to be present when handling mouse events")
+
+        name = layer.name
+        if bar_index < 0 or bar_index >= len(self.current_data):
+            self.call(self.on_bar_point_hovered, name, None)
+            return
+
+        clamped_y = round(np.clip(mouse_y, *self.data_range))
+        self._set_hover_bar_position(bar_index, clamped_y)
+        self.call(self.on_bar_point_hovered, name, bar_index)
+
+        if dpg.is_mouse_button_down(dpg.mvMouseButton_Left) or dpg.is_mouse_button_clicked(dpg.mvMouseButton_Left):
+            layer.y_data[bar_index] = clamped_y
+            self._update_display()
+            self.call(self.on_bar_point_clicked, layer.y_data)
