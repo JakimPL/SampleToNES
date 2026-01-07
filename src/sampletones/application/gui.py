@@ -40,17 +40,18 @@ from .constants.general import (
     LBL_BUTTON_GLOBAL_DISCARD,
     LBL_BUTTON_GLOBAL_EXIT,
     LBL_BUTTON_GLOBAL_OK,
-    LBL_MENU_GROUP_FILE,
+    LBL_MENU_GROUP_CONFIGURATION,
+    LBL_MENU_GROUP_GENERAL,
     LBL_MENU_GROUP_PLAYBACK,
     LBL_MENU_GROUP_RECONSTRUCTION,
     LBL_MENU_GROUP_VIEW,
-    LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
+    LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
     LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_EXIT,
-    LBL_MENU_ITEM_FILE_LOAD_CONFIG,
     LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_SAVE_CONFIG,
     LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+    LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_GENERAL_EXIT,
     LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     LBL_MENU_ITEM_PLAYBACK_PAUSE,
     LBL_MENU_ITEM_PLAYBACK_PLAY,
@@ -496,7 +497,17 @@ class GUI:
 
     def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
-            with dpg.menu(label=LBL_MENU_GROUP_FILE):
+            with dpg.menu(label=LBL_MENU_GROUP_GENERAL):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.AUDIO_SETTINGS,
+                    label=LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
+                )
+                dpg.add_separator()
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.EXIT,
+                    label=LBL_MENU_ITEM_GENERAL_EXIT,
+                )
+            with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_RECONSTRUCTION,
                     tag=TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
@@ -516,25 +527,6 @@ class GUI:
                     enabled=not self._is_reconstruction_loaded(),
                 )
                 dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_CONFIGURATION,
-                    label=LBL_MENU_ITEM_FILE_SAVE_CONFIG,
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_CONFIGURATION,
-                    label=LBL_MENU_ITEM_FILE_LOAD_CONFIG,
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.AUDIO_SETTINGS,
-                    label=LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.EXIT,
-                    label=LBL_MENU_ITEM_FILE_EXIT,
-                )
-            with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
@@ -557,6 +549,15 @@ class GUI:
                     tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
                     label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
                     enabled=self._is_reconstruction_loaded(),
+                )
+            with dpg.menu(label=LBL_MENU_GROUP_CONFIGURATION):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_CONFIGURATION,
+                    label=LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_CONFIGURATION,
+                    label=LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
                 )
             with dpg.menu(label=LBL_MENU_GROUP_PLAYBACK):
                 self.shortcut_manager.add_menu_item(

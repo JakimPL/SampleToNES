@@ -111,7 +111,7 @@ class CallbackQueue:
             cls._condition.notify()
 
         if cls._worker_thread and cls._worker_thread.is_alive():
-            cls._worker_thread.join(timeout=1.0)
+            cls._worker_thread.join(timeout=0.1)
             logger.debug("Callback queue worker thread stopped")
 
     @classmethod
