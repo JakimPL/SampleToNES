@@ -19,7 +19,12 @@ from sampletones.instructions import (
 from sampletones.typehints import Sender
 from sampletones.utils import clamp
 
-from ...constants.general import MSG_STATUS_INPUT, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
+from ...constants.general import (
+    MSG_STATUS_INPUT,
+    SUF_HANDLER_REGISTRY,
+    SUF_PANEL_RIGHT,
+    TAG_TAB_INSTRUCTIONS,
+)
 from ...constants.instructions import (
     DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
@@ -58,6 +63,7 @@ from ...elements.table.table import GUITable
 from ...instruction.data import InstructionPanelData
 from ...instruction.logic import InstructionDetailsLogic
 from ...library.manager import InstructionsLibraryManager
+from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dpg import dpg_configure_item, dpg_delete_children
 
 OnInstructionLoaded = Callable[[], Optional[InstructionPanelData]]
@@ -73,6 +79,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.parameters_table: GUITable
 
         self._loaded_instruction_type: Optional[LibraryGeneratorName] = None
+
+        self._event_handler_tag = f"{TAG_PANEL_INSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
         self.is_instruction_loaded: Optional[OnInstructionLoaded] = None
         self.on_instruction_changed: Optional[OnInstructionChanged] = None
@@ -90,9 +98,21 @@ class GUIInstructionDetailsPanel(GUIPanel):
             height=self.height,
             border=False,
         ):
+            self._setup_event_handlers()
             self._create_section_text()
             self._create_instructions_choice_inputs()
             self._create_instruction_tables()
+
+    def _setup_event_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._event_handler_tag):
+            dpg.add_item_deactivated_after_edit_handler(
+                callback=self._on_instruction_changed,
+                parent=self._event_handler_tag,
+            )
+            dpg.add_item_edited_handler(
+                callback=self._on_instruction_changed,
+                parent=self._event_handler_tag,
+            )
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS)
@@ -204,8 +224,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
@@ -214,8 +234,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.volume,
             min_value=1,
             max_value=MAX_VOLUME,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
@@ -224,8 +244,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.duty_cycle,
             min_value=0,
             max_value=MAX_DUTY_CYCLE,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
 
         for tag in [
@@ -234,6 +254,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
         ]:
             GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
+            dpg.bind_item_handler_registry(tag, self._event_handler_tag)
 
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
         dpg.add_slider_int(
@@ -243,13 +264,17 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
 
         GUIStatusBar.bind_to_item(
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
             MSG_STATUS_INPUT,
+        )
+        dpg.bind_item_handler_registry(
+            TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            self._event_handler_tag,
         )
 
     def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
@@ -260,8 +285,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.period,
             min_value=0,
             max_value=MAX_PERIOD,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
@@ -270,15 +295,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
             default_value=instruction.volume,
             min_value=1,
             max_value=MAX_VOLUME,
+            clamped=True,
             width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-            callback=self._on_instruction_changed,
         )
         dpg.add_checkbox(
             tag=TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             default_value=instruction.short,
-            callback=self._on_instruction_changed,
         )
 
         for tag in [
@@ -287,6 +311,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
         ]:
             GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
+            dpg.bind_item_handler_registry(tag, self._event_handler_tag)
 
     def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
         instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
@@ -360,7 +385,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
         if current_instruction is not None and current_instruction.instruction == instruction:
             return
 
-        instruction_data = self.library_manager.load_instruction(instruction)
-        self.logic.current_data = instruction_data
-        self.call(self.on_instruction_changed, instruction_data)
-        self._update_tables(clear=False)
+        def load_instruction():
+            instruction_data = self.library_manager.load_instruction(instruction)
+            self.logic.current_data = instruction_data
+            self.call(self.on_instruction_changed, instruction_data)
+            self._update_tables(clear=False)
+
+        CallbackQueue.add(load_instruction)

@@ -84,6 +84,7 @@ def show_modal_dialog(
         width=width,
         min_size=(width, height),
         no_resize=True,
+        autosize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
