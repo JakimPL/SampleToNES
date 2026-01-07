@@ -302,9 +302,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME)
                 duty_cycle = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE)
 
-                pitch = clamp(pitch, MIN_PITCH, MAX_PITCH)
-                volume = clamp(volume, 1, MAX_VOLUME)
-                duty_cycle = clamp(duty_cycle, 0, MAX_DUTY_CYCLE)
+                pitch = int(clamp(pitch, MIN_PITCH, MAX_PITCH))
+                volume = int(clamp(volume, 1, MAX_VOLUME))
+                duty_cycle = int(clamp(duty_cycle, 0, MAX_DUTY_CYCLE))
                 instruction = PulseInstruction(
                     on=True,
                     pitch=pitch,
@@ -321,7 +321,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             case GeneratorClassName.TRIANGLE_GENERATOR:
                 pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH)
 
-                pitch = clamp(pitch, MIN_PITCH, MAX_PITCH)
+                pitch = int(clamp(pitch, MIN_PITCH, MAX_PITCH))
                 instruction = TriangleInstruction(
                     on=True,
                     pitch=pitch,
@@ -336,8 +336,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 volume = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME)
                 short = dpg.get_value(TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT)
 
-                period = clamp(period, 0, MAX_PERIOD)
-                volume = clamp(volume, 1, MAX_VOLUME)
+                period = int(clamp(period, 0, MAX_PERIOD))
+                volume = int(clamp(volume, 1, MAX_VOLUME))
                 short = bool(short)
                 instruction = NoiseInstruction(
                     on=True,

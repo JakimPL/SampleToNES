@@ -127,7 +127,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
                 tag=self.y_axis_tag,
                 range_fit=False,
-                auto_fit=False,
+                auto_fit=True,
             )
             self._add_position_indicator()
             self._set_overlay_rectangle()

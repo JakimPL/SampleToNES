@@ -50,13 +50,14 @@ class ReconstructionManager(CallbackMixin):
     def is_reconstruction_loaded(self) -> bool:
         return self.current_reconstruction is not None
 
-    def save_reconstruction(self) -> None:
+    def save_reconstruction(self, filepath: Optional[Path] = None) -> None:
         if not self.current_reconstruction:
             return
 
         reconstruction = self.current_reconstruction.reconstruction
-        reconstruction.save(self.current_reconstruction.filepath)
-        logger.info(f"Saved reconstruction to: {logger.format_path(self.current_reconstruction.filepath)}")
+        target_path = filepath or self.current_reconstruction.filepath
+        reconstruction.save(target_path)
+        logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
 
     def close_reconstruction(self) -> None:
         self.current_reconstruction = None
@@ -81,6 +82,13 @@ class ReconstructionManager(CallbackMixin):
             return None
 
         return self.current_reconstruction.reconstruction
+
+    @property
+    def filepath(self) -> Optional[Path]:
+        if self.current_reconstruction is None:
+            return None
+
+        return self.current_reconstruction.filepath
 
     @property
     def audio_filepath(self) -> Optional[Path]:

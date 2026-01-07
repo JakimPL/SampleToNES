@@ -37,11 +37,11 @@ def period_to_name(period: int) -> str:
 
 
 def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PITCH) -> int:
-    return clamp(pitch, min_pitch, max_pitch)
+    return int(clamp(pitch, min_pitch, max_pitch))
 
 
 def clamp_period(period: int, min_period: int = 0, max_period: int = MAX_PERIOD) -> int:
-    return clamp(period, min_period, max_period)
+    return int(clamp(period, min_period, max_period))
 
 
 MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)

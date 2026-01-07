@@ -25,6 +25,7 @@ class ShortcutId(Enum):
     AUDIO_SETTINGS = "AudioSettings"
     EXIT = "Exit"
     SAVE_RECONSTRUCTION = "SaveReconstruction"
+    SAVE_RECONSTRUCTION_AS = "SaveReconstructionAs"
     LOAD_RECONSTRUCTION = "LoadReconstruction"
     CLOSE_RECONSTRUCTION = "CloseReconstruction"
     RECONSTRUCT_FILE = "ReconstructFile"

@@ -47,9 +47,6 @@ from .constants.general import (
     LBL_MENU_GROUP_VIEW,
     LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
     LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
-    LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
     LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
     LBL_MENU_ITEM_GENERAL_EXIT,
     LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
@@ -58,10 +55,14 @@ from .constants.general import (
     LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     LBL_MENU_ITEM_PLAYBACK_RESUME,
     LBL_MENU_ITEM_PLAYBACK_STOP,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+    LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
+    LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     LBL_MENU_ITEM_VIEW_FULLSCREEN,
     LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     LBL_TAB_INSTRUCTIONS,
@@ -78,22 +79,26 @@ from .constants.general import (
     MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
     MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+    MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED,
+    MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
-    TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-    TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-    TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+    TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+    TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+    TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_TEXT_FPS,
@@ -111,7 +116,9 @@ from .constants.general import (
     TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
+    TTL_DIALOG_RECONSTRUCTION_SAVED,
     TTL_DIALOG_SAVE_CONFIG,
+    TTL_DIALOG_SAVE_RECONSTRUCTION,
     TTL_WINDOW_MAIN,
     VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
@@ -162,6 +169,7 @@ from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
     show_file_not_found_dialog,
+    show_info_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
@@ -337,6 +345,11 @@ class GUI:
             self._save_reconstruction,
         )
         self.shortcut_manager.register(
+            ShortcutId.SAVE_RECONSTRUCTION_AS,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            self._save_reconstruction_as_dialog,
+        )
+        self.shortcut_manager.register(
             ShortcutId.LOAD_RECONSTRUCTION,
             Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
             self._load_reconstruction_with_confirmation,
@@ -348,12 +361,12 @@ class GUI:
         )
         self.shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
             self._save_config_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
             self._load_config_dialog,
         )
         self.shortcut_manager.register(
@@ -510,20 +523,26 @@ class GUI:
             with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_RECONSTRUCTION_AS,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
                     enabled=not self._is_reconstruction_loaded(),
                 )
                 dpg.add_separator()
@@ -540,14 +559,14 @@ class GUI:
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
                     enabled=self._is_reconstruction_loaded(),
                 )
             with dpg.menu(label=LBL_MENU_GROUP_CONFIGURATION):
@@ -770,6 +789,22 @@ class GUI:
     def _create_main_panel(self) -> None:
         self.main_panel.create_panel()
 
+    def _save_reconstruction_as_dialog(self) -> None:
+        filepath = self.reconstruction_manager.filepath
+        if filepath is None:
+            return
+
+        with dpg.file_dialog(
+            label=TTL_DIALOG_SAVE_RECONSTRUCTION,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
+            callback=self._handle_save_reconstruction_as,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            default_filename=filepath.name,
+            default_path=str(filepath.parent),
+        ):
+            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
+
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SAVE_CONFIG,
@@ -792,6 +827,21 @@ class GUI:
             show_error_dialog(exception, MSG_GLOBAL_CONFIG_SAVE_FAILED)
 
         self.application_config_manager.set_config_path(filepath)
+
+    @file_dialog_handler
+    def _handle_save_reconstruction_as(self, filepath: Path) -> None:
+        try:
+            self._save_reconstruction(filepath)
+            show_info_dialog(
+                TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
+                MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
+                TTL_DIALOG_RECONSTRUCTION_SAVED,
+            )
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
+            show_error_dialog(exception, MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED)
+
+        self.application_config_manager.set_reconstruction_path(filepath)
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -1078,8 +1128,11 @@ class GUI:
         self.instruction_panel.close_instruction()
         self._update_menu()
 
-    def _save_reconstruction(self) -> None:
-        self.reconstruction_manager.save_reconstruction()
+    def _save_reconstruction(self, filepath: Optional[Path] = None) -> None:
+        self.reconstruction_manager.save_reconstruction(filepath)
+        self._unsaved_reconstruction_changes = False
+        name = filepath.stem if filepath is not None else None
+        self._update_viewport_title(name)
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
@@ -1354,10 +1407,11 @@ class GUI:
 
     def _update_reconstruction_menu_items(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS, enabled=reconstruction_loaded)
 
     def _update_playback_menu_items(self) -> None:
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())

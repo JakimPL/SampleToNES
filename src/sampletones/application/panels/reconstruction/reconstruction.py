@@ -541,7 +541,6 @@ class GUIReconstructionPanel(GUIPanel):
         reconstruction = self.reconstruction_data.reconstruction
         filename = to_path(reconstruction.audio_filepath).stem
 
-        print(str(self.application_config_manager.get_audio_path()))
         with dpg.file_dialog(
             label=TTL_DIALOG_EXPORT_WAV,
             width=DIM_DIALOG_WIDTH_FILE,
