@@ -108,7 +108,13 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         raise NotImplementedError("Subclasses must implement this method")
 
     def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+        if x:
+            dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
+        if y:
+            dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
+
+        dpg.fit_axis_data(self.x_axis_tag)
+        dpg.fit_axis_data(self.y_axis_tag)
 
     @property
     def x_range(self) -> Tuple[float, float]:

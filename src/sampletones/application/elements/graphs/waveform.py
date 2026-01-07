@@ -314,12 +314,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self._update_axes_limits()
 
-    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x:
-            dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
-        if y and self.y_range is not None:
-            dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
-
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)
         dpg.add_inf_line_series(

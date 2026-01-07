@@ -106,6 +106,15 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             )
         )
 
+        self._update_ranges()
+
+    def _update_ranges(self) -> None:
+        if not self.layers:
+            self.y_range = MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2
+        else:
+            frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
+            self.y_range = (frequencies[0], frequencies[-1])
+
     def _create_brightness_theme(self, color: Color, brightness: float) -> str:
         color = (color[0], color[1], color[2], round(brightness))
         if color in self.themes:
@@ -128,7 +137,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             return
 
         dpg_delete_children(self.y_axis_tag)
-        self._update_axes_limits()
         for layer in self.layers.values():
             for index, (frequency, band_width, brightness) in enumerate(layer):
                 series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
@@ -145,14 +153,10 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 theme_tag = self._create_brightness_theme(layer.color, brightness)
                 dpg_bind_item_theme(series_tag, theme_tag)
 
+        self._update_ranges()
+
     def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
         if x:
             dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
         if y:
-            if not self.layers:
-                self.y_range = MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2
-            else:
-                frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
-                self.y_range = (frequencies[0], frequencies[-1])
-
             dpg.set_axis_limits(self.y_axis_tag, *self.y_range)

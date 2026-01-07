@@ -180,11 +180,10 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             )
         else:
             dpg.add_bar_series(
-                tuple(layer.x_data),
-                tuple(layer.y_data),
-                # label=layer.name,
-                parent=self.y_axis_tag,
+                layer.x_data.tolist(),
+                layer.y_data.tolist(),
                 tag=series_tag,
+                parent=self.y_axis_tag,
                 weight=layer.bar_weight,
             )
 
@@ -263,6 +262,9 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
         if y:
             dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
+
+        dpg.fit_axis_data(self.x_axis_tag)
+        dpg.fit_axis_data(self.y_axis_tag)
 
     def _update_ticks(self) -> None:
         if self.y_ticks is not None:
