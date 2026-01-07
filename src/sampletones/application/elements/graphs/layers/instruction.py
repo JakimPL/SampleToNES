@@ -11,7 +11,7 @@ from .layer import Layer
 
 
 @dataclass(frozen=True)
-class WaveformLayer(Layer):
+class InstructionLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
     color: Color = COL_WAVEFORM_DEFAULT

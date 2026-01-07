@@ -256,7 +256,6 @@ class GUI:
 
     def _setup_gui(self) -> None:
         dpg.create_context()
-        self._start_callback_worker()
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
@@ -267,6 +266,7 @@ class GUI:
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
+        self._start_callback_worker()
         dpg.set_exit_callback(self._on_close)
 
     def _start_callback_worker(self) -> None:

@@ -2,12 +2,18 @@ from typing import Any, Dict
 
 import numpy as np
 
+from sampletones.typehints import Numeric
+
 
 def next_power_of_two(length: int) -> int:
     return 1 << (length - 1).bit_length()
 
 
-def clamp(value: int, min_value: int, max_value: int) -> int:
+def clamp(
+    value: Numeric,
+    min_value: Numeric,
+    max_value: Numeric,
+) -> Numeric:
     return max(min_value, min(value, max_value))
 
 

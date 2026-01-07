@@ -26,7 +26,7 @@ from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
 
-class GUISpectrumGraph(GUIGraph):
+class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
     tag: str
     parent: str
     width: int
@@ -50,7 +50,6 @@ class GUISpectrumGraph(GUIGraph):
         y_max: float = DEFAULT_SAMPLE_RATE / 2,
         default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
         default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
-        enable_dragging: bool = True,
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
@@ -70,7 +69,6 @@ class GUISpectrumGraph(GUIGraph):
             y_max,
             default_x_range=default_x_range,
             default_y_range=default_y_range,
-            enable_dragging=enable_dragging,
         )
 
     def _create_content(self) -> None:
@@ -81,10 +79,19 @@ class GUISpectrumGraph(GUIGraph):
             width=self.width,
             height=self.height,
             anti_aliased=True,
-            no_inputs=True,
+            no_mouse_pos=True,
+            fit_button=False,
             pan_button=-1,
         ):
-            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_SPECTRUM_X, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvXAxis,
+                parent=self.plot_tag,
+                label=LBL_PLOT_AXIS_SPECTRUM_X,
+                tag=self.x_axis_tag,
+                no_tick_labels=True,
+                no_tick_marks=True,
+                no_label=True,
+            )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,

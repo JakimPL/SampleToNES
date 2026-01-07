@@ -5,6 +5,8 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 
+Numeric = Union[int, float, np.floating, np.integer]
+
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]
 ReducedObject = Tuple[Any, Tuple[SerializedData]]

@@ -24,7 +24,7 @@ class DefaultTheme(Theme):
     tag: str = TAG_THEME_DEFAULT
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvAll, enabled_state=True): [
+            ThemeParameter(item_type=dpg.mvAll): [
                 ThemeColor(key=dpg.mvThemeCol_Text, color=COL_TEXT_DEFAULT),
                 ThemeColor(key=dpg.mvThemeCol_TextDisabled, color=COL_TEXT_DISABLED_DEFAULT),
                 ThemeColor(key=dpg.mvThemeCol_WindowBg, color=COL_BACKGROUND),

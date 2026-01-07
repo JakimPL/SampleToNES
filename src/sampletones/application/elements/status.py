@@ -13,7 +13,7 @@ from ..constants.general import (
     VAL_STATUS_BAR_DISPLAY_TIME,
 )
 from ..themes.status import StatusBarTheme
-from ..utils.dpg import dpg_configure_item, dpg_is_item_hovered
+from ..utils.dpg import dpg_configure_item, dpg_delete_item, dpg_is_item_hovered
 from .button import GUIButton
 
 
@@ -120,6 +120,7 @@ class GUIStatusBar:
                     message = message_function()
                     cls.set(message)
 
+            dpg_delete_item(handler_tag)
             with dpg.handler_registry(tag=handler_tag):
                 dpg.add_mouse_move_handler(callback=on_mouse_action)
 
