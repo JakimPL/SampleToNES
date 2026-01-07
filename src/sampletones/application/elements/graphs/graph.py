@@ -32,12 +32,8 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
-        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = VAL_MIN_GRAPH_DEFAULT_Y,
-        y_max: float = VAL_MAX_GRAPH_DEFAULT_Y,
-        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
     ):
         self.label = label
         self.plot_tag = f"{tag}{SUF_GRAPH_PLOT}"
@@ -47,16 +43,11 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         self.controls_tag = f"{tag}{SUF_GRAPH_CONTROLS}"
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
 
-        self.x_min: float = x_min
-        self.x_max: float = x_max
-        self.y_min: float = y_min
-        self.y_max: float = y_max
-
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
-        self.x_range: Optional[Tuple[float, float]] = None
-        self.y_range: Optional[Tuple[float, float]] = None
-        self._default_x_range = default_x_range
-        self._default_y_range = default_y_range
+        self._x_range: Tuple[float, float] = x_range
+        self._y_range: Tuple[float, float] = y_range
+        self._default_x_range = self._x_range
+        self._default_y_range = self._y_range
 
         self._handlers: List[Sender] = []
         self.layers: Dict[str, LayerT] = {}
@@ -90,12 +81,6 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         self._update_ranges()
         self._update_display()
 
-    def get_x_range(self) -> Tuple[float, float]:
-        return self.x_range if self.x_range is not None else self._default_x_range
-
-    def get_y_range(self) -> Tuple[float, float]:
-        return self.y_range if self.y_range is not None else self._default_y_range
-
     def clear_layers(self) -> None:
         self.current_data = None
         self.x_range = None
@@ -114,11 +99,35 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
             self.y_range = y_min, y_max
 
         else:
-            self.x_range = VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X
-            self.y_range = VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y
+            self.x_range = self._default_x_range
+            self.y_range = self._default_y_range
+
+        self._update_axes_limits()
 
     def _update_display(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def _update_axes_limits(self) -> None:
+    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
         raise NotImplementedError("Subclasses must implement this method")
+
+    @property
+    def x_range(self) -> Tuple[float, float]:
+        return self._x_range
+
+    @x_range.setter
+    def x_range(self, value: Optional[Tuple[float, float]]) -> None:
+        if value is None:
+            self._x_range = self._default_x_range
+        else:
+            self._x_range = value
+
+    @property
+    def y_range(self) -> Tuple[float, float]:
+        return self._y_range
+
+    @y_range.setter
+    def y_range(self, value: Optional[Tuple[float, float]]) -> None:
+        if value is None:
+            self._y_range = self._default_y_range
+        else:
+            self._y_range = value

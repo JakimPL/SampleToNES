@@ -14,9 +14,6 @@ from ...constants.graphs import (
     SUF_BAR_PLOT_ZERO_LINE,
     SUF_GRAPH_THEME,
     VAL_BAR_PLOT_HOVER_ALPHA,
-    VAL_BAR_PLOT_MAX_Y,
-    VAL_BAR_PLOT_MIN_X,
-    VAL_BAR_PLOT_MIN_Y,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MAX_GRAPH_DEFAULT_Y,
     VAL_MIN_GRAPH_DEFAULT_X,
@@ -27,7 +24,6 @@ from ...themes.theme import Theme
 from ...utils.dpg import dpg_bind_item_theme, dpg_configure_item, dpg_delete_item
 from .graph import GUIGraph
 from .layers.bar import BarLayer
-from .utils import extend_y_range
 
 OnBarPointClickedCallback = Callable[[np.ndarray], None]
 OnBarPointHoveredCallback = Callable[[Optional[str], Optional[int]], None]
@@ -39,10 +35,6 @@ class GUIBarGraph(GUIGraph[BarLayer]):
     width: int
     height: int
     label: str
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
 
     def __init__(
         self,
@@ -52,12 +44,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_BAR,
-        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
-        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = VAL_BAR_PLOT_MIN_Y,
-        y_max: float = VAL_BAR_PLOT_MAX_Y,
-        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
         zero_line_theme: Theme = ZeroLineGraphTheme(),
     ):
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
@@ -80,12 +68,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             width,
             height,
             label,
-            x_min,
-            x_max,
-            y_min,
-            y_max,
-            default_x_range=default_x_range,
-            default_y_range=default_y_range,
+            x_range,
+            y_range,
         )
 
     def delete(self) -> None:
@@ -100,12 +84,26 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             height=self.height,
             width=self.width,
             anti_aliased=True,
+            no_box_select=True,
             zoom_rate=self.zoom_factor,  # type: ignore
         ):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, tag=self.x_axis_tag, parent=self.plot_tag)
-            dpg.add_plot_axis(dpg.mvYAxis, tag=self.y_axis_tag, parent=self.plot_tag)
+            dpg.add_plot_axis(
+                dpg.mvXAxis,
+                tag=self.x_axis_tag,
+                parent=self.plot_tag,
+                auto_fit=False,
+                range_fit=False,
+            )
+            dpg.add_plot_axis(
+                dpg.mvYAxis,
+                tag=self.y_axis_tag,
+                parent=self.plot_tag,
+                auto_fit=False,
+                range_fit=False,
+            )
             self._add_zero_line()
+            self._update_axes_limits()
 
     def _bind_theme(
         self,
@@ -145,9 +143,6 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
         return dpg_bind_item_theme(self.hover_bar_tag, self.hover_theme_tag)
 
-    def get_y_range(self) -> Tuple[float, float]:
-        return extend_y_range(*self.data_range)
-
     def load_data(
         self,
         data: np.ndarray,
@@ -159,20 +154,17 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.clear_layers()
         self.current_data = data
         self.y_ticks = y_ticks
-
         self.add_layer(
             BarLayer(
                 data=data,
                 name=name,
                 color=color,
-            )
+            ),
         )
+
         self._add_hover_bar()
-
-        self.x_min = VAL_BAR_PLOT_MIN_X
-        self.x_max = float(len(data))
-
-        self._update_axes_limits()
+        self._update_ticks()
+        self._update_ranges()
 
     def _set_layer(
         self,
@@ -198,6 +190,17 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
             self._bind_theme(layer, series_tag, theme_tag)
 
+        self._update_ranges()
+
+    def _update_ranges(self) -> None:
+        x_min = -0.5
+        x_max = max(
+            (layer.x_data.max() for layer in self.layers.values() if layer.x_data.size > 0),
+            default=VAL_MAX_GRAPH_DEFAULT_X,
+        )
+        self.x_range = (x_min, x_max)
+        self._update_axes_limits()
+
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
             return
@@ -208,6 +211,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             self._set_layer(layer, series_tag, theme_tag)
 
         self._update_axes_limits()
+        self._update_ticks()
 
     def _add_hover_bar(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag) or not self._get_first_layer():
@@ -245,20 +249,22 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if not dpg.does_item_exist(self.y_axis_tag) or dpg.does_item_exist(self.zero_line_tag):
             return
 
-        dpg.add_line_series(
-            [self.x_min, self.x_max],
-            [0.0, 0.0],
+        dpg.add_inf_line_series(
+            [0.0],
             parent=self.y_axis_tag,
             tag=self.zero_line_tag,
+            horizontal=True,
         )
 
         self.zero_line_theme.bind_to_item(self.zero_line_tag)
 
-    def _update_axes_limits(self) -> None:
-        dpg.set_axis_limits_constraints(self.x_axis_tag, self.x_min, self.x_max)
-        dpg.set_axis_limits_constraints(self.y_axis_tag, self.y_min, self.y_max)
-        dpg_configure_item(self.zero_line_tag, x=[self.x_min, self.x_max], y=[0.0, 0.0])
+    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        if x:
+            dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
+        if y:
+            dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
 
+    def _update_ticks(self) -> None:
         if self.y_ticks is not None:
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))

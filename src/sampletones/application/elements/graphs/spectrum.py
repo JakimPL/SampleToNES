@@ -17,9 +17,7 @@ from ...constants.graphs import (
     LBL_PLOT_NAME_SPECTRUM,
     SUF_GRAPH_THEME,
     VAL_MAX_GRAPH_DEFAULT_X,
-    VAL_MAX_GRAPH_DEFAULT_Y,
     VAL_MIN_GRAPH_DEFAULT_X,
-    VAL_MIN_GRAPH_DEFAULT_Y,
 )
 from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
 from .graph import GUIGraph
@@ -32,10 +30,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
     width: int
     height: int
     label: str
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
 
     def __init__(
         self,
@@ -44,12 +38,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_SPECTRUM,
-        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
-        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = MIN_FREQUENCY,
-        y_max: float = DEFAULT_SAMPLE_RATE / 2,
-        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        y_range: Tuple[float, float] = (MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
     ) -> None:
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
@@ -63,12 +53,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             width,
             height,
             label,
-            x_min,
-            x_max,
-            y_min,
-            y_max,
-            default_x_range=default_x_range,
-            default_y_range=default_y_range,
+            x_range,
+            y_range,
         )
 
     def _create_content(self) -> None:
@@ -99,6 +85,8 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 tag=self.y_axis_tag,
                 scale=dpg.mvPlotScale_Log10,
             )
+
+        self._update_axes_limits()
 
     def load_library_fragment(
         self,
@@ -145,7 +133,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             for index, (frequency, band_width, brightness) in enumerate(layer):
                 series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
                 dpg.add_bar_series(
-                    x=[self.x_max],
+                    x=[VAL_MAX_GRAPH_DEFAULT_X],
                     y=[frequency],
                     label="",
                     parent=self.y_axis_tag,
@@ -157,13 +145,14 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 theme_tag = self._create_brightness_theme(layer.color, brightness)
                 dpg_bind_item_theme(series_tag, theme_tag)
 
-    def _update_axes_limits(self) -> None:
-        dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
-        if not self.layers:
-            dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
-            return
+    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
+        if x:
+            dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
+        if y:
+            if not self.layers:
+                self.y_range = MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2
+            else:
+                frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
+                self.y_range = (frequencies[0], frequencies[-1])
 
-        frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
-        self.y_min = frequencies[0]
-        self.y_max = frequencies[-1]
-        dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+            dpg.set_axis_limits(self.y_axis_tag, *self.y_range)

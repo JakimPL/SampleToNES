@@ -49,10 +49,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     width: int
     height: int
     label: str
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
 
     def __init__(
         self,
@@ -61,12 +57,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
-        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = VAL_MIN_GRAPH_DEFAULT_Y,
-        y_max: float = VAL_MAX_GRAPH_DEFAULT_Y,
-        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
     ):
         self.reconstruction_autoscale = True
 
@@ -85,12 +77,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             width,
             height,
             label,
-            x_min,
-            x_max,
-            y_min,
-            y_max,
-            default_x_range=default_x_range,
-            default_y_range=default_y_range,
+            x_range,
+            y_range,
         )
 
     def delete(self) -> None:
@@ -117,7 +105,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             height=self.height,
             anti_aliased=True,
             no_mouse_pos=True,
+            no_box_select=True,
             fit_button=False,
+            horizontal_mod=dpg.mvKey_LShift,
             pan_button=dpg.mvMouseButton_Left,
             zoom_rate=self.zoom_factor,  # type: ignore
         ):
@@ -143,6 +133,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._set_overlay_rectangle()
 
         GUIStatusBar.bind_to_item(self.plot_tag, MSG_STATUS_WAVEFORM_NAVIGATION)
+        self._update_axes_limits()
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
@@ -151,8 +142,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         if not dpg.does_item_exist(self.overlay_rectangle_tag):
             dpg.add_shade_series(
                 [x_start, x_end],
-                [self.y_min, self.y_min],
-                y2=[self.y_max, self.y_max],
+                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
+                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
                 tag=self.overlay_rectangle_tag,
                 parent=self.y_axis_tag,
             )
@@ -162,8 +153,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             dpg.configure_item(
                 self.overlay_rectangle_tag,
                 x=[x_start, x_end],
-                y1=[self.y_min, self.y_min],
-                y2=[self.y_max, self.y_max],
+                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
+                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
             )
 
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
@@ -180,8 +171,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             )
         )
 
-        self.x_min = VAL_MIN_GRAPH_DEFAULT_X
-        self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -268,23 +257,16 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         original_audio_coefficient = coefficient * self.get_original_audio_coefficient(reconstruction_data)
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
-        self._add_reconstruction_layers(
-            reconstruction_layer,
-            sample_layer,
-            original_audio,
-        )
+        self._add_reconstruction_layers(reconstruction_layer, sample_layer)
 
     def _add_reconstruction_layers(
         self,
         reconstruction_layer: ArrayLayer,
         sample_layer: ArrayLayer,
-        original_audio: np.ndarray,
     ) -> None:
         self.add_layer(sample_layer)
         self.add_layer(reconstruction_layer)
-
-        self.x_min = 0.0
-        self.x_max = float(len(original_audio))
+        self._update_ranges()
         self._update_display()
 
     def clear(self) -> None:
@@ -333,7 +315,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_axes_limits()
 
     def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x and self.x_range is not None:
+        if x:
             dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
         if y and self.y_range is not None:
             dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
