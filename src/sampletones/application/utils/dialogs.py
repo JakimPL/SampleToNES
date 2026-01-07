@@ -81,15 +81,16 @@ def show_modal_dialog(
         label=title,
         tag=tag,
         modal=modal,
+        width=width,
         min_size=(width, height),
         no_resize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
         dpg.add_separator()
-        button_ok_tag = f"{tag}{SUF_BUTTON_OK}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
         GUIButton(
-            tag=button_ok_tag,
+            tag=ok_button_tag,
             label=LBL_BUTTON_GLOBAL_OK,
             callback=lambda: dpg_delete_item(tag),
             width=-1,
