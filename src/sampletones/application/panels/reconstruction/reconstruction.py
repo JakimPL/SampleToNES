@@ -34,6 +34,7 @@ from ...constants.reconstructions import (
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
     LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED,
@@ -48,6 +49,7 @@ from ...constants.reconstructions import (
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+    TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
     TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
@@ -57,6 +59,7 @@ from ...constants.reconstructions import (
     TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
     TTL_DIALOG_EXPORT_FTI,
     TTL_DIALOG_EXPORT_WAV,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
     VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
@@ -72,7 +75,9 @@ from ...reconstruction.manager import ReconstructionManager
 from ...utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
+    show_info_dialog,
     show_message_with_path_dialog,
+    show_reconstruction_not_loaded_dialog,
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
@@ -155,6 +160,8 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
+
+        self._update_buttons_state(False)
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
@@ -503,10 +510,24 @@ class GUIReconstructionPanel(GUIPanel):
         feature.save(filepath, instrument_name)
 
     def _handle_locate_original_audio_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        if self.reconstruction_manager.reconstruction is None:
+            logger.warning("No reconstruction loaded, cannot locate original audio.")
+            show_reconstruction_not_loaded_dialog()
+            return
+
+        path = self.reconstruction_manager.audio_filepath
+        if path is None:
+            logger.warning("No original audio filepath available in the reconstruction.")
+            show_info_dialog(
+                TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+                MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+                TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            )
+            return
+
         try:
             self.reconstruction_manager.locate_original_audio()
         except FileNotFoundError:
-            path = self.reconstruction_manager.audio_filepath
             logger.warning(f"Original audio file could not be found: '{path}'")
             show_file_not_found_dialog(path, MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED)
 

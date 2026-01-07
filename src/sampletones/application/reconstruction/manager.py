@@ -68,7 +68,6 @@ class ReconstructionManager(CallbackMixin):
     def locate_original_audio(self) -> None:
         original_audio_path = self.audio_filepath
         if not original_audio_path:
-            logger.warning("No reconstruction loaded, cannot locate original audio.")
             return
 
         if not original_audio_path or not original_audio_path.exists():

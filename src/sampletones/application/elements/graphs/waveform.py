@@ -327,7 +327,8 @@ class GUIWaveformGraph(GUIGraph):
 
     def set_autoscale(self, autoscale: bool) -> None:
         self.reconstruction_autoscale = autoscale
-        self.load_reconstruction_data(self.current_data)
+        if isinstance(self.current_data, ReconstructionData):
+            self.load_reconstruction_data(self.current_data)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
