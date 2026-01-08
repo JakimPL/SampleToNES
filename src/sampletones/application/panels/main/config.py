@@ -13,7 +13,7 @@ from sampletones.typehints import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
+from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
@@ -53,6 +53,8 @@ class GUIConfigPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
+        self._event_handler_tag = f"{TAG_PANEL_MAIN_CONFIG}{SUF_HANDLER_REGISTRY}"
+
         super().__init__(
             tag=TAG_PANEL_MAIN_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
@@ -60,6 +62,7 @@ class GUIConfigPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -72,7 +75,11 @@ class GUIConfigPanel(GUIPanel):
             self._create_library_settings()
             self._create_tooltips()
 
-        self._register_callbacks()
+    def _setup_event_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._event_handler_tag):
+            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
+            dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_CONFIG)
@@ -84,11 +91,13 @@ class GUIConfigPanel(GUIPanel):
             label=LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
             default_value=self.config_manager.config.general.normalize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
+            callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
             default_value=self.config_manager.config.general.quantize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
+            callback=self._on_parameter_change,
         )
 
     def _create_library_settings(self) -> None:
@@ -101,6 +110,7 @@ class GUIConfigPanel(GUIPanel):
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
             width=DIM_INPUT_WIDTH,
+            callback=self._on_parameter_change,
         )
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_CHANGE_RATE,
@@ -109,6 +119,7 @@ class GUIConfigPanel(GUIPanel):
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
             width=DIM_INPUT_WIDTH,
+            callback=self._on_parameter_change,
         )
         dpg.add_slider_int(
             label=LBL_SLIDER_MAIN_CONFIG_TRANSFORMATION_GAMMA,
@@ -119,6 +130,13 @@ class GUIConfigPanel(GUIPanel):
             width=DIM_INPUT_WIDTH,
         )
 
+        for tag in [
+            TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
+            TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
+            TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
+        ]:
+            dpg.bind_item_handler_registry(tag, self._event_handler_tag)
+
         GUIStatusBar.bind_to_item(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
@@ -127,10 +145,6 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, LBL_TOOLTIP_MAIN_CONFIG_SAMPLE_RATE)
         show_tooltip(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, LBL_TOOLTIP_MAIN_CONFIG_CHANGE_RATE)
         show_tooltip(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA)
-
-    def _register_callbacks(self) -> None:
-        for tag in self.config_manager.config_parameters["config"].keys():
-            dpg.set_item_callback(tag, self._on_parameter_change)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         gui_values = self._get_all_gui_values()

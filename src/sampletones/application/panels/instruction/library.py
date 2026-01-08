@@ -159,6 +159,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super()._setup_event_handlers()
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -171,7 +172,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_controls()
             self._create_library_tree()
 
-        self._setup_event_handlers()
         self._refresh_libraries(load_if_needed=False)
 
     def _create_section_text(self) -> None:

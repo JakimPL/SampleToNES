@@ -81,6 +81,7 @@ class GUIBrowserPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -92,7 +93,6 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
-        self._setup_event_handlers()
         self._rebuild_tree()
 
     def _setup_event_handlers(self) -> None:

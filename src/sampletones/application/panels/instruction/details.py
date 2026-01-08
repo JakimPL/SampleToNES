@@ -91,6 +91,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -98,7 +99,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
             height=self.height,
             border=False,
         ):
-            self._setup_event_handlers()
             self._create_section_text()
             self._create_instructions_choice_inputs()
             self._create_instruction_tables()
