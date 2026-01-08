@@ -6,6 +6,7 @@ from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER
 from sampletones.typehints import Sender, SerializedData
 
+from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...constants.general import (
     DIM_INPUT_WIDTH,
@@ -14,7 +15,6 @@ from ...constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
     MSG_STATUS_INPUT,
-    SUF_HANDLER_REGISTRY,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -29,19 +29,22 @@ from ...constants.main import (
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
+from ...elements.settings import GUISettingsPanel
 from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
 
-class GUIReconstructorPanel(GUIPanel):
-    def __init__(self, config_manager: ConfigManager) -> None:
-        self.config_manager = config_manager
-
-        self._event_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
-
+class GUIReconstructorPanel(GUISettingsPanel):
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        application_config_manager: ApplicationConfigManager,
+    ) -> None:
         super().__init__(
+            config_manager=config_manager,
+            application_config_manager=application_config_manager,
+            config_panel_key="reconstructor",
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,

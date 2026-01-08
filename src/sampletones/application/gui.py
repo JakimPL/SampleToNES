@@ -233,7 +233,10 @@ class GUI:
             self.config_manager,
             self.application_config_manager,
         )
-        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
+        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             self.config_manager,
             self.application_config_manager,
@@ -462,7 +465,7 @@ class GUI:
             is_converter_running=self._is_generation_in_progress,
         )
         self.library_panel.set_callbacks(
-            on_apply_library_config=self.advanced_settings_panel.apply_library_config,
+            on_apply_library_config=self.config_panel.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(

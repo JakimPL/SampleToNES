@@ -1,5 +1,3 @@
-from typing import Any, Union
-
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
@@ -9,11 +7,10 @@ from sampletones.constants.general import (
     MIN_CHANGE_RATE,
 )
 from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
+from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
@@ -38,24 +35,22 @@ from ...constants.main import (
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
+from ...elements.settings import GUISettingsPanel
 from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
 
-class GUIConfigPanel(GUIPanel):
+class GUIConfigPanel(GUISettingsPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
     ):
-        self.config_manager = config_manager
-        self.application_config_manager = application_config_manager
-
-        self._event_handler_tag = f"{TAG_PANEL_MAIN_CONFIG}{SUF_HANDLER_REGISTRY}"
-
         super().__init__(
+            config_manager=config_manager,
+            application_config_manager=application_config_manager,
+            config_panel_key="config",
             tag=TAG_PANEL_MAIN_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -146,32 +141,6 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, LBL_TOOLTIP_MAIN_CONFIG_CHANGE_RATE)
         show_tooltip(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA)
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
-
-    def _get_all_gui_values(self) -> SerializedData:
-        gui_values = {}
-        for tag in self.config_manager.config_parameters["config"].keys():
-            gui_values[tag] = self._clamp_value(tag)
-
-        return gui_values
-
-    def _clamp_value(self, tag: str) -> Union[int, float, bool, str]:
-        value: Union[int, float, bool, str] = dpg.get_value(tag)
-        item_config = dpg.get_item_configuration(tag)
-
-        min_v = item_config.get("min_value")
-        max_v = item_config.get("max_value")
-
-        if isinstance(value, (int, float)):
-            if min_v is not None:
-                value = max(value, min_v)
-            if max_v is not None:
-                value = min(value, max_v)
-
-        return value
-
     def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         gui_updates = self.config_manager.apply_library_config(library_key)
         for tag, value in gui_updates.items():
@@ -182,7 +151,7 @@ class GUIConfigPanel(GUIPanel):
             return
 
         config = self.config_manager.config
-        for tag, info in self.config_manager.config_parameters["config"].items():
+        for tag, info in self.config_manager.config_parameters[self._config_panel_key].items():
             section_name = info.section
             section = getattr(config, section_name)
             if hasattr(section, info.name):

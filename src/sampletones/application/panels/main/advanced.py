@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.library import InstructionLibraryKey
-from sampletones.typehints import Sender, SerializedData, VoidCallback
+from sampletones.typehints import VoidCallback
 from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager
@@ -14,7 +13,6 @@ from ...constants.general import (
     DIM_DIALOG_HEIGHT_FILE,
     DIM_DIALOG_WIDTH_FILE,
     DIM_INPUT_WIDTH,
-    SUF_HANDLER_REGISTRY,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
@@ -39,25 +37,19 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
+from ...elements.settings import GUISettingsPanel
 from ...utils.align import table_wrapper
-from ...utils.dpg import dpg_set_value
 from ...utils.file import file_dialog_handler
 from ...utils.tooltip import show_tooltip
 
 
-class GUIAdvancedSettingsPanel(GUIPanel):
+class GUIAdvancedSettingsPanel(GUISettingsPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
     ):
-        self.config_manager = config_manager
-        self.application_config_manager = application_config_manager
-
-        self._event_handler_tag = f"{TAG_PANEL_MAIN_ADVANCED}{SUF_HANDLER_REGISTRY}"
-
         self.on_update_library_directory: Optional[VoidCallback] = None
         self.on_update_output_directory: Optional[VoidCallback] = None
 
@@ -65,9 +57,12 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         super().__init__(
+            config_manager=config_manager,
+            application_config_manager=application_config_manager,
             tag=TAG_PANEL_MAIN_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
             height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
+            config_panel_key="advanced",
         )
 
     def create_panel(self) -> None:
@@ -83,12 +78,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             self._create_workers_settings()
             self._create_path_settings()
             self._create_tooltips()
-
-    def _setup_event_handlers(self) -> None:
-        with dpg.item_handler_registry(tag=self._event_handler_tag):
-            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
-            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
-            dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_ADVANCED)
@@ -160,32 +149,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
 
-    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
-
-    def _get_all_gui_values(self) -> SerializedData:
-        gui_values = {}
-        for tag in self.config_manager.config_parameters["advanced"].keys():
-            gui_values[tag] = self._clamp_value(tag)
-
-        return gui_values
-
-    def _clamp_value(self, tag: str) -> Union[int, float, bool, str]:
-        value: Union[int, float, bool, str] = dpg.get_value(tag)
-        item_config = dpg.get_item_configuration(tag)
-
-        min_v = item_config.get("min_value")
-        max_v = item_config.get("max_value")
-
-        if isinstance(value, (int, float)):
-            if min_v is not None:
-                value = max(value, min_v)
-            if max_v is not None:
-                value = min(value, max_v)
-
-        return value
-
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
@@ -237,17 +200,12 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         self.call(self.on_update_output_directory)
 
-    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
-        gui_updates = self.config_manager.apply_library_config(library_key)
-        for tag, value in gui_updates.items():
-            dpg_set_value(tag, value)
-
     def update_gui_from_config(self) -> None:
         if not self.config_manager.config:
             return
 
         config = self.config_manager.config
-        for tag, info in self.config_manager.config_parameters["config"].items():
+        for tag, info in self.config_manager.config_parameters[self._config_panel_key].items():
             section_name = info.section
             section = getattr(config, section_name)
             if hasattr(section, tag):
