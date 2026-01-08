@@ -31,6 +31,7 @@ from ...constants.reconstructions import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import NodeHandler
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...reconstruction.browser import BrowserManager
@@ -89,7 +90,27 @@ class GUIBrowserPanel(GUITreePanel):
             self._create_buttons()
             self._create_tree_window()
 
+        self._setup_event_handlers()
         self._rebuild_tree()
+
+    def _setup_event_handlers(self) -> None:
+        self._node_handlers = {
+            NodeType.DIRECTORY: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.DIRECTORY),
+                node_type=NodeType.DIRECTORY,
+                item_click_callback=self._on_directory_node_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_directory_node(),
+            ),
+            NodeType.FILE: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.FILE),
+                node_type=NodeType.FILE,
+                item_click_callback=self._on_reconstruction_node_clicked,
+                item_double_click_callback=self._on_reconstruction_node_double_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
+            ),
+        }
+
+        super()._setup_event_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
@@ -141,7 +162,6 @@ class GUIBrowserPanel(GUITreePanel):
 
         self.lock()
         try:
-            self._delete_item_handler_registries()
             output_directory = self.config_manager.get_output_directory()
             self.browser_manager.set_output_directory(output_directory)
             self.build_tree()
@@ -177,8 +197,6 @@ class GUIBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
                 add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
                 add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )
@@ -189,9 +207,6 @@ class GUIBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                item_click_callback=self._on_reconstruction_node_clicked,
-                item_double_click_callback=self._on_reconstruction_node_double_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_reconstruction_node(),
                 add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
                 add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
             )

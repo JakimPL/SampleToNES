@@ -52,22 +52,24 @@ class GUIStatusBar:
         self.theme.bind_to_item(TAG_STATUS_WINDOW)
 
     @staticmethod
-    def get_message(message_or_function: Union[str, MessageCallback]) -> str:
+    def get_message(message_or_function: Union[str, MessageCallback], *args: Any, **kwargs: Any) -> str:
         if isinstance(message_or_function, str):
             return message_or_function
 
         if callable(message_or_function):
-            return message_or_function()
+            return message_or_function(*args, **kwargs)
 
         raise TypeError("'message_or_function' must be a string or a callable returning a string.")
 
     def update(
         self,
         message_or_function: Optional[Union[str, MessageCallback]] = None,
+        *args: Any,
         delta_time: Optional[float] = None,
+        **kwargs: Any,
     ) -> None:
         if message_or_function is not None:
-            self.message = self.get_message(message_or_function)
+            self.message = self.get_message(message_or_function, *args, **kwargs)
             self.timer = VAL_STATUS_BAR_DISPLAY_TIME
 
         dpg_configure_item(self.tag, label=self.message)
@@ -81,11 +83,15 @@ class GUIStatusBar:
     def set(
         cls,
         message_or_function: Union[str, MessageCallback],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         if cls._REGISTRY is not None:
             cls._REGISTRY.update(
                 message_or_function=message_or_function,
                 delta_time=0.0,
+                *args,
+                **kwargs,
             )
 
     @staticmethod
@@ -94,7 +100,7 @@ class GUIStatusBar:
     ) -> MessageCallback:
         if isinstance(message_or_function, str):
 
-            def message_function() -> str:
+            def message_function(*args: Any, **kwargs) -> str:
                 return message_or_function
 
         elif callable(message_or_function):
@@ -117,7 +123,7 @@ class GUIStatusBar:
 
             def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:
                 if dpg_is_item_hovered(tag):
-                    message = message_function()
+                    message = message_function(sender, app_data, user_data)
                     cls.set(message)
 
             dpg_delete_item(handler_tag)

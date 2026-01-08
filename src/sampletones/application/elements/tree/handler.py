@@ -1,24 +1,21 @@
-from typing import Any, Callable, Optional, Tuple
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.tree import TreeNode
-from sampletones.typehints import MessageCallback, Sender
-
-ItemClickCallback = Callable[[Sender, Tuple[int, int], Any], None]
+from sampletones.tree import NodeType
+from sampletones.typehints import Callback, MessageCallback
 
 
-class Handler(BaseModel):
+class NodeHandler(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     tag: str = Field(..., description="The unique tag for the handler registry.")
-    parent: str = Field(..., description="The parent tag to which the handler registry is attached.")
-    node: TreeNode = Field(..., description="The tree node associated with this handler.")
-    item_click_callback: Optional[ItemClickCallback] = Field(
+    node_type: NodeType = Field(..., description="The type of tree node this handler is for.")
+    item_click_callback: Optional[Callback] = Field(
         default=None,
         description="Callback for item click events.",
     )
-    item_double_click_callback: Optional[ItemClickCallback] = Field(
+    item_double_click_callback: Optional[Callback] = Field(
         default=None,
         description="Callback for item double-click events.",
     )

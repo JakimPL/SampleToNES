@@ -1,8 +1,9 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones.application.elements.tree.handler import NodeHandler
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.enums import LibraryGeneratorName
 from sampletones.exceptions import (
@@ -137,6 +138,24 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             shortcut_manager=shortcut_manager,
         )
 
+    def _setup_event_handlers(self) -> None:
+        self._node_handlers = {
+            NodeType.LIBRARY: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.LIBRARY),
+                node_type=NodeType.LIBRARY,
+                item_click_callback=self._on_library_node_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_instructions_node(),
+            ),
+            NodeType.GENERATOR: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.GENERATOR),
+                node_type=NodeType.GENERATOR,
+                item_click_callback=self._on_generator_node_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_instructions_node(),
+            ),
+        }
+
+        super()._setup_event_handlers()
+
     def create_panel(self) -> None:
         with dpg.child_window(
             tag=self.tag,
@@ -150,6 +169,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             self._create_library_controls()
             self._create_library_tree()
 
+        self._setup_event_handlers()
         self._refresh_libraries(load_if_needed=False)
 
     def _create_section_text(self) -> None:
@@ -212,7 +232,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self.lock()
         try:
-            self._delete_item_handler_registries()
             self.library_manager.rebuild_tree()
             self.build_tree()
         finally:
@@ -379,8 +398,6 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         is_current = isinstance(node, LibraryNode) and self._is_current_library_node(node)
         should_expand = is_current or self._should_expand_node(node)
         leaf = isinstance(node, GeneratorNode)
-        callback = self._on_library_node_clicked if isinstance(node, LibraryNode) else self._on_generator_node_clicked
-        status_bar_message_function = self._create_status_bar_message_function_for_instructions_node(node)
         self._queue_node(
             node,
             node_tag,
@@ -388,33 +405,32 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             leaf=leaf,
             should_expand=should_expand,
             open_on_double_click=True,
-            item_click_callback=callback,
-            status_bar_callback=status_bar_message_function,
             add_node_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE,
             add_handler_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_HANDLER,
         )
 
         state.parent = node_tag
 
-    def _create_status_bar_message_function_for_instructions_node(
-        self,
-        node: Union[LibraryNode, GeneratorNode],
-    ) -> MessageCallback:
-        match node.node_type:
-            case NodeType.LIBRARY:
-                message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY
-            case NodeType.GENERATOR:
-                parent = node.parent
-                assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
-                assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
-                message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR.format(
-                    generator=node.generator_name,
-                    library_key=parent.library_key.filename,
-                )
-            case _:
-                raise ValueError(f"Unsupported node type '{node.node_type}' for status bar message function")
+    def _create_status_bar_message_function_for_instructions_node(self) -> MessageCallback:
+        def message_function(*args: Any, user_data: Tuple[TreeNode, str], **kwargs: Any) -> str:
+            node, _ = user_data
+            match node.node_type:
+                case NodeType.LIBRARY:
+                    message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY
+                case NodeType.GENERATOR:
+                    parent = node.parent
+                    assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
+                    assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
+                    message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR.format(
+                        generator=node.generator_name,
+                        library_key=parent.library_key.filename,
+                    )
+                case _:
+                    raise ValueError(f"Unsupported node type '{node.node_type}' for status bar message function")
 
-        return self._create_status_bar_message_function(message)
+            return message
+
+        return self._create_status_bar_message_function(message_function)
 
     def _on_generator_node_clicked(
         self,
@@ -425,7 +441,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            assert node.parent is not None, "Generator node parent is undefined"
+            assert isinstance(node.parent, LibraryNode), "Generator node parent is not a LibraryNode"
             self._load_library_and_set_current(node.parent.library_key)
             self.load_generator(node.generator_name)
 

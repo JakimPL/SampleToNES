@@ -1,15 +1,14 @@
 import threading
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
-from sampletones.exceptions import CallbackQueueStop
 from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.typehints import MessageCallback, Sender
+from sampletones.typehints import Callback, MessageCallback, Sender
 from sampletones.utils import open_path_in_explorer
 from sampletones.utils.logger import logger
 
@@ -60,14 +59,14 @@ from ...themes.nodes.library import (
 )
 from ...themes.theme import Theme
 from ...utils.callbacks.queue import CallbackQueue
-from ...utils.dpg import dpg_delete_children, dpg_delete_item, dpg_get_value
+from ...utils.dpg import dpg_delete_children, dpg_get_value
 from ...utils.shortcuts.manager import ShortcutManager
 from ..button import GUIButton
 from ..fonts.font import Font
 from ..fonts.registry import FontRegistry
 from ..panel import GUIPanel
 from ..status import GUIStatusBar
-from .handler import Handler, ItemClickCallback
+from .handler import NodeHandler
 from .state import TreeNodeState
 
 
@@ -98,12 +97,11 @@ class GUITreePanel(GUIPanel):
         self._pending_query: Optional[str] = None
         self._pending_autoplay_node: Optional[FileSystemNode] = None
 
+        self._node_handlers: Dict[NodeType, NodeHandler] = {}
+
         self._lock_counter: int = 0
         self._lock: bool = False
         self._thread_lock = threading.RLock()
-        self._handler_lock = threading.Lock()
-
-        self._handlers: Dict[str, Handler] = {}
 
         self.search_label = search_label
 
@@ -148,6 +146,9 @@ class GUITreePanel(GUIPanel):
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
         GUIStatusBar.bind_to_item(self._search_input_tag, MSG_STATUS_TREE_SEARCH)
 
+    def _get_node_handler_tag(self, node_type: NodeType) -> str:
+        return f"{self.tag}_{node_type.value}{SUF_NODE_HANDLER}"
+
     def _add_node(
         self,
         node: TreeNode,
@@ -171,6 +172,7 @@ class GUITreePanel(GUIPanel):
             open_on_arrow=open_on_arrow,
             open_on_double_click=open_on_double_click,
             leaf=leaf,
+            user_data=(node, node_tag),
         ):
             self._apply_node_theme(
                 node_tag,
@@ -190,9 +192,6 @@ class GUITreePanel(GUIPanel):
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
-        item_click_callback: Optional[ItemClickCallback] = None,
-        item_double_click_callback: Optional[ItemClickCallback] = None,
-        status_bar_callback: Optional[MessageCallback] = None,
         add_node_priority: int = VAL_PRIORITY_ADD_NODE,
         add_handler_priority: int = VAL_PRIORITY_ADD_HANDLER,
     ) -> None:
@@ -211,14 +210,67 @@ class GUITreePanel(GUIPanel):
         )
 
         CallbackQueue.add(
-            self._add_item_handler_registry,
+            self._bind_item_handler_registry,
             node_tag=node_tag,
             node=node,
-            item_click_callback=item_click_callback,
-            item_double_click_callback=item_double_click_callback,
-            status_bar_callback=status_bar_callback,
             priority=add_handler_priority,
         )
+
+    def _create_single_click_callback(
+        self,
+        item_click_callback: Optional[Callback],
+        status_bar_callback: Optional[MessageCallback],
+    ) -> Callback:
+        def single_click_callback(
+            sender: Sender,
+            app_data: Tuple[int, int],
+        ) -> None:
+            user_data = dpg.get_item_user_data(app_data[1])
+            if item_click_callback is not None:
+                item_click_callback(sender, app_data, user_data=user_data)
+            if status_bar_callback is not None:
+                GUIStatusBar.set(status_bar_callback, user_data=user_data)
+
+        return single_click_callback
+
+    def _create_double_click_callback(
+        self,
+        item_double_click_callback: Optional[Callback],
+    ) -> Callback:
+        def double_click_callback(
+            sender: Sender,
+            app_data: Tuple[int, int],
+        ) -> None:
+            user_data = dpg.get_item_user_data(app_data[1])
+            if item_double_click_callback is not None:
+                item_double_click_callback(sender, app_data, user_data=user_data)
+
+        return double_click_callback
+
+    def _setup_event_handlers(self) -> None:
+        for handler in self._node_handlers.values():
+            with dpg.item_handler_registry(tag=handler.tag):
+                item_click_callback = handler.item_click_callback
+                item_double_click_callback = handler.item_double_click_callback
+                status_bar_callback = handler.status_bar_callback
+                if item_click_callback is not None or status_bar_callback is not None:
+                    dpg.add_item_clicked_handler(
+                        callback=self._create_single_click_callback(
+                            item_click_callback,
+                            status_bar_callback,
+                        )
+                    )
+
+                if item_double_click_callback is not None:
+                    dpg.add_item_double_clicked_handler(
+                        callback=self._create_double_click_callback(
+                            item_double_click_callback,
+                        )
+                    )
+
+    def _bind_item_handler_registry(self, node_tag: str, node: TreeNode) -> None:
+        handler_tag = self._node_handlers[node.node_type].tag
+        dpg.bind_item_handler_registry(node_tag, handler_tag)
 
     def _build_tree_node(
         self,
@@ -241,79 +293,6 @@ class GUITreePanel(GUIPanel):
 
         return False
 
-    def _get_handler_registry_tag(self, tag: str) -> str:
-        return f"{tag}{SUF_NODE_HANDLER}"
-
-    def _delete_item_handler_registries(self) -> None:
-        with self._handler_lock:
-            for handler in self._handlers.values():
-                dpg_delete_item(handler.tag)
-
-            self._handlers.clear()
-
-    def _assign_item_handler_registry(self, handler: Handler) -> None:
-        try:
-            with self._handler_lock:
-                self._create_item_handler_registry(handler)
-                self._bind_item_handler_registry(handler)
-        except SystemError as exception:
-            logger.error_with_traceback(exception, f"Error assigning item handler registry '{handler.tag}'")
-            raise CallbackQueueStop(str(exception)) from exception
-
-    def _create_item_handler_registry(self, handler: Handler) -> None:
-        dpg_delete_item(handler.tag)
-        with dpg.item_handler_registry(tag=handler.tag):
-            if handler.item_click_callback is not None:
-                item_click_callback = handler.item_click_callback
-                status_bar_callback = handler.status_bar_callback
-
-                def single_click_callback(sender: Sender, app_data: Any, user_data: Any) -> None:
-                    item_click_callback(
-                        sender,
-                        app_data,
-                        user_data,
-                    )
-                    if status_bar_callback is not None:
-                        GUIStatusBar.set(status_bar_callback)
-
-                dpg.add_item_clicked_handler(
-                    callback=single_click_callback,
-                    user_data=(handler.node, handler.parent),
-                )
-            if handler.item_double_click_callback is not None:
-                dpg.add_item_double_clicked_handler(
-                    callback=handler.item_double_click_callback,
-                    user_data=(handler.node, handler.parent),
-                )
-
-        self._handlers[handler.tag] = handler
-
-    def _bind_item_handler_registry(self, handler: Handler) -> None:
-        if dpg.does_item_exist(handler.parent) and dpg.does_item_exist(handler.tag):
-            dpg.bind_item_handler_registry(handler.parent, handler.tag)
-
-    def _add_item_handler_registry(
-        self,
-        node_tag: str,
-        node: TreeNode,
-        item_click_callback: Optional[ItemClickCallback] = None,
-        item_double_click_callback: Optional[ItemClickCallback] = None,
-        status_bar_callback: Optional[MessageCallback] = None,
-    ) -> None:
-        if not dpg.does_item_exist(node_tag):
-            return
-
-        tag = self._get_handler_registry_tag(node_tag)
-        handler = Handler(
-            tag=tag,
-            parent=node_tag,
-            node=node,
-            item_click_callback=item_click_callback,
-            item_double_click_callback=item_double_click_callback,
-            status_bar_callback=status_bar_callback,
-        )
-        self._assign_item_handler_registry(handler)
-
     def _create_status_bar_message_function(
         self,
         message_or_function: Union[str, MessageCallback],
@@ -321,7 +300,7 @@ class GUITreePanel(GUIPanel):
         return GUIStatusBar.create_message_function(message_or_function)
 
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
-        def message_function() -> str:
+        def message_function(*args: Any, **kwargs: Any) -> str:
             if self.application_config_manager.autoplay:
                 return MSG_STATUS_NODE_RECONSTRUCTION
 
@@ -332,8 +311,9 @@ class GUITreePanel(GUIPanel):
     def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
         return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)
 
-    def _create_status_bar_message_function_for_directory_node(self, node_tag: str) -> MessageCallback:
-        def message_function() -> str:
+    def _create_status_bar_message_function_for_directory_node(self) -> MessageCallback:
+        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
+            _, node_tag = user_data
             return MSG_STATUS_NODE_DIRECTORY.format(
                 expand_or_collapse=VAL_TEXT_COLLAPSE if dpg_get_value(node_tag) else VAL_TEXT_EXPAND,
             )
@@ -382,18 +362,6 @@ class GUITreePanel(GUIPanel):
             label=label,
             callback=lambda: self._context_mark_as_favorite(node),
         )
-
-    def _delete_children(self, tag: str) -> None:
-        for child in dpg.get_item_children(tag, 1) or []:
-            child_tag = dpg.get_item_alias(child)
-            self._delete_children(child_tag)
-
-            registry_tag = self._get_handler_registry_tag(child_tag)
-            dpg_delete_item(registry_tag)
-            if registry_tag in self._handlers:
-                del self._handlers[registry_tag]
-
-            dpg_delete_item(child_tag)
 
     def clear_selection(self) -> None:
         if self._selected_node_tag is not None and dpg.does_item_exist(self._selected_node_tag):

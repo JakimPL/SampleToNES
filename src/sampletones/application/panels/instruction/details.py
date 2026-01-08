@@ -303,6 +303,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             default_value=instruction.short,
+            callback=self._on_instruction_changed,
         )
 
         for tag in [
@@ -311,7 +312,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
         ]:
             GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
-            dpg.bind_item_handler_registry(tag, self._event_handler_tag)
+            if tag != TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT:
+                dpg.bind_item_handler_registry(tag, self._event_handler_tag)
 
     def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
         instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)

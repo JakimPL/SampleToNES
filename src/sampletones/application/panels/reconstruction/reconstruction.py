@@ -266,8 +266,8 @@ class GUIReconstructionPanel(GUIPanel):
         tag = self._get_generator_checkbox_tag(generator_name)
         name = generator_name.capitalized
 
-        def message_function() -> str:
-            if dpg.get_item_configuration(tag)["enabled"] is False:
+        def message_function(*args: Any, **kwargs: Any) -> str:
+            if not dpg.is_item_enabled(tag):
                 return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE.format(generator_name=name)
 
             return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE.format(
