@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -123,6 +123,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
         self.eta_estimator: Optional[ETAEstimator] = None
+
+        self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -62,6 +62,8 @@ class GUIBrowserPanel(GUITreePanel):
         self.reconstruction_manager = reconstruction_manager
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
+
+        self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None

@@ -63,8 +63,8 @@ class GUIStatusBar:
 
     def update(
         self,
-        message_or_function: Optional[Union[str, MessageCallback]] = None,
         *args: Any,
+        message_or_function: Optional[Union[str, MessageCallback]] = None,
         delta_time: Optional[float] = None,
         **kwargs: Any,
     ) -> None:

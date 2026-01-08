@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -71,6 +71,8 @@ class GUIExplorerPanel(GUITreePanel):
         self.shortcut_manager = shortcut_manager
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
+
+        self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
         self.on_directory_clicked: Optional[OnReconstructPathCallback] = None
