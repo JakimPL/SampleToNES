@@ -14,6 +14,7 @@ from ...constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
     MSG_STATUS_INPUT,
+    SUF_HANDLER_REGISTRY,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -38,6 +39,8 @@ class GUIReconstructorPanel(GUIPanel):
     def __init__(self, config_manager: ConfigManager) -> None:
         self.config_manager = config_manager
 
+        self._event_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
+
         super().__init__(
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
@@ -45,6 +48,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -57,7 +61,11 @@ class GUIReconstructorPanel(GUIPanel):
             self._create_mixer_slider()
             self._create_tooltips()
 
-        self._register_callbacks()
+    def _setup_event_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._event_handler_tag):
+            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
+            dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS)
@@ -71,21 +79,25 @@ class GUIReconstructorPanel(GUIPanel):
             label=LBL_CHECKBOX_GLOBAL_PULSE_1,
             default_value=GeneratorName.PULSE1 in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
+            callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_PULSE_2,
             default_value=GeneratorName.PULSE2 in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
+            callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_TRIANGLE,
             default_value=GeneratorName.TRIANGLE in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
+            callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_NOISE,
             default_value=GeneratorName.NOISE in self.config_manager.config.generation.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
+            callback=self._on_parameter_change,
         )
 
     def _create_mixer_slider(self) -> None:
@@ -99,23 +111,13 @@ class GUIReconstructorPanel(GUIPanel):
             width=DIM_INPUT_WIDTH,
         )
 
+        dpg.bind_item_handler_registry(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._event_handler_tag)
         GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
 
-    def _register_callbacks(self) -> None:
-        for tag in self.config_manager.config_parameters["reconstructor"].keys():
-            dpg.set_item_callback(tag, self._on_parameter_change)
-
-        for generator_tag in self.config_manager.generator_tags.keys():
-            dpg.set_item_callback(generator_tag, self._on_generator_change)
-
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
-
-    def _on_generator_change(self, sender: Sender, app_data: bool) -> None:
         gui_values = self._get_all_gui_values()
         self.config_manager.update_config_from_gui_values(gui_values)
 

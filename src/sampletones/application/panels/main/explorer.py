@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.tree.handler import NodeHandler
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
@@ -46,6 +45,7 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import NodeHandler
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager

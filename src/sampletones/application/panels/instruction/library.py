@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.tree.handler import NodeHandler
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.enums import LibraryGeneratorName
 from sampletones.exceptions import (
@@ -85,6 +84,7 @@ from ...constants.main import TAG_PANEL_MAIN_CONVERTER
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import NodeHandler
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager

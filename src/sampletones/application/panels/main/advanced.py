@@ -14,6 +14,7 @@ from ...constants.general import (
     DIM_DIALOG_HEIGHT_FILE,
     DIM_DIALOG_WIDTH_FILE,
     DIM_INPUT_WIDTH,
+    SUF_HANDLER_REGISTRY,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
@@ -55,6 +56,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
+        self._event_handler_tag = f"{TAG_PANEL_MAIN_ADVANCED}{SUF_HANDLER_REGISTRY}"
+
         self.on_update_library_directory: Optional[VoidCallback] = None
         self.on_update_output_directory: Optional[VoidCallback] = None
 
@@ -68,6 +71,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -80,7 +84,11 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             self._create_path_settings()
             self._create_tooltips()
 
-        self._register_callbacks()
+    def _setup_event_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._event_handler_tag):
+            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
+            dpg.add_item_edited_handler(callback=self._on_parameter_change)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_ADVANCED)
@@ -100,6 +108,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             min_value=VAL_RANGE_MAIN_ADVANCED_MAX_WORKERS,
             width=DIM_INPUT_WIDTH,
         )
+
+        dpg.bind_item_handler_registry(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, self._event_handler_tag)
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(
@@ -149,10 +159,6 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, LBL_TOOLTIP_MAIN_ADVANCED_MAX_WORKERS)
-
-    def _register_callbacks(self) -> None:
-        for tag in self.config_manager.config_parameters["advanced"].keys():
-            dpg.set_item_callback(tag, self._on_parameter_change)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         gui_values = self._get_all_gui_values()
