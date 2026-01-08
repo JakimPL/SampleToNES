@@ -216,6 +216,20 @@ class GUITreePanel(GUIPanel):
             priority=add_handler_priority,
         )
 
+    def _create_hover_callback(
+        self,
+        status_bar_callback: Optional[MessageCallback],
+    ):
+        def hover_callback(
+            sender: Sender,
+            app_data: int,
+        ) -> None:
+            user_data = dpg.get_item_user_data(app_data)
+            if status_bar_callback is not None:
+                GUIStatusBar.set(status_bar_callback, user_data=user_data)
+
+        return hover_callback
+
     def _create_single_click_callback(
         self,
         item_click_callback: Optional[Callback],
@@ -260,6 +274,13 @@ class GUITreePanel(GUIPanel):
                             status_bar_callback,
                         )
                     )
+
+                    if status_bar_callback is not None:
+                        dpg.add_item_hover_handler(
+                            callback=self._create_hover_callback(
+                                status_bar_callback,
+                            )
+                        )
 
                 if item_double_click_callback is not None:
                     dpg.add_item_double_clicked_handler(
