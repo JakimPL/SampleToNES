@@ -3,6 +3,7 @@ from typing import Any
 
 import numpy as np
 
+from sampletones.generators import MIXER_LEVELS
 from sampletones.library import InstructionLibraryFragment
 from sampletones.typehints import Color
 
@@ -18,6 +19,7 @@ class InstructionLayer(Layer):
     line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
 
     def __post_init__(self) -> None:
-        data = self.data.data.astype(np.float32)
+        mixer = MIXER_LEVELS[self.data.generator_class]
+        data = self.data.data.astype(np.float32) / mixer
         object.__setattr__(self, "x_data", np.arange(len(data)).astype(np.float32))
         object.__setattr__(self, "y_data", data)

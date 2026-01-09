@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -82,6 +83,8 @@ class GUIConverterPanel(GUIPanel):
         self.system_progress = SystemProgress()
 
         self.eta_estimator: Optional[ETAEstimator] = None
+
+        self._status_lock = threading.Lock()
 
         self.config: Optional[Config] = None
         self.is_file: bool = True
@@ -337,17 +340,18 @@ class GUIConverterPanel(GUIPanel):
         if not dpg.does_item_exist(TAG_GROUP_MAIN_CONVERTER):
             return None
 
-        match task_status:
-            case TaskStatus.COMPLETED:
-                return self._set_status_completed()
-            case TaskStatus.FAILED:
-                return self._set_status_failed()
-            case TaskStatus.CANCELLED:
-                return self._set_status_cancelled()
-            case TaskStatus.CANCELLING:
-                return self._set_status_cancelling()
-            case TaskStatus.RUNNING:
-                return self._set_status_running(task_progress)
+        with self._status_lock:
+            match task_status:
+                case TaskStatus.COMPLETED:
+                    return self._set_status_completed()
+                case TaskStatus.FAILED:
+                    return self._set_status_failed()
+                case TaskStatus.CANCELLED:
+                    return self._set_status_cancelled()
+                case TaskStatus.CANCELLING:
+                    return self._set_status_cancelling()
+                case TaskStatus.RUNNING:
+                    return self._set_status_running(task_progress)
 
         return None
 

@@ -118,14 +118,14 @@ class LFSRTimer(Timer):
         self._period = value
         self._clocks_per_sample = self.calculate_clocks_per_sample(value)
         self._period = (NOISE_SHORT_PERIOD if self.short else NOISE_LONG_PERIOD) / self._clocks_per_sample
-        self._real_frequency = self.sample_rate / self._period
+        self._real_frequency = 0.5 * self.sample_rate / self._period
 
         if self.reset_phase:
             self.reset()
 
     def calculate_clocks_per_sample(self, period: int) -> float:
         apu_period = NOISE_PERIODS[period]
-        lfsr_clock_hz = APU_CLOCK / float(apu_period)
+        lfsr_clock_hz = 2.0 * APU_CLOCK / float(apu_period)
         return lfsr_clock_hz / float(self.sample_rate)
 
     def forward(self, lfsr: int) -> int:

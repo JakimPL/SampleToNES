@@ -64,7 +64,7 @@ FINAL_REGENERATION: Final[bool] = True
 SPECTRAL_LOSS_WEIGHT: Final[float] = 0.80
 TEMPORAL_LOSS_WEIGHT: Final[float] = 0.20
 
-BATCH_SIZE: Final[int] = 1024
+BATCH_SIZE: Final[int] = 512
 MAX_WORKERS: Final[int] = 6
 
 # Channel-specific constants

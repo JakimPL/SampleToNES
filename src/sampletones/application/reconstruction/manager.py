@@ -71,7 +71,7 @@ class ReconstructionManager(CallbackMixin):
         if not original_audio_path:
             return
 
-        if not original_audio_path or not original_audio_path.exists():
+        if not original_audio_path.exists():
             raise FileNotFoundError(f"Original audio file '{original_audio_path}' could not be found.")
 
         open_path_in_explorer(original_audio_path)

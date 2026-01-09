@@ -21,7 +21,6 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from ...utils.callbacks.queue import CallbackQueue
 from ..panel import GUIPanel
 from .layers.type import LayerT
 
@@ -81,8 +80,11 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
     def _create_content(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
 
-    def _on_hover(self) -> None:
-        pass
+    def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
+        shift = dpg.is_key_down(dpg.mvKey_LShift)
+        dpg.configure_item(self.x_axis_tag, lock_min=shift, lock_max=shift)
+        dpg.configure_item(self.y_axis_tag, lock_min=not shift, lock_max=not shift)
+        self._release_axes_limits()
 
     def add_layer(self, layer: LayerT) -> None:
         self.layers[layer.name] = layer
@@ -99,10 +101,10 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
     def _update_ranges(self) -> None:
         layers = [layer for layer in self.layers.values() if layer.x_data.size > 0 and layer.y_data.size > 0]
         if layers:
-            x_min = min(layer.x_data.min() for layer in layers)
-            x_max = max(layer.x_data.max() for layer in layers)
-            y_min = min(min(layer.y_data.min() for layer in layers), VAL_MIN_GRAPH_DEFAULT_Y)
-            y_max = max(max(layer.y_data.max() for layer in layers), VAL_MAX_GRAPH_DEFAULT_Y)
+            x_min = float(min(min(layer.x_data.min() for layer in layers), VAL_MIN_GRAPH_DEFAULT_X))
+            x_max = float(max(max(layer.x_data.max() for layer in layers), VAL_MAX_GRAPH_DEFAULT_X))
+            y_min = float(min(min(layer.y_data.min() for layer in layers), VAL_MIN_GRAPH_DEFAULT_Y))
+            y_max = float(max(max(layer.y_data.max() for layer in layers), VAL_MAX_GRAPH_DEFAULT_Y))
             self.x_range = x_min, x_max
             self.y_range = y_min, y_max
 
@@ -112,25 +114,19 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
 
         self._update_axes_limits()
 
+    def _update_axes_limits(self) -> None:
+        dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
+        dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
+        dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
+        dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
+
+    def _release_axes_limits(self) -> None:
+        dpg.split_frame()
+        dpg.set_axis_limits_auto(self.x_axis_tag)
+        dpg.set_axis_limits_auto(self.y_axis_tag)
+
     def _update_display(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
-
-    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x:
-            dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
-            dpg.set_axis_limits_constraints(self.x_axis_tag, *self.x_range)
-        if y:
-            dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
-            dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
-
-        CallbackQueue.add(self._release_axes_limits, x=x, y=y)
-
-    def _release_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        dpg.split_frame()
-        if x:
-            dpg.set_axis_limits_auto(self.x_axis_tag)
-        if y:
-            dpg.set_axis_limits_auto(self.y_axis_tag)
 
     @property
     def x_range(self) -> Tuple[float, float]:

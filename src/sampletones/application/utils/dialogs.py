@@ -4,13 +4,13 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Callback
 
 from ..constants.general import (
     COL_PATH_TEXT,
     COL_TEXT_ERROR,
     DIM_DIALOG_HEIGHT,
+    DIM_DIALOG_HEIGHT_CONFIRMATION,
     DIM_DIALOG_HEIGHT_ERROR,
     DIM_DIALOG_WIDTH,
     DIM_DIALOG_WIDTH_ERROR,
@@ -34,11 +34,6 @@ from ..constants.general import (
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
-)
-from ..constants.instructions import (
-    TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
-    TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED,
-    TTL_DIALOG_LIBRARY_NOT_LOADED,
 )
 from ..constants.reconstructions import (
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
@@ -127,7 +122,7 @@ def show_confirmation_dialog(
     title: str,
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
-    height: int = DIM_DIALOG_HEIGHT,
+    height: int = DIM_DIALOG_HEIGHT_CONFIRMATION,
     ok_label: str = LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
@@ -186,7 +181,7 @@ def show_save_confirmation_dialog(
     on_save: Callback,
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
-    height: int = DIM_DIALOG_HEIGHT,
+    height: int = DIM_DIALOG_HEIGHT_CONFIRMATION,
     ok_label=LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
@@ -336,25 +331,6 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         tag=tag,
         title=TTL_DIALOG_FILE_NOT_FOUND,
         content=content,
-        width=DIM_DIALOG_WIDTH_ERROR,
-    )
-
-
-def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
-    tag = get_dialog_tag(TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED)
-
-    def content(parent: str) -> None:
-        dpg.add_text(
-            TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED.format(library_key=key),
-            parent=parent,
-            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
-        )
-
-    show_modal_dialog(
-        tag=tag,
-        title=TTL_DIALOG_LIBRARY_NOT_LOADED,
-        content=content,
-        modal=False,
         width=DIM_DIALOG_WIDTH_ERROR,
     )
 

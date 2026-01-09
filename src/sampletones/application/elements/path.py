@@ -14,6 +14,7 @@ from ..constants.general import (
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
+    VAL_PRIORITY_GUI_ACTION,
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
@@ -83,30 +84,18 @@ class GUIPathText(CallbackMixin):
 
         with dpg.item_handler_registry(tag=self.handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_clicked)
-            dpg.add_item_hover_handler(callback=self._on_hover_start)
-            dpg.add_item_visible_handler(callback=self._on_visible)
+            dpg.add_item_hover_handler(callback=self._on_hover)
 
         dpg.bind_item_handler_registry(self.tag, self.handler_tag)
 
-    def _on_hover_start(self) -> None:
-        if dpg.does_item_exist(self.tag):
-            dpg.configure_item(self.tag, color=self.hover_color)
-            FrameCallbackManager.set_frame_callback(self._check_hover_state)
-
-    def _check_hover_state(self) -> None:
-        if not dpg.does_item_exist(self.tag):
-            return
-
+    def _on_hover(self) -> None:
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                FrameCallbackManager.set_frame_callback(self._check_hover_state)
                 GUIStatusBar.set(MSG_STATUS_PATH)
+                dpg.configure_item(self.tag, color=self.hover_color)
+                FrameCallbackManager.set_frame_callback(self._on_hover, VAL_PRIORITY_GUI_ACTION)
             else:
                 dpg.configure_item(self.tag, color=self.color)
-
-    def _on_visible(self) -> None:
-        if dpg.does_item_exist(self.tag) and not dpg.is_item_hovered(self.tag):
-            dpg.configure_item(self.tag, color=self.color)
 
     def _on_clicked(self) -> None:
         if not self.path.exists():

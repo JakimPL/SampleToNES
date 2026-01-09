@@ -35,6 +35,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self.completed_tasks = 0
         self.current_item: Optional[str] = None
 
+        self._notify_progress_lock = threading.Lock()
         self._pool_lock: threading.Lock = threading.Lock()
         self._exception: Optional[Exception] = None
 
@@ -163,17 +164,18 @@ class TaskProcessor(Generic[T], CallbackMixin):
         self._complete_process(results)
 
     def _notify_progress(self) -> None:
-        if self.on_progress is None:
-            return
+        with self._notify_progress_lock:
+            if self.on_progress is None:
+                return
 
-        progress = TaskProgress(
-            total=self.total_tasks,
-            completed=self.completed_tasks,
-            current_item=self.current_item,
-        )
+            progress = TaskProgress(
+                total=self.total_tasks,
+                completed=self.completed_tasks,
+                current_item=self.current_item,
+            )
 
-        self.call(self.on_progress, self.status, progress)
-        self.logger.debug(f"Status: {self.status}; progress: {progress}")
+            self.call(self.on_progress, self.status, progress)
+            self.logger.debug(f"Status: {self.status}; progress: {progress}")
 
     def _finalize_cancellation(self) -> None:
         if not self.cancelling:

@@ -18,11 +18,6 @@ from sampletones.utils.logger import logger, null_logger
 def load_library(library_path: Path, config_path: Optional[Path] = None) -> None:
     raise NotImplementedError("Library loading is not yet implemented")
 
-    run_application(
-        config_path=config_path,
-        library_path=library_path,
-    )
-
 
 def generate_library(config: Config) -> None:
     window = Window.from_config(config)

@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.general import MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Color
+from sampletones.typehints import Color, Sender
 
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
@@ -73,18 +73,18 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         ):
             dpg.add_plot_axis(
                 dpg.mvXAxis,
+                tag=self.x_axis_tag,
                 parent=self.plot_tag,
                 label=LBL_PLOT_AXIS_SPECTRUM_X,
-                tag=self.x_axis_tag,
                 no_tick_labels=True,
                 no_tick_marks=True,
                 no_label=True,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
+                tag=self.y_axis_tag,
                 label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
                 parent=self.plot_tag,
-                tag=self.y_axis_tag,
                 scale=dpg.mvPlotScale_Log10,
             )
 
@@ -111,7 +111,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
 
         self._update_ranges()
 
-    def _on_hover(self) -> None:
+    def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         GUIStatusBar.set(MSG_STATUS_SPECTRUM_NAVIGATION)
 
     def _update_ranges(self) -> None:
@@ -161,8 +161,6 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
 
         self._update_ranges()
 
-    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x:
-            dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
-        if y:
-            dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
+    def _update_axes_limits(self) -> None:
+        dpg.set_axis_limits(self.x_axis_tag, *self.x_range)
+        dpg.set_axis_limits(self.y_axis_tag, *self.y_range)

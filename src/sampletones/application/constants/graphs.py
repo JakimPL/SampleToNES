@@ -36,7 +36,7 @@ LBL_PLOT_NAME_SPECTRUM = "Spectrum"
 LBL_PLOT_LABEL_BAR = "Bar plot display"
 
 MSG_STATUS_SPECTRUM_NAVIGATION = "Right-click for more options."
-MSG_STATUS_WAVEFORM_NAVIGATION = "Drag to navigate waveform. Scroll to zoom horizontally. Right-click for more options."
+MSG_STATUS_WAVEFORM_NAVIGATION = "Drag to navigate waveform. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically. Right-click for more options."
 
 DIM_GRAPH_WIDTH = -1
 DIM_GRAPH_HEIGHT = 292
