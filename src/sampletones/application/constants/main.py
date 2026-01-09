@@ -99,7 +99,7 @@ MSG_MAIN_CONVERTER_CANCELLING = "Aborting the conversion..."
 MSG_MAIN_CONVERTER_CANCELLED = "Conversion cancelled."
 MSG_MAIN_CONVERTER_INPUT = "Input:"
 MSG_MAIN_CONVERTER_OUTPUT = "Output:"
-MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY = "Double-click to play audio. Right-click to open context menu."
+MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY = "Double-click to reconstruct audio. Right-click to open context menu."
 MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO = f"Click to play audio. {MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY}"
 MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY = "Double-click to open instructions library. Right-click to open context menu."
 
