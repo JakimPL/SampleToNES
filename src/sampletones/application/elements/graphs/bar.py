@@ -77,10 +77,6 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             y_range,
         )
 
-    def delete(self) -> None:
-        super().delete()
-        dpg_delete_item(self.mouse_handler_tag)
-
     def _create_content(self) -> None:
         with dpg.plot(
             tag=self.plot_tag,
@@ -110,8 +106,11 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             )
             self._add_zero_line()
 
+        self._bind_event_handler()
         self._update_axes_limits()
 
+    def _setup_event_handler(self) -> None:
+        super()._setup_event_handler()
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
             dpg.add_mouse_click_handler(callback=self._on_mouse_action)

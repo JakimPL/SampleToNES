@@ -4,6 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Sender
 
+from ...constants.general import SUF_HANDLER_REGISTRY
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
@@ -20,7 +21,7 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from ...utils.callbacks.frame import FrameCallbackManager
+from ...utils.callbacks.queue import CallbackQueue
 from ..panel import GUIPanel
 from .layers.type import LayerT
 
@@ -43,6 +44,7 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         self.legend_tag = f"{tag}{SUF_GRAPH_LEGEND}"
         self.controls_tag = f"{tag}{SUF_GRAPH_CONTROLS}"
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
+        self.event_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
 
         self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
         self._x_range: Tuple[float, float] = x_range
@@ -62,20 +64,25 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
             init=True,
         )
 
-    def delete(self) -> None:
-        for handler in self._handlers:
-            dpg.delete_item(handler)
-
-        dpg.delete_item(self.plot_tag)
-
     def create_panel(self) -> None:
+        self._setup_event_handler()
         with dpg.group(tag=self.tag, parent=self.parent):
             self._create_content()
 
         self._update_axes_limits()
 
+    def _setup_event_handler(self) -> None:
+        with dpg.item_handler_registry(tag=self.event_handler_tag):
+            dpg.add_item_hover_handler(callback=self._on_hover)
+
+    def _bind_event_handler(self) -> None:
+        dpg.bind_item_handler_registry(self.plot_tag, self.event_handler_tag)
+
     def _create_content(self) -> None:
         raise NotImplementedError("Subclasses must implement this method")
+
+    def _on_hover(self) -> None:
+        pass
 
     def add_layer(self, layer: LayerT) -> None:
         self.layers[layer.name] = layer
@@ -116,7 +123,7 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
             dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
             dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
 
-        FrameCallbackManager.set_frame_callback(lambda: self._release_axes_limits(x=x, y=y))
+        CallbackQueue.add(self._release_axes_limits, x=x, y=y)
 
     def _release_axes_limits(self, x: bool = True, y: bool = True) -> None:
         dpg.split_frame()

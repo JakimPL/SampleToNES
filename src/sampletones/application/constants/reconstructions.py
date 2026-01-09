@@ -78,7 +78,7 @@ MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE = (
     'CTRL + click to type value. Enter period name (e.g. "p508") or integer value (4).'
 )
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR = (
-    "Click to change {instrument_feature}. Scroll to zoom horizontally. SHIFT + scroll to zoom vertically."
+    "Click to change {instrument_feature}. Scroll to zoom horizontally. Right-click for more options."
 )
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE = "Edit and press ENTER to change {instrument_feature}."
 MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE = "Copy sequence to clipboard."

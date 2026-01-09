@@ -81,11 +81,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             y_range,
         )
 
-    def delete(self) -> None:
-        dpg_delete_item(self.position_indicator_tag)
-        dpg_delete_item(self.overlay_rectangle_tag)
-        super().delete()
-
     @property
     def sample_length(self) -> int:
         if isinstance(self.current_data, InstructionLibraryFragment):
@@ -132,11 +127,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             self._add_position_indicator()
             self._set_overlay_rectangle()
 
-        GUIStatusBar.bind_to_item(self.plot_tag, MSG_STATUS_WAVEFORM_NAVIGATION)
+        self._bind_event_handler()
         self._update_axes_limits()
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
+
+    def _on_hover(self) -> None:
+        GUIStatusBar.set(MSG_STATUS_WAVEFORM_NAVIGATION)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         if not dpg.does_item_exist(self.overlay_rectangle_tag):

@@ -15,11 +15,13 @@ from ...constants.graphs import (
     LBL_PLOT_AXIS_SPECTRUM_X,
     LBL_PLOT_LABEL_SPECTRUM,
     LBL_PLOT_NAME_SPECTRUM,
+    MSG_STATUS_SPECTRUM_NAVIGATION,
     SUF_GRAPH_THEME,
     VAL_MAX_GRAPH_DEFAULT_X,
     VAL_MIN_GRAPH_DEFAULT_X,
 )
 from ...utils.dpg import dpg_bind_item_theme, dpg_delete_children
+from ..status import GUIStatusBar
 from .graph import GUIGraph
 from .layers.spectrum import SpectrumLayer
 
@@ -86,6 +88,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 scale=dpg.mvPlotScale_Log10,
             )
 
+        self._bind_event_handler()
         self._update_axes_limits()
 
     def load_library_fragment(
@@ -107,6 +110,9 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         )
 
         self._update_ranges()
+
+    def _on_hover(self) -> None:
+        GUIStatusBar.set(MSG_STATUS_SPECTRUM_NAVIGATION)
 
     def _update_ranges(self) -> None:
         if not self.layers:

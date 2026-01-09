@@ -59,6 +59,9 @@ def get_center(width: int, height: int) -> Tuple[int, int]:
 
 
 def center_item(tag: str, width: int, height: int) -> None:
+    if not dpg.does_item_exist(tag):
+        return
+
     width, height = dpg.get_item_rect_size(tag)
     x, y = get_center(width, height)
     dpg.set_item_pos(tag, [x, y])
