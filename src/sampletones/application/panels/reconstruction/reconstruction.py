@@ -477,6 +477,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.application_config_manager.set_instrument_path(directory.parent)
 
+    # TODO: move the responsibility out of the panel class
     def export_instruments_dialog(self) -> None:
         if not self.reconstruction_data:
             raise AssertionError("Expected reconstruction data to be loaded before exporting FTI")

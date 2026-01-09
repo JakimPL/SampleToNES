@@ -4,7 +4,6 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Callback
 
 from ..constants.general import (
@@ -35,11 +34,6 @@ from ..constants.general import (
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
-)
-from ..constants.instructions import (
-    TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
-    TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED,
-    TTL_DIALOG_LIBRARY_NOT_LOADED,
 )
 from ..constants.reconstructions import (
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
@@ -337,25 +331,6 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
         tag=tag,
         title=TTL_DIALOG_FILE_NOT_FOUND,
         content=content,
-        width=DIM_DIALOG_WIDTH_ERROR,
-    )
-
-
-def show_library_not_loaded_dialog(key: InstructionLibraryKey) -> None:
-    tag = get_dialog_tag(TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED)
-
-    def content(parent: str) -> None:
-        dpg.add_text(
-            TPL_INSTRUCTIONS_LIBRARY_NOT_LOADED.format(library_key=key),
-            parent=parent,
-            wrap=DIM_DIALOG_WIDTH_ERROR_WRAP,
-        )
-
-    show_modal_dialog(
-        tag=tag,
-        title=TTL_DIALOG_LIBRARY_NOT_LOADED,
-        content=content,
-        modal=False,
         width=DIM_DIALOG_WIDTH_ERROR,
     )
 

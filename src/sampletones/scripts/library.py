@@ -44,6 +44,7 @@ def generate_library(config: Config) -> None:
         progress_bar.close()
 
     def on_progress(task_status: TaskStatus, task_progress: TaskProgress) -> None:
+        print(task_progress, task_status)
         total = creator.total_instructions
         if total and total != progress_bar.total:
             progress_bar.total = total

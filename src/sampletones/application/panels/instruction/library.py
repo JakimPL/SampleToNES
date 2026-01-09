@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
 
@@ -123,6 +124,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
         self.eta_estimator: Optional[ETAEstimator] = None
+
+        self._status_lock = threading.Lock()
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -579,15 +582,16 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if not dpg.does_item_exist(TAG_PROGRESS_INSTRUCTIONS_LIBRARY):
             return
 
-        match task_status:
-            case TaskStatus.COMPLETED:
-                self._set_generation_completed()
-            case TaskStatus.FAILED:
-                self._set_generation_failed()
-            case TaskStatus.CANCELLED:
-                self._set_generation_cancelled()
-            case TaskStatus.RUNNING:
-                self._update_progress(task_progress)
+        with self._status_lock:
+            match task_status:
+                case TaskStatus.COMPLETED:
+                    self._set_generation_completed()
+                case TaskStatus.FAILED:
+                    self._set_generation_failed()
+                case TaskStatus.CANCELLED:
+                    self._set_generation_cancelled()
+                case TaskStatus.RUNNING:
+                    self._update_progress(task_progress)
 
     def _set_generation_running(self, task_progress: TaskProgress) -> None:
         self._update_progress(task_progress)
