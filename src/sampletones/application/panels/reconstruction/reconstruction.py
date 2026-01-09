@@ -34,6 +34,7 @@ from ...constants.reconstructions import (
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
     LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+    LBL_TOOLTIP_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
@@ -81,6 +82,7 @@ from ...utils.dialogs import (
 )
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
+from ...utils.tooltip import show_tooltip
 from ..player import GUIAudioPlayerPanel
 
 
@@ -160,6 +162,7 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
+            self._create_tooltips()
 
         self._update_buttons_state(False)
 
@@ -261,6 +264,9 @@ class GUIReconstructionPanel(GUIPanel):
                     tag,
                     self._create_message_function_for_generator_checkbox(generator_name),
                 )
+
+    def _create_tooltips(self) -> None:
+        show_tooltip(self.autoscale_tag, LBL_TOOLTIP_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE)
 
     def _create_message_function_for_generator_checkbox(self, generator_name: GeneratorName) -> MessageCallback:
         tag = self._get_generator_checkbox_tag(generator_name)

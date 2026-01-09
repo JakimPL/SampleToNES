@@ -56,6 +56,10 @@ LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS = "Generators"
 LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION = "Load reconstructions"
 LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PERIOD = "Initial period:"
 LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH = "Initial pitch: "
+LBL_TOOLTIP_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE = (
+    "Include reconstruction's amplification coefficient and auto-scale waveforms accordingly."
+)
+
 MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND = "The reconstruction file could not be found."
 MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND = (
     "The audio file of this reconstruction could not be found."

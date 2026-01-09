@@ -175,7 +175,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def get_original_audio_coefficient(self, reconstruction_data: ReconstructionData) -> float:
         original_audio_coefficient = 1.0
         if self.reconstruction_autoscale:
-            original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+            original_audio_coefficient *= reconstruction_data.reconstruction.coefficient
 
         return original_audio_coefficient
 
@@ -309,8 +309,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                         )
 
             dpg_bind_item_theme(series_tag, theme_tag)
-
-        self._update_axes_limits()
 
     def _add_position_indicator(self) -> None:
         dpg_delete_item(self.position_indicator_tag)

@@ -78,6 +78,7 @@ The instruction data depends on the following configuration properties:
     * `0` - raw absolute values of Fourier Transform
     * `100` - absolute values transformed via $\log\left(1 + x\right)$ operation
     Intermediate values interpolate between these two.
+    **Warning.** For now, only the extremal values, `0` and `100`, are working. This is going to be fixed in some next release.
 
 Each set of parameters corresponds to a different instructions data, encoded by a configuration key.
 

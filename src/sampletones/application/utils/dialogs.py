@@ -11,6 +11,7 @@ from ..constants.general import (
     COL_PATH_TEXT,
     COL_TEXT_ERROR,
     DIM_DIALOG_HEIGHT,
+    DIM_DIALOG_HEIGHT_CONFIRMATION,
     DIM_DIALOG_HEIGHT_ERROR,
     DIM_DIALOG_WIDTH,
     DIM_DIALOG_WIDTH_ERROR,
@@ -127,7 +128,7 @@ def show_confirmation_dialog(
     title: str,
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
-    height: int = DIM_DIALOG_HEIGHT,
+    height: int = DIM_DIALOG_HEIGHT_CONFIRMATION,
     ok_label: str = LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
@@ -186,7 +187,7 @@ def show_save_confirmation_dialog(
     on_save: Callback,
     on_confirm: Callback,
     width: int = DIM_DIALOG_WIDTH,
-    height: int = DIM_DIALOG_HEIGHT,
+    height: int = DIM_DIALOG_HEIGHT_CONFIRMATION,
     ok_label=LBL_BUTTON_GLOBAL_OK,
 ) -> None:
     tag = get_dialog_tag(tag)
