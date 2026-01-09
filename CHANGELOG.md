@@ -1,6 +1,6 @@
 # SampleToNES
 
-## v0.2.3
+## v0.2.3 [2026-01-09]
 
 * Improved the application's graphical interface.
 * Added the main page with filesystem explorer.
