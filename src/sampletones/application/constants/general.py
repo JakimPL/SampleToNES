@@ -54,6 +54,7 @@ TAG_STATUS_WINDOW = "status_window"
 TAG_TAB_MAIN = "tab_main"
 TAG_TAB_INSTRUCTIONS = "tab_instructions"
 TAG_TAB_RECONSTRUCTIONS = "tab_reconstructions"
+TAG_HANDLER_FOCUS = "handler_focus"
 
 SUF_BUTTON = "_button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}_copy"

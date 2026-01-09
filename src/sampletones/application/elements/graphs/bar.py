@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 import numpy as np
@@ -110,6 +110,10 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
             dpg.add_mouse_click_handler(callback=self._on_mouse_action)
+
+    def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
+        super()._on_hover(sender, app_data, user_data)
+        self._on_mouse_action(sender)
 
     def _bind_theme(
         self,
@@ -264,15 +268,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             tick_labels = [str(val) for val in self.y_ticks]
             dpg.set_axis_ticks(self.y_axis_tag, tuple(zip(tick_labels, self.y_ticks)))
 
-    def _on_mouse_action(self, sender: Sender, app_data: Tuple[int, int]) -> None:
-        if (
-            dpg.is_key_down(dpg.mvKey_LControl)
-            or dpg.is_key_down(dpg.mvKey_RControl)
-            or dpg.is_key_down(dpg.mvKey_LShift)
-            or dpg.is_key_down(dpg.mvKey_RShift)
-            or dpg.is_key_down(dpg.mvKey_LAlt)
-            or dpg.is_key_down(dpg.mvKey_RAlt)
-        ):
+    def _on_mouse_action(self, sender: Sender) -> None:
+        if dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_LAlt):
             return
 
         if not dpg_is_item_hovered(self.plot_tag) or self.current_data is None:
