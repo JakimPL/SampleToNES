@@ -96,7 +96,6 @@ from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import (
     dpg_configure_item,
-    dpg_delete_children,
     dpg_delete_item,
     dpg_set_value,
 )
@@ -220,18 +219,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _handle_export_button_clicked(self, sender: Sender, app_data: Any, user_data: GeneratorName) -> None:
         self.call(self.on_instrument_export, user_data)
-
-    def _clear_tabs(self) -> None:
-        self._clear_generator_plots()
-        dpg_delete_children(self.tag)
-
-    def _clear_generator_plots(self) -> None:
-        for plots in self.generator_plots.values():
-            for plot in plots.values():
-                plot.delete()
-                self._graphs.pop(plot.tag)
-
-        self.generator_plots.clear()
 
     def _create_tabs_for_generators(self) -> None:
         for generator_name in list(GeneratorName):
