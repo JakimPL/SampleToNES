@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.constants.paths import EXT_FILES_AUDIO
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import TaskProcessor
 from sampletones.utils.logger import BaseLogger
@@ -10,7 +9,7 @@ from sampletones.utils.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file
-from .paths import filter_files, get_output_path, get_relative_path
+from .paths import filter_files, get_audio_files, get_output_path, get_relative_path
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
@@ -25,7 +24,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
         self.config = config.model_copy()
         self.input_path: Path = input_path
         self.is_file: bool = is_file
-        self.wav_files: List[Path] = []
+        self.audio_files: List[Path] = []
 
         self.total_files = 0
         self.completed_files = 0
@@ -45,17 +44,16 @@ class ReconstructionConverter(TaskProcessor[Path]):
         if self.is_file:
             return [(reconstructor, self.input_path, output_path)]
 
-        pattern = f"*{'|*'.join(EXT_FILES_AUDIO)}"
-        self.wav_files = list(self.input_path.rglob(pattern))
-        self.wav_files = filter_files(self.wav_files, self.input_path, output_path)
+        self.audio_files = get_audio_files(self.input_path)
+        self.audio_files = filter_files(self.audio_files, self.input_path, output_path)
 
         arguments: List[Tuple[Reconstructor, Path, Path]] = []
-        for wav_file in self.wav_files:
-            target_path = get_relative_path(self.input_path, wav_file, output_path)
-            arguments.append((reconstructor, wav_file, target_path))
+        for audio_file in self.audio_files:
+            target_path = get_relative_path(self.input_path, audio_file, output_path)
+            arguments.append((reconstructor, audio_file, target_path))
 
         if not arguments:
-            raise NoFilesToProcessError(f"No WAV files found in {self.input_path}")
+            raise NoFilesToProcessError(f"No audio files found in {self.input_path}")
 
         return arguments
 
@@ -71,8 +69,8 @@ class ReconstructionConverter(TaskProcessor[Path]):
     def _notify_progress(self) -> None:
         self.total_files = self.total_tasks
         self.completed_files = self.completed_tasks
-        if self.completed_tasks > 0 and self.completed_tasks <= len(self.wav_files):
-            self.current_file = str(self.wav_files[self.completed_tasks - 1])
+        if self.completed_tasks > 0 and self.completed_tasks <= len(self.audio_files):
+            self.current_file = str(self.audio_files[self.completed_tasks - 1])
             self.current_item = self.current_file
 
         super()._notify_progress()

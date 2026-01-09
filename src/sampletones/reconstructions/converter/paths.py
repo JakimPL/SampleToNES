@@ -1,9 +1,9 @@
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
-from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
+from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.utils import hash_models, to_path
 
 
@@ -22,11 +22,11 @@ def generate_config_directory_name(config: Config) -> str:
 
 def get_relative_path(
     base_directory: Path,
-    wav_file: Path,
+    audio_file: Path,
     output_path: Path,
     suffix: str = EXT_FILE_RECONSTRUCTION,
 ) -> Path:
-    relative_path = wav_file.relative_to(base_directory)
+    relative_path = audio_file.relative_to(base_directory)
     output_path = output_path / relative_path
     output_path = output_path.with_suffix(suffix)
     return Path(output_path.absolute())
@@ -45,15 +45,27 @@ def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_REC
     raise OSError(f"Invalid path: {input_path}")
 
 
+def get_audio_files(
+    input_directory: Path,
+    extensions: Tuple[str, ...] = EXT_FILES_AUDIO,
+    sort: bool = False,
+) -> List[Path]:
+    audio_files = [path for path in input_directory.rglob("*") if path.is_file() and path.suffix.lower() in extensions]
+    if sort:
+        audio_files.sort()
+
+    return audio_files
+
+
 def filter_files(
-    wav_files: List[Path],
+    audio_files: List[Path],
     base_directory: Path,
     output_directory: Path,
 ) -> List[Path]:
     filtered_files = []
-    for wav_file in wav_files:
-        output_path = get_relative_path(base_directory, wav_file, output_directory)
+    for audio_file in audio_files:
+        output_path = get_relative_path(base_directory, audio_file, output_directory)
         if not output_path.exists():
-            filtered_files.append(wav_file)
+            filtered_files.append(audio_file)
 
     return filtered_files
