@@ -5,6 +5,8 @@ import numpy as np
 
 from sampletones.constants.enums import FeatureKey
 
+Numeric = Union[int, float, np.floating, np.integer]
+
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]
 ReducedObject = Tuple[Any, Tuple[SerializedData]]
@@ -17,6 +19,6 @@ Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
 
 Callback = Callable[..., Any]
 VoidCallback = Callable[[], None]
-MessageCallback = Callable[[], str]
+MessageCallback = Callable[..., str]
 
 Pathlike = Union[str, Path]

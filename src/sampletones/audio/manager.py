@@ -287,11 +287,11 @@ class AudioDeviceManager(CallbackMixin):
         if self._audio_data is not None:
             self._position = max(0, min(position, len(self._audio_data)))
 
-    def play_file(self, filepath: Path) -> None:
+    def play_file(self, filepath: Path, update: bool = True) -> None:
         audio = load_audio(filepath, normalize=False, quantize=False)
-        self.play(audio)
+        self.play(audio, update=update)
 
-    def play(self, audio: np.ndarray) -> None:
+    def play(self, audio: np.ndarray, update: bool = True) -> None:
         self.stop()
         self._audio_data = audio.astype(np.float32)
         self._position = 0
@@ -301,12 +301,14 @@ class AudioDeviceManager(CallbackMixin):
 
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
+            args=[update],
             daemon=True,
             name="AudioPlaybackWorker",
         )
+
         self._playback_thread.start()
 
-    def _playback_worker(self) -> None:
+    def _playback_worker(self, update: bool = True) -> None:
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
         try:
             stream = self._pyaudio.open(
@@ -334,21 +336,21 @@ class AudioDeviceManager(CallbackMixin):
             stream.write(chunk.tobytes())
             self._position += chunk_size
 
-            if self._position_callback:
-                self._position_callback(self._position)
+            if update and self._position_callback is not None:
+                self.call(self._position_callback, self._position)
 
         stream.stop_stream()
         stream.close()
-        self._reset()
+        self._reset(update)
 
-    def _reset(self) -> None:
+    def _reset(self, update: bool = True) -> None:
         self._playing = False
         self._paused = False
         self._position = 0
         self._audio_data = None
 
-        if self._position_callback:
-            self._position_callback(0)
+        if update and self._position_callback is not None:
+            self.call(self._position_callback, 0)
 
     def pause(self) -> None:
         self._paused = True

@@ -1,5 +1,4 @@
 import sys
-import threading
 import tkinter
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -20,7 +19,7 @@ from sampletones.exceptions import (
     InvalidReconstructionValuesError,
     LibraryDisplayError,
 )
-from sampletones.library.key import InstructionLibraryKey
+from sampletones.library import InstructionLibraryKey
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -41,31 +40,35 @@ from .constants.general import (
     LBL_BUTTON_GLOBAL_DISCARD,
     LBL_BUTTON_GLOBAL_EXIT,
     LBL_BUTTON_GLOBAL_OK,
-    LBL_MENU_GROUP_FILE,
+    LBL_MENU_GROUP_CONFIGURATION,
+    LBL_MENU_GROUP_GENERAL,
     LBL_MENU_GROUP_PLAYBACK,
     LBL_MENU_GROUP_RECONSTRUCTION,
     LBL_MENU_GROUP_VIEW,
-    LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
-    LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_EXIT,
-    LBL_MENU_ITEM_FILE_LOAD_CONFIG,
-    LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-    LBL_MENU_ITEM_FILE_SAVE_CONFIG,
-    LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+    LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
+    LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
+    LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
+    LBL_MENU_ITEM_GENERAL_EXIT,
     LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
     LBL_MENU_ITEM_PLAYBACK_PAUSE,
     LBL_MENU_ITEM_PLAYBACK_PLAY,
     LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    LBL_MENU_ITEM_PLAYBACK_RESUME,
     LBL_MENU_ITEM_PLAYBACK_STOP,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+    LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
+    LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     LBL_MENU_ITEM_VIEW_FULLSCREEN,
     LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
+    MSG_ALL_AUDIO_FORMATS,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
     MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
@@ -76,22 +79,26 @@ from .constants.general import (
     MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
     MSG_GLOBAL_INVALID_METADATA_ERROR,
     MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+    MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED,
+    MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
-    TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-    TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-    TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
+    TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+    TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
     TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+    TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_MENU_TEXT_FPS,
@@ -109,7 +116,9 @@ from .constants.general import (
     TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_RECONSTRUCT_DIRECTORY,
     TTL_DIALOG_RECONSTRUCT_FILE,
+    TTL_DIALOG_RECONSTRUCTION_SAVED,
     TTL_DIALOG_SAVE_CONFIG,
+    TTL_DIALOG_SAVE_RECONSTRUCTION,
     TTL_WINDOW_MAIN,
     VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
@@ -160,6 +169,7 @@ from .utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
     show_file_not_found_dialog,
+    show_info_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
@@ -223,7 +233,10 @@ class GUI:
             self.config_manager,
             self.application_config_manager,
         )
-        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(self.config_manager)
+        self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
+            self.config_manager,
+            self.application_config_manager,
+        )
         self.advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             self.config_manager,
             self.application_config_manager,
@@ -241,10 +254,6 @@ class GUI:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
-        self._callback_worker_thread: Optional[threading.Thread] = None
-        self._callback_stop_event: threading.Event = threading.Event()
-        self._callback_frame_event: threading.Condition = threading.Condition()
-
         self._unsaved_reconstruction_changes: bool = False
         self._reconstruction_name: Optional[str] = None
 
@@ -259,41 +268,21 @@ class GUI:
 
     def _setup_gui(self) -> None:
         dpg.create_context()
-        self._start_callback_worker()
         self._set_fonts()
         self._register_shortcuts()
         self._set_default_theme()
         self._set_viewport()
         self._setup_dearpygui()
-        self.set_callbacks()
+        self._set_callbacks()
         self._create_main_window()
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
+        self._start_callback_worker()
         dpg.set_exit_callback(self._on_close)
 
     def _start_callback_worker(self) -> None:
-        self._callback_stop_event.clear()
-        self._callback_worker_thread = threading.Thread(
-            target=self._callback_worker,
-            daemon=True,
-            name="CallbackQueueWorker",
-        )
-        self._callback_worker_thread.start()
-        logger.debug("Callback worker thread started")
-
-    def _callback_worker(self) -> None:
-        while not self._callback_stop_event.is_set():
-            CallbackQueue.process()
-            with self._callback_frame_event:
-                self._callback_frame_event.wait(timeout=1.0 / 60.0)
-
-    def _stop_callback_worker(self) -> None:
-        CallbackQueue.stop()
-        self._callback_stop_event.set()
-        if self._callback_worker_thread:
-            self._callback_worker_thread.join(timeout=1.0)
-            logger.debug("Callback worker thread stopped")
+        CallbackQueue.start()
 
     def _on_exit(self) -> None:
         dpg.start_dearpygui()
@@ -359,6 +348,11 @@ class GUI:
             self._save_reconstruction,
         )
         self.shortcut_manager.register(
+            ShortcutId.SAVE_RECONSTRUCTION_AS,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            self._save_reconstruction_as_dialog,
+        )
+        self.shortcut_manager.register(
             ShortcutId.LOAD_RECONSTRUCTION,
             Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
             self._load_reconstruction_with_confirmation,
@@ -370,12 +364,12 @@ class GUI:
         )
         self.shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
             self._save_config_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
             self._load_config_dialog,
         )
         self.shortcut_manager.register(
@@ -441,7 +435,7 @@ class GUI:
 
         self.shortcut_manager.bind_all()
 
-    def set_callbacks(self) -> None:
+    def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
@@ -471,7 +465,7 @@ class GUI:
             is_converter_running=self._is_generation_in_progress,
         )
         self.library_panel.set_callbacks(
-            on_apply_library_config=self.advanced_settings_panel.apply_library_config,
+            on_apply_library_config=self.config_panel.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(
@@ -519,45 +513,42 @@ class GUI:
 
     def _create_menu_bar(self) -> None:
         with dpg.menu_bar():
-            with dpg.menu(label=LBL_MENU_GROUP_FILE):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_SAVE_RECONSTRUCTION,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-                    label=LBL_MENU_ITEM_FILE_LOAD_RECONSTRUCTION,
-                    enabled=not self._is_reconstruction_loaded(),
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_CONFIGURATION,
-                    label=LBL_MENU_ITEM_FILE_SAVE_CONFIG,
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_CONFIGURATION,
-                    label=LBL_MENU_ITEM_FILE_LOAD_CONFIG,
-                )
-                dpg.add_separator()
+            with dpg.menu(label=LBL_MENU_GROUP_GENERAL):
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.AUDIO_SETTINGS,
-                    label=LBL_MENU_ITEM_FILE_AUDIO_SETTINGS,
+                    label=LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
                 )
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXIT,
-                    label=LBL_MENU_ITEM_FILE_EXIT,
+                    label=LBL_MENU_ITEM_GENERAL_EXIT,
                 )
             with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_RECONSTRUCTION_AS,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.CLOSE_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+                    enabled=self._is_reconstruction_loaded(),
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_RECONSTRUCTION,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
+                    enabled=not self._is_reconstruction_loaded(),
+                )
+                dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
                     tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
@@ -571,15 +562,24 @@ class GUI:
                 dpg.add_separator()
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
                     enabled=self._is_reconstruction_loaded(),
                 )
                 self.shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS,
+                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
                     enabled=self._is_reconstruction_loaded(),
+                )
+            with dpg.menu(label=LBL_MENU_GROUP_CONFIGURATION):
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_CONFIGURATION,
+                    label=LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
+                )
+                self.shortcut_manager.add_menu_item(
+                    ShortcutId.LOAD_CONFIGURATION,
+                    label=LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
                 )
             with dpg.menu(label=LBL_MENU_GROUP_PLAYBACK):
                 self.shortcut_manager.add_menu_item(
@@ -792,6 +792,22 @@ class GUI:
     def _create_main_panel(self) -> None:
         self.main_panel.create_panel()
 
+    def _save_reconstruction_as_dialog(self) -> None:
+        filepath = self.reconstruction_manager.filepath
+        if filepath is None:
+            return
+
+        with dpg.file_dialog(
+            label=TTL_DIALOG_SAVE_RECONSTRUCTION,
+            width=DIM_DIALOG_WIDTH_FILE,
+            height=DIM_DIALOG_HEIGHT_FILE,
+            callback=self._handle_save_reconstruction_as,
+            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            default_filename=filepath.name,
+            default_path=str(filepath.parent),
+        ):
+            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
+
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=TTL_DIALOG_SAVE_CONFIG,
@@ -814,6 +830,21 @@ class GUI:
             show_error_dialog(exception, MSG_GLOBAL_CONFIG_SAVE_FAILED)
 
         self.application_config_manager.set_config_path(filepath)
+
+    @file_dialog_handler
+    def _handle_save_reconstruction_as(self, filepath: Path) -> None:
+        try:
+            self._save_reconstruction(filepath)
+            show_info_dialog(
+                TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
+                MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
+                TTL_DIALOG_RECONSTRUCTION_SAVED,
+            )
+        except Exception as exception:  # TODO: specify exception type
+            logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
+            show_error_dialog(exception, MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED)
+
+        self.application_config_manager.set_reconstruction_path(filepath)
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -854,6 +885,8 @@ class GUI:
             file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
+            all_file_extensions = ",".join(EXT_FILES_AUDIO)
+            dpg.add_file_extension(f"{MSG_ALL_AUDIO_FORMATS}{{{all_file_extensions}}}", color=(0, 255, 255, 255))
             for extension in EXT_FILES_AUDIO:
                 dpg.add_file_extension(extension)
 
@@ -1098,8 +1131,11 @@ class GUI:
         self.instruction_panel.close_instruction()
         self._update_menu()
 
-    def _save_reconstruction(self) -> None:
-        self.reconstruction_manager.save_reconstruction()
+    def _save_reconstruction(self, filepath: Optional[Path] = None) -> None:
+        self.reconstruction_manager.save_reconstruction(filepath)
+        self._unsaved_reconstruction_changes = False
+        name = filepath.stem if filepath is not None else None
+        self._update_viewport_title(name)
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
@@ -1163,15 +1199,21 @@ class GUI:
         current_tab_tag = self._get_current_tab()
         playing = False
         loaded = False
+        paused = False
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
             playing = self.reconstruction_panel.player_panel.is_playing()
+            paused = self.reconstruction_panel.player_panel.is_paused()
             loaded = self.reconstruction_panel.player_panel.is_loaded()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             playing = self.instruction_panel.player_panel.is_playing()
+            paused = self.instruction_panel.player_panel.is_paused()
             loaded = self.instruction_panel.player_panel.is_loaded()
 
         is_playing = loaded and playing
-        return LBL_MENU_ITEM_PLAYBACK_PAUSE if is_playing else LBL_MENU_ITEM_PLAYBACK_PLAY
+        if is_playing:
+            return LBL_MENU_ITEM_PLAYBACK_RESUME if paused else LBL_MENU_ITEM_PLAYBACK_PAUSE
+
+        return LBL_MENU_ITEM_PLAYBACK_PLAY
 
     def _is_play_or_pause_enabled(self) -> bool:
         current_tab_tag = self._get_current_tab()
@@ -1254,7 +1296,7 @@ class GUI:
         return self._unsaved_reconstruction_changes
 
     def _exit_application(self) -> None:
-        self._stop_callback_worker()
+        CallbackQueue.stop()
         self.audio_device_manager.stop()
         if self.converter_panel.converter:
             self.converter_panel.converter.cleanup()
@@ -1368,10 +1410,11 @@ class GUI:
 
     def _update_reconstruction_menu_items(self) -> None:
         reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_RECONSTRUCTION_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_FILE_CLOSE_RECONSTRUCTION, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_FILE_SAVE_RECONSTRUCTION, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=reconstruction_loaded)
+        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS, enabled=reconstruction_loaded)
 
     def _update_playback_menu_items(self) -> None:
         dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
@@ -1422,9 +1465,8 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        CallbackQueue.notify_frame()
         CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
-        with self._callback_frame_event:
-            self._callback_frame_event.notify()
 
     def run(self) -> None:
         try:

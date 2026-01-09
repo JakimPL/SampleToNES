@@ -14,7 +14,7 @@ class ZeroLineGraphTheme(Theme):
     tag: str = TAG_THEME_GRAPH_ZERO_LINE
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvLineSeries): [
+            ThemeParameter(item_type=dpg.mvInfLineSeries): [
                 ThemeColor(
                     key=dpg.mvPlotCol_Line,
                     color=COL_BAR_PLOT_ZERO_LINE,

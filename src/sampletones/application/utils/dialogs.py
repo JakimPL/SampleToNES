@@ -34,7 +34,6 @@ from ..constants.general import (
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
-    VAL_PRIORITY_SCHEDULE,
 )
 from ..constants.instructions import (
     TAG_DIALOG_INSTRUCTIONS_LIBRARY_LIBRARY_NOT_LOADED,
@@ -48,8 +47,8 @@ from ..constants.reconstructions import (
 from ..elements.button import GUIButton
 from ..elements.path import GUIPathText
 from ..elements.trace import GUITraceback
-from ..utils.callbacks.queue import CallbackQueue
 from .align import table_wrapper
+from .callbacks.frame import FrameCallbackManager
 from .dpg import dpg_configure_item, dpg_delete_item
 
 
@@ -60,6 +59,9 @@ def get_center(width: int, height: int) -> Tuple[int, int]:
 
 
 def center_item(tag: str, width: int, height: int) -> None:
+    if not dpg.does_item_exist(tag):
+        return
+
     width, height = dpg.get_item_rect_size(tag)
     x, y = get_center(width, height)
     dpg.set_item_pos(tag, [x, y])
@@ -82,21 +84,23 @@ def show_modal_dialog(
         label=title,
         tag=tag,
         modal=modal,
+        width=width,
         min_size=(width, height),
         no_resize=True,
+        autosize=True,
         on_close=lambda: dpg_delete_item(tag),
     ):
         content(tag)
         dpg.add_separator()
-        button_ok_tag = f"{tag}{SUF_BUTTON_OK}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
         GUIButton(
-            tag=button_ok_tag,
+            tag=ok_button_tag,
             label=LBL_BUTTON_GLOBAL_OK,
             callback=lambda: dpg_delete_item(tag),
             width=-1,
         )
 
-        CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+        FrameCallbackManager.set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_info_dialog(tag: str, message: str, title: str) -> None:
@@ -135,18 +139,28 @@ def show_confirmation_dialog(
             wrap=DIM_DIALOG_WIDTH_WRAP,
         )
 
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+
+        def disable() -> None:
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            dpg_delete_item(tag)
+
         @table_wrapper(columns=2)
         def buttons(_: None) -> None:
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_OK}",
+                tag=ok_button_tag,
                 label=ok_label,
-                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                tag=cancel_button_tag,
                 label=LBL_BUTTON_GLOBAL_CANCEL,
-                callback=lambda: dpg_delete_item(tag),
+                callback=lambda: [disable(), close()],
                 width=-1,
             )
 
@@ -162,7 +176,7 @@ def show_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+    FrameCallbackManager.set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_save_confirmation_dialog(
@@ -184,24 +198,36 @@ def show_save_confirmation_dialog(
             wrap=DIM_DIALOG_WIDTH_WRAP,
         )
 
+        save_button_tag = f"{tag}{SUF_BUTTON_SAVE}"
+        ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
+        cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
+
+        def disable() -> None:
+            dpg_configure_item(save_button_tag, enabled=False)
+            dpg_configure_item(ok_button_tag, enabled=False)
+            dpg_configure_item(cancel_button_tag, enabled=False)
+
+        def close() -> None:
+            dpg_delete_item(tag)
+
         @table_wrapper(columns=3)
         def buttons(_: None) -> None:
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_SAVE}",
+                tag=save_button_tag,
                 label=LBL_BUTTON_GLOBAL_SAVE,
-                callback=lambda: [on_save(), on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_save(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_OK}",
+                tag=ok_button_tag,
                 label=ok_label,
-                callback=lambda: [on_confirm(), dpg_delete_item(tag)],
+                callback=lambda: [disable(), on_confirm(), close()],
                 width=-1,
             )
             GUIButton(
-                tag=f"{tag}{SUF_BUTTON_CANCEL}",
+                tag=cancel_button_tag,
                 label=LBL_BUTTON_GLOBAL_CANCEL,
-                callback=lambda: dpg_delete_item(tag),
+                callback=lambda: [disable(), close()],
                 width=-1,
             )
 
@@ -217,7 +243,7 @@ def show_save_confirmation_dialog(
     ):
         content(tag)
 
-    CallbackQueue.add(center_item, tag, width, height, priority=VAL_PRIORITY_SCHEDULE)
+    FrameCallbackManager.set_frame_callback(lambda: center_item(tag, width, height))
 
 
 def show_error_dialog(exception: Exception, message: Optional[str] = None) -> None:
@@ -287,13 +313,7 @@ def show_error_dialog(exception: Exception, message: Optional[str] = None) -> No
 
         content(None)
 
-    CallbackQueue.add(
-        center_item,
-        tag,
-        DIM_DIALOG_WIDTH_ERROR,
-        DIM_DIALOG_HEIGHT_ERROR,
-        priority=VAL_PRIORITY_SCHEDULE,
-    )
+    FrameCallbackManager.set_frame_callback(lambda: center_item(tag, DIM_DIALOG_WIDTH_ERROR, DIM_DIALOG_HEIGHT_ERROR))
 
 
 def show_file_not_found_dialog(filepath: Path, message: str) -> None:

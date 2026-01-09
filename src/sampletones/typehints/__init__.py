@@ -5,6 +5,7 @@ from .general import (
     FeatureValue,
     Initials,
     MessageCallback,
+    Numeric,
     Pathlike,
     ReducedObject,
     Sender,
@@ -13,6 +14,7 @@ from .general import (
 )
 
 __all__ = [
+    "Numeric",
     "Initials",
     "FeatureValue",
     "FeatureMap",

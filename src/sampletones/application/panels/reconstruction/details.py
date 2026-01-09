@@ -727,8 +727,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             width=DIM_BAR_PLOT_WIDTH,
             height=DIM_BAR_PLOT_HEIGHT,
             label=config.label,
-            y_min=y_min,
-            y_max=y_max,
+            y_range=(y_min, y_max),
         )
 
         self._graphs[plot_tag] = plot

@@ -11,9 +11,6 @@ from ...constants.graphs import (
     COL_WAVEFORM_LAYER_SAMPLE,
     DIM_GRAPH_HEIGHT,
     DIM_GRAPH_WIDTH,
-    LBL_BUTTON_WAVEFORM_RESET_ALL,
-    LBL_BUTTON_WAVEFORM_RESET_X,
-    LBL_BUTTON_WAVEFORM_RESET_Y,
     LBL_GRAPH_WAVEFORM_ORIGINAL,
     LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
     LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
@@ -21,9 +18,6 @@ from ...constants.graphs import (
     LBL_PLOT_LABEL_WAVEFORM,
     LBL_PLOT_NAME_WAVEFORM_SAMPLE,
     MSG_STATUS_WAVEFORM_NAVIGATION,
-    SUF_BUTTON_WAVEFORM_RESET_ALL,
-    SUF_BUTTON_WAVEFORM_RESET_X,
-    SUF_BUTTON_WAVEFORM_RESET_Y,
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
@@ -34,34 +28,27 @@ from ...constants.graphs import (
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
-from ...elements.fonts.font import Font
 from ...reconstruction.data import ReconstructionData
 from ...themes.graphs.indicator import IndicatorGraphTheme
 from ...themes.graphs.overlay import OverlayGraphTheme
-from ...utils.align import table_wrapper
 from ...utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
     dpg_delete_children,
     dpg_delete_item,
 )
-from ..button import GUIButton
 from ..status import GUIStatusBar
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
-from .layers.waveform import WaveformLayer
+from .layers.instruction import InstructionLayer
 
 
-class GUIWaveformGraph(GUIGraph):
+class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     tag: str
     parent: str
     width: int
     height: int
     label: str
-    x_min: float
-    x_max: float
-    y_min: float
-    y_max: float
 
     def __init__(
         self,
@@ -70,19 +57,10 @@ class GUIWaveformGraph(GUIGraph):
         width: int = DIM_GRAPH_WIDTH,
         height: int = DIM_GRAPH_HEIGHT,
         label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_min: float = VAL_MIN_GRAPH_DEFAULT_X,
-        x_max: float = VAL_MAX_GRAPH_DEFAULT_X,
-        y_min: float = VAL_MIN_GRAPH_DEFAULT_Y,
-        y_max: float = VAL_MAX_GRAPH_DEFAULT_Y,
-        default_x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        default_y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
-        enable_dragging: bool = True,
+        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
+        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
     ):
         self.reconstruction_autoscale = True
-
-        self.reset_x_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_X}"
-        self.reset_y_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_Y}"
-        self.reset_all_tag = f"{tag}{SUF_BUTTON_WAVEFORM_RESET_ALL}"
 
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
         self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
@@ -99,19 +77,9 @@ class GUIWaveformGraph(GUIGraph):
             width,
             height,
             label,
-            x_min,
-            x_max,
-            y_min,
-            y_max,
-            default_x_range=default_x_range,
-            default_y_range=default_y_range,
-            enable_dragging=enable_dragging,
+            x_range,
+            y_range,
         )
-
-    def delete(self) -> None:
-        dpg_delete_item(self.position_indicator_tag)
-        dpg_delete_item(self.overlay_rectangle_tag)
-        super().delete()
 
     @property
     def sample_length(self) -> int:
@@ -124,13 +92,6 @@ class GUIWaveformGraph(GUIGraph):
         return 0
 
     def _create_content(self) -> None:
-        with dpg.group(
-            tag=self.controls_tag,
-            parent=self.tag,
-            horizontal=True,
-        ):
-            self._create_controls()
-
         with dpg.plot(
             label=self.label,
             tag=self.plot_tag,
@@ -138,54 +99,49 @@ class GUIWaveformGraph(GUIGraph):
             width=self.width,
             height=self.height,
             anti_aliased=True,
-            no_inputs=False,
-            pan_button=-1,
+            no_mouse_pos=True,
+            no_box_select=True,
+            fit_button=False,
+            horizontal_mod=dpg.mvKey_LShift,
+            pan_button=dpg.mvMouseButton_Left,
+            zoom_rate=self.zoom_factor,  # type: ignore
         ):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
-            dpg.add_plot_axis(dpg.mvXAxis, parent=self.plot_tag, label=LBL_PLOT_AXIS_WAVEFORM_TIME, tag=self.x_axis_tag)
+            dpg.add_plot_axis(
+                dpg.mvXAxis,
+                parent=self.plot_tag,
+                label=LBL_PLOT_AXIS_WAVEFORM_TIME,
+                tag=self.x_axis_tag,
+                no_label=True,
+                range_fit=False,
+                auto_fit=False,
+            )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 parent=self.plot_tag,
                 label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
                 tag=self.y_axis_tag,
+                range_fit=False,
+                auto_fit=True,
             )
+            self._add_position_indicator()
             self._set_overlay_rectangle()
 
-        GUIStatusBar.bind_to_item(self.plot_tag, MSG_STATUS_WAVEFORM_NAVIGATION)
-
-    @table_wrapper(columns=3, height=0)
-    def _create_controls(self) -> None:
-        GUIButton(
-            tag=self.reset_x_tag,
-            label=LBL_BUTTON_WAVEFORM_RESET_X,
-            callback=self._reset_x_axis,
-            width=-1,
-            font=Font.REGULAR_SMALL,
-        )
-        GUIButton(
-            tag=self.reset_y_tag,
-            label=LBL_BUTTON_WAVEFORM_RESET_Y,
-            callback=self._reset_y_axis,
-            width=-1,
-            font=Font.REGULAR_SMALL,
-        )
-        GUIButton(
-            tag=self.reset_all_tag,
-            label=LBL_BUTTON_WAVEFORM_RESET_ALL,
-            callback=self._reset_all_axes,
-            width=-1,
-            font=Font.REGULAR_SMALL,
-        )
+        self._bind_event_handler()
+        self._update_axes_limits()
 
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
+
+    def _on_hover(self) -> None:
+        GUIStatusBar.set(MSG_STATUS_WAVEFORM_NAVIGATION)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
         if not dpg.does_item_exist(self.overlay_rectangle_tag):
             dpg.add_shade_series(
                 [x_start, x_end],
-                [self.y_min, self.y_min],
-                y2=[self.y_max, self.y_max],
+                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
+                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
                 tag=self.overlay_rectangle_tag,
                 parent=self.y_axis_tag,
             )
@@ -195,8 +151,8 @@ class GUIWaveformGraph(GUIGraph):
             dpg.configure_item(
                 self.overlay_rectangle_tag,
                 x=[x_start, x_end],
-                y1=[self.y_min, self.y_min],
-                y2=[self.y_max, self.y_max],
+                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
+                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
             )
 
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
@@ -205,7 +161,7 @@ class GUIWaveformGraph(GUIGraph):
         self.current_position = 0
 
         self.add_layer(
-            WaveformLayer(
+            InstructionLayer(
                 data=fragment,
                 name=LBL_PLOT_NAME_WAVEFORM_SAMPLE,
                 color=COL_WAVEFORM_LAYER_SAMPLE,
@@ -213,8 +169,6 @@ class GUIWaveformGraph(GUIGraph):
             )
         )
 
-        self.x_min = VAL_MIN_GRAPH_DEFAULT_X
-        self.x_max = float(len(fragment.data))
         self._update_axes_limits()
         self._update_position_indicator()
 
@@ -292,8 +246,6 @@ class GUIWaveformGraph(GUIGraph):
     ) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data
-        self.current_position = 0
-
         approximation_data, coefficient = self._extract_reconstruction_layer_data(
             reconstruction_data,
             selected_generators,
@@ -301,32 +253,29 @@ class GUIWaveformGraph(GUIGraph):
 
         original_audio = reconstruction_data.original_audio
         original_audio_coefficient = coefficient * self.get_original_audio_coefficient(reconstruction_data)
-
         reconstruction_layer = self.reconstruction_layer(approximation_data)
         sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
-        self._add_reconstruction_layers(
-            reconstruction_layer,
-            sample_layer,
-            original_audio,
-        )
+        self._add_reconstruction_layers(reconstruction_layer, sample_layer)
 
     def _add_reconstruction_layers(
         self,
         reconstruction_layer: ArrayLayer,
         sample_layer: ArrayLayer,
-        original_audio: np.ndarray,
     ) -> None:
-        self.add_layer(reconstruction_layer)
         self.add_layer(sample_layer)
-
-        self.x_min = 0.0
-        self.x_max = float(len(original_audio))
+        self.add_layer(reconstruction_layer)
+        self._update_ranges()
         self._update_display()
 
     def clear(self) -> None:
         self.clear_layers()
         dpg_delete_children(self.y_axis_tag)
         self._set_overlay_rectangle()
+
+    def set_autoscale(self, autoscale: bool) -> None:
+        self.reconstruction_autoscale = autoscale
+        if isinstance(self.current_data, ReconstructionData):
+            self.load_reconstruction_data(self.current_data)
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):
@@ -343,8 +292,8 @@ class GUIWaveformGraph(GUIGraph):
                 )
             else:
                 dpg.add_line_series(
-                    layer.x_data,
-                    layer.y_data,
+                    layer.x_data.tolist(),
+                    layer.y_data.tolist(),
                     label=layer.name,
                     parent=self.y_axis_tag,
                     tag=series_tag,
@@ -363,55 +312,25 @@ class GUIWaveformGraph(GUIGraph):
 
         self._update_axes_limits()
 
-    def _update_axes_limits(self, x: bool = True, y: bool = True) -> None:
-        if x:
-            dpg.set_axis_limits(self.x_axis_tag, self.x_min, self.x_max)
-        if y:
-            dpg.set_axis_limits(self.y_axis_tag, self.y_min, self.y_max)
+    def _add_position_indicator(self) -> None:
+        dpg_delete_item(self.position_indicator_tag)
+        dpg.add_inf_line_series(
+            [0.0],
+            tag=self.position_indicator_tag,
+            parent=self.y_axis_tag,
+            show=False,
+        )
+        self.indicator_theme.bind_to_item(self.position_indicator_tag)
 
+    def _update_position_indicator(self) -> None:
         position_x = float(self.current_position)
+        show = position_x > 0
         dpg_configure_item(
             self.position_indicator_tag,
-            x=[position_x, position_x],
-            y=[self.y_min, self.y_max],
+            x=[position_x],
+            show=show,
         )
 
     def set_position(self, position: int) -> None:
         self.current_position = position
         self._update_position_indicator()
-
-    def _update_position_indicator(self) -> None:
-        if not dpg.does_item_exist(self.y_axis_tag):
-            return
-
-        dpg_delete_item(self.position_indicator_tag)
-        sample_length = self.sample_length
-        if self.current_position > 0 and self.current_position < sample_length:
-            position_x = float(self.current_position)
-
-            dpg.add_line_series(
-                [position_x, position_x],
-                [self.y_min, self.y_max],
-                tag=self.position_indicator_tag,
-                parent=self.y_axis_tag,
-            )
-            self.indicator_theme.bind_to_item(self.position_indicator_tag)
-
-    def _reset_x_axis(self) -> None:
-        if self.layers:
-            max_length = max(layer.x_data[-1] for layer in self.layers.values())
-            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
-            self.x_max = float(max_length)
-        else:
-            self.x_min = VAL_MIN_GRAPH_DEFAULT_X
-            self.x_max = VAL_MAX_GRAPH_DEFAULT_X
-
-        self._update_axes_limits(y=False)
-
-    def _reset_y_axis(self) -> None:
-        self.y_min, self.y_max = self.default_y_range
-        self._update_axes_limits(x=False)
-
-    def _reset_all_axes(self) -> None:
-        self._reset_x_axis()
-        self._reset_y_axis()

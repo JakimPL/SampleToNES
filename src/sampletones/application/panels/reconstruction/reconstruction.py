@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.application.elements.status import GUIStatusBar
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
@@ -29,21 +28,28 @@ from ...constants.general import (
 from ...constants.graphs import DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
 from ...constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+    LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+    LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
     LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE,
     MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
+    SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
     TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+    TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+    TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
     TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
@@ -53,6 +59,7 @@ from ...constants.reconstructions import (
     TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
     TTL_DIALOG_EXPORT_FTI,
     TTL_DIALOG_EXPORT_WAV,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
     VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
@@ -61,10 +68,17 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.graphs.waveform import GUIWaveformGraph
 from ...elements.panel import GUIPanel
+from ...elements.status import GUIStatusBar
 from ...player.data import AudioData
 from ...reconstruction.data import ReconstructionData
 from ...reconstruction.manager import ReconstructionManager
-from ...utils.dialogs import show_error_dialog, show_message_with_path_dialog
+from ...utils.dialogs import (
+    show_error_dialog,
+    show_file_not_found_dialog,
+    show_info_dialog,
+    show_message_with_path_dialog,
+    show_reconstruction_not_loaded_dialog,
+)
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.file import file_dialog_handler
 from ..player import GUIAudioPlayerPanel
@@ -94,6 +108,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
+        self.autoscale_tag = f"{self.plot_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
@@ -130,6 +145,7 @@ class GUIReconstructionPanel(GUIPanel):
             border=False,
         ):
             self._create_audio_source_radio_buttons()
+            self._create_locate_original_audio_button()
             self._create_export_wav_button()
 
     def _create_plot_panel(self) -> None:
@@ -141,8 +157,11 @@ class GUIReconstructionPanel(GUIPanel):
             auto_resize_y=True,
             border=False,
         ):
+            self._create_autoscale_checkbox()
             self._create_waveform_display()
             self._create_generator_checkboxes()
+
+        self._update_buttons_state(False)
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
@@ -176,6 +195,16 @@ class GUIReconstructionPanel(GUIPanel):
             )
             FontRegistry.bind_to_item(radio_button_tag, Font.REGULAR_SMALL)
 
+    def _create_locate_original_audio_button(self) -> None:
+        GUIButton(
+            label=LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            tag=TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            parent=self.audio_tag,
+            callback=self._handle_locate_original_audio_button_click,
+            width=-1,
+            enabled=True,
+        )
+
     def _create_export_wav_button(self) -> None:
         GUIButton(
             label=LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
@@ -183,8 +212,18 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.audio_tag,
             callback=self._handle_export_wav_button_click,
             width=-1,
-            enabled=False,
+            enabled=True,
         )
+
+    def _create_autoscale_checkbox(self) -> None:
+        dpg.add_checkbox(
+            label=LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
+            tag=self.autoscale_tag,
+            parent=self.plot_tag,
+            default_value=True,
+            callback=self._on_autoscale_changed,
+        )
+        FontRegistry.bind_to_item(self.autoscale_tag, Font.REGULAR_SMALL)
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
@@ -227,8 +266,8 @@ class GUIReconstructionPanel(GUIPanel):
         tag = self._get_generator_checkbox_tag(generator_name)
         name = generator_name.capitalized
 
-        def message_function() -> str:
-            if dpg.get_item_configuration(tag)["enabled"] is False:
+        def message_function(*args: Any, **kwargs: Any) -> str:
+            if not dpg.is_item_enabled(tag):
                 return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE.format(generator_name=name)
 
             return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE.format(
@@ -261,10 +300,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _update_reconstruction_display(self, reconstruction_only: bool = False) -> None:
         if not self.reconstruction_data:
-            dpg_configure_item(
-                TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
-                enabled=False,
-            )
+            self._update_buttons_state(enabled=False)
             return
 
         if reconstruction_only:
@@ -275,10 +311,11 @@ class GUIReconstructionPanel(GUIPanel):
             self.waveform_display.load_reconstruction_data(self.reconstruction_data, selected_generators)
 
         self._update_audio_player(reconstruction_only=reconstruction_only)
-        dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
-            enabled=True,
-        )
+        self._update_buttons_state(enabled=True)
+
+    def _update_buttons_state(self, enabled: bool) -> None:
+        dpg.configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=enabled)
+        dpg.configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO, enabled=enabled)
 
     def _on_generator_checkbox_changed(self) -> None:
         self._update_reconstruction_display()
@@ -472,7 +509,29 @@ class GUIReconstructionPanel(GUIPanel):
         feature = self.reconstruction_data.feature_data[generator_name]
         feature.save(filepath, instrument_name)
 
-    def _handle_export_wav_button_click(self) -> None:
+    def _handle_locate_original_audio_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        if self.reconstruction_manager.reconstruction is None:
+            logger.warning("No reconstruction loaded, cannot locate original audio.")
+            show_reconstruction_not_loaded_dialog()
+            return
+
+        path = self.reconstruction_manager.audio_filepath
+        if path is None:
+            logger.warning("No original audio filepath available in the reconstruction.")
+            show_info_dialog(
+                TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+                MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+                TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            )
+            return
+
+        try:
+            self.reconstruction_manager.locate_original_audio()
+        except FileNotFoundError:
+            logger.warning(f"Original audio file could not be found: '{path}'")
+            show_file_not_found_dialog(path, MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED)
+
+    def _handle_export_wav_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_export_wav)
 
     def export_reconstruction_wav_dialog(self) -> None:
@@ -515,6 +574,9 @@ class GUIReconstructionPanel(GUIPanel):
             show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
 
         self.application_config_manager.set_audio_path(filepath)
+
+    def _on_autoscale_changed(self, sender: Sender, app_data: bool) -> None:
+        self.waveform_display.set_autoscale(app_data)
 
     def set_overlay(self, index: Optional[int]) -> None:
         if self.reconstruction_data is None:

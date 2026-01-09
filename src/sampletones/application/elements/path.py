@@ -14,11 +14,10 @@ from ..constants.general import (
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
-    VAL_PRIORITY_GUI_ACTION,
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
-from ..utils.callbacks.queue import CallbackQueue
+from ..utils.callbacks.frame import FrameCallbackManager
 from ..utils.dpg import dpg_delete_item, dpg_set_value
 from ..utils.tooltip import show_tooltip
 from .status import GUIStatusBar
@@ -92,7 +91,7 @@ class GUIPathText(CallbackMixin):
     def _on_hover_start(self) -> None:
         if dpg.does_item_exist(self.tag):
             dpg.configure_item(self.tag, color=self.hover_color)
-            CallbackQueue.add(self._check_hover_state, priority=VAL_PRIORITY_GUI_ACTION)
+            FrameCallbackManager.set_frame_callback(self._check_hover_state)
 
     def _check_hover_state(self) -> None:
         if not dpg.does_item_exist(self.tag):
@@ -100,7 +99,7 @@ class GUIPathText(CallbackMixin):
 
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                CallbackQueue.add(self._check_hover_state, priority=VAL_PRIORITY_GUI_ACTION)
+                FrameCallbackManager.set_frame_callback(self._check_hover_state)
                 GUIStatusBar.set(MSG_STATUS_PATH)
             else:
                 dpg.configure_item(self.tag, color=self.color)

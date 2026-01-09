@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -29,6 +29,7 @@ from ...constants.main import (
     LBL_SECTION_MAIN_EXPLORER,
     MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
     MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO,
+    MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_BUTTON_MAIN_EXPLORER_REFRESH,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
@@ -44,11 +45,12 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.tree.handler import NodeHandler
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...explorer.manager import ExplorerManager
 from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_configure_item
+from ...utils.dpg import dpg_configure_item, dpg_delete_children
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
@@ -69,6 +71,8 @@ class GUIExplorerPanel(GUITreePanel):
         self.shortcut_manager = shortcut_manager
 
         self._pending_autoplay_node: Optional[FileSystemNode] = None
+
+        self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
         self.on_directory_clicked: Optional[OnReconstructPathCallback] = None
@@ -92,6 +96,7 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
+        self._setup_event_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -104,6 +109,25 @@ class GUIExplorerPanel(GUITreePanel):
             self._create_tree_window()
 
         self._rebuild_tree()
+
+    def _setup_event_handlers(self) -> None:
+        self._node_handlers = {
+            NodeType.DIRECTORY: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.DIRECTORY),
+                node_type=NodeType.DIRECTORY,
+                item_click_callback=self._on_directory_node_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_directory_node(),
+            ),
+            NodeType.FILE: NodeHandler(
+                tag=self._get_node_handler_tag(NodeType.FILE),
+                node_type=NodeType.FILE,
+                item_click_callback=self._on_file_node_clicked,
+                item_double_click_callback=self._on_file_node_double_clicked,
+                status_bar_callback=self._create_status_bar_message_function_for_file_node(),
+            ),
+        }
+
+        super()._setup_event_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
@@ -156,7 +180,6 @@ class GUIExplorerPanel(GUITreePanel):
 
         self.lock()
         try:
-            self._delete_item_handler_registries()
             self.explorer_manager.refresh_tree()
             self.build_tree()
         finally:
@@ -177,7 +200,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        self._delete_children(node_tag)
+        dpg_delete_children(node_tag)
         if self.explorer_manager.is_directory_expanded(node.filepath):
             for child in node.children:
                 has_favorite_ancestor = self._is_node_favorite(node) or self._has_favorite_ancestor(child)
@@ -216,8 +239,6 @@ class GUIExplorerPanel(GUITreePanel):
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
                 is_node_expanded=is_directory_expanded,
-                item_click_callback=self._on_directory_node_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_directory_node(node_tag),
                 add_node_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
                 add_handler_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
             )
@@ -228,30 +249,31 @@ class GUIExplorerPanel(GUITreePanel):
                 state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                item_click_callback=self._on_file_node_clicked,
-                item_double_click_callback=self._on_file_node_double_clicked,
-                status_bar_callback=self._create_status_bar_message_function_for_file_node(node, node_tag),
                 add_node_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
                 add_handler_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
             )
 
         state.parent = node_tag
 
-    def _create_status_bar_message_function_for_file_node(
-        self,
-        node: FileSystemNode,
-        node_tag: str,
-    ) -> MessageCallback:
-        suffix = node.filepath.suffix.lower()
-        match suffix:
-            case paths.EXT_FILE_RECONSTRUCTION:
-                return self._create_status_bar_message_function_for_reconstruction_node()
-            case paths.EXT_FILE_LIBRARY:
-                return self._create_status_bar_message_function_for_library_node()
-            case suffix if suffix in paths.EXT_FILES_AUDIO:
-                return self._create_status_bar_message_function_for_audio_node(node_tag)
+    def _create_status_bar_message_function_for_file_node(self) -> MessageCallback:
+        reconstruction_message_function = self._create_status_bar_message_function_for_reconstruction_node()
+        library_message_function = self._create_status_bar_message_function_for_library_node()
+        audio_message_function = self._create_status_bar_message_function_for_audio_node()
 
-        raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
+        def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
+            node, _ = user_data
+            suffix = node.filepath.suffix.lower()
+            match suffix:
+                case paths.EXT_FILE_RECONSTRUCTION:
+                    return reconstruction_message_function(*args, user_data=user_data, **kwargs)
+                case paths.EXT_FILE_LIBRARY:
+                    return library_message_function(*args, user_data=user_data, **kwargs)
+                case suffix if suffix in paths.EXT_FILES_AUDIO:
+                    return audio_message_function(*args, user_data=user_data, **kwargs)
+                case _:
+                    raise ValueError(f"Unsupported file type {suffix} for status bar message function.")
+
+        return message_function
 
     def _on_file_node_clicked(
         self,
@@ -310,8 +332,14 @@ class GUIExplorerPanel(GUITreePanel):
 
         return None
 
-    def _create_status_bar_message_function_for_audio_node(self, node_tag) -> MessageCallback:
-        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO)
+    def _create_status_bar_message_function_for_audio_node(self) -> MessageCallback:
+        def message_function(*args: Any, **kwargs: Any) -> str:
+            if self.application_config_manager.autoplay:
+                return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO
+
+            return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY
+
+        return self._create_status_bar_message_function(message_function)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
         has_content = self.explorer_manager.has_relevant_content(node.filepath)

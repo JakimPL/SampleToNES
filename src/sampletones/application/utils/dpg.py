@@ -88,20 +88,3 @@ def dpg_get_value(tag: Sender, /, *args: Any, **kwargs: Any) -> Any:
 def dpg_is_item_hovered(tag: Sender, /, *args: Any, **kwargs: Any) -> Optional[bool]:
     is_hovered: Optional[bool] = dpg.is_item_hovered(tag, *args, **kwargs)
     return is_hovered
-
-
-def dpg_set_frame_callback(
-    callback: Callback,
-    frame_count: int = 1,
-    void_callback=True,
-) -> None:
-    frame_count = dpg.get_frame_count() + max(1, frame_count)
-    if void_callback:
-
-        def wrapper(sender: Sender, app_data: Any, user_data: Any) -> None:
-            callback()
-
-    else:
-        wrapper = callback
-
-    dpg.set_frame_callback(frame_count, wrapper)

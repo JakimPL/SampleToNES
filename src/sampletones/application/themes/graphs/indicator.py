@@ -14,7 +14,7 @@ class IndicatorGraphTheme(Theme):
     tag: str = TAG_THEME_GRAPH_INDICATOR
     _theme: ThemeItems = ThemeItems(
         items={
-            ThemeParameter(item_type=dpg.mvLineSeries): [
+            ThemeParameter(item_type=dpg.mvInfLineSeries): [
                 ThemeColor(
                     key=dpg.mvPlotCol_Line,
                     color=COL_WAVEFORM_POSITION_INDICATOR,

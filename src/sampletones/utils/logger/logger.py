@@ -22,7 +22,7 @@ class Logger(BaseLogger):
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __init__(self, level: int = logging.DEBUG) -> None:
+    def __init__(self, level: int = logging.INFO) -> None:
         if not hasattr(self, "_initialized"):
             self._logger = logging.getLogger(SAMPLETONES_NAME)
             self._logger.setLevel(level)
