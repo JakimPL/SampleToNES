@@ -94,11 +94,7 @@ from ...themes.input import InvalidInputTheme
 from ...themes.table import InitialPitchTableTheme
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
-from ...utils.dpg import (
-    dpg_configure_item,
-    dpg_delete_item,
-    dpg_set_value,
-)
+from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.tooltip import show_tooltip
 

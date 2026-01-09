@@ -274,6 +274,7 @@ class GUI:
         self._set_viewport()
         self._setup_dearpygui()
         self._set_callbacks()
+        self._setup_handlers()
         self._create_main_window()
         self.config_manager.update_gui()
         self._update_menu()
@@ -499,6 +500,9 @@ class GUI:
             generate_library=self._generate_library_if_not_loaded,
             is_library_loaded=self.library_manager.is_library_loaded,
         )
+
+    def _setup_handlers(self) -> None:
+        self.shortcut_manager.setup_focus_handler()
 
     def _create_main_window(self) -> None:
         with dpg.window(

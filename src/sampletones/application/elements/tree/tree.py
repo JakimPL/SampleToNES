@@ -172,6 +172,7 @@ class GUITreePanel(GUIPanel):
             open_on_arrow=open_on_arrow,
             open_on_double_click=open_on_double_click,
             leaf=leaf,
+            bullet=leaf,
             user_data=(node, node_tag),
         ):
             self._apply_node_theme(
@@ -291,7 +292,8 @@ class GUITreePanel(GUIPanel):
 
     def _bind_item_handler_registry(self, node_tag: str, node: TreeNode) -> None:
         handler_tag = self._node_handlers[node.node_type].tag
-        dpg.bind_item_handler_registry(node_tag, handler_tag)
+        if dpg.does_item_exist(node_tag) and dpg.does_item_exist(handler_tag):
+            dpg.bind_item_handler_registry(node_tag, handler_tag)
 
     def _build_tree_node(
         self,
