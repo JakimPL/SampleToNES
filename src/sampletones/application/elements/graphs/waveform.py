@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.library import InstructionLibraryFragment
+from sampletones.typehints import Sender
 
 from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,
@@ -109,20 +110,16 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(
                 dpg.mvXAxis,
+                tag=self.x_axis_tag,
                 parent=self.plot_tag,
                 label=LBL_PLOT_AXIS_WAVEFORM_TIME,
-                tag=self.x_axis_tag,
                 no_label=True,
-                range_fit=False,
-                auto_fit=False,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
+                tag=self.y_axis_tag,
                 parent=self.plot_tag,
                 label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
-                tag=self.y_axis_tag,
-                range_fit=False,
-                auto_fit=True,
             )
             self._add_position_indicator()
             self._set_overlay_rectangle()
@@ -133,8 +130,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def set_overlay_range(self, start: float = 0.0, end: float = 0.0) -> None:
         self._set_overlay_rectangle(x_start=start, x_end=end)
 
-    def _on_hover(self) -> None:
-        super()._on_hover()
+    def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
+        super()._on_hover(sender, app_data, user_data)
         GUIStatusBar.set(MSG_STATUS_WAVEFORM_NAVIGATION)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:

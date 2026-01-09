@@ -94,15 +94,11 @@ class GUIBarGraph(GUIGraph[BarLayer]):
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
                 parent=self.plot_tag,
-                auto_fit=False,
-                range_fit=False,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 tag=self.y_axis_tag,
                 parent=self.plot_tag,
-                auto_fit=False,
-                range_fit=False,
             )
             self._add_zero_line()
 

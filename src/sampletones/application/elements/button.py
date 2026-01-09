@@ -4,8 +4,7 @@ from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Callback
-from sampletones.typehints.general import Sender
+from sampletones.typehints import Callback, Sender
 
 from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme
