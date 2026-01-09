@@ -172,33 +172,44 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._update_axes_limits()
         self._update_position_indicator()
 
-    def get_original_audio_coefficient(self, reconstruction_data: ReconstructionData) -> float:
-        original_audio_coefficient = 1.0
-        if self.reconstruction_autoscale:
-            original_audio_coefficient *= reconstruction_data.reconstruction.coefficient
-
-        return original_audio_coefficient
-
     def _extract_reconstruction_layer_data(
         self,
         reconstruction_data: ReconstructionData,
         selected_generators: Optional[List[GeneratorName]] = None,
-    ) -> Tuple[np.ndarray, float]:
+    ) -> Tuple[np.ndarray, np.ndarray, float]:
         if selected_generators is None:
             selected_generators = list(reconstruction_data.reconstruction.approximations.keys())
 
+        original_audio = reconstruction_data.original_audio
         approximation = reconstruction_data.get_partials(selected_generators)
         full_approximation = reconstruction_data.reconstruction.approximation
 
-        original_audio = reconstruction_data.original_audio
-        original_audio_coefficient = self.get_original_audio_coefficient(reconstruction_data)
+        if not self.reconstruction_autoscale:
+            return original_audio, approximation, 1.0
+
+        original_audio_coefficient = reconstruction_data.reconstruction.coefficient
+        original_audio = original_audio / original_audio_coefficient
 
         coefficient = max(
             np.max(np.abs(full_approximation)),
-            np.max(np.abs(original_audio / original_audio_coefficient)),
+            np.max(np.abs(original_audio)),
         )
 
-        return approximation / coefficient, coefficient
+        return original_audio, approximation, coefficient
+
+    def _extract_layers(
+        self,
+        reconstruction_data: ReconstructionData,
+        selected_generators: Optional[List[GeneratorName]] = None,
+    ) -> Tuple[ArrayLayer, ArrayLayer]:
+        original_audio, approximation_data, _ = self._extract_reconstruction_layer_data(
+            reconstruction_data,
+            selected_generators,
+        )
+
+        sample_layer = self.sample_layer(original_audio)
+        reconstruction_layer = self.reconstruction_layer(approximation_data)
+        return sample_layer, reconstruction_layer
 
     def update_reconstruction_data(
         self,
@@ -209,35 +220,15 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         self.current_data = reconstruction_data
-        approximation_data, coefficient = self._extract_reconstruction_layer_data(
+        sample_layer, reconstruction_layer = self._extract_layers(
             reconstruction_data,
             selected_generators,
         )
 
-        original_audio = reconstruction_data.original_audio
-        original_audio_coefficient = coefficient * self.get_original_audio_coefficient(reconstruction_data)
-
-        reconstruction_layer = self.reconstruction_layer(approximation_data, coefficient)
-        sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
         self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
         self.layers[LBL_GRAPH_WAVEFORM_ORIGINAL] = sample_layer
+        self._update_ranges()
         self._update_display()
-
-    def reconstruction_layer(self, data: np.ndarray, coefficient: float = 1.0) -> ArrayLayer:
-        return ArrayLayer(
-            data=data / coefficient,
-            name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
-            color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
-            line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
-        )
-
-    def sample_layer(self, data: np.ndarray, coefficient: float = 1.0) -> ArrayLayer:
-        return ArrayLayer(
-            data=data / coefficient,
-            name=LBL_GRAPH_WAVEFORM_ORIGINAL,
-            color=COL_WAVEFORM_LAYER_SAMPLE,
-            line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
-        )
 
     def load_reconstruction_data(
         self,
@@ -246,16 +237,28 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         self.clear_layers()
         self.current_data = reconstruction_data
-        approximation_data, coefficient = self._extract_reconstruction_layer_data(
+        sample_layer, reconstruction_layer = self._extract_layers(
             reconstruction_data,
             selected_generators,
         )
 
-        original_audio = reconstruction_data.original_audio
-        original_audio_coefficient = coefficient * self.get_original_audio_coefficient(reconstruction_data)
-        reconstruction_layer = self.reconstruction_layer(approximation_data)
-        sample_layer = self.sample_layer(original_audio, original_audio_coefficient)
         self._add_reconstruction_layers(reconstruction_layer, sample_layer)
+
+    def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
+        return ArrayLayer(
+            data=data,
+            name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
+            color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
+            line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+        )
+
+    def sample_layer(self, data: np.ndarray) -> ArrayLayer:
+        return ArrayLayer(
+            data=data,
+            name=LBL_GRAPH_WAVEFORM_ORIGINAL,
+            color=COL_WAVEFORM_LAYER_SAMPLE,
+            line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+        )
 
     def _add_reconstruction_layers(
         self,
