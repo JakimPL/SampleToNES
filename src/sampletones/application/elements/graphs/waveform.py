@@ -134,6 +134,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._set_overlay_rectangle(x_start=start, x_end=end)
 
     def _on_hover(self) -> None:
+        super()._on_hover()
         GUIStatusBar.set(MSG_STATUS_WAVEFORM_NAVIGATION)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
@@ -227,7 +228,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
         self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
         self.layers[LBL_GRAPH_WAVEFORM_ORIGINAL] = sample_layer
-        self._update_ranges()
         self._update_display()
 
     def load_reconstruction_data(
@@ -267,7 +267,6 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     ) -> None:
         self.add_layer(sample_layer)
         self.add_layer(reconstruction_layer)
-        self._update_ranges()
         self._update_display()
 
     def clear(self) -> None:
@@ -279,6 +278,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.reconstruction_autoscale = autoscale
         if isinstance(self.current_data, ReconstructionData):
             self.load_reconstruction_data(self.current_data)
+            self._update_ranges()
 
     def _update_display(self) -> None:
         if not dpg.does_item_exist(self.y_axis_tag):

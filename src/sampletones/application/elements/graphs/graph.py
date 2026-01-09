@@ -21,7 +21,6 @@ from ...constants.graphs import (
     VAL_MIN_GRAPH_DEFAULT_Y,
     VAL_WAVEFORM_ZOOM_FACTOR,
 )
-from ...utils.callbacks.queue import CallbackQueue
 from ..panel import GUIPanel
 from .layers.type import LayerT
 
@@ -82,7 +81,7 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         raise NotImplementedError("Subclasses must implement this method")
 
     def _on_hover(self) -> None:
-        pass
+        self._release_axes_limits()
 
     def add_layer(self, layer: LayerT) -> None:
         self.layers[layer.name] = layer
@@ -122,8 +121,6 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         if y:
             dpg.set_axis_limits(self.y_axis_tag, *self.y_range)
             dpg.set_axis_limits_constraints(self.y_axis_tag, *self.y_range)
-
-        CallbackQueue.add(self._release_axes_limits, x=x, y=y)
 
     def _release_axes_limits(self, x: bool = True, y: bool = True) -> None:
         dpg.split_frame()
