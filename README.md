@@ -72,7 +72,7 @@ pip install ".[gpu]"
 To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
 
 The instruction data depends on the following configuration properties:
-* `change_rate` (frequency, usually NTSC or PAL)
+* `change_rate` (NES frequency, usually NTSC or PAL)
 * `sample_rate` (in Hz)
 * `transformation_gamma`, which determines the transformation of the spectral information:
     * `0` - raw absolute values of Fourier Transform
