@@ -33,7 +33,7 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
 
 
 def period_to_name(period: int) -> str:
-    return f"p{NOISE_PERIODS[period]}"
+    return f"{period:X}-#"
 
 
 def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PITCH) -> int:
@@ -44,7 +44,21 @@ def clamp_period(period: int, min_period: int = 0, max_period: int = MAX_PERIOD)
     return int(clamp(period, min_period, max_period))
 
 
+def sanitize(name: str) -> str:
+    return name.strip().upper()
+
+
+def sanitize_pitch(name: str) -> str:
+    return "".join([character for character in sanitize(name) if character in "0123456789-#ABCDEF"])
+
+
+def sanitize_period(name: str) -> str:
+    return "".join([character for character in sanitize(name) if character in "0123456789ABCDEF"])
+
+
 MIN_AVAILABLE_FREQUENCY = pitch_to_frequency(MIN_PITCH)
 MAX_AVAILABLE_FREQUENCY = pitch_to_frequency(MAX_PITCH)
 NAME_TO_PITCH = {pitch_to_name(pitch): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
 NAME_TO_PERIOD = {period_to_name(period): period for period in range(len(NOISE_PERIODS))}
+SANITIZED_NAME_TO_PITCH = {sanitize_pitch(pitch_to_name(pitch)): pitch for pitch in range(MIN_PITCH, MAX_PITCH + 1)}
+SANITIZED_NAME_TO_PERIOD = {sanitize_period(period_to_name(period)): period for period in range(len(NOISE_PERIODS))}

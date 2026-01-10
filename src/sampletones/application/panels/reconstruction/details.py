@@ -10,11 +10,15 @@ from sampletones.typehints import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
+    SANITIZED_NAME_TO_PERIOD,
+    SANITIZED_NAME_TO_PITCH,
     clamp,
     clamp_period,
     clamp_pitch,
     period_to_name,
     pitch_to_name,
+    sanitize_period,
+    sanitize_pitch,
 )
 from sampletones.utils.logger import logger
 
@@ -595,18 +599,19 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         generator_name, input_tag, value_tag, change = user_data
-        current_name = dpg.get_value(input_tag).strip()
         if generator_name == GeneratorName.NOISE:
-            if current_name not in NAME_TO_PERIOD:
+            current_name = sanitize_period(dpg.get_value(input_tag))
+            if current_name not in SANITIZED_NAME_TO_PERIOD:
                 return
 
-            value = NAME_TO_PERIOD[current_name]
+            value = SANITIZED_NAME_TO_PERIOD[current_name]
             new_value = clamp_period(value + change)
         else:
-            if current_name not in NAME_TO_PITCH:
+            current_name = sanitize_pitch(dpg.get_value(input_tag))
+            if current_name not in SANITIZED_NAME_TO_PITCH:
                 return
 
-            value = NAME_TO_PITCH[current_name]
+            value = SANITIZED_NAME_TO_PITCH[current_name]
             new_value = clamp_pitch(value + change)
 
         self._update_initial_pitch_display(
@@ -644,15 +649,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         except ValueError:
             name = app_data.strip()
             if generator_name == GeneratorName.NOISE:
-                if name not in NAME_TO_PERIOD:
+                name = sanitize_period(name)
+                if name not in SANITIZED_NAME_TO_PERIOD:
                     value = int(dpg.get_value(value_tag))
                 else:
-                    value = NAME_TO_PERIOD[name]
+                    value = SANITIZED_NAME_TO_PERIOD[name]
             else:
-                if name not in NAME_TO_PITCH:
+                name = sanitize_pitch(name)
+                if name not in SANITIZED_NAME_TO_PITCH:
                     value = int(dpg.get_value(value_tag))
                 else:
-                    value = NAME_TO_PITCH[name]
+                    value = SANITIZED_NAME_TO_PITCH[name]
 
         self._update_initial_pitch_display(
             value,
