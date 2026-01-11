@@ -14,14 +14,14 @@ from ...constants.general import (
 )
 from ...constants.sequencer import (
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
-    DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_ROW,
+    DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_SAMPLE,
     LBL_BUTTON_SEQUENCER_GRID_EXPORT_MODULE,
-    LBL_TABLE_SEQUENCER_GRID_COLUMN_INSTRUMENT,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_ROW,
+    LBL_TABLE_SEQUENCER_GRID_COLUMN_SAMPLE,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE,
     LBL_TEXT_SEQUENCER_GRID_MODULE_OPTIONS,
     LBL_TEXT_SEQUENCER_GRID_NES_FREQUENCY,
@@ -51,7 +51,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
 from ...panels.player import GUIAudioPlayerPanel
-from ...themes.table import TableTheme
+from ...themes.tables.table import TableTheme
 
 
 class GUISequencerGridPanel(GUIPanel):
@@ -167,24 +167,24 @@ class GUISequencerGridPanel(GUIPanel):
                     init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_ROW,
                 )
                 dpg.add_table_column(
-                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_INSTRUMENT,
+                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_SAMPLE,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_SAMPLE,
                 )
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
                 )
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
                 )
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
                 )
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE,

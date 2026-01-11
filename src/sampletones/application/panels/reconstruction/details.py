@@ -91,7 +91,7 @@ from ...reconstruction.manager import ReconstructionManager
 from ...reconstruction.update import ReconstructionUpdate
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
-from ...themes.table import InitialPitchTableTheme
+from ...themes.tables.initial_pitch import InitialPitchTableTheme
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value

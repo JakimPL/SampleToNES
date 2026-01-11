@@ -161,7 +161,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.sequencer.browser import GUISequencerBrowserPanel
 from .panels.sequencer.grid import GUISequencerGridPanel
-from .panels.sequencer.instruments import GUISequencerInstrumentsPanel
+from .panels.sequencer.samples import GUISequencerSamplesPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.browser import BrowserManager
 from .reconstruction.manager import ReconstructionManager
@@ -247,7 +247,7 @@ class GUI:
             self.application_config_manager,
             self.audio_device_manager,
         )
-        self.sequencer_instruments_panel: GUISequencerInstrumentsPanel = GUISequencerInstrumentsPanel()
+        self.sequencer_instruments_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
             self.application_config_manager,
