@@ -52,7 +52,7 @@ class GUISequencerInstrumentsPanel(GUIPanel):
                 tag=TAG_TABLE_SEQUENCER_INSTRUMENTS,
                 header_row=True,
                 resizable=True,
-                borders_innerH=True,
+                borders_innerH=False,
                 borders_innerV=True,
                 borders_outerH=True,
                 borders_outerV=True,
@@ -66,6 +66,5 @@ class GUISequencerInstrumentsPanel(GUIPanel):
                 )
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_INSTRUMENTS_COLUMN_NAME,
-                    width_fixed=True,
                     init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_INSTRUMENTS_NAME,
                 )

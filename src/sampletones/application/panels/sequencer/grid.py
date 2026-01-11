@@ -1,6 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
+from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 
 from ...config.application.manager import ApplicationConfigManager
@@ -12,19 +13,16 @@ from ...constants.general import (
     TAG_TAB_SEQUENCER,
 )
 from ...constants.sequencer import (
+    DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
-    DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_NOTE,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_ROW,
-    DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_VOLUME,
     LBL_BUTTON_SEQUENCER_GRID_EXPORT_MODULE,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_INSTRUMENT,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE,
-    LBL_TABLE_SEQUENCER_GRID_COLUMN_NOTE,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_ROW,
     LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE,
-    LBL_TABLE_SEQUENCER_GRID_COLUMN_VOLUME,
     LBL_TEXT_SEQUENCER_GRID_MODULE_OPTIONS,
     LBL_TEXT_SEQUENCER_GRID_NES_FREQUENCY,
     LBL_TEXT_SEQUENCER_GRID_SPEED,
@@ -53,6 +51,7 @@ from ...elements.fonts.registry import FontRegistry
 from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
 from ...panels.player import GUIAudioPlayerPanel
+from ...themes.table import TableTheme
 
 
 class GUISequencerGridPanel(GUIPanel):
@@ -67,6 +66,8 @@ class GUISequencerGridPanel(GUIPanel):
         self.audio_device_manager = audio_device_manager
 
         self.player_panel: GUIAudioPlayerPanel
+
+        self.pattern_theme = TableTheme()
 
         super().__init__(
             tag=TAG_PANEL_SEQUENCER_GRID,
@@ -142,18 +143,24 @@ class GUISequencerGridPanel(GUIPanel):
         section_text = dpg.add_text(LBL_TEXT_SEQUENCER_GRID_TRACKER)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-        with dpg.child_window(tag=TAG_WINDOW_SEQUENCER_GRID_TRACKER):
+        with dpg.child_window(
+            tag=TAG_WINDOW_SEQUENCER_GRID_TRACKER,
+            width=0,
+            height=-1,
+        ):
             with dpg.table(
                 tag=TAG_TABLE_SEQUENCER_GRID_TRACKER,
                 header_row=True,
                 resizable=False,
-                borders_innerH=True,
+                borders_innerH=False,
                 borders_innerV=True,
                 borders_outerH=True,
                 borders_outerV=True,
                 scrollY=True,
+                row_background=True,
                 policy=dpg.mvTable_SizingFixedFit,
             ):
+                FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
                 dpg.add_table_column(
                     label=LBL_TABLE_SEQUENCER_GRID_COLUMN_ROW,
                     width_fixed=True,
@@ -165,55 +172,38 @@ class GUISequencerGridPanel(GUIPanel):
                     init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
                 )
                 dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1} {LBL_TABLE_SEQUENCER_GRID_COLUMN_NOTE}",
+                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_NOTE,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
                 )
                 dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_1} {LBL_TABLE_SEQUENCER_GRID_COLUMN_VOLUME}",
+                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_VOLUME,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
                 )
                 dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2} {LBL_TABLE_SEQUENCER_GRID_COLUMN_NOTE}",
+                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_NOTE,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_INSTRUMENT,
                 )
                 dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_PULSE_2} {LBL_TABLE_SEQUENCER_GRID_COLUMN_VOLUME}",
+                    label=LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_VOLUME,
+                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
                 )
-                dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE} {LBL_TABLE_SEQUENCER_GRID_COLUMN_NOTE}",
-                    width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_NOTE,
-                )
-                dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_TRIANGLE} {LBL_TABLE_SEQUENCER_GRID_COLUMN_VOLUME}",
-                    width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_VOLUME,
-                )
-                dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE} {LBL_TABLE_SEQUENCER_GRID_COLUMN_NOTE}",
-                    width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_NOTE,
-                )
-                dpg.add_table_column(
-                    label=f"{LBL_TABLE_SEQUENCER_GRID_COLUMN_NOISE} {LBL_TABLE_SEQUENCER_GRID_COLUMN_VOLUME}",
-                    width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_VOLUME,
-                )
+                dpg.add_table_column()
 
                 for row_index in range(VAL_SEQUENCER_GRID_TRACKER_ROWS):
                     with dpg.table_row():
-                        dpg.add_text(f"{row_index:02d}")
-                        dpg.add_text("..")
-                        dpg.add_text("...")
-                        dpg.add_text(".")
-                        dpg.add_text("...")
-                        dpg.add_text(".")
-                        dpg.add_text("...")
-                        dpg.add_text(".")
-                        dpg.add_text("...")
-                        dpg.add_text(".")
+                        with dpg.table_cell():
+                            row_text = dpg.add_text(f"{row_index:02d}")
+                            FontRegistry.bind_to_item(row_text, Font.REGULAR_SMALL)
+                        with dpg.table_cell():
+                            instrument_text = dpg.add_text(".. . ...")
+                            FontRegistry.bind_to_item(instrument_text, Font.BOLD_SMALL)
+                        for _ in range(len(GeneratorName)):
+                            with dpg.table_cell():
+                                generator_text = dpg.add_text("... .")
+                                FontRegistry.bind_to_item(generator_text, Font.REGULAR_SMALL)
+
+        self.pattern_theme.bind_to_item(TAG_TABLE_SEQUENCER_GRID_TRACKER)

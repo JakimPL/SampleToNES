@@ -670,8 +670,8 @@ class GUI:
             ):
                 self._create_main_tab()
                 self._create_reconstructions_tab()
-                self._create_instructions_tab()
                 self._create_sequencer_tab()
+                self._create_instructions_tab()
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(
