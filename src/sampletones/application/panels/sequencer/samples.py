@@ -50,8 +50,10 @@ class GUISequencerSamplesPanel(GUIPanel):
         ):
             with dpg.table(
                 tag=TAG_TABLE_SEQUENCER_SAMPLES,
+                width=-1,
+                height=-1,
                 header_row=True,
-                resizable=True,
+                resizable=False,
                 borders_innerH=False,
                 borders_innerV=True,
                 borders_outerH=True,

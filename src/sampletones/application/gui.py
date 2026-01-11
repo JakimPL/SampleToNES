@@ -20,6 +20,7 @@ from sampletones.exceptions import (
     LibraryDisplayError,
 )
 from sampletones.library import InstructionLibraryKey
+from sampletones.sequencer import Sequencer
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -199,6 +200,7 @@ class GUI:
         self.browser_manager = BrowserManager(self.config_manager)
         self.reconstruction_manager = ReconstructionManager()
         self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
+        self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
 

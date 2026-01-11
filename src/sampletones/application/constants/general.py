@@ -138,6 +138,7 @@ LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE = "Unmark as favorite"
 LBL_CONTEXT_ITEM_COPY_FILENAME = "Copy filename to clipboard"
 LBL_CONTEXT_ITEM_COPY_PATH = "Copy path to clipboard"
 LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER = "Open in explorer"
+LBL_CONTEXT_ITEM_ADD_TO_SEQUENCER = "Add to Sequencer"
 
 MSG_TREE_NO_RESULTS_FOUND = "No results found."
 MSG_GLOBAL_INVALID_METADATA_ERROR = "Invalid file metadata."

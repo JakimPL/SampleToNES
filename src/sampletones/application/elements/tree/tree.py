@@ -8,7 +8,7 @@ from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.reconstructions import Reconstruction
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.typehints import Callback, MessageCallback, Sender
+from sampletones.typehints import Callback, MessageCallback, PathCallback, Sender
 from sampletones.utils import open_path_in_explorer
 from sampletones.utils.logger import logger
 
@@ -19,6 +19,7 @@ from ...constants.general import (
     DIM_BUTTON_WIDTH_SEARCH,
     DIM_INPUT_WIDTH_SEARCH,
     LBL_BUTTON_TREE_CLEAR_SEARCH,
+    LBL_CONTEXT_ITEM_ADD_TO_SEQUENCER,
     LBL_CONTEXT_ITEM_COPY_FILENAME,
     LBL_CONTEXT_ITEM_COPY_PATH,
     LBL_CONTEXT_ITEM_MARK_AS_FAVORITE,
@@ -104,6 +105,8 @@ class GUITreePanel(GUIPanel):
         self._thread_lock = threading.RLock()
 
         self.search_label = search_label
+
+        self.on_add_to_sequencer: Optional[PathCallback] = None
 
         super().__init__(
             tag=tag,
@@ -376,6 +379,14 @@ class GUITreePanel(GUIPanel):
             callback=lambda: open_path_in_explorer(path),
         )
 
+    def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
+        dpg.add_separator()
+        dpg.add_menu_item(
+            label=LBL_CONTEXT_ITEM_ADD_TO_SEQUENCER,
+            callback=self._on_add_to_sequencer,
+            user_data=node,
+        )
+
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
             LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE if self._is_node_favorite(node) else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
@@ -391,6 +402,12 @@ class GUITreePanel(GUIPanel):
             dpg.set_value(self._selected_node_tag, False)
 
         self._selected_node_tag = None
+
+    def _on_add_to_sequencer(self, sender: Sender, app_data: Any, user_data: FileSystemNode) -> None:
+        if not isinstance(user_data, FileSystemNode) or user_data.node_type != NodeType.FILE:
+            return
+
+        self.call(self.on_add_to_sequencer, user_data.filepath)
 
     def _on_search_changed(self, sender: Sender, query: str) -> None:
         if query:

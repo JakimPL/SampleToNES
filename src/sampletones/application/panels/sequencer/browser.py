@@ -221,8 +221,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
+        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             self._pending_autoplay_node = None
+            self.call(self.on_add_to_sequencer, node.filepath)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
@@ -253,5 +255,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
+            self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)

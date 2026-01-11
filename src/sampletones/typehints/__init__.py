@@ -6,6 +6,7 @@ from .general import (
     Initials,
     MessageCallback,
     Numeric,
+    PathCallback,
     Pathlike,
     ReducedObject,
     Sender,
@@ -24,6 +25,7 @@ __all__ = [
     "Color",
     "Callback",
     "VoidCallback",
+    "PathCallback",
     "MessageCallback",
     "Pathlike",
 ]
