@@ -14,7 +14,7 @@ from ..constants.general import (
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
-    VAL_PRIORITY_GUI_ACTION,
+    VAL_DELAY_GUI_ACTION,
 )
 from ..elements.fonts.font import Font
 from ..elements.fonts.registry import FontRegistry
@@ -93,7 +93,10 @@ class GUIPathText(CallbackMixin):
             if dpg.is_item_hovered(self.tag):
                 GUIStatusBar.set(MSG_STATUS_PATH)
                 dpg.configure_item(self.tag, color=self.hover_color)
-                FrameCallbackManager.set_frame_callback(self._on_hover, VAL_PRIORITY_GUI_ACTION)
+                FrameCallbackManager.set_frame_callback(
+                    self._on_hover,
+                    VAL_DELAY_GUI_ACTION,
+                )
             else:
                 dpg.configure_item(self.tag, color=self.color)
 

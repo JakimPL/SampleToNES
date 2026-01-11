@@ -262,7 +262,7 @@ class GUITreePanel(GUIPanel):
 
         return double_click_callback
 
-    def _setup_event_handlers(self) -> None:
+    def _setup_handlers(self) -> None:
         for handler in self._node_handlers.values():
             with dpg.item_handler_registry(tag=handler.tag):
                 item_click_callback = handler.item_click_callback

@@ -105,8 +105,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._bind_event_handler()
         self._update_axes_limits()
 
-    def _setup_event_handler(self) -> None:
-        super()._setup_event_handler()
+    def _setup_handlers(self) -> None:
+        super()._setup_handlers()
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
             dpg.add_mouse_click_handler(callback=self._on_mouse_action)

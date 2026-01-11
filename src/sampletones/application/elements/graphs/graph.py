@@ -64,13 +64,13 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handler()
+        self._setup_handlers()
         with dpg.group(tag=self.tag, parent=self.parent):
             self._create_content()
 
         self._update_axes_limits()
 
-    def _setup_event_handler(self) -> None:
+    def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self.event_handler_tag):
             dpg.add_item_hover_handler(callback=self._on_hover)
 

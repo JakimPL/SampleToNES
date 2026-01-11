@@ -63,7 +63,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -77,7 +77,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         self._rebuild_tree()
 
-    def _setup_event_handlers(self) -> None:
+    def _setup_handlers(self) -> None:
         self._node_handlers = {
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
@@ -94,7 +94,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
             ),
         }
 
-        super()._setup_event_handlers()
+        super()._setup_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SEQUENCER_BROWSER_RECONSTRUCTIONS)
@@ -221,7 +221,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
         user_data: Tuple[FileSystemNode, str],
     ) -> None:
         mouse_button, _ = app_data
-        node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
             self._pending_autoplay_node = None
 

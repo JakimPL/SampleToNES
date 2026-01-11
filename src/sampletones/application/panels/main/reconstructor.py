@@ -51,7 +51,7 @@ class GUIReconstructorPanel(GUISettingsPanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -64,8 +64,8 @@ class GUIReconstructorPanel(GUISettingsPanel):
             self._create_mixer_slider()
             self._create_tooltips()
 
-    def _setup_event_handlers(self) -> None:
-        with dpg.item_handler_registry(tag=self._event_handler_tag):
+    def _setup_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._item_handler_tag):
             dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
@@ -114,7 +114,7 @@ class GUIReconstructorPanel(GUISettingsPanel):
             width=DIM_INPUT_WIDTH,
         )
 
-        dpg.bind_item_handler_registry(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._event_handler_tag)
+        dpg.bind_item_handler_registry(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._item_handler_tag)
         GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, MSG_STATUS_INPUT)
 
     def _create_tooltips(self) -> None:

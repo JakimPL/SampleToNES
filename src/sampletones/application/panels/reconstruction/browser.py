@@ -81,7 +81,7 @@ class GUIBrowserPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -95,7 +95,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         self._rebuild_tree()
 
-    def _setup_event_handlers(self) -> None:
+    def _setup_handlers(self) -> None:
         self._node_handlers = {
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
@@ -112,7 +112,7 @@ class GUIBrowserPanel(GUITreePanel):
             ),
         }
 
-        super()._setup_event_handlers()
+        super()._setup_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
