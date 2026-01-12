@@ -18,15 +18,36 @@ class BidirectionalHashMap(Generic[ValueT]):
     Subscript item retrieval and assignment support both directions.
 
     Examples:
-        ```
+        The following shows the basic usage of the BidirectionalHashMap.
+
+        ```python3
         bidirectional = BidirectionalHashMap()
         bidirectional["a"] = 1
         bidirectional["b"] = 2
-        bidirectional["b"] = 3  # Updates the value for key "b"
+        bidirectional["b"] = 3    # Updates the value for key "b" from 2 to 3
+        bidirectional[4] = "c"    # Sets the mapping from value 4 to key "c"
 
-        bidirectional.pop("a")  # Removes the key "a" and its associated value 1
-        bidirectional.pop(3)    # Removes the value 3 and its associated key "b"
-        bidirectional.pop("c")  # Raises KeyError
+        print(bidirectional["a"])  # Outputs: 1
+        print(bidirectional[3])    # Outputs: "b"
+        print(bidirectional.get("d"))  # Outputs: None
+        print(bidirectional.forward("b"))  # Outputs: 3
+
+        bidirectional.remap_forward("a", "d")  # Changes key "a" to "d"
+        bidirectional.pop("a")    # Removes the key "a" and its associated value 1
+        bidirectional.pop(3)      # Removes the value 3 and its associated key "b"; the map is now empty
+        ```
+
+        The following shows common possible error cases.
+
+        ```python3
+        bidirectional = BidirectionalHashMap()
+        bidirectional["a"] = 1
+        bidirectional["b"] = 3    # Updates the value for key "b" from 2 to 3
+
+        bidirectional.pop("c")    # Raises KeyError as key "c" does not exist
+        bidirectional[2] = 2      # Raises TypeError as value cannot be a string
+        bidirectional["c"] = "d"  # Raises TypeError as value cannot be a string
+        bidirectional["b"] = 1    # Raises ValueError as value 1 is already mapped to key "a"
         ```
     """
 
@@ -34,27 +55,24 @@ class BidirectionalHashMap(Generic[ValueT]):
         self._forward: Dict[str, ValueT] = {}
         self._backward: Dict[ValueT, str] = {}
 
-    def __getitem__(self, key: Union[str, ValueT]) -> Optional[Union[str, ValueT]]:
-        if isinstance(key, str) and key in self._forward:
-            return self._forward[key]
+    def __getitem__(self, key_or_value: KeyOrValue) -> Optional[KeyOrValue]:
+        if isinstance(key_or_value, str) and key_or_value in self._forward:
+            return self._forward[key_or_value]
 
-        if key in self._backward:
-            return self._backward[cast(ValueT, key)]
+        if key_or_value in self._backward:
+            return self._backward[cast(ValueT, key_or_value)]
 
-        raise KeyError(f"Key {key} not found in either direction")
+        raise KeyError(f"Key/value '{key_or_value}' not found in either direction")
 
-    def __setitem__(self, key: KeyOrValue, value: KeyOrValue) -> None:
-        if isinstance(key, str):
-            self.set_forward(key, cast(ValueT, value))
-        else:
-            self.set_backward(cast(ValueT, key), cast(str, value))
+    def __setitem__(self, key_or_value: KeyOrValue, value_or_key: KeyOrValue) -> None:
+        self.set(key_or_value, value_or_key)
 
-    def __delitem__(self, key: Union[str, ValueT]) -> None:
-        if isinstance(key, str):
-            value = self._forward.pop(key)
+    def __delitem__(self, key_or_value: KeyOrValue) -> None:
+        if isinstance(key_or_value, str):
+            value = self._forward.pop(key_or_value)
             del self._backward[value]
         else:
-            string = self._backward.pop(cast(ValueT, key))
+            string = self._backward.pop(cast(ValueT, key_or_value))
             del self._forward[string]
 
     def __len__(self) -> int:
@@ -67,13 +85,42 @@ class BidirectionalHashMap(Generic[ValueT]):
         self._forward[key] = value
         self._backward[value] = key
 
+    def set(self, key_or_value: KeyOrValue, value_or_key: KeyOrValue) -> None:
+        """
+        Bidirectional set method that determines the direction based on the type of the key.
+
+        Args:
+            key_or_value (KeyOrValue): The key or value to set.
+            value_or_key (KeyOrValue): The value or key to set.
+
+        Raises:
+            TypeError: If the types of key and value are not as expected.
+            ValueError: If the key or value already exists with a different mapping.
+        """
+        if isinstance(key_or_value, str):
+            self.set_forward(key_or_value, cast(ValueT, value_or_key))
+        else:
+            self.set_backward(cast(ValueT, key_or_value), cast(str, value_or_key))
+
     def set_forward(self, key: str, value: ValueT) -> None:
+        """
+        Sets the mapping from key to value in the forward direction.
+
+        Args:
+            key (str): The string key.
+            value (ValueT): The value to map to.
+
+        Raises:
+            TypeError: If the key is not a string or the value is a string.
+            ValueError: If the key or value already exists with a different mapping.
+        """
         if not isinstance(key, str):
             raise TypeError(f"Key must be a str, got {type(key)}")
 
         if isinstance(value, str):
-            raise TypeError(f"Value must not be a str, got {type(value)}")
+            raise TypeError("Value must not be a str")
 
+        print(self._forward, self._backward)
         if value in self._backward:
             original_key = self._backward[value]
             if original_key != key:
@@ -85,11 +132,22 @@ class BidirectionalHashMap(Generic[ValueT]):
         self._assign(key, value)
 
     def set_backward(self, value: ValueT, key: str) -> None:
+        """
+        Sets the mapping from value to key in the backward direction.
+
+        Args:
+            value (ValueT): The value to map from.
+            key (str): The string key to map to.
+
+        Raises:
+            TypeError: If the key is not a string or the value is a string.
+            ValueError: If the key or value already exists with a different mapping.
+        """
         if not isinstance(key, str):
             raise TypeError(f"Key must be a str, got {type(key)}")
 
         if isinstance(value, str):
-            raise TypeError(f"Value must not be a str, got {type(value)}")
+            raise TypeError("Value must not be a str")
 
         if key in self._forward:
             original_key = self._forward[key]
@@ -101,47 +159,162 @@ class BidirectionalHashMap(Generic[ValueT]):
 
         self._assign(key, value)
 
+    def get(self, key_or_value: KeyOrValue) -> Optional[KeyOrValue]:
+        """
+        Bidirectional get method that retrieves the value based on the type of the key.
+
+        Args:
+            key_or_value (KeyOrValue): The key or value to retrieve.
+
+        Returns:
+            Optional[KeyOrValue]: The corresponding value or key if found, else None.
+        """
+        if isinstance(key_or_value, str) and key_or_value in self._forward:
+            return self._forward.get(key_or_value)
+
+        if key_or_value in self._backward:
+            return self._backward.get(cast(ValueT, key_or_value))
+
+        return None
+
     def forward(self, key: str) -> ValueT:
+        """
+        Retrieves the value mapped to the given string key in the forward direction.
+
+        Args:
+            key (str): The string key.
+
+        Returns:
+            ValueT: The value mapped to the key.
+
+        Raises:
+            KeyError: If the key is not found.
+            TypeError: If the key is not a string.
+        """
         if not isinstance(key, str):
             raise TypeError(f"Key must be a str, got {type(key)}")
 
         return self._forward[key]
 
     def backward(self, value: ValueT) -> str:
+        """
+        Retrieves the string key mapped to the given value in the backward direction.
+
+        Args:
+            value (ValueT): The value.
+
+        Returns:
+            str: The string key mapped to the value.
+
+        Raises:
+            KeyError: If the value is not found.
+        """
         return self._backward[value]
 
-    def get(self, key: Union[str, ValueT]) -> Optional[Union[str, ValueT]]:
-        if isinstance(key, str) and key in self._forward:
-            return self._forward.get(key)
+    def pop(self, key_or_value: KeyOrValue) -> Optional[KeyOrValue]:
+        """
+        Bidirectional pop method that removes and returns the value based on the type of the key.
 
-        if key in self._backward:
-            return self._backward.get(cast(ValueT, key))
+        Args:
+            key_or_value (KeyOrValue): The key or value to remove.
 
-        return None
+        Returns:
+            Optional[KeyOrValue]: The corresponding value or key if found and removed, else None.
 
-    def pop(self, key: Union[str, ValueT]) -> Optional[Union[str, ValueT]]:
-        if isinstance(key, str) and key in self._forward:
-            return self.pop_forward(key)
+        Raises:
+            KeyError: If the key is not found in either direction.
+        """
+        if isinstance(key_or_value, str) and key_or_value in self._forward:
+            return self.pop_forward(key_or_value)
 
-        if key in self._backward:
-            return self.pop_backward(cast(ValueT, key))
+        if key_or_value in self._backward:
+            return self.pop_backward(cast(ValueT, key_or_value))
 
-        raise KeyError(f"Key {key} not found in either direction")
+        raise KeyError(f"Key/value '{key_or_value}' not found in either direction")
 
     def pop_forward(self, key: str) -> ValueT:
+        """
+        Removes and returns the value mapped to the given string key in the forward direction.
+
+        Args:
+            key (str): The string key.
+
+        Returns:
+            ValueT: The value that was mapped to the key.
+
+        Raises:
+            KeyError: If the key is not found.
+        """
         value = self._forward.pop(key)
         del self._backward[value]
         return value
 
     def pop_backward(self, value: ValueT) -> str:
+        """
+        Removes and returns the string key mapped to the given value in the backward direction.
+
+        Args:
+            value (ValueT): The value.
+
+        Returns:
+            str: The string key that was mapped to the value.
+
+        Raises:
+            KeyError: If the value is not found.
+        """
         string = self._backward.pop(value)
         del self._forward[string]
         return string
 
+    def remap(self, old_key_or_value: KeyOrValue, new_key_or_value: KeyOrValue) -> None:
+        """
+        Remaps an existing key or value to a new key or value in the appropriate direction.
+
+        Args:
+            old_key_or_value (KeyOrValue): The existing key or value to be remapped.
+            new_key_or_value (KeyOrValue): The new key or value to map to.
+
+        Raises:
+            KeyError: If the old_key_or_value is not found.
+            TypeError: If the types of old_key_or_value and new_key_or_value do not match.
+            ValueError: If the new key/value cannot be mapped due to existing mappings.
+        """
+        if isinstance(old_key_or_value, str) and isinstance(new_key_or_value, str):
+            self.remap_forward(old_key_or_value, new_key_or_value)
+
+        elif not isinstance(old_key_or_value, str) and not isinstance(new_key_or_value, str):
+            self.remap_backward(cast(ValueT, old_key_or_value), cast(ValueT, new_key_or_value))
+
+        raise TypeError(
+            "Both 'old_key_or_value' and 'new_key_or_value' must be of the same type (either str or ValueT)"
+        )
+
     def remap_forward(self, old_key: str, new_key: str) -> None:
-        value = self._forward.pop(old_key)
+        """
+        Remaps an existing key to a new key in the forward direction.
+
+        Args:
+            old_key (str): The existing string key to be remapped.
+            new_key (str): The new string key to map to.
+
+        Raises:
+            KeyError: If the old_key is not found.
+            ValueError: If the new_key already exists.
+        """
+        value = self.pop_forward(old_key)
         self.set_forward(new_key, value)
 
     def remap_backward(self, old_value: ValueT, new_value: ValueT) -> None:
-        string = self._backward.pop(old_value)
+        """
+        Remaps an existing value to a new value in the backward direction.
+
+        Args:
+            old_value (ValueT): The existing value to be remapped.
+            new_value (ValueT): The new value to map to.
+
+        Raises:
+            KeyError: If the old_value is not found.
+            ValueError: If the new_value already exists.
+        """
+        string = self.pop_backward(old_value)
         self.set_backward(new_value, string)
