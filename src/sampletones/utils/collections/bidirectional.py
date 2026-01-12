@@ -40,9 +40,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         The following shows common possible error cases.
 
         ```python3
-        bidirectional = BidirectionalHashMap()
-        bidirectional["a"] = 1
-        bidirectional["b"] = 3    # Updates the value for key "b" from 2 to 3
+        bidirectional = BidirectionalHashMap({"a": 1, "b": 3})
 
         bidirectional.pop("c")    # Raises KeyError as key "c" does not exist
         bidirectional[2] = 2      # Raises TypeError as value cannot be a string
@@ -51,9 +49,11 @@ class BidirectionalHashMap(Generic[ValueT]):
         ```
     """
 
-    def __init__(self) -> None:
+    def __init__(self, mapping: Optional[Dict[str, ValueT]] = None) -> None:
         self._forward: Dict[str, ValueT] = {}
         self._backward: Dict[ValueT, str] = {}
+        if mapping:
+            self.update(mapping)
 
     def __getitem__(self, key_or_value: KeyOrValue) -> Optional[KeyOrValue]:
         if isinstance(key_or_value, str) and key_or_value in self._forward:
@@ -84,6 +84,49 @@ class BidirectionalHashMap(Generic[ValueT]):
     def _assign(self, key: str, value: ValueT) -> None:
         self._forward[key] = value
         self._backward[value] = key
+
+    def update(self, mapping: Dict[KeyOrValue, KeyOrValue]) -> None:
+        """
+        Updates the map bidirectionally with multiple key-value pairs from a dictionary.
+
+        Args:
+            mapping (Dict[KeyOrValue, KeyOrValue]): A dictionary containing key/value pairs,
+                possibly in both directions.
+
+        Raises:
+            TypeError: If any key is not a string or any value is a string.
+            ValueError: If any key or value already exists with a different mapping.
+        """
+        for key, value in mapping.items():
+            self.set(key, value)
+
+    def update_forward(self, mapping: Dict[str, ValueT]) -> None:
+        """
+        Updates the bidirectional map with multiple key-value pairs from a dictionary.
+
+        Args:
+            mapping (Dict[str, ValueT]): A dictionary containing string keys and values of type T.
+
+        Raises:
+            TypeError: If any key is not a string or any value is a string.
+            ValueError: If any key or value already exists with a different mapping.
+        """
+        for key, value in mapping.items():
+            self.set_forward(key, value)
+
+    def update_backward(self, mapping: Dict[ValueT, str]) -> None:
+        """
+        Updates the bidirectional map with multiple value-key pairs from a dictionary.
+
+        Args:
+            mapping (Dict[ValueT, str]): A dictionary containing values and string keys.
+
+        Raises:
+            TypeError: If any key is not a string or any value is a string.
+            ValueError: If any key or value already exists with a different mapping.
+        """
+        for key, value in mapping.items():
+            self.set_backward(key, value)
 
     def set(self, key_or_value: KeyOrValue, value_or_key: KeyOrValue) -> None:
         """
