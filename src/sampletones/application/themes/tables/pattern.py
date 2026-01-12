@@ -13,11 +13,8 @@ class PatternTableTheme(Theme):
         items={
             ThemeParameter(item_type=dpg.mvTable): [
                 ThemeStyle(key=dpg.mvStyleVar_CellPadding, x=VAL_TABLE_CELL_PADDING[0], y=VAL_TABLE_CELL_PADDING[1]),
-                ThemeStyle(key=dpg.mvStyleVar_SelectableTextAlign, x=0.5, y=0.5),
                 ThemeColor(key=dpg.mvThemeCol_HeaderHovered, color=COL_PATTERN_HIGHLIGHT),
                 ThemeColor(key=dpg.mvThemeCol_HeaderActive, color=COL_BLANK),
-                ThemeStyle(key=dpg.mvStyleVar_TableAngledHeadersTextAlign, x=0.5, y=0.5),
-                ThemeStyle(key=dpg.mvStyleVar_SeparatorTextAlign, x=0.5, y=0.5),
             ],
         }
     )
