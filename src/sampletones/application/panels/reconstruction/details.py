@@ -95,7 +95,7 @@ from ...reconstruction.manager import ReconstructionManager
 from ...reconstruction.update import ReconstructionUpdate
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
-from ...themes.table import InitialPitchTableTheme
+from ...themes.tables.initial_pitch import InitialPitchTableTheme
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
@@ -121,7 +121,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
-        self.mouse_event_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
+        self.mouse_item_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
 
@@ -211,7 +211,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH}"
 
     def _setup_mouse_event_handler(self) -> None:
-        with dpg.handler_registry(tag=self.mouse_event_handler_tag):
+        with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
     def _export_instruments(self) -> None:

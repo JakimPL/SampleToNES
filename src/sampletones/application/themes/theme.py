@@ -117,7 +117,7 @@ class Theme:
 
     @staticmethod
     def create_before_bind(func: Callback) -> Callback:
-        def wrapper(self: "Theme", *args: Any, **kwargs: Any) -> Any:
+        def wrapper(self: Theme, *args: Any, **kwargs: Any) -> Any:
             self.create()
             return func(self, *args, **kwargs)
 

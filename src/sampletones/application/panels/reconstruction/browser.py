@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import Sender, VoidCallback
+from sampletones.typehints import PathCallback, Sender, VoidCallback
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
@@ -41,7 +41,6 @@ from ...utils.dpg import dpg_configure_item
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
-OnLoadReconstructionCallback = Callable[[Path], None]
 OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
 
 
@@ -65,7 +64,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
-        self.load_reconstruction_with_confirmation: Optional[OnLoadReconstructionCallback] = None
+        self.load_reconstruction_with_confirmation: Optional[PathCallback] = None
         self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
         self.on_reconstruct_file: Optional[VoidCallback] = None
         self.on_reconstruct_directory: Optional[VoidCallback] = None
@@ -81,7 +80,7 @@ class GUIBrowserPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -95,7 +94,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         self._rebuild_tree()
 
-    def _setup_event_handlers(self) -> None:
+    def _setup_handlers(self) -> None:
         self._node_handlers = {
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
@@ -112,7 +111,7 @@ class GUIBrowserPanel(GUITreePanel):
             ),
         }
 
-        super()._setup_event_handlers()
+        super()._setup_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
@@ -294,6 +293,7 @@ class GUIBrowserPanel(GUITreePanel):
         ):
             self._add_context_menu_text(node)
             self._add_context_menu_load_reconstruction_item(node)
+            self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
 

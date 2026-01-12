@@ -20,6 +20,7 @@ from sampletones.exceptions import (
     LibraryDisplayError,
 )
 from sampletones.library import InstructionLibraryKey
+from sampletones.sequencer import Sequencer
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -161,7 +162,7 @@ from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.sequencer.browser import GUISequencerBrowserPanel
 from .panels.sequencer.grid import GUISequencerGridPanel
-from .panels.sequencer.instruments import GUISequencerInstrumentsPanel
+from .panels.sequencer.samples import GUISequencerSamplesPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.browser import BrowserManager
 from .reconstruction.manager import ReconstructionManager
@@ -199,6 +200,7 @@ class GUI:
         self.browser_manager = BrowserManager(self.config_manager)
         self.reconstruction_manager = ReconstructionManager()
         self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
+        self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -247,7 +249,7 @@ class GUI:
             self.application_config_manager,
             self.audio_device_manager,
         )
-        self.sequencer_instruments_panel: GUISequencerInstrumentsPanel = GUISequencerInstrumentsPanel()
+        self.sequencer_instruments_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
             self.application_config_manager,
@@ -670,8 +672,8 @@ class GUI:
             ):
                 self._create_main_tab()
                 self._create_reconstructions_tab()
-                self._create_instructions_tab()
                 self._create_sequencer_tab()
+                self._create_instructions_tab()
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(

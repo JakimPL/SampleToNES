@@ -66,7 +66,7 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             parent=self.parent,
@@ -98,7 +98,7 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
             width=DIM_INPUT_WIDTH,
         )
 
-        dpg.bind_item_handler_registry(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, self._event_handler_tag)
+        dpg.bind_item_handler_registry(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, self._item_handler_tag)
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(

@@ -4,13 +4,12 @@ __pycache__/
 .idea/
 .vscode/
 .github/
-.venv
-
+.venv/
 build/
-sampletones
-sampletones.exe
 
+sampletones
 !src/sampletones
+!tests/sampletones
 
 **/*.idea
 **/*.vscode/**
@@ -30,3 +29,4 @@ sampletones.exe
 *.lock
 *.spec
 *.fb
+*.exe
