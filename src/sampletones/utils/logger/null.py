@@ -7,11 +7,12 @@ from .base import BaseLogger
 
 
 class NullLogger(BaseLogger):
-    _instance: Optional["NullLogger"] = None
+    _instance: Optional[NullLogger] = None
 
     def __new__(cls) -> NullLogger:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+
         return cls._instance
 
     def __init__(self, level: int = logging.INFO):

@@ -1,13 +1,14 @@
 import base64
 import hashlib
 import json
+import struct
 from typing import Any
 
 import numpy as np
 import yaml
 from pydantic import BaseModel
 
-from sampletones.typehints import Pathlike, SerializedData
+from sampletones.typehints import ModelHashable, Pathlike, SerializedData
 
 JSON_INDENT = 2
 
@@ -62,10 +63,32 @@ def deserialize_array(data: SerializedData) -> np.ndarray:
     return array.reshape(data["shape"])
 
 
+def calculate_hash(data: ModelHashable, length: int = 32) -> str:
+    if isinstance(data, BaseModel):
+        data = dump(data.model_dump())
+
+    raw: bytes
+    match data:
+        case bytes():
+            raw = data
+        case str():
+            raw = data.encode("utf-8")
+        case float():
+            raw = struct.pack("f", data)
+        case int():
+            raw = struct.pack("q", data)
+        case bool():
+            raw = struct.pack("?", data)
+        case _:
+            raise TypeError(f"Unsupported data type for hashing: {type(data)}")
+
+    return hashlib.sha256(raw).hexdigest()[:length]
+
+
 def hash_models(*models: BaseModel, length: int = 32) -> str:
     combined = [model.model_dump() for model in models]
     json_string = dump(combined)
-    return hashlib.sha256(json_string.encode("utf-8")).hexdigest()[:length]
+    return calculate_hash(json_string, length=length)
 
 
 def hash_model(model: BaseModel, length: int = 32) -> str:

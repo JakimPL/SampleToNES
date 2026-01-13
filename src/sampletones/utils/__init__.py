@@ -20,6 +20,7 @@ from .frequencies import (
 from .locales import to_utf8
 from .paths import get_directory, open_path_in_explorer, shorten_path, to_path
 from .serialization import (
+    calculate_hash,
     deserialize_array,
     dump,
     hash_model,
@@ -59,6 +60,7 @@ __all__ = [
     "serialize_array",
     "deserialize_array",
     "snake_to_camel",
+    "calculate_hash",
     "hash_model",
     "hash_models",
     "MIN_AVAILABLE_FREQUENCY",

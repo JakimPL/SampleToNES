@@ -14,12 +14,13 @@ from .base import BaseLogger
 
 
 class Logger(BaseLogger):
-    _instance: Optional["Logger"] = None
+    _instance: Optional[Logger] = None
     _logger: logging.Logger
 
     def __new__(cls) -> Logger:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
+
         return cls._instance
 
     def __init__(self, level: int = logging.INFO) -> None:

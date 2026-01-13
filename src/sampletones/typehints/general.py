@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
+from pydantic import BaseModel
 
 from sampletones.constants.enums import FeatureKey
 
@@ -10,6 +11,7 @@ Numeric = Union[int, float, np.floating, np.integer]
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]
 ReducedObject = Tuple[Any, Tuple[SerializedData]]
+ModelHashable = Union[bool, int, float, bytes, str, BaseModel]
 
 FeatureValue = Union[int, np.ndarray]
 FeatureMap = Dict[FeatureKey, FeatureValue]

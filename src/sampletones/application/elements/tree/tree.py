@@ -655,8 +655,8 @@ class GUITreePanel(GUIPanel):
                     try:
                         reconstruction = Reconstruction.load(node.filepath)
                         self.audio_device_manager.play(reconstruction.approximation, update=False)
-                    except Exception as error:
-                        logger.error(f"Failed to autoplay reconstruction file: {error}")
+                    except Exception as exception:
+                        logger.error(f"Failed to autoplay reconstruction file: {exception}")
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self.audio_device_manager.play_file(node.filepath, update=False)
 
