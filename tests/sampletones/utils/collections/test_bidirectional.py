@@ -1,6 +1,7 @@
 import pytest
 
 from sampletones.utils.collections.bidirectional import BidirectionalHashMap
+from tests.sampletones.dummy import CollisionObject, ValueObject
 
 
 class TestInitialization:
@@ -633,21 +634,9 @@ class TestTypes:
 
 class TestEdgeCases:
     def test_hash_collision_objects(self) -> None:
-        class AlwaysZeroHash:
-            def __init__(self, value: int) -> None:
-                self.value = value
-
-            def __hash__(self) -> int:
-                return 0
-
-            def __eq__(self, other: object) -> bool:
-                if not isinstance(other, AlwaysZeroHash):
-                    return False
-                return self.value == other.value
-
-        bidirectional = BidirectionalHashMap[AlwaysZeroHash]()
-        obj1 = AlwaysZeroHash(1)
-        obj2 = AlwaysZeroHash(2)
+        bidirectional = BidirectionalHashMap[CollisionObject]()
+        obj1 = CollisionObject(1)
+        obj2 = CollisionObject(2)
 
         bidirectional["first"] = obj1
         bidirectional["second"] = obj2
@@ -709,18 +698,6 @@ class TestEdgeCases:
         assert bidirectional[Priority.LOW] == "int_zero"
 
     def test_object_equality_causes_collision(self) -> None:
-        class ValueObject:
-            def __init__(self, value: int) -> None:
-                self.value = value
-
-            def __hash__(self) -> int:
-                return hash(self.value)
-
-            def __eq__(self, other: object) -> bool:
-                if not isinstance(other, ValueObject):
-                    return False
-                return self.value == other.value
-
         bidirectional = BidirectionalHashMap[ValueObject]()
         first = ValueObject(42)
         second = ValueObject(42)

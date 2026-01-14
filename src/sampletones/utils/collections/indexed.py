@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-from typing import Dict, Generic, Iterator, Optional, TypeVar, Union
-
-from pydantic import BaseModel
-
-from sampletones.utils import calculate_hash
+from collections.abc import Hashable
+from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union
 
 from .bidirectional import BidirectionalHashMap
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=Hashable)
 
 
 class IndexedCollection(Generic[T]):
     """
     A generic collection that maintains both positional order and hash-based access,
-    for hashable objects. Each item is stored with a unique hash, preventing duplicates
+    for immutable hashable objects. Each item is stored with a unique hash, preventing duplicates
     while maintaining stable integer indices. The collection thus does not allow duplicate items
     (items with the same hash).
+
+    Collection items should not be changed in a way that affects their hash while they are
+    stored in the collection. Doing so may lead to inconsistent behavior.
 
     Internally, this class uses a dictionary for item storage and a BidirectionalHashMap to track the
     mapping between item hashes and their positional indices. When items are inserted or removed,
@@ -24,6 +24,9 @@ class IndexedCollection(Generic[T]):
 
     Subscript access supports both integer indices (including negative indices) and hash strings.
     Items are uniquely identified by their hash, computed via the calculate_hash function.
+
+    Item membership can be checked using the `in` operator, which checks for the presence of an item
+    based on its hash, not its position nor equality.
 
     Examples:
         The following shows basic usage of IndexedCollection.
@@ -74,12 +77,12 @@ class IndexedCollection(Generic[T]):
         ```
     """
 
-    def __init__(self, collection: Optional[Iterator[T]] = None) -> None:
+    def __init__(self, collection: Optional[Iterable[T]] = None) -> None:
         """
         Initializes an IndexedCollection, optionally with items from an iterator.
 
         Args:
-            collection (Optional[Iterator[T]]): An optional iterator of items to initialize the collection.
+            collection (Optional[Iterable[T]]): An optional iterable of items to initialize the collection.
                 Items are added in the order they are yielded. Duplicate items will raise ValueError.
 
         Raises:
@@ -127,8 +130,9 @@ class IndexedCollection(Generic[T]):
         """
         Replaces the item at the specified position or hash with a new item.
 
-        If the new item is identical to the existing item at that position, no action is taken.
-        If the new item already exists elsewhere in the collection, raises ValueError.
+        If the new item already exists elsewhere in the collection, raises ValueError,
+        unless it is at the same position being replaced. In such case, the replacement
+        does take place anyway, as hash equality does not imply object equality.
 
         Args:
             key (Union[int, str]): The integer index (supports negative indices) or hash string.
@@ -145,8 +149,7 @@ class IndexedCollection(Generic[T]):
 
         if item_hash in self._items:
             if self._order.forward(item_hash) != index:
-                raise ValueError(f"Item '{item}' already exists in IndexedCollection")
-            return
+                raise ValueError(f"Item '{item!r}' already exists in IndexedCollection")
 
         self._unset(index, reindex=False)
         self._set(index, item_hash, item, reindex=False)
@@ -159,6 +162,30 @@ class IndexedCollection(Generic[T]):
             bool: True if the collection contains at least one item, False otherwise.
         """
         return len(self._order) > 0
+
+    def __eq__(self, value: object) -> bool:
+        """
+        Checks equality between this collection and another object.
+
+
+        Args:
+            value (object): The object to compare against.
+
+        Returns:
+            bool: True if the other object is an IndexedCollection,
+                with items of the same hash in the same order, False otherwise.
+        """
+        if not isinstance(value, IndexedCollection):
+            return False
+
+        if len(self) != len(value):
+            return False
+
+        for index in range(len(self)):
+            if self.get_hash(index) != value.get_hash(index):
+                return False
+
+        return True
 
     def __contains__(self, item: T) -> bool:
         """
@@ -181,6 +208,18 @@ class IndexedCollection(Generic[T]):
         """
         for index in range(len(self._order)):
             yield self._items[self._order.backward(index)]
+
+    def __next__(self) -> T:
+        """
+        Returns the next item in the iteration.
+
+        Returns:
+            T: The next item in the collection.
+
+        Raises:
+            StopIteration: If there are no more items to iterate over.
+        """
+        return next(self.__iter__())
 
     def __len__(self) -> int:
         """
@@ -253,12 +292,12 @@ class IndexedCollection(Generic[T]):
         """
         self.insert(len(self._order), item)
 
-    def extend(self, items: Iterator[T]) -> None:
+    def extend(self, items: Iterable[T]) -> None:
         """
-        Extends the collection by appending items from an iterator.
+        Extends the collection by appending items from an iterable.
 
         Args:
-            items (Iterator[T]): An iterator of items to append.
+            items (Iterable[T]): An iterable of items to append.
 
         Raises:
             ValueError: If any item with the same hash already exists in the collection.
@@ -285,7 +324,7 @@ class IndexedCollection(Generic[T]):
 
         item_hash = self.hash(item)
         if item_hash in self._items:
-            raise ValueError(f"Item '{item}' already exists in IndexedCollection")
+            raise ValueError(f"Item '{item!r}' already exists in IndexedCollection")
 
         self._set(index, item_hash, item)
 
@@ -343,7 +382,7 @@ class IndexedCollection(Generic[T]):
         try:
             return self._order.forward(item_hash)
         except KeyError as exception:
-            raise ValueError(f"Item '{item}' not found in IndexedCollection") from exception
+            raise ValueError(f"Item '{item!r}' not found in IndexedCollection") from exception
 
     @staticmethod
     def hash(item: T) -> str:
@@ -356,7 +395,17 @@ class IndexedCollection(Generic[T]):
         Returns:
             str: The hash string uniquely identifying the item.
         """
-        return calculate_hash(item)
+        return f"{hash(item):x}"
+
+    @property
+    def hashes(self) -> List[str]:
+        """
+        Returns an iterator over the hash strings of the items in positional order.
+
+        Returns:
+            List[str]: A list of hash strings from index 0 to len(collection)-1.
+        """
+        return [self._order.backward(index) for index in range(len(self._order))]
 
     def _wrap_index(self, index: int) -> int:
         """

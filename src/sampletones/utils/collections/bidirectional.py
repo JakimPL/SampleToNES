@@ -57,12 +57,36 @@ class BidirectionalHashMap(Generic[ValueT]):
             Union[Dict[str, ValueT], Dict[ValueT, str], Dict[Union[str, ValueT], Union[str, ValueT]]]
         ] = None,
     ) -> None:
+        """
+        Initializes a BidirectionalHashMap, optionally with initial mappings.
+
+        Args:
+            mapping (Optional[Union[Dict[str, ValueT], Dict[ValueT, str], Dict[Union[str, ValueT], Union[str, ValueT]]]]):
+                An optional dictionary containing initial key-value pairs. Can be forward mappings (str -> ValueT),
+                backward mappings (ValueT -> str), or mixed bidirectional mappings.
+
+        Raises:
+            TypeError: If any key is not a string or any value is a string.
+            ValueError: If any key or value already exists with a different mapping.
+        """
         self._forward: Dict[str, ValueT] = {}
         self._backward: Dict[ValueT, str] = {}
         if mapping:
             self.update(mapping)
 
     def __getitem__(self, key_or_value: Union[str, ValueT]) -> Optional[Union[str, ValueT]]:
+        """
+        Retrieves a value by string key or a key by value.
+
+        Args:
+            key_or_value (Union[str, ValueT]): The string key (forward lookup) or value (backward lookup).
+
+        Returns:
+            Optional[Union[str, ValueT]]: The corresponding value (if key is str) or key (if value is ValueT).
+
+        Raises:
+            KeyError: If the key or value is not found in either direction.
+        """
         if isinstance(key_or_value, str) and key_or_value in self._forward:
             return self._forward[key_or_value]
 
@@ -73,9 +97,29 @@ class BidirectionalHashMap(Generic[ValueT]):
         raise KeyError(f"Key/value '{key_or_value}' not found in either direction")
 
     def __setitem__(self, key_or_value: Union[str, ValueT], value_or_key: Union[str, ValueT]) -> None:
+        """
+        Sets a mapping bidirectionally, automatically determining the direction.
+
+        Args:
+            key_or_value (Union[str, ValueT]): The string key (forward) or value (backward).
+            value_or_key (Union[str, ValueT]): The value (if key is str) or key (if value is ValueT).
+
+        Raises:
+            TypeError: If the types of key and value are not as expected.
+            ValueError: If the key or value already exists with a different mapping.
+        """
         self.set(key_or_value, value_or_key)
 
     def __delitem__(self, key_or_value: Union[str, ValueT]) -> None:
+        """
+        Deletes a mapping by string key or value, removing both directions.
+
+        Args:
+            key_or_value (Union[str, ValueT]): The string key (forward) or value (backward) to remove.
+
+        Raises:
+            KeyError: If the key or value is not found in either direction.
+        """
         if isinstance(key_or_value, str):
             value = self._forward.pop(key_or_value)
             del self._backward[value]
@@ -83,16 +127,66 @@ class BidirectionalHashMap(Generic[ValueT]):
             string = self._backward.pop(key_or_value)
             del self._forward[string]
 
+    def __eq__(self, other: object) -> bool:
+        """
+        Checks equality between this BidirectionalHashMap and another object.
+
+        Args:
+            other (object): The object to compare with.
+
+        Returns:
+            bool: True if the other object is a BidirectionalHashMap with the same
+                forward and backward mappings, False otherwise.
+        """
+        if not isinstance(other, BidirectionalHashMap):
+            return False
+
+        return self._forward == other._forward and self._backward == other._backward
+
     def __len__(self) -> int:
+        """
+        Returns the number of mappings in the bidirectional map.
+
+        Returns:
+            int: The total count of key-value pairs.
+        """
         return len(self._forward)
 
     def __iter__(self) -> Iterator[str]:
+        """
+        Returns an iterator over the forward keys.
+
+        Yields:
+            str: String keys in the forward mapping.
+        """
         return iter(self._forward)
 
+    def __next__(self) -> str:
+        """
+        Returns the next key in the forward mapping.
+
+        Returns:
+            str: The next string key.
+        """
+        return next(iter(self._forward))
+
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the bidirectional map.
+
+        Returns:
+            str: A string in the format 'BidirectionalHashMap({key: value, ...})'.
+        """
         return f"BidirectionalHashMap({self._forward})"
 
     def _assign(self, key: str, value: ValueT) -> None:
+        """
+        Internal method to assign a key-value mapping in both directions.
+
+        Args:
+            key (str): The string key.
+            value (ValueT): The value to map.
+        """
         self._forward[key] = value
         self._backward[value] = key
 
@@ -101,7 +195,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the forward keys.
 
         Returns:
-            Iterator[str]: An iterator over the keys.
+            KeysView[str]: An iterator over the keys.
         """
         return self._forward.keys()
 
@@ -110,7 +204,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the backward values.
 
         Returns:
-            Iterator[ValueT]: An iterator over the values.
+            KeysView[ValueT]: An iterator over the values.
         """
         return self._backward.keys()
 
@@ -119,7 +213,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the forward items (key-value pairs).
 
         Returns:
-            Iterator[tuple[str, ValueT]]: An iterator over (key, value) pairs.
+            ItemsView[str, ValueT]: An iterator over (key, value) pairs.
         """
         return self._forward.items()
 
@@ -128,7 +222,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the backward items (value-key pairs).
 
         Returns:
-            Iterator[tuple[ValueT, str]]: An iterator over (value, key) pairs.
+            ItemsView[ValueT, str]: An iterator over (value, key) pairs.
         """
         return self._backward.items()
 
@@ -137,7 +231,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the forward values.
 
         Returns:
-            Iterator[ValueT]: An iterator over the values.
+            ValuesView[ValueT]: An iterator over the values.
         """
         return self._forward.values()
 
@@ -146,7 +240,7 @@ class BidirectionalHashMap(Generic[ValueT]):
         Returns an iterator over the backward keys.
 
         Returns:
-            Iterator[str]: An iterator over the keys.
+            ValuesView[str]: An iterator over the keys.
         """
         return self._backward.values()
 

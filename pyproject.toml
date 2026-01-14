@@ -32,6 +32,7 @@ dev = [
     "mypy==1.19.1",
     "pre-commit==4.5.1",
     "pylint==4.0.3",
+    "pylint-pydantic==0.4.1",
     "pytest==9.0.2",
     "pytest-cov==7.0.0",
 ]
@@ -41,6 +42,22 @@ gpu = ["cupy==13.6.0"]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["sampletones", "schemas"]
+
+[tool.pytest.ini_options]
+addopts = "--cov=src/sampletones --cov-report=term-missing"
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/sampletones", "src/schemas"]
 
@@ -48,7 +65,9 @@ packages = ["src/sampletones", "src/schemas"]
 include = ["assets/icons/*", "assets/fonts/*"]
 
 [tool.mypy]
+python_version = "3.12"
 files = "src/sampletones"
+exclude = "tests"
+disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true
-disallow_subclassing_any = true
