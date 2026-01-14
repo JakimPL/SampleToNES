@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Hashable
-from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union
+from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union, cast
 
 from .bidirectional import BidirectionalHashMap
 
@@ -93,21 +93,28 @@ class IndexedCollection(Generic[T]):
         if collection:
             self.extend(collection)
 
-    def __getitem__(self, key: Union[int, str]) -> T:
+    def __getitem__(self, key: Union[int, str, slice]) -> Union[T, IndexedCollection[T]]:
         """
-        Retrieves an item by integer index or hash string.
+        Retrieves an item by integer index, hash string, or slice.
 
         Args:
-            key (Union[int, str]): The integer index (supports negative indices) or hash string.
+            key (Union[int, str, slice]): The integer index (supports negative indices),
+                hash string, or slice object.
 
         Returns:
-            T: The item at the specified position or with the specified hash.
+            Union[T, IndexedCollection[T]]: The item at the specified position/hash,
+                or a new IndexedCollection containing the sliced items.
 
         Raises:
             IndexError: If the integer index is out of bounds.
             KeyError: If the hash string is not found.
-            TypeError: If the key is neither an int nor a str.
+            TypeError: If the key is not an int, str, or slice.
         """
+        if isinstance(key, slice):
+            start, stop, step = key.indices(len(self))
+            items: List[T] = [cast(T, self[i]) for i in range(start, stop, step)]
+            return IndexedCollection[T](items)
+
         item_hash = self.get_hash(key)
         return self._items[item_hash]
 

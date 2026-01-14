@@ -1516,5 +1516,4 @@ class TestEdgeCases:
 
         # Depends on the hash function implementation
         new_items = [item for item in [0.0, False, b"\00"] if IndexedCollection.hash(0) != IndexedCollection.hash(item)]
-
         collection.extend(new_items)
