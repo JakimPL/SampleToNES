@@ -34,6 +34,7 @@ from .serialization import (
     serialize_array,
     snake_to_camel,
 )
+from .system import System
 
 __all__ = [
     "next_power_of_two",
@@ -70,6 +71,7 @@ __all__ = [
     "SANITIZED_NAME_TO_PITCH",
     "SANITIZED_NAME_TO_PERIOD",
     "write_fti",
+    "System",
     "shorten_path",
     "to_path",
     "get_directory",

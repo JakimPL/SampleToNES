@@ -1,9 +1,10 @@
 import os
-import platform
 import subprocess
 from pathlib import Path
 
 from sampletones.typehints import Pathlike
+
+from .system import System
 
 
 def shorten_path(path: Path, levels: int = 5) -> str:
@@ -145,24 +146,30 @@ def open_path_in_explorer(path: Pathlike) -> None:
 
     Behavior by platform:
     - Windows: Uses 'explorer' with /select flag for files
-    - macOS: Uses 'open' with -R flag for files
     - Linux: Uses xdg-open and attempts file manager-specific selection
+    - macOS: Uses 'open' with -R flag for files
 
     Args:
         path (Pathlike): The file or directory path to open in the explorer.
+
+    Raises:
+        OSError: If the operating system is unsupported.
     """
     path = to_path(path)
     path_string = str(path)
-    system = platform.system()
+    system = System.current()
 
-    if system == "Windows":
-        select = "/select," if path.is_file() else ""
-        subprocess.run(["explorer", select, path_string], check=False)
-    elif system == "Darwin":
-        select = "-R" if path.is_file() else ""
-        subprocess.run(["open", select, path_string], check=False)
-    else:
-        if path.is_file():
-            open_file_in_explorer_linux(path)
-        else:
-            subprocess.run(["xdg-open", path_string], check=False)
+    match system:
+        case System.WINDOWS:
+            select = "/select," if path.is_file() else ""
+            subprocess.run(["explorer", select, path_string], check=False)
+        case System.LINUX:
+            if path.is_file():
+                open_file_in_explorer_linux(path)
+            else:
+                subprocess.run(["xdg-open", path_string], check=False)
+        case System.MACOS:
+            select = "-R" if path.is_file() else ""
+            subprocess.run(["open", select, path_string], check=False)
+
+    raise OSError(f"Unsupported operating system: {system}")

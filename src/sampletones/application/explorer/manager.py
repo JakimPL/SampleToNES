@@ -1,13 +1,9 @@
-import platform
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from sampletones.constants.paths import (
-    EXT_FILE_LIBRARY,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
+from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones.utils import System
 
 from ..config.manager import ConfigManager
 from ..constants.general import LBL_TREE_ROOT
@@ -158,9 +154,9 @@ class ExplorerManager:
             child.parent = None
 
     def _get_filesystems(self) -> List[Path]:
-        system = platform.system()
+        system = System.current()
 
-        if system == "Windows":
+        if system == System.WINDOWS:
             return self._get_windows_drives()
 
         return [Path("/")]
@@ -171,6 +167,7 @@ class ExplorerManager:
             drive = Path(f"{letter}:/")
             if drive.exists():
                 drives.append(drive)
+
         return drives
 
     def _get_ancestor_of_selected(self, path: Path) -> Optional[Path]:
@@ -183,7 +180,11 @@ class ExplorerManager:
 
         return None
 
-    def _expand_path_to_selected(self, filesystem_node: FileSystemNode, selected_path: Path) -> None:
+    def _expand_path_to_selected(
+        self,
+        filesystem_node: FileSystemNode,
+        selected_path: Path,
+    ) -> None:
         try:
             relative_parts = selected_path.relative_to(filesystem_node.filepath).parts
         except ValueError:
