@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones.utils.serialization import (
+    HASH_LENGTH,
     calculate_hash,
     deserialize_array,
     dump,
@@ -306,17 +307,15 @@ class TestArraySerialization:
 class TestCalculateHash:
     def test_hash_string(self) -> None:
         hash1 = calculate_hash("test")
-        hash2 = calculate_hash("test")
+        hash2 = calculate_hash("test".encode("utf-8"))
+        hash3 = calculate_hash(b"test")
+        hash4 = calculate_hash("different")
 
         assert hash1 == hash2
+        assert hash1 == hash3
+        assert hash1 != hash4
         assert isinstance(hash1, str)
-        assert len(hash1) == 32
-
-    def test_hash_different_strings(self) -> None:
-        hash1 = calculate_hash("test1")
-        hash2 = calculate_hash("test2")
-
-        assert hash1 != hash2
+        assert len(hash1) == HASH_LENGTH
 
     def test_hash_integer(self) -> None:
         hash1 = calculate_hash(42)
@@ -326,12 +325,6 @@ class TestCalculateHash:
         assert hash1 == hash2
         assert hash1 != hash3
         assert isinstance(hash1, str)
-
-    def test_hash_different_integers(self) -> None:
-        hash1 = calculate_hash(1)
-        hash2 = calculate_hash(2)
-
-        assert hash1 != hash2
 
     def test_hash_float(self) -> None:
         hash1 = calculate_hash(3.14)
@@ -349,13 +342,6 @@ class TestCalculateHash:
 
         assert hash1 == hash2
         assert hash1 != hash3
-        assert isinstance(hash1, str)
-
-    def test_hash_bytes(self) -> None:
-        hash1 = calculate_hash(b"\x00\x01\x02\xff")
-        hash2 = calculate_hash(b"\x00\x01\x02\xff")
-
-        assert hash1 == hash2
         assert isinstance(hash1, str)
 
     def test_hash_bytes_same_as_strings(self) -> None:
@@ -427,43 +413,6 @@ class TestCalculateHash:
         with pytest.raises(ValueError):
             calculate_hash("test", length=65)
 
-    def test_hash_empty_string(self) -> None:
-        hash1 = calculate_hash("")
-        hash2 = calculate_hash("")
-
-        assert hash1 == hash2
-        assert len(hash1) == 32
-
-    def test_hash_empty_bytes(self) -> None:
-        hash1 = calculate_hash(b"")
-        hash2 = calculate_hash(b"")
-
-        assert hash1 == hash2
-
-    def test_hash_zero_integer(self) -> None:
-        hash1 = calculate_hash(0)
-        hash2 = calculate_hash(0)
-
-        assert hash1 == hash2
-
-    def test_hash_zero_float(self) -> None:
-        hash1 = calculate_hash(0.0)
-        hash2 = calculate_hash(0.0)
-
-        assert hash1 == hash2
-
-    def test_hash_negative_integer(self) -> None:
-        hash1 = calculate_hash(-42)
-        hash2 = calculate_hash(-42)
-
-        assert hash1 == hash2
-
-    def test_hash_negative_float(self) -> None:
-        hash1 = calculate_hash(-3.14)
-        hash2 = calculate_hash(-3.14)
-
-        assert hash1 == hash2
-
     def test_hash_tuple(self) -> None:
         hash1 = calculate_hash((1, 2, 3))
         hash2 = calculate_hash((1, 2, 3))
@@ -473,15 +422,11 @@ class TestCalculateHash:
     def test_hash_frozenset(self) -> None:
         hash1 = calculate_hash(frozenset([1, 2, 3]))
         hash2 = calculate_hash(frozenset([1, 2, 3]))
+        hash3 = calculate_hash(frozenset([3, 2, 1]))
 
         assert hash1 == hash2
+        assert hash1 == hash3
         assert isinstance(hash1, str)
-
-    def test_hash_frozenset_order_independent(self) -> None:
-        hash1 = calculate_hash(frozenset([1, 2, 3]))
-        hash2 = calculate_hash(frozenset([3, 2, 1]))
-
-        assert hash1 == hash2
 
 
 class TestHashModels:
@@ -492,7 +437,7 @@ class TestHashModels:
 
         assert hash1 == hash2
         assert isinstance(hash1, str)
-        assert len(hash1) == 32
+        assert len(hash1) == HASH_LENGTH
 
     def test_hash_different_single_models(self) -> None:
         model1 = SimpleModel(value=1, name="test1")

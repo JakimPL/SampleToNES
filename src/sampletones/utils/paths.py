@@ -7,6 +7,27 @@ from sampletones.typehints import Pathlike
 
 
 def shorten_path(path: Path, levels: int = 5) -> str:
+    """
+    Shortens a file path for display by keeping the root, first directory, and last few parts.
+
+    If the path has fewer parts than the specified levels, returns the full path.
+    Otherwise, shows root, first directory, "...", and the last (levels-2) parts.
+
+    Args:
+        path (Path): The path to shorten.
+        levels (int): The number of path parts to keep visible. Defaults to 5.
+
+    Returns:
+        str: The shortened path string with "..." indicating omitted parts.
+
+    Examples:
+        >>> shorten_path(Path("/home/user/projects/python/myapp/src/main.py"), levels=5)
+        '/home/.../myapp/src/main.py'
+        >>> shorten_path(Path("/home/user/file.txt"), levels=5)
+        '/home/user/file.txt'
+        >>> shorten_path(Path("/a/b/c/d/e/f/g/h"), levels=4)
+        '/a/.../f/g/h'
+    """
     path = path.expanduser().resolve()
     parts = path.parts
 
@@ -21,6 +42,18 @@ def shorten_path(path: Path, levels: int = 5) -> str:
 
 
 def to_path(path: Pathlike) -> Path:
+    """
+    Converts a path-like object to a Path instance.
+
+    Args:
+        path (Pathlike): A string or Path object representing a file system path.
+
+    Returns:
+        Path: A Path object.
+
+    Raises:
+        TypeError: If path is neither a string nor a Path object.
+    """
     if not isinstance(path, (str, Path)):
         raise TypeError(f"Expected path to be str or Path, got {type(path)}")
 
@@ -31,16 +64,46 @@ def to_path(path: Pathlike) -> Path:
 
 
 def get_directory(path: Pathlike) -> Path:
+    """
+    Returns the directory path for a given path.
+
+    If the path is already a directory, returns it as-is.
+    If the path is a file, returns its parent directory.
+
+    Args:
+        path (Pathlike): A file or directory path.
+
+    Returns:
+        Path: The directory path.
+    """
     path = to_path(path)
     return path if path.is_dir() else path.parent
 
 
 def open_directory_in_explorer_linux(path: Path) -> None:
+    """
+    Opens a directory in the default Linux file manager using xdg-open.
+
+    If the path is a file, opens its parent directory instead.
+
+    Args:
+        path (Path): The directory or file path to open.
+    """
     path = path if path.is_dir() else path.parent
     subprocess.run(["xdg-open", str(path)], check=False)
 
 
 def open_file_in_explorer_linux(path: Path) -> None:
+    """
+    Opens a file in the Linux file manager with the file selected/highlighted.
+
+    Detects the default file manager and uses the appropriate command to select
+    the file. Supports Dolphin, Nautilus, Nemo, and Thunar. Falls back to opening
+    the parent directory if the file manager doesn't support file selection.
+
+    Args:
+        path (Path): The file path to open and select in the file manager.
+    """
     path_string = str(path)
     xdg_mime_result = subprocess.run(
         ["xdg-mime", "query", "default", "inode/directory"],
@@ -73,6 +136,21 @@ def open_file_in_explorer_linux(path: Path) -> None:
 
 
 def open_path_in_explorer(path: Pathlike) -> None:
+    """
+    Opens a path in the system's default file explorer.
+
+    Cross-platform function that opens the file explorer with the specified path.
+    For files, attempts to open the file manager with the file selected/highlighted.
+    For directories, opens the directory directly.
+
+    Behavior by platform:
+    - Windows: Uses 'explorer' with /select flag for files
+    - macOS: Uses 'open' with -R flag for files
+    - Linux: Uses xdg-open and attempts file manager-specific selection
+
+    Args:
+        path (Pathlike): The file or directory path to open in the explorer.
+    """
     path = to_path(path)
     path_string = str(path)
     system = platform.system()
