@@ -3,6 +3,7 @@ from .general import (
     Color,
     FeatureMap,
     FeatureValue,
+    GeneralPathlike,
     Initials,
     MessageCallback,
     ModelHashable,
@@ -30,4 +31,5 @@ __all__ = [
     "PathCallback",
     "MessageCallback",
     "Pathlike",
+    "GeneralPathlike",
 ]

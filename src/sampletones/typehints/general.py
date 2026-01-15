@@ -1,3 +1,4 @@
+import os
 from collections.abc import Hashable
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
@@ -26,3 +27,4 @@ PathCallback = Callable[[Path], None]
 MessageCallback = Callable[..., str]
 
 Pathlike = Union[str, Path]
+GeneralPathlike = Union[Pathlike, os.PathLike[str]]

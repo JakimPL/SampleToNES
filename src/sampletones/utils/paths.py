@@ -2,52 +2,17 @@ import os
 import subprocess
 from pathlib import Path
 
-from sampletones.typehints import Pathlike
+from sampletones.typehints import GeneralPathlike, Pathlike
 
 from .system import System
 
 
-def shorten_path(path: Path, levels: int = 5) -> str:
-    """
-    Shortens a file path for display by keeping the root, first directory, and last few parts.
-
-    If the path has fewer parts than the specified levels, returns the full path.
-    Otherwise, shows root, first directory, "...", and the last (levels-2) parts.
-
-    Args:
-        path (Path): The path to shorten.
-        levels (int): The number of path parts to keep visible. Defaults to 5.
-
-    Returns:
-        str: The shortened path string with "..." indicating omitted parts.
-
-    Examples:
-        >>> shorten_path(Path("/home/user/projects/python/myapp/src/main.py"), levels=5)
-        '/home/.../myapp/src/main.py'
-        >>> shorten_path(Path("/home/user/file.txt"), levels=5)
-        '/home/user/file.txt'
-        >>> shorten_path(Path("/a/b/c/d/e/f/g/h"), levels=4)
-        '/a/.../f/g/h'
-    """
-    path = path.expanduser().resolve()
-    parts = path.parts
-
-    if len(parts) <= levels:
-        return str(path)
-
-    root = parts[0]
-    first_dir = parts[1]
-    last_parts = parts[-(levels - 2) :]
-
-    return os.sep.join([root.rstrip(os.sep), first_dir, "..."] + list(last_parts))
-
-
-def to_path(path: Pathlike) -> Path:
+def to_path(path: GeneralPathlike) -> Path:
     """
     Converts a path-like object to a Path instance.
 
     Args:
-        path (Pathlike): A string or Path object representing a file system path.
+        path (GeneralPathlike): A path-like object representing a file system path.
 
     Returns:
         Path: A Path object.
@@ -55,13 +20,62 @@ def to_path(path: Pathlike) -> Path:
     Raises:
         TypeError: If path is neither a string nor a Path object.
     """
-    if not isinstance(path, (str, Path)):
+    if isinstance(path, Path):
+        return path
+
+    if not isinstance(path, (str, os.PathLike)):
         raise TypeError(f"Expected path to be str or Path, got {type(path)}")
 
-    if isinstance(path, str):
-        path = Path(path)
+    return Path(path)
 
-    return path
+
+def shorten_path(path: GeneralPathlike, levels: int = 5) -> str:
+    """
+    Shortens a file path for display by keeping the root, first directory, and last few parts.
+
+    If the path has fewer parts than the specified levels, returns the full path.
+    Otherwise, shows root, first directory, "...", and the last (levels-2) parts.
+
+    Args:
+        path (GeneralPathlike): The path to shorten.
+        levels (int): The number of path parts to keep visible. Defaults to 5.
+
+    Returns:
+        str: The shortened path string with "..." indicating omitted parts.
+
+    Examples:
+        For Windows (double):
+        >>> shorten_path(Path(r"C:\\Users\\user\\Documents"), levels=2)
+        'C:\\...\\Documents'
+
+        For Linux/macOS:
+        >>> shorten_path(Path("/home/user/file.txt"), levels=3)
+        '/home/user/file.txt'
+        >>> shorten_path(Path("/a/b/c/d/e/f/g/h"), levels=4)
+        '/a/.../g/h'
+    """
+    if not isinstance(path, (str, Path, os.PathLike)):
+        raise TypeError(f"Expected path to be path-like, got {type(path)}")
+
+    if not isinstance(levels, int) or levels <= 1:
+        raise ValueError("Levels must be a positive integer greater than 1.")
+
+    path = to_path(path)
+    path = path.expanduser().resolve()
+    parts = path.parts
+    root = parts[0]
+    begin = root.rstrip(os.sep)
+
+    if len(parts) <= levels + 1:
+        return str(path)
+
+    if levels == 2:
+        return os.sep.join([begin, "...", parts[-1]])
+
+    index = 2 - levels
+    first_directory = parts[1]
+    last_parts = parts[index:]
+    return os.sep.join([begin, first_directory, "..."] + list(last_parts))
 
 
 def get_directory(path: Pathlike) -> Path:
@@ -171,5 +185,5 @@ def open_path_in_explorer(path: Pathlike) -> None:
         case System.MACOS:
             select = "-R" if path.is_file() else ""
             subprocess.run(["open", select, path_string], check=False)
-
-    raise OSError(f"Unsupported operating system: {system}")
+        case _:
+            raise OSError(f"Unsupported operating system: {system}")
