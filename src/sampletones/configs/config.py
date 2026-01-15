@@ -39,6 +39,9 @@ class Config(DataModel):
     def load(cls, path: Pathlike) -> Config:
         path = to_path(path)
         config_dict = load_json(path)
+        if not isinstance(config_dict, dict):
+            raise TypeError(f"Expected config file to contain a dict, got {type(config_dict)}")
+
         return cls(**config_dict)
 
     def save(self, path: Pathlike) -> None:

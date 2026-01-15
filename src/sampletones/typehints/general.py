@@ -1,3 +1,4 @@
+from collections.abc import Hashable
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
@@ -11,7 +12,7 @@ Numeric = Union[int, float, np.floating, np.integer]
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]
 ReducedObject = Tuple[Any, Tuple[SerializedData]]
-ModelHashable = Union[bool, int, float, bytes, str, BaseModel]
+ModelHashable = Union[Hashable, BaseModel]
 
 FeatureValue = Union[int, np.ndarray]
 FeatureMap = Dict[FeatureKey, FeatureValue]

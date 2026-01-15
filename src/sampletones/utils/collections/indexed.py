@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Hashable
-from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union, cast
+from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union, overload
+
+from sampletones.typehints import ModelHashable
 
 from .bidirectional import BidirectionalHashMap
 
-T = TypeVar("T", bound=Hashable)
+T = TypeVar("T", bound=ModelHashable)
 
 
 class IndexedCollection(Generic[T]):
@@ -93,6 +94,15 @@ class IndexedCollection(Generic[T]):
         if collection:
             self.extend(collection)
 
+    @overload
+    def __getitem__(self, key: int) -> T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> T: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> IndexedCollection[T]: ...
+
     def __getitem__(self, key: Union[int, str, slice]) -> Union[T, IndexedCollection[T]]:
         """
         Retrieves an item by integer index, hash string, or slice.
@@ -112,7 +122,7 @@ class IndexedCollection(Generic[T]):
         """
         if isinstance(key, slice):
             start, stop, step = key.indices(len(self))
-            items: List[T] = [cast(T, self[i]) for i in range(start, stop, step)]
+            items: List[T] = [self[i] for i in range(start, stop, step)]
             return IndexedCollection[T](items)
 
         item_hash = self.get_hash(key)

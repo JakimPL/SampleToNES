@@ -61,6 +61,9 @@ class ApplicationConfig(BaseModel):
             logger.warning(f"Application config file '{path}' is empty or invalid. Loading default configuration.")
             return cls()
 
+        if not isinstance(config_dict, dict):
+            raise TypeError(f"Expected config file to contain a dict, got {type(config_dict)}")
+
         return cls(**config_dict)
 
     def save(self, path: Pathlike) -> None:

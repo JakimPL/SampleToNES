@@ -174,12 +174,12 @@ class TestSetForward:
     def test_set_forward_non_string_key_raises_type_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]()
         with pytest.raises(TypeError, match="Key must be a str"):
-            bidirectional.set_forward(123, 1)
+            bidirectional.set_forward(123, 1)  # type: ignore
 
     def test_set_forward_string_value_raises_type_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]()
         with pytest.raises(TypeError, match="Value must not be a str"):
-            bidirectional.set_forward("a", "b")
+            bidirectional.set_forward("a", "b")  # type: ignore
 
     def test_set_forward_value_already_mapped_raises_value_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]({"a": 1})
@@ -211,12 +211,12 @@ class TestSetBackward:
     def test_set_backward_non_string_key_raises_type_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]()
         with pytest.raises(TypeError, match="Key must be a str"):
-            bidirectional.set_backward(1, 123)
+            bidirectional.set_backward(1, 123)  # type: ignore
 
     def test_set_backward_string_value_raises_type_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]()
         with pytest.raises(TypeError, match="Value must not be a str"):
-            bidirectional.set_backward("a", "b")
+            bidirectional.set_backward("a", "b")  # type: ignore
 
     def test_set_backward_key_already_bound_raises_value_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]({"a": 1})
@@ -324,7 +324,7 @@ class TestForward:
     def test_forward_non_string_key_raises_type_error(self) -> None:
         bidirectional = BidirectionalHashMap[int]()
         with pytest.raises(TypeError, match="Key must be a str"):
-            bidirectional.forward(123)
+            bidirectional.forward(123)  # type: ignore
 
 
 class TestBackward:
@@ -591,17 +591,17 @@ class TestTypes:
         assert bidirectional[b"hello"] == "data"
 
     def test_list_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[list[int]]()
+        bidirectional = BidirectionalHashMap[list[int]]()  # type: ignore
         with pytest.raises(TypeError):
             bidirectional["list"] = [1, 2, 3]
 
     def test_set_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[set[int]]()
+        bidirectional = BidirectionalHashMap[set[int]]()  # type: ignore
         with pytest.raises(TypeError):
             bidirectional["set"] = {1, 2, 3}
 
     def test_dict_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[dict[str, int]]()
+        bidirectional = BidirectionalHashMap[dict[str, int]]()  # type: ignore
         with pytest.raises(TypeError):
             bidirectional["dict"] = {"a": 1}
 

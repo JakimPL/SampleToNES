@@ -1,25 +1,16 @@
 from collections.abc import Hashable
-from typing import Any, TypeVar
+from typing import TypeVar
 from unittest.mock import patch
 
+import numpy as np
 import pytest
-from pydantic import BaseModel, ConfigDict
 
+from sampletones.typehints import ModelHashable
 from sampletones.utils.collections.bidirectional import BidirectionalHashMap
 from sampletones.utils.collections.indexed import IndexedCollection
-from tests.sampletones.dummy import ValueObject
+from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
 
-T = TypeVar("T", bound=Hashable)
-
-
-class SimpleModel(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    value: int
-
-
-class NonSerializableModel(BaseModel):
-    data: Any
+T = TypeVar("T", bound=ModelHashable)
 
 
 class TestInitialization:
@@ -90,6 +81,13 @@ class TestInitialization:
         items = range(100)
         collection = IndexedCollection[int](items)
         assert list(collection) == list(items)
+
+    def test_init_with_unhashable_models_raises_type_error(self) -> None:
+        with pytest.raises(TypeError, match="unhashable"):
+            IndexedCollection[SimpleModel]([SimpleModel(value=1, name="test")])  # type: ignore
+
+        with pytest.raises(TypeError, match="unhashable"):
+            IndexedCollection[NonSerializableModel]([NonSerializableModel(data=np.array([]))])  # type: ignore
 
 
 class TestGetItem:
@@ -703,10 +701,12 @@ class TestRepr:
         assert repr(collection) == "IndexedCollection(['test'])"
 
     def test_repr_with_models(self) -> None:
-        first_object = SimpleModel(value=42)
-        collection = IndexedCollection[ValueObject]([first_object])
+        first_object = ValueFrozenModel(value=42)
+        collection = IndexedCollection[ValueFrozenModel]([first_object])
         first_representation = f"IndexedCollection([{repr(first_object)}])"
-        second_representation = f"IndexedCollection([{repr(SimpleModel(value=42))}])"  # should not depend on identity
+        second_representation = (
+            f"IndexedCollection([{repr(ValueFrozenModel(value=42))}])"  # should not depend on identity
+        )
         assert repr(collection) == first_representation
         assert repr(collection) == second_representation
 
