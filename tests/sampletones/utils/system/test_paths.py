@@ -22,98 +22,131 @@ from tests.sampletones.errors import expect_error
 
 
 class TestToPath:
-    def test_to_path_with_unix_absolute_string(self) -> None:
-        result = to_path("/home/user/file.txt")
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        input_path: Any
+        expected_result: Union[str, Type[Exception]]
+        test_id: str
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TestCase(
+                input_path="/home/user/file.txt",
+                expected_result="/home/user/file.txt",
+                test_id="unix_absolute_string",
+            ),
+            TestCase(
+                input_path="C:\\Users\\user\\file.txt",
+                expected_result="C:\\Users\\user\\file.txt",
+                test_id="windows_absolute_string",
+            ),
+            TestCase(
+                input_path="C:/Users/user/file.txt",
+                expected_result="C:/Users/user/file.txt",
+                test_id="windows_forward_slash_string",
+            ),
+            TestCase(
+                input_path="\\\\server\\share\\file.txt",
+                expected_result="\\\\server\\share\\file.txt",
+                test_id="windows_unc_path",
+            ),
+            TestCase(
+                input_path=Path("/home/user/file.txt"),
+                expected_result="/home/user/file.txt",
+                test_id="path_object",
+            ),
+            TestCase(
+                input_path="relative/path/file.txt",
+                expected_result="relative/path/file.txt",
+                test_id="relative_string",
+            ),
+            TestCase(
+                input_path=".",
+                expected_result=".",
+                test_id="current_directory_dot",
+            ),
+            TestCase(
+                input_path="..",
+                expected_result="..",
+                test_id="parent_directory_dots",
+            ),
+            TestCase(
+                input_path="/home/.../file.txt",
+                expected_result="/home/.../file.txt",
+                test_id="triple_dots_in_name",
+            ),
+            TestCase(
+                input_path="folder/subfolder\\file.txt",
+                expected_result="folder/subfolder\\file.txt",
+                test_id="mixed_separators",
+            ),
+            TestCase(
+                input_path="/home/user/",
+                expected_result="/home/user",
+                test_id="trailing_slash",
+            ),
+            TestCase(
+                input_path="/home//user///file.txt",
+                expected_result="/home/user/file.txt",
+                test_id="multiple_consecutive_slashes",
+            ),
+            TestCase(
+                input_path="/home/user/my file.txt",
+                expected_result="/home/user/my file.txt",
+                test_id="spaces_in_path",
+            ),
+            TestCase(
+                input_path="/home/user/file@#$.txt",
+                expected_result="/home/user/file@#$.txt",
+                test_id="special_characters",
+            ),
+            TestCase(
+                input_path="",
+                expected_result=".",
+                test_id="empty_string",
+            ),
+            TestCase(
+                input_path=Path("/home/user/file.txt"),
+                expected_result="/home/user/file.txt",
+                test_id="preserves_path_instance",
+            ),
+            TestCase(
+                input_path=42,
+                expected_result=TypeError,
+                test_id="integer_raises_type_error",
+            ),
+            TestCase(
+                input_path=["/home/user"],
+                expected_result=TypeError,
+                test_id="list_raises_type_error",
+            ),
+            TestCase(
+                input_path=None,
+                expected_result=TypeError,
+                test_id="none_raises_type_error",
+            ),
+            TestCase(
+                input_path={"path": "/home"},
+                expected_result=TypeError,
+                test_id="dict_raises_type_error",
+            ),
+        ],
+        ids=lambda tc: tc.test_id,
+    )
+    def test_to_path(self, test_case: TestToPath.TestCase) -> None:
+        if expect_error(to_path, test_case.expected_result, test_case.input_path):
+            return
+
+        result = to_path(test_case.input_path)
         assert isinstance(result, Path)
-        assert str(result) == "/home/user/file.txt"
 
-    def test_to_path_with_windows_absolute_string(self) -> None:
-        result = to_path("C:\\Users\\user\\file.txt")
-        assert isinstance(result, Path)
-        assert str(result) == "C:\\Users\\user\\file.txt"
+        if isinstance(test_case.input_path, Path):
+            assert result is test_case.input_path
 
-    def test_to_path_with_windows_forward_slash_string(self) -> None:
-        result = to_path("C:/Users/user/file.txt")
-        assert isinstance(result, Path)
-        assert "Users" in str(result) and "user" in str(result)
-
-    def test_to_path_with_windows_unc_path(self) -> None:
-        result = to_path("\\\\server\\share\\file.txt")
-        assert isinstance(result, Path)
-        assert "server" in str(result)
-
-    def test_to_path_with_path_object(self) -> None:
-        path = Path("/home/user/file.txt")
-        result = to_path(path)
-        assert isinstance(result, Path)
-        assert result == path
-
-    def test_to_path_with_relative_string(self) -> None:
-        result = to_path("relative/path/file.txt")
-        assert isinstance(result, Path)
-        assert str(result) == "relative/path/file.txt"
-
-    def test_to_path_with_current_directory_dot(self) -> None:
-        result = to_path(".")
-        assert isinstance(result, Path)
-        assert str(result) == "."
-
-    def test_to_path_with_parent_directory_dots(self) -> None:
-        result = to_path("..")
-        assert isinstance(result, Path)
-        assert str(result) == ".."
-
-    def test_to_path_with_triple_dots_in_name(self) -> None:
-        result = to_path("/home/.../file.txt")
-        assert isinstance(result, Path)
-        assert "..." in str(result)
-
-    def test_to_path_with_mixed_separators(self) -> None:
-        result = to_path("folder/subfolder\\file.txt")
-        assert isinstance(result, Path)
-
-    def test_to_path_with_trailing_slash(self) -> None:
-        result = to_path("/home/user/")
-        assert isinstance(result, Path)
-
-    def test_to_path_with_multiple_consecutive_slashes(self) -> None:
-        result = to_path("/home//user///file.txt")
-        assert isinstance(result, Path)
-
-    def test_to_path_with_spaces_in_path(self) -> None:
-        result = to_path("/home/user/my file.txt")
-        assert isinstance(result, Path)
-        assert "my file.txt" in str(result)
-
-    def test_to_path_with_special_characters(self) -> None:
-        result = to_path("/home/user/file@#$.txt")
-        assert isinstance(result, Path)
-
-    def test_to_path_with_integer_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'int'>"):
-            to_path(42)  # type: ignore
-
-    def test_to_path_with_list_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'list'>"):
-            to_path(["/home/user"])  # type: ignore
-
-    def test_to_path_with_none_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'NoneType'>"):
-            to_path(None)  # type: ignore
-
-    def test_to_path_with_dict_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'dict'>"):
-            to_path({"path": "/home"})  # type: ignore
-
-    def test_to_path_with_empty_string(self) -> None:
-        result = to_path("")
-        assert isinstance(result, Path)
-        assert str(result) == "."
-
-    def test_to_path_preserves_path_instance(self) -> None:
-        original = Path("/home/user/file.txt")
-        result = to_path(original)
-        assert result is original
+        assert str(result) == test_case.expected_result
 
 
 class TestShortenPath:
@@ -129,8 +162,12 @@ class TestShortenPath:
 
     def _create_resolved_mock(self, resolved_path: GeneralPathlike) -> MagicMock:
         resolved_mock = MagicMock()
-        resolved_mock.parts = Path(resolved_path).parts
-        resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))
+        try:
+            resolved_mock.parts = Path(resolved_path).parts
+            resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))
+        except TypeError:
+            resolved_mock.parts = ()
+
         return resolved_mock
 
     @pytest.mark.parametrize(
@@ -266,6 +303,69 @@ class TestShortenPath:
                 expected_result="C:\\Program Files\\...\\very\\deep\\folder\\file.exe",
                 test_id="windows_with_spaces",
             ),
+            TestCase(
+                input_path=42,
+                resolved_path=None,
+                levels=5,
+                expected_result=TypeError,
+                test_id="integer_path_raises_type_error",
+            ),
+            TestCase(
+                input_path=None,
+                resolved_path=None,
+                levels=5,
+                expected_result=TypeError,
+                test_id="none_path_raises_type_error",
+            ),
+            TestCase(
+                input_path={"path": "/home"},
+                resolved_path=None,
+                levels=5,
+                expected_result=TypeError,
+                test_id="dict_path_raises_type_error",
+            ),
+            TestCase(
+                input_path=["/home", "user"],
+                resolved_path=None,
+                levels=5,
+                expected_result=TypeError,
+                test_id="list_path_raises_type_error",
+            ),
+            TestCase(
+                input_path=PurePosixPath("/home/user/file.txt"),
+                resolved_path=PurePosixPath("/home/user/file.txt"),
+                levels=-5,
+                expected_result=ValueError,
+                test_id="negative_levels_raises_value_error",
+            ),
+            TestCase(
+                input_path=PurePosixPath("/home/user/file.txt"),
+                resolved_path=PurePosixPath("/home/user/file.txt"),
+                levels=0,
+                expected_result=ValueError,
+                test_id="zero_levels_raises_value_error",
+            ),
+            TestCase(
+                input_path=PurePosixPath("/home/user/file.txt"),
+                resolved_path=PurePosixPath("/home/user/file.txt"),
+                levels=1,
+                expected_result=ValueError,
+                test_id="one_level_raises_value_error",
+            ),
+            TestCase(
+                input_path=PurePosixPath("/home/user/file.txt"),
+                resolved_path=PurePosixPath("/home/user/file.txt"),
+                levels=5.5,
+                expected_result=ValueError,
+                test_id="float_levels_raises_value_error",
+            ),
+            TestCase(
+                input_path=PurePosixPath("/home/user/file.txt"),
+                resolved_path=PurePosixPath("/home/user/file.txt"),
+                levels="5",
+                expected_result=ValueError,
+                test_id="string_levels_raises_value_error",
+            ),
         ],
         ids=lambda tc: tc.test_id,
     )
@@ -292,42 +392,6 @@ class TestShortenPath:
 
             result = shorten_path(test_case.input_path, levels=test_case.levels)
             assert result == test_case.expected_result
-
-    def test_shorten_path_with_integer_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be path-like, got <class 'int'>"):
-            shorten_path(42, levels=5)  # type: ignore
-
-    def test_shorten_path_with_none_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be path-like, got <class 'NoneType'>"):
-            shorten_path(None, levels=5)  # type: ignore
-
-    def test_shorten_path_with_dict_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be path-like, got <class 'dict'>"):
-            shorten_path({"path": "/home"}, levels=5)  # type: ignore
-
-    def test_shorten_path_with_list_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be path-like, got <class 'list'>"):
-            shorten_path(["/home", "user"], levels=5)  # type: ignore
-
-    def test_shorten_path_with_negative_levels_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Levels must be a positive integer greater than 1"):
-            shorten_path(Path("/home/user/file.txt"), levels=-5)
-
-    def test_shorten_path_with_zero_levels_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Levels must be a positive integer greater than 1"):
-            shorten_path(Path("/home/user/file.txt"), levels=0)
-
-    def test_shorten_path_with_one_level_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Levels must be a positive integer greater than 1"):
-            shorten_path(Path("/home/user/file.txt"), levels=1)
-
-    def test_shorten_path_with_float_levels_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Levels must be a positive integer greater than 1"):
-            shorten_path(Path("/home/user/file.txt"), levels=5.5)  # type: ignore
-
-    def test_shorten_path_with_string_levels_raises_value_error(self) -> None:
-        with pytest.raises(ValueError, match="Levels must be a positive integer greater than 1"):
-            shorten_path(Path("/home/user/file.txt"), levels="5")  # type: ignore
 
 
 class TestGetDirectory:

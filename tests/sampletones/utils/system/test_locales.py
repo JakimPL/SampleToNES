@@ -11,6 +11,7 @@ class TestToUtf8:
     @dataclass(frozen=True)
     class TestCase:
         __test__ = False
+
         input_string: str
         encoding: str
         expected_result: str
