@@ -126,6 +126,12 @@ class TestShortenPath:
         test_id: str
         os_sep: str = "/"
 
+    def _create_resolved_mock(self, resolved_path: GeneralPathlike) -> MagicMock:
+        resolved_mock = MagicMock()
+        resolved_mock.parts = resolved_path.parts
+        resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))
+        return resolved_mock
+
     @pytest.mark.parametrize(
         "test_case",
         [
@@ -266,18 +272,17 @@ class TestShortenPath:
         self,
         test_case: TestShortenPath.TestCase,
     ) -> None:
-        with patch("sampletones.utils.paths.Path.expanduser") as mock_expand:
-            with patch("sampletones.utils.paths.Path.resolve") as mock_resolve:
-                with patch("sampletones.utils.paths.os.sep", test_case.os_sep):
-                    resolved_mock = MagicMock()
-                    resolved_mock.parts = test_case.resolved_path.parts
-                    resolved_mock.__str__ = MagicMock(return_value=str(test_case.resolved_path))
+        with (
+            patch("sampletones.utils.paths.Path.expanduser") as mock_expand,
+            patch("sampletones.utils.paths.Path.resolve") as mock_resolve,
+            patch("sampletones.utils.paths.os.sep", test_case.os_sep),
+        ):
+            resolved_mock = self._create_resolved_mock(test_case.resolved_path)
+            mock_expand.return_value.resolve.return_value = resolved_mock
+            mock_resolve.return_value = resolved_mock
 
-                    mock_expand.return_value.resolve.return_value = resolved_mock
-                    mock_resolve.return_value = resolved_mock
-
-                    result = shorten_path(test_case.input_path, levels=test_case.levels)
-                    assert result == test_case.expected_result
+            result = shorten_path(test_case.input_path, levels=test_case.levels)
+            assert result == test_case.expected_result
 
     def test_shorten_path_with_integer_raises_type_error(self) -> None:
         with pytest.raises(TypeError, match="Expected path to be path-like, got <class 'int'>"):
