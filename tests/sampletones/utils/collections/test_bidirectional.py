@@ -1,3 +1,5 @@
+from typing import Union
+
 import pytest
 
 from sampletones.utils.collections.bidirectional import BidirectionalHashMap
@@ -591,22 +593,22 @@ class TestTypes:
         assert bidirectional[b"hello"] == "data"
 
     def test_list_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[list[int]]()  # type: ignore
+        bidirectional = BidirectionalHashMap()
         with pytest.raises(TypeError):
             bidirectional["list"] = [1, 2, 3]
 
     def test_set_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[set[int]]()  # type: ignore
+        bidirectional = BidirectionalHashMap()
         with pytest.raises(TypeError):
             bidirectional["set"] = {1, 2, 3}
 
     def test_dict_as_value_raises_type_error(self) -> None:
-        bidirectional = BidirectionalHashMap[dict[str, int]]()  # type: ignore
+        bidirectional = BidirectionalHashMap()
         with pytest.raises(TypeError):
             bidirectional["dict"] = {"a": 1}
 
     def test_mixed_numeric_types(self) -> None:
-        bidirectional = BidirectionalHashMap[int | float]()
+        bidirectional = BidirectionalHashMap[Union[int, float]]()
         bidirectional["int"] = 42
         bidirectional["float"] = 3.14
         assert bidirectional["int"] == 42

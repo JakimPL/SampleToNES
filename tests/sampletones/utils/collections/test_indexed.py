@@ -56,18 +56,18 @@ class TestInitialization:
 
     def test_init_with_list_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection[list]([[1, 2], [3, 4]])  # type: ignore
+            IndexedCollection([[1, 2], [3, 4]])  # type: ignore
 
     def test_init_with_dict_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection[dict]([{"a": 1}, {"b": 2}])  # type: ignore
+            IndexedCollection([{"a": 1}, {"b": 2}])  # type: ignore
 
     def test_init_with_tuple_containing_immutable(self) -> None:
         IndexedCollection[tuple](((1, 2), (3, 4)))
 
     def test_init_with_tuple_containing_mutable_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection[tuple](([], []))  # type: ignore
+            IndexedCollection(([], []))  # type: ignore
 
     def test_init_with_duplicate_integers_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="already exists"):
@@ -84,10 +84,10 @@ class TestInitialization:
 
     def test_init_with_unhashable_models_raises_type_error(self) -> None:
         with pytest.raises(TypeError, match="unhashable"):
-            IndexedCollection[SimpleModel]([SimpleModel(value=1, name="test")])  # type: ignore
+            IndexedCollection([SimpleModel(value=1, name="test")])
 
         with pytest.raises(TypeError, match="unhashable"):
-            IndexedCollection[NonSerializableModel]([NonSerializableModel(data=np.array([]))])  # type: ignore
+            IndexedCollection([NonSerializableModel(data=np.array([]))])
 
 
 class TestGetItem:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import List
+from typing import Any, List, Type, Union
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -18,6 +18,7 @@ from sampletones.utils.system.paths import (
     to_path,
 )
 from sampletones.utils.system.system import System
+from tests.sampletones.errors import expect_error
 
 
 class TestToPath:
@@ -119,10 +120,10 @@ class TestShortenPath:
     @dataclass(frozen=True)
     class TestCase:
         __test__ = False
-        input_path: GeneralPathlike
-        resolved_path: GeneralPathlike
-        levels: int
-        expected_result: str
+        input_path: Any
+        resolved_path: Any
+        levels: Any
+        expected_result: Union[str, Type[Exception]]
         test_id: str
         os_sep: str = "/"
 
@@ -280,6 +281,14 @@ class TestShortenPath:
             resolved_mock = self._create_resolved_mock(test_case.resolved_path)
             mock_expand.return_value.resolve.return_value = resolved_mock
             mock_resolve.return_value = resolved_mock
+
+            if expect_error(
+                shorten_path,
+                test_case.expected_result,
+                test_case.input_path,
+                test_case.levels,
+            ):
+                return
 
             result = shorten_path(test_case.input_path, levels=test_case.levels)
             assert result == test_case.expected_result
