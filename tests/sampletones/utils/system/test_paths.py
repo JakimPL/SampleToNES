@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 
 from sampletones.typehints.general import GeneralPathlike
-from sampletones.utils.paths import (
+from sampletones.utils.system.paths import (
     get_directory,
     open_directory_in_explorer_linux,
     open_file_in_explorer_linux,
@@ -17,7 +17,7 @@ from sampletones.utils.paths import (
     shorten_path,
     to_path,
 )
-from sampletones.utils.system import System
+from sampletones.utils.system.system import System
 
 
 class TestToPath:
@@ -128,7 +128,7 @@ class TestShortenPath:
 
     def _create_resolved_mock(self, resolved_path: GeneralPathlike) -> MagicMock:
         resolved_mock = MagicMock()
-        resolved_mock.parts = resolved_path.parts
+        resolved_mock.parts = Path(resolved_path).parts
         resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))
         return resolved_mock
 
@@ -273,9 +273,9 @@ class TestShortenPath:
         test_case: TestShortenPath.TestCase,
     ) -> None:
         with (
-            patch("sampletones.utils.paths.Path.expanduser") as mock_expand,
-            patch("sampletones.utils.paths.Path.resolve") as mock_resolve,
-            patch("sampletones.utils.paths.os.sep", test_case.os_sep),
+            patch("sampletones.utils.system.paths.Path.expanduser") as mock_expand,
+            patch("sampletones.utils.system.paths.Path.resolve") as mock_resolve,
+            patch("sampletones.utils.system.paths.os.sep", test_case.os_sep),
         ):
             resolved_mock = self._create_resolved_mock(test_case.resolved_path)
             mock_expand.return_value.resolve.return_value = resolved_mock
@@ -391,7 +391,7 @@ class TestGetDirectory:
 
 
 class TestOpenDirectoryInExplorerLinux:
-    @patch("sampletones.utils.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.subprocess.run")
     def test_open_with_directory(self, mock_run: MagicMock) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir)
@@ -399,7 +399,7 @@ class TestOpenDirectoryInExplorerLinux:
 
             mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
 
-    @patch("sampletones.utils.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.subprocess.run")
     def test_open_with_file(self, mock_run: MagicMock) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.txt"
@@ -519,8 +519,8 @@ class TestOpenFileInExplorerLinux:
         ],
         ids=lambda tc: tc.test_id,
     )
-    @patch("sampletones.utils.paths.subprocess.run")
-    @patch("sampletones.utils.paths.open_directory_in_explorer_linux")
+    @patch("sampletones.utils.system.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.open_directory_in_explorer_linux")
     def test_open_file_in_explorer_linux(
         self,
         mock_open_dir: MagicMock,
@@ -594,8 +594,8 @@ class TestOpenPathInExplorer:
         ],
         ids=lambda tc: tc.test_id,
     )
-    @patch("sampletones.utils.paths.System.current")
-    @patch("sampletones.utils.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.System.current")
+    @patch("sampletones.utils.system.paths.subprocess.run")
     def test_cross_platform(
         self,
         mock_run: MagicMock,
@@ -621,9 +621,9 @@ class TestOpenPathInExplorer:
         [True, False],
         ids=["linux_file", "linux_directory"],
     )
-    @patch("sampletones.utils.paths.System.current")
-    @patch("sampletones.utils.paths.open_file_in_explorer_linux")
-    @patch("sampletones.utils.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.System.current")
+    @patch("sampletones.utils.system.paths.open_file_in_explorer_linux")
+    @patch("sampletones.utils.system.paths.subprocess.run")
     def test_linux(
         self,
         mock_run: MagicMock,
@@ -646,7 +646,7 @@ class TestOpenPathInExplorer:
                 mock_open_file.assert_not_called()
                 mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
 
-    @patch("sampletones.utils.paths.System.current")
+    @patch("sampletones.utils.system.paths.System.current")
     def test_unsupported_os(self, mock_system: MagicMock) -> None:
         mock_system.return_value = "UnsupportedOS"
 
@@ -655,8 +655,8 @@ class TestOpenPathInExplorer:
         with pytest.raises(OSError, match="Unsupported operating system: UnsupportedOS"):
             open_path_in_explorer(path)
 
-    @patch("sampletones.utils.paths.System.current")
-    @patch("sampletones.utils.paths.subprocess.run")
+    @patch("sampletones.utils.system.paths.System.current")
+    @patch("sampletones.utils.system.paths.subprocess.run")
     def test_with_string_path(self, mock_run: MagicMock, mock_system: MagicMock) -> None:
         mock_system.return_value = System.LINUX
 

@@ -17,8 +17,6 @@ from .frequencies import (
     sanitize_period,
     sanitize_pitch,
 )
-from .locales import to_utf8
-from .paths import get_directory, open_path_in_explorer, shorten_path, to_path
 from .serialization import (
     calculate_hash,
     deserialize_array,
@@ -34,7 +32,9 @@ from .serialization import (
     serialize_array,
     snake_to_camel,
 )
-from .system import System
+from .system.locales import to_utf8
+from .system.paths import get_directory, open_path_in_explorer, shorten_path, to_path
+from .system.system import System
 
 __all__ = [
     "next_power_of_two",
