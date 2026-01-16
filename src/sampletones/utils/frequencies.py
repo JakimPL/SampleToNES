@@ -28,6 +28,14 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
     Returns:
         The frequency in Hz corresponding to the given pitch.
 
+    Raises:
+        TypeError: If pitch is not an integer.
+        TypeError: If a4_frequency is not a numeric type.
+        TypeError: If a4_pitch is not an integer.
+        ValueError: If pitch is outside the range 0-127.
+        ValueError: If a4_pitch is outside the range 0-127.
+        ValueError: If a4_frequency is not a positive finite number.
+
     Examples:
         >>> pitch_to_frequency(69)  # A4
         440.0
@@ -38,6 +46,27 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
         >>> pitch_to_frequency(69, a4_frequency=432.0)  # A4 with different tuning
         432.0
     """
+    if not isinstance(pitch, int):
+        raise TypeError("Pitch must be an integer value")
+
+    if not 0 <= pitch <= 127:
+        raise ValueError("Pitch must be in the range 0-127")
+
+    if not isinstance(a4_frequency, (int, float)):
+        raise TypeError("A4 frequency must be a numeric value")
+
+    if np.isinf(a4_frequency) or np.isnan(a4_frequency):
+        raise ValueError("A4 frequency must be a finite numeric value")
+
+    if a4_frequency <= 0:
+        raise ValueError("A4 frequency must be a positive value")
+
+    if not isinstance(a4_pitch, int):
+        raise TypeError("A4 pitch must be an integer value")
+
+    if not 0 <= a4_pitch <= 127:
+        raise ValueError("A4 pitch must be in the range 0-127")
+
     return a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
 
 
@@ -56,6 +85,14 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
     Returns:
         The nearest integer MIDI pitch number, or 0 if frequency <= 0.
 
+    Raises:
+        TypeError: If frequency is not a numeric type.
+        TypeError: If a4_frequency is not a numeric type.
+        TypeError: If a4_pitch is not an integer.
+        ValueError: If frequency is not a positive finite number.
+        ValueError: If a4_frequency is not a positive finite number.
+        ValueError: If calculated pitch is outside the range 0-127.
+
     Examples:
         >>> frequency_to_pitch(440.0)  # A4
         69
@@ -68,10 +105,29 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
         >>> frequency_to_pitch(-100.0)  # Invalid frequency
         0
     """
+    if not isinstance(frequency, (int, float)):
+        raise TypeError("Frequency must be a numeric value")
+
+    if np.isinf(frequency) or np.isnan(frequency):
+        raise ValueError("Frequency must be a positive finite number")
+
+    if not isinstance(a4_frequency, (int, float)):
+        raise TypeError("A4 frequency must be a finite numeric value")
+
+    if a4_frequency <= 0.0:
+        raise ValueError("A4 frequency must be a positive value")
+
+    if not isinstance(a4_pitch, int):
+        raise TypeError("A4 pitch must be an integer value")
+
     if frequency <= 0:
         return 0
 
     pitch: int = round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
+
+    if not 0 <= pitch <= 127:
+        raise ValueError("Calculated pitch is out of valid range (0-127)")
+
     return pitch
 
 
