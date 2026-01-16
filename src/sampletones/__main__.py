@@ -104,7 +104,7 @@ def main() -> None:
 
             return reconstruct_directory(path, config)
 
-        raise RuntimeError("Unsupported path type or file extension.")
+        raise RuntimeError("Unsupported path type or file extensio.")
 
     from sampletones.scripts import run_application
 

@@ -58,7 +58,7 @@ def shorten_path(path: GeneralPathlike, levels: int = 5) -> str:
         raise TypeError(f"Expected path to be path-like, got {type(path)}")
 
     if not isinstance(levels, int) or levels <= 1:
-        raise ValueError("Levels must be a positive integer greater than 1.")
+        raise ValueError("Levels must be a positive integer greater than 1")
 
     path = to_path(path)
     path = path.expanduser().resolve()

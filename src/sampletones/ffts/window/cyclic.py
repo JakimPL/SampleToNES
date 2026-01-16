@@ -30,8 +30,8 @@ class CyclicArray(DataModel):
     )
 
     def get_offset(self, phase: float) -> int:
-        assert isinstance(phase, float), "Phase must be a float value between 0.0 and 1.0."
-        assert 0.0 <= phase < 1.0, "Phase must be in the range [0.0, 1.0)."
+        assert isinstance(phase, float), "Phase must be a float value between 0.0 and 1.0"
+        assert 0.0 <= phase < 1.0, "Phase must be in the range [0.0, 1.0)"
         if self.frequency <= 0.0:
             return 0
 

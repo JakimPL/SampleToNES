@@ -168,7 +168,7 @@ def get_hash_bytes(data: Hashable) -> bytes:
         TypeError: If the data is not hashable.
     """
     if not isinstance(data, Hashable):
-        raise TypeError("Data must be hashable to convert to hash bytes.")
+        raise TypeError("Data must be hashable to convert to hash bytes")
 
     signed = hash(data)
     unsigned = signed & ((1 << 64) - 1)
@@ -191,7 +191,7 @@ def calculate_hash(data: ModelHashable, length: int = HASH_LENGTH) -> str:
         str: Hexadecimal hash string truncated to the specified length.
     """
     if length <= 0 or length > 64:
-        raise ValueError("Hash length must be between 1 and 64.")
+        raise ValueError("Hash length must be between 1 and 64")
 
     raw: bytes
     if isinstance(data, BaseModel):

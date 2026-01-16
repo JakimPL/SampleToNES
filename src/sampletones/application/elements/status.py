@@ -59,7 +59,7 @@ class GUIStatusBar:
         if callable(message_or_function):
             return message_or_function(*args, **kwargs)
 
-        raise TypeError("'message_or_function' must be a string or a callable returning a string.")
+        raise TypeError("'message_or_function' must be a string or a callable returning a string")
 
     def update(
         self,

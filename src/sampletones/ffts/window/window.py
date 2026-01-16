@@ -114,7 +114,7 @@ class Window:
         return fragment, max(left, 0), min(right, audio.shape[0])
 
     def get_frame_from_window(self, audio: np.ndarray, copy: bool = True) -> np.ndarray:
-        assert len(audio) == self.size, f"Audio length {len(audio)} must match window size {self.size}."
+        assert len(audio) == self.size, f"Audio length {len(audio)} must match window size {self.size}"
 
         left = -self.left_offset
         right = left + self.frame_length

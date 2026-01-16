@@ -24,7 +24,7 @@ class CallbackMixin:
     ) -> None:
         for name, callback in callbacks.items():
             if not hasattr(self, name):
-                raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}' to set callback.")
+                raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}' to set callback")
 
             if callback is not None and callable(callback):
                 setattr(self, name, callback)

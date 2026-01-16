@@ -33,7 +33,7 @@ class Regenerator(CallbackMixin):
         data: FeatureValue,
     ) -> None:
         if self.reconstruction_data is None:
-            raise RuntimeError("No reconstruction available to regenerate.")
+            raise RuntimeError("No reconstruction available to regenerate")
 
         config = self.reconstruction_data.config
         exporter_class = GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]

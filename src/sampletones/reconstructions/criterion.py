@@ -76,11 +76,11 @@ class Criterion:
         beta = self.config.generation.weights.temporal_loss_weight
         weights = alpha, beta
 
-        assert all(
-            isinstance(weight, float) and weight >= 0.0 for weight in weights
-        ), "Loss weights must be non-negative numbers."
+        if not all(isinstance(weight, float) and weight >= 0.0 for weight in weights):
+            raise ValueError("Loss weights must be non-negative numbers")
+
         total = sum(weights)
         if total == 0:
-            raise ValueError("At least one of the loss weights must be greater than zero.")
+            raise ValueError("At least one of the loss weights must be greater than zero")
 
         return alpha / total, beta / total

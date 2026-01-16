@@ -71,4 +71,4 @@ class GUISettingsPanel(GUIPanel):
         return value
 
     def update_gui_from_config(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method.")
+        raise NotImplementedError("Subclasses must implement this method")
