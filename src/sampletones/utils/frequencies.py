@@ -3,6 +3,8 @@ import numpy as np
 from sampletones.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
+    LIMIT_MAX_PITCH,
+    LIMIT_MIN_PITCH,
     MAX_PERIOD,
     MAX_PITCH,
     MIN_PITCH,
@@ -136,6 +138,8 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     Converts a MIDI pitch value to a human-readable note name
     consistent with FamiTracker.
 
+    Pitch cannot be outside the range 24-127 after applying transposition.
+
     Args:
         pitch: The MIDI pitch number to convert.
         transpose: Optional semitone transposition to apply. Defaults to 0.
@@ -143,19 +147,34 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     Returns:
         A string representing the note name and octave (e.g., "C4", "A#3").
 
+    Raises:
+        TypeError: If pitch is not an integer.
+        TypeError: If transpose is not an integer.
+        ValueError: If pitch is outside the range 0-127 after transposition.
+
     Examples:
         >>> pitch_to_name(60)  # Middle C
-        'C4'
+        'C-3'
         >>> pitch_to_name(69)  # A4
-        'A4'
+        'A-3'
         >>> pitch_to_name(61)  # C# above middle C
-        'C#4'
+        'C#3'
         >>> pitch_to_name(60, transpose=2)  # Middle C transposed up 2 semitones
-        'D4'
+        'D-3'
         >>> pitch_to_name(60, transpose=-12)  # Middle C transposed down an octave
-        'C3'
+        'C-2'
     """
+    if not isinstance(pitch, int):
+        raise TypeError("Pitch must be an integer value")
+
+    if not isinstance(transpose, int):
+        raise TypeError("Transpose must be an integer value")
+
     pitch += transpose
+
+    if not LIMIT_MIN_PITCH <= pitch <= LIMIT_MAX_PITCH:
+        raise ValueError(f"Pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH} after transposition")
+
     octave = (pitch // 12) - 2
     note_index = pitch % 12
     return f"{NOTE_NAMES[note_index]}{octave}"
@@ -180,6 +199,12 @@ def period_to_name(period: int) -> str:
         >>> period_to_name(15)
         'F-#'
     """
+    if not isinstance(period, int):
+        raise TypeError("Period must be an integer value")
+
+    if not 0 <= period <= MAX_PERIOD:
+        raise ValueError(f"Period must be in the range 0-{MAX_PERIOD}")
+
     return f"{period:X}-#"
 
 
@@ -190,10 +215,18 @@ def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PIT
     Args:
         pitch: The pitch value to clamp.
         min_pitch: The minimum allowed pitch. Defaults to MIN_PITCH.
+            Cannot be less than LIMIT_MIN_PITCH.
         max_pitch: The maximum allowed pitch. Defaults to MAX_PITCH.
+            Cannot be greater than LIMIT_MAX_PITCH.
 
     Returns:
         The pitch value clamped to the range [min_pitch, max_pitch].
+
+    Raises:
+        TypeError: If pitch, min_pitch, or max_pitch are not integers.
+        ValueError: If min_pitch is outside the range LIMIT_MIN_PITCH to LIMIT_MAX_PITCH.
+        ValueError: If max_pitch is outside the range LIMIT_MIN_PITCH to LIMIT_MAX_PITCH.
+        ValueError: If min_pitch is greater than max_pitch.
 
     Examples:
         >>> clamp_pitch(60)  # Within range
@@ -203,20 +236,36 @@ def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PIT
         >>> clamp_pitch(150)  # Above maximum, 119 is the default maximum
         119
     """
+    if not isinstance(pitch, int):
+        raise TypeError("Pitch must be an integer value")
+
+    if not isinstance(min_pitch, int):
+        raise TypeError("Minimum pitch must be an integer value")
+
+    if not isinstance(max_pitch, int):
+        raise TypeError("Maximum pitch must be an integer value")
+
+    if not LIMIT_MIN_PITCH <= min_pitch <= LIMIT_MAX_PITCH:
+        raise ValueError(f"Minimum pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
+
+    if not LIMIT_MIN_PITCH <= max_pitch <= LIMIT_MAX_PITCH:
+        raise ValueError(f"Maximum pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
+
+    if min_pitch > max_pitch:
+        raise ValueError("Minimum pitch cannot be greater than maximum pitch")
+
     return int(clamp(pitch, min_pitch, max_pitch))
 
 
-def clamp_period(period: int, min_period: int = 0, max_period: int = MAX_PERIOD) -> int:
+def clamp_period(period: int) -> int:
     """
-    Restricts a period value to be within the valid range.
+    Restricts a period value to be within the valid range 0-15.
 
     Args:
         period: The period value to clamp.
-        min_period: The minimum allowed period. Defaults to 0.
-        max_period: The maximum allowed period. Defaults to MAX_PERIOD.
 
     Returns:
-        The period value clamped to the range [min_period, max_period].
+        The period value clamped to the range [0, 15].
 
     Examples:
         >>> clamp_period(5)  # Within range
@@ -226,7 +275,7 @@ def clamp_period(period: int, min_period: int = 0, max_period: int = MAX_PERIOD)
         >>> clamp_period(100)  # Above maximum, where max_period is 15
         15
     """
-    return int(clamp(period, min_period, max_period))
+    return int(clamp(period, 0, MAX_PERIOD))
 
 
 def sanitize(name: str) -> str:

@@ -9,8 +9,10 @@ MAX_CHANGE_RATE: Final[int] = 600
 # Pitches and frequencies
 
 APU_CLOCK: Final[float] = 1789773.0
+LIMIT_MIN_PITCH: Final[int] = 24
 MIN_PITCH: Final[int] = 33
 MAX_PITCH: Final[int] = 119
+LIMIT_MAX_PITCH: Final[int] = 127
 PITCH_RANGE: Final[int] = MAX_PITCH - MIN_PITCH
 
 MIN_FREQUENCY: Final[float] = APU_CLOCK / 0x8000
