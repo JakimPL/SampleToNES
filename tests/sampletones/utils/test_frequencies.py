@@ -15,8 +15,312 @@ from sampletones.utils.frequencies import (
     sanitize,
     sanitize_period,
     sanitize_pitch,
+    validate_frequency,
+    validate_period,
+    validate_pitch,
 )
 from tests.sampletones.errors import expect_error
+
+
+class TestValidatePitch:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        pitch: Any
+        expected_result: Union[None, Type[Exception]]
+        test_id: str
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TestCase(
+                pitch=LIMIT_MIN_PITCH,
+                expected_result=None,
+                test_id="exactly_min_limit",
+            ),
+            TestCase(
+                pitch=LIMIT_MAX_PITCH,
+                expected_result=None,
+                test_id="exactly_max_limit",
+            ),
+            TestCase(
+                pitch=69,
+                expected_result=None,
+                test_id="middle_valid_pitch",
+            ),
+            TestCase(
+                pitch=60,
+                expected_result=None,
+                test_id="another_valid_pitch",
+            ),
+            TestCase(
+                pitch=(LIMIT_MIN_PITCH + LIMIT_MAX_PITCH) // 2,
+                expected_result=None,
+                test_id="middle_of_range",
+            ),
+            TestCase(
+                pitch=LIMIT_MIN_PITCH - 1,
+                expected_result=ValueError,
+                test_id="one_below_min",
+            ),
+            TestCase(
+                pitch=LIMIT_MAX_PITCH + 1,
+                expected_result=ValueError,
+                test_id="one_above_max",
+            ),
+            TestCase(
+                pitch=0,
+                expected_result=ValueError,
+                test_id="zero",
+            ),
+            TestCase(
+                pitch=-100,
+                expected_result=ValueError,
+                test_id="large_negative",
+            ),
+            TestCase(
+                pitch=200,
+                expected_result=ValueError,
+                test_id="large_positive",
+            ),
+            TestCase(
+                pitch="60",
+                expected_result=TypeError,
+                test_id="pitch_string",
+            ),
+            TestCase(
+                pitch=None,
+                expected_result=TypeError,
+                test_id="pitch_none",
+            ),
+            TestCase(
+                pitch=60.5,
+                expected_result=TypeError,
+                test_id="pitch_float",
+            ),
+            TestCase(
+                pitch=[60],
+                expected_result=TypeError,
+                test_id="pitch_list",
+            ),
+            TestCase(
+                pitch={"pitch": 60},
+                expected_result=TypeError,
+                test_id="pitch_dict",
+            ),
+        ],
+        ids=lambda tc: tc.test_id,
+    )
+    def test_validate_pitch(self, test_case: TestCase) -> None:
+        if expect_error(validate_pitch, test_case.expected_result, test_case.pitch):
+            return
+
+        validate_pitch(test_case.pitch)
+
+
+class TestValidateFrequency:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        frequency: Any
+        expected_result: Union[None, Type[Exception]]
+        test_id: str
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TestCase(
+                frequency=440.0,
+                expected_result=None,
+                test_id="valid_float",
+            ),
+            TestCase(
+                frequency=440,
+                expected_result=None,
+                test_id="valid_int",
+            ),
+            TestCase(
+                frequency=1.0,
+                expected_result=None,
+                test_id="one_hz",
+            ),
+            TestCase(
+                frequency=0.001,
+                expected_result=None,
+                test_id="very_small_positive",
+            ),
+            TestCase(
+                frequency=100000.0,
+                expected_result=None,
+                test_id="very_large_positive",
+            ),
+            TestCase(
+                frequency=1e-100,
+                expected_result=None,
+                test_id="extremely_small_positive",
+            ),
+            TestCase(
+                frequency=1e100,
+                expected_result=None,
+                test_id="extremely_large_positive",
+            ),
+            TestCase(
+                frequency=0.0,
+                expected_result=ValueError,
+                test_id="zero",
+            ),
+            TestCase(
+                frequency=-1.0,
+                expected_result=ValueError,
+                test_id="negative",
+            ),
+            TestCase(
+                frequency=-440.0,
+                expected_result=ValueError,
+                test_id="negative_440",
+            ),
+            TestCase(
+                frequency=np.inf,
+                expected_result=ValueError,
+                test_id="positive_infinity",
+            ),
+            TestCase(
+                frequency=-np.inf,
+                expected_result=ValueError,
+                test_id="negative_infinity",
+            ),
+            TestCase(
+                frequency=np.nan,
+                expected_result=ValueError,
+                test_id="nan",
+            ),
+            TestCase(
+                frequency="440",
+                expected_result=TypeError,
+                test_id="frequency_string",
+            ),
+            TestCase(
+                frequency=None,
+                expected_result=TypeError,
+                test_id="frequency_none",
+            ),
+            TestCase(
+                frequency=[440.0],
+                expected_result=TypeError,
+                test_id="frequency_list",
+            ),
+            TestCase(
+                frequency={"freq": 440.0},
+                expected_result=TypeError,
+                test_id="frequency_dict",
+            ),
+        ],
+        ids=lambda tc: tc.test_id,
+    )
+    def test_validate_frequency(self, test_case: TestCase) -> None:
+        if expect_error(validate_frequency, test_case.expected_result, test_case.frequency):
+            return
+
+        validate_frequency(test_case.frequency)
+
+
+class TestValidatePeriod:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        period: Any
+        expected_result: Union[None, Type[Exception]]
+        test_id: str
+
+    @pytest.mark.parametrize(
+        "test_case",
+        [
+            TestCase(
+                period=0,
+                expected_result=None,
+                test_id="zero_minimum",
+            ),
+            TestCase(
+                period=MAX_PERIOD,
+                expected_result=None,
+                test_id="exactly_max_period",
+            ),
+            TestCase(
+                period=5,
+                expected_result=None,
+                test_id="middle_valid_period",
+            ),
+            TestCase(
+                period=1,
+                expected_result=None,
+                test_id="one",
+            ),
+            TestCase(
+                period=MAX_PERIOD - 1,
+                expected_result=None,
+                test_id="one_below_max",
+            ),
+            TestCase(
+                period=MAX_PERIOD // 2,
+                expected_result=None,
+                test_id="middle_of_range",
+            ),
+            TestCase(
+                period=-1,
+                expected_result=ValueError,
+                test_id="negative_one",
+            ),
+            TestCase(
+                period=MAX_PERIOD + 1,
+                expected_result=ValueError,
+                test_id="one_above_max",
+            ),
+            TestCase(
+                period=-100,
+                expected_result=ValueError,
+                test_id="large_negative",
+            ),
+            TestCase(
+                period=100,
+                expected_result=ValueError,
+                test_id="large_positive",
+            ),
+            TestCase(
+                period="5",
+                expected_result=TypeError,
+                test_id="period_string",
+            ),
+            TestCase(
+                period=None,
+                expected_result=TypeError,
+                test_id="period_none",
+            ),
+            TestCase(
+                period=5.5,
+                expected_result=TypeError,
+                test_id="period_float",
+            ),
+            TestCase(
+                period=[5],
+                expected_result=TypeError,
+                test_id="period_list",
+            ),
+            TestCase(
+                period={"period": 5},
+                expected_result=TypeError,
+                test_id="period_dict",
+            ),
+        ],
+        ids=lambda tc: tc.test_id,
+    )
+    def test_validate_period(self, test_case: TestCase) -> None:
+        if expect_error(validate_period, test_case.expected_result, test_case.period):
+            return
+
+        validate_period(test_case.period)
 
 
 class TestPitchToFrequency:
