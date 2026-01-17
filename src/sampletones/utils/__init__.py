@@ -16,6 +16,9 @@ from .frequencies import (
     sanitize,
     sanitize_period,
     sanitize_pitch,
+    validate_frequency,
+    validate_period,
+    validate_pitch,
 )
 from .serialization import (
     calculate_hash,
@@ -42,6 +45,9 @@ __all__ = [
     "trim",
     "first_key_for_value",
     "clamp",
+    "validate_pitch",
+    "validate_frequency",
+    "validate_period",
     "pitch_to_frequency",
     "frequency_to_pitch",
     "clamp_pitch",

@@ -93,7 +93,7 @@ class TestPitchToFrequency:
                 pitch=0,
                 a4_frequency=440.0,
                 a4_pitch=69,
-                expected_result=8.175798915643707,
+                expected_result=ValueError,
                 test_id="pitch_zero",
             ),
             TestCase(
@@ -303,14 +303,14 @@ class TestFrequencyToPitch:
                 frequency=0.0,
                 a4_frequency=440.0,
                 a4_pitch=69,
-                expected_result=0,
+                expected_result=ValueError,
                 test_id="zero_frequency",
             ),
             TestCase(
                 frequency=-100.0,
                 a4_frequency=440.0,
                 a4_pitch=69,
-                expected_result=0,
+                expected_result=ValueError,
                 test_id="negative_frequency",
             ),
             TestCase(

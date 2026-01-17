@@ -15,7 +15,68 @@ from sampletones.constants.general import (
 from .common import clamp
 
 
-def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> float:
+def validate_pitch(pitch: int) -> None:
+    """
+    Validates that a pitch value is an integer within the range 24-127.
+
+    Args:
+        pitch: The pitch value to validate.
+
+    Raises:
+        TypeError: If pitch is not an integer.
+        ValueError: If pitch is outside the range 24-127.
+    """
+    if not isinstance(pitch, int):
+        raise TypeError("Pitch must be an integer value")
+
+    if not LIMIT_MIN_PITCH <= pitch <= LIMIT_MAX_PITCH:
+        raise ValueError(f"Pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
+
+
+def validate_frequency(frequency: float) -> None:
+    """
+    Validates that a frequency value is a positive finite number.
+
+    Args:
+        frequency: The frequency value to validate.
+
+    Raises:
+        TypeError: If frequency is not a numeric type.
+        ValueError: If frequency is not a positive finite number.
+    """
+    if not isinstance(frequency, (int, float)):
+        raise TypeError("Frequency must be a numeric value")
+
+    if np.isinf(frequency) or np.isnan(frequency):
+        raise ValueError("Frequency must be a positive finite number")
+
+    if frequency <= 0:
+        raise ValueError("Frequency must be a positive value")
+
+
+def validate_period(period: int) -> None:
+    """
+    Validates that a period value is an integer within the range 0-15.
+
+    Args:
+        period: The period value to validate.
+
+    Raises:
+        TypeError: If period is not an integer.
+        ValueError: If period is outside the range 0-15.
+    """
+    if not isinstance(period, int):
+        raise TypeError("Period must be an integer value")
+
+    if not 0 <= period <= MAX_PERIOD:
+        raise ValueError(f"Period must be in the range 0-{MAX_PERIOD}")
+
+
+def pitch_to_frequency(
+    pitch: int,
+    a4_frequency: float = A4_FREQUENCY,
+    a4_pitch: int = A4_PITCH,
+) -> float:
     """
     Converts a MIDI-style pitch value to its corresponding frequency in Hz.
 
@@ -23,7 +84,7 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
     by a factor of 2^(1/12).
 
     Args:
-        pitch: The MIDI pitch number (0-127, where 69 is typically A4).
+        pitch: The MIDI pitch number (24-127, where 69 is typically A4).
         a4_frequency: The reference frequency for A4 in Hz. Defaults to 440.0 Hz.
         a4_pitch: The MIDI pitch number for A4. Defaults to 69.
 
@@ -34,9 +95,10 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
         TypeError: If pitch is not an integer.
         TypeError: If a4_frequency is not a numeric type.
         TypeError: If a4_pitch is not an integer.
-        ValueError: If pitch is outside the range 0-127.
-        ValueError: If a4_pitch is outside the range 0-127.
+        ValueError: If pitch is outside the range 24-127.
+        ValueError: If a4_pitch is outside the range 24-127.
         ValueError: If a4_frequency is not a positive finite number.
+        ValueError: If calculated frequency is not a positive finite number.
 
     Examples:
         >>> pitch_to_frequency(69)  # A4
@@ -48,31 +110,20 @@ def pitch_to_frequency(pitch: int, a4_frequency: float = A4_FREQUENCY, a4_pitch:
         >>> pitch_to_frequency(69, a4_frequency=432.0)  # A4 with different tuning
         432.0
     """
-    if not isinstance(pitch, int):
-        raise TypeError("Pitch must be an integer value")
+    validate_pitch(pitch)
+    validate_pitch(a4_pitch)
+    validate_frequency(a4_frequency)
 
-    if not 0 <= pitch <= 127:
-        raise ValueError("Pitch must be in the range 0-127")
-
-    if not isinstance(a4_frequency, (int, float)):
-        raise TypeError("A4 frequency must be a numeric value")
-
-    if np.isinf(a4_frequency) or np.isnan(a4_frequency):
-        raise ValueError("A4 frequency must be a finite numeric value")
-
-    if a4_frequency <= 0:
-        raise ValueError("A4 frequency must be a positive value")
-
-    if not isinstance(a4_pitch, int):
-        raise TypeError("A4 pitch must be an integer value")
-
-    if not 0 <= a4_pitch <= 127:
-        raise ValueError("A4 pitch must be in the range 0-127")
-
-    return a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
+    frequency: float = a4_frequency * (2 ** ((pitch - a4_pitch) / 12))
+    validate_frequency(frequency)
+    return frequency
 
 
-def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_pitch: int = A4_PITCH) -> int:
+def frequency_to_pitch(
+    frequency: float,
+    a4_frequency: float = A4_FREQUENCY,
+    a4_pitch: int = A4_PITCH,
+) -> int:
     """
     Converts a frequency in Hz to the nearest MIDI-style pitch value.
 
@@ -85,7 +136,7 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
         a4_pitch: The MIDI pitch number for A4. Defaults to 69.
 
     Returns:
-        The nearest integer MIDI pitch number, or 0 if frequency <= 0.
+        The nearest integer MIDI pitch number.
 
     Raises:
         TypeError: If frequency is not a numeric type.
@@ -93,7 +144,7 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
         TypeError: If a4_pitch is not an integer.
         ValueError: If frequency is not a positive finite number.
         ValueError: If a4_frequency is not a positive finite number.
-        ValueError: If calculated pitch is outside the range 0-127.
+        ValueError: If calculated pitch is outside the range 24-127.
 
     Examples:
         >>> frequency_to_pitch(440.0)  # A4
@@ -107,29 +158,12 @@ def frequency_to_pitch(frequency: float, a4_frequency: float = A4_FREQUENCY, a4_
         >>> frequency_to_pitch(-100.0)  # Invalid frequency
         0
     """
-    if not isinstance(frequency, (int, float)):
-        raise TypeError("Frequency must be a numeric value")
-
-    if np.isinf(frequency) or np.isnan(frequency):
-        raise ValueError("Frequency must be a positive finite number")
-
-    if not isinstance(a4_frequency, (int, float)):
-        raise TypeError("A4 frequency must be a finite numeric value")
-
-    if a4_frequency <= 0.0:
-        raise ValueError("A4 frequency must be a positive value")
-
-    if not isinstance(a4_pitch, int):
-        raise TypeError("A4 pitch must be an integer value")
-
-    if frequency <= 0:
-        return 0
+    validate_frequency(frequency)
+    validate_frequency(a4_frequency)
+    validate_pitch(a4_pitch)
 
     pitch: int = round(a4_pitch + 12 * (np.log2(frequency / a4_frequency)))
-
-    if not 0 <= pitch <= 127:
-        raise ValueError("Calculated pitch is out of valid range (0-127)")
-
+    validate_pitch(pitch)
     return pitch
 
 
@@ -150,7 +184,7 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     Raises:
         TypeError: If pitch is not an integer.
         TypeError: If transpose is not an integer.
-        ValueError: If pitch is outside the range 0-127 after transposition.
+        ValueError: If pitch is outside the range 24-127 after transposition.
 
     Examples:
         >>> pitch_to_name(60)  # Middle C
@@ -171,9 +205,7 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
         raise TypeError("Transpose must be an integer value")
 
     pitch += transpose
-
-    if not LIMIT_MIN_PITCH <= pitch <= LIMIT_MAX_PITCH:
-        raise ValueError(f"Pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH} after transposition")
+    validate_pitch(pitch)
 
     octave = (pitch // 12) - 2
     note_index = pitch % 12
@@ -191,6 +223,10 @@ def period_to_name(period: int) -> str:
     Returns:
         A string in hexadecimal format followed by "-#" (e.g., "0-#", "F-#").
 
+    Raises:
+        TypeError: If period is not an integer.
+        ValueError: If period is outside the range 0-15.
+
     Examples:
         >>> period_to_name(0)
         '0-#'
@@ -199,12 +235,7 @@ def period_to_name(period: int) -> str:
         >>> period_to_name(15)
         'F-#'
     """
-    if not isinstance(period, int):
-        raise TypeError("Period must be an integer value")
-
-    if not 0 <= period <= MAX_PERIOD:
-        raise ValueError(f"Period must be in the range 0-{MAX_PERIOD}")
-
+    validate_period(period)
     return f"{period:X}-#"
 
 
@@ -235,21 +266,14 @@ def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PIT
         33
         >>> clamp_pitch(150)  # Above maximum, 119 is the default maximum
         119
+        >>> clamp_pitch(250)  # Above possible MIDI range
+        119
     """
     if not isinstance(pitch, int):
         raise TypeError("Pitch must be an integer value")
 
-    if not isinstance(min_pitch, int):
-        raise TypeError("Minimum pitch must be an integer value")
-
-    if not isinstance(max_pitch, int):
-        raise TypeError("Maximum pitch must be an integer value")
-
-    if not LIMIT_MIN_PITCH <= min_pitch <= LIMIT_MAX_PITCH:
-        raise ValueError(f"Minimum pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
-
-    if not LIMIT_MIN_PITCH <= max_pitch <= LIMIT_MAX_PITCH:
-        raise ValueError(f"Maximum pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
+    validate_pitch(min_pitch)
+    validate_pitch(max_pitch)
 
     if min_pitch > max_pitch:
         raise ValueError("Minimum pitch cannot be greater than maximum pitch")
