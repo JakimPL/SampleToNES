@@ -64,13 +64,14 @@ class AudioDeviceManager(CallbackMixin):
         self._position: int = 0
         self._playing: bool = False
         self._paused: bool = False
-        self._position_callback: Optional[Callable[[int], None]] = None
+        self._stop: bool = False
+
         self._playback_thread: Optional[threading.Thread] = None
-        self._stop_flag: bool = False
+        self._lock: threading.Lock = threading.Lock()
         self._resume_event: threading.Event = threading.Event()
         self._resume_event.set()
-        self._lock: threading.Lock = threading.Lock()
 
+        self._position_callback: Optional[Callable[[int], None]] = None
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
 
         self.refresh_devices()
@@ -295,7 +296,7 @@ class AudioDeviceManager(CallbackMixin):
             self._position = 0
             self._playing = True
             self._paused = False
-            self._stop_flag = False
+            self._stop = False
         self._resume_event.set()
 
         self._playback_thread = threading.Thread(
@@ -312,7 +313,7 @@ class AudioDeviceManager(CallbackMixin):
             self._resume_event.wait(timeout=0.1)
 
             with self._lock:
-                if self._stop_flag or self._audio_data is None:
+                if self._stop or self._audio_data is None:
                     break
 
                 if self._paused:
@@ -347,11 +348,12 @@ class AudioDeviceManager(CallbackMixin):
             self.call(self.on_playback_error, playback_error)
             raise playback_error from exception
 
-        self._playback_loop(stream, update)
-
-        stream.stop_stream()
-        stream.close()
-        self._reset(update)
+        try:
+            self._playback_loop(stream, update)
+        finally:
+            stream.stop_stream()
+            stream.close()
+            self._reset(update)
 
     def _reset(self, update: bool = True) -> None:
         with self._lock:
@@ -374,7 +376,10 @@ class AudioDeviceManager(CallbackMixin):
         self._resume_event.set()
 
     def stop(self) -> None:
-        self._stop_flag = True
+        with self._lock:
+            self._stop = True
+
+        self._resume_event.set()
         if self._playback_thread is not None:
             self._playback_thread.join(timeout=1.0)
 
