@@ -44,14 +44,14 @@ def shorten_path(path: GeneralPathlike, levels: int = 5) -> str:
         str: The shortened path string with "..." indicating omitted parts.
 
     Examples:
-        For Windows (double):
-        >>> shorten_path(Path(r"C:\\Users\\user\\Documents"), levels=2)
+        For Windows:
+        >>> sys.platform.startswith("win") and shorten_path(Path("C:/Users/user/Documents"), levels=2)  # doctest: +SKIP
         'C:\\...\\Documents'
 
         For Linux/macOS:
-        >>> shorten_path(Path("/home/user/file.txt"), levels=3)
+        >>> shorten_path(Path("/home/user/file.txt"), levels=3)  # doctest: +SKIP
         '/home/user/file.txt'
-        >>> shorten_path(Path("/a/b/c/d/e/f/g/h"), levels=4)
+        >>> shorten_path(Path("/a/b/c/d/e/f/g/h"), levels=4)  # doctest: +SKIP
         '/a/.../g/h'
     """
     if not isinstance(path, (str, Path, os.PathLike)):

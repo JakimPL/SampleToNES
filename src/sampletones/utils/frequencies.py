@@ -151,12 +151,12 @@ def frequency_to_pitch(
         69
         >>> frequency_to_pitch(880.0)  # A5
         81
-        >>> frequency_to_pitch(261.63)  # ~Middle C
+        >>> frequency_to_pitch(261.63)  # ~middle C
         60
-        >>> frequency_to_pitch(0.0)  # Invalid frequency
-        0
-        >>> frequency_to_pitch(-100.0)  # Invalid frequency
-        0
+        >>> frequency_to_pitch(0.0)  # invalid frequency
+        Traceback (most recent call last):
+            ...
+        ValueError: Frequency must be a positive value
     """
     validate_frequency(frequency)
     validate_frequency(a4_frequency)
@@ -187,16 +187,20 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
         ValueError: If pitch is outside the range 24-127 after transposition.
 
     Examples:
-        >>> pitch_to_name(60)  # Middle C
+        >>> pitch_to_name(60)  # middle C
         'C-3'
         >>> pitch_to_name(69)  # A4
         'A-3'
         >>> pitch_to_name(61)  # C# above middle C
         'C#3'
-        >>> pitch_to_name(60, transpose=2)  # Middle C transposed up 2 semitones
+        >>> pitch_to_name(60, transpose=2)  # middle C transposed up 2 semitones
         'D-3'
-        >>> pitch_to_name(60, transpose=-12)  # Middle C transposed down an octave
+        >>> pitch_to_name(60, transpose=-12)  # middle C transposed down an octave
         'C-2'
+        >>> pitch_to_name(128)  # outside valid range
+        Traceback (most recent call last):
+            ...
+        ValueError: Pitch must be in the range 24-127
     """
     if not isinstance(pitch, int):
         raise TypeError("Pitch must be an integer value")
@@ -234,6 +238,10 @@ def period_to_name(period: int) -> str:
         'A-#'
         >>> period_to_name(15)
         'F-#'
+        >>> period_to_name(16)  # outside valid range
+        Traceback (most recent call last):
+            ...
+        ValueError: Period must be in the range 0-15
     """
     validate_period(period)
     return f"{period:X}-#"

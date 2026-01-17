@@ -94,7 +94,7 @@ def clamp(
         >>> clamp(1, max_value=0)
         0
         >>> clamp(1.0, 0.0, float("-inf"))  # max_value takes precedence
-        0.0
+        -inf
     """
     if not isinstance(value, (int, float, np.integer, np.floating)):
         raise TypeError(f"Value must be a numeric type, got {type(value)}")
@@ -247,8 +247,8 @@ def first_key_for_value(dictionary: Dict[Any, Any], target: Any) -> Any:
         'b'
         >>> first_key_for_value({'c': 1, 'b': 2, 'a': 1}, 1)
         'c'
-        >>> first_key_for_value({'a': 1, 'b': 2}, 3)
-        None
+        >>> first_key_for_value({'a': 1, 'b': 2}, 3)  # returns None
+
     """
     if not isinstance(dictionary, dict):
         raise TypeError(f"Expected dictionary to be dict, got {type(dictionary)}")
