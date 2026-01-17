@@ -11,7 +11,7 @@ from sampletones.typehints import Pathlike
 from .processing import clip_audio
 from .processing import normalize as normalize_audio
 from .processing import quantize as quantize_audio
-from .processing import resample, stereo_to_mono
+from .processing import resample, to_mono
 
 
 def write_wave(path: Pathlike, sample_rate: int, audio: np.ndarray) -> None:
@@ -38,7 +38,7 @@ def load_audio(
     quantize: bool = True,
 ) -> np.ndarray:
     audio, sample_rate = read_wave(path)
-    audio = stereo_to_mono(audio)
+    audio = to_mono(audio)
 
     if normalize:
         audio = normalize_audio(audio)
