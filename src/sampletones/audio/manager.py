@@ -2,19 +2,13 @@ import contextlib
 import os
 import sys
 import threading
-from io import DEFAULT_BUFFER_SIZE
 from pathlib import Path
 from typing import Callable, Dict, Generator, List, Optional, cast
 
 import numpy as np
 import pyaudio
 
-from sampletones.constants.audio import (
-    BUFFER_SIZES,
-    SAMPLE_RATES,
-    BufferSize,
-    SampleRate,
-)
+from sampletones.constants.audio import BUFFER_SIZES, DEFAULT_BUFFER_SIZE, SAMPLE_RATES, BufferSize, SampleRate
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
@@ -73,6 +67,9 @@ class AudioDeviceManager(CallbackMixin):
         self._position_callback: Optional[Callable[[int], None]] = None
         self._playback_thread: Optional[threading.Thread] = None
         self._stop_flag: bool = False
+        self._resume_event: threading.Event = threading.Event()
+        self._resume_event.set()
+        self._lock: threading.Lock = threading.Lock()
 
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
 
@@ -105,7 +102,7 @@ class AudioDeviceManager(CallbackMixin):
         except IOError:
             default_output_index = -1
 
-        self._devices: Dict[int, AudioDevice] = {}
+        self._devices = {}
         for i in range(self._pyaudio.get_device_count()):
             info = self._pyaudio.get_device_info_by_index(i)
             if int(info["maxOutputChannels"]) == 0:
@@ -191,7 +188,7 @@ class AudioDeviceManager(CallbackMixin):
 
     @buffer_size.setter
     def buffer_size(self, value: BufferSize) -> None:
-        if not value in BUFFER_SIZES:
+        if value not in BUFFER_SIZES:
             buffer_sizes = ", ".join(map(str, BUFFER_SIZES))
             raise ValueError(f"Buffer size {value} is not valid, must be one of: {buffer_sizes}")
 
@@ -210,7 +207,7 @@ class AudioDeviceManager(CallbackMixin):
 
     @sample_rate.setter
     def sample_rate(self, value: SampleRate) -> None:
-        if not value in SAMPLE_RATES:
+        if value not in SAMPLE_RATES:
             raise ValueError(f"Sample rate {value} is not valid")
 
         device = self._devices[self.device_index]
@@ -260,8 +257,7 @@ class AudioDeviceManager(CallbackMixin):
 
     def configure_device(self, device_index: int, sample_rate: SampleRate) -> None:
         if device_index not in self._devices:
-            logger.error(f"Audio device with index {device_index} not found")
-            return
+            raise ValueError(f"Device with index {device_index} not found")
 
         device = self._devices[device_index]
         if sample_rate not in device.supported_sample_rates:
@@ -284,8 +280,9 @@ class AudioDeviceManager(CallbackMixin):
         self._position_callback = callback
 
     def set_position(self, position: int) -> None:
-        if self._audio_data is not None:
-            self._position = max(0, min(position, len(self._audio_data)))
+        with self._lock:
+            if self._audio_data is not None:
+                self._position = max(0, min(position, len(self._audio_data)))
 
     def play_file(self, filepath: Path, update: bool = True) -> None:
         audio = load_audio(filepath, normalize=False, quantize=False)
@@ -293,11 +290,13 @@ class AudioDeviceManager(CallbackMixin):
 
     def play(self, audio: np.ndarray, update: bool = True) -> None:
         self.stop()
-        self._audio_data = audio.astype(np.float32)
-        self._position = 0
-        self._playing = True
-        self._paused = False
-        self._stop_flag = False
+        with self._lock:
+            self._audio_data = audio.astype(np.float32)
+            self._position = 0
+            self._playing = True
+            self._paused = False
+            self._stop_flag = False
+        self._resume_event.set()
 
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
@@ -307,6 +306,31 @@ class AudioDeviceManager(CallbackMixin):
         )
 
         self._playback_thread.start()
+
+    def _playback_loop(self, stream: pyaudio.Stream, update: bool) -> None:
+        while True:
+            self._resume_event.wait(timeout=0.1)
+
+            with self._lock:
+                if self._stop_flag or self._audio_data is None:
+                    break
+
+                if self._paused:
+                    continue
+
+                remaining = len(self._audio_data) - self._position
+                if remaining <= 0:
+                    break
+
+                chunk_size = min(self._buffer_size, remaining)
+                chunk = self._audio_data[self._position : self._position + chunk_size]
+                self._position += chunk_size
+                current_position = self._position
+
+            stream.write(chunk.tobytes())
+
+            if update and self._position_callback is not None:
+                self.call(self._position_callback, current_position)
 
     def _playback_worker(self, update: bool = True) -> None:
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
@@ -323,40 +347,31 @@ class AudioDeviceManager(CallbackMixin):
             self.call(self.on_playback_error, playback_error)
             raise playback_error from exception
 
-        while not self._stop_flag and self._audio_data is not None:
-            if self._paused:
-                continue
-
-            remaining = len(self._audio_data) - self._position
-            if remaining <= 0:
-                break
-
-            chunk_size = min(self._buffer_size, remaining)
-            chunk = self._audio_data[self._position : self._position + chunk_size]
-            stream.write(chunk.tobytes())
-            self._position += chunk_size
-
-            if update and self._position_callback is not None:
-                self.call(self._position_callback, self._position)
+        self._playback_loop(stream, update)
 
         stream.stop_stream()
         stream.close()
         self._reset(update)
 
     def _reset(self, update: bool = True) -> None:
-        self._playing = False
-        self._paused = False
-        self._position = 0
-        self._audio_data = None
+        with self._lock:
+            self._playing = False
+            self._paused = False
+            self._position = 0
+            self._audio_data = None
 
         if update and self._position_callback is not None:
             self.call(self._position_callback, 0)
 
     def pause(self) -> None:
-        self._paused = True
+        with self._lock:
+            self._paused = True
+        self._resume_event.clear()
 
     def resume(self) -> None:
-        self._paused = False
+        with self._lock:
+            self._paused = False
+        self._resume_event.set()
 
     def stop(self) -> None:
         self._stop_flag = True
@@ -367,10 +382,12 @@ class AudioDeviceManager(CallbackMixin):
         self._reset()
 
     def is_playing(self) -> bool:
-        return self._playing
+        with self._lock:
+            return self._playing
 
     def is_paused(self) -> bool:
-        return self._paused
+        with self._lock:
+            return self._paused
 
     def terminate(self) -> None:
         if self._pyaudio is not None:
