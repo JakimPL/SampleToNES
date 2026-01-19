@@ -2,13 +2,8 @@ from typing import Dict, List, Optional, Tuple, Union, cast
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDevice, AudioDeviceManager, CurrentDevice
-from sampletones.constants.audio import (
-    BUFFER_SIZES,
-    SAMPLE_RATES,
-    BufferSize,
-    SampleRate,
-)
+from sampletones.audio import AudioDevice, AudioDeviceManager, CurrentDevice, validate_sample_rate
+from sampletones.constants.audio import BUFFER_SIZES, BufferSize, SampleRate
 from sampletones.typehints import Sender
 
 from ..config.settings import AudioSettingsData
@@ -196,7 +191,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     def _get_selected_sample_rate(self) -> SampleRate:
         sample_rate_string: str = dpg.get_value(TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE)
         sample_rate: int = int(sample_rate_string.replace(SUF_SETTINGS_AUDIO_HZ, ""))
-        assert sample_rate in SAMPLE_RATES, "Unsupported sample rate selected"
+        validate_sample_rate(sample_rate)
         return cast(SampleRate, sample_rate)
 
     def _get_selected_buffer_size(self) -> BufferSize:

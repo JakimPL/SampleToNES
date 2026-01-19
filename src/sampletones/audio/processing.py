@@ -1,41 +1,11 @@
-from typing import Iterable, Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 
+from sampletones.audio.validation import validate_audio_array
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.general import QUANTIZATION_LEVELS
 from sampletones.utils.logger import logger
-
-
-def validate_audio_array(
-    audio: np.ndarray,
-    allowed_dims: Optional[Iterable[int]] = (1,),
-) -> None:
-    """
-    Validate that input is a numpy array with allowed dimensions.
-    Expects 1D array by default.
-
-    Args:
-        audio: Array to validate.
-        allowed_dims: Iterable of allowed number of dimensions.
-            If None, any number of dimensions is allowed.
-
-    Raises:
-        TypeError: If audio is not a numpy array.
-        ValueError: If audio is not one of the allowed dimensions.
-    """
-    if not isinstance(audio, np.ndarray):
-        raise TypeError(f"Expected audio to be np.ndarray, got {type(audio)}")
-
-    if not np.issubdtype(audio.dtype, np.number):
-        raise TypeError(f"Expected audio array to have numeric dtype, got {audio.dtype}")
-
-    if allowed_dims is not None and audio.ndim not in allowed_dims:
-        dims = "D, ".join(str(dim) for dim in allowed_dims)
-        if not dims:
-            raise ValueError("No allowed dimensions specified for audio array validation")
-
-        raise ValueError(f"Expected audio to be: {dims}D, got {audio.ndim}D array")
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
@@ -90,6 +60,8 @@ def resample(
     """
     Resample audio to a different sample rate.
 
+    Validates input audio and performs resampling.
+
     Uses librosa if available for high-quality resampling, otherwise falls
     back to linear interpolation via numpy.
 
@@ -101,6 +73,7 @@ def resample(
     Returns:
         Resampled audio array.
     """
+    validate_audio_array(audio)
     if original_sample_rate == target_sample_rate:
         return audio
 

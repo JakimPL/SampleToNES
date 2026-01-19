@@ -8,7 +8,8 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
-from sampletones.constants.audio import BUFFER_SIZES, DEFAULT_BUFFER_SIZE, SAMPLE_RATES, BufferSize, SampleRate
+from sampletones.audio.validation import validate_buffer_size, validate_sample_rate
+from sampletones.constants.audio import DEFAULT_BUFFER_SIZE, SAMPLE_RATES, BufferSize, SampleRate
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
@@ -278,16 +279,15 @@ class AudioDeviceManager(CallbackMixin):
         """
         Set the audio buffer size.
 
+        Validates the buffer size before setting.
+
         Args:
             value: Buffer size in samples (must be one of the valid buffer sizes).
 
         Raises:
             ValueError: If the buffer size is not valid.
         """
-        if value not in BUFFER_SIZES:
-            buffer_sizes = ", ".join(map(str, BUFFER_SIZES))
-            raise ValueError(f"Buffer size {value} is not valid, must be one of: {buffer_sizes}")
-
+        validate_buffer_size(value)
         self._buffer_size = value
 
     @property
@@ -321,15 +321,16 @@ class AudioDeviceManager(CallbackMixin):
         """
         Set the sample rate for audio playback.
 
+        Validates the sample rate before setting and ensures
+        it is supported by the current device.
+
         Args:
             value: Sample rate in Hz.
 
         Raises:
             ValueError: If the sample rate is not valid or not supported by the current device.
         """
-        if value not in SAMPLE_RATES:
-            raise ValueError(f"Sample rate {value} is not valid")
-
+        validate_sample_rate(value)
         device = self._devices[self.device_index]
         if value not in device.supported_sample_rates:
             raise ValueError(f"Sample rate {value} not supported by device {device.name}")

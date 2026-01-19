@@ -14,81 +14,8 @@ from sampletones.audio.processing import (
     quantize,
     resample,
     to_mono,
-    validate_audio_array,
 )
 from tests.sampletones.errors import expect_error
-
-
-class TestValidateAudioArray:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        id: str
-        audio: Any
-        expected_result: Union[None, Type[Exception]]
-
-    @pytest.mark.parametrize(
-        "test_case",
-        [
-            TestCase(
-                id="valid_float64_array",
-                audio=np.array([1.0, 2.0, 3.0]),
-                expected_result=None,
-            ),
-            TestCase(
-                id="empty_array",
-                audio=np.array([]),
-                expected_result=None,
-            ),
-            TestCase(
-                id="valid_float32_array",
-                audio=np.array([1.0, 2.0, 3.0], dtype=np.float32),
-                expected_result=None,
-            ),
-            TestCase(
-                id="valid_int32_array",
-                audio=np.array([1, 2, 3], dtype=np.int32),
-                expected_result=None,
-            ),
-            TestCase(
-                id="string_raises_type_error",
-                audio="not an array",
-                expected_result=TypeError,
-            ),
-            TestCase(
-                id="list_raises_type_error",
-                audio=[1.0, 2.0, 3.0],
-                expected_result=TypeError,
-            ),
-            TestCase(
-                id="none_raises_type_error",
-                audio=None,
-                expected_result=TypeError,
-            ),
-            TestCase(
-                id="int_raises_type_error",
-                audio=123,
-                expected_result=TypeError,
-            ),
-            TestCase(
-                id="2d_array_raises_value_error",
-                audio=np.array([[1, 2], [3, 4]]),
-                expected_result=ValueError,
-            ),
-            TestCase(
-                id="3d_array_raises_value_error",
-                audio=np.array([[[1]]]),
-                expected_result=ValueError,
-            ),
-        ],
-        ids=lambda tc: tc.id,
-    )
-    def test_validate_audio_array(self, test_case: TestCase) -> None:
-        if expect_error(validate_audio_array, test_case.expected_result, test_case.audio):
-            return
-
-        validate_audio_array(test_case.audio)
 
 
 class TestClipAudio:
