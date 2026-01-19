@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from types import ModuleType
-from typing import Any, Dict, List, Optional, Self
+from typing import Any, Dict, List, Optional, Self, Type
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -16,6 +15,7 @@ from sampletones.constants.application import (
 )
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, Metadata, default_metadata
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
@@ -264,13 +264,13 @@ class Reconstruction(DataModel):
         return str(audio_filepath)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction.FBReconstruction

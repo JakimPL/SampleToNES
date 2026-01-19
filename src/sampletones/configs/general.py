@@ -1,16 +1,11 @@
-from types import ModuleType
+from typing import Type
 
 from pydantic import ConfigDict, Field
 
-from sampletones.constants.general import (
-    MAX_PITCH,
-    MAX_WORKERS,
-    MIN_PITCH,
-    NORMALIZE,
-    QUANTIZE,
-)
+from sampletones.constants.general import MAX_PITCH, MAX_WORKERS, MIN_PITCH, NORMALIZE, QUANTIZE
 from sampletones.constants.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class GeneralConfig(DataModel):
@@ -26,13 +21,13 @@ class GeneralConfig(DataModel):
     output_directory: str = Field(default=str(OUTPUT_DIRECTORY))
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBGeneralConfig
 
         return FBGeneralConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBGeneralConfig
 
         return FBGeneralConfig.FBGeneralConfig

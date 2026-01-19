@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from types import ModuleType
-from typing import Any, Generic, Self
+from typing import Any, Generic, Self, Type
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -11,6 +10,7 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
@@ -112,13 +112,13 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         return serialize_array(feature)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

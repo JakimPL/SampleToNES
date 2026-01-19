@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from types import ModuleType
+from typing import Type
 
 from pydantic import Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 from .instruction import Instruction
 
@@ -87,13 +88,13 @@ class NoiseInstruction(Instruction):
         return InstructionClassName.NOISE_INSTRUCTION
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.instructions import FBNoiseInstruction
 
         return FBNoiseInstruction
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.instructions import FBNoiseInstruction
 
         return FBNoiseInstruction.FBNoiseInstruction

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from types import ModuleType
-from typing import List
+from typing import List, Type
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.instructions import InstructionData, InstructionUnion
 
 
@@ -36,13 +36,13 @@ class InstructionsItem(DataModel):
         )
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem.FBInstructionsItem

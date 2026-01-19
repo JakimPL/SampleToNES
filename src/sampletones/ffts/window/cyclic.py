@@ -1,11 +1,11 @@
-from types import ModuleType
-from typing import Optional, Union
+from typing import Optional, Type, Union
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
 
@@ -66,13 +66,13 @@ class CyclicArray(DataModel):
         return serialize_array(array)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.arrays import FBCyclicArray
 
         return FBCyclicArray
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.arrays import FBCyclicArray
 
         return FBCyclicArray.FBCyclicArray

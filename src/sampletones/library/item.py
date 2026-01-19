@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 from functools import cached_property
-from types import ModuleType
-from typing import Any, Generic, Self, Tuple
+from typing import Any, Generic, Self, Tuple, Type
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
-from sampletones.instructions import (
-    INSTRUCTION_CLASS_MAP,
-    InstructionData,
-    InstructionT,
-)
+from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionData, InstructionT
 from sampletones.typehints import SerializedData
 
 from .fragment import InstructionLibraryFragment
@@ -62,13 +58,13 @@ class LibraryItem(DataModel, Generic[InstructionT]):
         return instruction
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.library import FBInstructionsLibraryItem
 
         return FBInstructionsLibraryItem
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.library import FBInstructionsLibraryItem
 
         return FBInstructionsLibraryItem.FBInstructionsLibraryItem

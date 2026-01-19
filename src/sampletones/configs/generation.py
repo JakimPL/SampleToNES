@@ -1,5 +1,4 @@
-from types import ModuleType
-from typing import List
+from typing import List, Type
 
 from pydantic import ConfigDict, Field
 
@@ -15,6 +14,7 @@ from sampletones.constants.general import (
     TEMPORAL_LOSS_WEIGHT,
 )
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class CalculationConfig(DataModel):
@@ -24,13 +24,13 @@ class CalculationConfig(DataModel):
     fast_difference: bool = Field(default=FAST_DIFFERENCE)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig.FBCalculationConfig
@@ -43,13 +43,13 @@ class WeightsConfig(DataModel):
     temporal_loss_weight: float = Field(default=TEMPORAL_LOSS_WEIGHT, ge=0.0)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig.FBWeightsConfig
@@ -67,13 +67,13 @@ class GenerationConfig(DataModel):
     weights: WeightsConfig = Field(default_factory=WeightsConfig)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig.FBGenerationConfig

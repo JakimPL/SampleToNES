@@ -1,4 +1,4 @@
-from types import ModuleType
+from typing import Type
 
 from pydantic import ConfigDict, Field
 
@@ -8,6 +8,7 @@ from sampletones.constants.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
     SAMPLETONES_VERSION,
 )
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 from .model import DataModel
 
@@ -21,13 +22,13 @@ class Metadata(DataModel):
     reconstruction_data_version: str = Field(default=SAMPLETONES_RECONSTRUCTION_DATA_VERSION)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.metadata import FBMetadata
 
         return FBMetadata
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.metadata import FBMetadata
 
         return FBMetadata.FBMetadata
