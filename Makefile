@@ -25,6 +25,9 @@ help:
 	@echo "  make install     - Install Python package locally"
 	@echo "  make test        - Run unit tests with coverage"
 	@echo "  make clean       - Remove build artifacts and cache files"
+	@echo "  make lint        - Run linting (pylint, mypy)"
+	@echo "  make format      - Auto-format code (isort, black)"
+	@echo "  make run         - Run SampleToNES application"
 
 pre_commit:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pre_commit$(SCRIPT_EXT)
@@ -40,3 +43,12 @@ test:
 
 clean:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/clean$(SCRIPT_EXT)
+
+lint:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/lint$(SCRIPT_EXT)
+
+format:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/format$(SCRIPT_EXT)
+
+run:
+	$(PYTHON) -m sampletones
