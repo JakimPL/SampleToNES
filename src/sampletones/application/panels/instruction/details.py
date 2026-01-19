@@ -3,28 +3,12 @@ from typing import Any, Callable, List, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
-from sampletones.constants.general import (
-    MAX_DUTY_CYCLE,
-    MAX_PERIOD,
-    MAX_PITCH,
-    MAX_VOLUME,
-    MIN_PITCH,
-)
-from sampletones.instructions import (
-    InstructionUnion,
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
+from sampletones.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones.typehints import Sender
 from sampletones.utils import clamp
 
-from ...constants.general import (
-    MSG_STATUS_INPUT,
-    SUF_HANDLER_REGISTRY,
-    SUF_PANEL_RIGHT,
-    TAG_TAB_INSTRUCTIONS,
-)
+from ...constants.general import MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (
     DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
@@ -323,6 +307,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         tags: List[str] = []
         values: List[Union[int, bool]] = []
         generator_type = instruction_data.generator_class_name
+        instruction: InstructionUnion
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
                 pitch = dpg.get_value(TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH)
@@ -387,7 +372,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         if current_instruction is not None and current_instruction.instruction == instruction:
             return
 
-        def load_instruction():
+        def load_instruction() -> None:
             instruction_data = self.library_manager.load_instruction(instruction)
             self.logic.current_data = instruction_data
             self.call(self.on_instruction_changed, instruction_data)

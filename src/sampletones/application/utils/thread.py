@@ -1,6 +1,6 @@
 import threading
 from functools import wraps
-from typing import Any, Callable, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Optional, TypeVar, cast
 
 from sampletones.typehints import Callback, VoidCallback
 
@@ -33,11 +33,9 @@ class SingleThreadExecutor:
 
 
 def concurrent(
-    method: Optional[F] = None,
-    *,
     wait: bool = True,
     method_bound: bool = False,
-) -> Union[F, Callable[[F], F]]:
+) -> Callable[[F], F]:
     def decorator(function: F) -> F:
         method_class = function.__qualname__.split(".")[0]
         method_name = function.__name__
@@ -60,4 +58,4 @@ def concurrent(
 
         return cast(F, wrapper)
 
-    return decorator if method is None else decorator(method)
+    return decorator

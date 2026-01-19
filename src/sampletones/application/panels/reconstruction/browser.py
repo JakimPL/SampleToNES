@@ -188,7 +188,7 @@ class GUIBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
+        is_favorite = self._is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)

@@ -223,7 +223,7 @@ class GUITreePanel(GUIPanel):
     def _create_hover_callback(
         self,
         status_bar_callback: Optional[MessageCallback],
-    ):
+    ) -> Callback:
         def hover_callback(
             sender: Sender,
             app_data: int,

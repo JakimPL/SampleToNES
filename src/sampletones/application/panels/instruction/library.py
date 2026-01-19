@@ -13,22 +13,11 @@ from sampletones.exceptions import (
     InvalidMetadataError,
     WindowNotAvailableError,
 )
-from sampletones.generators import (
-    GENERATOR_CLASS_MAP,
-    GENERATOR_TO_INSTRUCTION_MAP,
-    LIBRARY_GENERATOR_CLASS_MAP,
-)
+from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones.tree import (
-    GeneratorNode,
-    LibraryNode,
-    NodeType,
-    TreeNode,
-    TreeTraversal,
-    traverse,
-)
+from sampletones.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.typehints import MessageCallback, Sender
 from sampletones.utils.logger import logger
 
@@ -89,11 +78,7 @@ from ...elements.tree.handler import NodeHandler
 from ...elements.tree.state import TreeNodeState
 from ...elements.tree.tree import GUITreePanel
 from ...library.manager import InstructionsLibraryManager
-from ...utils.dialogs import (
-    show_error_dialog,
-    show_file_not_found_dialog,
-    show_info_dialog,
-)
+from ...utils.dialogs import show_error_dialog, show_file_not_found_dialog, show_info_dialog
 from ...utils.dpg import dpg_configure_item, dpg_set_value
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent

@@ -10,12 +10,7 @@ from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import (
-    LBL_TREE_FILTER,
-    SUF_PANEL_LEFT,
-    TAG_TAB_MAIN,
-    VAL_NODE_CHILDREN_SLOT,
-)
+from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN, VAL_NODE_CHILDREN_SLOT
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_BUTTON_MAIN_EXPLORER_REFRESH,
@@ -222,7 +217,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
+        is_favorite = self._is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
