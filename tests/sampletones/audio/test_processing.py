@@ -31,16 +31,56 @@ class TestValidateAudioArray:
     @pytest.mark.parametrize(
         "test_case",
         [
-            TestCase(id="valid_float64_array", audio=np.array([1.0, 2.0, 3.0]), expected_result=None),
-            TestCase(id="empty_array", audio=np.array([]), expected_result=None),
-            TestCase(id="valid_float32_array", audio=np.array([1.0, 2.0, 3.0], dtype=np.float32), expected_result=None),
-            TestCase(id="valid_int32_array", audio=np.array([1, 2, 3], dtype=np.int32), expected_result=None),
-            TestCase(id="string_raises_type_error", audio="not an array", expected_result=TypeError),
-            TestCase(id="list_raises_type_error", audio=[1.0, 2.0, 3.0], expected_result=TypeError),
-            TestCase(id="none_raises_type_error", audio=None, expected_result=TypeError),
-            TestCase(id="int_raises_type_error", audio=123, expected_result=TypeError),
-            TestCase(id="2d_array_raises_value_error", audio=np.array([[1, 2], [3, 4]]), expected_result=ValueError),
-            TestCase(id="3d_array_raises_value_error", audio=np.array([[[1]]]), expected_result=ValueError),
+            TestCase(
+                id="valid_float64_array",
+                audio=np.array([1.0, 2.0, 3.0]),
+                expected_result=None,
+            ),
+            TestCase(
+                id="empty_array",
+                audio=np.array([]),
+                expected_result=None,
+            ),
+            TestCase(
+                id="valid_float32_array",
+                audio=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+                expected_result=None,
+            ),
+            TestCase(
+                id="valid_int32_array",
+                audio=np.array([1, 2, 3], dtype=np.int32),
+                expected_result=None,
+            ),
+            TestCase(
+                id="string_raises_type_error",
+                audio="not an array",
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="list_raises_type_error",
+                audio=[1.0, 2.0, 3.0],
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="none_raises_type_error",
+                audio=None,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="int_raises_type_error",
+                audio=123,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="2d_array_raises_value_error",
+                audio=np.array([[1, 2], [3, 4]]),
+                expected_result=ValueError,
+            ),
+            TestCase(
+                id="3d_array_raises_value_error",
+                audio=np.array([[[1]]]),
+                expected_result=ValueError,
+            ),
         ],
         ids=lambda tc: tc.id,
     )
@@ -63,15 +103,35 @@ class TestClipAudio:
     @pytest.mark.parametrize(
         "test_case",
         [
-            TestCase(id="within_range", audio=np.array([0.5, -0.5, 0.0]), expected_result=np.array([0.5, -0.5, 0.0])),
             TestCase(
-                id="clips_above_and_below", audio=np.array([1.5, -1.5, 0.5]), expected_result=np.array([1.0, -1.0, 0.5])
+                id="within_range",
+                audio=np.array([0.5, -0.5, 0.0]),
+                expected_result=np.array([0.5, -0.5, 0.0]),
             ),
             TestCase(
-                id="clips_large_values", audio=np.array([2.0, -2.0, 3.0]), expected_result=np.array([1.0, -1.0, 1.0])
+                id="clips_above_and_below",
+                audio=np.array([1.5, -1.5, 0.5]),
+                expected_result=np.array(
+                    [1.0, -1.0, 0.5],
+                ),
             ),
-            TestCase(id="all_at_max", audio=np.array([1.0, 1.0, 1.0]), expected_result=np.array([1.0, 1.0, 1.0])),
-            TestCase(id="all_at_min", audio=np.array([-1.0, -1.0, -1.0]), expected_result=np.array([-1.0, -1.0, -1.0])),
+            TestCase(
+                id="clips_large_values",
+                audio=np.array([2.0, -2.0, 3.0]),
+                expected_result=np.array(
+                    [1.0, -1.0, 1.0],
+                ),
+            ),
+            TestCase(
+                id="all_at_max",
+                audio=np.array([1.0, 1.0, 1.0]),
+                expected_result=np.array([1.0, 1.0, 1.0]),
+            ),
+            TestCase(
+                id="all_at_min",
+                audio=np.array([-1.0, -1.0, -1.0]),
+                expected_result=np.array([-1.0, -1.0, -1.0]),
+            ),
             TestCase(id="empty_array", audio=np.array([]), expected_result=np.array([])),
             TestCase(
                 id="float32_dtype",
@@ -83,10 +143,26 @@ class TestClipAudio:
                 audio=np.array([10, -10, 5], dtype=np.int32),
                 expected_result=np.array([1, -1, 1], dtype=np.int32),
             ),
-            TestCase(id="string_raises_type_error", audio="not an array", expected_result=TypeError),
-            TestCase(id="list_raises_type_error", audio=[1.5, -1.5], expected_result=TypeError),
-            TestCase(id="none_raises_type_error", audio=None, expected_result=TypeError),
-            TestCase(id="dict_raises_type_error", audio={"audio": [1.0]}, expected_result=TypeError),
+            TestCase(
+                id="string_raises_type_error",
+                audio="not an array",
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="list_raises_type_error",
+                audio=[1.5, -1.5],
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="none_raises_type_error",
+                audio=None,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="dict_raises_type_error",
+                audio={"audio": [1.0]},
+                expected_result=TypeError,
+            ),
         ],
         ids=lambda tc: tc.id,
     )
@@ -121,9 +197,21 @@ class TestStereoToMono:
                 audio=np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
                 expected_result=np.array([2.0, 5.0]),
             ),
-            TestCase(id="empty_channels", audio=np.array([[]]), expected_result=np.array([])),
-            TestCase(id="empty_array", audio=np.array([]), expected_result=np.array([])),
-            TestCase(id="value_array", audio=np.array(0.0), expected_result=np.array([0.0])),
+            TestCase(
+                id="empty_channels",
+                audio=np.array([[]]),
+                expected_result=np.array([]),
+            ),
+            TestCase(
+                id="empty_array",
+                audio=np.array([]),
+                expected_result=np.array([]),
+            ),
+            TestCase(
+                id="value_array",
+                audio=np.array(0.0),
+                expected_result=np.array([0.0]),
+            ),
             TestCase(
                 id="single_channel_multi",
                 audio=np.array([[1.0], [2.0], [3.0]]),
@@ -201,7 +289,9 @@ class TestResample:
                 mock_resample.return_value = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
                 resample(test_case.audio, test_case.original_sample_rate, test_case.target_sample_rate)
                 mock_resample.assert_called_once_with(
-                    test_case.audio, orig_sr=test_case.original_sample_rate, target_sr=test_case.target_sample_rate
+                    test_case.audio,
+                    orig_sr=test_case.original_sample_rate,
+                    target_sr=test_case.target_sample_rate,
                 )
         else:
             with patch.dict(sys.modules, {"librosa": None}):
@@ -253,10 +343,16 @@ class TestInterpolate:
                 expected_result=np.array([5.0, 5.0, 5.0], dtype=np.float32),
             ),
             TestCase(
-                id="empty_to_target", data=np.array([]), target_length=5, expected_result=np.array([], dtype=np.float32)
+                id="empty_to_target",
+                data=np.array([]),
+                target_length=5,
+                expected_result=np.array([], dtype=np.float32),
             ),
             TestCase(
-                id="empty_to_zero", data=np.array([]), target_length=0, expected_result=np.array([], dtype=np.float32)
+                id="empty_to_zero",
+                data=np.array([]),
+                target_length=0,
+                expected_result=np.array([], dtype=np.float32),
             ),
             TestCase(
                 id="float64_to_float32",
@@ -301,12 +397,23 @@ class TestInterpolate:
                 expected_result=TypeError,
             ),
             TestCase(
-                id="string_data_raises_type_error", data="not an array", target_length=5, expected_result=TypeError
+                id="string_data_raises_type_error",
+                data="not an array",
+                target_length=5,
+                expected_result=TypeError,
             ),
             TestCase(
-                id="list_data_raises_type_error", data=[1.0, 2.0, 3.0], target_length=5, expected_result=TypeError
+                id="list_data_raises_type_error",
+                data=[1.0, 2.0, 3.0],
+                target_length=5,
+                expected_result=TypeError,
             ),
-            TestCase(id="none_data_raises_type_error", data=None, target_length=5, expected_result=TypeError),
+            TestCase(
+                id="none_data_raises_type_error",
+                data=None,
+                target_length=5,
+                expected_result=TypeError,
+            ),
             TestCase(
                 id="2d_data_raises_value_error",
                 data=np.array([[1, 2], [3, 4]]),
@@ -404,9 +511,24 @@ class TestMinmaxDecimate:
                 num_buckets=None,
                 expected_result=TypeError,
             ),
-            TestCase(id="string_data_raises_type_error", data="not an array", num_buckets=5, expected_result=TypeError),
-            TestCase(id="list_data_raises_type_error", data=[1.0, 2.0, 3.0], num_buckets=5, expected_result=TypeError),
-            TestCase(id="none_data_raises_type_error", data=None, num_buckets=5, expected_result=TypeError),
+            TestCase(
+                id="string_data_raises_type_error",
+                data="not an array",
+                num_buckets=5,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="list_data_raises_type_error",
+                data=[1.0, 2.0, 3.0],
+                num_buckets=5,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="none_data_raises_type_error",
+                data=None,
+                num_buckets=5,
+                expected_result=TypeError,
+            ),
             TestCase(
                 id="2d_data_raises_value_error",
                 data=np.array([[1, 2], [3, 4]]),
@@ -445,7 +567,9 @@ class TestNormalize:
         "test_case",
         [
             TestCase(
-                id="normalize_half_range", audio=np.array([0.5, -0.5, 0.25]), expected_result=np.array([1.0, -1.0, 0.5])
+                id="normalize_half_range",
+                audio=np.array([0.5, -0.5, 0.25]),
+                expected_result=np.array([1.0, -1.0, 0.5]),
             ),
             TestCase(
                 id="normalize_double_range",
@@ -458,10 +582,20 @@ class TestNormalize:
                 expected_result=np.array([1.0 / 3, 2.0 / 3, 1.0]),
             ),
             TestCase(
-                id="already_normalized", audio=np.array([1.0, 1.0, 1.0]), expected_result=np.array([1.0, 1.0, 1.0])
+                id="already_normalized",
+                audio=np.array([1.0, 1.0, 1.0]),
+                expected_result=np.array([1.0, 1.0, 1.0]),
             ),
-            TestCase(id="all_zeros", audio=np.array([0.0, 0.0, 0.0]), expected_result=np.array([0.0, 0.0, 0.0])),
-            TestCase(id="empty_array", audio=np.array([]), expected_result=np.array([])),
+            TestCase(
+                id="all_zeros",
+                audio=np.array([0.0, 0.0, 0.0]),
+                expected_result=np.array([0.0, 0.0, 0.0]),
+            ),
+            TestCase(
+                id="empty_array",
+                audio=np.array([]),
+                expected_result=np.array([]),
+            ),
             TestCase(
                 id="nan_replaced_with_zero",
                 audio=np.array([np.nan, 1.0, -1.0]),
@@ -492,10 +626,26 @@ class TestNormalize:
                 audio=np.array([2, -4, 1], dtype=np.int32),
                 expected_result=np.array([0.5, -1.0, 0.25]),
             ),
-            TestCase(id="string_raises_type_error", audio="not an array", expected_result=TypeError),
-            TestCase(id="list_raises_type_error", audio=[1.0, 2.0, 3.0], expected_result=TypeError),
-            TestCase(id="none_raises_type_error", audio=None, expected_result=TypeError),
-            TestCase(id="2d_raises_value_error", audio=np.array([[1, 2], [3, 4]]), expected_result=ValueError),
+            TestCase(
+                id="string_raises_type_error",
+                audio="not an array",
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="list_raises_type_error",
+                audio=[1.0, 2.0, 3.0],
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="none_raises_type_error",
+                audio=None,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="2d_raises_value_error",
+                audio=np.array([[1, 2], [3, 4]]),
+                expected_result=ValueError,
+            ),
         ],
         ids=lambda tc: tc.id,
     )
@@ -503,6 +653,7 @@ class TestNormalize:
         if expect_error(normalize, test_case.expected_result, test_case.audio):
             return
 
+        assert isinstance(test_case.expected_result, np.ndarray)
         result = normalize(test_case.audio)
         np.testing.assert_allclose(result, test_case.expected_result, rtol=1e-5)
 
@@ -538,10 +689,23 @@ class TestQuantize:
                 levels=7,
                 expected_result=np.array([0.0, 1.0 / 3, 1.0 / 3]),
             ),
-            TestCase(id="single_value", audio=np.array([0.0]), levels=3, expected_result=np.array([0.0])),
-            TestCase(id="empty_array", audio=np.array([]), levels=3, expected_result=np.array([])),
             TestCase(
-                id="even_adjusted_to_odd", audio=np.array([0.6, -0.6]), levels=4, expected_result=np.array([1.0, -1.0])
+                id="single_value",
+                audio=np.array([0.0]),
+                levels=3,
+                expected_result=np.array([0.0]),
+            ),
+            TestCase(
+                id="empty_array",
+                audio=np.array([]),
+                levels=3,
+                expected_result=np.array([]),
+            ),
+            TestCase(
+                id="even_adjusted_to_odd",
+                audio=np.array([0.6, -0.6]),
+                levels=4,
+                expected_result=np.array([1.0, -1.0]),
             ),
             TestCase(
                 id="float32_dtype",
@@ -550,13 +714,22 @@ class TestQuantize:
                 expected_result=np.array([1.0, -1.0], dtype=np.float32),
             ),
             TestCase(
-                id="two_levels_raises_value_error", audio=np.array([0.5, -0.5]), levels=2, expected_result=ValueError
+                id="two_levels_raises_value_error",
+                audio=np.array([0.5, -0.5]),
+                levels=2,
+                expected_result=ValueError,
             ),
             TestCase(
-                id="one_level_raises_value_error", audio=np.array([0.5, -0.5]), levels=1, expected_result=ValueError
+                id="one_level_raises_value_error",
+                audio=np.array([0.5, -0.5]),
+                levels=1,
+                expected_result=ValueError,
             ),
             TestCase(
-                id="zero_levels_raises_value_error", audio=np.array([0.5, -0.5]), levels=0, expected_result=ValueError
+                id="zero_levels_raises_value_error",
+                audio=np.array([0.5, -0.5]),
+                levels=0,
+                expected_result=ValueError,
             ),
             TestCase(
                 id="negative_levels_raises_value_error",
@@ -565,19 +738,46 @@ class TestQuantize:
                 expected_result=ValueError,
             ),
             TestCase(
-                id="float_levels_raises_type_error", audio=np.array([0.5, -0.5]), levels=3.5, expected_result=TypeError
+                id="float_levels_raises_type_error",
+                audio=np.array([0.5, -0.5]),
+                levels=3.5,
+                expected_result=TypeError,
             ),
             TestCase(
-                id="string_levels_raises_type_error", audio=np.array([0.5, -0.5]), levels="3", expected_result=TypeError
+                id="string_levels_raises_type_error",
+                audio=np.array([0.5, -0.5]),
+                levels="3",
+                expected_result=TypeError,
             ),
             TestCase(
-                id="none_levels_raises_type_error", audio=np.array([0.5, -0.5]), levels=None, expected_result=TypeError
+                id="none_levels_raises_type_error",
+                audio=np.array([0.5, -0.5]),
+                levels=None,
+                expected_result=TypeError,
             ),
-            TestCase(id="string_audio_raises_type_error", audio="not an array", levels=3, expected_result=TypeError),
-            TestCase(id="list_audio_raises_type_error", audio=[0.5, -0.5], levels=3, expected_result=TypeError),
-            TestCase(id="none_audio_raises_type_error", audio=None, levels=3, expected_result=TypeError),
             TestCase(
-                id="2d_audio_raises_value_error", audio=np.array([[1, 2], [3, 4]]), levels=3, expected_result=ValueError
+                id="string_audio_raises_type_error",
+                audio="not an array",
+                levels=3,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="list_audio_raises_type_error",
+                audio=[0.5, -0.5],
+                levels=3,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="none_audio_raises_type_error",
+                audio=None,
+                levels=3,
+                expected_result=TypeError,
+            ),
+            TestCase(
+                id="2d_audio_raises_value_error",
+                audio=np.array([[1, 2], [3, 4]]),
+                levels=3,
+                expected_result=ValueError,
             ),
         ],
         ids=lambda tc: tc.id,
@@ -586,5 +786,6 @@ class TestQuantize:
         if expect_error(quantize, test_case.expected_result, test_case.audio, test_case.levels):
             return
 
+        assert isinstance(test_case.expected_result, np.ndarray)
         result = quantize(test_case.audio, test_case.levels)
         np.testing.assert_allclose(result, test_case.expected_result, rtol=1e-5)
