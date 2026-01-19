@@ -9,7 +9,7 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 from sampletones.exceptions import DeserializationError, SerializationError
 from sampletones.typehints import Callback, Pathlike, SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
@@ -104,6 +104,7 @@ class DataModel(BaseModel):
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
+            value: Union[TypeVar, DataModel, int, float, np.ndarray, List[Any], str, Path, None]
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_object, field_name)
 
@@ -305,11 +306,11 @@ class DataModel(BaseModel):
         raise NotImplementedError("Subclasses must implement buffer_builder method")
 
     @classmethod
-    def buffer_union_builder(cls) -> Optional[FlatBufferBuilderProtocol]:
+    def buffer_union_builder(cls) -> Optional[FlatBufferUnionProtocol]:
         return None
 
     @classmethod
-    def buffer_union_reader(cls) -> Optional[Type[FlatBufferReaderProtocol]]:
+    def buffer_union_reader(cls) -> Optional[Type[FlatBufferUnionProtocol]]:
         return None
 
     @classmethod

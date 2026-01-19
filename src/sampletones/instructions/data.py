@@ -5,7 +5,7 @@ from typing import Any, Dict, Generic, Self, Tuple, Type
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
-from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 from sampletones.typehints import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
@@ -52,13 +52,13 @@ class InstructionData(DataModel, Generic[InstructionT]):
         return FBInstructionData.FBInstructionData
 
     @classmethod
-    def buffer_union_builder(cls) -> FlatBufferBuilderProtocol:
+    def buffer_union_builder(cls) -> FlatBufferUnionProtocol:
         from schemas.instructions import FBInstructionUnion
 
         return FBInstructionUnion
 
     @classmethod
-    def buffer_union_reader(cls) -> Type[FlatBufferReaderProtocol]:
+    def buffer_union_reader(cls) -> Type[FlatBufferUnionProtocol]:
         from schemas.instructions import FBInstructionUnion
 
         return FBInstructionUnion.FBInstructionUnion

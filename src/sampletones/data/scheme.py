@@ -18,3 +18,8 @@ class FlatBufferBuilderProtocol(Protocol):
     def Start(self, builder: Builder) -> None: ...  # pylint: disable=invalid-name
 
     def End(self, builder: Builder) -> int: ...  # pylint: disable=invalid-name
+
+
+@runtime_checkable
+class FlatBufferUnionProtocol(Protocol):
+    pass

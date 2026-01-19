@@ -1,6 +1,6 @@
 from .metadata import Metadata, default_metadata
 from .model import DataModel
-from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 
 __all__ = [
     "DataModel",
@@ -8,4 +8,5 @@ __all__ = [
     "default_metadata",
     "FlatBufferBuilderProtocol",
     "FlatBufferReaderProtocol",
+    "FlatBufferUnionProtocol",
 ]

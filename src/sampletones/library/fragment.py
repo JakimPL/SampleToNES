@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Generic, Self, Type
+from typing import Any, Generic, Type
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -43,7 +43,7 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
-    ) -> Self:
+    ) -> InstructionLibraryFragment[InstructionT]:
         sample: CyclicArray = generator.generate_sample(instruction)
 
         features = []
