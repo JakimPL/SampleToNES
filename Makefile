@@ -30,10 +30,10 @@ pre_commit:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pre_commit$(SCRIPT_EXT)
 
 build:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT)
+	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
 
 install:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/install$(SCRIPT_EXT)
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/install$(SCRIPT_EXT) --dev
 
 test:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/tests$(SCRIPT_EXT)
