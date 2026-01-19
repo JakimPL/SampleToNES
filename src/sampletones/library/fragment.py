@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from types import ModuleType
-from typing import Any, Generic, Self, cast
+from typing import Any, Generic, Self
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -14,11 +14,7 @@ from sampletones.data import DataModel
 from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import (
-    GENERATOR_CLASS_MAP,
-    GENERATOR_TO_INSTRUCTION_MAP,
-    Generator,
-)
+from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.typehints import Initials, ReducedObject, SerializedData
 from sampletones.utils import serialize_array
@@ -74,7 +70,9 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[self.generator_class]],
         ):
             raise InstructionTypeMismatchError("Instruction type does not match generator class")
-        return cast(InstructionT, self.instruction_data.instruction)
+
+        instruction: InstructionT = self.instruction_data.instruction
+        return instruction
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         windowed_audio = self.sample.get_windowed_fragment(shift, window)

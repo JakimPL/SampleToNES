@@ -4,12 +4,7 @@ import numpy as np
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName
-from sampletones.constants.general import (
-    DUTY_CYCLES,
-    MAX_VOLUME,
-    MIN_PITCH,
-    MIXER_PULSE,
-)
+from sampletones.constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from sampletones.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones.timers import PhaseTimer
 from sampletones.typehints import Initials
@@ -18,7 +13,11 @@ from .generator import Generator
 
 
 class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
-    def __init__(self, config: Config, name: GeneratorName = GeneratorName.PULSE1) -> None:
+    def __init__(
+        self,
+        config: Config,
+        name: str = GeneratorName.PULSE1,
+    ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,

@@ -1,7 +1,7 @@
 from sampletones.constants.enums import InstructionClassName
-from sampletones.instructions import InstructionTypeUnion
 
 from .maps import INSTRUCTION_CLASS_MAP
+from .typehints import InstructionTypeUnion
 
 
 def get_instruction_by_type(instruction_class_map: InstructionClassName) -> InstructionTypeUnion:

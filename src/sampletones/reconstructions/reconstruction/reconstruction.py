@@ -157,27 +157,27 @@ class Reconstruction(DataModel):
             max_length = max(max_length, item_length)
 
         new_approximations_data: List[ApproximationsItem] = []
-        for item in self.approximations_data:
-            if item.generator_name == generator_name:
+        for approximation in self.approximations_data:
+            if approximation.generator_name == generator_name:
                 array = pad(array, 0, max_length)
                 new_approximations_data.append(
                     ApproximationsItem(
-                        generator_name=item.generator_name,
+                        generator_name=approximation.generator_name,
                         approximation=array,
                     )
                 )
             else:
-                item_array = pad(item.approximation, 0, max_length)
+                item_array = pad(approximation.approximation, 0, max_length)
                 new_approximations_data.append(
                     ApproximationsItem(
-                        generator_name=item.generator_name,
+                        generator_name=approximation.generator_name,
                         approximation=item_array,
                     )
                 )
 
         new_instructions_data: List[InstructionsItem] = []
-        for item in self.instructions_data:
-            if item.generator_name == generator_name:
+        for instruction in self.instructions_data:
+            if instruction.generator_name == generator_name:
                 new_instructions_data.append(
                     InstructionsItem.create(
                         generator_name=generator_name,
@@ -185,7 +185,7 @@ class Reconstruction(DataModel):
                     )
                 )
             else:
-                new_instructions_data.append(item)
+                new_instructions_data.append(instruction)
 
         self.approximations_data = new_approximations_data
         self.instructions_data = new_instructions_data

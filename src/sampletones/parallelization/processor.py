@@ -254,7 +254,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         with self._pool_lock:
             self.logger.info("Cleaning the task manager pool...")
             try:
-                self.pool.close()
+                self.pool.close()  # type: ignore[no-untyped-call]
             except RuntimeError as exception:
                 self.logger.error_with_traceback(exception, f"Error while closing the pool: {exception}")
             finally:
@@ -268,7 +268,7 @@ class TaskProcessor(Generic[T], CallbackMixin):
         with self._pool_lock:
             self.logger.info("Stopping the task manager pool...")
             try:
-                self.pool.stop()
+                self.pool.stop()  # type: ignore[no-untyped-call]
             except RuntimeError as exception:
                 self.logger.error_with_traceback(exception, f"Error while stopping the pool: {exception}")
             finally:

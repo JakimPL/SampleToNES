@@ -11,7 +11,7 @@ from sampletones.library import InstructionLibraryKey
 from .type import NodeType
 
 
-class TreeNode(Node):
+class TreeNode(Node):  # type: ignore[misc]
     def __init__(
         self,
         name: str,

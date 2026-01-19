@@ -7,11 +7,7 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.constants.paths import (
-    EXT_FILE_JSON,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
+from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -129,10 +125,7 @@ from .constants.general import (
     VAL_WINDOW_PRIMARY,
 )
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
-from .constants.main import (
-    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
-    DIM_PANEL_WIDTH_MAIN_EXPLORER,
-)
+from .constants.main import DIM_PANEL_HEIGHT_MAIN_EXPLORER, DIM_PANEL_WIDTH_MAIN_EXPLORER
 from .constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
@@ -1207,7 +1200,8 @@ class GUI:
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS)
-        return dpg.get_item_alias(current_tab)
+        alias: str = dpg.get_item_alias(current_tab)
+        return alias
 
     def _play_from_start(self) -> None:
         current_tab_tag = self._get_current_tab()

@@ -6,12 +6,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import MessageCallback, Sender
 
-from ..constants.general import (
-    SUF_HANDLER_STATUS,
-    TAG_STATUS_BAR,
-    TAG_STATUS_WINDOW,
-    VAL_STATUS_BAR_DISPLAY_TIME,
-)
+from ..constants.general import SUF_HANDLER_STATUS, TAG_STATUS_BAR, TAG_STATUS_WINDOW, VAL_STATUS_BAR_DISPLAY_TIME
 from ..themes.status import StatusBarTheme
 from ..utils.dpg import dpg_configure_item, dpg_delete_item, dpg_is_item_hovered
 from .button import GUIButton
@@ -100,7 +95,7 @@ class GUIStatusBar:
     ) -> MessageCallback:
         if isinstance(message_or_function, str):
 
-            def message_function(*args: Any, **kwargs) -> str:
+            def message_function(*args: Any, **kwargs: Any) -> str:
                 return message_or_function
 
         elif callable(message_or_function):

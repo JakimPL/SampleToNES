@@ -43,12 +43,7 @@ from ...constants.general import (
     VAL_DELAY_SCHEDULE,
     VAL_PRIORITY_SCHEDULE,
 )
-from ...constants.graphs import (
-    DIM_BAR_PLOT_HEIGHT,
-    DIM_BAR_PLOT_WIDTH,
-    SUF_GRAPH,
-    SUF_GRAPH_RAW_DATA,
-)
+from ...constants.graphs import DIM_BAR_PLOT_HEIGHT, DIM_BAR_PLOT_WIDTH, SUF_GRAPH, SUF_GRAPH_RAW_DATA
 from ...constants.reconstructions import (
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
@@ -85,11 +80,7 @@ from ...elements.graphs.bar import GUIBarGraph
 from ...elements.graphs.utils import extend_y_range
 from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
-from ...reconstruction.config import (
-    FEATURE_DISPLAY_ORDER,
-    FEATURE_PLOT_CONFIGS,
-    FeaturePlotConfig,
-)
+from ...reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CONFIGS, FeaturePlotConfig
 from ...reconstruction.feature import FeatureData
 from ...reconstruction.manager import ReconstructionManager
 from ...reconstruction.update import ReconstructionUpdate
@@ -221,7 +212,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.call(self.on_instrument_export, user_data)
 
     def _create_tabs_for_generators(self) -> None:
-        for generator_name in list(GeneratorName):
+        for generator_name in GeneratorName.items():
             self._create_generator_tab(generator_name)
 
     def _create_generator_tab(self, generator_name: GeneratorName) -> None:
@@ -334,10 +325,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=not clear, enabled=not clear)
         dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=not clear)
 
-        if clear:
+        if clear or feature_data is None:
             return
 
-        for generator_name in list(GeneratorName):
+        for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
             if generator_name not in feature_data.generators:
                 dpg_configure_item(tab_tag, show=False)
@@ -548,6 +539,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         self._initial_pitch_change_timer -= dpg.get_delta_time()
+        assert self._initial_pitch_change_timer is not None
         if self._initial_pitch_change_timer > 0:
             return
 
