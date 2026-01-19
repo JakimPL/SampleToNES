@@ -164,7 +164,7 @@ class TestShortenPath:
         resolved_mock = MagicMock()
         try:
             resolved_mock.parts = Path(resolved_path).parts
-            resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))
+            resolved_mock.__str__ = MagicMock(return_value=str(resolved_path))  # type: ignore[method-assign]
         except TypeError:
             resolved_mock.parts = ()
 
@@ -426,7 +426,7 @@ class TestGetDirectory:
 
     def test_get_directory_with_integer_raises_type_error(self) -> None:
         with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'int'>"):
-            get_directory(123)  # type: ignore
+            get_directory(123)
 
     def test_get_directory_with_nonexistent_path(self) -> None:
         path = Path("/nonexistent/path/file.txt")
@@ -740,4 +740,4 @@ class TestOpenPathInExplorer:
 
     def test_with_integer_raises_type_error(self) -> None:
         with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'int'>"):
-            open_path_in_explorer(42)  # type: ignore
+            open_path_in_explorer(42)

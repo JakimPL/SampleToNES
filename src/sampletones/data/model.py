@@ -9,10 +9,11 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 from sampletones.exceptions import DeserializationError, SerializationError
 from sampletones.typehints import Callback, Pathlike, SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
+
+from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 
 FLOAT32_SIZE = 4
 

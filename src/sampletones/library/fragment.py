@@ -9,8 +9,7 @@ from pydantic import ConfigDict, field_serializer
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones.data import DataModel
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer

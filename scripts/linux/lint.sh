@@ -2,12 +2,12 @@
 
 set +e
 
-echo "Running type checking with mypy..."
-python -m mypy src/sampletones
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+bash "${SCRIPT_DIR}/mypy.sh"
 MYPY_EXIT=$?
 
-echo "Running linting with pylint..."
-python -m pylint src/sampletones
+bash "${SCRIPT_DIR}/pylint.sh"
 PYLINT_EXIT=$?
 
 if [[ $MYPY_EXIT -ne 0 ]] || [[ $PYLINT_EXIT -ne 0 ]]; then

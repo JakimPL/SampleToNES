@@ -28,23 +28,23 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: make mypy
         language: system
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^src/schemas/
+        pass_filenames: false
 
   - repo: local
     hooks:
       - id: pylint
         name: pylint
-        entry: pylint
+        entry: make pylint
         language: system
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^src/schemas/
+        pass_filenames: false
 
   - repo: local
     hooks:

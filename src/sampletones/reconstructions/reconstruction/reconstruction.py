@@ -14,8 +14,7 @@ from sampletones.constants.application import (
     compare_versions,
 )
 from sampletones.constants.enums import GeneratorName
-from sampletones.data import DataModel, Metadata, default_metadata
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata, default_metadata
 from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type

@@ -8,6 +8,10 @@ from sampletones.constants.audio import DEFAULT_SAMPLE_RATE, SampleRate
 
 
 class CurrentDevice(BaseModel):
+    """
+    Model representing the current audio device configuration.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     device_index: int = Field(..., description="Device index")
@@ -26,6 +30,10 @@ class CurrentDevice(BaseModel):
 
 
 class AudioDevice(BaseModel):
+    """
+    Model representing a sounddevice audio device.
+    """
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     index: int = Field(..., description="Device index")

@@ -56,18 +56,18 @@ class TestInitialization:
 
     def test_init_with_list_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection([[1, 2], [3, 4]])  # type: ignore
+            IndexedCollection([[1, 2], [3, 4]])
 
     def test_init_with_dict_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection([{"a": 1}, {"b": 2}])  # type: ignore
+            IndexedCollection([{"a": 1}, {"b": 2}])
 
     def test_init_with_tuple_containing_immutable(self) -> None:
         IndexedCollection[tuple](((1, 2), (3, 4)))
 
     def test_init_with_tuple_containing_mutable_raises_type_error(self) -> None:
         with pytest.raises(TypeError):
-            IndexedCollection(([], []))  # type: ignore
+            IndexedCollection(([], []))
 
     def test_init_with_duplicate_integers_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="already exists"):
@@ -145,7 +145,7 @@ class TestGetItem:
     def test_getitem_wrong_type_raises_type_error(self) -> None:
         collection = IndexedCollection[str](["test"])
         with pytest.raises(TypeError, match="must be a position"):
-            _ = collection[3.14]  # type: ignore
+            _ = collection[3.14]
 
     def test_getitem_from_empty_raises_index_error(self) -> None:
         collection = IndexedCollection[int]()
@@ -403,10 +403,10 @@ class TestContains:
         assert 0 in collection_with_zero
 
         if hash_false == hash_zero:
-            assert 0 in collection_with_false  # type: ignore
+            assert 0 in collection_with_false
             assert False in collection_with_zero
         else:
-            assert 0 not in collection_with_false  # type: ignore
+            assert 0 not in collection_with_false
             assert False not in collection_with_zero
 
     def test_contains_zero_int_vs_zero_float(self) -> None:
@@ -421,10 +421,10 @@ class TestContains:
         assert 0.0 in collection_with_float
 
         if hash_int_zero == hash_float_zero:
-            assert 0.0 in collection_with_int  # type: ignore
+            assert 0.0 in collection_with_int
             assert 0 in collection_with_float
         else:
-            assert 0.0 not in collection_with_int  # type: ignore
+            assert 0.0 not in collection_with_int
             assert 0 not in collection_with_float
 
     def test_contains_false_vs_zero_float(self) -> None:
@@ -439,10 +439,10 @@ class TestContains:
         assert 0.0 in collection_with_float
 
         if hash_false == hash_float_zero:
-            assert 0.0 in collection_with_false  # type: ignore
+            assert 0.0 in collection_with_false
             assert False in collection_with_float
         else:
-            assert 0.0 not in collection_with_false  # type: ignore
+            assert 0.0 not in collection_with_false
             assert False not in collection_with_float
 
     def test_contains_zero_vs_zero_byte(self) -> None:
@@ -450,20 +450,20 @@ class TestContains:
         collection_with_bytes = IndexedCollection[bytes]([b"\x00"])
 
         assert 0 in collection_with_int
-        assert b"\x00" not in collection_with_int  # type: ignore
+        assert b"\x00" not in collection_with_int
 
         assert b"\x00" in collection_with_bytes
-        assert 0 not in collection_with_bytes  # type: ignore
+        assert 0 not in collection_with_bytes
 
     def test_contains_false_vs_zero_byte(self) -> None:
         collection_with_false = IndexedCollection[bool]([False])
         collection_with_bytes = IndexedCollection[bytes]([b"\x00"])
 
         assert False in collection_with_false
-        assert b"\x00" not in collection_with_false  # type: ignore
+        assert b"\x00" not in collection_with_false
 
         assert b"\x00" in collection_with_bytes
-        assert False not in collection_with_bytes  # type: ignore
+        assert False not in collection_with_bytes
 
 
 class TestEq:
@@ -759,7 +759,7 @@ class TestGet:
     def test_get_wrong_type_raises_type_error(self) -> None:
         collection = IndexedCollection[str](["a"])
         with pytest.raises(TypeError):
-            collection.get(3.14)  # type: ignore
+            collection.get(3.14)
 
 
 class TestClear:
@@ -1143,7 +1143,7 @@ class TestGetHash:
     def test_get_hash_wrong_type_raises_type_error(self) -> None:
         collection = IndexedCollection[bytes]([b"test"])
         with pytest.raises(TypeError):
-            collection.get_hash(3.14)  # type: ignore
+            collection.get_hash(3.14)
 
     def test_get_hash_using_existing_hash_string_returns_same_hash(self) -> None:
         items = ["first", "second", "third"]
@@ -1187,7 +1187,7 @@ class TestGetIndex:
     def test_get_index_wrong_type_raises_type_error(self) -> None:
         collection = IndexedCollection[str](["test"])
         with pytest.raises(TypeError):
-            collection.get_index([])  # type: ignore
+            collection.get_index([])
 
 
 class TestHashCollisions:
@@ -1505,7 +1505,7 @@ class TestEdgeCases:
 
     def test_adding_non_serializable_model(self) -> None:
         item = NonSerializableModel(data={"complex": "data"})
-        collection = IndexedCollection[NonSerializableModel]([0])  # type: ignore
+        collection = IndexedCollection[NonSerializableModel]([0])
         with pytest.raises(TypeError, match="unhashable"):
             collection.append(item)
 

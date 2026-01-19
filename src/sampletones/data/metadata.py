@@ -8,9 +8,9 @@ from sampletones.constants.application import (
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
     SAMPLETONES_VERSION,
 )
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 from .model import DataModel
+from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class Metadata(DataModel):

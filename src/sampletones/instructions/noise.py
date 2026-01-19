@@ -6,7 +6,7 @@ from pydantic import Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 from .instruction import Instruction
 

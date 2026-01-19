@@ -1,12 +1,12 @@
 @echo off
 setlocal
 
-echo Running type checking with mypy...
-python -m mypy src/sampletones
+set SCRIPT_DIR=%~dp0
+
+call "%SCRIPT_DIR%mypy.bat"
 set MYPY_EXIT=%ERRORLEVEL%
 
-echo Running linting with pylint...
-python -m pylint src/sampletones
+call "%SCRIPT_DIR%pylint.bat"
 set PYLINT_EXIT=%ERRORLEVEL%
 
 if not %MYPY_EXIT%==0 (

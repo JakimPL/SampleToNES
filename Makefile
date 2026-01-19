@@ -47,6 +47,12 @@ clean:
 lint:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/lint$(SCRIPT_EXT)
 
+pylint:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pylint$(SCRIPT_EXT)
+
+mypy:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/mypy$(SCRIPT_EXT)
+
 format:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/format$(SCRIPT_EXT)
 

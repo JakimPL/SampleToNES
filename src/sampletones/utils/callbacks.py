@@ -1,10 +1,7 @@
-from typing import Any, Callable, Optional, ParamSpec, TypeVar
+from typing import Any, Optional
 
 from sampletones.typehints import Callback
 from sampletones.utils.logger import logger
-
-P = ParamSpec("P")
-R = TypeVar("R")
 
 
 class CallbackMixin:
@@ -21,7 +18,7 @@ class CallbackMixin:
     invocation and assignment.
     """
 
-    def call(self, callback: Optional[Callable[P, R]], *args: Any, **kwargs: Any) -> Optional[R]:
+    def call(self, callback: Optional[Callback], *args: Any, **kwargs: Any) -> Any:
         """
         Safely invokes a callback with provided arguments.
 

@@ -4,8 +4,7 @@ import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones.data import DataModel
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
 

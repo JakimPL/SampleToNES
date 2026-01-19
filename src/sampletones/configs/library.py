@@ -14,8 +14,7 @@ from sampletones.constants.general import (
     MIN_FREQUENCY,
     TRANSFORMATION_GAMMA,
 )
-from sampletones.data import DataModel
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class InstructionsLibraryConfig(DataModel):

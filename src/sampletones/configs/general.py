@@ -4,8 +4,7 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.general import MAX_PITCH, MAX_WORKERS, MIN_PITCH, NORMALIZE, QUANTIZE
 from sampletones.constants.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
-from sampletones.data import DataModel
-from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class GeneralConfig(DataModel):

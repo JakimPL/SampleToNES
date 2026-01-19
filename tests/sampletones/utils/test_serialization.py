@@ -549,11 +549,11 @@ class TestEdgeCases:
 
     def test_calculate_hash_list_raises(self) -> None:
         with pytest.raises(TypeError):
-            calculate_hash([1, 2, 3])  # type: ignore
+            calculate_hash([1, 2, 3])
 
     def test_calculate_hash_dict_raises(self) -> None:
         with pytest.raises(TypeError):
-            calculate_hash({"key": "value"})  # type: ignore
+            calculate_hash({"key": "value"})
 
     def test_save_json_nested_complex(self) -> None:
         data = {"level1": {"level2": {"level3": [1, 2, {"level4": "deep"}]}}}
