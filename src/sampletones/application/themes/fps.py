@@ -1,11 +1,8 @@
 import dearpygui.dearpygui as dpg
 
-from ..constants.general import (
-    COL_BACKGROUND_MENU,
-    COL_TEXT_DISABLED_DEFAULT,
-    TAG_THEME_MENU_FPS,
-)
-from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
+from ..constants.general import COL_BACKGROUND_MENU, COL_TEXT_DISABLED_DEFAULT, TAG_THEME_MENU_FPS
+from .items import ThemeItems
+from .style import ThemeColor, ThemeParameter, ThemeStyle
 from .theme import Theme
 
 

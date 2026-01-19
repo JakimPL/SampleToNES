@@ -14,8 +14,8 @@ from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger
 
-from ..audio import load_audio
 from .device import AudioDevice, CurrentDevice
+from .io import load_audio
 
 CHANNELS = 1
 FORMAT = pyaudio.paFloat32

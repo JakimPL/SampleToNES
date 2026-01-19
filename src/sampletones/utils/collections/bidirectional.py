@@ -4,6 +4,11 @@ from collections.abc import Hashable, ItemsView, KeysView, ValuesView
 from typing import Dict, Generic, Iterator, Optional, TypeVar, Union, cast
 
 ValueT = TypeVar("ValueT", bound=Hashable)
+BidirectionalMapping = Union[
+    Dict[str, ValueT],
+    Dict[ValueT, str],
+    Dict[Union[str, ValueT], Union[str, ValueT]],
+]
 
 
 class BidirectionalHashMap(Generic[ValueT]):
@@ -53,17 +58,17 @@ class BidirectionalHashMap(Generic[ValueT]):
 
     def __init__(
         self,
-        mapping: Optional[
-            Union[Dict[str, ValueT], Dict[ValueT, str], Dict[Union[str, ValueT], Union[str, ValueT]]]
-        ] = None,
+        mapping: Optional[BidirectionalMapping[ValueT]] = None,
     ) -> None:
         """
         Initializes a BidirectionalHashMap, optionally with initial mappings.
 
         Args:
-            mapping (Optional[Union[Dict[str, ValueT], Dict[ValueT, str], Dict[Union[str, ValueT], Union[str, ValueT]]]]):
-                An optional dictionary containing initial key-value pairs. Can be forward mappings (str -> ValueT),
-                backward mappings (ValueT -> str), or mixed bidirectional mappings.
+            mapping (Optional[BidirectionalMapping]): An optional dictionary
+                containing initial key-value pairs. Can be:
+                * forward mappings (str -> ValueT),
+                * backward mappings (ValueT -> str),
+                * or mixed bidirectional mappings.
 
         Raises:
             TypeError: If any key is not a string or any value is a string.
@@ -260,15 +265,12 @@ class BidirectionalHashMap(Generic[ValueT]):
         """
         return BidirectionalHashMap[ValueT](self._forward)
 
-    def update(
-        self,
-        mapping: Union[Dict[str, ValueT], Dict[ValueT, str], Dict[Union[str, ValueT], Union[str, ValueT]]],
-    ) -> None:
+    def update(self, mapping: BidirectionalMapping[ValueT]) -> None:
         """
         Updates the map bidirectionally with multiple key-value pairs from a dictionary.
 
         Args:
-            mapping (Dict[Union[str, ValueT], Union[str, ValueT]]): A dictionary containing key/value pairs,
+            mapping (BidirectionalMapping): A dictionary containing key/value pairs,
                 possibly in both directions.
 
         Raises:

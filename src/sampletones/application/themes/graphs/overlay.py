@@ -12,8 +12,8 @@ class OverlayGraphTheme(Theme):
         items={
             ThemeParameter(item_type=dpg.mvShadeSeries): [
                 ThemeColor(
-                    dpg.mvPlotCol_Fill,
-                    COL_WAVEFORM_OVERLAY,
+                    key=dpg.mvPlotCol_Fill,
+                    color=COL_WAVEFORM_OVERLAY,
                     category=dpg.mvThemeCat_Plots,
                 ),
             ],

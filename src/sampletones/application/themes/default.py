@@ -16,7 +16,8 @@ from ..constants.general import (
     VAL_BUTTON_FRAME_PADDING,
     VAL_BUTTON_FRAME_ROUNDING,
 )
-from .items import ThemeColor, ThemeItems, ThemeParameter, ThemeStyle
+from .items import ThemeItems
+from .style import ThemeColor, ThemeParameter, ThemeStyle
 from .theme import Theme
 
 

@@ -7,14 +7,10 @@ from sampletones.configs import Config
 from sampletones.library import InstructionLibrary
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.reconstructions import Reconstructor
-from sampletones.reconstructions.converter import (
-    ReconstructionConverter,
-    get_output_path,
-)
+from sampletones.reconstructions.converter import ReconstructionConverter, get_output_path
 from sampletones.reconstructions.converter import reconstruct_file as _reconstruct_file
 from sampletones.utils.logger import logger, null_logger
 
-from .application import run_application
 from .library import generate_library
 
 
@@ -107,8 +103,3 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
 
 def load_reconstruction(reconstruction_path: Path, config_path: Optional[Path] = None) -> None:
     raise NotImplementedError("Library reconstruction is not yet implemented")
-
-    run_application(
-        config_path=config_path,
-        reconstruction_path=reconstruction_path,
-    )

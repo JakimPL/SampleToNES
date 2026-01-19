@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, ItemsView, KeysView, Optional, Tuple, Union, ValuesView
+from typing import Any, Dict, ItemsView, KeysView, Optional, Tuple, ValuesView
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.typehints import Callback, Color
 
-from .items import ThemeDictionary, ThemeItems, ThemeValue
-from .style import ThemeColor, ThemeParameter, ThemeStyle
+from .items import ThemeDictionary, ThemeItems, ThemeValues
+from .style import ThemeColor, ThemeParameter, ThemeStyle, ThemeValue
 
 
 class Theme:
@@ -27,7 +27,7 @@ class Theme:
         instance = super(Theme, cls).__new__(cls)
         return instance
 
-    def __getitem__(self, key: Tuple[ThemeParameter, int]) -> Union[ThemeColor, ThemeStyle]:
+    def __getitem__(self, key: Tuple[ThemeParameter, int]) -> ThemeValue:
         return self._dictionary[key]
 
     @classmethod
@@ -36,7 +36,7 @@ class Theme:
         item_type: int,
         key: int,
         enabled_state: bool = True,
-    ) -> Optional[Union[ThemeColor, ThemeStyle]]:
+    ) -> Optional[ThemeValue]:
         parameter = ThemeParameter(item_type=item_type, enabled_state=enabled_state)
         if (parameter, key) not in cls._dictionary:
             return None
@@ -87,11 +87,11 @@ class Theme:
         return cls._theme.items.keys()
 
     @classmethod
-    def items(cls) -> ItemsView[ThemeParameter, ThemeValue]:
+    def items(cls) -> ItemsView[ThemeParameter, ThemeValues]:
         return cls._theme.items.items()
 
     @classmethod
-    def values(cls) -> ValuesView[ThemeValue]:
+    def values(cls) -> ValuesView[ThemeValues]:
         return cls._theme.items.values()
 
     @classmethod

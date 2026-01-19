@@ -1,18 +1,7 @@
 from enum import StrEnum
 from pathlib import Path
 from types import ModuleType
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Self,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Any, Callable, Dict, List, Optional, Self, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
