@@ -2,15 +2,16 @@
 
 set +e
 
-echo "Running unit test..."
+echo "Running doctests..."
 python -m pytest src/ --doctest-modules --no-cov
 DOCTEST_EXIT=$?
 
+echo "Running pytest with coverage..."
 python -m pytest --cov=src/sampletones
 PYTEST_EXIT=$?
 
 if [[ $DOCTEST_EXIT -ne 0 ]] || [[ $PYTEST_EXIT -ne 0 ]]; then
-    echo "Unit tests failed."
+    echo "Tests failed."
     exit 1
 fi
 

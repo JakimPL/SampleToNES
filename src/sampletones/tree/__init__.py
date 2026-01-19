@@ -1,3 +1,4 @@
+from .arguments import Arguments
 from .node import FileSystemNode, GeneratorNode, LibraryNode, TreeNode
 from .traversal import TreeTraversal, traverse
 from .tree import Tree
@@ -10,6 +11,7 @@ __all__ = [
     "FileSystemNode",
     "LibraryNode",
     "GeneratorNode",
+    "Arguments",
     "TreeTraversal",
     "traverse",
 ]
