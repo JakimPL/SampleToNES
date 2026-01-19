@@ -2,11 +2,11 @@ from typing import Dict, List, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .style import ThemeColor, ThemeParameter, ThemeStyle
+from .style import ThemeParameter, ThemeValue
 
-ThemeValue = Union[List[ThemeColor], List[ThemeStyle], List[Union[ThemeColor, ThemeStyle]]]
-ThemeItemsDictionary = Dict[ThemeParameter, ThemeValue]
-ThemeDictionary = Dict[Tuple[ThemeParameter, int], Union[ThemeColor, ThemeStyle]]
+ThemeValues = Union[List[ThemeValue]]
+ThemeItemsDictionary = Dict[ThemeParameter, ThemeValues]
+ThemeDictionary = Dict[Tuple[ThemeParameter, int], ThemeValue]
 
 
 class ThemeItems(BaseModel):

@@ -10,11 +10,15 @@ from sampletones.typehints import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
+    SANITIZED_NAME_TO_PERIOD,
+    SANITIZED_NAME_TO_PITCH,
     clamp,
     clamp_period,
     clamp_pitch,
     period_to_name,
     pitch_to_name,
+    sanitize_period,
+    sanitize_pitch,
 )
 from sampletones.utils.logger import logger
 
@@ -39,12 +43,7 @@ from ...constants.general import (
     VAL_DELAY_SCHEDULE,
     VAL_PRIORITY_SCHEDULE,
 )
-from ...constants.graphs import (
-    DIM_BAR_PLOT_HEIGHT,
-    DIM_BAR_PLOT_WIDTH,
-    SUF_GRAPH,
-    SUF_GRAPH_RAW_DATA,
-)
+from ...constants.graphs import DIM_BAR_PLOT_HEIGHT, DIM_BAR_PLOT_WIDTH, SUF_GRAPH, SUF_GRAPH_RAW_DATA
 from ...constants.reconstructions import (
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
@@ -81,17 +80,13 @@ from ...elements.graphs.bar import GUIBarGraph
 from ...elements.graphs.utils import extend_y_range
 from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
-from ...reconstruction.config import (
-    FEATURE_DISPLAY_ORDER,
-    FEATURE_PLOT_CONFIGS,
-    FeaturePlotConfig,
-)
+from ...reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CONFIGS, FeaturePlotConfig
 from ...reconstruction.feature import FeatureData
 from ...reconstruction.manager import ReconstructionManager
 from ...reconstruction.update import ReconstructionUpdate
 from ...themes.default import DefaultTheme
 from ...themes.input import InvalidInputTheme
-from ...themes.table import InitialPitchTableTheme
+from ...themes.tables.initial_pitch import InitialPitchTableTheme
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.clipboard import copy_to_clipboard
 from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
@@ -117,7 +112,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
-        self.mouse_event_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
+        self.mouse_item_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
 
@@ -207,7 +202,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH}"
 
     def _setup_mouse_event_handler(self) -> None:
-        with dpg.handler_registry(tag=self.mouse_event_handler_tag):
+        with dpg.handler_registry(tag=self.mouse_item_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_move)
 
     def _export_instruments(self) -> None:
@@ -217,7 +212,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.call(self.on_instrument_export, user_data)
 
     def _create_tabs_for_generators(self) -> None:
-        for generator_name in list(GeneratorName):
+        for generator_name in GeneratorName.items():
             self._create_generator_tab(generator_name)
 
     def _create_generator_tab(self, generator_name: GeneratorName) -> None:
@@ -330,10 +325,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=not clear, enabled=not clear)
         dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=not clear)
 
-        if clear:
+        if clear or feature_data is None:
             return
 
-        for generator_name in list(GeneratorName):
+        for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
             if generator_name not in feature_data.generators:
                 dpg_configure_item(tab_tag, show=False)
@@ -544,6 +539,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         self._initial_pitch_change_timer -= dpg.get_delta_time()
+        assert self._initial_pitch_change_timer is not None
         if self._initial_pitch_change_timer > 0:
             return
 
@@ -595,18 +591,19 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         generator_name, input_tag, value_tag, change = user_data
-        current_name = dpg.get_value(input_tag).strip()
         if generator_name == GeneratorName.NOISE:
-            if current_name not in NAME_TO_PERIOD:
+            current_name = sanitize_period(dpg.get_value(input_tag))
+            if current_name not in SANITIZED_NAME_TO_PERIOD:
                 return
 
-            value = NAME_TO_PERIOD[current_name]
+            value = SANITIZED_NAME_TO_PERIOD[current_name]
             new_value = clamp_period(value + change)
         else:
-            if current_name not in NAME_TO_PITCH:
+            current_name = sanitize_pitch(dpg.get_value(input_tag))
+            if current_name not in SANITIZED_NAME_TO_PITCH:
                 return
 
-            value = NAME_TO_PITCH[current_name]
+            value = SANITIZED_NAME_TO_PITCH[current_name]
             new_value = clamp_pitch(value + change)
 
         self._update_initial_pitch_display(
@@ -644,15 +641,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         except ValueError:
             name = app_data.strip()
             if generator_name == GeneratorName.NOISE:
-                if name not in NAME_TO_PERIOD:
+                name = sanitize_period(name)
+                if name not in SANITIZED_NAME_TO_PERIOD:
                     value = int(dpg.get_value(value_tag))
                 else:
-                    value = NAME_TO_PERIOD[name]
+                    value = SANITIZED_NAME_TO_PERIOD[name]
             else:
-                if name not in NAME_TO_PITCH:
+                name = sanitize_pitch(name)
+                if name not in SANITIZED_NAME_TO_PITCH:
                     value = int(dpg.get_value(value_tag))
                 else:
-                    value = NAME_TO_PITCH[name]
+                    value = SANITIZED_NAME_TO_PITCH[name]
 
         self._update_initial_pitch_display(
             value,

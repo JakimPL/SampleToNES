@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from types import ModuleType
-from typing import Any, Generic, Self, cast
+from typing import Any, Generic, Type
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -11,14 +10,11 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
-from sampletones.generators import (
-    GENERATOR_CLASS_MAP,
-    GENERATOR_TO_INSTRUCTION_MAP,
-    Generator,
-)
+from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.typehints import Initials, ReducedObject, SerializedData
 from sampletones.utils import serialize_array
@@ -47,7 +43,7 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
-    ) -> Self:
+    ) -> InstructionLibraryFragment[InstructionT]:
         sample: CyclicArray = generator.generate_sample(instruction)
 
         features = []
@@ -74,7 +70,9 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             GENERATOR_TO_INSTRUCTION_MAP[GENERATOR_CLASS_MAP[self.generator_class]],
         ):
             raise InstructionTypeMismatchError("Instruction type does not match generator class")
-        return cast(InstructionT, self.instruction_data.instruction)
+
+        instruction: InstructionT = self.instruction_data.instruction
+        return instruction
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         windowed_audio = self.sample.get_windowed_fragment(shift, window)
@@ -114,13 +112,13 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         return serialize_array(feature)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

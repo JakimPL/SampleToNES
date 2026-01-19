@@ -11,7 +11,7 @@ from sampletones.reconstructions.converter import (
     ReconstructionConverter,
     get_output_path,
 )
-from sampletones.typehints import VoidCallback
+from sampletones.typehints import PathCallback, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
@@ -93,7 +93,7 @@ class GUIConverterPanel(GUIPanel):
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
-        self.on_load_file: Optional[Callable[[Path], None]] = None
+        self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
         self.generate_library: Optional[VoidCallback] = None

@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
@@ -6,17 +5,12 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import MessageCallback, Sender
+from sampletones.typehints import MessageCallback, PathCallback, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import (
-    LBL_TREE_FILTER,
-    SUF_PANEL_LEFT,
-    TAG_TAB_MAIN,
-    VAL_NODE_CHILDREN_SLOT,
-)
+from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN, VAL_NODE_CHILDREN_SLOT
 from ...constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_BUTTON_MAIN_EXPLORER_REFRESH,
@@ -54,8 +48,6 @@ from ...utils.dpg import dpg_configure_item, dpg_delete_children
 from ...utils.shortcuts.manager import ShortcutManager
 from ...utils.thread import concurrent
 
-OnReconstructPathCallback = Callable[[Path], None]
-
 
 class GUIExplorerPanel(GUITreePanel):
     def __init__(
@@ -74,14 +66,14 @@ class GUIExplorerPanel(GUITreePanel):
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
-        self.on_wave_file_clicked: Optional[OnReconstructPathCallback] = None
-        self.on_directory_clicked: Optional[OnReconstructPathCallback] = None
-        self.on_reconstruct_directory: Optional[OnReconstructPathCallback] = None
-        self.on_reconstruct_file: Optional[OnReconstructPathCallback] = None
-        self.on_load_reconstruction: Optional[OnReconstructPathCallback] = None
-        self.on_load_library: Optional[OnReconstructPathCallback] = None
-        self.on_set_as_output_directory: Optional[OnReconstructPathCallback] = None
-        self.on_set_as_library_directory: Optional[OnReconstructPathCallback] = None
+        self.on_wave_file_clicked: Optional[PathCallback] = None
+        self.on_directory_clicked: Optional[PathCallback] = None
+        self.on_reconstruct_directory: Optional[PathCallback] = None
+        self.on_reconstruct_file: Optional[PathCallback] = None
+        self.on_load_reconstruction: Optional[PathCallback] = None
+        self.on_load_library: Optional[PathCallback] = None
+        self.on_set_as_output_directory: Optional[PathCallback] = None
+        self.on_set_as_library_directory: Optional[PathCallback] = None
         self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
@@ -96,7 +88,7 @@ class GUIExplorerPanel(GUITreePanel):
         )
 
     def create_panel(self) -> None:
-        self._setup_event_handlers()
+        self._setup_handlers()
         with dpg.child_window(
             tag=self.tag,
             width=self.width,
@@ -110,7 +102,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         self._rebuild_tree()
 
-    def _setup_event_handlers(self) -> None:
+    def _setup_handlers(self) -> None:
         self._node_handlers = {
             NodeType.DIRECTORY: NodeHandler(
                 tag=self._get_node_handler_tag(NodeType.DIRECTORY),
@@ -127,7 +119,7 @@ class GUIExplorerPanel(GUITreePanel):
             ),
         }
 
-        super()._setup_event_handlers()
+        super()._setup_handlers()
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
@@ -225,7 +217,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = node.node_type != NodeType.ROOT and self._is_node_favorite(node)
+        is_favorite = self._is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:

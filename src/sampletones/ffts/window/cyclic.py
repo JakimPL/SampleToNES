@@ -1,11 +1,11 @@
-from types import ModuleType
-from typing import Optional, Union
+from typing import Optional, Type, Union
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
 
@@ -30,8 +30,8 @@ class CyclicArray(DataModel):
     )
 
     def get_offset(self, phase: float) -> int:
-        assert isinstance(phase, float), "Phase must be a float value between 0.0 and 1.0."
-        assert 0.0 <= phase < 1.0, "Phase must be in the range [0.0, 1.0)."
+        assert isinstance(phase, float), "Phase must be a float value between 0.0 and 1.0"
+        assert 0.0 <= phase < 1.0, "Phase must be in the range [0.0, 1.0)"
         if self.frequency <= 0.0:
             return 0
 
@@ -66,13 +66,13 @@ class CyclicArray(DataModel):
         return serialize_array(array)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.arrays import FBCyclicArray
 
         return FBCyclicArray
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.arrays import FBCyclicArray
 
         return FBCyclicArray.FBCyclicArray

@@ -11,17 +11,17 @@ from sampletones.library import InstructionLibraryKey
 from .type import NodeType
 
 
-class TreeNode(Node):
+class TreeNode(Node):  # type: ignore[misc]
     def __init__(
         self,
         name: str,
         node_type: NodeType,
-        parent: Optional["TreeNode"] = None,
+        parent: Optional[TreeNode] = None,
     ) -> None:
         super().__init__(name, parent=parent)
         self.node_type = node_type
 
-    def copy(self, parent: Optional["TreeNode"] = None) -> TreeNode:
+    def copy(self, parent: Optional[TreeNode] = None) -> TreeNode:
         return TreeNode(self.name, node_type=self.node_type, parent=parent)
 
 

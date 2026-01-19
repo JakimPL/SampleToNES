@@ -26,7 +26,7 @@ class Fragment:
 
     @classmethod
     def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
-        assert windowed_audio.shape[0] == window.size, "Audio length must match window size."
+        assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
         transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
         feature = transformer.calculate(windowed_audio, window.size)
 
@@ -40,18 +40,18 @@ class Fragment:
     @classmethod
     def stack(cls, fragments: List[Self]) -> Self:
         if not fragments:
-            raise ValueError("The fragments list cannot be empty.")
+            raise ValueError("The fragments list cannot be empty")
 
         first_fragment = fragments[0]
         assert all(
             fragment.config.library == first_fragment.config.library
             and fragment.config.generation.calculation == first_fragment.config.generation.calculation
             for fragment in fragments
-        ), "All fragments must have the same config to be concatenated."
+        ), "All fragments must have the same config to be concatenated"
 
         assert all(
             fragment.ndim == first_fragment.ndim for fragment in fragments
-        ), "All fragments must have the same number of dimensions to be concatenated."
+        ), "All fragments must have the same number of dimensions to be concatenated"
 
         if isinstance(first_fragment.audio, np.ndarray):
             concatenated_audio = np.stack([fragment.audio for fragment in fragments])
@@ -65,7 +65,7 @@ class Fragment:
         dimensions = map(
             lambda array: array.ndim, [concatenated_audio, concatenated_windowed_audio, concatenated_feature]
         )
-        assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional."
+        assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional"
 
         return cls(
             audio=concatenated_audio,
@@ -76,13 +76,13 @@ class Fragment:
 
     def __sub__(self, other: Self) -> Fragment:
         if self.audio.shape != other.audio.shape:
-            raise ValueError("Fragments must have the same shape to be subtracted.")
+            raise ValueError("Fragments must have the same shape to be subtracted")
 
         if (
             self.config.library != other.config.library
             or self.config.generation.calculation != other.config.generation.calculation
         ):
-            raise ValueError("Both fragments must have the same config to be subtracted.")
+            raise ValueError("Both fragments must have the same config to be subtracted")
 
         windowed_audio = self.windowed_audio - other.windowed_audio
         audio = self.audio - other.audio

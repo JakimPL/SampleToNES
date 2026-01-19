@@ -7,11 +7,7 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.constants.paths import (
-    EXT_FILE_JSON,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
+from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -20,6 +16,7 @@ from sampletones.exceptions import (
     LibraryDisplayError,
 )
 from sampletones.library import InstructionLibraryKey
+from sampletones.sequencer import Sequencer
 from sampletones.typehints import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
@@ -68,6 +65,7 @@ from .constants.general import (
     LBL_TAB_INSTRUCTIONS,
     LBL_TAB_MAIN,
     LBL_TAB_RECONSTRUCTIONS,
+    LBL_TAB_SEQUENCER,
     MSG_ALL_AUDIO_FORMATS,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
@@ -106,6 +104,7 @@ from .constants.general import (
     TAG_TAB_INSTRUCTIONS,
     TAG_TAB_MAIN,
     TAG_TAB_RECONSTRUCTIONS,
+    TAG_TAB_SEQUENCER,
     TAG_TABS,
     TAG_WINDOW_MAIN,
     TPL_MENU_TEXT_FPS,
@@ -126,10 +125,7 @@ from .constants.general import (
     VAL_WINDOW_PRIMARY,
 )
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
-from .constants.main import (
-    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
-    DIM_PANEL_WIDTH_MAIN_EXPLORER,
-)
+from .constants.main import DIM_PANEL_HEIGHT_MAIN_EXPLORER, DIM_PANEL_WIDTH_MAIN_EXPLORER
 from .constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
@@ -140,6 +136,7 @@ from .constants.reconstructions import (
     TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
+from .constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
 from .elements.fonts.registry import FontRegistry
 from .elements.status import GUIStatusBar
 from .instruction.data import InstructionPanelData
@@ -156,6 +153,9 @@ from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
+from .panels.sequencer.browser import GUISequencerBrowserPanel
+from .panels.sequencer.grid import GUISequencerGridPanel
+from .panels.sequencer.samples import GUISequencerSamplesPanel
 from .panels.settings import GUIAudioSettingsWindow
 from .reconstruction.browser import BrowserManager
 from .reconstruction.manager import ReconstructionManager
@@ -193,6 +193,7 @@ class GUI:
         self.browser_manager = BrowserManager(self.config_manager)
         self.reconstruction_manager = ReconstructionManager()
         self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
+        self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -229,6 +230,19 @@ class GUI:
             self.shortcut_manager,
             self.reconstruction_manager,
         )
+        self.sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
+            self.config_manager,
+            self.application_config_manager,
+            self.audio_device_manager,
+            self.shortcut_manager,
+            self.browser_manager,
+        )
+        self.sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
+            self.config_manager,
+            self.application_config_manager,
+            self.audio_device_manager,
+        )
+        self.sequencer_instruments_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
             self.application_config_manager,
@@ -651,6 +665,7 @@ class GUI:
             ):
                 self._create_main_tab()
                 self._create_reconstructions_tab()
+                self._create_sequencer_tab()
                 self._create_instructions_tab()
 
     def _create_status_bar(self) -> None:
@@ -784,11 +799,26 @@ class GUI:
             right_panel_width=DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
         )
 
+    def _create_sequencer_tab(self) -> None:
+        self._create_layout(
+            label=LBL_TAB_SEQUENCER,
+            tab_tag=TAG_TAB_SEQUENCER,
+            parent=TAG_TABS,
+            left_content_builder=self._create_sequencer_left_panel,
+            center_content_builder=self.sequencer_grid_panel.create_panel,
+            right_content_builder=self.sequencer_instruments_panel.create_panel,
+            right_panel_height=DIM_PANEL_HEIGHT_RIGHT,
+            right_panel_width=DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS,
+        )
+
     def _create_instructions_left_panel(self) -> None:
         self.library_panel.create_panel()
 
     def _create_reconstructions_left_panel(self) -> None:
         self.browser_panel.create_panel()
+
+    def _create_sequencer_left_panel(self) -> None:
+        self.sequencer_browser_panel.create_panel()
 
     def _create_main_left_panel(self) -> None:
         self.explorer_panel.create_panel()
@@ -1170,7 +1200,8 @@ class GUI:
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS)
-        return dpg.get_item_alias(current_tab)
+        alias: str = dpg.get_item_alias(current_tab)
+        return alias
 
     def _play_from_start(self) -> None:
         current_tab_tag = self._get_current_tab()

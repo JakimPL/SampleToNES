@@ -13,7 +13,7 @@ class ResourceLoader:
 
     def _get_package_path(self, resource_name: str) -> Union[Path, Traversable]:
         if getattr(sys, "frozen", False):
-            base_path = Path(sys._MEIPASS)  # pylint: disable=protected-access
+            base_path = Path(sys._MEIPASS)  # type: ignore[attr-defined] # pylint: disable=protected-access
             resource_type = self.resource_directory.name
             return base_path / "assets" / resource_type / resource_name
 

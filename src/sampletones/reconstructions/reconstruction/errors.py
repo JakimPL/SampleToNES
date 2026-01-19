@@ -1,10 +1,11 @@
-from types import ModuleType
+from typing import Type
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.typehints import SerializedData
 from sampletones.utils import serialize_array
 
@@ -21,13 +22,13 @@ class Errors(DataModel):
         return serialize_array(errors)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.reconstruction import FBErrors
 
         return FBErrors
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.reconstruction import FBErrors
 
         return FBErrors.FBErrors

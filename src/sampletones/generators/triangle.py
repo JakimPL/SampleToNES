@@ -13,7 +13,11 @@ from .generator import Generator
 
 
 class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
-    def __init__(self, config: Config, name: GeneratorName = GeneratorName.TRIANGLE) -> None:
+    def __init__(
+        self,
+        config: Config,
+        name: str = GeneratorName.TRIANGLE,
+    ) -> None:
         super().__init__(config, name)
         self.timer = PhaseTimer(
             sample_rate=config.library.sample_rate,

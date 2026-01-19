@@ -32,12 +32,7 @@ from ...constants.graphs import (
 from ...reconstruction.data import ReconstructionData
 from ...themes.graphs.indicator import IndicatorGraphTheme
 from ...themes.graphs.overlay import OverlayGraphTheme
-from ...utils.dpg import (
-    dpg_bind_item_theme,
-    dpg_configure_item,
-    dpg_delete_children,
-    dpg_delete_item,
-)
+from ...utils.dpg import dpg_bind_item_theme, dpg_configure_item, dpg_delete_children, dpg_delete_item
 from ..status import GUIStatusBar
 from .graph import GUIGraph
 from .layers.array import ArrayLayer
@@ -105,7 +100,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             fit_button=False,
             horizontal_mod=dpg.mvKey_LShift,
             pan_button=dpg.mvMouseButton_Left,
-            zoom_rate=self.zoom_factor,  # type: ignore
+            zoom_rate=self.zoom_factor,
         ):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(

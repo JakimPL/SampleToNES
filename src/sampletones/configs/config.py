@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
-from typing import List
+from typing import List, Type
 
 from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.typehints import Pathlike
 from sampletones.utils import load_json, save_json, to_path
 
@@ -39,6 +39,9 @@ class Config(DataModel):
     def load(cls, path: Pathlike) -> Config:
         path = to_path(path)
         config_dict = load_json(path)
+        if not isinstance(config_dict, dict):
+            raise TypeError(f"Expected config file to contain a dict, got {type(config_dict)}")
+
         return cls(**config_dict)
 
     def save(self, path: Pathlike) -> None:
@@ -91,13 +94,13 @@ class Config(DataModel):
         return self.library.transformation_gamma
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBConfig
 
         return FBConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBConfig
 
         return FBConfig.FBConfig

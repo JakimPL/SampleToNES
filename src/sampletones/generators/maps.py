@@ -1,22 +1,13 @@
 from typing import Dict, Final
 
-from sampletones.constants.enums import (
-    GeneratorClassName,
-    GeneratorName,
-    LibraryGeneratorName,
-)
+from sampletones.constants.enums import GeneratorClassName, GeneratorName, LibraryGeneratorName
 from sampletones.constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
-from sampletones.instructions import (
-    InstructionClass,
-    NoiseInstruction,
-    PulseInstruction,
-    TriangleInstruction,
-)
+from sampletones.instructions import InstructionTypeUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 
 from .noise import NoiseGenerator
 from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
-from .typehints import GeneratorClass
+from .typehints import GeneratorTypeUnion
 
 LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {
     LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,
@@ -24,7 +15,8 @@ LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName
     LibraryGeneratorName.NOISE: GeneratorClassName.NOISE_GENERATOR,
 }
 
-GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorClass]] = {
+
+GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorTypeUnion]] = {
     GeneratorName.PULSE1: PulseGenerator,
     GeneratorName.PULSE2: PulseGenerator,
     GeneratorName.TRIANGLE: TriangleGenerator,
@@ -32,20 +24,20 @@ GENERATOR_CLASSES: Final[Dict[GeneratorName, GeneratorClass]] = {
 }
 
 
-GENERATOR_CLASS_MAP: Final[Dict[GeneratorClassName, GeneratorClass]] = {
+GENERATOR_CLASS_MAP: Final[Dict[GeneratorClassName, GeneratorTypeUnion]] = {
     GeneratorClassName.PULSE_GENERATOR: PulseGenerator,
     GeneratorClassName.TRIANGLE_GENERATOR: TriangleGenerator,
     GeneratorClassName.NOISE_GENERATOR: NoiseGenerator,
 }
 
 
-INSTRUCTION_TO_GENERATOR_MAP: Final[Dict[InstructionClass, GeneratorClass]] = {
+INSTRUCTION_TO_GENERATOR_MAP: Final[Dict[InstructionTypeUnion, GeneratorTypeUnion]] = {
     PulseInstruction: PulseGenerator,
     TriangleInstruction: TriangleGenerator,
     NoiseInstruction: NoiseGenerator,
 }
 
-GENERATOR_TO_INSTRUCTION_MAP: Final[Dict[GeneratorClass, InstructionClass]] = {
+GENERATOR_TO_INSTRUCTION_MAP: Final[Dict[GeneratorTypeUnion, InstructionTypeUnion]] = {
     PulseGenerator: PulseInstruction,
     TriangleGenerator: TriangleInstruction,
     NoiseGenerator: NoiseInstruction,

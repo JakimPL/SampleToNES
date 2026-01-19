@@ -27,7 +27,7 @@ class GUISettingsPanel(GUIPanel):
         self.config_manager = config_manager
         self.application_config_manager = application_config_manager
 
-        self._event_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
         self._config_panel_key = config_panel_key
 
         super().__init__(
@@ -38,8 +38,8 @@ class GUISettingsPanel(GUIPanel):
             init=init,
         )
 
-    def _setup_event_handlers(self) -> None:
-        with dpg.item_handler_registry(tag=self._event_handler_tag):
+    def _setup_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._item_handler_tag):
             dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
@@ -71,4 +71,4 @@ class GUISettingsPanel(GUIPanel):
         return value
 
     def update_gui_from_config(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method.")
+        raise NotImplementedError("Subclasses must implement this method")

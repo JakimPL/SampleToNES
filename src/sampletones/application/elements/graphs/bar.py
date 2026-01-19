@@ -21,12 +21,7 @@ from ...constants.graphs import (
 )
 from ...themes.graphs.zero import ZeroLineGraphTheme
 from ...themes.theme import Theme
-from ...utils.dpg import (
-    dpg_bind_item_theme,
-    dpg_configure_item,
-    dpg_delete_item,
-    dpg_is_item_hovered,
-)
+from ...utils.dpg import dpg_bind_item_theme, dpg_configure_item, dpg_delete_item, dpg_is_item_hovered
 from .graph import GUIGraph
 from .layers.bar import BarLayer
 
@@ -87,7 +82,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             anti_aliased=True,
             no_box_select=True,
             pan_button=dpg.mvMouseButton_Middle,
-            zoom_rate=self.zoom_factor,  # type: ignore
+            zoom_rate=self.zoom_factor,
         ):
             dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
             dpg.add_plot_axis(
@@ -105,8 +100,8 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self._bind_event_handler()
         self._update_axes_limits()
 
-    def _setup_event_handler(self) -> None:
-        super()._setup_event_handler()
+    def _setup_handlers(self) -> None:
+        super()._setup_handlers()
         with dpg.handler_registry(tag=self.mouse_handler_tag):
             dpg.add_mouse_move_handler(callback=self._on_mouse_action)
             dpg.add_mouse_click_handler(callback=self._on_mouse_action)

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import re
 from enum import StrEnum
-from typing import Dict, Final, Literal
+from typing import Dict, Final, List, Literal
 
 
 class LibraryGeneratorName(StrEnum):
@@ -19,6 +21,10 @@ class GeneratorName(StrEnum):
     def capitalized(self) -> str:
         spaced_value = re.sub(r"(\d+)", r" \1", self.value)
         return spaced_value.capitalize()
+
+    @classmethod
+    def items(cls) -> List[GeneratorName]:
+        return [cls.PULSE1, cls.PULSE2, cls.TRIANGLE, cls.NOISE]
 
 
 class GeneratorClassName(StrEnum):

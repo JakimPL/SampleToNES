@@ -7,7 +7,8 @@ from ..constants.general import (
     COL_TEXT_WHITE,
     TAG_THEME_CONVERTER,
 )
-from .items import ThemeColor, ThemeItems, ThemeParameter
+from .items import ThemeItems
+from .style import ThemeColor, ThemeParameter
 from .theme import Theme
 
 

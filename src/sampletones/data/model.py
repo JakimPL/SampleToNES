@@ -1,26 +1,17 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from pathlib import Path
-from types import ModuleType
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Self,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Any, Dict, List, Optional, Self, Type, TypeVar, Union, get_args, get_origin
 
 import numpy as np
 from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 from sampletones.exceptions import DeserializationError, SerializationError
-from sampletones.typehints import Pathlike, SerializedData
+from sampletones.typehints import Callback, Pathlike, SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
 
 FLOAT32_SIZE = 4
@@ -96,7 +87,8 @@ class DataModel(BaseModel):
             fb_add = getattr(fb_builder, f"Add{camel}")
             fb_add(builder, val)
 
-        return fb_builder.End(builder)
+        offset: int = fb_builder.End(builder)
+        return offset
 
     @classmethod
     def deserialize_inner(cls, fb_object: Any) -> Self:
@@ -112,6 +104,7 @@ class DataModel(BaseModel):
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
+            value: Union[TypeVar, DataModel, int, float, np.ndarray, List[Any], str, Path, None]
             if annotation is np.ndarray:
                 value = cls._deserialize_numpy_array(fb_object, field_name)
 
@@ -143,7 +136,7 @@ class DataModel(BaseModel):
 
         return cls(**field_values)
 
-    def _serialize_list(self, builder: Builder, collection: list, field_name: str) -> int:
+    def _serialize_list(self, builder: Builder, collection: List[Any], field_name: str) -> int:
         if len(collection) == 0:
             return 0
 
@@ -165,7 +158,9 @@ class DataModel(BaseModel):
     def _serialize_string(self, builder: Builder, value: Union[str, StrEnum]) -> int:
         if isinstance(value, StrEnum):
             value = value.value
-        return builder.CreateString(value)
+
+        offset: int = builder.CreateString(value)
+        return offset
 
     @classmethod
     def _deserialize_string(cls, raw: bytes, string_class: type) -> Union[str, StrEnum]:
@@ -175,7 +170,9 @@ class DataModel(BaseModel):
         return string
 
     @classmethod
-    def _deserialize_list(cls, fb_object: Any, field_name: str, element_class: type) -> np.ndarray | list:
+    def _deserialize_list(
+        cls, fb_object: Any, field_name: str, element_class: type
+    ) -> Optional[Union[List[Any], np.ndarray]]:
         camel = snake_to_camel(field_name)
         getter = getattr(fb_object, camel, None)
         length_function = getattr(fb_object, f"{camel}Length", None)
@@ -226,7 +223,8 @@ class DataModel(BaseModel):
         for value in reversed(array):
             builder.PrependFloat32(float(value))
 
-        return builder.EndVector()
+        offset: int = builder.EndVector()
+        return offset
 
     @classmethod
     def _deserialize_numpy_array(cls, fb_object: Any, field_name: str) -> np.ndarray:
@@ -236,7 +234,7 @@ class DataModel(BaseModel):
         if getter is None:
             raise DeserializationError(f"{fb_object.__class__.__name__} missing getter '{camel}AsNumpy'")
 
-        array = getter()
+        array: np.ndarray = getter()
 
         if np.isnan(array).any():
             raise DeserializationError(f"Deserialized array for '{field_name}' contains NaN values")
@@ -250,12 +248,12 @@ class DataModel(BaseModel):
         wrapper.Init(table.Bytes, table.Pos)
         return cls.deserialize_inner(wrapper)
 
-    def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> dict:
-        union_map = type(self).buffer_union_map()
+    def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> Dict[Any, Any]:
+        union_map: Optional[Dict[int, Type[DataModel]]] = type(self).buffer_union_map()
         if union_map is None:
             raise SerializationError(f"No union map defined for {type(self).__name__}")
 
-        tag = None
+        tag: Optional[int] = None
         for tag_type, cls in union_map.items():
             if isinstance(value, cls):
                 tag = tag_type
@@ -268,7 +266,7 @@ class DataModel(BaseModel):
         return {field_name: child_offset, f"{field_name}_type": tag}
 
     @classmethod
-    def _deserialize_union(cls, fb_parent: Any, getter: Callable) -> Any:
+    def _deserialize_union(cls, fb_parent: Any, getter: Callback) -> Any:
         union_map = cls.buffer_union_map()
         if union_map is None:
             raise DeserializationError(f"No union map defined for {cls.__name__}")
@@ -284,11 +282,11 @@ class DataModel(BaseModel):
         if tag == 0:
             raise DeserializationError(f"Union tag is 0 (null) for {cls.__name__}")
 
-        target_cls = union_map.get(tag)
+        target_cls: Optional[type[DataModel]] = union_map.get(tag)
         if target_cls is None:
             raise DeserializationError(f"Unknown union tag {tag} for {cls.__name__}")
 
-        table = getter()
+        table: Table = getter()
         return target_cls.deserialize_from_table(table)
 
     @staticmethod
@@ -300,21 +298,21 @@ class DataModel(BaseModel):
         return int(builder.EndVector(len(offsets)))
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         raise NotImplementedError("Subclasses must implement buffer_reader method")
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         raise NotImplementedError("Subclasses must implement buffer_builder method")
 
     @classmethod
-    def buffer_union_builder(cls) -> Optional[ModuleType]:
+    def buffer_union_builder(cls) -> Optional[FlatBufferUnionProtocol]:
         return None
 
     @classmethod
-    def buffer_union_reader(cls) -> Optional[type]:
+    def buffer_union_reader(cls) -> Optional[Type[FlatBufferUnionProtocol]]:
         return None
 
     @classmethod
-    def buffer_union_map(cls) -> Optional[Dict[int, type]]:
+    def buffer_union_map(cls) -> Optional[Dict[int, Type[DataModel]]]:
         return None

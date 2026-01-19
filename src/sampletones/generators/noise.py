@@ -13,7 +13,11 @@ from .generator import Generator
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
-    def __init__(self, config: Config, name: GeneratorName = GeneratorName.NOISE) -> None:
+    def __init__(
+        self,
+        config: Config,
+        name: str = GeneratorName.NOISE,
+    ) -> None:
         super().__init__(config, name)
         self.timer = LFSRTimer(
             sample_rate=config.library.sample_rate,

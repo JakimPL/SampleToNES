@@ -2,19 +2,15 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from types import ModuleType
-from typing import Any, Dict, KeysView, List, Self, Union, ValuesView
+from typing import Any, Dict, KeysView, List, Self, Type, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones.configs import Config, InstructionsLibraryConfig
-from sampletones.constants.application import (
-    SAMPLETONES_LIBRARY_DATA_VERSION,
-    SAMPLETONES_NAME,
-    compare_versions,
-)
+from sampletones.constants.application import SAMPLETONES_LIBRARY_DATA_VERSION, SAMPLETONES_NAME, compare_versions
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.data import DataModel, Metadata, default_metadata
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,
@@ -139,13 +135,13 @@ class InstructionLibraryData(DataModel):
             )
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.library import FBInstructionsLibraryData
 
         return FBInstructionsLibraryData
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.library import FBInstructionsLibraryData
 
         return FBInstructionsLibraryData.FBInstructionsLibraryData

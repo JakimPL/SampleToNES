@@ -1,6 +1,6 @@
 [project]
 name = "sampletones"
-version = "0.2.3"
+version = "0.2.4"
 description = "SampleToNES - Convert audio samples to FamiTracker instruments"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -8,16 +8,15 @@ authors = [{ name = "Jakim / Stage Magician" }]
 
 dependencies = [
     "anytree==2.13.0",
-    "dearpygui==2.1.0",
-    "flatbuffers==25.9.23",
+    "dearpygui==2.1.1",
+    "flatbuffers==25.12.19",
     "librosa==0.11.0",
     "numpy==2.3.4",
     "pebble==5.1.3",
-    "pydantic==2.12.3",
+    "pydantic==2.12.5",
     "pyaudio==0.2.14",
-    "pylint==4.0.3",
     "rich==14.2.0",
-    "scipy==1.16.2",
+    "scipy==1.17.0",
     "screeninfo==0.8.1",
     "tqdm==4.67.1",
     "pytaskbar; platform_system == 'Windows'",
@@ -29,11 +28,36 @@ dependencies = [
 sampletones = "sampletones.__main__:main"
 
 [project.optional-dependencies]
+dev = [
+    "mypy==1.19.1",
+    "pre-commit==4.5.1",
+    "pylint==4.0.3",
+    "pylint-pydantic==0.4.1",
+    "pytest==9.0.2",
+    "pytest-cov==7.0.0",
+]
 gpu = ["cupy==13.6.0"]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+known_first_party = ["sampletones", "schemas"]
+
+[tool.pytest.ini_options]
+addopts = """
+--import-mode=importlib
+"""
+
+[tool.coverage.report]
+show_missing = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sampletones", "src/schemas"]
@@ -42,7 +66,9 @@ packages = ["src/sampletones", "src/schemas"]
 include = ["assets/icons/*", "assets/fonts/*"]
 
 [tool.mypy]
+python_version = "3.12"
 files = "src/sampletones"
+exclude = ["tests", "src/schemas"]
+disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true
-disallow_subclassing_any = true

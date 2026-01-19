@@ -54,7 +54,7 @@ class Reconstructor:
 
     def __call__(self, path: Pathlike) -> Optional[Reconstruction]:
         if not isinstance(path, (str, Path)):
-            raise TypeError("Input must be a path to an audio file.")
+            raise TypeError("Input must be a path to an audio file")
 
         path = to_path(path)
         audio = self.load_audio(path)

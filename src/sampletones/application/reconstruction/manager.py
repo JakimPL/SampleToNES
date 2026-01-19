@@ -14,7 +14,7 @@ from .feature import FeatureData
 
 
 class ReconstructionManager(CallbackMixin):
-    def __init__(self):
+    def __init__(self) -> None:
         self.current_reconstruction: Optional[ReconstructionData] = None
         self.current_features: Optional[FeatureData] = None
         self.reconstruction_hash: str = ""

@@ -5,16 +5,23 @@ from .frequencies import (
     MIN_AVAILABLE_FREQUENCY,
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
+    SANITIZED_NAME_TO_PERIOD,
+    SANITIZED_NAME_TO_PITCH,
     clamp_period,
     clamp_pitch,
     frequency_to_pitch,
     period_to_name,
     pitch_to_frequency,
     pitch_to_name,
+    sanitize,
+    sanitize_period,
+    sanitize_pitch,
+    validate_frequency,
+    validate_period,
+    validate_pitch,
 )
-from .locales import to_utf8
-from .paths import get_directory, open_path_in_explorer, shorten_path, to_path
 from .serialization import (
+    calculate_hash,
     deserialize_array,
     dump,
     hash_model,
@@ -28,6 +35,9 @@ from .serialization import (
     serialize_array,
     snake_to_camel,
 )
+from .system.locales import to_utf8
+from .system.paths import get_directory, open_path_in_explorer, shorten_path, to_path
+from .system.system import System
 
 __all__ = [
     "next_power_of_two",
@@ -35,12 +45,18 @@ __all__ = [
     "trim",
     "first_key_for_value",
     "clamp",
+    "validate_pitch",
+    "validate_frequency",
+    "validate_period",
     "pitch_to_frequency",
     "frequency_to_pitch",
     "clamp_pitch",
     "clamp_period",
     "pitch_to_name",
     "period_to_name",
+    "sanitize",
+    "sanitize_pitch",
+    "sanitize_period",
     "dump",
     "save_json",
     "load_json",
@@ -51,13 +67,17 @@ __all__ = [
     "serialize_array",
     "deserialize_array",
     "snake_to_camel",
+    "calculate_hash",
     "hash_model",
     "hash_models",
     "MIN_AVAILABLE_FREQUENCY",
     "MAX_AVAILABLE_FREQUENCY",
     "NAME_TO_PITCH",
     "NAME_TO_PERIOD",
+    "SANITIZED_NAME_TO_PITCH",
+    "SANITIZED_NAME_TO_PERIOD",
     "write_fti",
+    "System",
     "shorten_path",
     "to_path",
     "get_directory",

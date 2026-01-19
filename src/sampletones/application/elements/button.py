@@ -14,7 +14,7 @@ from .fonts.registry import FontRegistry
 
 
 class GUIButton:
-    _REGISTRY: Dict[str, GUIButton] = {}
+    _REGISTRY: Dict[Sender, GUIButton] = {}
 
     def __init__(
         self,
@@ -111,7 +111,8 @@ class GUIButton:
             del GUIButton._REGISTRY[self._tag]
 
     def is_item_hovered(self) -> Optional[bool]:
-        return dpg.is_item_hovered(self._button_tag)
+        is_hovered: Optional[bool] = dpg.is_item_hovered(self._button_tag)
+        return is_hovered
 
     @property
     def tag(self) -> str:

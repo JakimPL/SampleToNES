@@ -1,46 +1,27 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
-for /f "tokens=2 delims= " %%v in ('python --version 2^>^&1') do set PYTHON_VERSION=%%v
-echo Detected Python version: %PYTHON_VERSION%
+set SCRIPT_DIR=%~dp0
+set NO_VENV=false
+set PASS_ARGS=
 
-for /f "tokens=1,2 delims=." %%a in ("%PYTHON_VERSION%") do set PY_MAJOR=%%a& set PY_MINOR=%%b
-
-set /a VERSION_OK=0
-if %PY_MAJOR% GEQ 3 (
-    if %PY_MINOR% GEQ 12 set VERSION_OK=1
-)
-
-if not %VERSION_OK%==1 (
-    echo.
-    echo ERROR: Python 3.12 or newer is required.
-    echo Please install Python 3.12+ from https://www.python.org/downloads/
-    pause
-    exit /b 1
-)
-
-echo Creating virtual environment...
-python -m venv .venv
-call .venv\Scripts\activate
-
-echo Installing dependencies...
-pip install --upgrade pip
-pip install .
-pip install pyinstaller
-
-echo Building executable...
-pyinstaller --name sampletones ^
-    --onefile ^
-    --distpath . ^
-    --icon "src\sampletones\assets\icons\sampletones.ico" ^
-    --add-data "src\sampletones\assets\icons;assets\icons" ^
-    --add-data "src\sampletones\assets\fonts;assets\fonts" ^
-    "src\sampletones\__main__.py"
-
-if exist sampletones.exe (
-    echo Build complete: .\sampletones.exe
+:parse_args
+if "%~1"=="" goto run_install
+if "%~1"=="--no-venv" (
+    set NO_VENV=true
 ) else (
-    echo Build failed.
+    set PASS_ARGS=!PASS_ARGS! %~1
 )
+shift
+goto parse_args
+
+:run_install
+if "%NO_VENV%"=="false" (
+    call "%SCRIPT_DIR%scripts\windows\python.bat" || exit /b
+    call "%SCRIPT_DIR%scripts\windows\venv.bat" || exit /b
+)
+
+call "%SCRIPT_DIR%scripts\windows\install.bat" %PASS_ARGS% || exit /b
+call "%SCRIPT_DIR%scripts\windows\build.bat" || exit /b
 
 pause

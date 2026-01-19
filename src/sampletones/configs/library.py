@@ -1,13 +1,9 @@
-from types import ModuleType
+from typing import Type
 
 import numpy as np
 from pydantic import ConfigDict, Field
 
-from sampletones.constants.audio import (
-    DEFAULT_SAMPLE_RATE,
-    MAX_SAMPLE_RATE,
-    MIN_SAMPLE_RATE,
-)
+from sampletones.constants.audio import DEFAULT_SAMPLE_RATE, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
@@ -19,6 +15,7 @@ from sampletones.constants.general import (
     TRANSFORMATION_GAMMA,
 )
 from sampletones.data import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class InstructionsLibraryConfig(DataModel):
@@ -40,13 +37,13 @@ class InstructionsLibraryConfig(DataModel):
         return max(self.frame_length, lower_bound)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.configs import FBInstructionsLibraryConfig
 
         return FBInstructionsLibraryConfig
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.configs import FBInstructionsLibraryConfig
 
         return FBInstructionsLibraryConfig.FBInstructionsLibraryConfig

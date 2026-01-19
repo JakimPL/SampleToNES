@@ -3,12 +3,7 @@ from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
-from sampletones.configs import (
-    Config,
-    GeneralConfig,
-    GenerationConfig,
-    InstructionsLibraryConfig,
-)
+from sampletones.configs import Config, GeneralConfig, GenerationConfig, InstructionsLibraryConfig
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import (
@@ -51,7 +46,7 @@ class ConfigManager:
 
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
-        self.generators: List[GeneratorName] = list(GeneratorName)
+        self.generators: List[GeneratorName] = GeneratorName.items()
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
         self.config_parameters: Dict[str, Dict[str, ConfigParameter]] = {

@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.audio import clip_audio, stereo_to_mono
+from sampletones.audio import clip_audio, to_mono
 from sampletones.library import InstructionLibraryFragment
 
 
@@ -27,7 +27,7 @@ class AudioData(BaseModel):
         sample_rate: int,
     ) -> AudioData:
         audio = fragment.data.copy()
-        audio = stereo_to_mono(audio)
+        audio = to_mono(audio)
         audio = clip_audio(audio)
         audio = audio.astype(np.float32)
         return cls(

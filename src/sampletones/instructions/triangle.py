@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from types import ModuleType
+from typing import Type
 
 from pydantic import Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.utils import pitch_to_name
 
 from .instruction import Instruction
@@ -61,13 +62,13 @@ class TriangleInstruction(Instruction):
         return InstructionClassName.TRIANGLE_INSTRUCTION
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.instructions import FBTriangleInstruction
 
         return FBTriangleInstruction
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.instructions import FBTriangleInstruction
 
         return FBTriangleInstruction.FBTriangleInstruction

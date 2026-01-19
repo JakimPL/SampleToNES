@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from types import ModuleType
-from typing import Any, Dict, List, Optional, Self
+from typing import Any, Dict, List, Optional, Self, Type
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -16,16 +15,9 @@ from sampletones.constants.application import (
 )
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, Metadata, default_metadata
-from sampletones.exceptions import (
-    IncompatibleReconstructionVersionError,
-    InvalidMetadataError,
-)
-from sampletones.exporters import (
-    INSTRUCTION_TO_EXPORTER_MAP,
-    ExporterTypeUnion,
-    ExporterUnion,
-    Features,
-)
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
+from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
 from sampletones.typehints import Pathlike, SerializedData
 from sampletones.utils import pad, serialize_array
@@ -165,27 +157,27 @@ class Reconstruction(DataModel):
             max_length = max(max_length, item_length)
 
         new_approximations_data: List[ApproximationsItem] = []
-        for item in self.approximations_data:
-            if item.generator_name == generator_name:
+        for approximation in self.approximations_data:
+            if approximation.generator_name == generator_name:
                 array = pad(array, 0, max_length)
                 new_approximations_data.append(
                     ApproximationsItem(
-                        generator_name=item.generator_name,
+                        generator_name=approximation.generator_name,
                         approximation=array,
                     )
                 )
             else:
-                item_array = pad(item.approximation, 0, max_length)
+                item_array = pad(approximation.approximation, 0, max_length)
                 new_approximations_data.append(
                     ApproximationsItem(
-                        generator_name=item.generator_name,
+                        generator_name=approximation.generator_name,
                         approximation=item_array,
                     )
                 )
 
         new_instructions_data: List[InstructionsItem] = []
-        for item in self.instructions_data:
-            if item.generator_name == generator_name:
+        for instruction in self.instructions_data:
+            if instruction.generator_name == generator_name:
                 new_instructions_data.append(
                     InstructionsItem.create(
                         generator_name=generator_name,
@@ -193,7 +185,7 @@ class Reconstruction(DataModel):
                     )
                 )
             else:
-                new_instructions_data.append(item)
+                new_instructions_data.append(instruction)
 
         self.approximations_data = new_approximations_data
         self.instructions_data = new_instructions_data
@@ -272,13 +264,13 @@ class Reconstruction(DataModel):
         return str(audio_filepath)
 
     @classmethod
-    def buffer_builder(cls) -> ModuleType:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction
 
     @classmethod
-    def buffer_reader(cls) -> type:
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
         from schemas.reconstruction import FBReconstruction
 
         return FBReconstruction.FBReconstruction
