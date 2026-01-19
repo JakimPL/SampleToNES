@@ -2,21 +2,20 @@
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
-ifeq ($(UNAME_S),Linux)
-	PYTHON := python3
-	VENV_ACTIVATE := source .venv/bin/activate
-	BUILD_SCRIPT := ./install.sh
-	EXECUTABLE := sampletones
-else ifeq ($(UNAME_S),Darwin)
-	PYTHON := python3
-	VENV_ACTIVATE := source .venv/bin/activate
-	BUILD_SCRIPT := ./install.sh
-	EXECUTABLE := sampletones
-else
+ifeq ($(UNAME_S),Windows)
 	PYTHON := python
-	VENV_ACTIVATE := .venv\Scripts\activate
+	SCRIPTS_DIR := scripts\windows
+	SCRIPT_EXT := .bat
+	RUN_SCRIPT :=
 	BUILD_SCRIPT := install.bat
 	EXECUTABLE := sampletones.exe
+else
+	PYTHON := python3
+	SCRIPTS_DIR := scripts/linux
+	SCRIPT_EXT := .sh
+	RUN_SCRIPT := bash
+	BUILD_SCRIPT := ./install.sh
+	EXECUTABLE := sampletones
 endif
 
 help:
@@ -28,49 +27,16 @@ help:
 	@echo "  make clean       - Remove build artifacts and cache files"
 
 pre_commit:
-	@echo "Installing pre-commit hooks..."
-	$(PYTHON) -m pip install pre-commit
-	pre-commit install
-	pre-commit install --hook-type pre-push
-	@echo "Pre-commit hooks installed successfully."
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pre_commit$(SCRIPT_EXT)
 
 build:
-	@echo "Building standalone executable..."
-ifeq ($(UNAME_S),Windows)
-	$(BUILD_SCRIPT)
-else
-	bash $(BUILD_SCRIPT)
-endif
+	$(RUN_SCRIPT) $(BUILD_SCRIPT)
 
 install:
-	@echo "Installing package locally..."
-	$(PYTHON) -m pip install --upgrade pip
-	$(PYTHON) -m pip install ".[dev]"
-	@echo "Installation complete. Run 'sampletones' to start the application."
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/install$(SCRIPT_EXT)
 
 test:
-	@echo "Running tests with coverage..."
-	$(PYTHON) -m pytest src/ --doctest-modules --no-cov
-	$(PYTHON) -m pytest --cov=src/sampletones
-	@echo "Coverage report generated in htmlcov/"
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/tests$(SCRIPT_EXT)
 
 clean:
-	@echo "Cleaning build artifacts..."
-ifeq ($(UNAME_S),Windows)
-	-if exist build rmdir /s /q build
-	-if exist dist rmdir /s /q dist
-	-if exist htmlcov rmdir /s /q htmlcov
-	-if exist .coverage del /q .coverage
-	-if exist *.spec del /q *.spec
-	-if exist $(EXECUTABLE) del /q $(EXECUTABLE)
-	-for /d /r . %%d in (__pycache__) do @if exist "%%d" rmdir /s /q "%%d"
-	-for /d /r . %%d in (*.egg-info) do @if exist "%%d" rmdir /s /q "%%d"
-	-del /s /q *.pyc 2>nul
-else
-	rm -rf build/ dist/ *.spec htmlcov/ .coverage
-	rm -f $(EXECUTABLE)
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-endif
-	@echo "Clean complete."
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/clean$(SCRIPT_EXT)
