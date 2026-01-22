@@ -28,7 +28,7 @@ repos:
     hooks:
       - id: mypy
         name: mypy
-        entry: make mypy
+        entry: mypy
         language: system
         types: [python]
         verbose: True
@@ -38,7 +38,7 @@ repos:
     hooks:
       - id: pylint
         name: pylint
-        entry: make pylint
+        entry: pylint
         language: system
         types: [python]
         verbose: True
