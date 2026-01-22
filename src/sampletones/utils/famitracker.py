@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 
-from sampletones.typehints import Pathlike
+from sampletones.types import Pathlike
 
 
 def write_fti(

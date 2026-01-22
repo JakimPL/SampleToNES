@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.typehints import Color, Sender
+from sampletones.types import Color, Sender
 
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,

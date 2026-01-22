@@ -4,7 +4,7 @@ from typing import Any, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import MessageCallback, Sender
+from sampletones.types import MessageCallback, Sender
 
 from ..constants.general import SUF_HANDLER_STATUS, TAG_STATUS_BAR, TAG_STATUS_WINDOW, VAL_STATUS_BAR_DISPLAY_TIME
 from ..themes.status import StatusBarTheme

@@ -8,7 +8,9 @@ from pydantic import BaseModel
 
 from sampletones.constants.enums import FeatureKey
 
-Numeric = Union[int, float, np.integer, np.floating]
+Integer = Union[int, np.integer]
+Float = Union[float, np.floating]
+Numeric = Union[Integer, Float]
 
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]

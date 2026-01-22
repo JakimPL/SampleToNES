@@ -8,7 +8,7 @@ from urllib.parse import quote
 from rich.logging import RichHandler
 
 from sampletones.constants.application import SAMPLETONES_NAME
-from sampletones.typehints import Pathlike
+from sampletones.types import Pathlike
 
 from .base import BaseLogger
 

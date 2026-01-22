@@ -3,5 +3,9 @@
 set +e
 
 echo "Running type checking with mypy..."
-python -m mypy src/sampletones
+if [ $# -eq 0 ]; then
+    python -m mypy src/sampletones
+else
+    python -m mypy "$@"
+fi
 exit $?

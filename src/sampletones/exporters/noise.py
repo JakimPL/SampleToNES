@@ -10,7 +10,7 @@ from sampletones.instructions import (
     InstructionTypeUnion,
     NoiseInstruction,
 )
-from sampletones.typehints import FeatureMap
+from sampletones.types import FeatureMap
 
 from .exporter import Exporter
 

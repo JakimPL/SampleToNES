@@ -15,7 +15,7 @@ from sampletones.ffts import CyclicArray, Fragment, Window
 from sampletones.ffts.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
-from sampletones.typehints import Initials, ReducedObject, SerializedData
+from sampletones.types import Initials, ReducedObject, SerializedData
 from sampletones.utils import serialize_array
 
 

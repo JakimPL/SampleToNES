@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import Sender
+from sampletones.types import Sender
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

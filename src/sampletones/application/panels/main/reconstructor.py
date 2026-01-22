@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_MIXER
-from sampletones.typehints import Sender, SerializedData
+from sampletones.types import Sender, SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

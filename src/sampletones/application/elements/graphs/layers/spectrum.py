@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.ffts import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 from ....constants.graphs import (
     VAL_MAX_SPECTRUM_DISPLAY_BINS,

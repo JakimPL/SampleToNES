@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 from ....constants.graphs import COL_BAR_PLOT, VAL_BAR_PLOT_BAR_WEIGHT
 from .layer import Layer

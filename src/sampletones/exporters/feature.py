@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from sampletones.constants.enums import FeatureKey
-from sampletones.typehints import FeatureMap, FeatureValue
+from sampletones.types import FeatureMap, FeatureValue
 from sampletones.utils import write_fti
 
 

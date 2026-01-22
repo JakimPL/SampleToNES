@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.typehints import Pathlike
+from sampletones.types import Pathlike
 from sampletones.utils import load_json, save_json, to_path
 
 from .general import GeneralConfig

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Generic, Iterable, Iterator, List, Optional, TypeVar, Union, overload
 
-from sampletones.typehints import ModelHashable
+from sampletones.types import ModelHashable
 
 from .bidirectional import BidirectionalHashMap
 

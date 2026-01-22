@@ -4,7 +4,7 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.typehints import VoidCallback
+from sampletones.types import VoidCallback
 from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager

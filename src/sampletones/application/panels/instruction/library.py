@@ -18,7 +18,7 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.typehints import MessageCallback, Sender
+from sampletones.types import MessageCallback, Sender
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager

@@ -17,7 +17,7 @@ from sampletones.exceptions import (
 )
 from sampletones.generators import GeneratorClassNames
 from sampletones.instructions import InstructionUnion
-from sampletones.typehints import Pathlike
+from sampletones.types import Pathlike
 from sampletones.utils import load_binary
 
 from .fragment import InstructionLibraryFragment

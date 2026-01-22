@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones.typehints import ModelHashable
+from sampletones.types import ModelHashable
 from sampletones.utils.collections.bidirectional import BidirectionalHashMap
 from sampletones.utils.collections.indexed import IndexedCollection
 from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject

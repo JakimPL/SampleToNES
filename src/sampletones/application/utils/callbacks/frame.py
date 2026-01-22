@@ -7,7 +7,7 @@ from typing import Dict, List
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import VoidCallback
+from sampletones.types import VoidCallback
 
 
 @dataclass(frozen=True)

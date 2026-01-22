@@ -5,7 +5,7 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.typehints import SerializedData
+from sampletones.types import SerializedData
 from sampletones.utils import serialize_array
 
 

@@ -2,7 +2,7 @@ from typing import Any, Literal, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Sender, SerializedData
+from sampletones.types import Sender, SerializedData
 
 from ..config.application.manager import ApplicationConfigManager
 from ..config.manager import ConfigManager

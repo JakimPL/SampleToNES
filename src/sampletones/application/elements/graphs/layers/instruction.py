@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.generators import MIXER_LEVELS
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS
 from .layer import Layer

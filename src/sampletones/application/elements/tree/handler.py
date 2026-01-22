@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.tree import NodeType
-from sampletones.typehints import Callback, MessageCallback
+from sampletones.types import Callback, MessageCallback
 
 
 class NodeHandler(BaseModel):

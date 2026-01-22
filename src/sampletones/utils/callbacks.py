@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from sampletones.typehints import Callback
+from sampletones.types import Callback
 from sampletones.utils.logger import logger
 
 

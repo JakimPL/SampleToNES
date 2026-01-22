@@ -17,7 +17,7 @@ from sampletones.exceptions import (
 )
 from sampletones.library import InstructionLibraryKey
 from sampletones.sequencer import Sequencer
-from sampletones.typehints import Callback, Sender, VoidCallback
+from sampletones.types import Callback, Sender, VoidCallback
 from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager

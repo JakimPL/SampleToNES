@@ -6,7 +6,7 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.typehints import Callback, VoidCallback
+from sampletones.types import Callback, VoidCallback
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import BaseLogger
 from sampletones.utils.logger import logger as default_logger

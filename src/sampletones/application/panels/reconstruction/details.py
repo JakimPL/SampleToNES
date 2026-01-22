@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones.exporters import Features
-from sampletones.typehints import FeatureValue, Sender, VoidCallback
+from sampletones.types import FeatureValue, Sender, VoidCallback
 from sampletones.utils import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,

@@ -2,5 +2,9 @@
 setlocal
 
 echo Running linting with pylint...
-python -m pylint src/sampletones
+if "%~1"=="" (
+    python -m pylint src/sampletones
+) else (
+    python -m pylint %*
+)
 exit /b %ERRORLEVEL%

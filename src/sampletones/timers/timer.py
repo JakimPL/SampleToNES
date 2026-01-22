@@ -8,7 +8,7 @@ from sampletones.constants.general import (
     RESET_PHASE,
 )
 from sampletones.ffts import CyclicArray, Window
-from sampletones.typehints import Initials
+from sampletones.types import Initials
 
 
 class Timer:

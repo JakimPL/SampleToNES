@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 from sampletones.constants.enums import FeatureKey
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 from ..constants.reconstructions import (
     COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_ARPEGGIO,

@@ -2,7 +2,7 @@ import threading
 from functools import wraps
 from typing import Any, Callable, Optional, TypeVar, cast
 
-from sampletones.typehints import Callback, VoidCallback
+from sampletones.types import Callback, VoidCallback
 
 F = TypeVar("F", bound=Callback)
 

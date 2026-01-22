@@ -4,7 +4,7 @@ from typing import Any, Dict, ItemsView, KeysView, Optional, Tuple, ValuesView
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Callback, Color
+from sampletones.types import Callback, Color
 
 from .items import ThemeDictionary, ThemeItems, ThemeValues
 from .style import ThemeColor, ThemeParameter, ThemeStyle, ThemeValue

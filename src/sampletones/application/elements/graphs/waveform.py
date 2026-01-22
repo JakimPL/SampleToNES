@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.library import InstructionLibraryFragment
-from sampletones.typehints import Sender
+from sampletones.types import Sender
 
 from ...constants.graphs import (
     COL_WAVEFORM_LAYER_RECONSTRUCTION,

@@ -6,7 +6,7 @@ from functools import wraps
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
 from sampletones.exceptions import CallbackQueueStop
-from sampletones.typehints import Callback
+from sampletones.types import Callback
 from sampletones.utils.logger import logger
 
 from .priority import CallbackPriority

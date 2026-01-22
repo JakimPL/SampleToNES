@@ -11,7 +11,7 @@ from sampletones.reconstructions.converter import (
     ReconstructionConverter,
     get_output_path,
 )
-from sampletones.typehints import PathCallback, VoidCallback
+from sampletones.types import PathCallback, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 

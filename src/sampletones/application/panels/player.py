@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.exceptions import PlaybackError
-from sampletones.typehints import VoidCallback
+from sampletones.types import VoidCallback
 
 from ..constants.player import (
     DIM_PANEL_HEIGHT_PLAYER,

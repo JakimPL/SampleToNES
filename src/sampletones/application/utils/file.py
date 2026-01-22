@@ -2,7 +2,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from sampletones.typehints import Sender, SerializedData
+from sampletones.types import Sender, SerializedData
 from sampletones.utils import to_path
 
 T = TypeVar("T")

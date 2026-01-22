@@ -3,7 +3,7 @@ from typing import Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 
 @dataclass(frozen=True, kw_only=True)

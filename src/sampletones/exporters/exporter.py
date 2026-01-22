@@ -11,7 +11,7 @@ from sampletones.instructions import (
     InstructionTypeUnion,
 )
 from sampletones.timers import PhaseTimer
-from sampletones.typehints import FeatureMap
+from sampletones.types import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
 
 from .feature import Features

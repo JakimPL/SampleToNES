@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from sampletones.audio import minmax_decimate
-from sampletones.typehints import Color
+from sampletones.types import Color
 
 from ....constants.graphs import (
     COL_WAVEFORM_DEFAULT,

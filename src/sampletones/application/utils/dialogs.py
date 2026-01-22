@@ -4,7 +4,7 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.typehints import Callback
+from sampletones.types import Callback
 
 from ..constants.general import (
     COL_PATH_TEXT,

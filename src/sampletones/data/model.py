@@ -10,7 +10,7 @@ from flatbuffers.table import Table
 from pydantic import BaseModel
 
 from sampletones.exceptions import DeserializationError, SerializationError
-from sampletones.typehints import Callback, Pathlike, SerializedData
+from sampletones.types import Callback, Pathlike, SerializedData
 from sampletones.utils import load_binary, save_binary, snake_to_camel
 
 from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol

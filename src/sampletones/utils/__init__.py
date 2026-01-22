@@ -1,4 +1,4 @@
-from .common import clamp, first_key_for_value, next_power_of_two, pad, trim
+from .common import clamp, first_key_for_value, is_increasing, next_power_of_two, pad, trim
 from .famitracker import write_fti
 from .frequencies import (
     MAX_AVAILABLE_FREQUENCY,
@@ -44,6 +44,7 @@ __all__ = [
     "pad",
     "trim",
     "first_key_for_value",
+    "is_increasing",
     "clamp",
     "validate_pitch",
     "validate_frequency",
