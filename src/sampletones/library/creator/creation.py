@@ -2,8 +2,8 @@ from typing import Any, Dict, List, Tuple
 
 from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.constants.enums import GeneratorClassName
-from sampletones.ffts import Window
-from sampletones.ffts.transformations import FFTTransformer
+from sampletones.fft import Window
+from sampletones.fft.transformations import FFTTransformer
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment

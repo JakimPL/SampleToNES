@@ -12,7 +12,7 @@ from sampletones.constants.enums import (
     GeneratorName,
     InstructionClassName,
 )
-from sampletones.ffts import Fragment, FragmentedAudio, Window
+from sampletones.fft import Fragment, FragmentedAudio, Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
 from sampletones.library import InstructionLibraryData

@@ -7,7 +7,7 @@ from sampletones.configs.config import Config
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.constants.paths import EXT_FILE_LIBRARY
-from sampletones.ffts import Window
+from sampletones.fft import Window
 from sampletones.utils import hash_model
 
 

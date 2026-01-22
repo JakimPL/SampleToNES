@@ -5,7 +5,7 @@ import numpy as np
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import MIN_SAMPLE_LENGTH
-from sampletones.ffts import CyclicArray
+from sampletones.fft import CyclicArray
 from sampletones.instructions import InstructionT, InstructionTypeUnion
 from sampletones.timers import TimerT, get_frequency_table
 from sampletones.types import Initials

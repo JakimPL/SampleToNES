@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import BATCH_SIZE
-from sampletones.ffts import Window
+from sampletones.fft import Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor

@@ -15,7 +15,7 @@ from sampletones.constants.general import (
     TRANSFORMATION_GAMMA,
 )
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
-from sampletones.ffts import Window
+from sampletones.fft import Window
 from sampletones.library import InstructionLibraryKey
 from sampletones.types import SerializedData, VoidCallback
 from sampletones.utils.logger import logger

@@ -3,7 +3,7 @@ from typing import Any, Dict, Generator, Tuple
 
 import numpy as np
 
-from sampletones.ffts import calculate_frequencies
+from sampletones.fft import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
 from sampletones.types import Color
 

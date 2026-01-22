@@ -11,8 +11,8 @@ from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
-from sampletones.ffts import CyclicArray, Fragment, Window
-from sampletones.ffts.transformations import FFTTransformer
+from sampletones.fft import CyclicArray, Fragment, Window
+from sampletones.fft.transformations import FFTTransformer
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.types import Initials, ReducedObject, SerializedData

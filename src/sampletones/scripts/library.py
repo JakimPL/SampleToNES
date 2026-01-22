@@ -4,7 +4,7 @@ from typing import Optional, Tuple
 from tqdm import tqdm
 
 from sampletones.configs import Config
-from sampletones.ffts import Window
+from sampletones.fft import Window
 from sampletones.library import (
     InstructionLibrary,
     InstructionLibraryData,

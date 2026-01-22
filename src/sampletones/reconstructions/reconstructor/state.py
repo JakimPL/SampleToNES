@@ -4,7 +4,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from sampletones.constants.enums import GeneratorName
-from sampletones.ffts import Fragment
+from sampletones.fft import Fragment
 from sampletones.instructions import InstructionUnion
 
 from .approximation import ApproximationData

@@ -3,7 +3,7 @@ from typing import Tuple
 
 from sampletones import xp
 from sampletones.configs import Config
-from sampletones.ffts import Fragment, Window
+from sampletones.fft import Fragment, Window
 
 
 @dataclass(frozen=True)

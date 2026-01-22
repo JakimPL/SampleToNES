@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from sampletones.configs import Config
 from sampletones.constants.enums import LibraryGeneratorName
 from sampletones.constants.paths import EXT_FILE_LIBRARY
-from sampletones.ffts import Window
+from sampletones.fft import Window
 from sampletones.instructions import Instruction
 from sampletones.instructions.typehints import InstructionUnion
 from sampletones.library import (

@@ -5,7 +5,7 @@ if TYPE_CHECKING:
     from .configs import Config
     from .constants.application import SAMPLETONES_VERSION as __version__
     from .constants.enums import GeneratorName
-    from .ffts import Window
+    from .fft import Window
     from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
     from .instructions import (
         Instruction,
@@ -57,7 +57,7 @@ def __getattr__(name: str) -> Any:
         return GeneratorName
 
     if name == "Window":
-        from .ffts import Window
+        from .fft import Window
 
         return Window
 

@@ -7,7 +7,7 @@ from sampletones.constants.general import (
     MIN_SAMPLE_LENGTH,
     RESET_PHASE,
 )
-from sampletones.ffts import CyclicArray, Window
+from sampletones.fft import CyclicArray, Window
 from sampletones.types import Initials
 
 
