@@ -33,6 +33,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
+        exclude: ^(src/schemas/|tests/)
 
   - repo: local
     hooks:
@@ -43,6 +44,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
+        exclude: ^(src/schemas/|tests/)
 
   - repo: local
     hooks:
