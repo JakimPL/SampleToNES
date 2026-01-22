@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 
-from sampletones.types.general import GeneralPathlike
+from sampletones.types import GeneralPathlike
 from sampletones.utils.system.paths import (
     get_directory,
     open_directory_in_explorer_linux,

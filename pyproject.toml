@@ -68,7 +68,7 @@ include = ["assets/icons/*", "assets/fonts/*"]
 [tool.mypy]
 python_version = "3.12"
 files = "src/sampletones"
-exclude = ["src/schemas"]
+exclude = ["src/schemas", "tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true
