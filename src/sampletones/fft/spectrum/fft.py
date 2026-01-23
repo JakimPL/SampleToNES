@@ -40,7 +40,7 @@ def calculate_log_spectrum(
     fft_size: int,
     sample_rate: int,
     cutoff: float,
-    log_even_components: int,
+    n_bins: int,
 ) -> Histogram:
     """
     Calculate the power spectrum with logarithmically-spaced frequency bins.
@@ -53,7 +53,7 @@ def calculate_log_spectrum(
         fft_size: FFT size.
         sample_rate: Sampling rate.
         cutoff: Cutoff frequency.
-        log_even_components: Number of logarithmically spaced components.
+        n_bins: Number of logarithmically spaced components.
 
     Returns:
         Histogram with log-spaced frequency edges and rebinned power values.
@@ -62,5 +62,5 @@ def calculate_log_spectrum(
         TypeError: If fft_config or sampling have incorrect types.
     """
     spectrum: Histogram = calculate_spectrum(audio, fft_size, sample_rate)
-    log_even_bands: np.ndarray = to_log_even_bands(spectrum.edges, cutoff, log_even_components)
+    log_even_bands: np.ndarray = to_log_even_bands(spectrum.edges, cutoff, n_bins)
     return spectrum.rebin(log_even_bands)

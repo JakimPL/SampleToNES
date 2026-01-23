@@ -5,29 +5,7 @@ import numpy as np
 
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 
-from .utils import rectangle_window
-
-
-def calculate_n_bins(
-    sample_rate: int,
-    cutoff: float = CQT_CUTOFF_FREQUENCY,
-    bins_per_octave: int = BINS_PER_OCTAVE,
-) -> int:
-    """
-    Calculate the number of CQT bins needed to cover
-    the frequency range up to Nyquist frequency.
-
-    Args:
-        cutoff: Minimum frequency in Hz.
-        sample_rate: Sampling rate in Hz.
-        bins_per_octave: Number of bins per octave.
-
-    Returns:
-        Number of bins (floored).
-    """
-    nyquist = 0.5 * sample_rate
-    n_octaves = np.log2(nyquist / cutoff)
-    return int(np.floor(n_octaves * bins_per_octave))
+from .utils import calculate_n_bins, rectangle_window
 
 
 def calculate_cqt(
