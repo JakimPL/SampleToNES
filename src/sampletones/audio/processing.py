@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from sampletones.audio.validation import validate_audio_array
+from sampletones.audio import validate_audio_array
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.general import QUANTIZATION_LEVELS
 from sampletones.utils.logger import logger

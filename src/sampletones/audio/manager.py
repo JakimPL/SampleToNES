@@ -8,7 +8,7 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
-from sampletones.audio.validation import validate_buffer_size, validate_sample_rate
+from sampletones.audio import validate_buffer_size, validate_sample_rate
 from sampletones.constants.audio import DEFAULT_BUFFER_SIZE, SAMPLE_RATES, BufferSize, SampleRate
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8

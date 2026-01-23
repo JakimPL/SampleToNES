@@ -2,52 +2,17 @@ from typing import Optional
 
 import numpy as np
 
+from sampletones.audio import validate_audio_array
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones.utils.histogram import Histogram
 
-from ..cqt import calculate_cqt, calculate_frequencies, normalize_cqt_energy
-
-
-def calculate_nbins(
-    sample_rate: int,
-    cutoff: float = CQT_CUTOFF_FREQUENCY,
-    bins_per_octave: int = BINS_PER_OCTAVE,
-) -> int:
-    """
-    Calculate the number of CQT bins needed to cover
-    the frequency range up to Nyquist.
-
-    Args:
-        cutoff: Minimum frequency in Hz.
-        sample_rate: Sampling rate in Hz.
-        bins_per_octave: Number of bins per octave.
-
-    Returns:
-        Number of bins (floored).
-    """
-    nyquist = 0.5 * sample_rate
-    n_octaves = np.log2(nyquist / cutoff)
-    return int(np.floor(n_octaves * bins_per_octave))
-
-
-def convert_midpoints_to_edges(midpoints: np.ndarray) -> np.ndarray:
-    """
-    Convert bin center frequencies to bin edges using geometric mean.
-
-    For logarithmically-spaced frequencies, computes edges as the geometric mean
-    of adjacent midpoints. First and last edges are extrapolated.
-
-    Args:
-        midpoints: Array of bin center frequencies.
-
-    Returns:
-        Array of n + 1 bin edges where n = len(midpoints).
-    """
-    edges: np.ndarray = np.empty(len(midpoints) + 1)
-    edges[1:-1] = np.sqrt(midpoints[:-1] * midpoints[1:])
-    edges[0] = midpoints[0] / np.sqrt(midpoints[1] / midpoints[0])
-    edges[-1] = midpoints[-1] * np.sqrt(midpoints[-1] / midpoints[-2])
-    return edges
+from ..cqt import (
+    calculate_cqt,
+    calculate_frequencies,
+    calculate_n_bins,
+    convert_midpoints_to_edges,
+    normalize_cqt_energy,
+)
 
 
 def calculate_cqt_spectrum(
@@ -78,7 +43,8 @@ def calculate_cqt_spectrum(
     Raises:
         TypeError: If fft_config or sampling have incorrect types.
     """
-    n_bins = n_bins or calculate_nbins(sample_rate, cutoff, bins_per_octave)
+    validate_audio_array(audio)
+    n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
     cqt = calculate_cqt(
         audio,
         sample_rate,
