@@ -19,12 +19,17 @@ from .library import InstructionsLibraryConfig
 class Config(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="forbid", frozen=True)
 
-    general: GeneralConfig = Field(default_factory=GeneralConfig, description="Base configuration for audio processing")
+    general: GeneralConfig = Field(
+        default_factory=GeneralConfig,
+        description="Base configuration for audio processing",
+    )
     library: InstructionsLibraryConfig = Field(
-        default_factory=InstructionsLibraryConfig, description="Configuration for the audio library"
+        default_factory=InstructionsLibraryConfig,
+        description="Configuration for the audio library",
     )
     generation: GenerationConfig = Field(
-        default_factory=GenerationConfig, description="Configuration for generation processes"
+        default_factory=GenerationConfig,
+        description="Configuration for generation processes",
     )
 
     @classmethod

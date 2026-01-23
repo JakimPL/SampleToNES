@@ -1,48 +1,74 @@
 import numpy as np
-from scipy.special import gamma, gammaincc  # pylint: disable=no-name-in-module
 
 ITERATIONS = 6
 
 
-def zero(x: np.ndarray) -> np.ndarray:
-    return np.zeros_like(x)
-
-
 def identity(x: np.ndarray) -> np.ndarray:
+    """
+    Identity function.
+
+    Args:
+        x (np.ndarray): Input array.
+
+    Returns:
+        np.ndarray: Same as input.
+    """
     return x
 
 
+def energy(x: np.ndarray) -> np.ndarray:
+    """
+    Calculates the energy of the FFT bins.
+
+    Args:
+        x (np.ndarray): Input array.
+
+    Returns:
+        np.ndarray: Energy of the FFT bins.
+    """
+    array: np.ndarray = np.square(np.abs(x))
+    return array
+
+
 def exp(x: np.ndarray) -> np.ndarray:
+    """
+    Exponential function.
+
+    Args:
+        x (np.ndarray): Input array.
+
+    Returns:
+        np.ndarray: Exponential of the input array.
+    """
     array: np.ndarray = np.exp(x)
     return array
 
 
-def expm1(x: np.ndarray) -> np.ndarray:
-    array: np.ndarray = np.expm1(x)
+def power(x: np.ndarray, a: float) -> np.ndarray:
+    """
+    Power function.
+
+    Args:
+        x (np.ndarray): Input array.
+        a (float): Power exponent.
+
+    Returns:
+        np.ndarray: Input array raised to the power of `a`.
+    """
+    array: np.ndarray = np.power(x, a)
     return array
 
 
-def log1p(x: np.ndarray) -> np.ndarray:
-    array: np.ndarray = np.log1p(x)
+def power_inverse(x: np.ndarray, a: float) -> np.ndarray:
+    """
+    Inverse power function.
+
+    Args:
+        x (np.ndarray): Input array.
+        a (float): Power exponent.
+
+    Returns:
+        np.ndarray: Input array raised to the power of `1 / a`.
+    """
+    array: np.ndarray = power(x, 1 / a)
     return array
-
-
-def general_interpolation(x: np.ndarray, a: float) -> np.ndarray:
-    array: np.ndarray = np.exp(x) * gammaincc(a, x) - 1.0
-    return array
-
-
-def general_derivative(x: np.ndarray, a: float) -> np.ndarray:
-    array: np.ndarray = np.exp(x) * gammaincc(a, x) - (x ** (a - 1)) / gamma(a)
-    return array
-
-
-def general_inverse(x: np.ndarray, a: float) -> np.ndarray:
-    z: np.ndarray = np.log1p(x)
-
-    for _ in range(ITERATIONS):
-        fx = general_interpolation(z, a) - x
-        fpx = general_derivative(z, a)
-        z -= fx / fpx
-
-    return z

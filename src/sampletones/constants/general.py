@@ -56,7 +56,7 @@ LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 
 # Calculation methods
 
-TRANSFORMATION_GAMMA: Final[int] = 0
+TRANSFORMATION_GAMMA: Final[int] = 50
 MAX_TRANSFORMATION_GAMMA: Final[int] = 100
 FIND_BEST_PHASE: Final[bool] = True
 FAST_DIFFERENCE: Final[bool] = False
