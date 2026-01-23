@@ -1,11 +1,12 @@
 from typing import Tuple
 
+import librosa
 import numpy as np
 
-from sampletones.audio import validate_audio_array
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.general import QUANTIZATION_LEVELS
-from sampletones.utils.logger import logger
+
+from .validation import validate_audio_array
 
 
 def clip_audio(audio: np.ndarray) -> np.ndarray:
@@ -77,17 +78,7 @@ def resample(
     if original_sample_rate == target_sample_rate:
         return audio
 
-    try:
-        import librosa
-
-        return librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
-    except (ImportError, ModuleNotFoundError):
-        logger.debug("librosa not available, falling back to numpy interpolation")
-
-    ratio = target_sample_rate / original_sample_rate
-    original_length = len(audio)
-    new_length = round(original_length * ratio)
-    return interpolate(audio, target_length=new_length)
+    return librosa.resample(audio, orig_sr=original_sample_rate, target_sr=target_sample_rate)
 
 
 def interpolate(audio: np.ndarray, target_length: int) -> np.ndarray:

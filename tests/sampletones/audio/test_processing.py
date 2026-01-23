@@ -1,4 +1,3 @@
-import sys
 from dataclasses import dataclass
 from typing import Any, Tuple, Type, Union
 from unittest.mock import patch
@@ -153,77 +152,26 @@ class TestStereoToMono:
 
 
 class TestResample:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
+    def test_resample(self) -> None:
+        array = np.array([2.0, 3.0], dtype=np.float32)
+        resampled = np.array([2.0426471, 3.1752715, 2.9565508, 1.4901037], dtype=np.float32)
+        sample_rate = 22050
+        target_sample_rate = 44100
+        with patch("librosa.resample", return_value=resampled) as mock_resample:
+            resample(array, sample_rate, target_sample_rate)
+            mock_resample.assert_called_once_with(
+                array,
+                orig_sr=sample_rate,
+                target_sr=target_sample_rate,
+            )
 
-        id: str
-        audio: np.ndarray
-        original_sample_rate: int
-        target_sample_rate: int
-        expected_result: Union[np.ndarray, int]
-        use_librosa: bool
-
-    @pytest.mark.parametrize(
-        "test_case",
-        [
-            TestCase(
-                id="same_rate_no_change",
-                audio=np.array([1.0, 2.0, 3.0, 4.0]),
-                original_sample_rate=44100,
-                target_sample_rate=44100,
-                expected_result=np.array([1.0, 2.0, 3.0, 4.0]),
-                use_librosa=False,
-            ),
-            TestCase(
-                id="downsample_half",
-                audio=np.array([1.0, 4.0]),
-                original_sample_rate=44100,
-                target_sample_rate=22050,
-                expected_result=np.array([1.0]),
-                use_librosa=False,
-            ),
-            TestCase(
-                id="upsample_double",
-                audio=np.array([1.0, 3.0]),
-                original_sample_rate=22050,
-                target_sample_rate=44100,
-                expected_result=np.array([1.0, 1.66666667, 2.33333333, 3.0]),
-                use_librosa=False,
-            ),
-            TestCase(
-                id="empty_array",
-                audio=np.array([]),
-                original_sample_rate=44100,
-                target_sample_rate=22050,
-                expected_result=np.array([]),
-                use_librosa=False,
-            ),
-            TestCase(
-                id="librosa_called_with_correct_params",
-                audio=np.array([1.0, 2.0, 3.0, 4.0]),
-                original_sample_rate=48000,
-                target_sample_rate=44100,
-                expected_result=0,
-                use_librosa=True,
-            ),
-        ],
-        ids=lambda tc: tc.id,
-    )
-    def test_resample(self, test_case: TestCase) -> None:
-        if test_case.use_librosa:
-            with patch("librosa.resample") as mock_resample:
-                mock_resample.return_value = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
-                resample(test_case.audio, test_case.original_sample_rate, test_case.target_sample_rate)
-                mock_resample.assert_called_once_with(
-                    test_case.audio,
-                    orig_sr=test_case.original_sample_rate,
-                    target_sr=test_case.target_sample_rate,
-                )
-        else:
-            with patch.dict(sys.modules, {"librosa": None}):
-                result = resample(test_case.audio, test_case.original_sample_rate, test_case.target_sample_rate)
-                np.testing.assert_allclose(result, test_case.expected_result, rtol=1e-5)
+    def test_resample_identical(self) -> None:
+        array = np.array([2.0, 3.0], dtype=np.float32)
+        sample_rate = 22050
+        target_sample_rate = 22050
+        with patch("librosa.resample", return_value=array) as mock_resample:
+            resample(array, sample_rate, target_sample_rate)
+            mock_resample.assert_not_called()
 
 
 class TestInterpolate:
