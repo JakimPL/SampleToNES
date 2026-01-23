@@ -2,6 +2,9 @@
 
 ## v0.2.4
 
+* Added a sequencer.
+* Changed FFT transformation methods.
+
 ## v0.2.3 [2026-01-09]
 
 * Improved the application's graphical interface.
