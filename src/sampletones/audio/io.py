@@ -6,7 +6,7 @@ from scipy.io import wavfile
 from soundfile import read as sf_read
 
 from sampletones.constants.general import QUANTIZATION_LEVELS
-from sampletones.types import Pathlike
+from sampletones.types.path import Pathlike
 
 from .processing import clip_audio
 from .processing import normalize as normalize_audio

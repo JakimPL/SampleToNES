@@ -5,7 +5,7 @@ from typing import NamedTuple, Union, overload
 
 import numpy as np
 
-from sampletones.types import ArrayOrScalar, BinaryTransformation, MultaryTransformation, UnaryTransformation
+from sampletones.types.array import ArrayOrScalar, BinaryTransformation, MultaryTransformation, UnaryTransformation
 
 
 class Transformation(NamedTuple):

@@ -5,13 +5,9 @@ import numpy as np
 
 from sampletones.fft import calculate_frequencies
 from sampletones.library import InstructionLibraryFragment
-from sampletones.types import Color
+from sampletones.types.application import Color
 
-from ....constants.graphs import (
-    VAL_MAX_SPECTRUM_DISPLAY_BINS,
-    VAL_MAX_SPECTRUM_GRAYSCALE,
-    VAL_OFFSET_SPECTRUM_LOG,
-)
+from ....constants.graphs import VAL_MAX_SPECTRUM_DISPLAY_BINS, VAL_MAX_SPECTRUM_GRAYSCALE, VAL_OFFSET_SPECTRUM_LOG
 from .layer import Layer
 
 

@@ -5,7 +5,7 @@ from copy import deepcopy
 from enum import StrEnum
 from typing import Any, Callable, Deque, List, Union
 
-from sampletones.types import Callback
+from sampletones.types.callback import Callback
 
 from .arguments import Arguments
 

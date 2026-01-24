@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from functools import partial
 
-from sampletones.types import ArrayOrScalar, UnaryTransformation
+from sampletones.types.array import ArrayOrScalar, UnaryTransformation
 
 from .functions import identity, power, power_inverse
 from .transformation import Transformation

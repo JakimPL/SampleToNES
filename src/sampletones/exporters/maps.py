@@ -11,7 +11,7 @@ from sampletones.instructions import (
 from .noise import NoiseExporter
 from .pulse import PulseExporter
 from .triangle import TriangleExporter
-from .typehints import ExporterTypeUnion
+from .types import ExporterTypeUnion
 
 INSTRUCTION_TO_EXPORTER_MAP: Dict[Type[Instruction], ExporterTypeUnion] = {
     PulseInstruction: PulseExporter,

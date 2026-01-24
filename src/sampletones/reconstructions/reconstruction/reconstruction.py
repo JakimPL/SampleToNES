@@ -19,7 +19,8 @@ from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferRea
 from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
-from sampletones.types import Pathlike, SerializedData
+from sampletones.types.data import SerializedData
+from sampletones.types.path import Pathlike
 from sampletones.utils import pad, serialize_array
 from sampletones.utils.logger import logger
 

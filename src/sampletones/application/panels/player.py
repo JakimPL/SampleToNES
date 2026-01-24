@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.exceptions import PlaybackError
-from sampletones.types import VoidCallback
+from sampletones.types.callback import VoidCallback
 
 from ..constants.player import (
     DIM_PANEL_HEIGHT_PLAYER,
@@ -33,12 +33,7 @@ from ..player.data import AudioData
 from ..player.player import AudioPlayer
 from ..utils.align import table_wrapper
 from ..utils.dialogs import show_error_dialog, show_modal_dialog
-from ..utils.dpg import (
-    dpg_configure_item,
-    dpg_set_item_callback,
-    dpg_set_item_label,
-    dpg_set_value,
-)
+from ..utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_item_label, dpg_set_value
 
 
 class GUIAudioPlayerPanel(GUIPanel):

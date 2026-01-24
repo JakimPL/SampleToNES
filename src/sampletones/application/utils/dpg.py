@@ -3,7 +3,8 @@ from typing import Any, Callable, Concatenate, Optional, ParamSpec, TypeVar, cas
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Callback, Sender
+from sampletones.types.application import Sender
+from sampletones.types.callback import Callback
 
 from ..elements.button import GUIButton
 

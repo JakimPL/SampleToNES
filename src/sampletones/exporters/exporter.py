@@ -5,13 +5,9 @@ import numpy as np
 from sampletones.constants.enums import FeatureKey
 from sampletones.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion
-from sampletones.instructions import (
-    InstructionFields,
-    InstructionT,
-    InstructionTypeUnion,
-)
+from sampletones.instructions import InstructionFields, InstructionT, InstructionTypeUnion
 from sampletones.timers import PhaseTimer
-from sampletones.types import FeatureMap
+from sampletones.types.feature import FeatureMap
 from sampletones.utils import pitch_to_frequency, trim
 
 from .feature import Features

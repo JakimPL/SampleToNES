@@ -1,11 +1,12 @@
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.types import PathCallback, Sender, VoidCallback
+from sampletones.types.application import Sender
+from sampletones.types.callback import PathCallback, VoidCallback
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
@@ -180,6 +181,7 @@ class GUIBrowserPanel(GUITreePanel):
         self,
         node: TreeNode,
         state: TreeNodeState,
+        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:

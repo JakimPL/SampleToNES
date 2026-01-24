@@ -7,10 +7,10 @@ import pytest
 
 from sampletones.structures.collection.bidirectional import BidirectionalHashMap
 from sampletones.structures.collection.indexed import IndexedCollection
-from sampletones.types import ModelHashable
+from sampletones.types.data import ModelHashable
 from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
 
-T = TypeVar("T", bound=ModelHashable)
+HashableT = TypeVar("T", bound=ModelHashable)
 
 
 class TestInitialization:
@@ -1227,7 +1227,7 @@ class TestHashCollisions:
 
 class TestVerifyIntegrity:
     @staticmethod
-    def verify_integrity(collection: IndexedCollection[T]) -> None:
+    def verify_integrity(collection: IndexedCollection[HashableT]) -> None:
         item_keys = set(collection._items.keys())
         order_keys = set(collection._order.keys_forward())
         order_values = set(collection._order.values_forward())

@@ -3,7 +3,9 @@ from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Pathlike, Sender, VoidCallback
+from sampletones.types.application import Sender
+from sampletones.types.callback import VoidCallback
+from sampletones.types.path import Pathlike
 from sampletones.utils import open_path_in_explorer, shorten_path, to_path
 from sampletones.utils.callbacks import CallbackMixin
 

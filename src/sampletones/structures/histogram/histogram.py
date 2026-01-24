@@ -1,21 +1,20 @@
 from __future__ import annotations
 
 import warnings
-from copy import deepcopy
-from dataclasses import dataclass
 from functools import cached_property, reduce
-from typing import Dict, Generator, Iterator, List, Optional, Tuple, Union
+from typing import Dict, Generator, List, Optional, Self, Union
 
 import numpy as np
+from pydantic import model_validator
 
-from sampletones.types import ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
+from sampletones.data import DataModel
+from sampletones.types.array import ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
 from sampletones.utils import is_increasing
 
 from .interval import Interval
 
 
-@dataclass(frozen=True)
-class Histogram:
+class Histogram(DataModel):
     """
     A histogram with bin edges and values.
 
@@ -44,9 +43,13 @@ class Histogram:
     edges: np.ndarray
     values: np.ndarray
 
-    def __post_init__(self) -> None:
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
         """
         Validate histogram structure.
+
+        Returns:
+            The validated histogram.
 
         Raises:
             ValueError: If edges length is not values length + 1, if fewer than 2 edges,
@@ -67,6 +70,8 @@ class Histogram:
 
         if not is_increasing(self.edges):
             raise ValueError("edges need to be strictly increasing")
+
+        return self
 
     def __eq__(self, other: object) -> bool:
         """
@@ -118,16 +123,6 @@ class Histogram:
         """
         return hash((tuple(self.edges), tuple(self.values)))
 
-    def __iter__(self) -> Iterator[Tuple[Interval, np.floating]]:
-        """
-        Iterate over (interval, value) pairs.
-
-        Yields:
-            Tuples of (Interval, value) for each bin.
-        """
-        for i in range(len(self)):
-            yield self.interval(i), self.values[i]
-
     def __len__(self) -> int:
         """
         Number of bins in the histogram.
@@ -136,16 +131,6 @@ class Histogram:
             The length of the values array.
         """
         return len(self.values)
-
-    def copy(self) -> Histogram:
-        """
-        Create a deep copy of the histogram, mimicking the behavior of
-        np.copy.
-
-        Returns:
-            A new Histogram instance with copied edges and values.
-        """
-        return deepcopy(self)
 
     def interval(self, i: int) -> Interval:
         """

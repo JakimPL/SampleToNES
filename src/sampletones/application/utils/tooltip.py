@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Sender
+from sampletones.types.application import Sender
 
 from ..constants.general import TAG_STATUS_BAR
 from ..elements.fonts.font import Font

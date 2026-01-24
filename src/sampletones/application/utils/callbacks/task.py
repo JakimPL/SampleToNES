@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, NamedTuple, Tuple
 
-from sampletones.types import Callback
+from sampletones.types.callback import Callback
 
 from .priority import CallbackPriority
 

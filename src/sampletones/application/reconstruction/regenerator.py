@@ -6,7 +6,7 @@ from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
 from sampletones.instructions import InstructionUnion
-from sampletones.types import FeatureValue
+from sampletones.types.feature import FeatureValue
 from sampletones.utils.callbacks import CallbackMixin
 
 from ..constants.general import VAL_PRIORITY_SCHEDULE

@@ -4,16 +4,12 @@ from typing import Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.types import VoidCallback
+from sampletones.types.callback import VoidCallback
 from sampletones.utils import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
-from ...constants.general import (
-    DIM_DIALOG_HEIGHT_FILE,
-    DIM_DIALOG_WIDTH_FILE,
-    DIM_INPUT_WIDTH,
-)
+from ...constants.general import DIM_DIALOG_HEIGHT_FILE, DIM_DIALOG_WIDTH_FILE, DIM_INPUT_WIDTH
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
     LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,

@@ -14,7 +14,8 @@ from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.fft import CyclicArray, FFTTransformer, Fragment, Window
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
-from sampletones.types import Initials, ReducedObject, SerializedData
+from sampletones.structures.histogram import Histogram
+from sampletones.types.data import Initials, ReducedObject, SerializedData
 from sampletones.utils import serialize_array
 
 
@@ -28,7 +29,7 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     generator_class: GeneratorClassName
     instruction_data: InstructionData[InstructionT]
     sample: CyclicArray
-    feature: np.ndarray
+    feature: Histogram
     frequency: float
 
     def __reduce__(self) -> ReducedObject:
@@ -45,10 +46,11 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         sample: CyclicArray = generator.generate_sample(instruction)
 
         features = []
+        sample_rate = transformer.sample_rate
         for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
             phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
             windowed_audio = sample.get_windowed_fragment(phase, window)
-            transformed_windowed_audio = transformer.calculate_features(windowed_audio)
+            transformed_windowed_audio = transformer.calculate_feature(windowed_audio, sample_rate)
             features.append(transformed_windowed_audio)
 
         feature = transformer.backward(np.mean(features, axis=0))

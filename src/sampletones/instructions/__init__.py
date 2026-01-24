@@ -4,7 +4,7 @@ from .maps import INSTRUCTION_CLASS_MAP
 from .noise import NoiseInstruction
 from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
-from .typehints import (
+from .types import (
     InstructionClass,
     InstructionFields,
     InstructionT,

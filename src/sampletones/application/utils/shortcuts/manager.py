@@ -2,7 +2,8 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Callback, Sender
+from sampletones.types.application import Sender
+from sampletones.types.callback import Callback
 
 from ...constants.general import TAG_HANDLER_FOCUS
 from .keys import Modifier

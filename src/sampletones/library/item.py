@@ -9,7 +9,7 @@ from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionData, InstructionT
-from sampletones.types import SerializedData
+from sampletones.types.data import SerializedData
 
 from .fragment import InstructionLibraryFragment
 

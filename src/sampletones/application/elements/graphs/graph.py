@@ -2,7 +2,7 @@ from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Sender
+from sampletones.types.application import Sender
 
 from ...constants.general import SUF_HANDLER_REGISTRY
 from ...constants.graphs import (

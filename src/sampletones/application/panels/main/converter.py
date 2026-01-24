@@ -7,11 +7,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones.reconstructions.converter import (
-    ReconstructionConverter,
-    get_output_path,
-)
-from sampletones.types import PathCallback, VoidCallback
+from sampletones.reconstructions.converter import ReconstructionConverter, get_output_path
+from sampletones.types.callback import PathCallback, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 
@@ -67,12 +64,7 @@ from ...elements.path import GUIPathText
 from ...utils.align import table_wrapper
 from ...utils.callbacks.queue import CallbackQueue
 from ...utils.dialogs import show_error_dialog, show_info_dialog, show_modal_dialog
-from ...utils.dpg import (
-    dpg_configure_item,
-    dpg_delete_item,
-    dpg_set_item_callback,
-    dpg_set_value,
-)
+from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_item_callback, dpg_set_value
 from ...utils.progress import SystemProgress
 
 

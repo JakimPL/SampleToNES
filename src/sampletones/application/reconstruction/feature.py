@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.exporters import Features
 from sampletones.reconstructions import Reconstruction
-from sampletones.types import FeatureValue
+from sampletones.types.feature import FeatureValue
 
 
 class FeatureData(BaseModel):

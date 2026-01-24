@@ -4,7 +4,7 @@ from typing import List, NamedTuple, Optional, Self
 
 import numpy as np
 
-from sampletones.types import Float
+from sampletones.types.array import Float
 from sampletones.utils import is_increasing
 
 

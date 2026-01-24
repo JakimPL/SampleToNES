@@ -13,7 +13,7 @@ from sampletones.constants.general import (
     NOISE_SHORT_PERIOD,
     RESET_PHASE,
 )
-from sampletones.types import Initials
+from sampletones.types.data import Initials
 
 from .timer import Timer
 

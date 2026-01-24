@@ -3,7 +3,8 @@ setlocal enabledelayedexpansion
 
 set START_DIR=%CD%
 set SCRIPT_DIR=%~dp0
-cd /d "%SCRIPT_DIR%"
+set SCHEMAS_DIR=%SCRIPT_DIR%..\..\src\schemas
+cd /d "%SCHEMAS_DIR%"
 
 where flatc >nul 2>&1 || (
 	echo flatc not found in PATH. Install the FlatBuffers compiler and retry. >&2
@@ -16,14 +17,14 @@ flatc --help 2>&1 | findstr /C:"--python" >nul || (
 	exit /b 3
 )
 
-echo Removing existing .py files under %SCRIPT_DIR%...
-for /r "%SCRIPT_DIR%" %%f in (*.py) do (
+echo Removing existing .py files under %SCHEMAS_DIR%...
+for /r "%SCHEMAS_DIR%" %%f in (*.py) do (
 	del /f /q "%%f" 2>nul
 )
 
-set DEFINITIONS_DIR=%SCRIPT_DIR%definitions
+set DEFINITIONS_DIR=%SCHEMAS_DIR%\definitions
 echo Generating Python bindings for all .fbs files in: %DEFINITIONS_DIR%...
-set TARGET_DIR=%SCRIPT_DIR%..
+set TARGET_DIR=%SCHEMAS_DIR%
 
 set FBS_COUNT=0
 set FBS_FILES=

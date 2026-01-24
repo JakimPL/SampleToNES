@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from sampletones.reconstructions import Reconstruction
-from sampletones.types import VoidCallback
+from sampletones.types.callback import VoidCallback
 from sampletones.utils import hash_model, open_path_in_explorer
 from sampletones.utils.callbacks import CallbackMixin
 from sampletones.utils.logger import logger

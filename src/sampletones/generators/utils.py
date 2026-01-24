@@ -5,7 +5,7 @@ from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
 
 from .maps import GENERATOR_CLASS_MAP, GENERATOR_CLASSES, INSTRUCTION_TO_GENERATOR_MAP
-from .typehints import GeneratorUnion
+from .types import GeneratorUnion
 
 
 def get_generators_by_names(

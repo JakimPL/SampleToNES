@@ -3,16 +3,14 @@ from __future__ import annotations
 import heapq
 import threading
 from functools import wraps
-from typing import Any, Callable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, List, Optional, Union, cast
 
 from sampletones.exceptions import CallbackQueueStop
-from sampletones.types import Callback
+from sampletones.types.callback import Callback, CallbackT
 from sampletones.utils.logger import logger
 
 from .priority import CallbackPriority
 from .task import CallbackTask
-
-F = TypeVar("F", bound=Callback)
 
 
 class CallbackQueue:
@@ -130,12 +128,12 @@ class CallbackQueue:
 
 
 def queued(
-    method: Optional[F] = None,
+    method: Optional[CallbackT] = None,
     *,
     priority: int,
     delay: int = 0,
-) -> Union[F, Callable[[F], F]]:
-    def decorator(function: F) -> F:
+) -> Union[CallbackT, Callable[[CallbackT], CallbackT]]:
+    def decorator(function: CallbackT) -> CallbackT:
 
         @wraps(function)
         def wrapper(self: Any, *args: Any, **kwargs: Any) -> None:
@@ -148,6 +146,6 @@ def queued(
                 **kwargs,
             )
 
-        return cast(F, wrapper)
+        return cast(CallbackT, wrapper)
 
     return decorator if method is None else decorator(method)

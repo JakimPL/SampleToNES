@@ -7,7 +7,7 @@ from sampletones.instructions import InstructionTypeUnion, NoiseInstruction, Pul
 from .noise import NoiseGenerator
 from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
-from .typehints import GeneratorTypeUnion
+from .types import GeneratorTypeUnion
 
 LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {
     LibraryGeneratorName.PULSE: GeneratorClassName.PULSE_GENERATOR,

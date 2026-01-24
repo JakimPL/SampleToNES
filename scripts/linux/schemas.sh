@@ -4,7 +4,8 @@ set -euo pipefail
 
 START_DIR="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+SCHEMAS_DIR="$(cd "$SCRIPT_DIR/../../src/schemas" && pwd)"
+cd "$SCHEMAS_DIR"
 
 if ! command -v flatc >/dev/null 2>&1; then
 	echo "flatc not found in PATH. Install the FlatBuffers compiler and retry." >&2
@@ -17,12 +18,12 @@ if ! flatc --help 2>&1 | grep -q -- '--python'; then
 	exit 3
 fi
 
-echo "Removing existing .py files under ${SCRIPT_DIR}..."
-find "$SCRIPT_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
+echo "Removing existing .py files under ${SCHEMAS_DIR}..."
+find "$SCHEMAS_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
 
-DEFINITIONS_DIR="$SCRIPT_DIR/definitions"
+DEFINITIONS_DIR="$SCHEMAS_DIR/definitions"
 echo "Generating Python bindings for all .fbs files in: ${DEFINITIONS_DIR}..."
-TARGET_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+TARGET_DIR="$SCHEMAS_DIR"
 mapfile -t FBS_FILES < <(find "$DEFINITIONS_DIR" -type f -name '*.fbs' | sort)
 if [ "${#FBS_FILES[@]}" -eq 0 ]; then
 # echo filename path

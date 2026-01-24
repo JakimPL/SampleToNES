@@ -39,7 +39,7 @@ class Fragment:
     def create(config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
         transformer = Fragment._get_transformer(config)
-        feature = transformer.calculate_features(windowed_audio, window.size)
+        feature = transformer.calculate_feature(windowed_audio, window.size)
 
         return Fragment(
             audio=window.get_frame_from_window(windowed_audio),
@@ -106,7 +106,7 @@ class Fragment:
         if self.config.generation.calculation.fast_difference:
             feature = self.transformer.subtract(self.feature, other.feature)
         else:
-            feature = self.transformer.calculate_features(windowed_audio)
+            feature = self.transformer.calculate_feature(windowed_audio)
 
         return Fragment(
             audio=audio,

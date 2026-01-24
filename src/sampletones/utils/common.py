@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional, Union, overload
 
 import numpy as np
 
-from sampletones.types import Numeric
+from sampletones.types.array import Float, Integer, Numeric
 
 
 def next_power_of_two(length: int) -> int:
@@ -43,17 +43,17 @@ def next_power_of_two(length: int) -> int:
 
 @overload
 def clamp(
-    value: Union[int, np.integer],
-    min_value: Optional[Union[int, np.integer]] = None,
-    max_value: Optional[Union[int, np.integer]] = None,
+    value: Integer,
+    min_value: Optional[Integer] = None,
+    max_value: Optional[Integer] = None,
 ) -> int: ...
 
 
 @overload
 def clamp(
-    value: Union[float, np.floating],
-    min_value: Optional[Union[float, np.floating]] = None,
-    max_value: Optional[Union[float, np.floating]] = None,
+    value: Float,
+    min_value: Optional[Float] = None,
+    max_value: Optional[Float] = None,
 ) -> float: ...
 
 

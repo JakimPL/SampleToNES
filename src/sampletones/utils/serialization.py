@@ -8,7 +8,8 @@ import numpy as np
 import yaml
 from pydantic import BaseModel
 
-from sampletones.types import ModelHashable, Pathlike, SerializedData
+from sampletones.types.data import ModelHashable, SerializedData
+from sampletones.types.path import Pathlike
 
 JSON_INDENT = 2
 HASH_LENGTH = 32

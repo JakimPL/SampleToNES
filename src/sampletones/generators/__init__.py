@@ -10,7 +10,7 @@ from .maps import (
 from .noise import NoiseGenerator
 from .pulse import PulseGenerator
 from .triangle import TriangleGenerator
-from .typehints import (
+from .types import (
     GeneratorClass,
     GeneratorClassNames,
     GeneratorT,

@@ -3,13 +3,9 @@ from dataclasses import dataclass
 import numpy as np
 
 from sampletones.audio import minmax_decimate
-from sampletones.types import Color
+from sampletones.types.application import Color
 
-from ....constants.graphs import (
-    COL_WAVEFORM_DEFAULT,
-    VAL_MAX_WAVEFORM_DISPLAY_POINTS,
-    VAL_WAVEFORM_SAMPLE_THICKNESS,
-)
+from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_MAX_WAVEFORM_DISPLAY_POINTS, VAL_WAVEFORM_SAMPLE_THICKNESS
 from .layer import Layer
 
 

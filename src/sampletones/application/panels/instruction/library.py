@@ -18,7 +18,8 @@ from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
-from sampletones.types import MessageCallback, Sender
+from sampletones.types.application import Sender
+from sampletones.types.callback import MessageCallback
 from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
@@ -374,6 +375,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self,
         node: TreeNode,
         state: TreeNodeState,
+        **kwargs: Any,
     ) -> None:
         node_tag = self._generate_node_tag(node)
         if node.node_type == NodeType.ROOT:

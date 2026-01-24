@@ -2,7 +2,7 @@ from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types import Sender
+from sampletones.types.application import Sender
 
 from ...constants.general import (
     TAG_FONT_BOLD,

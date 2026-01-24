@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
-from sampletones.types import ArrayOrScalar, Float, MultaryTransformation
+from sampletones.types.array import ArrayOrScalar, Float, MultaryTransformation
 from sampletones.utils.transformation.morpher import PowerMorpher
 from sampletones.utils.transformation.transformation import Transformation
 
@@ -72,7 +72,7 @@ class FFTTransformer(BaseModel):
         transformations = morpher.transformations
         return cls(transformations=transformations, sample_rate=sample_rate)
 
-    def calculate_features(
+    def calculate_feature(
         self,
         audio: np.ndarray,
         sample_rate: int,

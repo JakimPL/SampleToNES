@@ -5,7 +5,7 @@ from sampletones.constants.enums import InstructionClassName
 from .noise import NoiseInstruction
 from .pulse import PulseInstruction
 from .triangle import TriangleInstruction
-from .typehints import InstructionTypeUnion
+from .types import InstructionTypeUnion
 
 INSTRUCTION_CLASS_MAP: Final[Dict[InstructionClassName, InstructionTypeUnion]] = {
     InstructionClassName.PULSE_INSTRUCTION: PulseInstruction,

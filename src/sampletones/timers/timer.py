@@ -2,13 +2,9 @@ from typing import Any, Optional, Tuple
 
 import numpy as np
 
-from sampletones.constants.general import (
-    MAX_SAMPLE_LENGTH,
-    MIN_SAMPLE_LENGTH,
-    RESET_PHASE,
-)
+from sampletones.constants.general import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH, RESET_PHASE
 from sampletones.fft import CyclicArray, Window
-from sampletones.types import Initials
+from sampletones.types.data import Initials
 
 
 class Timer:

@@ -3,7 +3,7 @@ from .rows.generator import GeneratorRow
 from .rows.sample import SampleRow
 from .sequence import Sequence
 from .sequencer import Sequencer
-from .typehints import RowT
+from .types import RowT
 
 __all__ = [
     "Sequencer",

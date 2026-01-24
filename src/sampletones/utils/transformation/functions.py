@@ -1,6 +1,6 @@
 import numpy as np
 
-from sampletones.types import ArrayOrScalar
+from sampletones.types.array import ArrayOrScalar
 
 
 def identity(x: ArrayOrScalar) -> ArrayOrScalar:

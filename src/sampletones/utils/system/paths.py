@@ -2,7 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from sampletones.types import GeneralPathlike, Pathlike
+from sampletones.types.path import GeneralPathlike, Pathlike
 
 from .system import System
 

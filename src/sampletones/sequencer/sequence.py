@@ -1,6 +1,6 @@
 from typing import Generic, List
 
-from .typehints import RowT
+from .types import RowT
 
 
 class Sequence(Generic[RowT]):

@@ -6,7 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager, write_wave
 from sampletones.constants.enums import AudioSourceType, GeneratorName
 from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
-from sampletones.types import MessageCallback, Sender, VoidCallback
+from sampletones.types.application import Sender
+from sampletones.types.callback import MessageCallback, VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.logger import logger
 

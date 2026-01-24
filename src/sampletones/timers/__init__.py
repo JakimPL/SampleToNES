@@ -1,7 +1,7 @@
 from .lfsr import LFSRTimer
 from .phase import PhaseTimer
 from .timer import Timer
-from .typehints import TimerT, TimerTypeUnion, TimerUnion
+from .types import TimerT, TimerTypeUnion, TimerUnion
 from .utils import get_frequency_table
 
 __all__ = [
