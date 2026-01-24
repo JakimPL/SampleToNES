@@ -16,10 +16,10 @@ for arg in "$@"; do
 done
 
 if [[ "$NO_VENV" == "false" ]]; then
-    source "${SCRIPT_DIR}/scripts/linux/python.sh"
-    source "${SCRIPT_DIR}/scripts/linux/venv.sh"
+    source "${SCRIPT_DIR}/scripts/linux/build/python.sh"
+    source "${SCRIPT_DIR}/scripts/linux/build/venv.sh"
 fi
 
-source "${SCRIPT_DIR}/scripts/linux/dependencies.sh"
-bash "${SCRIPT_DIR}/scripts/linux/sampletones.sh" "${PASS_ARGS[@]}"
-bash "${SCRIPT_DIR}/scripts/linux/build.sh"
+source "${SCRIPT_DIR}/scripts/linux/build/dependencies.sh"
+bash "${SCRIPT_DIR}/scripts/linux/build/sampletones.sh" "${PASS_ARGS[@]}"
+bash "${SCRIPT_DIR}/scripts/linux/build/build.sh"

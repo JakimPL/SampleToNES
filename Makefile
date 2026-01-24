@@ -29,32 +29,35 @@ help:
 	@echo "  make format      - Auto-format code (isort, black)"
 	@echo "  make run         - Run SampleToNES application"
 
-pre_commit:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pre_commit$(SCRIPT_EXT)
-
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
 
-install:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/install$(SCRIPT_EXT) --dev
-
-test:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/tests$(SCRIPT_EXT)
-
-clean:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/clean$(SCRIPT_EXT)
-
-lint:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/lint$(SCRIPT_EXT)
-
-pylint:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/pylint$(SCRIPT_EXT)
-
-mypy:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/mypy$(SCRIPT_EXT)
-
-format:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/format$(SCRIPT_EXT)
-
 run:
 	$(PYTHON) -m sampletones
+
+clean:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/clean$(SCRIPT_EXT)
+
+install:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/install$(SCRIPT_EXT) --dev
+
+pre_commit:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pre_commit$(SCRIPT_EXT)
+
+test:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/tests$(SCRIPT_EXT)
+
+lint:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/lint$(SCRIPT_EXT)
+
+pylint:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pylint$(SCRIPT_EXT)
+
+mypy:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/mypy$(SCRIPT_EXT)
+
+format:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/format$(SCRIPT_EXT)
+
+schemas:
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/schemas$(SCRIPT_EXT)

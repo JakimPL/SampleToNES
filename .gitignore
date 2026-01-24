@@ -6,7 +6,7 @@ __pycache__/
 .vscode/
 .github/
 .venv/
-build/
+./build/
 
 sampletones
 !src/sampletones

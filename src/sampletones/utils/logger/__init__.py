@@ -1,6 +1,9 @@
 from .base import BaseLogger
-from .logger import Logger, logger
-from .null import NullLogger, null_logger
+from .main import Logger
+from .null import NullLogger
+
+logger = Logger()
+null_logger = NullLogger()
 
 __all__ = [
     "logger",

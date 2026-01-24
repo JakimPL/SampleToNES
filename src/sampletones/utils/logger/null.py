@@ -35,6 +35,3 @@ class NullLogger(BaseLogger):
 
     def error_with_traceback(self, exception: BaseException, message: Optional[str] = None) -> None:
         pass
-
-
-null_logger = NullLogger()

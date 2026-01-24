@@ -17,11 +17,11 @@ goto parse_args
 
 :run_install
 if "%NO_VENV%"=="false" (
-    call "%SCRIPT_DIR%scripts\windows\python.bat" || exit /b
-    call "%SCRIPT_DIR%scripts\windows\venv.bat" || exit /b
+    call "%SCRIPT_DIR%scripts\windows\build\python.bat" || exit /b
+    call "%SCRIPT_DIR%scripts\windows\build\venv.bat" || exit /b
 )
 
-call "%SCRIPT_DIR%scripts\windows\install.bat" %PASS_ARGS% || exit /b
-call "%SCRIPT_DIR%scripts\windows\build.bat" || exit /b
+call "%SCRIPT_DIR%scripts\windows\build\install.bat" %PASS_ARGS% || exit /b
+call "%SCRIPT_DIR%scripts\windows\build\build.bat" || exit /b
 
 pause
