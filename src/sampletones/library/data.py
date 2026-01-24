@@ -9,7 +9,7 @@ from pydantic import ConfigDict, Field, ValidationError
 from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.constants.application import SAMPLETONES_LIBRARY_DATA_VERSION, SAMPLETONES_NAME, compare_versions
 from sampletones.constants.enums import GeneratorClassName
-from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata, default_metadata
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata
 from sampletones.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,
@@ -28,7 +28,7 @@ class InstructionLibraryData(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     metadata: Metadata = Field(
-        default_factory=default_metadata,
+        default_factory=Metadata.default,
         description="Library metadata",
     )
     config: InstructionsLibraryConfig = Field(..., description="Configuration of the library data")

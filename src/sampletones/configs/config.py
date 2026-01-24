@@ -8,6 +8,7 @@ from pydantic import ConfigDict, Field
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.data.metadata import Metadata
 from sampletones.types.path import Pathlike
 from sampletones.utils import load_json, save_json, to_path
 
@@ -31,13 +32,17 @@ class Config(DataModel):
         default_factory=GenerationConfig,
         description="Configuration for generation processes",
     )
+    metadata: Metadata = Field(
+        default_factory=Metadata.default,
+        description="Application metadata",
+    )
 
-    @classmethod
-    def default(cls) -> Config:
+    @staticmethod
+    def default() -> Config:
         if not CONFIG_PATH.exists():
-            return cls()
+            return Config()
 
-        return cls.load(CONFIG_PATH)
+        return Config.load(CONFIG_PATH)
 
     @classmethod
     def load(cls, path: Pathlike) -> Config:

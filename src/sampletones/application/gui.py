@@ -9,6 +9,7 @@ from screeninfo import Monitor, get_monitors
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.exceptions import (
+    DeserializationError,
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
     InvalidReconstructionError,
@@ -128,6 +129,7 @@ from .constants.general import (
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
 from .constants.main import DIM_PANEL_HEIGHT_MAIN_EXPLORER, DIM_PANEL_WIDTH_MAIN_EXPLORER
 from .constants.reconstructions import (
+    MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
@@ -1083,6 +1085,7 @@ class GUI:
         self.browser_panel.lock()
         try:
             self.reconstruction_manager.load_reconstruction(filepath)
+            logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
             show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
@@ -1111,6 +1114,11 @@ class GUI:
                     exception.expected_version,
                 ),
             )
+        except DeserializationError as exception:
+            logger.error_with_traceback(
+                exception, f"Deserialization error while loading reconstruction from {filepath}"
+            )
+            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR)
         except Exception as exception:
             logger.error_with_traceback(
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
@@ -1118,8 +1126,6 @@ class GUI:
             show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
         finally:
             self.browser_panel.unlock()
-
-        logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
 
     def _on_reconstruction_loaded(self) -> None:
         reconstruction_data = self.reconstruction_manager.current_reconstruction

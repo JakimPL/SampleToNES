@@ -15,7 +15,7 @@ from sampletones.constants.application import (
     compare_versions,
 )
 from sampletones.constants.enums import GeneratorName
-from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata, default_metadata
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata
 from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
@@ -32,10 +32,7 @@ from .instructions import InstructionsItem
 class Reconstruction(DataModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    metadata: Metadata = Field(
-        default_factory=default_metadata,
-        description="Reconstruction metadata",
-    )
+    metadata: Metadata = Field(default_factory=Metadata.default, description="Reconstruction metadata")
     id: str = Field(..., description="Unique identifier for the reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
     config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)

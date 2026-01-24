@@ -22,16 +22,22 @@ FLOAT32_SIZE = 4
 
 class DataModel(BaseModel):
     def serialize(self) -> bytes:
-        builder = Builder(1024)
-        offset = self.serialize_inner(builder)
-        builder.Finish(offset)
-        return bytes(builder.Output())
+        try:
+            builder = Builder(1024)
+            offset = self.serialize_inner(builder)
+            builder.Finish(offset)
+            return bytes(builder.Output())
+        except Exception as exception:
+            raise SerializationError(f"Failed to serialize {type(self).__name__}") from exception
 
     @classmethod
     def deserialize(cls, buffer: bytes) -> Self:
-        fb_reader = cls.buffer_reader()
-        root = fb_reader.GetRootAs(buffer, 0)
-        return cls.deserialize_inner(root)
+        try:
+            fb_reader = cls.buffer_reader()
+            root = fb_reader.GetRootAs(buffer, 0)
+            return cls.deserialize_inner(root)
+        except Exception as exception:
+            raise DeserializationError(f"Failed to deserialize {cls.__name__}") from exception
 
     def save(self, path: Pathlike) -> None:
         binary = self.serialize()

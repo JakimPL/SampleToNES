@@ -13,6 +13,7 @@ from sampletones.exceptions import (
     InvalidMetadataError,
     WindowNotAvailableError,
 )
+from sampletones.exceptions.validation import DeserializationError
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey
@@ -40,6 +41,7 @@ from ...constants.instructions import (
     LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
     LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
     LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
+    MSG_INSTRUCTIONS_LIBRARY_DESERIALIZATION_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_FILE_LOAD_ERROR,
     MSG_INSTRUCTIONS_LIBRARY_FILE_NOT_FOUND,
     MSG_INSTRUCTIONS_LIBRARY_GENERATING,
@@ -310,6 +312,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.lock()
         try:
             self.library_manager.load_library(library_key)
+            logger.info(f"Library loaded: {library_key}")
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Library file not found for key {library_key}")
             show_file_not_found_dialog(
@@ -341,6 +344,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     exception.expected_version,
                 ),
             )
+        except DeserializationError as exception:
+            logger.error_with_traceback(exception, f"Deserialization error loading library for key {library_key}")
+            show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_DESERIALIZATION_ERROR)
         except Exception as exception:
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)
