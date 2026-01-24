@@ -2,8 +2,7 @@ from typing import Any, Dict, List, Tuple
 
 from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.constants.enums import GeneratorClassName
-from sampletones.fft import Window
-from sampletones.fft.transformations import FFTTransformer
+from sampletones.fft import FFTTransformer, Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryFragment
@@ -32,7 +31,10 @@ def generate_instructions(
     window: Window,
     generators: Dict[GeneratorClassName, GeneratorUnion],
 ) -> List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]]:
-    transformer = FFTTransformer.from_gamma(config.transformation_gamma)
+    transformer = FFTTransformer.from_gamma(
+        config.transformation_gamma,
+        config.sample_rate,
+    )
     return [
         generate_instruction(generators, generator_class_name, instruction, window, transformer)
         for generator_class_name, instruction in instructions_batch

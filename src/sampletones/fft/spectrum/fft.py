@@ -4,7 +4,7 @@ import numpy as np
 
 from sampletones.audio import validate_audio_array
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
-from sampletones.utils.histogram import Histogram
+from sampletones.structures.histogram import Histogram
 
 from ..fft import calculate_fft, calculate_frequencies
 from ..utils import calculate_n_bins, to_log_even_bands

@@ -8,7 +8,7 @@ import numpy as np
 from sampletones import xp
 from sampletones.configs import Config
 
-from ..transformations.transformer import FFTTransformer
+from ..transformer import FFTTransformer
 from ..window.window import Window
 
 
@@ -22,23 +22,34 @@ class Fragment:
     transformer: FFTTransformer = field(init=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "transformer", FFTTransformer.from_gamma(self.config.library.transformation_gamma))
+        object.__setattr__(
+            self,
+            "transformer",
+            self._get_transformer(self.config),
+        )
 
-    @classmethod
-    def create(cls, config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
+    @staticmethod
+    def _get_transformer(config: Config) -> FFTTransformer:
+        return FFTTransformer.from_gamma(
+            config.library.transformation_gamma,
+            config.library.sample_rate,
+        )
+
+    @staticmethod
+    def create(config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
-        transformer = FFTTransformer.from_gamma(config.library.transformation_gamma)
+        transformer = Fragment._get_transformer(config)
         feature = transformer.calculate_features(windowed_audio, window.size)
 
-        return cls(
+        return Fragment(
             audio=window.get_frame_from_window(windowed_audio),
             feature=feature,
             windowed_audio=windowed_audio,
             config=config,
         )
 
-    @classmethod
-    def stack(cls, fragments: List[Self]) -> Self:
+    @staticmethod
+    def stack(fragments: List[Fragment]) -> Fragment:
         if not fragments:
             raise ValueError("The fragments list cannot be empty")
 
@@ -72,7 +83,7 @@ class Fragment:
         )
         assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional"
 
-        return cls(
+        return Fragment(
             audio=concatenated_audio,
             feature=concatenated_feature,
             windowed_audio=concatenated_windowed_audio,

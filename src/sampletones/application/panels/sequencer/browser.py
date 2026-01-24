@@ -3,7 +3,7 @@ from typing import Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.types import Sender
 
 from ...config.application.manager import ApplicationConfigManager

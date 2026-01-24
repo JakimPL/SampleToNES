@@ -6,13 +6,13 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
+from sampletones.structures.histogram import Histogram
 from sampletones.types import ArrayOrScalar, Float, MultaryTransformation
-from sampletones.utils.histogram import Histogram
+from sampletones.utils.transformation.morpher import PowerMorpher
+from sampletones.utils.transformation.transformation import Transformation
 
-from ..spectrum.method import SpectrumMethod
-from ..spectrum.spectrum import calculate_spectrum
-from .morpher import PowerMorpher
-from .transformation import Transformation
+from .spectrum.method import SpectrumMethod
+from .spectrum.spectrum import calculate_spectrum
 
 
 class FFTTransformer(BaseModel):

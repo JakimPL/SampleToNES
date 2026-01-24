@@ -15,7 +15,7 @@ from sampletones.library import (
 )
 from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
-from sampletones.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
+from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
 from sampletones.types import VoidCallback
 from sampletones.utils import to_path
 from sampletones.utils.callbacks import CallbackMixin

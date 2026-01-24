@@ -5,9 +5,9 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
+from sampletones.structures.collection.bidirectional import BidirectionalHashMap
+from sampletones.structures.collection.indexed import IndexedCollection
 from sampletones.types import ModelHashable
-from sampletones.utils.collections.bidirectional import BidirectionalHashMap
-from sampletones.utils.collections.indexed import IndexedCollection
 from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
 
 T = TypeVar("T", bound=ModelHashable)

@@ -2,7 +2,7 @@ from typing import Union
 
 import pytest
 
-from sampletones.utils.collections.bidirectional import BidirectionalHashMap
+from sampletones.structures.collection.bidirectional import BidirectionalHashMap
 from tests.sampletones.dummy import CollisionObject, ValueObject
 
 

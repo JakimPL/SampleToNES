@@ -5,8 +5,7 @@ from typing import List, NamedTuple, Optional, Self
 import numpy as np
 
 from sampletones.types import Float
-
-from ..common import is_increasing
+from sampletones.utils import is_increasing
 
 
 class Interval(NamedTuple):

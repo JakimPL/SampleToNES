@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION
-from sampletones.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 
 from ..config.manager import ConfigManager
 from ..constants.general import LBL_TREE_ROOT

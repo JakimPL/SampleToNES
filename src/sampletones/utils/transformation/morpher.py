@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from functools import partial
 
+from sampletones.types import ArrayOrScalar, UnaryTransformation
+
 from .functions import identity, power, power_inverse
 from .transformation import Transformation
 
@@ -38,6 +40,9 @@ class PowerMorpher:
         if not 0.0 <= self.gamma <= 1.0:
             raise ValueError(f"The gamma parameter must be in the range [0, 1], got {self.gamma}")
 
+        forward: UnaryTransformation[ArrayOrScalar]
+        backward: UnaryTransformation[ArrayOrScalar]
+
         if self.gamma == 0.5:
             a = 1.0
             forward = identity
@@ -48,5 +53,7 @@ class PowerMorpher:
             forward = partial(power, a=a)
             backward = partial(power_inverse, a=a)
 
+        transformation = Transformation(forward, backward)
+
         object.__setattr__(self, "power", a)
-        object.__setattr__(self, "transformations", Transformation(forward, backward))
+        object.__setattr__(self, "transformations", transformation)

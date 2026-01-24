@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
-from sampletones.utils.histogram import Histogram
+from sampletones.structures.histogram import Histogram
 
 from .cqt import calculate_cqt_spectrum
 from .fft import calculate_fft_spectrum, calculate_log_spaced_fft_spectrum

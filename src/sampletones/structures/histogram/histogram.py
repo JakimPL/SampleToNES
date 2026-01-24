@@ -9,8 +9,8 @@ from typing import Dict, Generator, Iterator, List, Optional, Tuple, Union
 import numpy as np
 
 from sampletones.types import ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
+from sampletones.utils import is_increasing
 
-from ..common import is_increasing
 from .interval import Interval
 
 
