@@ -17,9 +17,14 @@ from .key import InstructionLibraryKey
 class InstructionLibrary(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    directory: str = Field(default=str(LIBRARY_DIRECTORY), description="Path to the FFT library directory", frozen=True)
+    directory: str = Field(
+        default=str(LIBRARY_DIRECTORY),
+        description="Path to the FFT library directory",
+        frozen=True,
+    )
     data: Dict[InstructionLibraryKey, InstructionLibraryData] = Field(
-        default_factory=dict, description="FFT library data"
+        default_factory=dict,
+        description="FFT library data",
     )
 
     def __getitem__(self, key: InstructionLibraryKey) -> InstructionLibraryData:

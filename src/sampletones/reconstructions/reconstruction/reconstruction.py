@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Self, Type
 from uuid import uuid4
 
 import numpy as np
-from pydantic import ConfigDict, Field, field_serializer
+from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones.configs import Config
 from sampletones.constants.application import (
@@ -17,12 +17,14 @@ from sampletones.constants.application import (
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata
 from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
+from sampletones.exceptions.reconstruction import InvalidReconstructionValuesError
 from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
 from sampletones.types.data import SerializedData
 from sampletones.types.path import Pathlike
 from sampletones.utils import pad, serialize_array
 from sampletones.utils.logger import logger
+from sampletones.utils.serialization import load_binary
 
 from ..reconstructor.state import ReconstructionState
 from .approximations import ApproximationsItem
@@ -182,9 +184,15 @@ class Reconstruction(DataModel):
 
     @classmethod
     def load(cls, path: Pathlike) -> Reconstruction:
-        reconstruction = super().load(path)
-        cls.validate_metadata(reconstruction.metadata)
-        return reconstruction
+        binary = load_binary(path)
+
+        try:
+            return cls.deserialize(binary, validation=cls.validate_metadata)
+        except (ValidationError, TypeError) as exception:
+            raise InvalidReconstructionValuesError(
+                f"Failed to deserialize ReconstructionData from {Path(path)} due to validation error",
+                exception,
+            ) from exception
 
     @staticmethod
     def validate_metadata(metadata: Metadata) -> None:

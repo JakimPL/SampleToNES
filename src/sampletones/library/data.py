@@ -106,18 +106,18 @@ class InstructionLibraryData(DataModel):
         binary = load_binary(path)
 
         try:
-            library_data = InstructionLibraryData.deserialize(binary)
+            return InstructionLibraryData.deserialize(binary, validation=cls.validate_metadata)
         except (ValidationError, TypeError) as exception:
             raise InvalidLibraryDataValuesError(
                 f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
                 exception,
             ) from exception
 
-        cls.validate_metadata(library_data.metadata)
-        return library_data
-
     @staticmethod
     def validate_metadata(metadata: Metadata) -> None:
+        if not isinstance(metadata, Metadata):
+            return
+
         application_metadata = metadata.application_name
         if application_metadata != SAMPLETONES_NAME:
             raise InvalidMetadataError(

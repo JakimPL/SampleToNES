@@ -22,22 +22,16 @@ FLOAT32_SIZE = 4
 
 class DataModel(BaseModel):
     def serialize(self) -> bytes:
-        try:
-            builder = Builder(1024)
-            offset = self.serialize_inner(builder)
-            builder.Finish(offset)
-            return bytes(builder.Output())
-        except Exception as exception:
-            raise SerializationError(f"Failed to serialize {type(self).__name__}") from exception
+        builder = Builder(1024)
+        offset = self.serialize_inner(builder)
+        builder.Finish(offset)
+        return bytes(builder.Output())
 
     @classmethod
-    def deserialize(cls, buffer: bytes) -> Self:
-        try:
-            fb_reader = cls.buffer_reader()
-            root = fb_reader.GetRootAs(buffer, 0)
-            return cls.deserialize_inner(root)
-        except Exception as exception:
-            raise DeserializationError(f"Failed to deserialize {cls.__name__}") from exception
+    def deserialize(cls, buffer: bytes, validation: Optional[Callback] = None) -> Self:
+        fb_reader = cls.buffer_reader()
+        root = fb_reader.GetRootAs(buffer, 0)
+        return cls.deserialize_inner(root, validation)
 
     def save(self, path: Pathlike) -> None:
         binary = self.serialize()
@@ -100,10 +94,11 @@ class DataModel(BaseModel):
         return offset
 
     @classmethod
-    def deserialize_inner(cls, fb_object: Any) -> Self:
+    def deserialize_inner(cls, fb_object: Any, validation: Optional[Callback] = None) -> Self:
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
+            print(field_name)
             camel = snake_to_camel(field_name)
             getter = getattr(fb_object, camel, None)
             if getter is None:
@@ -132,7 +127,7 @@ class DataModel(BaseModel):
                 value = cls._deserialize_string(getter(), annotation)
 
             elif annotation is Path:
-                raw = getter().decode("utf-8")
+                raw = cls._deserialize_string(getter(), str)
                 value = Path(raw)
 
             elif issubclass(annotation, (int, float, bool)):
@@ -140,6 +135,9 @@ class DataModel(BaseModel):
 
             else:
                 raise DeserializationError(f"Unsupported field type {annotation} for field '{field_name}'")
+
+            if validation is not None:
+                validation(value)
 
             field_values[field_name] = value
 
@@ -173,9 +171,14 @@ class DataModel(BaseModel):
 
     @classmethod
     def _deserialize_string(cls, raw: bytes, string_class: type) -> Union[str, StrEnum]:
-        string = raw.decode("utf-8")
+        try:
+            string = raw.decode("utf-8")
+        except UnicodeDecodeError as exception:
+            raise DeserializationError("Failed to decode string from bytes") from exception
+
         if issubclass(string_class, StrEnum):
             return string_class(string)
+
         return string
 
     @classmethod
