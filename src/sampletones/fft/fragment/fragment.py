@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Self, Union
+from typing import List, Self
 
 import numpy as np
 
 from sampletones import xp
 from sampletones.configs import Config
+from sampletones.structures.histogram import Histogram
+from sampletones.types.array import Array
 
 from ..transformer import FFTTransformer
 from ..window.window import Window
@@ -14,9 +16,9 @@ from ..window.window import Window
 
 @dataclass(frozen=True)
 class Fragment:
-    audio: Union[np.ndarray, xp.ndarray]
-    feature: Union[np.ndarray, xp.ndarray]
-    windowed_audio: Union[np.ndarray, xp.ndarray]
+    audio: Array
+    feature: Histogram
+    windowed_audio: Array
     config: Config
 
     transformer: FFTTransformer = field(init=False)
@@ -67,11 +69,11 @@ class Fragment:
         if isinstance(first_fragment.audio, np.ndarray):
             concatenated_audio = np.stack([fragment.audio for fragment in fragments])
             concatenated_windowed_audio = np.stack([fragment.windowed_audio for fragment in fragments])
-            concatenated_feature = np.stack([fragment.feature for fragment in fragments])
+            concatenated_feature = np.stack([fragment.feature.values for fragment in fragments])
         else:
             concatenated_audio = xp.stack([fragment.audio for fragment in fragments])
             concatenated_windowed_audio = xp.stack([fragment.windowed_audio for fragment in fragments])
-            concatenated_feature = xp.stack([fragment.feature for fragment in fragments])
+            concatenated_feature = xp.stack([fragment.feature.values for fragment in fragments])
 
         dimensions = map(
             lambda array: array.ndim,
@@ -85,7 +87,10 @@ class Fragment:
 
         return Fragment(
             audio=concatenated_audio,
-            feature=concatenated_feature,
+            feature=Histogram(
+                edges=first_fragment.feature.edges,
+                values=concatenated_feature,
+            ),
             windowed_audio=concatenated_windowed_audio,
             config=first_fragment.config,
         )
@@ -100,13 +105,14 @@ class Fragment:
         ):
             raise ValueError("Both fragments must have the same config to be subtracted")
 
+        sample_rate = self.config.library.sample_rate
         windowed_audio = self.windowed_audio - other.windowed_audio
         audio = self.audio - other.audio
 
         if self.config.generation.calculation.fast_difference:
-            feature = self.transformer.subtract(self.feature, other.feature)
+            feature = self.feature - other.feature
         else:
-            feature = self.transformer.calculate_feature(windowed_audio)
+            feature = self.transformer.calculate_feature(windowed_audio, sample_rate)
 
         return Fragment(
             audio=audio,
@@ -118,7 +124,7 @@ class Fragment:
     def __mul__(self, scalar: float) -> Fragment:
         audio = self.audio * scalar
         windowed_audio = self.windowed_audio * scalar
-        feature = self.transformer.multiply(self.feature, scalar)
+        feature = self.feature * scalar
         return Fragment(
             audio=audio,
             feature=feature,

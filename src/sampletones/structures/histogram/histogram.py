@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from functools import cached_property, reduce
-from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
+from typing import Any, Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
 import numpy as np
 from pydantic import ConfigDict, model_validator
@@ -46,6 +46,20 @@ class Histogram(DataModel):
     edges: Array
     values: Array
 
+    def __init__(self, edges: Array, values: Array, **data: Any) -> None:
+        """
+        Initialize histogram with edges and values.
+
+        Supports positional arguments for edges and values.
+
+        Args:
+            edges: Array of n + 1 strictly increasing bin edges.
+            values: Array of n bin values.
+        """
+        data["edges"] = edges
+        data["values"] = values
+        super().__init__(**data)
+
     @model_validator(mode="after")
     def _validate(self) -> Self:
         """
@@ -73,6 +87,9 @@ class Histogram(DataModel):
 
         if not is_increasing(self.edges):
             raise ValueError("edges need to be strictly increasing")
+
+        if not self.edges.ndim == 1:
+            raise ValueError("edges must be a one-dimensional array")
 
         return self
 

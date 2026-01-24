@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Generic, Self, Tuple, Type
+from typing import Any, Dict, Generic, Tuple, Type
 
 from pydantic import ConfigDict, Field
 
@@ -25,12 +25,9 @@ class InstructionData(DataModel, Generic[InstructionT]):
     def __reduce__(self) -> Tuple[Any, Tuple[SerializedData]]:
         return (_instruction_data, (dict(self),))
 
-    @classmethod
-    def create(
-        cls,
-        instruction: InstructionT,
-    ) -> Self:
-        return cls(
+    @staticmethod
+    def create(instruction: InstructionT) -> InstructionData[InstructionT]:
+        return InstructionData(
             instruction_class=instruction.class_name(),
             instruction=instruction,
         )
