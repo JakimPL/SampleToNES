@@ -9,7 +9,8 @@ T = TypeVar("T")
 Integer = Union[int, np.integer, xp.integer]
 Float = Union[float, np.floating, xp.floating]
 Numeric = Union[Integer, Float]
-ArrayOrScalar = Union[Numeric, np.ndarray, xp.ndarray]
+Array = Union[np.ndarray, xp.ndarray]
+ArrayOrScalar = Union[Numeric, Array]
 
 UnaryTransformation = Callable[[T], T]
 BinaryTransformation = Callable[[T, T], T]

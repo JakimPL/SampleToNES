@@ -5,10 +5,10 @@ from functools import cached_property, reduce
 from typing import Dict, Generator, List, Optional, Self, Union
 
 import numpy as np
-from pydantic import model_validator
+from pydantic import ConfigDict, model_validator
 
 from sampletones.data import DataModel
-from sampletones.types.array import ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
+from sampletones.types.array import Array, ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
 from sampletones.utils import is_increasing
 
 from .interval import Interval
@@ -40,8 +40,10 @@ class Histogram(DataModel):
         Interval(left=0.0, right=10.0)
     """
 
-    edges: np.ndarray
-    values: np.ndarray
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    edges: Array
+    values: Array
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
