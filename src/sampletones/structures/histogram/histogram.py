@@ -7,7 +7,8 @@ from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type,
 import numpy as np
 from pydantic import ConfigDict, model_validator
 
-from sampletones.data import DataModel
+from sampletones.data import DataModel, FlatBufferBuilderProtocol
+from sampletones.data.scheme import FlatBufferReaderProtocol
 from sampletones.types.array import Array, ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
 from sampletones.utils import is_increasing
 
@@ -710,13 +711,13 @@ class Histogram(DataModel):
         return (self**-1).__mul__(other)
 
     @classmethod
-    def buffer_builder(cls) -> FBHistogram:
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
         from sampletones_schemas.histogram import FBHistogram
 
         return FBHistogram
 
     @classmethod
-    def buffer_reader(cls) -> Type[FBHistogram]:
-        from sampletones_schemas.FBHistogram import FBHistogram
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
+        from sampletones_schemas.histogram import FBHistogram
 
         return FBHistogram.FBHistogram
