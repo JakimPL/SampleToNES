@@ -6,14 +6,15 @@ from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 import numpy as np
 from pydantic import BaseModel
 
+from sampletones import xp
 from sampletones.constants.enums import FeatureKey
 
 T = TypeVar("T")
 
-Integer = Union[int, np.integer]
-Float = Union[float, np.floating]
+Integer = Union[int, np.integer, xp.integer]
+Float = Union[float, np.floating, xp.floating]
 Numeric = Union[Integer, Float]
-ArrayOrScalar = Union[Numeric, np.ndarray]
+ArrayOrScalar = Union[Numeric, np.ndarray, xp.ndarray]
 
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]

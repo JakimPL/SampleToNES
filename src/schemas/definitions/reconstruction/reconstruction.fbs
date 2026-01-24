@@ -8,11 +8,11 @@ namespace schemas.reconstruction;
 
 table FBReconstruction {
     metadata: schemas.metadata.FBMetadata;
+    id: string;
     audio_filepath: string;
     config: schemas.configs.FBConfig;
     approximation: [float];
     approximations_data: [FBApproximationsItem];
     instructions_data: [FBInstructionsItem];
-    errors_data: [FBErrors];
     coefficient: float;
 }

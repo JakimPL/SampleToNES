@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import cached_property
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Self, Type
+from uuid import uuid4
 
 import numpy as np
 from pydantic import ConfigDict, Field, field_serializer
@@ -24,7 +25,6 @@ from sampletones.utils.logger import logger
 
 from ..reconstructor.state import ReconstructionState
 from .approximations import ApproximationsItem
-from .errors import Errors
 from .instructions import InstructionsItem
 
 
@@ -35,12 +35,12 @@ class Reconstruction(DataModel):
         default_factory=default_metadata,
         description="Reconstruction metadata",
     )
+    id: str = Field(..., description="Unique identifier for the reconstruction")
     audio_filepath: Path = Field(..., description="Path to the original audio file")
     config: Config = Field(..., description="Configuration used for reconstruction", frozen=True)
     approximation: np.ndarray = Field(..., description="Audio approximation")
     approximations_data: List[ApproximationsItem] = Field(..., description="Approximations per generator")
     instructions_data: List[InstructionsItem] = Field(..., description="Instructions per generator")
-    errors_data: List[Errors] = Field(..., description="Reconstruction errors per generator")
     coefficient: float = Field(..., description="Normalization coefficient used during reconstruction")
 
     @cached_property
@@ -53,10 +53,6 @@ class Reconstruction(DataModel):
             item.generator_name: [instruction.instruction for instruction in item.instructions]
             for item in self.instructions_data
         }
-
-    @cached_property
-    def errors(self) -> Dict[GeneratorName, List[float]]:
-        return {item.generator_name: list(item.errors) for item in self.errors_data}
 
     @staticmethod
     def _get_exporter_class(instruction: InstructionUnion) -> ExporterTypeUnion:
@@ -79,7 +75,6 @@ class Reconstruction(DataModel):
         approximation: np.ndarray,
         approximations: Dict[GeneratorName, np.ndarray],
         instructions: Dict[GeneratorName, List[InstructionUnion]],
-        errors: Dict[GeneratorName, List[float]],
         config: Config,
         coefficient: float,
         audio_filepath: Path,
@@ -98,22 +93,11 @@ class Reconstruction(DataModel):
                 )
             )
 
-        errors_data: List[Errors] = []
-        for name, errors_list in errors.items():
-            total_error = sum(errors_list)
-            errors_data.append(
-                Errors(
-                    generator_name=name,
-                    errors=np.array(errors_list, dtype=np.float32),
-                    total_error=total_error,
-                )
-            )
-
         return cls(
+            id=uuid4().hex,
             approximation=approximation,
             approximations_data=approximations_data,
             instructions_data=instructions_data,
-            errors_data=errors_data,
             config=config,
             coefficient=coefficient,
             audio_filepath=audio_filepath,
@@ -132,7 +116,6 @@ class Reconstruction(DataModel):
             approximation=approximation,
             approximations=approximations,
             instructions=state.instructions,
-            errors=state.errors,
             config=config,
             coefficient=coefficient,
             audio_filepath=path,
@@ -198,10 +181,6 @@ class Reconstruction(DataModel):
 
     def get_generator_instructions(self, generator_name: GeneratorName) -> List[InstructionUnion]:
         return self.instructions.get(generator_name, [])
-
-    @property
-    def total_error(self) -> float:
-        return sum(error.total_error for error in self.errors_data)
 
     @classmethod
     def load(cls, path: Pathlike) -> Reconstruction:

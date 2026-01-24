@@ -7,12 +7,7 @@ if TYPE_CHECKING:
     from .constants.enums import GeneratorName
     from .fft import Window
     from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
-    from .instructions import (
-        Instruction,
-        NoiseInstruction,
-        PulseInstruction,
-        TriangleInstruction,
-    )
+    from .instructions import Instruction, NoiseInstruction, PulseInstruction, TriangleInstruction
     from .library import InstructionLibrary
     from .reconstructions import Reconstruction, Reconstructor
 
@@ -29,7 +24,11 @@ except (ImportError, ModuleNotFoundError):
     from sampletones.utils.logger import logger
 
     def _format_warning_no_location(
-        message: Union[Warning, str], category: Type[Warning], filename: str, lineno: int, line: Optional[str] = None
+        message: Union[Warning, str],
+        category: Type[Warning],
+        filename: str,
+        lineno: int,
+        line: Optional[str] = None,
     ) -> str:
         return f"{category.__name__}: {message}\n"
 

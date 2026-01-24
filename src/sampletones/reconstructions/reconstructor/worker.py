@@ -1,17 +1,13 @@
 from dataclasses import dataclass, field
 from functools import lru_cache
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
 from sampletones import CUPY_AVAILABLE, xp
 from sampletones.configs import Config
-from sampletones.constants.enums import (
-    GeneratorClassName,
-    GeneratorName,
-    InstructionClassName,
-)
+from sampletones.constants.enums import GeneratorClassName, GeneratorName, InstructionClassName
 from sampletones.fft import Fragment, FragmentedAudio, Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
@@ -98,27 +94,26 @@ class ReconstructorWorker:
         self,
         fragment: Fragment,
         remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
-    ) -> Tuple[InstructionUnion, float]:
+    ) -> InstructionUnion:
         valid_instructions = tuple(self.library_data.filter(tuple(remaining_generator_classes)).keys())
         approximations = self.get_approximations(
             valid_instructions,
             remaining_generator_classes,
         )
 
-        errors = None
-        fragment_gpu = None
+        errors: Optional[xp.ndarray] = None
+        fragment_gpu: Optional[Fragment] = None
         try:
             fragment_gpu = fragment.to_cupy()
             errors = self.criterion(fragment_gpu, approximations)
-            index = int(np.argmin(errors))
-            error = float(errors[index])
+            index = int(xp.argmin(errors))
             instruction = valid_instructions[index]
         finally:
             del errors, approximations, fragment_gpu
             if CUPY_AVAILABLE:
                 xp.get_default_memory_pool().free_all_blocks()
 
-        return instruction, error
+        return instruction
 
     def find_best_phase(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
         library_fragment = self.library_data[instruction]
@@ -136,7 +131,7 @@ class ReconstructorWorker:
         fragment: Fragment,
         remaining_generator_classes: Dict[GeneratorClassName, Any],
     ) -> ApproximationData:
-        instruction, error = self.find_best_instruction(fragment, remaining_generator_classes)
+        instruction = self.find_best_instruction(fragment, remaining_generator_classes)
         generator = get_generator_by_instruction(instruction, remaining_generator_classes)
 
         if self.config.generation.calculation.find_best_phase:
@@ -148,7 +143,6 @@ class ReconstructorWorker:
             generator_name=GeneratorName(generator.name),
             approximation=approximation,
             instruction=instruction,
-            error=error,
         )
 
     def get_approximation(self, instruction: InstructionUnion, generator: GeneratorUnion) -> Fragment:

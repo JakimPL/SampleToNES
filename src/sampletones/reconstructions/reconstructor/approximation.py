@@ -11,4 +11,3 @@ class ApproximationData(BaseModel):
     generator_name: GeneratorName
     approximation: Fragment
     instruction: InstructionUnion
-    error: float
