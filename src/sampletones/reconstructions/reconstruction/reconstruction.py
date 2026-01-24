@@ -196,6 +196,9 @@ class Reconstruction(DataModel):
 
     @staticmethod
     def validate_metadata(metadata: Metadata) -> None:
+        if not isinstance(metadata, Metadata):
+            return
+
         application_metadata = metadata.application_name
         if application_metadata != SAMPLETONES_NAME:
             raise InvalidMetadataError(
