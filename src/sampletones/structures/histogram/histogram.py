@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from functools import cached_property, reduce
-from typing import Dict, Generator, List, Optional, Self, Union
+from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
 import numpy as np
 from pydantic import ConfigDict, model_validator
@@ -252,6 +252,30 @@ class Histogram(DataModel):
         return Histogram._from_density(new_density, histograms[0])
 
     @staticmethod
+    def refine(*histograms: Histogram) -> Tuple[Histogram, ...]:
+        """
+        Rebin multiple histograms to the union of all their edge points.
+
+        Args:
+            *histograms: Histograms to refine.
+
+        Returns:
+            Tuple of histograms rebinned to the unified edge set.
+
+        Raises:
+            ValueError: If no histograms are provided.
+        """
+        if len(histograms) == 0:
+            raise ValueError("At least one histogram is required")
+
+        if len(histograms) == 1:
+            return (histograms[0],)
+
+        all_edges = np.concatenate([histogram.edges for histogram in histograms])
+        merged_edges = np.unique(all_edges)
+        return tuple(histogram.rebin(merged_edges) for histogram in histograms)
+
+    @staticmethod
     def from_constant(
         density: Float,
         edges: np.ndarray,
@@ -426,3 +450,273 @@ class Histogram(DataModel):
         """
         densities: List[np.floating] = [self.density(i) for i in range(len(self))]
         return np.array(densities, dtype=self.values.dtype)
+
+    @cached_property
+    def total(self) -> np.floating:
+        """
+        Total sum of histogram values.
+
+        Returns:
+            Sum of all values in the histogram.
+        """
+        return np.sum(self.values)
+
+    def iterate(self) -> Iterator[Tuple[Interval, np.floating]]:
+        """
+        Iterate over (interval, value) pairs.
+
+        Yields:
+            Tuples of (Interval, value) for each bin.
+        """
+        for i in range(len(self)):
+            yield self.interval(i), self.values[i]
+
+    @overload
+    def __add__(self, other: Histogram) -> Histogram: ...
+
+    @overload
+    def __add__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __add__(self, other: Array) -> Histogram: ...
+
+    def __add__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+        """
+        Add another histogram, array, or scalar to this histogram.
+
+        For Histogram: Merges edges from both histograms, rebins to the union,
+        and adds values pointwise.
+
+        For Array: Adds array directly to values (array length must match values length).
+
+        For scalar: Adds constant to densities.
+
+        Args:
+            other: Histogram, array, or scalar to add.
+
+        Returns:
+            New histogram with the sum.
+
+        Raises:
+            ValueError: If array length doesn't match values length.
+        """
+        if isinstance(other, Histogram):
+            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            return Histogram(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
+
+        if isinstance(other, np.ndarray):
+            if len(other) != len(self.values):
+                raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
+
+            return Histogram(edges=self.edges.copy(), values=self.values + other)
+
+        return self.apply_with(lambda d: d + other)
+
+    @overload
+    def __radd__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __radd__(self, other: Array) -> Histogram: ...
+
+    def __radd__(self, other: Union[Array, Float]) -> Histogram:
+        """
+        Right addition: support array + histogram and scalar + histogram.
+
+        Args:
+            other: Array or scalar to add.
+
+        Returns:
+            New histogram with the sum.
+        """
+        return self.__add__(other)
+
+    @overload
+    def __mul__(self, other: Histogram) -> Histogram: ...
+
+    @overload
+    def __mul__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __mul__(self, other: Array) -> Histogram: ...
+
+    def __mul__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+        """
+        Multiply this histogram by another histogram, array, or scalar.
+
+        For Histogram: Merges edges from both histograms, rebins to the union,
+        and multiplies densities pointwise.
+
+        For Array: Multiplies array directly with values (array length must match values length).
+
+        For scalar: Multiplies values directly by constant.
+
+        Args:
+            other: Histogram, array, or scalar to multiply.
+
+        Returns:
+            New histogram with the product.
+
+        Raises:
+            ValueError: If array length doesn't match values length.
+        """
+        if isinstance(other, Histogram):
+            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            return rebinned_self.apply_with(np.multiply, rebinned_other)
+
+        if isinstance(other, np.ndarray):
+            if len(other) != len(self.values):
+                raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
+
+            other = Histogram(edges=self.edges.copy(), values=other)
+            return self.apply_with(np.multiply, other)
+
+        return Histogram(edges=self.edges.copy(), values=self.values * other)
+
+    @overload
+    def __rmul__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __rmul__(self, other: Array) -> Histogram: ...
+
+    def __rmul__(self, other: Union[Array, Float]) -> Histogram:
+        """
+        Right multiplication: support array * histogram and scalar * histogram.
+
+        Args:
+            other: Array or scalar to multiply.
+
+        Returns:
+            New histogram with the product.
+        """
+        return self.__mul__(other)
+
+    def __pow__(self, exponent: Float) -> Histogram:
+        """
+        Raise histogram to a power (applies exponent to densities).
+
+        Args:
+            exponent: Power to raise densities to.
+
+        Returns:
+            New histogram with densities raised to the given power.
+        """
+        return self.apply_with(lambda d: d**exponent)
+
+    @overload
+    def __sub__(self, other: Histogram) -> Histogram: ...
+
+    @overload
+    def __sub__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __sub__(self, other: Array) -> Histogram: ...
+
+    def __sub__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+        """
+        Subtract another histogram, array, or scalar from this histogram.
+
+        Implemented as self + (other * -1).
+
+        Args:
+            other: Histogram, array, or scalar to subtract.
+
+        Returns:
+            New histogram with the difference.
+
+        Raises:
+            ValueError: If array length doesn't match values length.
+        """
+        if isinstance(other, Histogram):
+            return self.__add__(other * -1)
+
+        if isinstance(other, np.ndarray):
+            return self.__add__(-other)
+
+        return self.__add__(-other)
+
+    @overload
+    def __rsub__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __rsub__(self, other: Array) -> Histogram: ...
+
+    def __rsub__(self, other: Union[Array, Float]) -> Histogram:
+        """
+        Right subtraction: support array - histogram and scalar - histogram.
+
+        Implemented as other + (self * -1).
+
+        Args:
+            other: Array or scalar to subtract from.
+
+        Returns:
+            New histogram with the difference.
+        """
+        return (self * -1).__add__(other)
+
+    @overload
+    def __truediv__(self, other: Histogram) -> Histogram: ...
+
+    @overload
+    def __truediv__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __truediv__(self, other: Array) -> Histogram: ...
+
+    def __truediv__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+        """
+        Divide this histogram by another histogram, array, or scalar.
+
+        For Histogram: Implemented as self * (other ** -1).
+        For Array/scalar: Divides values directly.
+
+        Args:
+            other: Histogram, array, or scalar to divide by.
+
+        Returns:
+            New histogram with the quotient.
+
+        Raises:
+            ValueError: If array length doesn't match values length.
+        """
+        if isinstance(other, Histogram):
+            return self.__mul__(other**-1)
+
+        if isinstance(other, np.ndarray):
+            if len(other) != len(self.values):
+                raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
+            return Histogram(edges=self.edges.copy(), values=self.values / other)
+
+        return Histogram(edges=self.edges.copy(), values=self.values / other)
+
+    @overload
+    def __rtruediv__(self, other: Float) -> Histogram: ...
+
+    @overload
+    def __rtruediv__(self, other: Array) -> Histogram: ...
+
+    def __rtruediv__(self, other: Union[Array, Float]) -> Histogram:
+        """
+        Right division: support array / histogram and scalar / histogram.
+
+        Implemented as (self ** -1) * other.
+
+        Args:
+            other: Array or scalar to divide.
+
+        Returns:
+            New histogram with the quotient.
+        """
+        return (self**-1).__mul__(other)
+
+    @classmethod
+    def buffer_builder(cls) -> FBHistogram:
+        from sampletones_schemas.histogram import FBHistogram
+
+        return FBHistogram
+
+    @classmethod
+    def buffer_reader(cls) -> Type[FBHistogram]:
+        from sampletones_schemas.FBHistogram import FBHistogram
+
+        return FBHistogram.FBHistogram
