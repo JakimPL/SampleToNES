@@ -1,0 +1,10 @@
+include "instructions/instruction.fbs";
+
+namespace sampletones_schemas.reconstruction;
+
+table FBInstructionsItem {
+    generator_name: string;
+    instructions: [sampletones_schemas.instructions.FBInstructionData];
+}
+
+root_type FBInstructionsItem;

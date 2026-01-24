@@ -113,12 +113,12 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.library import FBInstructionsLibraryFragment
+        from sampletones_schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.library import FBInstructionsLibraryFragment
+        from sampletones_schemas.library import FBInstructionsLibraryFragment
 
         return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

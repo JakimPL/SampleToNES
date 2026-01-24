@@ -4,7 +4,7 @@ set -euo pipefail
 
 START_DIR="$(pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCHEMAS_DIR="$(cd "$SCRIPT_DIR/../../src/schemas" && pwd)"
+SCHEMAS_DIR="$(cd "$SCRIPT_DIR/../../src/sampletones_schemas" && pwd)"
 cd "$SCHEMAS_DIR"
 
 if ! command -v flatc >/dev/null 2>&1; then
@@ -23,7 +23,7 @@ find "$SCHEMAS_DIR" -type f -name '*.py' -print0 | xargs -0 rm -f -- || true
 
 DEFINITIONS_DIR="$SCHEMAS_DIR/definitions"
 echo "Generating Python bindings for all .fbs files in: ${DEFINITIONS_DIR}..."
-TARGET_DIR="$SCHEMAS_DIR"
+TARGET_DIR="$SCHEMAS_DIR/.."
 mapfile -t FBS_FILES < <(find "$DEFINITIONS_DIR" -type f -name '*.fbs' | sort)
 if [ "${#FBS_FILES[@]}" -eq 0 ]; then
 # echo filename path

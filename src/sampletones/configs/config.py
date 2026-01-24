@@ -99,12 +99,12 @@ class Config(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.configs import FBConfig
+        from sampletones_schemas.configs import FBConfig
 
         return FBConfig
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.configs import FBConfig
+        from sampletones_schemas.configs import FBConfig
 
         return FBConfig.FBConfig

@@ -1,0 +1,10 @@
+namespace sampletones_schemas.instructions;
+
+table FBNoiseInstruction {
+	on:bool;
+	period:int;
+	volume:int;
+	short:bool;
+}
+
+root_type FBNoiseInstruction;

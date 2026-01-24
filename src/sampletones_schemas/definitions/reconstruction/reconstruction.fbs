@@ -1,0 +1,17 @@
+include "metadata.fbs";
+include "configs/config.fbs";
+include "reconstruction/approximations.fbs";
+include "reconstruction/instructions.fbs";
+
+namespace sampletones_schemas.reconstruction;
+
+table FBReconstruction {
+    metadata: sampletones_schemas.metadata.FBMetadata;
+    id: string;
+    audio_filepath: string;
+    config: sampletones_schemas.configs.FBConfig;
+    approximation: [float];
+    approximations_data: [FBApproximationsItem];
+    instructions_data: [FBInstructionsItem];
+    coefficient: float;
+}

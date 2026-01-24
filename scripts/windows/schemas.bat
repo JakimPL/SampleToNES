@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 set START_DIR=%CD%
 set SCRIPT_DIR=%~dp0
-set SCHEMAS_DIR=%SCRIPT_DIR%..\..\src\schemas
+set SCHEMAS_DIR=%SCRIPT_DIR%..\..\src\sampletones_schemas
 cd /d "%SCHEMAS_DIR%"
 
 where flatc >nul 2>&1 || (
@@ -24,7 +24,7 @@ for /r "%SCHEMAS_DIR%" %%f in (*.py) do (
 
 set DEFINITIONS_DIR=%SCHEMAS_DIR%\definitions
 echo Generating Python bindings for all .fbs files in: %DEFINITIONS_DIR%...
-set TARGET_DIR=%SCHEMAS_DIR%
+set TARGET_DIR=%SCHEMAS_DIR%\..
 
 set FBS_COUNT=0
 set FBS_FILES=

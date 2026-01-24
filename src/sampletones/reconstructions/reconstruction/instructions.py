@@ -36,12 +36,12 @@ class InstructionsItem(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.reconstruction import FBInstructionsItem
+        from sampletones_schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.reconstruction import FBInstructionsItem
+        from sampletones_schemas.reconstruction import FBInstructionsItem
 
         return FBInstructionsItem.FBInstructionsItem

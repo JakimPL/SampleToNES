@@ -244,12 +244,12 @@ class Reconstruction(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.reconstruction import FBReconstruction
+        from sampletones_schemas.reconstruction import FBReconstruction
 
         return FBReconstruction
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.reconstruction import FBReconstruction
+        from sampletones_schemas.reconstruction import FBReconstruction
 
         return FBReconstruction.FBReconstruction

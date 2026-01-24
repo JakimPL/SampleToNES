@@ -21,12 +21,12 @@ class ApproximationsItem(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.reconstruction import FBApproximationsItem
+        from sampletones_schemas.reconstruction import FBApproximationsItem
 
         return FBApproximationsItem
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.reconstruction import FBApproximationsItem
+        from sampletones_schemas.reconstruction import FBApproximationsItem
 
         return FBApproximationsItem.FBApproximationsItem

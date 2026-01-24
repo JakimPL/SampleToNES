@@ -66,12 +66,12 @@ class CyclicArray(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.arrays import FBCyclicArray
+        from sampletones_schemas.arrays import FBCyclicArray
 
         return FBCyclicArray
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.arrays import FBCyclicArray
+        from sampletones_schemas.arrays import FBCyclicArray
 
         return FBCyclicArray.FBCyclicArray

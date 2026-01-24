@@ -24,13 +24,13 @@ class CalculationConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.configs import FBCalculationConfig
+        from sampletones_schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.configs import FBCalculationConfig
+        from sampletones_schemas.configs import FBCalculationConfig
 
         return FBCalculationConfig.FBCalculationConfig
 
@@ -43,13 +43,13 @@ class WeightsConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.configs import FBWeightsConfig
+        from sampletones_schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.configs import FBWeightsConfig
+        from sampletones_schemas.configs import FBWeightsConfig
 
         return FBWeightsConfig.FBWeightsConfig
 
@@ -67,12 +67,12 @@ class GenerationConfig(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.configs import FBGenerationConfig
+        from sampletones_schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.configs import FBGenerationConfig
+        from sampletones_schemas.configs import FBGenerationConfig
 
         return FBGenerationConfig.FBGenerationConfig

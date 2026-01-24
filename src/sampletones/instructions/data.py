@@ -41,25 +41,25 @@ class InstructionData(DataModel, Generic[InstructionT]):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.instructions import FBInstructionData
+        from sampletones_schemas.instructions import FBInstructionData
 
         return FBInstructionData
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.instructions import FBInstructionData
+        from sampletones_schemas.instructions import FBInstructionData
 
         return FBInstructionData.FBInstructionData
 
     @classmethod
     def buffer_union_builder(cls) -> FlatBufferUnionProtocol:
-        from schemas.instructions import FBInstructionUnion
+        from sampletones_schemas.instructions import FBInstructionUnion
 
         return FBInstructionUnion
 
     @classmethod
     def buffer_union_reader(cls) -> Type[FlatBufferUnionProtocol]:
-        from schemas.instructions import FBInstructionUnion
+        from sampletones_schemas.instructions import FBInstructionUnion
 
         return FBInstructionUnion.FBInstructionUnion
 

@@ -63,12 +63,12 @@ class TriangleInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.instructions import FBTriangleInstruction
+        from sampletones_schemas.instructions import FBTriangleInstruction
 
         return FBTriangleInstruction
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.instructions import FBTriangleInstruction
+        from sampletones_schemas.instructions import FBTriangleInstruction
 
         return FBTriangleInstruction.FBTriangleInstruction

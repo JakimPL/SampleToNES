@@ -1,0 +1,14 @@
+include "arrays.fbs";
+include "instructions/instruction.fbs";
+
+namespace sampletones_schemas.library;
+
+table FBInstructionsLibraryFragment {
+	generator_class: string;
+	instruction_data: sampletones_schemas.instructions.FBInstructionData;
+	feature: [float];
+	sample: sampletones_schemas.arrays.FBCyclicArray;
+	frequency: float;
+}
+
+root_type FBInstructionsLibraryFragment;

@@ -23,13 +23,13 @@ class Metadata(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.metadata import FBMetadata
+        from sampletones_schemas.metadata import FBMetadata
 
         return FBMetadata
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.metadata import FBMetadata
+        from sampletones_schemas.metadata import FBMetadata
 
         return FBMetadata.FBMetadata
 

@@ -1,0 +1,8 @@
+namespace sampletones_schemas.reconstruction;
+
+table FBApproximationsItem {
+    generator_name: string;
+    approximation: [float];
+}
+
+root_type FBApproximationsItem;

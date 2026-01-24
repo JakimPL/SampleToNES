@@ -135,12 +135,12 @@ class InstructionLibraryData(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.library import FBInstructionsLibraryData
+        from sampletones_schemas.library import FBInstructionsLibraryData
 
         return FBInstructionsLibraryData
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.library import FBInstructionsLibraryData
+        from sampletones_schemas.library import FBInstructionsLibraryData
 
         return FBInstructionsLibraryData.FBInstructionsLibraryData

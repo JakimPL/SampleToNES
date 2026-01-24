@@ -91,12 +91,12 @@ class PulseInstruction(Instruction):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from schemas.instructions import FBPulseInstruction
+        from sampletones_schemas.instructions import FBPulseInstruction
 
         return FBPulseInstruction
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from schemas.instructions import FBPulseInstruction
+        from sampletones_schemas.instructions import FBPulseInstruction
 
         return FBPulseInstruction.FBPulseInstruction

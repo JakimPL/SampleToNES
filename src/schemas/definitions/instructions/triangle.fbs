@@ -1,8 +1,0 @@
-namespace schemas.instructions;
-
-table FBTriangleInstruction {
-	on:bool;
-	pitch:int;
-}
-
-root_type FBTriangleInstruction;
