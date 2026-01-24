@@ -1,9 +1,11 @@
-from typing import NamedTuple
+from __future__ import annotations
+
+from functools import reduce
+from typing import NamedTuple, Union, overload
 
 import numpy as np
 
-from .functions import identity
-from .typehints import BinaryTransformation, UnaryTransformation
+from sampletones.types import ArrayOrScalar, BinaryTransformation, MultaryTransformation, UnaryTransformation
 
 
 class Transformation(NamedTuple):
@@ -11,7 +13,7 @@ class Transformation(NamedTuple):
     A general transformation structure that holds an operation and its inverse.
 
     Facilitates operations of the general form:
-        `f^-1( op (f^(x_i), i = 1 ... n) )`
+        `f^-1[ op ( f(x_i), i = 1 ... n) ]`
 
     Function `f` is called forward transformation, which sends FFT features to a transformed space,
     while `f^-1`, its inverse called backward transformation, brings the transformed features
@@ -19,75 +21,204 @@ class Transformation(NamedTuple):
 
     In particular:
     - Unary operations:
-        `f^-1( op (f^(x)) )`
+        `f^-1[ op ( f(x) ) ]`
     - Binary operations:
-        `f^-1( op (f^(x), f^(y)) )`
+        `f^-1[ op ( f(x), f(y) ) ]`
     - Scalar multiplication:
-        `f^-1( f^(x) ⋅ α )`
+        `f^-1[ f( x ) ⋅ α ]`
     """
 
-    forward: UnaryTransformation
-    backward: UnaryTransformation
+    forward: UnaryTransformation[ArrayOrScalar]
+    backward: UnaryTransformation[ArrayOrScalar]
 
-    def unary(
+    def apply(
         self,
-        array: np.ndarray,
-        operation: UnaryTransformation,
-    ) -> np.ndarray:
+        operation: MultaryTransformation[ArrayOrScalar],
+        *arrays: ArrayOrScalar,
+    ) -> ArrayOrScalar:
         """
-        Apply a unary operation on an FFT feature with transformations.
+        Apply a multary operation on FFT features with transformations.
 
-        `f^-1( op (f^( x )) )`
+        `f^-1[ op ( f(x_1), f(x_2), ..., f(x_n) ) ]`
 
         Args:
-            array (np.ndarray): Input array to transform.
-            operation (UnaryTransformation): Unary operation to apply.
+            operation: Multary operation to apply.
+            *arrays: Input arrays to transform.
 
         Returns:
-            np.ndarray: Transformed array.
+            Transformed array.
         """
-        return self.backward(operation(self.forward(array)))
+        transformed = (self.forward(array) for array in arrays)
+        return self.backward(operation(*transformed))
 
-    def binary(
+    def reduce(
         self,
-        array1: np.ndarray,
-        array2: np.ndarray,
-        operation: BinaryTransformation,
-    ) -> np.ndarray:
+        operation: BinaryTransformation[ArrayOrScalar],
+        *arrays: ArrayOrScalar,
+    ) -> ArrayOrScalar:
         """
-        Apply a binary operation on two FFT features with transformations.
+        Reduce multiple FFT features using a binary operation with transformations.
 
-        `f^-1( op (f^( x ), f^( y )) )`
+        `f^-1[ reduce( op, f(x_1), f(x_2), ..., f(x_n) ) ]`
+
+        Applies the binary operation sequentially:
+        `f^-1[ op( ... op( op( f(x_1), f(x_2) ), f(x_3) ) ..., f(x_n) ) ]`
 
         Args:
-            array1 (np.ndarray): First input array to transform.
-            array2 (np.ndarray): Second input array to transform.
-            operation (BinaryTransformation): Binary operation to apply.
+            operation: Binary operation to apply (e.g., np.add, np.multiply).
+            *arrays: Input arrays/scalars to transform and reduce.
 
         Returns:
-            np.ndarray: Transformed array.
+            Reduced and transformed array.
+
+        Raises:
+            ValueError: If fewer than one array is provided.
         """
-        return self.backward(operation(self.forward(array1), self.forward(array2)))
+        if len(arrays) == 0:
+            raise ValueError("At least one array is required for reduce operation")
+
+        forward = (self.forward(array) for array in arrays)
+        reduced = reduce(operation, forward)
+        return self.backward(reduced)
+
+    @overload
+    def compose(self, other: Transformation) -> Transformation: ...
+
+    @overload
+    def compose(self, other: MultaryTransformation[ArrayOrScalar]) -> MultaryTransformation[ArrayOrScalar]: ...
+
+    def compose(
+        self,
+        other: Union[Transformation, MultaryTransformation[ArrayOrScalar]],
+    ) -> Union[Transformation, MultaryTransformation[ArrayOrScalar]]:
+        """
+        Compose the transformation with another transformation or
+        a multary function.
+
+        Args:
+            other: Other transformation/operation to compose with.
+
+        Returns:
+            Composed transformation.
+        """
+        if not isinstance(other, Transformation):
+            return self.compose_function(other)
+
+        return self.compose_transformation(other)
+
+    def compose_function(self, operation: MultaryTransformation[ArrayOrScalar]) -> MultaryTransformation[ArrayOrScalar]:
+        """
+        Compose a multary transformation with the operation.
+
+        `f^-1 ∘ op ∘ f`
+
+        Args:
+            operation: Operation to compose with.
+
+        Returns:
+            Composed multary transformation.
+        """
+        if not callable(operation):
+            raise TypeError("Operation must be a callable multary transformation")
+
+        def composition(*arrays: ArrayOrScalar) -> ArrayOrScalar:
+            forward = (self.forward(array) for array in arrays)
+            return self.backward(operation(*forward))
+
+        return composition
+
+    def compose_transformation(self, other: Transformation) -> Transformation:
+        """
+        Compose two transformations. The forward transformation is:
+        `g ∘ f`, while the backward transformation is:
+        `f^-1 ∘ g^-1`.
+
+        Args:
+            other: Other transformation to compose with.
+
+        Returns:
+            Composed transformation.
+        """
+        if not isinstance(other, Transformation):
+            raise TypeError("Other must be a Transformation instance")
+
+        def forward(x: ArrayOrScalar) -> ArrayOrScalar:
+            return other.forward(self.forward(x))
+
+        def backward(x: ArrayOrScalar) -> ArrayOrScalar:
+            return self.backward(other.backward(x))
+
+        return Transformation(forward, backward)
+
+    def add(
+        self,
+        *arrays: ArrayOrScalar,
+    ) -> ArrayOrScalar:
+        """
+        Add two FFT features with transformations.
+
+        `f^-1[ f(x_1) + f(x_2) + ... + f(x_n) ]`
+
+        Args:
+            arrays: Input arrays/scalars to transform.
+
+        Returns:
+            Transformed array.
+        """
+
+        return self.reduce(np.add, *arrays)
+
+    def subtract(
+        self,
+        array1: ArrayOrScalar,
+        array2: ArrayOrScalar,
+    ) -> ArrayOrScalar:
+        """
+        Subtract two FFT features with transformations.
+
+        `f^-1[ f(x_1) - f(x_2) ]`
+
+        Args:
+            array1: Minuend array/scalar to transform.
+            array2: Subtrahend array/scalar to transform.
+
+        Returns:
+            Transformed array.
+        """
+        return self.apply(np.subtract, array1, array2)
 
     def multiply(
         self,
-        array: np.ndarray,
-        scalar: float,
-        operation: UnaryTransformation = identity,
-    ) -> np.ndarray:
+        *arrays: ArrayOrScalar,
+    ) -> ArrayOrScalar:
         """
-        Multiply an FFT feature by a scalar with transformations.
+        Multiply two FFT features with transformations.
 
-        `f^-1( f^(x) ⋅ α )`
+        `f^-1[ f(x_1) ⋅ f(x_2) ⋅ ... ⋅ f(x_n) ]`
 
         Args:
-            array (np.ndarray): Input array to transform.
-            scalar (float): Scalar multiplier.
-            operation (UnaryTransformation): Operation to apply on f^-1(x) ⋅ scalar.
-                Default is identity.
+            arrays: Input arrays/scalars to transform.
 
         Returns:
-            np.ndarray: Transformed array.
+            Transformed array.
         """
+        return self.reduce(np.multiply, *arrays)
 
-        return self.backward(operation(self.forward(array) * scalar))
+    def divide(
+        self,
+        array1: ArrayOrScalar,
+        array2: ArrayOrScalar,
+    ) -> ArrayOrScalar:
+        """
+        Divide two FFT features with transformations.
+
+        `f^-1[ f(x_1) / f(x_2) ]`
+
+        Args:
+            array1: Dividend array/scalar to transform.
+            array2: Divisor array/scalar to transform.
+
+        Returns:
+            Transformed array.
+        """
+        return self.apply(np.divide, array1, array2)

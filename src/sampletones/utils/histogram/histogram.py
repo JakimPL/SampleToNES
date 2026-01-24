@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import warnings
+from copy import deepcopy
 from dataclasses import dataclass
-from functools import cached_property
-from typing import Iterator, List, Tuple, Union
+from functools import cached_property, reduce
+from typing import Dict, Generator, Iterator, List, Optional, Tuple, Union
 
 import numpy as np
+
+from sampletones.types import ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
 
 from ..common import is_increasing
 from .interval import Interval
 
 
-@dataclass
+@dataclass(frozen=True)
 class Histogram:
     """
     A histogram with bin edges and values.
@@ -83,6 +86,29 @@ class Histogram:
         values_equal = np.array_equal(self.values, other.values)
         return edges_equal and values_equal
 
+    def __copy__(self) -> Histogram:
+        """
+        Create a shallow copy of the histogram.
+
+        Returns:
+            A new Histogram instance with copied edges and values.
+        """
+        return Histogram(edges=self.edges, values=self.values)
+
+    def __deepcopy__(self, memo: Optional[Dict[int, object]] = None) -> Histogram:
+        """
+        Create a deep copy of the histogram.
+
+        Args:
+            memo: Dictionary to track already copied objects.
+
+        Returns:
+            A new Histogram instance with deeply copied edges and values.
+        """
+        edges_copy = np.copy(self.edges)
+        values_copy = np.copy(self.values)
+        return Histogram(edges=edges_copy, values=values_copy)
+
     def __hash__(self) -> int:
         """
         Compute hash for use in sets and dictionaries.
@@ -111,6 +137,16 @@ class Histogram:
         """
         return len(self.values)
 
+    def copy(self) -> Histogram:
+        """
+        Create a deep copy of the histogram, mimicking the behavior of
+        np.copy.
+
+        Returns:
+            A new Histogram instance with copied edges and values.
+        """
+        return deepcopy(self)
+
     def interval(self, i: int) -> Interval:
         """
         Get the i-th bin interval.
@@ -128,6 +164,124 @@ class Histogram:
             raise IndexError(f"Index {i} out of bounds")
 
         return Interval(self.edges[i], self.edges[i + 1])
+
+    def apply_with(
+        self,
+        function: MultaryTransformation[ArrayOrScalar],
+        *histograms: Histogram,
+    ) -> Histogram:
+        return Histogram.apply(function, self, *histograms)
+
+    @staticmethod
+    def _from_density(
+        density: ArrayOrScalar,
+        histogram: Histogram,
+    ) -> Histogram:
+        """
+        Create a histogram from a density operation result.
+
+        Args:
+            density: Result of operation on densities.
+            histogram: Histogram to use for edges and widths.
+
+        Returns:
+            New Histogram with transformed values.
+        """
+        values: np.ndarray = density * histogram.widths
+        return Histogram(edges=histogram.edges.copy(), values=values)
+
+    @staticmethod
+    def _validate_histogram_edges(*histograms: Histogram) -> None:
+        """
+        Validate that all histograms have the same edges.
+        Used for operations requiring aligned histograms,
+        like `apply` or `reduce`.
+
+        Args:
+            *histograms: Histograms to validate.
+
+        Raises:
+            ValueError: If no histograms are provided.
+            ValueError: If histograms have different edges.
+        """
+        if len(histograms) == 0:
+            raise ValueError("At least one histogram is required")
+
+        edges = histograms[0].edges
+        if not all(np.array_equal(histogram.edges, edges) for histogram in histograms):
+            raise ValueError("All histograms must have the same edges")
+
+    @staticmethod
+    def apply(
+        function: MultaryTransformation[ArrayOrScalar],
+        *histograms: Histogram,
+    ) -> Histogram:
+        """
+        Apply a function to all histogram values. Function is applied to densities,
+        and the value is recomputed to preserve total mass.
+
+        Args:
+            function: Function to apply to each value.
+            *histograms: Histograms to use as arguments.
+
+        Returns:
+            New Histogram with transformed values.
+
+        Raises:
+            ValueError: If no histograms are provided.
+            ValueError: If histograms have different edges.
+        """
+        Histogram._validate_histogram_edges(*histograms)
+        densities = (histogram.densities for histogram in histograms)
+        new_density = function(*densities)
+        return Histogram._from_density(new_density, histograms[0])
+
+    @staticmethod
+    def reduce(
+        function: BinaryTransformation[ArrayOrScalar],
+        *histograms: Histogram,
+    ) -> Histogram:
+        """
+        Reduce multiple histograms into one using the specified operation.
+
+        Args:
+            function: Binary operation to reduce histograms (e.g., np.add, np.multiply).
+            *histograms: Histograms to reduce.
+
+        Returns:
+            Reduced histogram.
+
+        Raises:
+            ValueError: If no histograms are provided.
+            ValueError: If histograms have different edges.
+        """
+        Histogram._validate_histogram_edges(*histograms)
+
+        if len(histograms) == 1:
+            return histograms[0]
+
+        densities: Generator[ArrayOrScalar] = (histogram.densities for histogram in histograms)
+        new_density = reduce(function, densities)
+        return Histogram._from_density(new_density, histograms[0])
+
+    @staticmethod
+    def from_constant(
+        density: Float,
+        edges: np.ndarray,
+    ) -> Histogram:
+        """
+        Create a histogram with constant densities.
+
+        Args:
+            density: Constant density for all bins.
+            edges: Array of bin edges.
+
+        Returns:
+            Histogram with constant densities.
+        """
+        num_bins = len(edges) - 1
+        values = np.full(num_bins, density * np.diff(edges))
+        return Histogram(edges=edges, values=values)
 
     def rebin(
         self,

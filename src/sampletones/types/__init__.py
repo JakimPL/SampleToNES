@@ -1,16 +1,19 @@
 import os
 from collections.abc import Hashable
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 from pydantic import BaseModel
 
 from sampletones.constants.enums import FeatureKey
 
+T = TypeVar("T")
+
 Integer = Union[int, np.integer]
 Float = Union[float, np.floating]
 Numeric = Union[Integer, Float]
+ArrayOrScalar = Union[Numeric, np.ndarray]
 
 Initials = Optional[Tuple[Any, ...]]
 SerializedData = Dict[str, Any]
@@ -30,3 +33,7 @@ MessageCallback = Callable[..., str]
 
 Pathlike = Union[str, Path]
 GeneralPathlike = Union[Pathlike, os.PathLike[str]]
+
+UnaryTransformation = Callable[[T], T]
+BinaryTransformation = Callable[[T, T], T]
+MultaryTransformation = Callable[..., T]
