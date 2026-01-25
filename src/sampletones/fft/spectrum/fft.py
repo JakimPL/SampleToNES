@@ -36,7 +36,7 @@ def calculate_fft_spectrum(
     fft: np.ndarray = calculate_fft(audio, fft_size)
     energy: np.ndarray = np.square(np.abs(fft) / fft_size)
     bands: np.ndarray = calculate_frequencies(fft_size, sample_rate)
-    return Histogram(edges=bands, values=energy)
+    return Histogram(edges=bands.astype(np.float32), values=energy.astype(np.float32))
 
 
 def calculate_log_spaced_fft_spectrum(

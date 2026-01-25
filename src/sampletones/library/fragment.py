@@ -75,8 +75,8 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
         for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
             phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
             windowed_audio = sample.get_windowed_fragment(phase, window)
-            transformed_windowed_audio = transformer.calculate_feature(windowed_audio, sample_rate)
-            features.append(transformed_windowed_audio)
+            feature = transformer.calculate_feature(windowed_audio, sample_rate)
+            features.append(feature)
 
         return transformer.mean(features)
 

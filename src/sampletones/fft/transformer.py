@@ -7,7 +7,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import Array, ArrayOrScalar, MultaryTransformation, Numeric
+from sampletones.types.array import (
+    Array,
+    ArrayOrScalar,
+    ArrayOrScalarClasses,
+    MultaryTransformation,
+    Numeric,
+    NumericClasses,
+)
 from sampletones.utils.transformations.morpher import PowerMorpher
 from sampletones.utils.transformations.transformation import Transformation
 
@@ -128,7 +135,7 @@ class FFTTransformer(BaseModel):
         if isinstance(spectrum, Histogram):
             return spectrum.apply_with(self.transformations.forward)
 
-        if isinstance(spectrum, ArrayOrScalar):
+        if isinstance(spectrum, ArrayOrScalarClasses):
             return self.transformations.forward(spectrum)
 
         raise TypeError("Input must be a Histogram or Array/Numeric instance")
@@ -156,7 +163,7 @@ class FFTTransformer(BaseModel):
         if isinstance(feature, Histogram):
             return feature.apply_with(self.transformations.backward)
 
-        if isinstance(feature, ArrayOrScalar):
+        if isinstance(feature, ArrayOrScalarClasses):
             return self.transformations.backward(feature)
 
         raise TypeError("Input must be a Histogram or Array/Numeric instance")
@@ -257,7 +264,7 @@ class FFTTransformer(BaseModel):
             raise ValueError("All Histogram features must have the same edges")
 
         features: List[Histogram] = [
-            self.forward(Histogram.from_constant(feature, edges)) if isinstance(feature, Numeric) else feature
+            self.forward(Histogram.from_constant(feature, edges)) if isinstance(feature, NumericClasses) else feature
             for feature in features_or_scalars
         ]
 
@@ -336,4 +343,5 @@ class FFTTransformer(BaseModel):
         if not features:
             raise ValueError("At least one feature is required to compute the mean")
 
-        return self.reduce(np.add, *features).apply_with(lambda x: x / self.forward(len(features)))
+        divisor = self.forward(np.float32(len(features)))
+        return self.reduce(np.add, *features).apply_with(lambda x: x / divisor)

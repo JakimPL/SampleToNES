@@ -1,4 +1,4 @@
-namespace sampletones_schemas.histogram;
+namespace sampletones_schemas.collections;
 
 table FBHistogram {
 	edges: [float];

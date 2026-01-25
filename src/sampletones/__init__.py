@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 CUPY_AVAILABLE = False  # pylint: disable=invalid-name
 try:
     import cupy as xp
+    import cupy.typing as xp_typing
 
     CUPY_AVAILABLE = True  # pylint: disable=invalid-name
 except (ImportError, ModuleNotFoundError):
@@ -37,6 +38,7 @@ except (ImportError, ModuleNotFoundError):
     logger.warning("CuPy is not available, falling back to NumPy.")
 
     import numpy as xp
+    import numpy.typing as xp_typing
 
 
 def __getattr__(name: str) -> Any:
@@ -97,6 +99,7 @@ __all__ = [
     "GeneratorName",
     "__version__",
     "xp",
+    "xp_typing",
     "CUPY_AVAILABLE",
 ]
 

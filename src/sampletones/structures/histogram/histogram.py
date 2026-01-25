@@ -3,11 +3,12 @@ from __future__ import annotations
 import warnings
 from functools import cached_property, reduce
 from types import ModuleType
-from typing import Any, Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
+from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
+import numpy.typing as np_typing
 from pydantic import ConfigDict, model_validator
 
-from sampletones import xp
+from sampletones import xp, xp_typing
 from sampletones.data import DataModel, FlatBufferBuilderProtocol
 from sampletones.data.scheme import FlatBufferReaderProtocol
 from sampletones.types.array import (
@@ -57,16 +58,20 @@ class Histogram(DataModel):
     edges: Array
     values: Array
 
-    def __init__(self, edges: Array, values: Array, **data: Any) -> None:
+    def __init__(self, edges: Array, values: ArrayOrScalar, **data: Array) -> None:
         """
         Initialize histogram with edges and values.
 
-        Supports positional arguments for edges and values.
+        Supports positional arguments for edges and values,
+        and also allows construction from constant density for all bins.
 
         Args:
             edges: Array of n + 1 strictly increasing bin edges.
             values: Array of n bin values.
         """
+        if isinstance(values, NumericClasses):
+            values = self._density_to_values(edges, values)
+
         data["edges"] = edges
         data["values"] = values
         super().__init__(**data)
@@ -326,6 +331,35 @@ class Histogram(DataModel):
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
     @staticmethod
+    def _density_to_values(
+        edges: Union[Array, Histogram],
+        density: Numeric,
+    ) -> Array:
+        """
+        Convert density array to values array using histogram edges.
+
+        Args:
+            edges: Histogram or array of bin edges.
+            density: Density value to convert.
+
+        Returns:
+            Array of histogram values corresponding to the density.
+        """
+        num_bins: int
+        module: ModuleType
+        if isinstance(edges, Histogram):
+            edges = edges.edges
+
+        elif not isinstance(edges, ArrayClasses):
+            raise TypeError(f"edges must be an Array or Histogram, got {type(edges)}")
+
+        num_bins = len(edges) - 1
+        module = get_array_module(edges)
+        edges = module.diff(edges)
+        values: Array = module.full(num_bins, density * edges)
+        return values
+
+    @staticmethod
     def from_constant(
         density: Numeric,
         edges: Array,
@@ -340,10 +374,20 @@ class Histogram(DataModel):
         Returns:
             Histogram with constant densities.
         """
-        num_bins = len(edges) - 1
-        module = get_array_module(edges)
-        values: Array = module.full(num_bins, density * module.diff(edges))
+        values: Array = Histogram._density_to_values(edges, density)
         return Histogram(edges=edges, values=values)
+
+    def astype(self, dtype: Union[np_typing.DTypeLike, xp_typing.DTypeLike]) -> Histogram:
+        """
+        Cast edges and values to a specified data type.
+
+        Args:
+            dtype: Target data type (e.g., np.float32, np.float64).
+
+        Returns:
+            New histogram with edges and values cast to the specified type.
+        """
+        return Histogram(edges=self.edges.astype(dtype), values=self.values.astype(dtype))
 
     def rebin(
         self,
@@ -427,16 +471,16 @@ class Histogram(DataModel):
         if not is_increasing(target_bins):
             raise ValueError("array of edges need to be strictly increasing")
 
-        cumsum: Array = self.xp.concatenate([[0], self.xp.cumsum(self.values)])
+        cumsum: Array = self.xp.concatenate([[0.0], self.xp.cumsum(self.values)])
         interpolation: Array = self.xp.interp(
             target_bins,
             self.edges,
             cumsum,
-            left=0,
+            left=0.0,
             right=cumsum[-1],
         )
         values: Array = self.xp.diff(interpolation)
-        return Histogram(edges=target_bins, values=values)
+        return Histogram(edges=target_bins, values=values).astype(self.values.dtype)
 
     @cached_property
     def range(self) -> Interval:

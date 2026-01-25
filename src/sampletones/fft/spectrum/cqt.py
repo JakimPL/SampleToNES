@@ -57,4 +57,4 @@ def calculate_cqt_spectrum(
     energy: np.ndarray = np.mean(np.square(np.abs(cqt)), axis=1)
     energy_scaled = normalize_cqt_energy(energy, frequencies, sample_rate, bins_per_octave)
     bands: np.ndarray = convert_midpoints_to_edges(frequencies)
-    return Histogram(edges=bands, values=energy_scaled)
+    return Histogram(edges=bands.astype(np.float32), values=energy_scaled.astype(np.float32))

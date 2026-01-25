@@ -1,4 +1,5 @@
 include "arrays.fbs";
+include "collections.fbs";
 include "instructions/instruction.fbs";
 
 namespace sampletones_schemas.library;
@@ -6,7 +7,7 @@ namespace sampletones_schemas.library;
 table FBInstructionsLibraryFragment {
 	generator_class: string;
 	instruction_data: sampletones_schemas.instructions.FBInstructionData;
-	feature: [float];
+	feature: sampletones_schemas.collections.FBHistogram;
 	sample: sampletones_schemas.arrays.FBCyclicArray;
 	frequency: float;
 }
