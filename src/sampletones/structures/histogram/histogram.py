@@ -2,14 +2,23 @@ from __future__ import annotations
 
 import warnings
 from functools import cached_property, reduce
+from types import ModuleType
 from typing import Any, Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
-import numpy as np
 from pydantic import ConfigDict, model_validator
 
+from sampletones import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol
 from sampletones.data.scheme import FlatBufferReaderProtocol
-from sampletones.types.array import Array, ArrayOrScalar, BinaryTransformation, Float, MultaryTransformation
+from sampletones.types.array import (
+    Array,
+    ArrayOrScalar,
+    BinaryTransformation,
+    Float,
+    MultaryTransformation,
+    Numeric,
+    get_array_module,
+)
 from sampletones.utils import is_increasing
 
 from .interval import Interval
@@ -72,12 +81,16 @@ class Histogram(DataModel):
             ValueError: If edges length is not values length + 1, if fewer than 2 edges,
                 or if edges are not strictly increasing.
             TypeError: If edges or values are not numpy arrays.
+            TypeError: If edges and values are not of the same type.
         """
-        if not isinstance(self.edges, np.ndarray):
+        if not isinstance(self.edges, Array):
             raise TypeError(f"edges must be a numpy array, got {type(self.edges)}")
 
-        if not isinstance(self.values, np.ndarray):
+        if not isinstance(self.values, Array):
             raise TypeError(f"values must be a numpy array, got {type(self.values)}")
+
+        if len({type(self.edges), type(self.values)}) != 1:
+            raise TypeError("edges and values must be of the same type")
 
         if len(self.edges) != len(self.values) + 1:
             raise ValueError("edges should have exactly |values| + 1 elements")
@@ -107,8 +120,8 @@ class Histogram(DataModel):
         if not isinstance(other, Histogram):
             return False
 
-        edges_equal = np.array_equal(self.edges, other.edges)
-        values_equal = np.array_equal(self.values, other.values)
+        edges_equal = self.xp.array_equal(self.edges, other.edges)
+        values_equal = self.xp.array_equal(self.values, other.values)
         return edges_equal and values_equal
 
     def __copy__(self) -> Histogram:
@@ -130,8 +143,8 @@ class Histogram(DataModel):
         Returns:
             A new Histogram instance with deeply copied edges and values.
         """
-        edges_copy = np.copy(self.edges)
-        values_copy = np.copy(self.values)
+        edges_copy = self.xp.copy(self.edges)
+        values_copy = self.xp.copy(self.values)
         return Histogram(edges=edges_copy, values=values_copy)
 
     def __hash__(self) -> int:
@@ -192,11 +205,11 @@ class Histogram(DataModel):
         Returns:
             New Histogram with transformed values.
         """
-        values: np.ndarray = density * histogram.widths
+        values: Array = density * histogram.widths
         return Histogram(edges=histogram.edges.copy(), values=values)
 
     @staticmethod
-    def _validate_histogram_edges(*histograms: Histogram) -> None:
+    def _validate_histogram_edges(*histograms: Histogram, equal_edges: bool = True) -> None:
         """
         Validate that all histograms have the same edges.
         Used for operations requiring aligned histograms,
@@ -204,16 +217,23 @@ class Histogram(DataModel):
 
         Args:
             *histograms: Histograms to validate.
+            equal_edges: If True, checks that all histograms have identical edges.
 
         Raises:
             ValueError: If no histograms are provided.
-            ValueError: If histograms have different edges.
+            ValueError: If histograms have different edges, when `equal_edges` is True.
+            TypeError: If histograms are of different array types.
         """
         if len(histograms) == 0:
             raise ValueError("At least one histogram is required")
 
+        types = {type(histogram.edges) for histogram in histograms}
+        if len(types) != 1:
+            raise TypeError(f"All histograms must be of the same array type, got {', '.join(str(t) for t in types)}")
+
         edges = histograms[0].edges
-        if not all(np.array_equal(histogram.edges, edges) for histogram in histograms):
+        xp = get_array_module(edges)
+        if equal_edges and not all(xp.array_equal(histogram.edges, edges) for histogram in histograms):
             raise ValueError("All histograms must have the same edges")
 
     @staticmethod
@@ -235,6 +255,7 @@ class Histogram(DataModel):
         Raises:
             ValueError: If no histograms are provided.
             ValueError: If histograms have different edges.
+            TypeError: If histograms are of different array types.
         """
         Histogram._validate_histogram_edges(*histograms)
         densities = (histogram.densities for histogram in histograms)
@@ -259,6 +280,7 @@ class Histogram(DataModel):
         Raises:
             ValueError: If no histograms are provided.
             ValueError: If histograms have different edges.
+            TypeError: If histograms are of different array types.
         """
         Histogram._validate_histogram_edges(*histograms)
 
@@ -282,21 +304,22 @@ class Histogram(DataModel):
 
         Raises:
             ValueError: If no histograms are provided.
+            TypeError: If histograms are of different array types.
         """
-        if len(histograms) == 0:
-            raise ValueError("At least one histogram is required")
+        Histogram._validate_histogram_edges(*histograms, equal_edges=False)
 
         if len(histograms) == 1:
             return (histograms[0],)
 
-        all_edges = np.concatenate([histogram.edges for histogram in histograms])
-        merged_edges = np.unique(all_edges)
+        xp = get_array_module(histograms[0].edges)
+        all_edges: Array = xp.concatenate([histogram.edges for histogram in histograms])
+        merged_edges: Array = xp.unique(all_edges)
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
     @staticmethod
     def from_constant(
         density: Float,
-        edges: np.ndarray,
+        edges: Array,
     ) -> Histogram:
         """
         Create a histogram with constant densities.
@@ -309,12 +332,13 @@ class Histogram(DataModel):
             Histogram with constant densities.
         """
         num_bins = len(edges) - 1
-        values = np.full(num_bins, density * np.diff(edges))
+        xp = get_array_module(edges)
+        values: Array = xp.full(num_bins, density * xp.diff(edges))
         return Histogram(edges=edges, values=values)
 
     def rebin(
         self,
-        target_bins: Union[Interval, np.ndarray, Histogram],
+        target_bins: Union[Interval, Array, Histogram],
     ) -> Histogram:
         """
         Rebin the histogram to new bins.
@@ -331,35 +355,33 @@ class Histogram(DataModel):
             New histogram with rebinned values.
 
         Raises:
-            TypeError: If target_bins is not Interval, np.ndarray, or Histogram.
+            TypeError: If target_bins is not Interval, Array, or Histogram.
             ValueError: If target edges are not strictly increasing.
 
         Warnings:
             RuntimeWarning: If target range doesn't contain histogram range.
         """
-        edges: np.ndarray
+        edges: Array
         if isinstance(target_bins, Interval):
-            edges = np.array([target_bins.left, target_bins.right])
-
-        elif isinstance(target_bins, np.ndarray):
-            if not is_increasing(target_bins):
-                raise ValueError("array of edges need to be strictly increasing")
-
-            edges = target_bins.copy()
+            edges = self.xp.array([target_bins.left, target_bins.right])
 
         elif isinstance(target_bins, Histogram):
             histogram: Histogram = target_bins
             edges = histogram.edges.copy()
 
+        elif isinstance(target_bins, Array):
+            if not is_increasing(target_bins):
+                raise ValueError("array of edges need to be strictly increasing")
+
+            edges = target_bins.copy()
+
         else:
-            raise TypeError(
-                f"Unsupported target_bins, expected Interval, np.ndarray, or Histogram, got {type(target_bins)}"
-            )
+            raise TypeError(f"Unsupported target_bins, expected Interval, Array, or Histogram, got {type(target_bins)}")
 
         self.validate_overlap(edges)
         return self._rebin(edges)
 
-    def validate_overlap(self, edges: np.ndarray) -> None:
+    def validate_overlap(self, edges: Array) -> None:
         """
         Check if target edges contain the histogram range.
 
@@ -376,7 +398,7 @@ class Histogram(DataModel):
                 RuntimeWarning,
             )
 
-    def _rebin(self, target_bins: np.ndarray) -> Histogram:
+    def _rebin(self, target_bins: Array) -> Histogram:
         """
         Internal rebinning using cumulative sum interpolation.
 
@@ -387,24 +409,24 @@ class Histogram(DataModel):
             Rebinned histogram.
 
         Raises:
-            TypeError: If target_bins is not a numpy array.
+            TypeError: If target_bins is not an Array.
             ValueError: If target_bins are not strictly increasing.
         """
-        if not isinstance(target_bins, np.ndarray):
-            raise TypeError(f"target_bins must be a numpy array, got {type(target_bins)}")
+        if not isinstance(target_bins, Array):
+            raise TypeError(f"target_bins must be an Array, got {type(target_bins)}")
 
         if not is_increasing(target_bins):
             raise ValueError("array of edges need to be strictly increasing")
 
-        cumsum: np.ndarray = np.concatenate([[0], np.cumsum(self.values)])
-        interpolation: np.ndarray = np.interp(
+        cumsum: Array = self.xp.concatenate([[0], self.xp.cumsum(self.values)])
+        interpolation: Array = self.xp.interp(
             target_bins,
             self.edges,
             cumsum,
             left=0,
             right=cumsum[-1],
         )
-        values: np.ndarray = np.diff(interpolation)
+        values: Array = self.xp.diff(interpolation)
         return Histogram(edges=target_bins, values=values)
 
     @cached_property
@@ -418,16 +440,16 @@ class Histogram(DataModel):
         return Interval(self.edges[0], self.edges[-1])
 
     @cached_property
-    def widths(self) -> np.ndarray:
+    def widths(self) -> Array:
         """
         Width of each bin.
 
         Returns:
             Array of bin widths (differences between consecutive edges).
         """
-        return np.diff(self.edges)
+        return self.xp.diff(self.edges)
 
-    def width(self, i: int) -> np.floating:
+    def width(self, i: int) -> Float:
         """
         Width of the i-th bin.
 
@@ -437,10 +459,10 @@ class Histogram(DataModel):
         Returns:
             The width of bin i.
         """
-        width: np.floating = self.widths[i]
+        width: Float = self.widths[i]
         return width
 
-    def density(self, i: int) -> np.floating:
+    def density(self, i: int) -> Float:
         """
         Density of the i-th bin (value per unit length).
 
@@ -452,34 +474,34 @@ class Histogram(DataModel):
         """
         interval = self.interval(i)
         if not interval:
-            zero: np.floating = self.values.dtype.type(0.0)
+            zero: Float = self.values.dtype.type(0.0)
             return zero
 
-        density: np.floating = self.values[i] / interval.length
+        density: Float = self.values[i] / interval.length
         return density
 
     @cached_property
-    def densities(self) -> np.ndarray:
+    def densities(self) -> Array:
         """
         Densities for all bins.
 
         Returns:
             Array of densities (values / widths) for each bin.
         """
-        densities: List[np.floating] = [self.density(i) for i in range(len(self))]
-        return np.array(densities, dtype=self.values.dtype)
+        densities: List[Float] = [self.density(i) for i in range(len(self))]
+        return self.xp.array(densities, dtype=self.values.dtype)
 
     @cached_property
-    def total(self) -> np.floating:
+    def total(self) -> Float:
         """
         Total sum of histogram values.
 
         Returns:
             Sum of all values in the histogram.
         """
-        return np.sum(self.values)
+        return self.xp.sum(self.values)
 
-    def iterate(self) -> Iterator[Tuple[Interval, np.floating]]:
+    def iterate(self) -> Iterator[Tuple[Interval, Float]]:
         """
         Iterate over (interval, value) pairs.
 
@@ -489,16 +511,37 @@ class Histogram(DataModel):
         for i in range(len(self)):
             yield self.interval(i), self.values[i]
 
+    @cached_property
+    def xp(self) -> ModuleType:
+        """
+        Get the array module (NumPy or CuPy) based on the edges array type.
+
+        Returns:
+            The array module corresponding to the edges array type.
+        """
+        return get_array_module(self.edges)
+
+    def to_cupy(self) -> Histogram:
+        """
+        Convert histogram to CuPy arrays.
+
+        Returns:
+            New Histogram with edges and values as CuPy arrays.
+        """
+        edges = xp.asarray(self.edges)
+        values = xp.asarray(self.values)
+        return Histogram(edges=edges, values=values)
+
     @overload
     def __add__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __add__(self, other: Float) -> Histogram: ...
+    def __add__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __add__(self, other: Array) -> Histogram: ...
 
-    def __add__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+    def __add__(self, other: Union[Histogram, Array, Numeric]) -> Histogram:
         """
         Add another histogram, array, or scalar to this histogram.
 
@@ -517,26 +560,30 @@ class Histogram(DataModel):
 
         Raises:
             ValueError: If array length doesn't match values length.
+            TypeError: If other is not Histogram, Array, or Numeric.
         """
+        if isinstance(other, Numeric):
+            return self.apply_with(lambda d: d + other)
+
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
             return Histogram(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
 
-        if isinstance(other, np.ndarray):
+        if isinstance(other, Array):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
 
             return Histogram(edges=self.edges.copy(), values=self.values + other)
 
-        return self.apply_with(lambda d: d + other)
+        raise TypeError(f"Unsupported type for addition: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __radd__(self, other: Float) -> Histogram: ...
+    def __radd__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __radd__(self, other: Array) -> Histogram: ...
 
-    def __radd__(self, other: Union[Array, Float]) -> Histogram:
+    def __radd__(self, other: Union[Array, Numeric]) -> Histogram:
         """
         Right addition: support array + histogram and scalar + histogram.
 
@@ -552,12 +599,12 @@ class Histogram(DataModel):
     def __mul__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __mul__(self, other: Float) -> Histogram: ...
+    def __mul__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __mul__(self, other: Array) -> Histogram: ...
 
-    def __mul__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+    def __mul__(self, other: Union[Histogram, Array, Numeric]) -> Histogram:
         """
         Multiply this histogram by another histogram, array, or scalar.
 
@@ -576,27 +623,31 @@ class Histogram(DataModel):
 
         Raises:
             ValueError: If array length doesn't match values length.
+            TypeError: If other is not Histogram, Array, or Numeric.
         """
+        if isinstance(other, Numeric):
+            return Histogram(edges=self.edges.copy(), values=self.values * other)
+
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
-            return rebinned_self.apply_with(np.multiply, rebinned_other)
+            return rebinned_self.apply_with(rebinned_self.xp.multiply, rebinned_other)
 
-        if isinstance(other, np.ndarray):
+        if isinstance(other, Array):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
 
             other = Histogram(edges=self.edges.copy(), values=other)
-            return self.apply_with(np.multiply, other)
+            return self.apply_with(self.xp.multiply, other)
 
-        return Histogram(edges=self.edges.copy(), values=self.values * other)
+        raise TypeError(f"Unsupported type for multiplication: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rmul__(self, other: Float) -> Histogram: ...
+    def __rmul__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __rmul__(self, other: Array) -> Histogram: ...
 
-    def __rmul__(self, other: Union[Array, Float]) -> Histogram:
+    def __rmul__(self, other: Union[Array, Numeric]) -> Histogram:
         """
         Right multiplication: support array * histogram and scalar * histogram.
 
@@ -608,7 +659,7 @@ class Histogram(DataModel):
         """
         return self.__mul__(other)
 
-    def __pow__(self, exponent: Float) -> Histogram:
+    def __pow__(self, exponent: Numeric) -> Histogram:
         """
         Raise histogram to a power (applies exponent to densities).
 
@@ -624,12 +675,12 @@ class Histogram(DataModel):
     def __sub__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __sub__(self, other: Float) -> Histogram: ...
+    def __sub__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __sub__(self, other: Array) -> Histogram: ...
 
-    def __sub__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+    def __sub__(self, other: Union[Histogram, Array, Numeric]) -> Histogram:
         """
         Subtract another histogram, array, or scalar from this histogram.
 
@@ -644,21 +695,24 @@ class Histogram(DataModel):
         Raises:
             ValueError: If array length doesn't match values length.
         """
+        if isinstance(other, Numeric):
+            return self.__add__(-other)
+
         if isinstance(other, Histogram):
             return self.__add__(other * -1)
 
-        if isinstance(other, np.ndarray):
+        if isinstance(other, Array):
             return self.__add__(-other)
 
-        return self.__add__(-other)
+        raise TypeError(f"Unsupported type for subtraction: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rsub__(self, other: Float) -> Histogram: ...
+    def __rsub__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __rsub__(self, other: Array) -> Histogram: ...
 
-    def __rsub__(self, other: Union[Array, Float]) -> Histogram:
+    def __rsub__(self, other: Union[Array, Numeric]) -> Histogram:
         """
         Right subtraction: support array - histogram and scalar - histogram.
 
@@ -676,12 +730,12 @@ class Histogram(DataModel):
     def __truediv__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __truediv__(self, other: Float) -> Histogram: ...
+    def __truediv__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __truediv__(self, other: Array) -> Histogram: ...
 
-    def __truediv__(self, other: Union[Histogram, Array, Float]) -> Histogram:
+    def __truediv__(self, other: Union[Histogram, Array, Numeric]) -> Histogram:
         """
         Divide this histogram by another histogram, array, or scalar.
 
@@ -696,24 +750,28 @@ class Histogram(DataModel):
 
         Raises:
             ValueError: If array length doesn't match values length.
+            TypeError: If other is not Histogram, Array, or Numeric.
         """
+        if isinstance(other, Numeric):
+            return Histogram(edges=self.edges.copy(), values=self.values / other)
+
         if isinstance(other, Histogram):
             return self.__mul__(other**-1)
 
-        if isinstance(other, np.ndarray):
+        if isinstance(other, Array):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
             return Histogram(edges=self.edges.copy(), values=self.values / other)
 
-        return Histogram(edges=self.edges.copy(), values=self.values / other)
+        raise TypeError(f"Unsupported type for division: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rtruediv__(self, other: Float) -> Histogram: ...
+    def __rtruediv__(self, other: Numeric) -> Histogram: ...
 
     @overload
     def __rtruediv__(self, other: Array) -> Histogram: ...
 
-    def __rtruediv__(self, other: Union[Array, Float]) -> Histogram:
+    def __rtruediv__(self, other: Union[Array, Numeric]) -> Histogram:
         """
         Right division: support array / histogram and scalar / histogram.
 

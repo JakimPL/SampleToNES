@@ -135,7 +135,7 @@ class Fragment:
     def to_cupy(self) -> Fragment:
         audio = xp.asarray(self.audio)
         windowed_audio = xp.asarray(self.windowed_audio)
-        feature = xp.asarray(self.feature)
+        feature = self.feature.to_cupy()
         return Fragment(
             audio=audio,
             feature=feature,

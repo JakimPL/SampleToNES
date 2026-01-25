@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional, Union, overload
 
 import numpy as np
 
-from sampletones.types.array import Float, Integer, Numeric
+from sampletones.types.array import Array, Float, Integer, Numeric
 
 
 def next_power_of_two(length: int) -> int:
@@ -96,16 +96,16 @@ def clamp(
         >>> clamp(1.0, 0.0, float("-inf"))  # max_value takes precedence
         -inf
     """
-    if not isinstance(value, (int, float, np.integer, np.floating)):
+    if not isinstance(value, Numeric):
         raise TypeError(f"Value must be a numeric type, got {type(value)}")
 
-    if min_value is not None and not isinstance(min_value, (int, float, np.integer, np.floating)):
+    if min_value is not None and not isinstance(min_value, Numeric):
         raise TypeError(f"Unsupported type for min_value: {type(min_value)}")
 
-    if max_value is not None and not isinstance(max_value, (int, float, np.integer, np.floating)):
+    if max_value is not None and not isinstance(max_value, Numeric):
         raise TypeError(f"Unsupported type for max_value: {type(max_value)}")
 
-    all_integers = all(isinstance(v, (int, np.integer)) for v in (value, min_value, max_value) if v is not None)
+    all_integers = all(isinstance(v, Integer) for v in (value, min_value, max_value) if v is not None)
 
     if all_integers:
         min_value = int(min_value) if min_value is not None else None
@@ -125,7 +125,7 @@ def clamp(
     return value
 
 
-def pad(array: np.ndarray, left: int, right: int, value: Any = 0.0) -> np.ndarray:
+def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
     """
     Extracts a slice from a 1-dimensional real-valued array
     with optional padding on either side.
@@ -157,8 +157,8 @@ def pad(array: np.ndarray, left: int, right: int, value: Any = 0.0) -> np.ndarra
         >>> pad(audio, 1, 4, value=0)
         array([2, 3, 4])
     """
-    if not isinstance(array, np.ndarray):
-        raise TypeError(f"Expected array to be np.ndarray, got {type(array)}")
+    if not isinstance(array, Array):
+        raise TypeError(f"Expected array to be Array, got {type(array)}")
 
     if array.ndim != 1:
         raise ValueError("Array must be 1-dimensional")
@@ -171,7 +171,7 @@ def pad(array: np.ndarray, left: int, right: int, value: Any = 0.0) -> np.ndarra
 
     n = len(array)
     length = right - left
-    value = np.nan if value is None or (isinstance(value, (float, np.floating)) and np.isnan(value)) else value
+    value = np.nan if value is None or (isinstance(value, Float) and np.isnan(value)) else value
     dtype = array.dtype if np.issubdtype(array.dtype, np.floating) or value is not np.nan else np.float32
     output = np.full(length, value, dtype=dtype)
 
@@ -260,7 +260,7 @@ def first_key_for_value(dictionary: Dict[Any, Any], target: Any) -> Any:
     return None
 
 
-def is_increasing(array: np.ndarray) -> bool:
+def is_increasing(array: Array) -> bool:
     """
     Check if array values are strictly increasing.
 

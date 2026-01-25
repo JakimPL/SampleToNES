@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -72,6 +72,14 @@ class FFTTransformer(BaseModel):
         transformations = morpher.transformations
         return cls(transformations=transformations, sample_rate=sample_rate)
 
+    def calculate_spectrum(
+        self,
+        audio: np.ndarray,
+        sample_rate: int,
+        fft_size: Optional[int] = None,
+    ) -> Histogram:
+        return calculate_spectrum(self.spectrum_method, audio, sample_rate, fft_size)
+
     def calculate_feature(
         self,
         audio: np.ndarray,
@@ -95,7 +103,7 @@ class FFTTransformer(BaseModel):
         Returns:
             Histogram: Calculated FFT features.
         """
-        spectrum: Histogram = calculate_spectrum(self.spectrum_method, audio, sample_rate, fft_size)
+        spectrum: Histogram = self.calculate_spectrum(audio, sample_rate, fft_size)
         return self.forward(spectrum)
 
     def forward(self, spectrum: Histogram) -> Histogram:
@@ -140,7 +148,8 @@ class FFTTransformer(BaseModel):
         Returns:
             Histogram: Resulting FFT feature.
         """
-        return Histogram.apply(operation, *features)
+        function = self.transformations.compose_function(operation)
+        return Histogram.apply(function, *features)
 
     def reduce(
         self,
@@ -159,7 +168,8 @@ class FFTTransformer(BaseModel):
         Returns:
             Histogram: Resulting FFT feature.
         """
-        return Histogram.reduce(operation, *features)
+        function = self.transformations.compose_function(operation)
+        return Histogram.reduce(function, *features)
 
     def add(
         self,
@@ -206,4 +216,29 @@ class FFTTransformer(BaseModel):
             np.multiply,
             feature,
             Histogram.from_constant(scalar, feature.edges),
+        )
+
+    def mean(
+        self,
+        features: Sequence[Histogram],
+    ) -> Histogram:
+        """
+        Calculate the mean of multiple FFT features with transformations.
+
+        `[ mean(feature1, feature2, ..., featureN) ] ^ (1 / a)`
+
+        Args:
+            features: Input FFT features.
+
+        Returns:
+            Histogram: Mean FFT feature.
+
+        Raises:
+            ValueError: If no features are provided.
+        """
+        if not features:
+            raise ValueError("At least one feature is required to compute the mean")
+
+        return self.reduce(np.add, *features).apply_with(
+            lambda data: data / len(features),
         )

@@ -9,7 +9,9 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
+from sampletones import xp
 from sampletones.exceptions import DeserializationError, SerializationError
+from sampletones.types.array import Array, Numeric
 from sampletones.types.callback import Callback
 from sampletones.types.data import SerializedData
 from sampletones.types.path import Pathlike
@@ -56,10 +58,11 @@ class DataModel(BaseModel):
                 raise AttributeError(f"{fb_builder.__name__} missing '{add_method}' for field '{field_name}'")
 
             annotation = field_info.annotation
+            print(field_name, field_info, annotation)
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            if annotation is np.ndarray:
+            if annotation is (Array, np.ndarray, xp.ndarray):
                 offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
@@ -78,7 +81,7 @@ class DataModel(BaseModel):
             elif annotation is Path:
                 offsets[field_name] = builder.CreateString(str(value))
 
-            elif issubclass(annotation, (int, float, bool)):
+            elif issubclass(annotation, (int, float, bool, Numeric)):
                 offsets[field_name] = value
 
             else:
@@ -108,8 +111,8 @@ class DataModel(BaseModel):
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            value: Union[TypeVar, DataModel, int, float, np.ndarray, List[Any], str, Path, None]
-            if annotation is np.ndarray:
+            value: Union[TypeVar, DataModel, int, float, Array, np.ndarray, xp.ndarray, List[Any], str, Path, None]
+            if annotation in (Array, np.ndarray, xp.ndarray):
                 value = cls._deserialize_numpy_array(fb_object, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
@@ -183,8 +186,11 @@ class DataModel(BaseModel):
 
     @classmethod
     def _deserialize_list(
-        cls, fb_object: Any, field_name: str, element_class: type
-    ) -> Optional[Union[List[Any], np.ndarray]]:
+        cls,
+        fb_object: Any,
+        field_name: str,
+        element_class: type,
+    ) -> Optional[Union[List[Any], Array]]:
         camel = snake_to_camel(field_name)
         getter = getattr(fb_object, camel, None)
         length_function = getattr(fb_object, f"{camel}Length", None)
@@ -208,12 +214,15 @@ class DataModel(BaseModel):
         if issubclass(element_class, (str, StrEnum)):
             return [cls._deserialize_string(getter(i), element_class) for i in range(length)]
 
-        if element_class in (int, float, bool):
+        if element_class in (int, float, bool, Numeric):
             raise DeserializationError("Primitive lists should be deserialized using _deserialize_numpy_array method")
 
         raise DeserializationError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
 
-    def _serialize_numpy_array(self, builder: Builder, array: np.ndarray, field_name: str) -> int:
+    def _serialize_numpy_array(self, builder: Builder, array: Array, field_name: str) -> int:
+        if isinstance(array, xp.ndarray):
+            array = xp.asnumpy(array)
+
         if array.dtype != np.float32:
             raise SerializationError(
                 f"Only np.float32 arrays are supported for serialization, "

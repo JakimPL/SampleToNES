@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Generic, Type
+from typing import Any, Generic, List, Type
 
 import numpy as np
 from pydantic import ConfigDict, field_serializer
@@ -45,7 +45,7 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     ) -> InstructionLibraryFragment[InstructionT]:
         sample: CyclicArray = generator.generate_sample(instruction)
 
-        features = []
+        features: List[Histogram] = []
         sample_rate = transformer.sample_rate
         for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
             phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
@@ -53,7 +53,7 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
             transformed_windowed_audio = transformer.calculate_feature(windowed_audio, sample_rate)
             features.append(transformed_windowed_audio)
 
-        feature = transformer.backward(np.mean(features, axis=0))
+        feature = transformer.mean(features, axis=0)
 
         return cls(
             generator_class=generator.class_name(),
