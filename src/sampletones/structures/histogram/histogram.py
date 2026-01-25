@@ -5,10 +5,9 @@ from functools import cached_property, reduce
 from types import ModuleType
 from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
-import numpy.typing as np_typing
 from pydantic import ConfigDict, model_validator
 
-from sampletones import xp, xp_typing
+from sampletones import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol
 from sampletones.data.scheme import FlatBufferReaderProtocol
 from sampletones.types.array import (
@@ -16,6 +15,7 @@ from sampletones.types.array import (
     ArrayClasses,
     ArrayOrScalar,
     BinaryTransformation,
+    DTypeLike,
     Float,
     MultaryTransformation,
     Numeric,
@@ -377,7 +377,7 @@ class Histogram(DataModel):
         values: Array = Histogram._density_to_values(edges, density)
         return Histogram(edges=edges, values=values)
 
-    def astype(self, dtype: Union[np_typing.DTypeLike, xp_typing.DTypeLike]) -> Histogram:
+    def astype(self, dtype: DTypeLike) -> Histogram:
         """
         Cast edges and values to a specified data type.
 

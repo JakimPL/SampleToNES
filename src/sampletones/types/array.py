@@ -2,8 +2,9 @@ from types import ModuleType
 from typing import Callable, TypeAlias, TypeVar, Union
 
 import numpy as np
+import numpy.typing as np_typing
 
-from sampletones import xp
+from sampletones import xp, xp_typing
 
 T = TypeVar("T")
 
@@ -18,6 +19,8 @@ FloatClasses = (float, np.floating, xp.floating)  # pylint: disable=invalid-name
 NumericClasses = IntegerClasses + FloatClasses  # pylint: disable=invalid-name
 ArrayClasses = (np.ndarray, xp.ndarray)  # pylint: disable=invalid-name
 ArrayOrScalarClasses = NumericClasses + ArrayClasses  # pylint: disable=invalid-name
+
+DTypeLike = Union[np_typing.DTypeLike, xp_typing.DTypeLike]
 
 UnaryTransformation: TypeAlias = Callable[[T], T]
 BinaryTransformation: TypeAlias = Callable[[T, T], T]

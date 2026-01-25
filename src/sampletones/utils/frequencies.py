@@ -12,7 +12,7 @@ from sampletones.constants.general import (
     NOTE_NAMES,
 )
 
-from .common import clamp
+from .arrays import clamp
 
 
 def validate_pitch(pitch: int) -> None:

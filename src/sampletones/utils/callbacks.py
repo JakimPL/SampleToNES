@@ -1,7 +1,8 @@
 from typing import Any, Optional
 
 from sampletones.types.callback import Callback
-from sampletones.utils.logger import logger
+
+from .logger import logger
 
 
 class CallbackMixin:
