@@ -105,10 +105,10 @@ def isnan(value: Optional[Numeric]) -> bool:
         value: The numeric value to check.
 
     Returns:
-        True if the value is empty (None or NaN), False otherwise.
+        True if the value is `None` or NaN, False otherwise.
 
     Raises:
-        TypeError: If the value is not a numeric type or None.
+        TypeError: If the value is not a numeric type or `None`.
     """
     if value is None:
         return True
@@ -130,11 +130,15 @@ def infer_dtype(value: Optional[Numeric], dtype: DTypeLike) -> DTypeLike:
     dtype is already a floating point type.
 
     Args:
-        value: The numeric value.
+        value: The numeric value, or `None`.
         dtype: The target dtype to infer from.
 
     Returns:
-        The inferred dtype suitable for the value.
+        Preserved dtype if value is finite or dtype is floating point,
+        otherwise float32.
+
+    Raises:
+        TypeError: If the value is not a numeric type or `None`.
     """
     module = get_array_module(value)
     float32: DTypeLike = module.float32
