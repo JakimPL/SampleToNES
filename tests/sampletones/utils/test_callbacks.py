@@ -41,122 +41,124 @@ class TestCall:
         expected_result: Union[Any, Type[Exception]]
         test_id: str
 
+    test_cases = [
+        TestCase(
+            callback=lambda: 42,
+            args=(),
+            kwargs={},
+            expected_result=42,
+            test_id="lambda_no_args_returns_int",
+        ),
+        TestCase(
+            callback=lambda x: x * 2,
+            args=(5,),
+            kwargs={},
+            expected_result=10,
+            test_id="lambda_with_positional_arg",
+        ),
+        TestCase(
+            callback=lambda x, y: x + y,
+            args=(3, 4),
+            kwargs={},
+            expected_result=7,
+            test_id="lambda_with_multiple_positional_args",
+        ),
+        TestCase(
+            callback=lambda x=0: x * 3,
+            args=(),
+            kwargs={"x": 10},
+            expected_result=30,
+            test_id="lambda_with_keyword_arg",
+        ),
+        TestCase(
+            callback=lambda a, b=1, c=2: a + b + c,
+            args=(5,),
+            kwargs={"c": 10},
+            expected_result=16,
+            test_id="lambda_with_mixed_args_and_kwargs",
+        ),
+        TestCase(
+            callback=lambda: None,
+            args=(),
+            kwargs={},
+            expected_result=None,
+            test_id="lambda_returns_none",
+        ),
+        TestCase(
+            callback=lambda: "result",
+            args=(),
+            kwargs={},
+            expected_result="result",
+            test_id="lambda_returns_string",
+        ),
+        TestCase(
+            callback=lambda: [1, 2, 3],
+            args=(),
+            kwargs={},
+            expected_result=[1, 2, 3],
+            test_id="lambda_returns_list",
+        ),
+        TestCase(
+            callback=lambda: {"key": "value"},
+            args=(),
+            kwargs={},
+            expected_result={"key": "value"},
+            test_id="lambda_returns_dict",
+        ),
+        TestCase(
+            callback=None,
+            args=(),
+            kwargs={},
+            expected_result=None,
+            test_id="none_callback_returns_none",
+        ),
+        TestCase(
+            callback=None,
+            args=(1, 2, 3),
+            kwargs={"a": 1},
+            expected_result=None,
+            test_id="none_callback_with_args_returns_none",
+        ),
+        TestCase(
+            callback=42,
+            args=(),
+            kwargs={},
+            expected_result=TypeError,
+            test_id="non_callable_int",
+        ),
+        TestCase(
+            callback="not_callable",
+            args=(),
+            kwargs={},
+            expected_result=TypeError,
+            test_id="non_callable_string",
+        ),
+        TestCase(
+            callback=[1, 2, 3],
+            args=(),
+            kwargs={},
+            expected_result=TypeError,
+            test_id="non_callable_list",
+        ),
+        TestCase(
+            callback={"key": "value"},
+            args=(),
+            kwargs={},
+            expected_result=TypeError,
+            test_id="non_callable_dict",
+        ),
+        TestCase(
+            callback=object(),
+            args=(),
+            kwargs={},
+            expected_result=TypeError,
+            test_id="non_callable_object",
+        ),
+    ]
+
     @pytest.mark.parametrize(
         "test_case",
-        [
-            TestCase(
-                callback=lambda: 42,
-                args=(),
-                kwargs={},
-                expected_result=42,
-                test_id="lambda_no_args_returns_int",
-            ),
-            TestCase(
-                callback=lambda x: x * 2,
-                args=(5,),
-                kwargs={},
-                expected_result=10,
-                test_id="lambda_with_positional_arg",
-            ),
-            TestCase(
-                callback=lambda x, y: x + y,
-                args=(3, 4),
-                kwargs={},
-                expected_result=7,
-                test_id="lambda_with_multiple_positional_args",
-            ),
-            TestCase(
-                callback=lambda x=0: x * 3,
-                args=(),
-                kwargs={"x": 10},
-                expected_result=30,
-                test_id="lambda_with_keyword_arg",
-            ),
-            TestCase(
-                callback=lambda a, b=1, c=2: a + b + c,
-                args=(5,),
-                kwargs={"c": 10},
-                expected_result=16,
-                test_id="lambda_with_mixed_args_and_kwargs",
-            ),
-            TestCase(
-                callback=lambda: None,
-                args=(),
-                kwargs={},
-                expected_result=None,
-                test_id="lambda_returns_none",
-            ),
-            TestCase(
-                callback=lambda: "result",
-                args=(),
-                kwargs={},
-                expected_result="result",
-                test_id="lambda_returns_string",
-            ),
-            TestCase(
-                callback=lambda: [1, 2, 3],
-                args=(),
-                kwargs={},
-                expected_result=[1, 2, 3],
-                test_id="lambda_returns_list",
-            ),
-            TestCase(
-                callback=lambda: {"key": "value"},
-                args=(),
-                kwargs={},
-                expected_result={"key": "value"},
-                test_id="lambda_returns_dict",
-            ),
-            TestCase(
-                callback=None,
-                args=(),
-                kwargs={},
-                expected_result=None,
-                test_id="none_callback_returns_none",
-            ),
-            TestCase(
-                callback=None,
-                args=(1, 2, 3),
-                kwargs={"a": 1},
-                expected_result=None,
-                test_id="none_callback_with_args_returns_none",
-            ),
-            TestCase(
-                callback=42,
-                args=(),
-                kwargs={},
-                expected_result=TypeError,
-                test_id="non_callable_int",
-            ),
-            TestCase(
-                callback="not_callable",
-                args=(),
-                kwargs={},
-                expected_result=TypeError,
-                test_id="non_callable_string",
-            ),
-            TestCase(
-                callback=[1, 2, 3],
-                args=(),
-                kwargs={},
-                expected_result=TypeError,
-                test_id="non_callable_list",
-            ),
-            TestCase(
-                callback={"key": "value"},
-                args=(),
-                kwargs={},
-                expected_result=TypeError,
-                test_id="non_callable_dict",
-            ),
-            TestCase(
-                callback=object(),
-                args=(),
-                kwargs={},
-                expected_result=TypeError,
-                test_id="non_callable_object",
-            ),
-        ],
+        test_cases,
         ids=lambda tc: tc.test_id,
     )
     def test_call(self, test_case: TestCase) -> None:
@@ -204,88 +206,90 @@ class TestSetCallbacks:
         expected_result: Union[dict[str, Optional[Any]], Type[Exception]]
         test_id: str
 
+    test_cases = [
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: 1},
+            expected_result={"on_event": lambda: 1, "on_data": None, "on_error": None},
+            test_id="set_single_callback",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2},
+            expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": None},
+            test_id="set_multiple_callbacks",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            test_id="set_all_callbacks",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: "new"},
+            expected_result={"on_event": lambda: "new", "on_data": None, "on_error": None},
+            test_id="override_existing_callback",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": None},
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="set_none_does_not_change",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            set_kwargs={"on_event": None},
+            expected_result={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            test_id="set_none_preserves_existing",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": 42},
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="non_callable_int_not_set",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": "not_callable"},
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="non_callable_string_not_set",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": [1, 2, 3]},
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="non_callable_list_not_set",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: 1, "on_data": None, "on_error": 42},
+            expected_result={"on_event": lambda: 1, "on_data": None, "on_error": None},
+            test_id="mixed_valid_none_and_invalid",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={},
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="empty_kwargs_no_change",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"non_existent": lambda: 1},
+            expected_result=AttributeError,
+            test_id="non_existent_attribute_raises",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            set_kwargs={"on_event": lambda: 1, "invalid_attr": lambda: 2},
+            expected_result=AttributeError,
+            test_id="one_valid_one_invalid_raises",
+        ),
+    ]
+
     @pytest.mark.parametrize(
         "test_case",
-        [
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: 1},
-                expected_result={"on_event": lambda: 1, "on_data": None, "on_error": None},
-                test_id="set_single_callback",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2},
-                expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": None},
-                test_id="set_multiple_callbacks",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                test_id="set_all_callbacks",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: "new"},
-                expected_result={"on_event": lambda: "new", "on_data": None, "on_error": None},
-                test_id="override_existing_callback",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": None},
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="set_none_does_not_change",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
-                set_kwargs={"on_event": None},
-                expected_result={"on_event": lambda: "old", "on_data": None, "on_error": None},
-                test_id="set_none_preserves_existing",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": 42},
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="non_callable_int_not_set",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": "not_callable"},
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="non_callable_string_not_set",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": [1, 2, 3]},
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="non_callable_list_not_set",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: 1, "on_data": None, "on_error": 42},
-                expected_result={"on_event": lambda: 1, "on_data": None, "on_error": None},
-                test_id="mixed_valid_none_and_invalid",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={},
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="empty_kwargs_no_change",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"non_existent": lambda: 1},
-                expected_result=AttributeError,
-                test_id="non_existent_attribute_raises",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                set_kwargs={"on_event": lambda: 1, "invalid_attr": lambda: 2},
-                expected_result=AttributeError,
-                test_id="one_valid_one_invalid_raises",
-            ),
-        ],
+        test_cases,
         ids=lambda tc: tc.test_id,
     )
     def test_set_callbacks(self, test_case: TestCase) -> None:
@@ -320,70 +324,72 @@ class TestResetCallbacks:
         expected_result: Union[dict[str, Optional[Any]], Type[Exception]]
         test_id: str
 
+    test_cases = [
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event",),
+            expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            test_id="reset_single_callback",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event", "on_data"),
+            expected_result={"on_event": None, "on_data": None, "on_error": lambda: 3},
+            test_id="reset_multiple_callbacks",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event", "on_data", "on_error"),
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="reset_all_callbacks",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event",),
+            expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            test_id="reset_already_none_callback",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            reset_names=("on_event", "on_data", "on_error"),
+            expected_result={"on_event": None, "on_data": None, "on_error": None},
+            test_id="reset_all_none_callbacks",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=(),
+            expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            test_id="reset_empty_names_no_change",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event", "on_event"),
+            expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            test_id="reset_duplicate_names",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("non_existent",),
+            expected_result=AttributeError,
+            test_id="reset_non_existent_attribute_raises",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("on_event", "invalid_callback"),
+            expected_result=AttributeError,
+            test_id="reset_one_valid_one_invalid_raises",
+        ),
+        TestCase(
+            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            reset_names=("invalid1", "invalid2"),
+            expected_result=AttributeError,
+            test_id="reset_multiple_invalid_raises",
+        ),
+    ]
+
     @pytest.mark.parametrize(
         "test_case",
-        [
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event",),
-                expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
-                test_id="reset_single_callback",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event", "on_data"),
-                expected_result={"on_event": None, "on_data": None, "on_error": lambda: 3},
-                test_id="reset_multiple_callbacks",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event", "on_data", "on_error"),
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="reset_all_callbacks",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event",),
-                expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
-                test_id="reset_already_none_callback",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-                reset_names=("on_event", "on_data", "on_error"),
-                expected_result={"on_event": None, "on_data": None, "on_error": None},
-                test_id="reset_all_none_callbacks",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=(),
-                expected_result={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                test_id="reset_empty_names_no_change",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event", "on_event"),
-                expected_result={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
-                test_id="reset_duplicate_names",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("non_existent",),
-                expected_result=AttributeError,
-                test_id="reset_non_existent_attribute_raises",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("on_event", "invalid_callback"),
-                expected_result=AttributeError,
-                test_id="reset_one_valid_one_invalid_raises",
-            ),
-            TestCase(
-                initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-                reset_names=("invalid1", "invalid2"),
-                expected_result=AttributeError,
-                test_id="reset_multiple_invalid_raises",
-            ),
-        ],
+        test_cases,
         ids=lambda tc: tc.test_id,
     )
     def test_reset_callbacks(self, test_case: TestCase) -> None:

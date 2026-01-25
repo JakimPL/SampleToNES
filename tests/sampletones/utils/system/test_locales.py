@@ -17,76 +17,78 @@ class TestToUtf8:
         expected_result: str
         test_id: str
 
+    test_cases = [
+        TestCase(
+            input_string="Device Name",
+            encoding="utf-8",
+            expected_result="Device Name",
+            test_id="ascii_utf8",
+        ),
+        TestCase(
+            input_string="PÃ©riphÃ©rique Audio",
+            encoding="latin-1",
+            expected_result="Périphérique Audio",
+            test_id="french_latin1",
+        ),
+        TestCase(
+            input_string="PÃ©riphÃ©rique Audio",
+            encoding="cp1252",
+            expected_result="Périphérique Audio",
+            test_id="french_cp1252",
+        ),
+        TestCase(
+            input_string="UrzÄ…dzenie DĹşwiÄ™kowe",
+            encoding="cp1250",
+            expected_result="Urządzenie Dźwiękowe",
+            test_id="polish_cp1250",
+        ),
+        TestCase(
+            input_string="ZvukovĂ© zaĹ™Ă\xadzenĂ\xad",
+            encoding="cp1250",
+            expected_result="Zvukové zařízení",
+            test_id="czech_cp1250",
+        ),
+        TestCase(
+            input_string="РђСѓРґРёРѕСѓСЃС‚СЂРѕР№СЃС‚РІРѕ",
+            encoding="cp1251",
+            expected_result="Аудиоустройство",
+            test_id="russian_cp1251",
+        ),
+        TestCase(
+            input_string="п░я┐п╢п╦п╬я┐я│я┌я─п╬п╧я│я┌п╡п╬",
+            encoding="koi8-r",
+            expected_result="Аудиоустройство",
+            test_id="russian_koi8r",
+        ),
+        TestCase(
+            input_string="ط¬ظ‡ط§ط² طµظˆطھظٹ",
+            encoding="cp1256",
+            expected_result="جهاز صوتي",
+            test_id="arabic_cp1256",
+        ),
+        TestCase(
+            input_string="Ã\x84Ã¤nitelaite",
+            encoding="latin-1",
+            expected_result="Äänitelaite",
+            test_id="finnish_latin1",
+        ),
+        TestCase(
+            input_string="Dispositivo de Ã\x81udio",
+            encoding="latin-1",
+            expected_result="Dispositivo de Áudio",
+            test_id="portuguese_latin1",
+        ),
+        TestCase(
+            input_string="",
+            encoding="utf-8",
+            expected_result="",
+            test_id="empty_string",
+        ),
+    ]
+
     @pytest.mark.parametrize(
         "test_case",
-        [
-            TestCase(
-                input_string="Device Name",
-                encoding="utf-8",
-                expected_result="Device Name",
-                test_id="ascii_utf8",
-            ),
-            TestCase(
-                input_string="PÃ©riphÃ©rique Audio",
-                encoding="latin-1",
-                expected_result="Périphérique Audio",
-                test_id="french_latin1",
-            ),
-            TestCase(
-                input_string="PÃ©riphÃ©rique Audio",
-                encoding="cp1252",
-                expected_result="Périphérique Audio",
-                test_id="french_cp1252",
-            ),
-            TestCase(
-                input_string="UrzÄ…dzenie DĹşwiÄ™kowe",
-                encoding="cp1250",
-                expected_result="Urządzenie Dźwiękowe",
-                test_id="polish_cp1250",
-            ),
-            TestCase(
-                input_string="ZvukovĂ© zaĹ™Ă\xadzenĂ\xad",
-                encoding="cp1250",
-                expected_result="Zvukové zařízení",
-                test_id="czech_cp1250",
-            ),
-            TestCase(
-                input_string="РђСѓРґРёРѕСѓСЃС‚СЂРѕР№СЃС‚РІРѕ",
-                encoding="cp1251",
-                expected_result="Аудиоустройство",
-                test_id="russian_cp1251",
-            ),
-            TestCase(
-                input_string="п░я┐п╢п╦п╬я┐я│я┌я─п╬п╧я│я┌п╡п╬",
-                encoding="koi8-r",
-                expected_result="Аудиоустройство",
-                test_id="russian_koi8r",
-            ),
-            TestCase(
-                input_string="ط¬ظ‡ط§ط² طµظˆطھظٹ",
-                encoding="cp1256",
-                expected_result="جهاز صوتي",
-                test_id="arabic_cp1256",
-            ),
-            TestCase(
-                input_string="Ã\x84Ã¤nitelaite",
-                encoding="latin-1",
-                expected_result="Äänitelaite",
-                test_id="finnish_latin1",
-            ),
-            TestCase(
-                input_string="Dispositivo de Ã\x81udio",
-                encoding="latin-1",
-                expected_result="Dispositivo de Áudio",
-                test_id="portuguese_latin1",
-            ),
-            TestCase(
-                input_string="",
-                encoding="utf-8",
-                expected_result="",
-                test_id="empty_string",
-            ),
-        ],
+        test_cases,
         ids=lambda tc: tc.test_id,
     )
     def test_to_utf8_with_various_encodings(self, test_case: TestToUtf8.TestCase) -> None:
