@@ -8,7 +8,7 @@ import numpy as np
 from sampletones import xp
 from sampletones.configs import Config
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import Array
+from sampletones.types.array import Array, get_array_module
 
 from ..transformer import FFTTransformer
 from ..window.window import Window
@@ -66,14 +66,10 @@ class Fragment:
             fragment.ndim == first_fragment.ndim for fragment in fragments
         ), "All fragments must have the same number of dimensions to be concatenated"
 
-        if isinstance(first_fragment.audio, np.ndarray):
-            concatenated_audio = np.stack([fragment.audio for fragment in fragments])
-            concatenated_windowed_audio = np.stack([fragment.windowed_audio for fragment in fragments])
-            concatenated_feature = np.stack([fragment.feature.values for fragment in fragments])
-        else:
-            concatenated_audio = xp.stack([fragment.audio for fragment in fragments])
-            concatenated_windowed_audio = xp.stack([fragment.windowed_audio for fragment in fragments])
-            concatenated_feature = xp.stack([fragment.feature.values for fragment in fragments])
+        module = get_array_module(first_fragment.audio)
+        concatenated_audio = module.stack([fragment.audio for fragment in fragments])
+        concatenated_windowed_audio = module.stack([fragment.windowed_audio for fragment in fragments])
+        concatenated_feature = module.stack([fragment.feature.values for fragment in fragments])
 
         dimensions = map(
             lambda array: array.ndim,
@@ -85,12 +81,14 @@ class Fragment:
         )
         assert all(ndim == 2 for ndim in dimensions), "All concatenated arrays must be 2-dimensional"
 
+        feature: Histogram = Histogram(
+            edges=first_fragment.feature.edges,
+            values=concatenated_feature,
+        )
+
         return Fragment(
             audio=concatenated_audio,
-            feature=Histogram(
-                edges=first_fragment.feature.edges,
-                values=concatenated_feature,
-            ),
+            feature=feature,
             windowed_audio=concatenated_windowed_audio,
             config=first_fragment.config,
         )
@@ -110,7 +108,7 @@ class Fragment:
         audio = self.audio - other.audio
 
         if self.config.generation.calculation.fast_difference:
-            feature = self.feature - other.feature
+            feature = self.transformer.subtract(self.feature, other.feature)
         else:
             feature = self.transformer.calculate_feature(windowed_audio, sample_rate)
 

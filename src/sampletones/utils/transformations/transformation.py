@@ -107,9 +107,8 @@ class Transformation(NamedTuple):
 
     def compose_function(self, operation: MultaryTransformation[ArrayOrScalar]) -> MultaryTransformation[ArrayOrScalar]:
         """
-        Compose a multary transformation with the backward operation.
-
-        `f ∘ op ∘ f^-1`
+        Compose a multary transformation with the backward operation:
+            `f ∘ op ∘ f^-1`
 
         Args:
             operation: Operation to compose with.
@@ -130,7 +129,7 @@ class Transformation(NamedTuple):
         """
         Compose two transformations. The forward transformation is:
         `g ∘ f`, while the backward transformation is:
-        `f^-1 ∘ g^-1`.
+            `f^-1 ∘ g^-1`.
 
         Args:
             other: Other transformation to compose with.
@@ -155,8 +154,7 @@ class Transformation(NamedTuple):
     ) -> ArrayOrScalar:
         """
         Add two FFT features with transformations.
-
-        `f[ f^-1(x_1) + f^-1(x_2) + ... + f^-1(x_n) ]`
+            `f[ f^-1(x_1) + f^-1(x_2) + ... + f^-1(x_n) ]`
 
         Args:
             arrays: Input arrays/scalars to transform.
@@ -174,8 +172,7 @@ class Transformation(NamedTuple):
     ) -> ArrayOrScalar:
         """
         Subtract two FFT features with transformations.
-
-        `f[ f^-1(x_1) - f^-1(x_2) ]`
+            `f[ f^-1(x_1) - f^-1(x_2) ]`
 
         Args:
             array1: Minuend array/scalar to transform.
@@ -192,8 +189,7 @@ class Transformation(NamedTuple):
     ) -> ArrayOrScalar:
         """
         Multiply two FFT features with transformations.
-
-        `f[ f^-1(x_1) ⋅ f^-1(x_2) ⋅ ... ⋅ f^-1(x_n) ]`
+            `f[ f^-1(x_1) ⋅ f^-1(x_2) ⋅ ... ⋅ f^-1(x_n) ]`
 
         Args:
             arrays: Input arrays/scalars to transform.

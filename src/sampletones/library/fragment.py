@@ -35,27 +35,17 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     def __reduce__(self) -> ReducedObject:
         return (_instruction_library_fragment, (dict(self),))
 
-    @classmethod
+    @staticmethod
     def create(
-        cls,
         generator: Generator[InstructionT, Any],
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
     ) -> InstructionLibraryFragment[InstructionT]:
         sample: CyclicArray = generator.generate_sample(instruction)
+        feature: Histogram = InstructionLibraryFragment._get_average_feature(sample, window, transformer)
 
-        features: List[Histogram] = []
-        sample_rate = transformer.sample_rate
-        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
-            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
-            windowed_audio = sample.get_windowed_fragment(phase, window)
-            transformed_windowed_audio = transformer.calculate_feature(windowed_audio, sample_rate)
-            features.append(transformed_windowed_audio)
-
-        feature = transformer.mean(features, axis=0)
-
-        return cls(
+        return InstructionLibraryFragment(
             generator_class=generator.class_name(),
             instruction_data=InstructionData.create(instruction),
             sample=sample,
@@ -73,6 +63,22 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
 
         instruction: InstructionT = self.instruction_data.instruction
         return instruction
+
+    @staticmethod
+    def _get_average_feature(
+        sample: CyclicArray,
+        window: Window,
+        transformer: FFTTransformer,
+    ) -> Histogram:
+        features: List[Histogram] = []
+        sample_rate = transformer.sample_rate
+        for phase_id in range(LIBRARY_PHASES_PER_SAMPLE):
+            phase = phase_id / LIBRARY_PHASES_PER_SAMPLE
+            windowed_audio = sample.get_windowed_fragment(phase, window)
+            transformed_windowed_audio = transformer.calculate_feature(windowed_audio, sample_rate)
+            features.append(transformed_windowed_audio)
+
+        return transformer.mean(features)
 
     def get_fragment(self, shift: int, config: Config, window: Window) -> Fragment:
         windowed_audio = self.sample.get_windowed_fragment(shift, window)

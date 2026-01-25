@@ -120,8 +120,8 @@ class Histogram(DataModel):
         if not isinstance(other, Histogram):
             return False
 
-        edges_equal = self.xp.array_equal(self.edges, other.edges)
-        values_equal = self.xp.array_equal(self.values, other.values)
+        edges_equal: bool = self.xp.array_equal(self.edges, other.edges)
+        values_equal: bool = self.xp.array_equal(self.values, other.values)
         return edges_equal and values_equal
 
     def __copy__(self) -> Histogram:
@@ -183,13 +183,6 @@ class Histogram(DataModel):
 
         return Interval(self.edges[i], self.edges[i + 1])
 
-    def apply_with(
-        self,
-        function: MultaryTransformation[ArrayOrScalar],
-        *histograms: Histogram,
-    ) -> Histogram:
-        return Histogram.apply(function, self, *histograms)
-
     @staticmethod
     def _from_density(
         density: ArrayOrScalar,
@@ -232,9 +225,16 @@ class Histogram(DataModel):
             raise TypeError(f"All histograms must be of the same array type, got {', '.join(str(t) for t in types)}")
 
         edges = histograms[0].edges
-        xp = get_array_module(edges)
-        if equal_edges and not all(xp.array_equal(histogram.edges, edges) for histogram in histograms):
+        module = get_array_module(edges)
+        if equal_edges and not all(module.array_equal(histogram.edges, edges) for histogram in histograms):
             raise ValueError("All histograms must have the same edges")
+
+    def apply_with(
+        self,
+        function: MultaryTransformation[ArrayOrScalar],
+        *histograms: Histogram,
+    ) -> Histogram:
+        return Histogram.apply(function, self, *histograms)
 
     @staticmethod
     def apply(
@@ -261,6 +261,13 @@ class Histogram(DataModel):
         densities = (histogram.densities for histogram in histograms)
         new_density = function(*densities)
         return Histogram._from_density(new_density, histograms[0])
+
+    def reduce_with(
+        self,
+        function: BinaryTransformation[ArrayOrScalar],
+        *histograms: Histogram,
+    ) -> Histogram:
+        return Histogram.reduce(function, self, *histograms)
 
     @staticmethod
     def reduce(
@@ -311,14 +318,14 @@ class Histogram(DataModel):
         if len(histograms) == 1:
             return (histograms[0],)
 
-        xp = get_array_module(histograms[0].edges)
-        all_edges: Array = xp.concatenate([histogram.edges for histogram in histograms])
-        merged_edges: Array = xp.unique(all_edges)
+        module = get_array_module(histograms[0].edges)
+        all_edges: Array = module.concatenate([histogram.edges for histogram in histograms])
+        merged_edges: Array = module.unique(all_edges)
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
     @staticmethod
     def from_constant(
-        density: Float,
+        density: Numeric,
         edges: Array,
     ) -> Histogram:
         """
@@ -332,8 +339,8 @@ class Histogram(DataModel):
             Histogram with constant densities.
         """
         num_bins = len(edges) - 1
-        xp = get_array_module(edges)
-        values: Array = xp.full(num_bins, density * xp.diff(edges))
+        module = get_array_module(edges)
+        values: Array = module.full(num_bins, density * module.diff(edges))
         return Histogram(edges=edges, values=values)
 
     def rebin(
@@ -630,14 +637,14 @@ class Histogram(DataModel):
 
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
-            return rebinned_self.apply_with(rebinned_self.xp.multiply, rebinned_other)
+            return rebinned_self.reduce_with(rebinned_self.xp.multiply, rebinned_other)
 
         if isinstance(other, Array):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
 
             other = Histogram(edges=self.edges.copy(), values=other)
-            return self.apply_with(self.xp.multiply, other)
+            return self.reduce_with(self.xp.multiply, other)
 
         raise TypeError(f"Unsupported type for multiplication: {type(other)}, expected Histogram, Array, or Numeric")
 

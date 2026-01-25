@@ -23,12 +23,18 @@ def get_array_module(array: Array) -> ModuleType:
     Get the appropriate array module (NumPy or CuPy) based on the input array type.
 
     Args:
-        array (Array): Input array which can be either a NumPy ndarray or a CuPy ndarray.
+        Input array which can be either a NumPy ndarray or a CuPy ndarray.
 
     Returns:
-        xp.Module: The corresponding array module (np or xp).
+        The corresponding array module (np or xp).
+
+    Raises:
+        TypeError: If the input array is neither a NumPy ndarray nor a CuPy ndarray
     """
     if isinstance(array, xp.ndarray):
         return xp
 
-    return np
+    if isinstance(array, np.ndarray):
+        return np
+
+    raise TypeError(f"Unsupported array type: {type(array)}")

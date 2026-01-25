@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import List, Optional, Sequence, Union, overload
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import ArrayOrScalar, Float, MultaryTransformation
+from sampletones.types.array import Array, ArrayOrScalar, MultaryTransformation, Numeric
 from sampletones.utils.transformations.morpher import PowerMorpher
 from sampletones.utils.transformations.transformation import Transformation
 
@@ -106,30 +106,78 @@ class FFTTransformer(BaseModel):
         spectrum: Histogram = self.calculate_spectrum(audio, sample_rate, fft_size)
         return self.forward(spectrum)
 
-    def forward(self, spectrum: Histogram) -> Histogram:
+    @overload
+    def forward(self, spectrum: Histogram) -> Histogram: ...
+
+    @overload
+    def forward(self, spectrum: ArrayOrScalar) -> ArrayOrScalar: ...
+
+    def forward(self, spectrum: Union[ArrayOrScalar, Histogram]) -> Union[ArrayOrScalar, Histogram]:
         """
-        Apply the forward `x ↦ x ^ a` transformation on a spectrum.
+        Apply the forward `x ↦ x ^ a` transformation on a spectrum/array/scalar.
 
         Args:
-            spectrum (Histogram): Input FFT spectrum histogram.
+            spectrum: Input FFT spectrum histogram.
 
         Returns:
-            Histogram: FFT feature.
-        """
-        return spectrum.apply_with(self.transformations.forward)
+            FFT feature.
 
-    def backward(self, feature: Histogram) -> Histogram:
+        Raises:
+            TypeError: If the input is not a Histogram or Array/Numeric instance.
         """
-        Apply the backward `x ↦ x ^ (1 / a)` transformation on an FFT feature.
+        if isinstance(spectrum, Histogram):
+            return spectrum.apply_with(self.transformations.forward)
+
+        if isinstance(spectrum, ArrayOrScalar):
+            return self.transformations.forward(spectrum)
+
+        raise TypeError("Input must be a Histogram or Array/Numeric instance")
+
+    @overload
+    def backward(self, feature: Histogram) -> Histogram: ...
+
+    @overload
+    def backward(self, feature: ArrayOrScalar) -> ArrayOrScalar: ...
+
+    def backward(self, feature: Union[ArrayOrScalar, Histogram]) -> Union[ArrayOrScalar, Histogram]:
+        """
+        Apply the backward `x ↦ x ^ (1 / a)` transformation on an FFT feature/array/scalar.
         The feature is expected to be of the form `spectrum ^ a`.
 
         Args:
-            feature (Histogram): Input FFT feature histogram.
+            feature: Input FFT feature histogram.
 
         Returns:
-            Histogram: Spectrum.
+            Spectrum.
+
+        Raises:
+            TypeError: If the input is not a Histogram or Array/Numeric instance.
         """
-        return feature.apply_with(self.transformations.backward)
+        if isinstance(feature, Histogram):
+            return feature.apply_with(self.transformations.backward)
+
+        if isinstance(feature, ArrayOrScalar):
+            return self.transformations.backward(feature)
+
+        raise TypeError("Input must be a Histogram or Array/Numeric instance")
+
+    def compose_function(
+        self,
+        operation: MultaryTransformation[ArrayOrScalar],
+    ) -> MultaryTransformation[ArrayOrScalar]:
+        """
+        A wrapper for composing an operation on FFT features with transformations.
+
+        The composed function is of the form:
+
+            `f[ op( f^-1(x_1), f^-1(x_2), ..., f^-1(x_n) ) ]`
+
+        where `f` is the forward transformation and `f^-1` is the backward transformation.
+
+        Args:
+            operation (MultaryTransformation): Operation to compose.
+        """
+        return self.transformations.compose_function(operation)
 
     def apply(
         self,
@@ -139,15 +187,21 @@ class FFTTransformer(BaseModel):
         """
         Apply an operation on an FFT feature with transformations.
 
-        `[ op( feature ) ] ^ (1 / a)`
+            `[ op( feature ) ] ^ (1 / a)`
 
         Args:
-            operation (MultaryTransformation): Operation to apply.
+            operation: Operation to apply.
             *features: Input FFT features.
 
         Returns:
-            Histogram: Resulting FFT feature.
+            Resulting FFT feature.
+
+        Raises:
+            TypeError: If any of the features is not a Histogram.
         """
+        if not all(isinstance(feature, Histogram) for feature in features):
+            raise TypeError("All features must be Histogram instances")
+
         function = self.transformations.compose_function(operation)
         return Histogram.apply(function, *features)
 
@@ -159,31 +213,72 @@ class FFTTransformer(BaseModel):
         """
         Reduce multiple FFT features with an operation and transformations.
 
-        `[ op( feature1, feature2, ..., featureN ) ] ^ (1 / a)`
+            `[ op( feature1, feature2, ..., featureN ) ] ^ (1 / a)`
 
         Args:
             operation (MultaryTransformation): Operation to reduce with.
             *features: Input FFT features.
 
         Returns:
-            Histogram: Resulting FFT feature.
+            Resulting FFT feature.
+
+        Raises:
+            TypeError: If any of the features is not a Histogram.
         """
+        if not all(isinstance(feature, Histogram) for feature in features):
+            raise TypeError("All features must be Histogram instances")
+
         function = self.transformations.compose_function(operation)
         return Histogram.reduce(function, *features)
 
-    def add(
-        self,
-        *features: Histogram,
-    ) -> Histogram:
+    def to_features(self, features_or_scalars: Sequence[Union[Numeric, Histogram]]) -> List[Histogram]:
         """
-        A wrapper for binary addition of two FFT features with transformations.
-
-        `[feature1 + feature2] ^ (1 / a)`
+        Convert a list of features/scalars to FFT features.
 
         Args:
-            feature1 (Histogram): First FFT feature.
-            feature2 (Histogram): Second FFT feature.
+            *features_or_scalars: Input FFT features/scalars.
+
+        Returns:
+            Converted FFT features.
+
+        Raises:
+            TypeError: If at least one of the features is not a Histogram.
+            ValueError: If Histogram features have inconsistent edges.
         """
+        if not any(isinstance(feature, Histogram) for feature in features_or_scalars):
+            raise TypeError("At least one feature must be a Histogram instance")
+
+        edges: Array = [feature.edges for feature in features_or_scalars if isinstance(feature, Histogram)][0]
+        if not all(
+            isinstance(feature, Histogram) and np.array_equal(feature.edges, edges)
+            for feature in features_or_scalars
+            if isinstance(feature, Histogram)
+        ):
+            raise ValueError("All Histogram features must have the same edges")
+
+        features: List[Histogram] = [
+            self.forward(Histogram.from_constant(feature, edges)) if isinstance(feature, Numeric) else feature
+            for feature in features_or_scalars
+        ]
+
+        return features
+
+    def add(
+        self,
+        *features_or_scalars: Union[Numeric, Histogram],
+    ) -> Histogram:
+        """
+        A wrapper for binary addition of FFT features/scalars with transformations.
+
+            `[ feature1 + feature2 + ... + featureN ] ^ (1 / a)`
+
+        Args:
+            features_or_scalars: Input FFT features/scalars.
+
+        Returns:
+            Resulting FFT feature.
+        """
+        features: List[Histogram] = self.to_features(features_or_scalars)
         return self.reduce(np.add, *features)
 
     def subtract(
@@ -194,7 +289,7 @@ class FFTTransformer(BaseModel):
         """
         A wrapper for binary subtraction of two FFT features with transformations.
 
-        `[feature1 - feature2] ^ (1 / a)`
+            `[ feature1 - feature2 ] ^ (1 / a)`
 
         Args:
             feature1 (Histogram): First FFT feature.
@@ -202,21 +297,23 @@ class FFTTransformer(BaseModel):
         """
         return self.apply(np.subtract, feature1, feature2)
 
-    def multiply(
-        self,
-        feature: Histogram,
-        scalar: Float,
-    ) -> Histogram:
+    def multiply(self, *features_or_scalars: Union[Numeric, Histogram]) -> Histogram:
         """
-        Multiply an FFT feature by a scalar with transformations.
+        Multiply an FFT feature by another features/scalars with transformations.
 
-        `[ feature ⋅ α ] ^ (1 / a)`
+            `[ feature1 ⋅ feature2 ⋅ ... ⋅ featureN ] ^ (1 / a)`
+
+        Args:
+            *features: Input FFT features/scalars.
+
+        Returns:
+            Histogram: Resulting FFT feature.
+
+        Raises:
+            TypeError: If at least one of the features is not a Histogram.
         """
-        return self.reduce(
-            np.multiply,
-            feature,
-            Histogram.from_constant(scalar, feature.edges),
-        )
+        features: List[Histogram] = self.to_features(features_or_scalars)
+        return self.reduce(np.multiply, *features)
 
     def mean(
         self,
@@ -225,7 +322,7 @@ class FFTTransformer(BaseModel):
         """
         Calculate the mean of multiple FFT features with transformations.
 
-        `[ mean(feature1, feature2, ..., featureN) ] ^ (1 / a)`
+            `[ mean(feature1, feature2, ..., featureN) ] ^ (1 / a)`
 
         Args:
             features: Input FFT features.
@@ -239,6 +336,4 @@ class FFTTransformer(BaseModel):
         if not features:
             raise ValueError("At least one feature is required to compute the mean")
 
-        return self.reduce(np.add, *features).apply_with(
-            lambda data: data / len(features),
-        )
+        return self.reduce(np.add, *features).apply_with(lambda x: x / self.forward(len(features)))

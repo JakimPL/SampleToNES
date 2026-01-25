@@ -58,11 +58,10 @@ class DataModel(BaseModel):
                 raise AttributeError(f"{fb_builder.__name__} missing '{add_method}' for field '{field_name}'")
 
             annotation = field_info.annotation
-            print(field_name, field_info, annotation)
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            if annotation is (Array, np.ndarray, xp.ndarray):
+            if annotation in (Array, np.ndarray, xp.ndarray):
                 offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
