@@ -5,6 +5,7 @@ from typing import List, Optional, Sequence, Union, overload
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
 from sampletones.types.array import (
@@ -50,11 +51,13 @@ class FFTTransformer(BaseModel):
     to ensure all that mapping `x ↦ x ^ a` is well-defined.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
 
-    transformations: Transformation = Field(..., description="FFT feature transformations")
+    transformation: Transformation = Field(..., description="FFT feature transformations")
     sample_rate: int = Field(
         ...,
+        ge=MIN_SAMPLE_RATE,
+        le=MAX_SAMPLE_RATE,
         description="Sample rate used for FFT calculations.",
     )
     spectrum_method: SpectrumMethod = Field(
@@ -62,8 +65,8 @@ class FFTTransformer(BaseModel):
         description="Method for computing the spectrum. Regular FFT is used by default.",
     )
 
-    @classmethod
-    def from_gamma(cls, gamma: int, sample_rate: int) -> FFTTransformer:
+    @staticmethod
+    def from_gamma(gamma: int, sample_rate: int) -> FFTTransformer:
         """
         Create an FFTTransformer from a gamma parameter, and sample rate.
 
@@ -75,9 +78,9 @@ class FFTTransformer(BaseModel):
             FFTTransformer: Configured FFTTransformer instance.
         """
         assert 0 <= gamma <= MAX_TRANSFORMATION_GAMMA, f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]"
-        morpher = PowerMorpher(gamma / MAX_TRANSFORMATION_GAMMA)
-        transformations = morpher.transformations
-        return cls(transformations=transformations, sample_rate=sample_rate)
+        morpher = PowerMorpher(gamma=gamma / MAX_TRANSFORMATION_GAMMA)
+        transformation = morpher.transformation
+        return FFTTransformer(transformation=transformation, sample_rate=sample_rate)
 
     def calculate_spectrum(
         self,
@@ -133,10 +136,10 @@ class FFTTransformer(BaseModel):
             TypeError: If the input is not a Histogram or Array/Numeric instance.
         """
         if isinstance(spectrum, Histogram):
-            return spectrum.apply_with(self.transformations.forward)
+            return spectrum.apply_with(self.transformation.forward)
 
         if isinstance(spectrum, ArrayOrScalarClasses):
-            return self.transformations.forward(spectrum)
+            return self.transformation.forward(spectrum)
 
         raise TypeError("Input must be a Histogram or Array/Numeric instance")
 
@@ -161,10 +164,10 @@ class FFTTransformer(BaseModel):
             TypeError: If the input is not a Histogram or Array/Numeric instance.
         """
         if isinstance(feature, Histogram):
-            return feature.apply_with(self.transformations.backward)
+            return feature.apply_with(self.transformation.backward)
 
         if isinstance(feature, ArrayOrScalarClasses):
-            return self.transformations.backward(feature)
+            return self.transformation.backward(feature)
 
         raise TypeError("Input must be a Histogram or Array/Numeric instance")
 
@@ -184,7 +187,7 @@ class FFTTransformer(BaseModel):
         Args:
             operation (MultaryTransformation): Operation to compose.
         """
-        return self.transformations.compose_function(operation)
+        return self.transformation.compose_function(operation)
 
     def apply(
         self,
@@ -209,7 +212,7 @@ class FFTTransformer(BaseModel):
         if not all(isinstance(feature, Histogram) for feature in features):
             raise TypeError("All features must be Histogram instances")
 
-        function = self.transformations.compose_function(operation)
+        function = self.transformation.compose_function(operation)
         return Histogram.apply(function, *features)
 
     def reduce(
@@ -235,7 +238,7 @@ class FFTTransformer(BaseModel):
         if not all(isinstance(feature, Histogram) for feature in features):
             raise TypeError("All features must be Histogram instances")
 
-        function = self.transformations.compose_function(operation)
+        function = self.transformation.compose_function(operation)
         return Histogram.reduce(function, *features)
 
     def to_features(self, features_or_scalars: Sequence[Union[Numeric, Histogram]]) -> List[Histogram]:

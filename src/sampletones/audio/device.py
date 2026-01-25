@@ -19,9 +19,9 @@ class CurrentDevice(BaseModel):
     sample_rate: SampleRate = Field(..., description="Sample rate")
     host_api: int = Field(..., description="Host API index")
 
-    @classmethod
-    def default(cls) -> CurrentDevice:
-        return cls(
+    @staticmethod
+    def default() -> CurrentDevice:
+        return CurrentDevice(
             device_index=-1,
             name="",
             sample_rate=DEFAULT_SAMPLE_RATE,
@@ -43,8 +43,5 @@ class AudioDevice(BaseModel):
     is_default_input: bool = Field(..., description="Whether the device is the default input device")
     is_default_output: bool = Field(..., description="Whether the device is the default output device")
     default_sample_rate: SampleRate = Field(..., description="Default sample rate of the device")
-    supported_sample_rates: List[SampleRate] = Field(
-        ...,
-        description="List of supported sample rates for the device",
-    )
+    supported_sample_rates: List[SampleRate] = Field(..., description="List of supported sample rates for the device")
     host_api: int = Field(..., description="Host API index")

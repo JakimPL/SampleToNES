@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
-from functools import partial
+from functools import cached_property, partial
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.types.array import ArrayOrScalar, UnaryTransformation
 
@@ -7,8 +8,7 @@ from .functions import identity, power, power_inverse
 from .transformation import Transformation
 
 
-@dataclass(frozen=True)
-class PowerMorpher:
+class PowerMorpher(BaseModel):
     """
     Provides a range of power-based transformations for FFT features,
     all of the form `x ^ a`, where `a` is derived from a gamma parameter.
@@ -19,41 +19,46 @@ class PowerMorpher:
         - `gamma = 1   -> a = 4.0`   (sharp mapping)
     """
 
-    gamma: float
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
-    power: float = field(init=False)
-    transformations: Transformation = field(init=False)
+    gamma: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Gamma parameter in the range [0, 1] controlling the transformation.",
+    )
 
-    def __post_init__(self) -> None:
+    @cached_property
+    def power(self) -> float:
         """
-        Validate the gamma parameter and set up the transformations.
+        The power 'a' derived from the gamma parameter.
+
+        Mapped from gamma in [0, 1] to [0.25, 4].
+
+        Returns:
+            float: The computed power 'a'.
+        """
+        return 2 ** ((self.gamma - 0.5) * 4)
+
+    @cached_property
+    def transformation(self) -> Transformation:
+        """
+        Set up the transformation.
 
         If gamma is 0.5, the identity transformation is used.
 
-        Raises:
-            TypeError: If gamma is not a float.
-            ValueError: If gamma is not in the range [0, 1].
+        Returns:
+            Transformation: The forward and backward transformations.
         """
-        if not isinstance(self.gamma, float):
-            raise TypeError(f"The gamma parameter must be a float, got {type(self.gamma)}")
-
-        if not 0.0 <= self.gamma <= 1.0:
-            raise ValueError(f"The gamma parameter must be in the range [0, 1], got {self.gamma}")
-
         forward: UnaryTransformation[ArrayOrScalar]
         backward: UnaryTransformation[ArrayOrScalar]
 
         if self.gamma == 0.5:
-            a = 1.0
             forward = identity
             backward = identity
 
         else:
-            a = 2 ** ((self.gamma - 0.5) * 4)  # from [0, 1] to [0.25, 4]
-            forward = partial(power, a=a)
-            backward = partial(power_inverse, a=a)
+            forward = partial(power, a=self.power)
+            backward = partial(power_inverse, a=self.power)
 
-        transformation = Transformation(forward, backward)
-
-        object.__setattr__(self, "power", a)
-        object.__setattr__(self, "transformations", transformation)
+        return Transformation(forward, backward)
