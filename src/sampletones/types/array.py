@@ -8,7 +8,7 @@ from sampletones import xp, xp_typing
 
 T = TypeVar("T")
 
-Integer = Union[int, np.integer, xp.integer]
+Integer = Union[bool, int, np.integer, xp.integer]
 Float = Union[float, np.floating, xp.floating]
 Numeric = Union[Integer, Float]
 Array = Union[np.ndarray, xp.ndarray]

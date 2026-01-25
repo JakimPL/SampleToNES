@@ -10,6 +10,7 @@ import pytest
 from sampletones import xp
 from sampletones.types.array import DTypeLike
 from sampletones.utils.arrays import clamp, infer_dtype, isnan, pad, trim
+from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 
 
@@ -804,11 +805,7 @@ class TestClamp:
             return
 
         result = clamp(test_case.value, test_case.min_value, test_case.max_value)
-        assert type(result) == type(test_case.expected_result)
-        if isinstance(test_case.expected_result, float) and math.isnan(test_case.expected_result):
-            assert math.isnan(result)
-        else:
-            assert result == test_case.expected_result
+        assert_array_equal(result, test_case.expected_result)
 
 
 class TestPad:
@@ -994,10 +991,8 @@ class TestPad:
         ):
             return
 
-        assert isinstance(test_case.expected_result, np.ndarray)
         result = pad(test_case.array, test_case.left, test_case.right, test_case.value)
-        np.testing.assert_array_equal(result, test_case.expected_result)
-        assert result.dtype == test_case.expected_result.dtype
+        assert_array_equal(result, test_case.expected_result)
 
 
 class TestTrim:
@@ -1072,4 +1067,4 @@ class TestTrim:
             return
 
         result = trim(test_case.input_array)
-        np.testing.assert_array_equal(result, test_case.expected_result)
+        assert_array_equal(result, test_case.expected_result)
