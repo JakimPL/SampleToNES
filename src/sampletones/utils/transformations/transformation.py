@@ -13,19 +13,22 @@ class Transformation(NamedTuple):
     A general transformation structure that holds an operation and its inverse.
 
     Facilitates operations of the general form:
-        `f^-1[ op ( f(x_i), i = 1 ... n) ]`
+        `f[ op ( f^-1(x_i), i = 1 ... n) ]`
 
     Function `f` is called forward transformation, which sends FFT features to a transformed space,
     while `f^-1`, its inverse called backward transformation, brings the transformed features
     back to the original space.
 
+    Operations are performed in the original space after applying the backward transformation,
+    then the result is transformed back to feature space using the forward transformation.
+
     In particular:
     - Unary operations:
-        `f^-1[ op ( f(x) ) ]`
+        `f[ op ( f^-1(x) ) ]`
     - Binary operations:
-        `f^-1[ op ( f(x), f(y) ) ]`
+        `f[ op ( f^-1(x), f^-1(y) ) ]`
     - Scalar multiplication:
-        `f^-1[ f( x ) ⋅ α ]`
+        `f[ f^-1( x ) ⋅ α ]`
     """
 
     forward: UnaryTransformation[ArrayOrScalar]
@@ -115,6 +118,9 @@ class Transformation(NamedTuple):
 
         Returns:
             Composed multary transformation.
+
+        Raises:
+            TypeError: If operation is not callable.
         """
         if not callable(operation):
             raise TypeError("Operation must be a callable multary transformation")
@@ -137,8 +143,6 @@ class Transformation(NamedTuple):
         Returns:
             Composed transformation.
         """
-        if not isinstance(other, Transformation):
-            raise TypeError("Other must be a Transformation instance")
 
         def forward(x: ArrayOrScalar) -> ArrayOrScalar:
             return other.forward(self.forward(x))
@@ -153,7 +157,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrScalar,
     ) -> ArrayOrScalar:
         """
-        Add two FFT features with transformations.
+        Add multiple FFT features with transformations.
             `f[ f^-1(x_1) + f^-1(x_2) + ... + f^-1(x_n) ]`
 
         Args:
@@ -188,7 +192,7 @@ class Transformation(NamedTuple):
         *arrays: ArrayOrScalar,
     ) -> ArrayOrScalar:
         """
-        Multiply two FFT features with transformations.
+        Multiply multiple FFT features with transformations.
             `f[ f^-1(x_1) ⋅ f^-1(x_2) ⋅ ... ⋅ f^-1(x_n) ]`
 
         Args:
