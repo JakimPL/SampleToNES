@@ -650,7 +650,7 @@ class TestEdgeCases:
         assert len(bidirectional) == 2
 
     def test_numeric_type_coercion_false_zero_zero_float(self) -> None:
-        bidirectional = BidirectionalHashMap[int | float | bool]()
+        bidirectional = BidirectionalHashMap[Union[int, float, bool]]()
         bidirectional["zero_int"] = 0
 
         with pytest.raises(ValueError, match="Value False is already mapped to the key zero_int"):
@@ -671,7 +671,7 @@ class TestEdgeCases:
             INITIAL = 0
             ACTIVE = 1
 
-        bidirectional = BidirectionalHashMap[int | Status]()
+        bidirectional = BidirectionalHashMap[Union[int, Status]]()
         bidirectional["int_zero"] = 0
         bidirectional["enum_zero"] = Status.INITIAL
 
@@ -689,7 +689,7 @@ class TestEdgeCases:
             MEDIUM = 1
             HIGH = 2
 
-        bidirectional = BidirectionalHashMap[int | Priority]()
+        bidirectional = BidirectionalHashMap[Union[int, Priority]]()
         bidirectional["int_zero"] = 0
 
         with pytest.raises(ValueError, match="is already mapped to the key int_zero"):

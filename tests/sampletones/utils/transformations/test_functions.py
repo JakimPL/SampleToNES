@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pytest
@@ -634,7 +634,7 @@ class TestPowerInverse:
         a: float
         expected_result: Any
         test_id: str
-        expected_warning: Any = None
+        expected_warning: Optional[Any] = None
 
     test_cases = [
         TestCase(
