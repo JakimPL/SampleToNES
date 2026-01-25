@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Callable, TypeVar, Union
+from typing import Callable, TypeAlias, TypeVar, Union
 
 import numpy as np
 
@@ -13,9 +13,15 @@ Numeric = Union[Integer, Float]
 Array = Union[np.ndarray, xp.ndarray]
 ArrayOrScalar = Union[Numeric, Array]
 
-UnaryTransformation = Callable[[T], T]
-BinaryTransformation = Callable[[T, T], T]
-MultaryTransformation = Callable[..., T]
+IntegerClasses = (int, np.integer, xp.integer)  # pylint: disable=invalid-name
+FloatClasses = (float, np.floating, xp.floating)  # pylint: disable=invalid-name
+NumericClasses = IntegerClasses + FloatClasses  # pylint: disable=invalid-name
+ArrayClasses = (np.ndarray, xp.ndarray)  # pylint: disable=invalid-name
+ArrayOrScalarClasses = NumericClasses + ArrayClasses  # pylint: disable=invalid-name
+
+UnaryTransformation: TypeAlias = Callable[[T], T]
+BinaryTransformation: TypeAlias = Callable[[T, T], T]
+MultaryTransformation: TypeAlias = Callable[..., T]
 
 
 def get_array_module(array: Array) -> ModuleType:
@@ -31,10 +37,14 @@ def get_array_module(array: Array) -> ModuleType:
     Raises:
         TypeError: If the input array is neither a NumPy ndarray nor a CuPy ndarray
     """
+    module: ModuleType
     if isinstance(array, xp.ndarray):
-        return xp
+        module = xp
 
     if isinstance(array, np.ndarray):
-        return np
+        module = np
 
-    raise TypeError(f"Unsupported array type: {type(array)}")
+    else:
+        raise TypeError(f"Unsupported array type: {type(array)}")
+
+    return module

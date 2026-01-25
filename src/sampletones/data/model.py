@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from sampletones import xp
 from sampletones.exceptions import DeserializationError, SerializationError
-from sampletones.types.array import Array, Numeric
+from sampletones.types.array import Array, ArrayClasses, Numeric, NumericClasses
 from sampletones.types.callback import Callback
 from sampletones.types.data import SerializedData
 from sampletones.types.path import Pathlike
@@ -58,10 +58,11 @@ class DataModel(BaseModel):
                 raise AttributeError(f"{fb_builder.__name__} missing '{add_method}' for field '{field_name}'")
 
             annotation = field_info.annotation
+
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            if annotation in (Array, np.ndarray, xp.ndarray):
+            if annotation in (Array, *ArrayClasses):
                 offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
@@ -80,7 +81,7 @@ class DataModel(BaseModel):
             elif annotation is Path:
                 offsets[field_name] = builder.CreateString(str(value))
 
-            elif issubclass(annotation, (int, float, bool, Numeric)):
+            elif issubclass(annotation, (bool, *NumericClasses)):
                 offsets[field_name] = value
 
             else:
@@ -110,8 +111,10 @@ class DataModel(BaseModel):
             if annotation is None:
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
-            value: Union[TypeVar, DataModel, int, float, Array, np.ndarray, xp.ndarray, List[Any], str, Path, None]
-            if annotation in (Array, np.ndarray, xp.ndarray):
+            value: Union[
+                TypeVar, DataModel, bool, int, float, Array, np.ndarray, xp.ndarray, List[Any], str, Path, None
+            ]
+            if annotation in (Array, *ArrayClasses):
                 value = cls._deserialize_numpy_array(fb_object, field_name)
 
             elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:

@@ -12,11 +12,13 @@ from sampletones.data import DataModel, FlatBufferBuilderProtocol
 from sampletones.data.scheme import FlatBufferReaderProtocol
 from sampletones.types.array import (
     Array,
+    ArrayClasses,
     ArrayOrScalar,
     BinaryTransformation,
     Float,
     MultaryTransformation,
     Numeric,
+    NumericClasses,
     get_array_module,
 )
 from sampletones.utils import is_increasing
@@ -83,10 +85,10 @@ class Histogram(DataModel):
             TypeError: If edges or values are not numpy arrays.
             TypeError: If edges and values are not of the same type.
         """
-        if not isinstance(self.edges, Array):
+        if not isinstance(self.edges, ArrayClasses):
             raise TypeError(f"edges must be a numpy array, got {type(self.edges)}")
 
-        if not isinstance(self.values, Array):
+        if not isinstance(self.values, ArrayClasses):
             raise TypeError(f"values must be a numpy array, got {type(self.values)}")
 
         if len({type(self.edges), type(self.values)}) != 1:
@@ -376,7 +378,7 @@ class Histogram(DataModel):
             histogram: Histogram = target_bins
             edges = histogram.edges.copy()
 
-        elif isinstance(target_bins, Array):
+        elif isinstance(target_bins, ArrayClasses):
             if not is_increasing(target_bins):
                 raise ValueError("array of edges need to be strictly increasing")
 
@@ -419,7 +421,7 @@ class Histogram(DataModel):
             TypeError: If target_bins is not an Array.
             ValueError: If target_bins are not strictly increasing.
         """
-        if not isinstance(target_bins, Array):
+        if not isinstance(target_bins, ArrayClasses):
             raise TypeError(f"target_bins must be an Array, got {type(target_bins)}")
 
         if not is_increasing(target_bins):
@@ -569,14 +571,14 @@ class Histogram(DataModel):
             ValueError: If array length doesn't match values length.
             TypeError: If other is not Histogram, Array, or Numeric.
         """
-        if isinstance(other, Numeric):
+        if isinstance(other, NumericClasses):
             return self.apply_with(lambda d: d + other)
 
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
             return Histogram(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
 
-        if isinstance(other, Array):
+        if isinstance(other, ArrayClasses):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
 
@@ -632,14 +634,14 @@ class Histogram(DataModel):
             ValueError: If array length doesn't match values length.
             TypeError: If other is not Histogram, Array, or Numeric.
         """
-        if isinstance(other, Numeric):
+        if isinstance(other, NumericClasses):
             return Histogram(edges=self.edges.copy(), values=self.values * other)
 
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
             return rebinned_self.reduce_with(rebinned_self.xp.multiply, rebinned_other)
 
-        if isinstance(other, Array):
+        if isinstance(other, ArrayClasses):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
 
@@ -702,13 +704,13 @@ class Histogram(DataModel):
         Raises:
             ValueError: If array length doesn't match values length.
         """
-        if isinstance(other, Numeric):
+        if isinstance(other, NumericClasses):
             return self.__add__(-other)
 
         if isinstance(other, Histogram):
             return self.__add__(other * -1)
 
-        if isinstance(other, Array):
+        if isinstance(other, ArrayClasses):
             return self.__add__(-other)
 
         raise TypeError(f"Unsupported type for subtraction: {type(other)}, expected Histogram, Array, or Numeric")
@@ -759,13 +761,13 @@ class Histogram(DataModel):
             ValueError: If array length doesn't match values length.
             TypeError: If other is not Histogram, Array, or Numeric.
         """
-        if isinstance(other, Numeric):
+        if isinstance(other, NumericClasses):
             return Histogram(edges=self.edges.copy(), values=self.values / other)
 
         if isinstance(other, Histogram):
             return self.__mul__(other**-1)
 
-        if isinstance(other, Array):
+        if isinstance(other, ArrayClasses):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
             return Histogram(edges=self.edges.copy(), values=self.values / other)
