@@ -841,12 +841,12 @@ class Histogram(DataModel):
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.histogram import FBHistogram
+        from sampletones_schemas.collections import FBHistogram
 
         return FBHistogram
 
     @classmethod
     def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.histogram import FBHistogram
+        from sampletones_schemas.collections import FBHistogram
 
         return FBHistogram.FBHistogram
