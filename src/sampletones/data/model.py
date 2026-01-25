@@ -101,7 +101,6 @@ class DataModel(BaseModel):
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
-            print(field_name)
             camel = snake_to_camel(field_name)
             getter = getattr(fb_object, camel, None)
             if getter is None:

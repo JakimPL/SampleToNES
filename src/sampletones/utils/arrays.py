@@ -121,7 +121,7 @@ def isnan(value: Optional[Numeric]) -> bool:
     return nan
 
 
-def infer_dtype(value: Numeric, dtype: DTypeLike) -> DTypeLike:
+def infer_dtype(value: Optional[Numeric], dtype: DTypeLike) -> DTypeLike:
     """
     Infers the appropriate dtype for a numeric value based on the provided dtype.
 
@@ -136,14 +136,17 @@ def infer_dtype(value: Numeric, dtype: DTypeLike) -> DTypeLike:
     Returns:
         The inferred dtype suitable for the value.
     """
+    module = get_array_module(value)
+    float32: DTypeLike = module.float32
+    if value is None:
+        return float32
+
     if not isinstance(value, NumericClasses):
         raise TypeError(f"Value must be a numeric type, got {type(value)}")
 
-    module = get_array_module(value)
-    if module.issubdtype(dtype, module.floating) or (not module.isfinite(value)):
+    if module.issubdtype(dtype, module.floating) or module.isfinite(value):
         return dtype
 
-    float32: DTypeLike = module.float32
     return float32
 
 
@@ -173,6 +176,7 @@ def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
         ValueError: If left is greater than right, or the array is not 1-dimensional.
 
     Examples:
+        >>> import numpy as np
         >>> audio = np.array([1, 2, 3, 4, 5])
         >>> pad(audio, -2, 7, value=0)
         array([0, 0, 1, 2, 3, 4, 5, 0, 0])
@@ -194,7 +198,6 @@ def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
     module = get_array_module(array)
     n = len(array)
     length = right - left
-    value = module.nan if isnan(value) else value
     dtype = infer_dtype(value, array.dtype)
     output = module.full(length, value, dtype=dtype)
 
@@ -229,6 +232,7 @@ def trim(array: Array) -> Array:
         ValueError: If array is not 1-dimensional.
 
     Examples:
+        >>> import numpy as np
         >>> trim(np.array([1, 1, 2, 2, 3, 3, 3, 3]))
         array([1, 1, 2, 2, 3])
         >>> trim(np.array([5, 5, 5, 5]))
@@ -265,6 +269,7 @@ def is_increasing(array: Array) -> bool:
         False otherwise.
 
     Examples:
+        >>> import numpy as np
         >>> is_increasing(np.array([1, 2, 5, 10]))
         True
         >>> is_increasing(np.array([1, 2, 2, 5]))

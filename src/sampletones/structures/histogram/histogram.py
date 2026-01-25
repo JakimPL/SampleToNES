@@ -44,6 +44,7 @@ class Histogram(DataModel):
         values: Array of n bin values.
 
     Examples:
+        >>> import numpy as np
         >>> edges = np.array([0.0, 2.0, 5.0, 10.0])
         >>> values = np.array([1.0, 2.0, 1.5])
         >>> hist = Histogram(edges, values)
