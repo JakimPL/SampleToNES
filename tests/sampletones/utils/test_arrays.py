@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any, Type, Union
 
@@ -9,7 +8,7 @@ import pytest
 
 from sampletones import xp
 from sampletones.types.array import DTypeLike
-from sampletones.utils.arrays import clamp, infer_dtype, isnan, pad, trim
+from sampletones.utils.arrays import clamp, infer_dtype, is_increasing, isnan, pad, trim
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 
@@ -1068,3 +1067,110 @@ class TestTrim:
 
         result = trim(test_case.input_array)
         assert_array_equal(result, test_case.expected_result)
+
+
+class TestIsIncreasing:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        input_array: Any
+        expected_result: bool
+        test_id: str
+
+    test_cases = [
+        TestCase(
+            input_array=np.array([], dtype=np.int32),
+            expected_result=True,
+            test_id="empty_array_int32",
+        ),
+        TestCase(
+            input_array=np.array([], dtype=np.float64),
+            expected_result=True,
+            test_id="empty_array_float64",
+        ),
+        TestCase(
+            input_array=np.array([5], dtype=np.int64),
+            expected_result=True,
+            test_id="singleton_int64",
+        ),
+        TestCase(
+            input_array=np.array([3.14], dtype=np.float32),
+            expected_result=True,
+            test_id="singleton_float32",
+        ),
+        TestCase(
+            input_array=np.array([1, 2, 5, 10], dtype=np.int32),
+            expected_result=True,
+            test_id="strictly_increasing_int32",
+        ),
+        TestCase(
+            input_array=np.array([1.0, 2.5, 3.7, 10.2], dtype=np.float64),
+            expected_result=True,
+            test_id="strictly_increasing_float64",
+        ),
+        TestCase(
+            input_array=np.array([-5, -2, 0, 3, 7], dtype=np.int64),
+            expected_result=True,
+            test_id="strictly_increasing_negative_to_positive_int64",
+        ),
+        TestCase(
+            input_array=np.array([0.1, 0.2, 0.3, 0.4], dtype=np.float32),
+            expected_result=True,
+            test_id="strictly_increasing_small_floats",
+        ),
+        TestCase(
+            input_array=np.array([5, 5, 5, 5], dtype=np.int32),
+            expected_result=False,
+            test_id="constant_sequence_int32",
+        ),
+        TestCase(
+            input_array=np.array([2.0, 2.0, 2.0], dtype=np.float64),
+            expected_result=False,
+            test_id="constant_sequence_float64",
+        ),
+        TestCase(
+            input_array=np.array([1, 2, 2, 5], dtype=np.int64),
+            expected_result=False,
+            test_id="weakly_increasing_int64",
+        ),
+        TestCase(
+            input_array=np.array([1.0, 2.0, 2.0, 3.0], dtype=np.float32),
+            expected_result=False,
+            test_id="weakly_increasing_float32",
+        ),
+        TestCase(
+            input_array=np.array([1, 3, 2, 4], dtype=np.int32),
+            expected_result=False,
+            test_id="non_monotonic_int32",
+        ),
+        TestCase(
+            input_array=np.array([5.0, 10.0, 3.0, 15.0], dtype=np.float64),
+            expected_result=False,
+            test_id="non_monotonic_float64",
+        ),
+        TestCase(
+            input_array=np.array([10, 5, 2, 1], dtype=np.int64),
+            expected_result=False,
+            test_id="strictly_decreasing_int64",
+        ),
+        TestCase(
+            input_array=np.array([10.0, 5.0, 2.0, 1.0], dtype=np.float32),
+            expected_result=False,
+            test_id="strictly_decreasing_float32",
+        ),
+        TestCase(
+            input_array=np.array([0, -1, -2, -3], dtype=np.int32),
+            expected_result=False,
+            test_id="strictly_decreasing_to_negative_int32",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda tc: tc.test_id,
+    )
+    def test_is_increasing(self, test_case: TestCase) -> None:
+        result = is_increasing(test_case.input_array)
+        assert result == test_case.expected_result
