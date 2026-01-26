@@ -2,9 +2,7 @@ from __future__ import annotations
 
 from typing import List, NamedTuple, Optional, Self
 
-import numpy as np
-
-from sampletones.types.array import Float
+from sampletones.types.array import Array, ArrayClasses, Float
 from sampletones.utils import is_increasing
 
 
@@ -12,7 +10,8 @@ class Interval(NamedTuple):
     """
     A closed interval [left, right] on the real line.
 
-    An interval is valid when left < right.
+    An interval is valid when left < right. Invalid intervals represent
+    empty sets, with zero length and no midpoint.
 
     Supports intersection, containment checks, and relative measure calculations.
 
@@ -60,6 +59,9 @@ class Interval(NamedTuple):
     def midpoint(self) -> Optional[Float]:
         """
         The midpoint of the interval.
+
+        If the interval is invalid, the midpoint is undefined,
+        so `None` is returned.
 
         Returns:
             (left + right) / 2 if the interval is valid, None otherwise.
@@ -156,40 +158,43 @@ class Interval(NamedTuple):
             A new Interval with float endpoints.
 
         Examples:
+            >>> import numpy as np
             >>> interval = Interval(np.float32(1.5), np.float32(3.5))
             >>> interval.float()
             Interval(left=1.5, right=3.5)
         """
         return Interval(float(self.left), float(self.right))
 
-    @classmethod
-    def unit(cls) -> Self:
+    @staticmethod
+    def unit() -> Interval:
         """
         Create a unit interval [0, 1].
 
         Returns:
             An Interval representing [0, 1].
         """
-        return cls(0.0, 1.0)
+        return Interval(0.0, 1.0)
 
-    @classmethod
-    def from_edges(cls, edges: np.ndarray) -> List[Self]:
+    @staticmethod
+    def from_edges(edges: Array) -> List[Interval]:
         """
         Create a list of consecutive intervals from an array of edges.
 
         Given edges [x₀, x₁, ..., xₙ], this creates intervals:
         [x₀, x₁], [x₁, x₂], ..., [xₙ₋₁, xₙ]
 
-        Args:consecutive intervals from edge array.
-
-        Given edges [x₀, x₁, ..., xₙ], creates intervals
-        [x₀, x₁], [x₁, x₂], ..., [xₙ₋₁, xₙ].
-
         Args:
             edges: Strictly increasing array with at least 2 elements.
 
         Returns:
             List of n-1 intervals where n = len(edges)
+
+        Raises:
+            TypeError: If edges is not an Array.
+            ValueError: If fewer than 2 edges are provided or edges are not strictly increasing.
+
+        Examples:
+            >>> import numpy as np
             >>> edges = np.array([0., 2., 5., 10.])
             >>> intervals = Interval.from_edges(edges)
             >>> len(intervals)
@@ -197,10 +202,13 @@ class Interval(NamedTuple):
             >>> intervals[0].float()
             Interval(left=0.0, right=2.0)
         """
+        if not isinstance(edges, ArrayClasses):
+            raise TypeError(f"edges must be an Array, got {type(edges)}")
+
         if len(edges) < 2:
             raise ValueError("At least two edges are required to create intervals")
 
         if not is_increasing(edges):
-            raise ValueError("Edges need to be strictly increasing")
+            raise ValueError("edges need to be strictly increasing")
 
-        return [cls(edges[i], edges[i + 1]) for i in range(len(edges) - 1)]
+        return [Interval(edges[i], edges[i + 1]) for i in range(len(edges) - 1)]

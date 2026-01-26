@@ -4,7 +4,7 @@ from functools import cached_property
 from typing import Any, Generic, List, Type
 
 import numpy as np
-from pydantic import ConfigDict, field_serializer
+from pydantic import ConfigDict
 
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
@@ -16,7 +16,6 @@ from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.structures.histogram import Histogram
 from sampletones.types.data import Initials, ReducedObject, SerializedData
-from sampletones.utils import serialize_array
 
 
 def _instruction_library_fragment(data: SerializedData) -> InstructionLibraryFragment[Any]:
@@ -112,10 +111,6 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     @property
     def length(self) -> int:
         return self.sample.length
-
-    @field_serializer("feature")
-    def _serialize_feature(self, feature: np.ndarray) -> SerializedData:
-        return serialize_array(feature)
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:

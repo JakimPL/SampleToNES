@@ -47,7 +47,7 @@ def calculate_fft_frequencies(fragment_length: int, sample_rate: int) -> np.ndar
         Array of frequency values in Hz, shape (fragment_length//2 + 1,).
 
     Examples:
-        >>> freqs = calculate_frequencies(1024, 44100)
+        >>> freqs = calculate_fft_frequencies(1024, 44100)
         >>> freqs.shape
         (513,)
         >>> float(freqs[0])

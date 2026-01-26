@@ -74,7 +74,7 @@ def calculate_cqt_frequencies(
         Array of center frequencies in Hz, shape (n_bins,).
 
     Examples:
-        >>> freqs = calculate_frequencies(12, cutoff=55.0, bins_per_octave=12)
+        >>> freqs = calculate_cqt_frequencies(12, cutoff=55.0, bins_per_octave=12)
         >>> freqs.shape
         (12,)
         >>> float(freqs[0])

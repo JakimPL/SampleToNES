@@ -5,7 +5,7 @@ from functools import cached_property, reduce
 from types import ModuleType
 from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
 
-from pydantic import ConfigDict, model_validator
+from pydantic import ConfigDict, field_serializer, model_validator
 
 from sampletones import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol
@@ -22,7 +22,9 @@ from sampletones.types.array import (
     NumericClasses,
     get_array_module,
 )
+from sampletones.types.data import SerializedData
 from sampletones.utils import is_increasing
+from sampletones.utils.serialization import serialize_array
 
 from .interval import Interval
 
@@ -37,7 +39,10 @@ class Histogram(DataModel):
     where edges (x_i)_{i=0}^n are strictly increasing,
     and values (d_i)_{i=0}^{n-1} are arbitrary numeric values.
 
-    Number of edges must be exactly one more than number of values
+    While histograms typically represent non-negative counts or densities,
+    this implementation allows any numeric values for mathematical generality.
+
+    Number of edges must be exactly one more than number of values.
 
     Attributes:
         edges: Array of n + 1 strictly increasing bin edges.
@@ -45,13 +50,18 @@ class Histogram(DataModel):
 
     Examples:
         >>> import numpy as np
-        >>> edges = np.array([0.0, 2.0, 5.0, 10.0])
-        >>> values = np.array([1.0, 2.0, 1.5])
-        >>> hist = Histogram(edges, values)
-        >>> len(hist)
-        3
-        >>> hist.range.float()  # Avoid numpy float representation
-        Interval(left=0.0, right=10.0)
+        >>> edges = np.array([0.0, 1.0, 4.0])  # explicit values
+        >>> values = np.array([2.0, 6.0])
+        >>> histogram = Histogram(edges, values)
+        >>> len(histogram)
+        2
+        >>> histogram.densities
+        array([2., 2.])
+        >>> uniform_histogram = Histogram(edges, 3.0)
+        >>> uniform_histogram.values
+        array([3., 9.])
+        >>> uniform_histogram.densities
+        array([3., 3.])
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
@@ -63,12 +73,23 @@ class Histogram(DataModel):
         """
         Initialize histogram with edges and values.
 
-        Supports positional arguments for edges and values,
-        and also allows construction from constant density for all bins.
+        Supports positional arguments for edges and values.
+        If values is a scalar, creates a histogram with constant density
+        for all bins (values will be `density ⋅ bin_width` for each bin).
 
         Args:
             edges: Array of n + 1 strictly increasing bin edges.
-            values: Array of n bin values.
+            values: Array of n bin values, or scalar for constant density.
+
+        Examples:
+            >>> import numpy as np
+            >>> edges = np.array([0.0, 1.0, 3.0])
+            >>> histogram = Histogram(edges, np.array([1.0, 4.0]))
+            >>> histogram.values
+            array([1., 4.])
+            >>> uniform_histogram = Histogram(edges, 2.0)
+            >>> uniform_histogram.values
+            array([2., 4.])
         """
         if isinstance(values, NumericClasses):
             values = self._density_to_values(edges, values)
@@ -199,6 +220,11 @@ class Histogram(DataModel):
         """
         Create a histogram from a density operation result.
 
+        Converts density back to values using:
+            `values = density ⋅ widths`
+
+        which preserves the relationship: `density = values / widths`.
+
         Args:
             density: Result of operation on densities.
             histogram: Histogram to use for edges and widths.
@@ -242,6 +268,22 @@ class Histogram(DataModel):
         function: MultaryTransformation[ArrayOrScalar],
         *histograms: Histogram,
     ) -> Histogram:
+        """
+        Apply a function to this histogram's densities along with other histograms.
+
+        Convenience method that calls Histogram.apply with self as the first argument.
+
+        Args:
+            function: Function to apply to densities.
+            *histograms: Additional histograms to use as arguments.
+
+        Returns:
+            New Histogram with transformed values.
+
+        Raises:
+            ValueError: If histograms have different edges.
+            TypeError: If histograms are of different array types.
+        """
         return Histogram.apply(function, self, *histograms)
 
     @staticmethod
@@ -250,11 +292,14 @@ class Histogram(DataModel):
         *histograms: Histogram,
     ) -> Histogram:
         """
-        Apply a function to all histogram values. Function is applied to densities,
-        and the value is recomputed to preserve total mass.
+        Apply a function to histogram densities.
+
+        Operations are performed on densities (`values / widths`), then converted
+        back to values (`density ⋅ widths`). This ensures operations are independent
+        of bin widths.
 
         Args:
-            function: Function to apply to each value.
+            function: Function to apply to densities.
             *histograms: Histograms to use as arguments.
 
         Returns:
@@ -275,6 +320,22 @@ class Histogram(DataModel):
         function: BinaryTransformation[ArrayOrScalar],
         *histograms: Histogram,
     ) -> Histogram:
+        """
+        Reduce this histogram with others using a binary operation on densities.
+
+        Convenience method that calls Histogram.reduce with self as the first argument.
+
+        Args:
+            function: Binary operation to reduce histograms (e.g., np.add, np.multiply).
+            *histograms: Additional histograms to reduce with.
+
+        Returns:
+            Reduced histogram.
+
+        Raises:
+            ValueError: If histograms have different edges.
+            TypeError: If histograms are of different array types.
+        """
         return Histogram.reduce(function, self, *histograms)
 
     @staticmethod
@@ -284,6 +345,9 @@ class Histogram(DataModel):
     ) -> Histogram:
         """
         Reduce multiple histograms into one using the specified operation.
+
+        Operations are performed on densities (`values / widths`), then converted
+        back to values (`density ⋅ widths`).
 
         Args:
             function: Binary operation to reduce histograms (e.g., np.add, np.multiply).
@@ -310,6 +374,10 @@ class Histogram(DataModel):
     def refine(*histograms: Histogram) -> Tuple[Histogram, ...]:
         """
         Rebin multiple histograms to the union of all their edge points.
+
+        Creates a unified edge set containing all unique edges from all histograms
+        (sorted in ascending order), then rebins each histogram to this common binning.
+        This enables arithmetic operations between histograms of different edges.
 
         Args:
             *histograms: Histograms to refine.
@@ -397,9 +465,9 @@ class Histogram(DataModel):
         """
         Rebin the histogram to new bins.
 
-        Creates a new histogram by interpolating values to match
-        target bin edges. Preserves total histogram mass through
-        linear interpolation of cumulative sum.
+        Creates a new histogram by interpolating values to match target bin edges.
+        Uses linear interpolation of the cumulative distribution function (CDF),
+        then takes differences to obtain new bin values.
 
         Args:
             target_bins: New bin specification. Can be a single Interval,
@@ -524,7 +592,8 @@ class Histogram(DataModel):
             i: Bin index.
 
         Returns:
-            values[i] / interval_length, or 0.0 if interval is empty.
+            values[i] / interval_length.
+            Returns 0.0 if interval is invalid (left >= right).
         """
         interval = self.interval(i)
         if not interval:
@@ -600,11 +669,13 @@ class Histogram(DataModel):
         Add another histogram, array, or scalar to this histogram.
 
         For Histogram: Merges edges from both histograms, rebins to the union,
-        and adds values pointwise.
+        then adds values pointwise. This is equivalent to adding densities and
+        converting back to values, since after rebinning both histograms share
+        the same bin widths.
 
         For Array: Adds array directly to values (array length must match values length).
 
-        For scalar: Adds constant to densities.
+        For scalar: Adds constant to densities, then converts back to values.
 
         Args:
             other: Histogram, array, or scalar to add.
@@ -663,11 +734,11 @@ class Histogram(DataModel):
         Multiply this histogram by another histogram, array, or scalar.
 
         For Histogram: Merges edges from both histograms, rebins to the union,
-        and multiplies densities pointwise.
+        then multiplies densities pointwise and converts back to values.
 
         For Array: Multiplies array directly with values (array length must match values length).
 
-        For scalar: Multiplies values directly by constant.
+        For scalar: Multiplies values directly by constant (equivalent to multiplying densities).
 
         Args:
             other: Histogram, array, or scalar to multiply.
@@ -703,7 +774,7 @@ class Histogram(DataModel):
 
     def __rmul__(self, other: Union[Array, Numeric]) -> Histogram:
         """
-        Right multiplication: support array * histogram and scalar * histogram.
+        Right multiplication: support `array ⋅ histogram` and `scalar ⋅ histogram`.
 
         Args:
             other: Array or scalar to multiply.
@@ -738,7 +809,7 @@ class Histogram(DataModel):
         """
         Subtract another histogram, array, or scalar from this histogram.
 
-        Implemented as self + (other * -1).
+        Implemented as `self + (-1) ⋅ other`.
 
         Args:
             other: Histogram, array, or scalar to subtract.
@@ -753,7 +824,7 @@ class Histogram(DataModel):
             return self.__add__(-other)
 
         if isinstance(other, Histogram):
-            return self.__add__(other * -1)
+            return self.__add__(-1 * other)
 
         if isinstance(other, ArrayClasses):
             return self.__add__(-other)
@@ -768,9 +839,9 @@ class Histogram(DataModel):
 
     def __rsub__(self, other: Union[Array, Numeric]) -> Histogram:
         """
-        Right subtraction: support array - histogram and scalar - histogram.
+        Right subtraction: support `array - histogram` and `scalar - histogram`.
 
-        Implemented as other + (self * -1).
+        Implemented as `other + (-1) ⋅ self`.
 
         Args:
             other: Array or scalar to subtract from.
@@ -793,7 +864,7 @@ class Histogram(DataModel):
         """
         Divide this histogram by another histogram, array, or scalar.
 
-        For Histogram: Implemented as self * (other ** -1).
+        For Histogram: Implemented as `self ⋅ other⁻¹`.
         For Array/scalar: Divides values directly.
 
         Args:
@@ -827,9 +898,9 @@ class Histogram(DataModel):
 
     def __rtruediv__(self, other: Union[Array, Numeric]) -> Histogram:
         """
-        Right division: support array / histogram and scalar / histogram.
+        Right division: support `array / histogram` and `scalar / histogram`.
 
-        Implemented as (self ** -1) * other.
+        Implemented as `self⁻¹ ⋅ other`.
 
         Args:
             other: Array or scalar to divide.
@@ -838,6 +909,10 @@ class Histogram(DataModel):
             New histogram with the quotient.
         """
         return (self**-1).__mul__(other)
+
+    @field_serializer("edges", "values")
+    def _serialize_array(self, array: Array) -> SerializedData:
+        return serialize_array(array)
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:

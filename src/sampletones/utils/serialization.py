@@ -8,6 +8,7 @@ import numpy as np
 import yaml
 from pydantic import BaseModel
 
+from sampletones.types.array import Array
 from sampletones.types.data import ModelHashable, SerializedData
 from sampletones.types.path import Pathlike
 
@@ -114,7 +115,7 @@ def load_binary(filepath: Pathlike) -> bytes:
         return file.read()
 
 
-def serialize_array(array: np.ndarray) -> SerializedData:
+def serialize_array(array: Array) -> SerializedData:
     """
     Serializes a numpy array to a JSON-compatible dictionary.
 
@@ -122,7 +123,7 @@ def serialize_array(array: np.ndarray) -> SerializedData:
     to allow exact reconstruction.
 
     Args:
-        array (np.ndarray): The numpy array to serialize.
+        array (Array): The numpy array to serialize.
 
     Returns:
         SerializedData: A dictionary containing:
