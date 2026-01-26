@@ -304,7 +304,7 @@ class DataModel(BaseModel):
         if tag == 0:
             raise DeserializationError(f"Union tag is 0 (null) for {cls.__name__}")
 
-        target_cls: Optional[type[DataModel]] = union_map.get(tag)
+        target_cls: Optional[Type[DataModel]] = union_map.get(tag)
         if target_cls is None:
             raise DeserializationError(f"Unknown union tag {tag} for {cls.__name__}")
 
