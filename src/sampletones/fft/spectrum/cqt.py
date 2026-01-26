@@ -6,7 +6,7 @@ from sampletones.audio import validate_audio_array
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones.structures.histogram import Histogram
 
-from ..cqt import calculate_cqt, calculate_frequencies, convert_midpoints_to_edges, normalize_cqt_energy
+from ..cqt import calculate_cqt, calculate_cqt_frequencies, convert_midpoints_to_edges, normalize_cqt_energy
 from ..utils import calculate_n_bins
 
 
@@ -48,7 +48,7 @@ def calculate_cqt_spectrum(
         bins_per_octave,
     )
 
-    frequencies = calculate_frequencies(
+    frequencies = calculate_cqt_frequencies(
         n_bins,
         cutoff,
         bins_per_octave,

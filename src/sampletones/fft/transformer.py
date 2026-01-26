@@ -38,7 +38,7 @@ class FFTTransformer(BaseModel):
         - `gamma = 100 -> a = 4.0`   (sharp features)
 
     More precisely, the general form of a transformation is:
-        `[ op( spectrum ^ a ) ] ^ (1 / a)`
+        `[ op( spectrum ^ (1 / a) ) ] ^ a`
 
     where:
     - `op` is a unary or binary operation (e.g., addition, subtraction)
@@ -180,9 +180,7 @@ class FFTTransformer(BaseModel):
 
         The composed function is of the form:
 
-            `f[ op( f^-1(x_1), f^-1(x_2), ..., f^-1(x_n) ) ]`
-
-        where `f` is the forward transformation and `f^-1` is the backward transformation.
+            `[ op( x₁ ^ (1 / a), x₂ ^ (1 / a), ..., xₙ ^ (1 / a) ) ] ^ a`
 
         Args:
             operation (MultaryTransformation): Operation to compose.
@@ -197,7 +195,7 @@ class FFTTransformer(BaseModel):
         """
         Apply an operation on an FFT feature with transformations.
 
-            `[ op( feature ) ] ^ (1 / a)`
+            `[ op( feature ^ (1 / a) ) ] ^ a`
 
         Args:
             operation: Operation to apply.
@@ -223,7 +221,7 @@ class FFTTransformer(BaseModel):
         """
         Reduce multiple FFT features with an operation and transformations.
 
-            `[ op( feature1, feature2, ..., featureN ) ] ^ (1 / a)`
+            `[ op( feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a) ) ] ^ a`
 
         Args:
             operation (MultaryTransformation): Operation to reduce with.
@@ -280,7 +278,7 @@ class FFTTransformer(BaseModel):
         """
         A wrapper for binary addition of FFT features/scalars with transformations.
 
-            `[ feature1 + feature2 + ... + featureN ] ^ (1 / a)`
+            `[ feature₁ ^ (1 / a) + feature₂ ^ (1 / a) + ... + featureₙ ^ (1 / a) ] ^ a`
 
         Args:
             features_or_scalars: Input FFT features/scalars.
@@ -299,7 +297,7 @@ class FFTTransformer(BaseModel):
         """
         A wrapper for binary subtraction of two FFT features with transformations.
 
-            `[ feature1 - feature2 ] ^ (1 / a)`
+            `[ feature₁ ^ (1 / a) - feature₂ ^ (1 / a) ] ^ a`
 
         Args:
             feature1 (Histogram): First FFT feature.
@@ -311,7 +309,7 @@ class FFTTransformer(BaseModel):
         """
         Multiply an FFT feature by another features/scalars with transformations.
 
-            `[ feature1 ⋅ feature2 ⋅ ... ⋅ featureN ] ^ (1 / a)`
+            `[ feature₁ ^ (1 / a) ⋅ feature₂ ^ (1 / a) ⋅ ... ⋅ featureₙ ^ (1 / a) ] ^ a`
 
         Args:
             *features: Input FFT features/scalars.
@@ -332,7 +330,7 @@ class FFTTransformer(BaseModel):
         """
         Calculate the mean of multiple FFT features with transformations.
 
-            `[ mean(feature1, feature2, ..., featureN) ] ^ (1 / a)`
+            `[ mean(feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a)) ] ^ a`
 
         Args:
             features: Input FFT features.

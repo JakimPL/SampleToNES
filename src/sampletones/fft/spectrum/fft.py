@@ -6,7 +6,7 @@ from sampletones.audio import validate_audio_array
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones.structures.histogram import Histogram
 
-from ..fft import calculate_fft, calculate_frequencies
+from ..fft import calculate_fft, calculate_fft_frequencies
 from ..utils import calculate_n_bins, to_log_even_bands
 
 
@@ -35,7 +35,7 @@ def calculate_fft_spectrum(
     fft_size = fft_size or len(audio)
     fft: np.ndarray = calculate_fft(audio, fft_size)
     energy: np.ndarray = np.square(np.abs(fft) / fft_size)
-    bands: np.ndarray = calculate_frequencies(fft_size, sample_rate)
+    bands: np.ndarray = calculate_fft_frequencies(fft_size, sample_rate)
     return Histogram(edges=bands.astype(np.float32), values=energy.astype(np.float32))
 
 

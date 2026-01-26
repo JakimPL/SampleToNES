@@ -15,6 +15,31 @@ def calculate_cqt(
     n_bins: Optional[int] = None,
     bins_per_octave: int = BINS_PER_OCTAVE,
 ) -> np.ndarray:
+    """
+    Compute the Constant-Q Transform of an audio signal.
+
+    The CQT provides logarithmically-spaced frequency bins.
+    Uses librosa.cqt with a rectangular window for single-frame analysis.
+
+    If `n_bins` is not provided, it is calculated automatically to cover
+    the frequency range from cutoff to Nyquist frequency.
+
+    Args:
+        audio: Input audio signal array.
+        sample_rate: Sampling rate in Hz.
+        cutoff: Minimum frequency in Hz.
+        n_bins: Number of frequency bins. If None, calculated automatically.
+        bins_per_octave: Number of bins per octave.
+
+    Returns:
+        Complex CQT coefficients, shape (n_bins, 1) for single frame.
+
+    Examples:
+        >>> audio = np.random.randn(1024)
+        >>> cqt = calculate_cqt(audio, 800, cutoff=55.0)
+        >>> cqt.ndim
+        2
+    """
     n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
     hop_length = len(audio) + 1  # a single frame
     return librosa.cqt(
@@ -28,11 +53,35 @@ def calculate_cqt(
     )
 
 
-def calculate_frequencies(
+def calculate_cqt_frequencies(
     n_bins: int,
     cutoff: float = CQT_CUTOFF_FREQUENCY,
     bins_per_octave: int = BINS_PER_OCTAVE,
 ) -> np.ndarray:
+    """
+    Calculate center frequencies for CQT bins.
+
+    Computes logarithmically-spaced frequencies for Constant-Q Transform bins.
+    Uses librosa.cqt_frequencies which returns the geometric center frequency
+    of each bin.
+
+    Args:
+        n_bins: Number of frequency bins.
+        cutoff: Minimum frequency in Hz.
+        bins_per_octave: Number of bins per octave.
+
+    Returns:
+        Array of center frequencies in Hz, shape (n_bins,).
+
+    Examples:
+        >>> freqs = calculate_frequencies(12, cutoff=55.0, bins_per_octave=12)
+        >>> freqs.shape
+        (12,)
+        >>> float(freqs[0])
+        55.0
+        >>> round(float(freqs[-1]), 1)
+        103.8
+    """
     return librosa.cqt_frequencies(
         n_bins=n_bins,
         fmin=cutoff,
@@ -79,6 +128,12 @@ def convert_midpoints_to_edges(midpoints: np.ndarray) -> np.ndarray:
 
     Returns:
         Array of n + 1 bin edges where n = len(midpoints).
+
+    Examples:
+        >>> midpoints = np.array([25.0, 100.0, 400.0])
+        >>> edges = convert_midpoints_to_edges(midpoints)
+        >>> edges
+        array([ 12.5,  50. , 200. , 800. ])
     """
     edges: np.ndarray = np.empty(len(midpoints) + 1)
     edges[1:-1] = np.sqrt(midpoints[:-1] * midpoints[1:])
