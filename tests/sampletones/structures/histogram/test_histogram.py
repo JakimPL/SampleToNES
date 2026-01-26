@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Tuple, Type, Union
 
 import numpy as np
 import pytest
@@ -1294,7 +1294,6 @@ class TestRebin:
                 np.array([6.0, 16.0, 8.0], dtype=np.float64),
             ),
             description="extended_range_mixed_dtype",
-            expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
@@ -1352,48 +1351,291 @@ class TestRebin:
 
 
 class TestValidateOverlap:
-    def test_validate_overlap_warns_when_outside_range(self) -> None:
-        histogram = Histogram(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0]))
-        edges = np.array([0.0, 5.0])
-        if not expect_warning(histogram.validate_overlap, RuntimeWarning, edges, match="outside"):
-            pytest.fail("Expected RuntimeWarning")
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_validate_overlap_no_warning_when_contained(self) -> None:
-        histogram = Histogram(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0]))
-        edges = np.array([1.0, 3.0])
-        assert not expect_warning(histogram.validate_overlap, RuntimeWarning, edges)
+        histogram: Histogram
+        new_edges: Array
+        expect_warning: bool
+        description: str
+
+        @property
+        def test_id(self) -> str:
+            return self.description
+
+    test_cases = [
+        TestCase(
+            histogram=Histogram(
+                np.array([2.0, 5.0, 8.0], dtype=np.float64),
+                np.array([6.0, 12.0], dtype=np.float64),
+            ),
+            new_edges=np.array([2.0, 5.0, 8.0], dtype=np.float64),
+            expect_warning=False,
+            description="edges_equal_no_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([3.0, 5.0, 7.0], dtype=np.float32),
+                np.array([4.0, 8.0], dtype=np.float32),
+            ),
+            new_edges=np.array([3.0, 5.0, 7.0], dtype=np.float32),
+            expect_warning=False,
+            description="edges_equal_float32_no_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([3.0, 6.0, 10.0], dtype=np.float64),
+                np.array([9.0, 12.0], dtype=np.float64),
+            ),
+            new_edges=np.array([1.0, 4.0, 7.0, 12.0], dtype=np.float64),
+            expect_warning=False,
+            description="edges_contained_in_new_edges_no_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([5.0, 8.0, 12.0], dtype=np.float32),
+                np.array([6.0, 14.0], dtype=np.float32),
+            ),
+            new_edges=np.array([3.0, 6.0, 9.0, 15.0], dtype=np.float32),
+            expect_warning=False,
+            description="edges_contained_float32_no_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([2.0, 5.0, 10.0, 15.0], dtype=np.float64),
+                np.array([8.0, 15.0, 20.0], dtype=np.float64),
+            ),
+            new_edges=np.array([2.0, 5.0, 10.0, 15.0], dtype=np.float64),
+            expect_warning=False,
+            description="exact_match_multiple_bins_no_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([2.0, 5.0, 8.0], dtype=np.float64),
+                np.array([6.0, 12.0], dtype=np.float64),
+            ),
+            new_edges=np.array([3.0, 6.0], dtype=np.float64),
+            expect_warning=True,
+            description="new_edges_contained_in_edges_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([1.0, 5.0, 10.0], dtype=np.float32),
+                np.array([8.0, 14.0], dtype=np.float32),
+            ),
+            new_edges=np.array([3.0, 7.0], dtype=np.float32),
+            expect_warning=True,
+            description="new_edges_inside_float32_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                np.array([6.0, 14.0], dtype=np.float64),
+            ),
+            new_edges=np.array([3.0, 7.0, 10.0], dtype=np.float64),
+            expect_warning=True,
+            description="overlapping_left_side_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([5.0, 8.0, 12.0], dtype=np.float32),
+                np.array([6.0, 14.0], dtype=np.float32),
+            ),
+            new_edges=np.array([7.0, 10.0, 15.0], dtype=np.float32),
+            expect_warning=True,
+            description="overlapping_right_side_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([3.0, 6.0, 10.0], dtype=np.float64),
+                np.array([9.0, 12.0], dtype=np.float64),
+            ),
+            new_edges=np.array([1.0, 4.0, 8.0, 12.0], dtype=np.float64),
+            expect_warning=False,
+            description="overlapping_both_sides_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                np.array([6.0, 14.0], dtype=np.float64),
+            ),
+            new_edges=np.array([15.0, 18.0, 22.0], dtype=np.float64),
+            expect_warning=True,
+            description="disjoint_above_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([10.0, 15.0, 20.0], dtype=np.float32),
+                np.array([8.0, 12.0], dtype=np.float32),
+            ),
+            new_edges=np.array([2.0, 5.0, 8.0], dtype=np.float32),
+            expect_warning=True,
+            description="disjoint_below_warning",
+        ),
+        TestCase(
+            histogram=Histogram(
+                np.array([5.0, 10.0, 15.0], dtype=np.float64),
+                np.array([8.0, 12.0], dtype=np.float64),
+            ),
+            new_edges=np.array([20.0, 25.0, 30.0], dtype=np.float64),
+            expect_warning=True,
+            description="disjoint_far_above_warning",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    def test_validate_overlap(self, test_case: TestCase) -> None:
+        if test_case.expect_warning:
+            expect_warning(test_case.histogram.validate_overlap, RuntimeWarning, test_case.new_edges, match="outside")
+        else:
+            test_case.histogram.validate_overlap(test_case.new_edges)
 
 
 class TestRefine:
-    def test_refine_single_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        refined = Histogram.refine(histogram)
-        assert len(refined) == 1
-        assert refined[0] == histogram
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_refine_two_histograms_same_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 4.0]))
-        refined = Histogram.refine(histogram1, histogram2)
-        assert len(refined) == 2
-        assert refined[0] == histogram1
-        assert refined[1] == histogram2
+        histograms: Tuple[Histogram, ...]
+        expected_result: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_refine_two_histograms_different_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 2.0, 3.0]), np.array([3.0, 4.0]))
-        refined = Histogram.refine(histogram1, histogram2)
-        assert len(refined) == 2
-        expected_edges = np.array([0.0, 1.0, 2.0, 3.0])
-        np.testing.assert_array_almost_equal(refined[0].edges, expected_edges)
-        np.testing.assert_array_almost_equal(refined[1].edges, expected_edges)
+    test_cases = [
+        TestCase(
+            histograms=tuple(),
+            expected_result=ValueError,
+            match="At least one histogram is required",
+            test_id="no_histograms_error",
+        ),
+        TestCase(
+            histograms=(Histogram(np.array([1, 3, 7, 12], dtype=np.int32), np.array([5, 8, 3], dtype=np.int32)),),
+            expected_result=np.array([1.0, 3.0, 7.0, 12.0], dtype=np.float64),
+            test_id="single_histogram_int32_casted_to_float64",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(
+                    np.array([0.5, 2.3, 5.7, 9.1], dtype=np.float32),
+                    np.array([1.2, 3.4, 5.6], dtype=np.float32),
+                ),
+            ),
+            expected_result=np.array([0.5, 2.3, 5.7, 9.1], dtype=np.float32),
+            test_id="single_histogram_float32_unchanged",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64), np.array([12.0, 34.0, 56.0])),
+                Histogram(np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64), np.array([78.0, 90.0, 12.0])),
+            ),
+            expected_result=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64),
+            test_id="two_histograms_same_edges",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 5.0, 10.0], dtype=np.float32), np.array([3.0, 7.0], dtype=np.float32)),
+                Histogram(
+                    np.array([0.0, 2.5, 5.0, 7.5, 10.0], dtype=np.float32),
+                    np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=np.array([0.0, 2.5, 5.0, 7.5, 10.0], dtype=np.float32),
+            test_id="two_histograms_one_refined",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(
+                    np.array([1.0, 3.0, 5.0, 8.0, 12.0], dtype=np.float64),
+                    np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float64),
+                ),
+                Histogram(np.array([3.0, 5.0, 8.0], dtype=np.float64), np.array([15.0, 25.0], dtype=np.float64)),
+            ),
+            expected_result=np.array([1.0, 3.0, 5.0, 8.0, 12.0], dtype=np.float64),
+            test_id="two_histograms_subset_with_endpoints",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(
+                    np.array([0.0, 2.0, 5.0, 9.0, 15.0], dtype=np.float32), np.array([5, 10, 15, 20], dtype=np.int8)
+                ),
+                Histogram(np.array([2.0, 5.0, 9.0], dtype=np.float32), np.array([8, 12], dtype=np.int8)),
+            ),
+            expected_result=np.array([0.0, 2.0, 5.0, 9.0, 15.0], dtype=np.float32),
+            test_id="two_histograms_subset_without_endpoints",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 3.0, 6.0], dtype=np.float64), np.array([12.0, 24.0])),
+                Histogram(np.array([0.0, 2.0, 4.0, 6.0], dtype=np.float64), np.array([8.0, 16.0, 32.0])),
+            ),
+            expected_result=np.array([0.0, 2.0, 3.0, 4.0, 6.0], dtype=np.float64),
+            test_id="two_histograms_same_support_different_bins",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([1.0, 4.0, 7.0, 11.0], dtype=np.float32), np.array([5.0, 10.0, 15.0])),
+                Histogram(np.array([4.0, 8.0, 11.0, 15.0], dtype=np.float32), np.array([20.0, 25.0, 30.0])),
+            ),
+            expected_result=np.array([1.0, 4.0, 7.0, 8.0, 11.0, 15.0], dtype=np.float64),  # because values are float64
+            test_id="overlapping_histograms_with_edge_points_overlapping",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 3.5, 7.2], dtype=np.float64), np.array([12.0, 18.0])),
+                Histogram(np.array([2.1, 5.8, 6.9], dtype=np.float64), np.array([9.0, 15.0])),
+            ),
+            expected_result=np.array([0.0, 2.1, 3.5, 5.8, 6.9, 7.2], dtype=np.float64),
+            test_id="overlapping_histograms_without_edge_points_overlapping",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([1.0, 3.0, 5.0], dtype=np.float32), np.array([8.0, 12.0], dtype=np.float32)),
+                Histogram(np.array([10.0, 15.0, 20.0], dtype=np.float32), np.array([16.0, 24.0], dtype=np.float32)),
+            ),
+            expected_result=np.array([1.0, 3.0, 5.0, 10.0, 15.0, 20.0], dtype=np.float32),
+            test_id="disjoint_histograms",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 2.5, 5.0], dtype=np.float64), np.array([10.0, 20.0])),
+                Histogram(np.array([1.0, 3.0, 5.0], dtype=np.float64), np.array([15.0, 25.0])),
+                Histogram(np.array([0.0, 1.5, 4.0, 5.0], dtype=np.float64), np.array([5.0, 12.0, 18.0])),
+            ),
+            expected_result=np.array([0.0, 1.0, 1.5, 2.5, 3.0, 4.0, 5.0], dtype=np.float64),
+            test_id="three_histograms",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([10.0, 20.0, 35.0, 50.0]), np.array([8.0, 16.0, 24.0])),
+                Histogram(np.array([10.0, 15.0, 25.0, 35.0, 50.0]), np.array([4.0, 8.0, 12.0, 16.0])),
+                Histogram(np.array([10.0, 30.0, 40.0, 50.0]), np.array([20.0, 30.0, 40.0])),
+                Histogram(np.array([15.0, 25.0, 35.0, 45.0, 50.0]), np.array([5.0, 10.0, 15.0, 20.0])),
+            ),
+            expected_result=np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0], dtype=np.float32),
+            test_id="four_histograms",
+        ),
+    ]
 
-    def test_refine_preserves_total_mass(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 6.0]))
-        histogram2 = Histogram(np.array([0.0, 2.0, 3.0]), np.array([4.0, 3.0]))
-        refined = Histogram.refine(histogram1, histogram2)
-        assert refined[0].total == pytest.approx(histogram1.total)
-        assert refined[1].total == pytest.approx(histogram2.total)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_refine(self, test_case: TestCase) -> None:
+        if isinstance(test_case.expected_result, type) and issubclass(test_case.expected_result, Exception):
+            expect_error(
+                Histogram.refine,
+                test_case.expected_result,
+                *test_case.histograms,
+                match=test_case.match,
+            )
+        else:
+            refined = Histogram.refine(*test_case.histograms)
+            assert len(refined) == len(test_case.histograms)
+            for histogram in refined:
+                assert_array_equal(histogram.edges, test_case.expected_result)
+                assert histogram.edges.dtype == test_case.expected_result.dtype
 
 
 class TestApply:

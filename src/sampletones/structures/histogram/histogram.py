@@ -68,18 +68,21 @@ class Histogram(DataModel):
     edges: Array
     values: Array
 
-    def __init__(self, edges: Array, values: ArrayOrScalar, **data: Array) -> None:
+    def __init__(self, edges: Union[Interval, Array], values: ArrayOrScalar, **data: Array) -> None:
         """
         Initialize histogram with edges and values.
 
         Supports positional arguments for edges and values.
+
+        If edges is an Interval, converts it to an array of two edge values.
+
         If values is a scalar, creates a histogram with constant density
         for all bins (values will be `density ⋅ bin_width` for each bin).
 
         Protects edges and values from modification by setting them as read-only.
 
         Args:
-            edges: Array of n + 1 strictly increasing bin edges.
+            edges: Interval or array of n + 1 strictly increasing bin edges.
             values: Array of n bin values, or scalar for constant density.
 
         Examples:
@@ -92,6 +95,9 @@ class Histogram(DataModel):
             >>> uniform_histogram.values
             array([2., 4.])
         """
+        if isinstance(edges, Interval):
+            edges = edges.to_array()
+
         if isinstance(values, NumericClasses):
             values = self._density_to_values(edges, values)
 
@@ -415,13 +421,9 @@ class Histogram(DataModel):
             TypeError: If histograms are of different array types.
         """
         Histogram._validate_histogram_edges(*histograms, equal_edges=False)
-
-        if len(histograms) == 1:
-            return (histograms[0],)
-
         module = get_array_module(histograms[0].edges)
         all_edges: Array = module.concatenate([histogram.edges for histogram in histograms])
-        merged_edges: Array = module.unique(all_edges)
+        merged_edges: Array = cast_to_float(module.unique(all_edges))
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
     @staticmethod

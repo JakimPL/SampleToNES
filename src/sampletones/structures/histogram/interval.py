@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List, NamedTuple, Optional, Self
 
-from sampletones.types.array import Array, ArrayClasses, Float
+from sampletones.types.array import Array, ArrayClasses, Float, get_array_module
 from sampletones.utils import is_increasing
 
 
@@ -191,6 +191,22 @@ class Interval(NamedTuple):
             Interval(left=1.5, right=3.5)
         """
         return Interval(float(self.left), float(self.right))
+
+    def to_array(self) -> Array:
+        """
+        Convert the interval endpoints to a 1D array.
+
+        Returns:
+            A 1D array containing [left, right].
+
+        Examples:
+            >>> import numpy as np
+            >>> interval = Interval(2.0, 5.0)
+            >>> interval.to_array()
+            array([2., 5.])
+        """
+        module = get_array_module(self.left)
+        return module.array([self.left, self.right])
 
     @staticmethod
     def unit() -> Interval:
