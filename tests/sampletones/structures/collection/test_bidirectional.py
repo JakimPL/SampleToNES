@@ -784,6 +784,90 @@ class TestEdgeCases:
         assert bidirectional[float("-inf")] == "neg_inf"
 
     def test_frozenset_order_independence(self) -> None:
+        bidirectional = BidirectionalHashMap[frozenset]()
+        set1 = frozenset([1, 2, 3])
+        set2 = frozenset([3, 2, 1])
+        bidirectional["a"] = set1
+        assert bidirectional[set2] == "a"
+
+
+class TestIteratorAndViews:
+    def test_iter_returns_forward_keys(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2, "c": 3})
+        keys = list(iter(bidirectional))
+        assert set(keys) == {"a", "b", "c"}
+
+    def test_next_returns_first_key(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1})
+        key = next(bidirectional)
+        assert key == "a"
+
+    def test_keys_forward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        keys = list(bidirectional.keys_forward())
+        assert set(keys) == {"a", "b"}
+
+    def test_keys_backward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        values = list(bidirectional.keys_backward())
+        assert set(values) == {1, 2}
+
+    def test_items_forward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        items = list(bidirectional.items_forward())
+        assert set(items) == {("a", 1), ("b", 2)}
+
+    def test_items_backward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        items = list(bidirectional.items_backward())
+        assert set(items) == {(1, "a"), (2, "b")}
+
+    def test_values_forward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        values = list(bidirectional.values_forward())
+        assert set(values) == {1, 2}
+
+    def test_values_backward(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        keys = list(bidirectional.values_backward())
+        assert set(keys) == {"a", "b"}
+
+
+class TestCopy:
+    def test_copy_creates_independent_instance(self) -> None:
+        original = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        copied = original.copy()
+        assert original == copied
+        copied["c"] = 3
+        assert "c" not in original
+        assert len(original) == 2
+        assert len(copied) == 3
+
+    def test_copy_empty_map(self) -> None:
+        original = BidirectionalHashMap[int]()
+        copied = original.copy()
+        assert len(copied) == 0
+        assert original == copied
+
+
+class TestEquality:
+    def test_eq_with_non_bidirectional_returns_false(self) -> None:
+        bidirectional = BidirectionalHashMap[int]({"a": 1})
+        assert bidirectional != {"a": 1}
+        assert bidirectional != [("a", 1)]
+        assert bidirectional != "BidirectionalHashMap({'a': 1})"
+
+    def test_eq_with_equal_bidirectional(self) -> None:
+        bidi1 = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        bidi2 = BidirectionalHashMap[int]({"a": 1, "b": 2})
+        assert bidi1 == bidi2
+
+    def test_eq_with_different_bidirectional(self) -> None:
+        bidi1 = BidirectionalHashMap[int]({"a": 1})
+        bidi2 = BidirectionalHashMap[int]({"a": 2})
+        assert bidi1 != bidi2
+
+    def test_eq_with_frozenset(self) -> None:
         bidirectional = BidirectionalHashMap[frozenset[int]]()
         set1 = frozenset([1, 2, 3])
         set2 = frozenset([3, 2, 1])

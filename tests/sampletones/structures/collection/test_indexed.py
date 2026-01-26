@@ -152,6 +152,22 @@ class TestGetItem:
         with pytest.raises(IndexError):
             _ = collection[0]
 
+    def test_getitem_slice_returns_new_collection(self) -> None:
+        collection = IndexedCollection[int]([1, 2, 3, 4, 5])
+        result = collection[1:4]
+        assert isinstance(result, IndexedCollection)
+        assert list(result) == [2, 3, 4]
+
+    def test_getitem_slice_with_step(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c", "d", "e"])
+        result = collection[::2]
+        assert list(result) == ["a", "c", "e"]
+
+    def test_getitem_slice_negative_indices(self) -> None:
+        collection = IndexedCollection[float]([1.1, 2.2, 3.3, 4.4])
+        result = collection[-3:-1]
+        assert list(result) == [2.2, 3.3]
+
 
 class TestSetItem:
     def test_setitem_strings_by_index_replaces_item(self) -> None:
@@ -1517,3 +1533,53 @@ class TestEdgeCases:
         # Depends on the hash function implementation
         new_items = [item for item in [0.0, False, b"\00"] if IndexedCollection.hash(0) != IndexedCollection.hash(item)]
         collection.extend(new_items)
+
+
+class TestSetItemSamePosition:
+    def test_setitem_same_hash_same_position_replaces(self) -> None:
+        collection = IndexedCollection[str](["apple", "banana", "cherry"])
+        original_item = collection[1]
+        assert original_item == "banana"
+
+        item_hash = IndexedCollection.hash(original_item)
+        collection[item_hash] = "BANANA"
+
+        assert collection[1] == "BANANA"
+        assert len(collection) == 3
+
+    def test_setitem_by_index_same_hash_replaces(self) -> None:
+        collection = IndexedCollection[int]([10, 20, 30])
+        collection[1] = 20
+        assert collection[1] == 20
+        assert len(collection) == 3
+
+    def test_setitem_same_position_preserves_order(self) -> None:
+        items = ["a", "b", "c", "d"]
+        collection = IndexedCollection[str](items)
+        collection[2] = "c"
+        assert list(collection) == items
+
+
+class TestIteratorNext:
+    def test_next_returns_first_item(self) -> None:
+        collection = IndexedCollection[str](["first", "second", "third"])
+        result = next(collection)
+        assert result == "first"
+
+    def test_next_on_empty_raises_stop_iteration(self) -> None:
+        collection = IndexedCollection[int]()
+        with pytest.raises(StopIteration):
+            next(collection)
+
+
+class TestGetKeyError:
+    def test_get_with_key_error_returns_default(self) -> None:
+        collection = IndexedCollection[str](["test"])
+        fake_hash = "nonexistent"
+        result = collection.get(fake_hash, "default")
+        assert result == "default"
+
+    def test_get_with_index_error_returns_default(self) -> None:
+        collection = IndexedCollection[int]([1, 2, 3])
+        result = collection.get(10, -1)
+        assert result == -1
