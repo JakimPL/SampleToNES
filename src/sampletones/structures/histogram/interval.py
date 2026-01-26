@@ -104,6 +104,9 @@ class Interval(NamedTuple):
         """
         Check if this interval contains another interval.
 
+        Invalid intervals (empty sets) are contained in every interval.
+        Valid intervals cannot be contained in invalid intervals.
+
         Args:
             other: The interval to check.
 
@@ -115,15 +118,27 @@ class Interval(NamedTuple):
             True
             >>> Interval(1.0, 5.0).contains(Interval(3.0, 7.0))
             False
+            >>> Interval(1.0, 10.0).contains(Interval(5.0, 3.0))  # invalid interval
+            True
+            >>> Interval(5.0, 3.0).contains(Interval(1.0, 10.0))  # invalid contains valid
+            False
         """
+        if not bool(other):
+            return True
+
+        if not bool(self):
+            return False
+
         return bool(self.left <= other.left and self.right >= other.right)
 
     def relative_measure(self, other: Self) -> Float:
         """
         The fraction of this interval covered by another interval.
 
-        Computes μ(other) = λ(self ∩ other) / λ(self) where λ is the length.
-        Used in histogram rebinning to calculate bin weight contributions.
+        Computes:
+            `μ(other) = λ(self ∩ other) / λ(self)`
+
+        where `λ` is the standard length of a subset of the real line.
 
         Args:
             other: The interval to compute relative measure with.
