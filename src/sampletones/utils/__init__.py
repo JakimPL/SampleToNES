@@ -1,4 +1,4 @@
-from .arrays import clamp, infer_dtype, is_increasing, isnan, pad, trim
+from .arrays import cast_to_float, clamp, infer_dtype, is_increasing, isfinite, isnan, pad, trim
 from .common import first_key_for_value, next_power_of_two
 from .famitracker import write_fti
 from .frequencies import (
@@ -44,7 +44,9 @@ __all__ = [
     "next_power_of_two",
     "first_key_for_value",
     "clamp",
+    "isfinite",
     "isnan",
+    "cast_to_float",
     "infer_dtype",
     "pad",
     "trim",

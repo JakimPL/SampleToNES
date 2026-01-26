@@ -8,8 +8,7 @@ from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type,
 from pydantic import ConfigDict, field_serializer, model_validator
 
 from sampletones import xp
-from sampletones.data import DataModel, FlatBufferBuilderProtocol
-from sampletones.data.scheme import FlatBufferReaderProtocol
+from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.types.array import (
     Array,
     ArrayClasses,
@@ -23,8 +22,8 @@ from sampletones.types.array import (
     get_array_module,
 )
 from sampletones.types.data import SerializedData
-from sampletones.utils import is_increasing
-from sampletones.utils.serialization import serialize_array
+from sampletones.utils import is_increasing, isfinite, serialize_array
+from sampletones.utils.arrays import cast_to_float
 
 from .interval import Interval
 
@@ -77,6 +76,8 @@ class Histogram(DataModel):
         If values is a scalar, creates a histogram with constant density
         for all bins (values will be `density ⋅ bin_width` for each bin).
 
+        Protects edges and values from modification by setting them as read-only.
+
         Args:
             edges: Array of n + 1 strictly increasing bin edges.
             values: Array of n bin values, or scalar for constant density.
@@ -94,6 +95,9 @@ class Histogram(DataModel):
         if isinstance(values, NumericClasses):
             values = self._density_to_values(edges, values)
 
+        edges.setflags(write=False)
+        values.setflags(write=False)
+
         data["edges"] = edges
         data["values"] = values
         super().__init__(**data)
@@ -107,8 +111,10 @@ class Histogram(DataModel):
             The validated histogram.
 
         Raises:
-            ValueError: If edges length is not values length + 1, if fewer than 2 edges,
-                or if edges are not strictly increasing.
+            ValueError: If edges length is not values length + 1,
+                if fewer than 2 edges,
+                if edges are not strictly increasing,
+                or contain non-finite values.
             TypeError: If edges or values are not numpy arrays.
             TypeError: If edges and values are not of the same type.
         """
@@ -129,6 +135,9 @@ class Histogram(DataModel):
 
         if not is_increasing(self.edges):
             raise ValueError("edges need to be strictly increasing")
+
+        if not all(isfinite(edge) for edge in self.edges):
+            raise ValueError("edges must contain only finite values")
 
         if not self.edges.ndim == 1:
             raise ValueError("edges must be a one-dimensional array")
@@ -198,17 +207,33 @@ class Histogram(DataModel):
         """
         Get the i-th bin interval.
 
+        Supports negative indices following Python conventions:
+        -1 refers to the last bin, -2 to the second-to-last, etc.
+
         Args:
-            i: Bin index (0-based).
+            i: Bin index (0-based, or negative for counting from end).
 
         Returns:
             The interval [edges[i], edges[i + 1]].
 
         Raises:
             IndexError: If i is out of bounds.
+
+        Examples:
+            >>> import numpy as np
+            >>> histogram = Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))
+            >>> histogram.interval(0).float()
+            Interval(left=0.0, right=1.0)
+            >>> histogram.interval(2).float()
+            Interval(left=2.0, right=3.0)
+            >>> histogram.interval(-1).float()  # last bin
+            Interval(left=2.0, right=3.0)
         """
-        if not 0 <= i < len(self):
+        if not -len(self) <= i < len(self):
             raise IndexError(f"Index {i} out of bounds")
+
+        if i < 0:
+            i = len(self) + i
 
         return Interval(self.edges[i], self.edges[i + 1])
 
@@ -524,6 +549,9 @@ class Histogram(DataModel):
         """
         Internal rebinning using cumulative sum interpolation.
 
+        Always casts integers to at least float32. Ensures that created histogram's
+        edges and values are of compatible dtypes.
+
         Args:
             target_bins: Array of target bin edges.
 
@@ -540,16 +568,23 @@ class Histogram(DataModel):
         if not is_increasing(target_bins):
             raise ValueError("array of edges need to be strictly increasing")
 
-        cumsum: Array = self.xp.concatenate([[0.0], self.xp.cumsum(self.values)])
+        target_bins = cast_to_float(target_bins)
+        assert isinstance(target_bins, ArrayClasses), "target_bins expected to be Array after cast_to_float"
+
+        zero = self.xp.array([0.0], dtype=self.xp.float32)
+        dtype = self.xp.promote_types(self.xp.float32, self.values.dtype)
+        dtype = self.xp.promote_types(dtype, target_bins.dtype)
+        cumsum: Array = self.xp.concatenate([zero, self.xp.cumsum(self.values, dtype=dtype)], dtype=dtype)
         interpolation: Array = self.xp.interp(
             target_bins,
             self.edges,
             cumsum,
-            left=0.0,
+            left=cumsum[0],
             right=cumsum[-1],
         )
-        values: Array = self.xp.diff(interpolation)
-        return Histogram(edges=target_bins, values=values).astype(self.values.dtype)
+        edges: Array = target_bins.astype(dtype)
+        values: Array = self.xp.diff(interpolation).astype(dtype)
+        return Histogram(edges=edges, values=values)
 
     @cached_property
     def range(self) -> Interval:
@@ -619,10 +654,12 @@ class Histogram(DataModel):
         """
         Total sum of histogram values.
 
+        Preserves the dtype of values.
+
         Returns:
             Sum of all values in the histogram.
         """
-        return self.xp.sum(self.values)
+        return self.xp.sum(self.values, dtype=self.values.dtype)
 
     def iterate(self) -> Iterator[Tuple[Interval, Float]]:
         """

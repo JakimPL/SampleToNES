@@ -8,7 +8,7 @@ import pytest
 
 from sampletones import xp
 from sampletones.types.array import DTypeLike
-from sampletones.utils.arrays import clamp, infer_dtype, is_increasing, isnan, pad, trim
+from sampletones.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isnan, pad, trim
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 
@@ -173,12 +173,246 @@ class TestIsnan:
         ],
         ids=lambda tc: tc.test_id,
     )
-    def test_isnan(self, test_case: TestIsnan.TestCase) -> None:
+    def test_isnan(self, test_case: TestCase) -> None:
         if expect_error(isnan, test_case.expected_result, test_case.value):
             return
 
         result = isnan(test_case.value)
         assert result == test_case.expected_result
+
+
+class TestCastToFloat:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        value: Any
+        expected_result: Union[Any, Type[Exception]]
+        test_id: str
+
+    test_cases = [
+        TestCase(
+            value=True,
+            expected_result=1.0,
+            test_id="builtin_bool_true",
+        ),
+        TestCase(
+            value=False,
+            expected_result=0.0,
+            test_id="builtin_bool_false",
+        ),
+        TestCase(
+            value=42,
+            expected_result=42.0,
+            test_id="builtin_int_positive",
+        ),
+        TestCase(
+            value=-17,
+            expected_result=-17.0,
+            test_id="builtin_int_negative",
+        ),
+        TestCase(
+            value=0,
+            expected_result=0.0,
+            test_id="builtin_int_zero",
+        ),
+        TestCase(
+            value=3.14,
+            expected_result=3.14,
+            test_id="builtin_float",
+        ),
+        TestCase(
+            value=float("inf"),
+            expected_result=float("inf"),
+            test_id="builtin_float_inf",
+        ),
+        TestCase(
+            value=float("-inf"),
+            expected_result=float("-inf"),
+            test_id="builtin_float_neg_inf",
+        ),
+        TestCase(
+            value=np.int8(10),
+            expected_result=np.float32(10.0),
+            test_id="numpy_int8",
+        ),
+        TestCase(
+            value=np.int16(100),
+            expected_result=np.float32(100.0),
+            test_id="numpy_int16",
+        ),
+        TestCase(
+            value=np.int32(1000),
+            expected_result=np.float32(1000.0),
+            test_id="numpy_int32",
+        ),
+        TestCase(
+            value=np.int64(10000),
+            expected_result=np.float64(10000.0),
+            test_id="numpy_int64",
+        ),
+        TestCase(
+            value=np.uint8(255),
+            expected_result=np.float32(255.0),
+            test_id="numpy_uint8",
+        ),
+        TestCase(
+            value=np.uint16(65535),
+            expected_result=np.float32(65535.0),
+            test_id="numpy_uint16",
+        ),
+        TestCase(
+            value=np.uint32(4294967295),
+            expected_result=np.float32(4294967295.0),
+            test_id="numpy_uint32",
+        ),
+        TestCase(
+            value=np.uint64(18446744073709551615),
+            expected_result=np.float64(18446744073709551615.0),
+            test_id="numpy_uint64",
+        ),
+        TestCase(
+            value=np.float16(3.5),
+            expected_result=np.float16(3.5),
+            test_id="numpy_float16_unchanged",
+        ),
+        TestCase(
+            value=np.float32(2.718),
+            expected_result=np.float32(2.718),
+            test_id="numpy_float32_unchanged",
+        ),
+        TestCase(
+            value=np.float64(1.414),
+            expected_result=np.float64(1.414),
+            test_id="numpy_float64_unchanged",
+        ),
+        TestCase(
+            value=np.array([1, 2, 3], dtype=np.int8),
+            expected_result=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+            test_id="array_int8_to_float32",
+        ),
+        TestCase(
+            value=np.array([10, 20, 30], dtype=np.int16),
+            expected_result=np.array([10.0, 20.0, 30.0], dtype=np.float32),
+            test_id="array_int16_to_float32",
+        ),
+        TestCase(
+            value=np.array([100, 200, 300], dtype=np.int32),
+            expected_result=np.array([100.0, 200.0, 300.0], dtype=np.float32),
+            test_id="array_int32_to_float32",
+        ),
+        TestCase(
+            value=np.array([1000, 2000, 3000], dtype=np.int64),
+            expected_result=np.array([1000.0, 2000.0, 3000.0], dtype=np.float64),
+            test_id="array_int64_to_float64",
+        ),
+        TestCase(
+            value=np.array([1, 2, 3], dtype=np.uint8),
+            expected_result=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+            test_id="array_uint8_to_float32",
+        ),
+        TestCase(
+            value=np.array([100, 200, 300], dtype=np.uint16),
+            expected_result=np.array([100.0, 200.0, 300.0], dtype=np.float32),
+            test_id="array_uint16_to_float32",
+        ),
+        TestCase(
+            value=np.array([1000, 2000, 3000], dtype=np.uint32),
+            expected_result=np.array([1000.0, 2000.0, 3000.0], dtype=np.float32),
+            test_id="array_uint32_to_float32",
+        ),
+        TestCase(
+            value=np.array([10000, 20000, 30000], dtype=np.uint64),
+            expected_result=np.array([10000.0, 20000.0, 30000.0], dtype=np.float64),
+            test_id="array_uint64_to_float64",
+        ),
+        TestCase(
+            value=np.array([1.5, 2.5, 3.5], dtype=np.float16),
+            expected_result=np.array([1.5, 2.5, 3.5], dtype=np.float16),
+            test_id="array_float16_unchanged",
+        ),
+        TestCase(
+            value=np.array([1.1, 2.2, 3.3], dtype=np.float32),
+            expected_result=np.array([1.1, 2.2, 3.3], dtype=np.float32),
+            test_id="array_float32_unchanged",
+        ),
+        TestCase(
+            value=np.array([1.23, 4.56, 7.89], dtype=np.float64),
+            expected_result=np.array([1.23, 4.56, 7.89], dtype=np.float64),
+            test_id="array_float64_unchanged",
+        ),
+        TestCase(
+            value=xp.int8(5),
+            expected_result=xp.float32(5.0),
+            test_id="xp_int8",
+        ),
+        TestCase(
+            value=xp.int16(50),
+            expected_result=xp.float32(50.0),
+            test_id="xp_int16",
+        ),
+        TestCase(
+            value=xp.int32(500),
+            expected_result=xp.float32(500.0),
+            test_id="xp_int32",
+        ),
+        TestCase(
+            value=xp.int64(5000),
+            expected_result=xp.float64(5000.0),
+            test_id="xp_int64",
+        ),
+        TestCase(
+            value=xp.float32(2.5),
+            expected_result=xp.float32(2.5),
+            test_id="xp_float32_unchanged",
+        ),
+        TestCase(
+            value=xp.float64(3.5),
+            expected_result=xp.float64(3.5),
+            test_id="xp_float64_unchanged",
+        ),
+        TestCase(
+            value=xp.array([1, 2, 3], dtype=xp.int32),
+            expected_result=xp.array([1.0, 2.0, 3.0], dtype=xp.float32),
+            test_id="xp_array_int32_to_float32",
+        ),
+        TestCase(
+            value=xp.array([10, 20, 30], dtype=xp.int64),
+            expected_result=xp.array([10.0, 20.0, 30.0], dtype=xp.float64),
+            test_id="xp_array_int64_to_float64",
+        ),
+        TestCase(
+            value=xp.array([1.1, 2.2], dtype=xp.float32),
+            expected_result=xp.array([1.1, 2.2], dtype=xp.float32),
+            test_id="xp_array_float32_unchanged",
+        ),
+        TestCase(
+            value=xp.array([1.23, 4.56], dtype=xp.float64),
+            expected_result=xp.array([1.23, 4.56], dtype=xp.float64),
+            test_id="xp_array_float64_unchanged",
+        ),
+        TestCase(
+            value="42",
+            expected_result=TypeError,
+            test_id="string_raises_type_error",
+        ),
+        TestCase(
+            value=[1, 2, 3],
+            expected_result=TypeError,
+            test_id="list_raises_type_error",
+        ),
+        TestCase(
+            value=None,
+            expected_result=TypeError,
+            test_id="none_raises_type_error",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_cast_to_float(self, test_case: TestCase) -> None:
+        if not expect_error(cast_to_float, test_case.expected_result, test_case.value):
+            result = cast_to_float(test_case.value)
+            assert_array_equal(result, test_case.expected_result)
 
 
 class TestInferDtype:
@@ -367,7 +601,7 @@ class TestInferDtype:
         test_cases,
         ids=lambda tc: tc.test_id,
     )
-    def test_infer_dtype(self, test_case: TestInferDtype.TestCase) -> None:
+    def test_infer_dtype(self, test_case: TestCase) -> None:
         if expect_error(infer_dtype, test_case.expected_result, test_case.value, test_case.dtype):
             return
 
@@ -793,7 +1027,7 @@ class TestClamp:
         test_cases,
         ids=lambda tc: tc.test_id,
     )
-    def test_clamp(self, test_case: TestClamp.TestCase) -> None:
+    def test_clamp(self, test_case: TestCase) -> None:
         if expect_error(
             clamp,
             test_case.expected_result,
@@ -979,7 +1213,7 @@ class TestPad:
         test_cases,
         ids=lambda tc: tc.test_id,
     )
-    def test_pad(self, test_case: TestPad.TestCase) -> None:
+    def test_pad(self, test_case: TestCase) -> None:
         if expect_error(
             pad,
             test_case.expected_result,
@@ -1061,7 +1295,7 @@ class TestTrim:
         test_cases,
         ids=lambda tc: tc.test_id,
     )
-    def test_trim(self, test_case: TestTrim.TestCase) -> None:
+    def test_trim(self, test_case: TestCase) -> None:
         if expect_error(trim, test_case.expected_result, test_case.input_array):
             return
 

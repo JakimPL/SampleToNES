@@ -6,6 +6,7 @@ import pytest
 
 from sampletones.structures.histogram.interval import Interval
 from sampletones.types.array import Float
+from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 
 
@@ -14,31 +15,37 @@ class TestBool:
     class TestCase:
         __test__ = False
 
-        left: Float
-        right: Float
+        interval: Interval
         expected: bool
 
         @property
         def test_id(self) -> str:
-            return f"left_{self.left}_right_{self.right}_expect_{self.expected}"
+            return f"[{self.interval.left},{self.interval.right}]_expect_{self.expected}"
 
     test_cases = [
-        TestCase(left=0.0, right=1.0, expected=True),
-        TestCase(left=1.0, right=5.0, expected=True),
-        TestCase(left=-10.0, right=10.0, expected=True),
-        TestCase(left=np.float32(0.0), right=np.float32(1.0), expected=True),
-        TestCase(left=np.float64(5.5), right=np.float64(10.5), expected=True),
-        TestCase(left=1.0, right=1.0, expected=False),
-        TestCase(left=5.0, right=5.0, expected=False),
-        TestCase(left=5.0, right=3.0, expected=False),
-        TestCase(left=np.float32(2.0), right=np.float32(1.0), expected=False),
-        TestCase(left=np.float64(10.0), right=np.float64(10.0), expected=False),
+        TestCase(interval=Interval(0.0, 1.0), expected=True),
+        TestCase(interval=Interval(1.0, 5.0), expected=True),
+        TestCase(interval=Interval(-10.0, 10.0), expected=True),
+        TestCase(interval=Interval(np.float32(0.0), np.float32(1.0)), expected=True),
+        TestCase(interval=Interval(np.float64(5.5), np.float64(10.5)), expected=True),
+        TestCase(interval=Interval(-np.inf, 0.0), expected=True),
+        TestCase(interval=Interval(0.0, np.inf), expected=True),
+        TestCase(interval=Interval(-np.inf, np.inf), expected=True),
+        TestCase(interval=Interval(1.0, 1.0), expected=False),
+        TestCase(interval=Interval(5.0, 5.0), expected=False),
+        TestCase(interval=Interval(5.0, 3.0), expected=False),
+        TestCase(interval=Interval(np.float32(2.0), np.float32(1.0)), expected=False),
+        TestCase(interval=Interval(np.float64(10.0), np.float64(10.0)), expected=False),
+        TestCase(interval=Interval(np.inf, np.inf), expected=False),
+        TestCase(interval=Interval(np.inf, -np.inf), expected=False),
+        TestCase(interval=Interval(np.nan, 1.0), expected=False),
+        TestCase(interval=Interval(0.0, np.nan), expected=False),
+        TestCase(interval=Interval(np.nan, np.nan), expected=False),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_bool(self, test_case: TestCase) -> None:
-        interval = Interval(test_case.left, test_case.right)
-        assert bool(interval) == test_case.expected
+        assert bool(test_case.interval) == test_case.expected
 
 
 class TestLength:
@@ -46,30 +53,103 @@ class TestLength:
     class TestCase:
         __test__ = False
 
-        left: Float
-        right: Float
+        interval: Interval
         expected: Float
 
         @property
         def test_id(self) -> str:
-            return f"left_{self.left}_right_{self.right}"
+            return f"[{self.interval.left},{self.interval.right}]"
 
     test_cases = [
-        TestCase(left=0.0, right=1.0, expected=1.0),
-        TestCase(left=0.0, right=5.0, expected=5.0),
-        TestCase(left=2.0, right=7.0, expected=5.0),
-        TestCase(left=-5.0, right=5.0, expected=10.0),
-        TestCase(left=np.float32(1.5), right=np.float32(3.5), expected=2.0),
-        TestCase(left=np.float64(10.0), right=np.float64(15.0), expected=5.0),
-        TestCase(left=1.0, right=1.0, expected=0.0),
-        TestCase(left=5.0, right=3.0, expected=0.0),
-        TestCase(left=np.float32(10.0), right=np.float32(5.0), expected=0.0),
+        TestCase(interval=Interval(0.0, 1.0), expected=1.0),
+        TestCase(interval=Interval(0.0, 5.0), expected=5.0),
+        TestCase(interval=Interval(2.0, 7.0), expected=5.0),
+        TestCase(interval=Interval(-5.0, 5.0), expected=10.0),
+        TestCase(interval=Interval(np.float32(1.5), np.float32(3.5)), expected=np.float32(2.0)),
+        TestCase(interval=Interval(np.float64(10.0), np.float64(15.0)), expected=np.float64(5.0)),
+        TestCase(interval=Interval(-np.inf, 0.0), expected=np.inf),
+        TestCase(interval=Interval(0.0, np.inf), expected=np.inf),
+        TestCase(interval=Interval(-np.inf, np.inf), expected=np.inf),
+        TestCase(interval=Interval(1.0, 1.0), expected=0.0),
+        TestCase(interval=Interval(5.0, 3.0), expected=0.0),
+        TestCase(interval=Interval(np.float32(10.0), np.float32(5.0)), expected=np.float32(0.0)),
+        TestCase(interval=Interval(np.inf, np.inf), expected=0.0),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_length(self, test_case: TestCase) -> None:
-        interval = Interval(test_case.left, test_case.right)
-        assert interval.length == pytest.approx(test_case.expected)
+        result = test_case.interval.length
+        assert_array_equal(result, test_case.expected)
+
+
+class TestZero:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        interval: Interval
+        expected_type: type
+
+        @property
+        def test_id(self) -> str:
+            left_type = type(self.interval.left).__name__
+            right_type = type(self.interval.right).__name__
+            return f"{left_type}__{right_type}"
+
+    test_cases = [
+        TestCase(interval=Interval(True, True), expected_type=int),
+        TestCase(interval=Interval(1, 2), expected_type=int),
+        TestCase(interval=Interval(1.0, 2.0), expected_type=float),
+        TestCase(interval=Interval(np.int8(1), np.int8(2)), expected_type=np.int8),
+        TestCase(interval=Interval(np.int32(1), np.int32(2)), expected_type=np.int32),
+        TestCase(interval=Interval(np.int64(1), np.int64(2)), expected_type=np.int64),
+        TestCase(interval=Interval(np.float32(1.0), np.float32(2.0)), expected_type=np.float32),
+        TestCase(interval=Interval(np.float64(1.0), np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(True, 1), expected_type=int),
+        TestCase(interval=Interval(1, True), expected_type=int),
+        TestCase(interval=Interval(True, 1.0), expected_type=float),
+        TestCase(interval=Interval(1.0, True), expected_type=float),
+        TestCase(interval=Interval(1, 1.0), expected_type=float),
+        TestCase(interval=Interval(1.0, 1), expected_type=float),
+        TestCase(interval=Interval(np.int8(1), np.int32(2)), expected_type=np.int32),
+        TestCase(interval=Interval(np.int32(1), np.int8(2)), expected_type=np.int32),
+        TestCase(interval=Interval(np.int8(1), np.int64(2)), expected_type=np.int64),
+        TestCase(interval=Interval(np.int64(1), np.int8(2)), expected_type=np.int64),
+        TestCase(interval=Interval(np.int32(1), np.int64(2)), expected_type=np.int64),
+        TestCase(interval=Interval(np.int64(1), np.int32(2)), expected_type=np.int64),
+        TestCase(interval=Interval(np.float32(1.0), np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.float32(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(1, np.int8(2)), expected_type=np.int8),
+        TestCase(interval=Interval(np.int8(1), 257), expected_type=np.int8),
+        TestCase(interval=Interval(1, np.int32(2)), expected_type=np.int32),
+        TestCase(interval=Interval(np.int32(1), 2), expected_type=np.int32),
+        TestCase(interval=Interval(1.0, np.float32(2.0)), expected_type=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), 2.0), expected_type=np.float32),
+        TestCase(interval=Interval(1.0, np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), 2.0), expected_type=np.float64),
+        TestCase(interval=Interval(1, np.float32(2.0)), expected_type=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), 2), expected_type=np.float32),
+        TestCase(interval=Interval(1, np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), 2), expected_type=np.float64),
+        TestCase(interval=Interval(np.int8(1), np.float32(2.0)), expected_type=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), np.int8(2)), expected_type=np.float32),
+        TestCase(interval=Interval(np.int32(1), np.float32(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float32(1.0), np.int32(2)), expected_type=np.float64),
+        TestCase(interval=Interval(np.int64(1), np.float32(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float32(1.0), np.int64(2)), expected_type=np.float64),
+        TestCase(interval=Interval(np.int8(1), np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int8(2)), expected_type=np.float64),
+        TestCase(interval=Interval(np.int32(1), np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int32(2)), expected_type=np.float64),
+        TestCase(interval=Interval(np.int64(1), np.float64(2.0)), expected_type=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int64(2)), expected_type=np.float64),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    def test_zero_type(self, test_case: TestCase) -> None:
+        result = test_case.interval.zero
+        assert type(result) == test_case.expected_type
+        assert_array_equal(result, test_case.expected_type(0))
 
 
 class TestMidpoint:
@@ -77,33 +157,38 @@ class TestMidpoint:
     class TestCase:
         __test__ = False
 
-        left: Float
-        right: Float
+        interval: Interval
         expected: Optional[Float]
 
         @property
         def test_id(self) -> str:
-            return f"left_{self.left}_right_{self.right}"
+            return f"[{self.interval.left},{self.interval.right}]"
 
     test_cases = [
-        TestCase(left=0.0, right=2.0, expected=1.0),
-        TestCase(left=1.0, right=5.0, expected=3.0),
-        TestCase(left=-10.0, right=10.0, expected=0.0),
-        TestCase(left=2.5, right=7.5, expected=5.0),
-        TestCase(left=np.float32(0.0), right=np.float32(4.0), expected=2.0),
-        TestCase(left=np.float64(10.0), right=np.float64(20.0), expected=15.0),
-        TestCase(left=1.0, right=1.0, expected=None),
-        TestCase(left=5.0, right=3.0, expected=None),
-        TestCase(left=np.float32(10.0), right=np.float32(5.0), expected=None),
+        TestCase(interval=Interval(0.0, 2.0), expected=1.0),
+        TestCase(interval=Interval(1.0, 5.0), expected=3.0),
+        TestCase(interval=Interval(-10.0, 10.0), expected=0.0),
+        TestCase(interval=Interval(2.5, 7.5), expected=5.0),
+        TestCase(interval=Interval(np.float32(0.0), np.float32(4.0)), expected=np.float32(2.0)),
+        TestCase(interval=Interval(np.float64(10.0), np.float64(20.0)), expected=np.float64(15.0)),
+        TestCase(interval=Interval(-np.inf, 0.0), expected=-np.inf),
+        TestCase(interval=Interval(0.0, np.inf), expected=np.inf),
+        TestCase(interval=Interval(-np.inf, np.inf), expected=np.nan),
+        TestCase(interval=Interval(1.0, 1.0), expected=None),
+        TestCase(interval=Interval(5.0, 3.0), expected=None),
+        TestCase(interval=Interval(np.float32(10.0), np.float32(5.0)), expected=None),
+        TestCase(interval=Interval(np.inf, np.inf), expected=None),
+        TestCase(interval=Interval(np.nan, 1.0), expected=None),
+        TestCase(interval=Interval(0.0, np.nan), expected=None),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_midpoint(self, test_case: TestCase) -> None:
-        interval = Interval(test_case.left, test_case.right)
+        result = test_case.interval.midpoint
         if test_case.expected is None:
-            assert interval.midpoint is None
+            assert result is None
         else:
-            assert interval.midpoint == pytest.approx(test_case.expected)
+            assert_array_equal(result, test_case.expected)
 
 
 class TestIntersection:
@@ -111,61 +196,41 @@ class TestIntersection:
     class TestCase:
         __test__ = False
 
-        left1: Float
-        right1: Float
-        left2: Float
-        right2: Float
-        expected_left: Float
-        expected_right: Float
+        interval1: Interval
+        interval2: Union[Interval, str]
         expected: Union[Interval, Type[Exception]]
         match: Optional[str] = None
 
         @property
         def test_id(self) -> str:
             error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
-            return f"[{self.left1},{self.right1}]_[{self.left2},{self.right2}]{error_suffix}"
+            interval2_str = (
+                f"[{self.interval2.left},{self.interval2.right}]"
+                if isinstance(self.interval2, Interval)
+                else str(self.interval2)
+            )
+            return f"[{self.interval1.left},{self.interval1.right}]_{interval2_str}{error_suffix}"
 
     test_cases = [
+        TestCase(interval1=Interval(1.0, 5.0), interval2=Interval(3.0, 7.0), expected=Interval(3.0, 5.0)),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(2.0, 8.0), expected=Interval(2.0, 8.0)),
+        TestCase(interval1=Interval(5.0, 10.0), interval2=Interval(1.0, 6.0), expected=Interval(5.0, 6.0)),
+        TestCase(interval1=Interval(1.0, 3.0), interval2=Interval(5.0, 7.0), expected=Interval(5.0, 3.0)),
+        TestCase(interval1=Interval(1.0, 5.0), interval2=Interval(5.0, 10.0), expected=Interval(5.0, 5.0)),
         TestCase(
-            left1=1.0, right1=5.0, left2=3.0, right2=7.0, expected_left=3.0, expected_right=5.0, expected=Interval
+            interval1=Interval(np.float32(2.0), np.float32(6.0)),
+            interval2=Interval(np.float32(4.0), np.float32(8.0)),
+            expected=Interval(4.0, 6.0),
         ),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(1.0, 10.0), expected=Interval(5.0, 3.0)),
+        TestCase(interval1=Interval(1.0, 10.0), interval2=Interval(5.0, 3.0), expected=Interval(5.0, 3.0)),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(8.0, 6.0), expected=Interval(8.0, 3.0)),
+        TestCase(interval1=Interval(-np.inf, 5.0), interval2=Interval(0.0, np.inf), expected=Interval(0.0, 5.0)),
+        TestCase(interval1=Interval(-np.inf, np.inf), interval2=Interval(0.0, 10.0), expected=Interval(0.0, 10.0)),
+        TestCase(interval1=Interval(0.0, np.inf), interval2=Interval(5.0, np.inf), expected=Interval(5.0, np.inf)),
         TestCase(
-            left1=0.0, right1=10.0, left2=2.0, right2=8.0, expected_left=2.0, expected_right=8.0, expected=Interval
-        ),
-        TestCase(
-            left1=5.0, right1=10.0, left2=1.0, right2=6.0, expected_left=5.0, expected_right=6.0, expected=Interval
-        ),
-        TestCase(
-            left1=1.0, right1=3.0, left2=5.0, right2=7.0, expected_left=5.0, expected_right=3.0, expected=Interval
-        ),
-        TestCase(
-            left1=1.0, right1=5.0, left2=5.0, right2=10.0, expected_left=5.0, expected_right=5.0, expected=Interval
-        ),
-        TestCase(
-            left1=np.float32(2.0),
-            right1=np.float32(6.0),
-            left2=np.float32(4.0),
-            right2=np.float32(8.0),
-            expected_left=4.0,
-            expected_right=6.0,
-            expected=Interval,
-        ),
-        TestCase(
-            left1=5.0, right1=3.0, left2=1.0, right2=10.0, expected_left=5.0, expected_right=3.0, expected=Interval
-        ),
-        TestCase(
-            left1=1.0, right1=10.0, left2=5.0, right2=3.0, expected_left=5.0, expected_right=3.0, expected=Interval
-        ),
-        TestCase(
-            left1=5.0, right1=3.0, left2=8.0, right2=6.0, expected_left=8.0, expected_right=3.0, expected=Interval
-        ),
-        TestCase(
-            left1=1.0,
-            right1=5.0,
-            left2="not_interval",
-            right2=0.0,
-            expected_left=0.0,
-            expected_right=0.0,
+            interval1=Interval(1.0, 5.0),
+            interval2="not_interval",
             expected=TypeError,
             match="Expected Interval",
         ),
@@ -173,17 +238,12 @@ class TestIntersection:
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_intersection(self, test_case: TestCase) -> None:
-        interval1 = Interval(test_case.left1, test_case.right1)
-        other = (
-            test_case.left2
-            if isinstance(test_case.expected, type) and issubclass(test_case.expected, Exception)
-            else Interval(test_case.left2, test_case.right2)
-        )
+        other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
 
-        if not expect_error(interval1.intersection, test_case.expected, other, match=test_case.match):
-            result = interval1.intersection(other)
-            assert result.left == pytest.approx(test_case.expected_left)
-            assert result.right == pytest.approx(test_case.expected_right)
+        if not expect_error(test_case.interval1.intersection, test_case.expected, other, match=test_case.match):
+            assert isinstance(other, Interval)
+            result = test_case.interval1.intersection(other)
+            assert result == test_case.expected
 
 
 class TestContains:
@@ -191,46 +251,48 @@ class TestContains:
     class TestCase:
         __test__ = False
 
-        left1: Float
-        right1: Float
-        left2: Float
-        right2: Float
+        interval1: Interval
+        interval2: Interval
         expected: bool
 
         @property
         def test_id(self) -> str:
-            return f"[{self.left1},{self.right1}]_contains_[{self.left2},{self.right2}]_{self.expected}"
+            return f"[{self.interval1.left},{self.interval1.right}]_contains_[{self.interval2.left},{self.interval2.right}]_{self.expected}"
 
     test_cases = [
-        TestCase(left1=0.0, right1=10.0, left2=2.0, right2=8.0, expected=True),
-        TestCase(left1=1.0, right1=5.0, left2=1.0, right2=5.0, expected=True),
-        TestCase(left1=0.0, right1=10.0, left2=0.0, right2=10.0, expected=True),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(2.0, 8.0), expected=True),
+        TestCase(interval1=Interval(1.0, 5.0), interval2=Interval(1.0, 5.0), expected=True),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(0.0, 10.0), expected=True),
         TestCase(
-            left1=np.float32(5.0),
-            right1=np.float32(15.0),
-            left2=np.float32(7.0),
-            right2=np.float32(12.0),
+            interval1=Interval(np.float32(5.0), np.float32(15.0)),
+            interval2=Interval(np.float32(7.0), np.float32(12.0)),
             expected=True,
         ),
-        TestCase(left1=1.0, right1=5.0, left2=3.0, right2=7.0, expected=False),
-        TestCase(left1=1.0, right1=5.0, left2=0.0, right2=10.0, expected=False),
-        TestCase(left1=5.0, right1=10.0, left2=1.0, right2=6.0, expected=False),
+        TestCase(interval1=Interval(-np.inf, np.inf), interval2=Interval(0.0, 10.0), expected=True),
+        TestCase(interval1=Interval(-np.inf, 5.0), interval2=Interval(-10.0, 3.0), expected=True),
+        TestCase(interval1=Interval(0.0, np.inf), interval2=Interval(5.0, 100.0), expected=True),
+        TestCase(interval1=Interval(1.0, 5.0), interval2=Interval(3.0, 7.0), expected=False),
+        TestCase(interval1=Interval(1.0, 5.0), interval2=Interval(0.0, 10.0), expected=False),
+        TestCase(interval1=Interval(5.0, 10.0), interval2=Interval(1.0, 6.0), expected=False),
         TestCase(
-            left1=np.float64(3.0), right1=np.float64(8.0), left2=np.float64(1.0), right2=np.float64(4.0), expected=False
+            interval1=Interval(np.float64(3.0), np.float64(8.0)),
+            interval2=Interval(np.float64(1.0), np.float64(4.0)),
+            expected=False,
         ),
-        TestCase(left1=5.0, right1=3.0, left2=1.0, right2=10.0, expected=False),
-        TestCase(left1=1.0, right1=10.0, left2=5.0, right2=3.0, expected=True),
-        TestCase(left1=5.0, right1=3.0, left2=8.0, right2=6.0, expected=True),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(-np.inf, 5.0), expected=False),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(1.0, 10.0), expected=False),
+        TestCase(interval1=Interval(1.0, 10.0), interval2=Interval(5.0, 3.0), expected=True),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(8.0, 6.0), expected=True),
         TestCase(
-            left1=np.float32(7.0), right1=np.float32(7.0), left2=np.float32(3.0), right2=np.float32(5.0), expected=False
+            interval1=Interval(np.float32(7.0), np.float32(7.0)),
+            interval2=Interval(np.float32(3.0), np.float32(5.0)),
+            expected=False,
         ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_contains(self, test_case: TestCase) -> None:
-        interval1 = Interval(test_case.left1, test_case.right1)
-        interval2 = Interval(test_case.left2, test_case.right2)
-        assert interval1.contains(interval2) == test_case.expected
+        assert test_case.interval1.contains(test_case.interval2) == test_case.expected
 
 
 class TestRelativeMeasure:
@@ -238,62 +300,60 @@ class TestRelativeMeasure:
     class TestCase:
         __test__ = False
 
-        left1: Float
-        right1: Float
-        left2: Float
-        right2: Float
+        interval1: Interval
+        interval2: Union[Interval, str]
         expected: Union[Float, Type[Exception]]
         match: Optional[str] = None
 
         @property
         def test_id(self) -> str:
             error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
-            return f"[{self.left1},{self.right1}]_measure_[{self.left2},{self.right2}]{error_suffix}"
+            interval2_str = (
+                f"[{self.interval2.left},{self.interval2.right}]"
+                if isinstance(self.interval2, Interval)
+                else str(self.interval2)
+            )
+            return f"[{self.interval1.left},{self.interval1.right}]_measure_{interval2_str}{error_suffix}"
 
     test_cases = [
-        TestCase(left1=0.0, right1=10.0, left2=0.0, right2=10.0, expected=1.0),
-        TestCase(left1=0.0, right1=10.0, left2=0.0, right2=5.0, expected=0.5),
-        TestCase(left1=0.0, right1=10.0, left2=5.0, right2=10.0, expected=0.5),
-        TestCase(left1=3.0, right1=7.0, left2=4.0, right2=6.0, expected=0.5),
-        TestCase(left1=3.0, right1=7.0, left2=6.0, right2=15.0, expected=0.25),
-        TestCase(left1=0.0, right1=10.0, left2=15.0, right2=20.0, expected=0.0),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(0.0, 10.0), expected=1.0),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(0.0, 5.0), expected=0.5),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(5.0, 10.0), expected=0.5),
+        TestCase(interval1=Interval(3.0, 7.0), interval2=Interval(4.0, 6.0), expected=0.5),
+        TestCase(interval1=Interval(3.0, 7.0), interval2=Interval(6.0, 15.0), expected=0.25),
+        TestCase(interval1=Interval(0.0, 10.0), interval2=Interval(15.0, 20.0), expected=0.0),
         TestCase(
-            left1=np.float32(2.0),
-            right1=np.float32(8.0),
-            left2=np.float32(3.0),
-            right2=np.float32(5.0),
-            expected=pytest.approx(2.0 / 6.0),
+            interval1=Interval(np.float32(2.0), np.float32(8.0)),
+            interval2=Interval(np.float32(3.0), np.float32(5.0)),
+            expected=np.float32(1.0 / 3.0),
         ),
         TestCase(
-            left1=np.float64(0.0),
-            right1=np.float64(100.0),
-            left2=np.float64(25.0),
-            right2=np.float64(75.0),
-            expected=0.5,
+            interval1=Interval(np.float64(0.0), np.float64(100.0)),
+            interval2=Interval(np.float64(25.0), np.float64(75.0)),
+            expected=np.float64(0.5),
         ),
-        TestCase(left1=5.0, right1=3.0, left2=1.0, right2=10.0, expected=0.0),
-        TestCase(left1=1.0, right1=10.0, left2=5.0, right2=3.0, expected=0.0),
-        TestCase(left1=5.0, right1=3.0, left2=8.0, right2=6.0, expected=0.0),
+        TestCase(interval1=Interval(-np.inf, 0.0), interval2=Interval(-10.0, 0.0), expected=0.0),
+        TestCase(interval1=Interval(0.0, np.inf), interval2=Interval(0.0, 100.0), expected=0.0),
+        TestCase(interval1=Interval(-np.inf, np.inf), interval2=Interval(0.0, 10.0), expected=0.0),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(1.0, 10.0), expected=0.0),
+        TestCase(interval1=Interval(1.0, 10.0), interval2=Interval(5.0, 3.0), expected=0.0),
+        TestCase(interval1=Interval(5.0, 3.0), interval2=Interval(8.0, 6.0), expected=0.0),
         TestCase(
-            left1=1.0, right1=5.0, left2="not_interval", right2=0.0, expected=TypeError, match="Expected Interval"
+            interval1=Interval(1.0, 5.0),
+            interval2="not_interval",
+            expected=TypeError,
+            match="Expected Interval",
         ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_relative_measure(self, test_case: TestCase) -> None:
-        interval1 = Interval(test_case.left1, test_case.right1)
-        other = (
-            test_case.left2
-            if isinstance(test_case.expected, type) and issubclass(test_case.expected, Exception)
-            else Interval(test_case.left2, test_case.right2)
-        )
+        other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
 
-        if not expect_error(interval1.relative_measure, test_case.expected, other, match=test_case.match):
-            result = interval1.relative_measure(other)
-            if isinstance(test_case.expected, float):
-                assert result == pytest.approx(test_case.expected)
-            else:
-                assert result == test_case.expected
+        if not expect_error(test_case.interval1.relative_measure, test_case.expected, other, match=test_case.match):
+            assert isinstance(other, Interval)
+            result = test_case.interval1.relative_measure(other)
+            assert_array_equal(result, test_case.expected)
 
 
 class TestFloat:
@@ -301,29 +361,29 @@ class TestFloat:
     class TestCase:
         __test__ = False
 
-        left: Float
-        right: Float
+        interval: Interval
 
         @property
         def test_id(self) -> str:
-            return f"left_{type(self.left).__name__}_right_{type(self.right).__name__}"
+            return f"left_{type(self.interval.left).__name__}_right_{type(self.interval.right).__name__}"
 
     test_cases = [
-        TestCase(left=np.float32(1.5), right=np.float32(3.5)),
-        TestCase(left=np.float64(2.0), right=np.float64(8.0)),
-        TestCase(left=np.float32(-5.0), right=np.float32(5.0)),
-        TestCase(left=1.0, right=5.0),
-        TestCase(left=np.float64(10.5), right=np.float64(20.5)),
+        TestCase(interval=Interval(np.float32(1.5), np.float32(3.5))),
+        TestCase(interval=Interval(np.float64(2.0), np.float64(8.0))),
+        TestCase(interval=Interval(np.float32(-5.0), np.float32(5.0))),
+        TestCase(interval=Interval(1.0, 5.0)),
+        TestCase(interval=Interval(np.float64(10.5), np.float64(20.5))),
+        TestCase(interval=Interval(-np.inf, np.inf)),
+        TestCase(interval=Interval(np.float32(-np.inf), np.float32(5.0))),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_float(self, test_case: TestCase) -> None:
-        interval = Interval(test_case.left, test_case.right)
-        result = interval.float()
+        result = test_case.interval.float()
         assert isinstance(result.left, float)
         assert isinstance(result.right, float)
-        assert result.left == pytest.approx(float(test_case.left))
-        assert result.right == pytest.approx(float(test_case.right))
+        assert_array_equal(result.left, float(test_case.interval.left))
+        assert_array_equal(result.right, float(test_case.interval.right))
 
 
 class TestUnit:
@@ -345,41 +405,51 @@ class TestFromEdges:
         __test__ = False
 
         edges: Union[np.ndarray, List[float]]
-        expected: Union[int, Type[Exception]]
+        expected_result: Union[int, Type[Exception]]
         match: Optional[str] = None
 
         @property
         def test_id(self) -> str:
-            error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
-            dtype_name = self.edges.dtype.name if hasattr(self.edges, "dtype") else type(self.edges).__name__
+            error_suffix = (
+                "_error"
+                if isinstance(self.expected_result, type) and issubclass(self.expected_result, Exception)
+                else ""
+            )
+            dtype_name = self.edges.dtype.name if isinstance(self.edges, np.ndarray) else type(self.edges).__name__
             return f"dtype_{dtype_name}_len_{len(self.edges)}{error_suffix}"
 
     test_cases = [
-        TestCase(edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), expected=2),
-        TestCase(edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64), expected=3),
-        TestCase(edges=np.array([1.0, 3.0, 7.0, 15.0, 31.0], dtype=np.float32), expected=4),
-        TestCase(edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64), expected=2),
-        TestCase(edges=np.array([0.0, 1.0], dtype=np.float32), expected=1),
-        TestCase(edges=[0.0, 1.0, 2.0], expected=TypeError, match="edges must be an Array"),
-        TestCase(edges=np.array([1.0], dtype=np.float32), expected=ValueError, match="At least two edges"),
-        TestCase(edges=np.array([], dtype=np.float64), expected=ValueError, match="At least two edges"),
-        TestCase(edges=np.array([3.0, 2.0, 1.0], dtype=np.float32), expected=ValueError, match="strictly increasing"),
+        TestCase(edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), expected_result=2),
+        TestCase(edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64), expected_result=3),
+        TestCase(edges=np.array([1.0, 3.0, 7.0, 15.0, 31.0], dtype=np.float32), expected_result=4),
+        TestCase(edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64), expected_result=2),
+        TestCase(edges=np.array([0.0, 1.0], dtype=np.float32), expected_result=1),
+        TestCase(edges=[0.0, 1.0, 2.0], expected_result=TypeError, match="edges must be an Array"),
+        TestCase(edges=np.array([1.0], dtype=np.float32), expected_result=ValueError, match="At least two edges"),
+        TestCase(edges=np.array([], dtype=np.float64), expected_result=ValueError, match="At least two edges"),
         TestCase(
-            edges=np.array([1.0, 2.0, 2.0, 3.0], dtype=np.float64), expected=ValueError, match="strictly increasing"
+            edges=np.array([3.0, 2.0, 1.0], dtype=np.float32), expected_result=ValueError, match="strictly increasing"
         ),
-        TestCase(edges=np.array([1.0, 3.0, 2.0], dtype=np.float32), expected=ValueError, match="strictly increasing"),
+        TestCase(
+            edges=np.array([1.0, 2.0, 2.0, 3.0], dtype=np.float64),
+            expected_result=ValueError,
+            match="strictly increasing",
+        ),
+        TestCase(
+            edges=np.array([1.0, 3.0, 2.0], dtype=np.float32), expected_result=ValueError, match="strictly increasing"
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
     def test_from_edges(self, test_case: TestCase) -> None:
-        if not expect_error(Interval.from_edges, test_case.expected, test_case.edges, match=test_case.match):
+        if not expect_error(Interval.from_edges, test_case.expected_result, test_case.edges, match=test_case.match):
             result = Interval.from_edges(test_case.edges)
-            assert len(result) == test_case.expected
+            assert len(result) == test_case.expected_result
             assert all(isinstance(interval, Interval) for interval in result)
 
             for i, interval in enumerate(result):
-                assert interval.left == pytest.approx(test_case.edges[i])
-                assert interval.right == pytest.approx(test_case.edges[i + 1])
+                assert_array_equal(interval.left, test_case.edges[i])
+                assert_array_equal(interval.right, test_case.edges[i + 1])
                 assert bool(interval) is True
 
 
@@ -387,21 +457,20 @@ class TestEdgeCases:
     def test_zero_length_interval_operations(self) -> None:
         interval = Interval(5.0, 5.0)
         assert bool(interval) is False
-        assert interval.length == 0.0
+        assert_array_equal(interval.length, 0.0)
         assert interval.midpoint is None
 
     def test_negative_length_interval_operations(self) -> None:
         interval = Interval(10.0, 5.0)
         assert bool(interval) is False
-        assert interval.length == 0.0
+        assert_array_equal(interval.length, 0.0)
         assert interval.midpoint is None
 
     def test_intersection_of_invalid_intervals(self) -> None:
         invalid1 = Interval(5.0, 3.0)
         invalid2 = Interval(8.0, 6.0)
         result = invalid1.intersection(invalid2)
-        assert result.left == 8.0
-        assert result.right == 3.0
+        assert result == Interval(8.0, 3.0)
         assert bool(result) is False
 
     def test_contains_with_both_invalid(self) -> None:
@@ -423,19 +492,80 @@ class TestEdgeCases:
         invalid1 = Interval(5.0, 3.0)
         invalid2 = Interval(8.0, 6.0)
         result = invalid1.relative_measure(invalid2)
-        assert result == 0.0
+        assert_array_equal(result, 0.0)
 
     def test_relative_measure_valid_with_invalid_other(self) -> None:
         valid = Interval(1.0, 10.0)
         invalid = Interval(5.0, 3.0)
         result = valid.relative_measure(invalid)
-        assert result == 0.0
+        assert_array_equal(result, 0.0)
 
     def test_float_preserves_invalid_interval(self) -> None:
         invalid = Interval(np.float32(10.0), np.float32(5.0))
         result = invalid.float()
         assert isinstance(result.left, float)
         assert isinstance(result.right, float)
-        assert result.left == 10.0
-        assert result.right == 5.0
+        assert_array_equal(result.left, 10.0)
+        assert_array_equal(result.right, 5.0)
         assert bool(result) is False
+
+    def test_unbounded_interval_with_negative_infinity(self) -> None:
+        interval = Interval(-np.inf, 5.0)
+        assert bool(interval) is True
+        assert_array_equal(interval.length, np.inf)
+        assert_array_equal(interval.midpoint, -np.inf)
+
+    def test_unbounded_interval_with_positive_infinity(self) -> None:
+        interval = Interval(0.0, np.inf)
+        assert bool(interval) is True
+        assert_array_equal(interval.length, np.inf)
+        assert_array_equal(interval.midpoint, np.inf)
+
+    def test_unbounded_interval_both_infinities(self) -> None:
+        interval = Interval(-np.inf, np.inf)
+        assert bool(interval) is True
+        assert_array_equal(interval.length, np.inf)
+        assert_array_equal(interval.midpoint, np.nan)
+
+    def test_intersection_with_unbounded_intervals(self) -> None:
+        unbounded = Interval(-np.inf, np.inf)
+        bounded = Interval(0.0, 10.0)
+        result = unbounded.intersection(bounded)
+        assert result == bounded
+
+    def test_contains_with_unbounded_intervals(self) -> None:
+        unbounded = Interval(-np.inf, np.inf)
+        bounded = Interval(0.0, 10.0)
+        assert unbounded.contains(bounded) is True
+        assert bounded.contains(unbounded) is False
+
+    def test_relative_measure_with_unbounded_self(self) -> None:
+        unbounded = Interval(-np.inf, np.inf)
+        bounded = Interval(0.0, 10.0)
+        result = unbounded.relative_measure(bounded)
+        assert_array_equal(result, 0.0)
+
+    def test_interval_with_nan_left(self) -> None:
+        interval = Interval(np.nan, 5.0)
+        assert bool(interval) is False
+        assert interval.midpoint is None
+
+    def test_interval_with_nan_right(self) -> None:
+        interval = Interval(0.0, np.nan)
+        assert bool(interval) is False
+        assert interval.midpoint is None
+
+    def test_interval_with_both_nan(self) -> None:
+        interval = Interval(np.nan, np.nan)
+        assert bool(interval) is False
+        assert interval.midpoint is None
+
+    def test_infinity_equality_intervals(self) -> None:
+        interval1 = Interval(-np.inf, 0.0)
+        interval2 = Interval(-np.inf, 0.0)
+        assert interval1 == interval2
+
+    def test_infinity_inequality_intervals(self) -> None:
+        interval1 = Interval(-np.inf, 0.0)
+        interval2 = Interval(0.0, np.inf)
+        assert interval1 != interval2

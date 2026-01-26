@@ -19,6 +19,6 @@ def assert_array_equal(result: ArrayOrScalar, expected: ArrayOrScalar) -> None:
         module = get_array_module(result)
         assert result.dtype == expected.dtype
         if module.issubdtype(result.dtype, module.floating):
-            module.testing.assert_allclose(result, expected, rtol=1e-6, atol=1e-9)
+            module.testing.assert_array_almost_equal(result, expected)
         else:
             module.testing.assert_array_equal(result, expected)

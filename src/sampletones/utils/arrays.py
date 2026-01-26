@@ -1,8 +1,13 @@
 from typing import Any, Optional, Union, overload
 
+import numpy as np
+
+from sampletones import xp
 from sampletones.types.array import (
     Array,
     ArrayClasses,
+    ArrayOrScalar,
+    ArrayOrScalarClasses,
     DTypeLike,
     Float,
     Integer,
@@ -97,6 +102,30 @@ def clamp(
     return value
 
 
+def isfinite(value: Optional[Numeric]) -> bool:
+    """
+    Checks if a numeric value is finite (not NaN or infinite).
+
+    Args:
+        value: The numeric value to check.
+
+    Returns:
+        True if the value is finite, False if it is NaN, infinite, or None.
+
+    Raises:
+        TypeError: If the value is not a numeric type or `None`.
+    """
+    if value is None:
+        return False
+
+    if not isinstance(value, NumericClasses):
+        raise TypeError(f"Value must be a numeric type or None, got {type(value)}")
+
+    module = get_array_module(value)
+    finite: bool = bool(module.isfinite(value))
+    return finite
+
+
 def isnan(value: Optional[Numeric]) -> bool:
     """
     Checks if a numeric value is NaN (Not a Number).
@@ -119,6 +148,58 @@ def isnan(value: Optional[Numeric]) -> bool:
     module = get_array_module(value)
     nan: bool = bool(module.isnan(value))
     return nan
+
+
+@overload
+def cast_to_float(value: Integer) -> Float: ...
+
+
+@overload
+def cast_to_float(value: Float) -> Float: ...
+
+
+@overload
+def cast_to_float(value: Array) -> Array: ...
+
+
+def cast_to_float(value: ArrayOrScalar) -> ArrayOrScalar:
+    """
+    Cast integer values to appropriate float types, preserve float types.
+
+    Integer types are promoted to float to avoid losing precision during
+    interpolation operations. int64 is promoted to float64, other integer
+    types to float32. Float types are preserved as-is.
+
+    Args:
+        value: The array or scalar to potentially cast.
+
+    Returns:
+        Value casted to float64 for int64 types, float32 for other integer types,
+        unchanged for float types.
+
+    Examples:
+        >>> cast_to_float(np.array([1, 2, 3], dtype=np.int64))
+        array([1., 2., 3.])
+        >>> cast_to_float(np.array([1, 2, 3], dtype=np.int32))
+        array([1., 2., 3.], dtype=float32)
+        >>> cast_to_float(np.array([1.0, 2.0], dtype=np.float32))
+        array([1., 2.], dtype=float32)
+    """
+    if not isinstance(value, ArrayOrScalarClasses):
+        raise TypeError(f"Expected value to be an Array, got {type(value)}")
+
+    if isinstance(value, (float, np.floating, xp.floating)):
+        return value
+
+    if isinstance(value, (bool, int)):
+        return float(value)
+
+    module = get_array_module(value)
+    if module.issubdtype(value.dtype, module.integer):
+        target_dtype = module.float64 if value.dtype.itemsize >= 8 else module.float32
+        return value.astype(target_dtype)
+
+    return value
 
 
 def infer_dtype(value: Optional[Numeric], dtype: DTypeLike) -> DTypeLike:
@@ -180,7 +261,6 @@ def pad(array: Array, left: int, right: int, value: Any = 0.0) -> Array:
         ValueError: If left is greater than right, or the array is not 1-dimensional.
 
     Examples:
-        >>> import numpy as np
         >>> audio = np.array([1, 2, 3, 4, 5])
         >>> pad(audio, -2, 7, value=0)
         array([0, 0, 1, 2, 3, 4, 5, 0, 0])
@@ -236,7 +316,6 @@ def trim(array: Array) -> Array:
         ValueError: If array is not 1-dimensional.
 
     Examples:
-        >>> import numpy as np
         >>> trim(np.array([1, 1, 2, 2, 3, 3, 3, 3]))
         array([1, 1, 2, 2, 3])
         >>> trim(np.array([5, 5, 5, 5]))
@@ -273,7 +352,6 @@ def is_increasing(array: Array) -> bool:
         False otherwise.
 
     Examples:
-        >>> import numpy as np
         >>> is_increasing(np.array([1, 2, 5, 10]))
         True
         >>> is_increasing(np.array([1, 2, 2, 5]))

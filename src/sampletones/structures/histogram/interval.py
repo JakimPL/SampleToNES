@@ -51,7 +51,7 @@ class Interval(NamedTuple):
             right - left if the interval is valid, 0.0 otherwise.
         """
         if not bool(self):
-            return 0.0
+            return self.zero
 
         return self.right - self.left
 
@@ -70,6 +70,18 @@ class Interval(NamedTuple):
             return None
 
         return 0.5 * (self.left + self.right)
+
+    @property
+    def zero(self) -> Float:
+        """
+        Zero of the interval content type.
+
+        Amalgamates the type of left and right to produce zero.
+
+        Returns:
+            Zero value of the interval's endpoint type.
+        """
+        return type(self.left)(0) + type(self.right)(0)
 
     def intersection(self, other: Self) -> Self:
         """
@@ -161,7 +173,7 @@ class Interval(NamedTuple):
             raise TypeError(f"Expected Interval, got {type(other)}")
 
         if not bool(self):
-            return 0.0
+            return self.zero
 
         return self.intersection(other).length / self.length
 
