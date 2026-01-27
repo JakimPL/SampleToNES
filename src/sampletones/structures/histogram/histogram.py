@@ -36,10 +36,10 @@ class Histogram(DataModel):
         H = {(x_i)_{i=0}^n, (d_i)_{i=0}^{n-1}}
 
     where edges (x_i)_{i=0}^n are strictly increasing,
-    and values (d_i)_{i=0}^{n-1} are arbitrary numeric values.
+    and values (d_i)_{i=0}^{n-1} are arbitrary finite numeric values.
 
     While histograms typically represent non-negative counts or densities,
-    this implementation allows any numeric values for mathematical generality.
+    this implementation allows any finite numeric values for mathematical generality.
 
     Number of edges must be exactly one more than number of values.
 
@@ -62,6 +62,8 @@ class Histogram(DataModel):
         >>> uniform_histogram.densities
         array([3., 3.])
     """
+
+    __array_priority__ = 2
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
@@ -120,7 +122,7 @@ class Histogram(DataModel):
             ValueError: If edges length is not values length + 1,
                 if fewer than 2 edges,
                 if edges are not strictly increasing,
-                or contain non-finite values.
+                or edges/values contain non-finite values.
             TypeError: If edges or values are not numpy arrays.
             TypeError: If edges and values are not of the same type.
         """
@@ -144,6 +146,9 @@ class Histogram(DataModel):
 
         if not all(isfinite(edge) for edge in self.edges):
             raise ValueError("edges must contain only finite values")
+
+        if not all(isfinite(value) for value in self.values):
+            raise ValueError("values must contain only finite values")
 
         if not self.edges.ndim == 1:
             raise ValueError("edges must be a one-dimensional array")
@@ -832,7 +837,13 @@ class Histogram(DataModel):
 
         Returns:
             New histogram with densities raised to the given power.
+
+        Raises:
+            ZeroDivisionError: If raising to a negative power with zero densities.
         """
+        if self.xp.any(self.densities == 0.0) and exponent < 0:
+            raise ZeroDivisionError("Cannot raise histogram to a negative power with zero densities")
+
         return self.apply_with(lambda d: d**exponent)
 
     @overload
@@ -863,12 +874,21 @@ class Histogram(DataModel):
             return self.__add__(-other)
 
         if isinstance(other, Histogram):
-            return self.__add__(-1 * other)
+            return self.__add__(-other)
 
         if isinstance(other, ArrayClasses):
             return self.__add__(-other)
 
         raise TypeError(f"Unsupported type for subtraction: {type(other)}, expected Histogram, Array, or Numeric")
+
+    def __neg__(self) -> Histogram:
+        """
+        Multiply histogram by -1.
+
+        Returns:
+            New histogram with multiplied values.
+        """
+        return self.__mul__(-1)
 
     @overload
     def __rsub__(self, other: Numeric) -> Histogram: ...
@@ -888,7 +908,7 @@ class Histogram(DataModel):
         Returns:
             New histogram with the difference.
         """
-        return (self * -1).__add__(other)
+        return (-self).__add__(other)
 
     @overload
     def __truediv__(self, other: Histogram) -> Histogram: ...
@@ -915,16 +935,25 @@ class Histogram(DataModel):
         Raises:
             ValueError: If array length doesn't match values length.
             TypeError: If other is not Histogram, Array, or Numeric.
+            ZeroDivisionError: If dividing by zero.
         """
         if isinstance(other, NumericClasses):
+            if other == 0.0:
+                raise ZeroDivisionError("Division by zero scalar is not allowed")
+
             return Histogram(edges=self.edges.copy(), values=self.values / other)
 
         if isinstance(other, Histogram):
-            return self.__mul__(other**-1)
+            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            return rebinned_self.__mul__(rebinned_other**-1)
 
         if isinstance(other, ArrayClasses):
             if len(other) != len(self.values):
                 raise ValueError(f"Array length {len(other)} must match values length {len(self.values)}")
+
+            if self.xp.any(other == 0.0):
+                raise ZeroDivisionError("Division by zero in array is not allowed")
+
             return Histogram(edges=self.edges.copy(), values=self.values / other)
 
         raise TypeError(f"Unsupported type for division: {type(other)}, expected Histogram, Array, or Numeric")

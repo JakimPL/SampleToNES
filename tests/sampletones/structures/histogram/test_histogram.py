@@ -91,9 +91,7 @@ class TestInit:
         TestCase(
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
             values=np.array([np.nan, 2.0], dtype=np.float32),
-            expected_result=Histogram(
-                np.array([0.0, 1.0, 2.0], dtype=np.float32), np.array([np.nan, 2.0], dtype=np.float32)
-            ),
+            expected_result=ValidationError,
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
@@ -1612,7 +1610,7 @@ class TestRefine:
                 Histogram(np.array([10.0, 30.0, 40.0, 50.0]), np.array([20.0, 30.0, 40.0])),
                 Histogram(np.array([15.0, 25.0, 35.0, 45.0, 50.0]), np.array([5.0, 10.0, 15.0, 20.0])),
             ),
-            expected_result=np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0], dtype=np.float32),
+            expected_result=np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0]),
             test_id="four_histograms",
         ),
     ]
@@ -1639,274 +1637,886 @@ class TestRefine:
 
 
 class TestApply:
-    def test_apply_square_function(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = Histogram.apply(lambda d: d**2, histogram)
-        np.testing.assert_array_almost_equal(result.densities, [4.0, 4.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_apply_add_constant(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        result = Histogram.apply(lambda d: d + 5.0, histogram)
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 7.0])
+        function: Any
+        histograms: Tuple[Histogram, ...]
+        expected_densities: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_apply_multiply_constant(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = Histogram.apply(lambda d: d * 3.0, histogram)
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 6.0])
+    test_cases = [
+        TestCase(
+            function=lambda d: d**2,
+            histograms=(Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0])),),
+            expected_densities=np.array([4.0, 4.0]),
+            test_id="single_histogram_square",
+        ),
+        TestCase(
+            function=lambda d: d + 5.0,
+            histograms=(Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),),
+            expected_densities=np.array([6.0, 7.0]),
+            test_id="single_histogram_add_constant",
+        ),
+        TestCase(
+            function=lambda d: d * 3.0,
+            histograms=(Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0])),),
+            expected_densities=np.array([6.0, 6.0]),
+            test_id="single_histogram_multiply_constant",
+        ),
+        TestCase(
+            function=np.log,
+            histograms=(Histogram(np.array([0.0, 1.0, 4.0]), np.array([np.e, 3 * np.e])),),
+            expected_densities=np.array([1.0, 1.0]),
+            test_id="single_histogram_log",
+        ),
+        TestCase(
+            function=np.exp,
+            histograms=(Histogram(np.array([0.0, 1.0, 4.0]), np.array([1.0, 3.0])),),
+            expected_densities=np.array([np.e, np.e]),
+            test_id="single_histogram_exp",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 + d2,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            ),
+            expected_densities=np.array([3.0, 6.0]),
+            test_id="two_histograms_add",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 * d2,
+            histograms=(
+                Histogram(np.array([0.0, 2.0, 8.0], dtype=np.float32), np.array([4.0, 12.0], dtype=np.float32)),
+                Histogram(np.array([0.0, 2.0, 8.0], dtype=np.float32), np.array([6.0, 18.0], dtype=np.float32)),
+            ),
+            expected_densities=np.array([6.0, 6.0], dtype=np.float32),
+            test_id="two_histograms_multiply",
+        ),
+        TestCase(
+            function=lambda d1, d2, d3: d1 + d2 + d3,
+            histograms=(
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([2.0, 6.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([4.0, 12.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([6.0, 18.0])),
+            ),
+            expected_densities=np.array([6.0, 6.0]),
+            test_id="three_histograms_add",
+        ),
+        TestCase(
+            function=lambda d1, d2, d3, d4: d1 * d2 * d3 * d4,
+            histograms=(
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([4.0, 12.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([2.0, 6.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([6.0, 6.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([2.0, 12.0])),
+            ),
+            expected_densities=np.array([6.0, 4.0]),
+            test_id="four_histograms_multiply",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 + d2,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0])),
+            ),
+            expected_densities=ValueError,
+            match="same edges",
+            test_id="mismatched_edges_error",
+        ),
+    ]
 
-    def test_apply_log_function(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([np.e, 3 * np.e]))
-        result = Histogram.apply(np.log, histogram)
-        np.testing.assert_array_almost_equal(result.densities, [1.0, 1.0])
-
-    def test_apply_exp_function(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([1.0, 3.0]))
-        result = Histogram.apply(np.exp, histogram)
-        np.testing.assert_array_almost_equal(result.densities, [np.e, np.e])
-
-    def test_apply_multiple_histograms(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = Histogram.apply(lambda d1, d2: d1 + d2, histogram1, histogram2)
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 6.0])
-
-    def test_apply_with_mismatched_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0]))
-        with pytest.raises(ValueError, match="same edges"):
-            Histogram.apply(lambda d1, d2: d1 + d2, histogram1, histogram2)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_apply(self, test_case: TestCase) -> None:
+        if not expect_error(
+            Histogram.apply,
+            test_case.expected_densities,
+            test_case.function,
+            *test_case.histograms,
+            match=test_case.match,
+        ):
+            result = Histogram.apply(test_case.function, *test_case.histograms)
+            assert_array_equal(result.densities, test_case.expected_densities)
 
 
 class TestApplyWith:
-    def test_apply_with_convenience_method(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = histogram1.apply_with(lambda d1, d2: d1 * d2, histogram2)
-        np.testing.assert_array_almost_equal(result.densities, [2.0, 8.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        function: Any
+        histogram: Histogram
+        other_histograms: Tuple[Histogram, ...]
+        expected_densities: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
+
+    test_cases = [
+        TestCase(
+            function=lambda d1, d2: d1 * d2,
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            other_histograms=(Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),),
+            expected_densities=np.array([2.0, 8.0]),
+            test_id="multiply_two_histograms",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 + d2,
+            histogram=Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([4.0, 16.0], dtype=np.float32)),
+            other_histograms=(
+                Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([6.0, 24.0], dtype=np.float32)),
+            ),
+            expected_densities=np.array([5.0, 5.0], dtype=np.float32),
+            test_id="add_two_histograms",
+        ),
+        TestCase(
+            function=lambda d1, d2, d3: d1 + d2 - d3,
+            histogram=Histogram(np.array([0.0, 4.0, 8.0]), np.array([20.0, 24.0])),
+            other_histograms=(
+                Histogram(np.array([0.0, 4.0, 8.0]), np.array([12.0, 16.0])),
+                Histogram(np.array([0.0, 4.0, 8.0]), np.array([8.0, 12.0])),
+            ),
+            expected_densities=np.array([6.0, 7.0]),
+            test_id="three_histograms_combined",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 / d2,
+            histogram=Histogram(np.array([0.0, 2.0, 8.0]), np.array([12.0, 36.0])),
+            other_histograms=(Histogram(np.array([0.0, 2.0, 8.0]), np.array([4.0, 12.0])),),
+            expected_densities=np.array([3.0, 3.0]),
+            test_id="divide_two_histograms",
+        ),
+        TestCase(
+            function=lambda d1, d2: d1 + d2,
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            other_histograms=(Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0])),),
+            expected_densities=ValueError,
+            match="same edges",
+            test_id="mismatched_edges_error",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_apply_with(self, test_case: TestCase) -> None:
+        if not expect_error(
+            test_case.histogram.apply_with,
+            test_case.expected_densities,
+            test_case.function,
+            *test_case.other_histograms,
+            match=test_case.match,
+        ):
+            result = test_case.histogram.apply_with(test_case.function, *test_case.other_histograms)
+            assert_array_equal(result.densities, test_case.expected_densities)
 
 
 class TestReduce:
-    def test_reduce_add_two_histograms(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = Histogram.reduce(np.add, histogram1, histogram2)
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 6.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_reduce_multiply_two_histograms(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0]))
-        result = Histogram.reduce(np.multiply, histogram1, histogram2)
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 24.0])
+        function: Any
+        histograms: Tuple[Histogram, ...]
+        expected_densities: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_reduce_three_histograms(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        histogram3 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0]))
-        result = Histogram.reduce(np.add, histogram1, histogram2, histogram3)
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 12.0])
+    test_cases = [
+        TestCase(
+            function=np.add,
+            histograms=(Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),),
+            expected_densities=np.array([1.0, 2.0]),
+            test_id="single_histogram_returns_same",
+        ),
+        TestCase(
+            function=np.add,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            ),
+            expected_densities=np.array([3.0, 6.0]),
+            test_id="two_histograms_add",
+        ),
+        TestCase(
+            function=np.multiply,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0])),
+            ),
+            expected_densities=np.array([6.0, 24.0]),
+            test_id="two_histograms_multiply",
+        ),
+        TestCase(
+            function=np.add,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0])),
+            ),
+            expected_densities=np.array([6.0, 12.0]),
+            test_id="three_histograms_add",
+        ),
+        TestCase(
+            function=np.multiply,
+            histograms=(
+                Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 12.0], dtype=np.float32)),
+                Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([12.0, 8.0], dtype=np.float32)),
+                Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 12.0], dtype=np.float32)),
+            ),
+            expected_densities=np.array([12.0, 18.0], dtype=np.float32),
+            test_id="three_histograms_multiply",
+        ),
+        TestCase(
+            function=np.add,
+            histograms=(
+                Histogram(np.array([0.0, 2.0, 10.0]), np.array([2.0, 8.0])),
+                Histogram(np.array([0.0, 2.0, 10.0]), np.array([4.0, 16.0])),
+                Histogram(np.array([0.0, 2.0, 10.0]), np.array([6.0, 24.0])),
+                Histogram(np.array([0.0, 2.0, 10.0]), np.array([8.0, 32.0])),
+            ),
+            expected_densities=np.array([10.0, 10.0]),
+            test_id="four_histograms_add",
+        ),
+        TestCase(
+            function=np.maximum,
+            histograms=(
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([4.0, 10.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([6.0, 12.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([2.0, 18.0])),
+            ),
+            expected_densities=np.array([3.0, 3.0]),
+            test_id="three_histograms_maximum",
+        ),
+        TestCase(
+            function=np.add,
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0])),
+            ),
+            expected_densities=ValueError,
+            match="same edges",
+            test_id="mismatched_edges_error",
+        ),
+    ]
 
-    def test_reduce_single_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        result = Histogram.reduce(np.add, histogram)
-        assert result == histogram
-
-    def test_reduce_with_mismatched_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0]))
-        with pytest.raises(ValueError, match="same edges"):
-            Histogram.reduce(np.add, histogram1, histogram2)
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_reduce(self, test_case: TestCase) -> None:
+        if not expect_error(
+            Histogram.reduce,
+            test_case.expected_densities,
+            test_case.function,
+            *test_case.histograms,
+            match=test_case.match,
+        ):
+            result = Histogram.reduce(test_case.function, *test_case.histograms)
+            assert_array_equal(result.densities, test_case.expected_densities)
 
 
 class TestReduceWith:
-    def test_reduce_with_convenience_method(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0]))
-        result = histogram1.reduce_with(np.multiply, histogram2)
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 24.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        function: Any
+        histogram: Histogram
+        other_histograms: Tuple[Histogram, ...]
+        expected_densities: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
+
+    test_cases = [
+        TestCase(
+            function=np.multiply,
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            other_histograms=(Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0])),),
+            expected_densities=np.array([6.0, 24.0]),
+            test_id="multiply_two_histograms",
+        ),
+        TestCase(
+            function=np.add,
+            histogram=Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([2.0, 8.0], dtype=np.float32)),
+            other_histograms=(
+                Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([6.0, 24.0], dtype=np.float32)),
+            ),
+            expected_densities=np.array([4.0, 4.0], dtype=np.float32),
+            test_id="add_two_histograms",
+        ),
+        TestCase(
+            function=np.add,
+            histogram=Histogram(np.array([0.0, 4.0, 8.0]), np.array([4.0, 8.0])),
+            other_histograms=(
+                Histogram(np.array([0.0, 4.0, 8.0]), np.array([8.0, 12.0])),
+                Histogram(np.array([0.0, 4.0, 8.0]), np.array([12.0, 16.0])),
+            ),
+            expected_densities=np.array([6.0, 9.0]),
+            test_id="add_three_histograms",
+        ),
+        TestCase(
+            function=np.minimum,
+            histogram=Histogram(np.array([0.0, 2.0, 8.0]), np.array([10.0, 18.0])),
+            other_histograms=(
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([6.0, 24.0])),
+                Histogram(np.array([0.0, 2.0, 8.0]), np.array([8.0, 12.0])),
+            ),
+            expected_densities=np.array([3.0, 2.0]),
+            test_id="minimum_three_histograms",
+        ),
+        TestCase(
+            function=np.add,
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            other_histograms=(Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0])),),
+            expected_densities=ValueError,
+            match="same edges",
+            test_id="mismatched_edges_error",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_reduce_with(self, test_case: TestCase) -> None:
+        if not expect_error(
+            test_case.histogram.reduce_with,
+            test_case.expected_densities,
+            test_case.function,
+            *test_case.other_histograms,
+            match=test_case.match,
+        ):
+            result = test_case.histogram.reduce_with(test_case.function, *test_case.other_histograms)
+            assert_array_equal(result.densities, test_case.expected_densities)
 
 
 class TestAddition:
-    def test_add_two_histograms_same_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = histogram1 + histogram2
-        np.testing.assert_array_almost_equal(result.values, [3.0, 6.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_add_two_histograms_different_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 6.0]))
-        histogram2 = Histogram(np.array([0.0, 2.0, 3.0]), np.array([4.0, 3.0]))
-        result = histogram1 + histogram2
-        expected_edges = np.array([0.0, 1.0, 2.0, 3.0])
-        np.testing.assert_array_almost_equal(result.edges, expected_edges)
-        assert result.total == pytest.approx(histogram1.total + histogram2.total)
+        left: Union[Histogram, Array, Numeric]
+        right: Union[Histogram, Array, Numeric]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_add_scalar_to_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = histogram + 3.0
-        np.testing.assert_array_almost_equal(result.densities, [5.0, 5.0])
+    test_cases = [
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 20.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([10.0, 35.0])),
+            test_id="two_histograms_same_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0, 12.0]), np.array([9.0, 15.0, 16.0])),
+            right=Histogram(np.array([0.0, 3.0, 6.0, 10.0]), np.array([6.0, 12.0, 20.0])),
+            expected_result=Histogram(
+                np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), np.array([15.0, 21.0, 16.0, 18.0, 8.0])
+            ),
+            test_id="two_histograms_overlapping_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 10.0]), np.array([8.0, 18.0])),
+            right=Histogram(np.array([2.0, 6.0, 8.0, 12.0]), np.array([8.0, 10.0, 16.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]), np.array([4.0, 8.0, 10.0, 16.0, 14.0, 8.0])
+            ),
+            test_id="two_histograms_overlapping_no_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0]), np.array([8.0, 16.0])),
+            right=Histogram(np.array([10.0, 15.0, 20.0]), np.array([10.0, 25.0])),
+            expected_result=Histogram(
+                np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), np.array([8.0, 16.0, 0.0, 10.0, 25.0])
+            ),
+            test_id="two_histograms_disjoint",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([4.0, 16.0], dtype=np.float32)),
+            right=Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([6.0, 24.0], dtype=np.float32)),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([10.0, 40.0], dtype=np.float32)
+            ),
+            test_id="two_histograms_float32",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 0.0])),
+            right=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            test_id="zero_histogram_plus_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=3.0,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([15.0, 42.0])),
+            test_id="histogram_plus_scalar",
+        ),
+        TestCase(
+            left=3.0,
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([15.0, 42.0])),
+            test_id="scalar_plus_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=np.array([2.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 18.0])),
+            test_id="histogram_plus_array",
+        ),
+        TestCase(
+            left=np.array([2.0, 3.0]),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 18.0])),
+            test_id="array_plus_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            right=np.array([0.0, 0.0]),
+            expected_result=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            test_id="histogram_plus_zero_array",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=np.array([2.0, 3.0, 4.0]),
+            expected_result=ValueError,
+            match="must match",
+            test_id="array_wrong_length_error",
+        ),
+    ]
 
-    def test_radd_scalar_to_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = 3.0 + histogram
-        np.testing.assert_array_almost_equal(result.densities, [5.0, 5.0])
-
-    def test_add_array_to_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([2.0, 3.0])
-        result = histogram + array
-        np.testing.assert_array_almost_equal(result.values, [3.0, 5.0])
-
-    def test_radd_array_to_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([2.0, 3.0])
-        result = array + histogram
-        np.testing.assert_array_almost_equal(result.values, [3.0, 5.0])
-
-    def test_add_array_wrong_length(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([2.0, 3.0, 4.0])
-        with pytest.raises(ValueError, match="must match"):
-            _ = histogram + array
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_addition(self, test_case: TestCase) -> None:
+        if not expect_error(lambda: test_case.left + test_case.right, test_case.expected_result, match=test_case.match):
+            result = test_case.left + test_case.right
+            assert isinstance(test_case.expected_result, Histogram)
+            assert isinstance(result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
 
 
 class TestSubtraction:
-    def test_subtract_two_histograms_same_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        result = histogram1 - histogram2
-        np.testing.assert_array_almost_equal(result.values, [2.0, 4.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_subtract_two_histograms_different_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([3.0, 9.0]))
-        histogram2 = Histogram(np.array([0.0, 2.0, 3.0]), np.array([2.0, 3.0]))
-        result = histogram1 - histogram2
-        expected_edges = np.array([0.0, 1.0, 2.0, 3.0])
-        np.testing.assert_array_almost_equal(result.edges, expected_edges)
+        left: Union[Histogram, Array, Numeric]
+        right: Union[Histogram, Array, Numeric]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_subtract_scalar_from_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([5.0, 15.0]))
-        result = histogram - 2.0
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 3.0])
+    test_cases = [
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([10.0, 25.0])),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 10.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 15.0])),
+            test_id="two_histograms_same_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0, 12.0]), np.array([15.0, 20.0, 24.0])),
+            right=Histogram(np.array([0.0, 3.0, 6.0, 10.0]), np.array([9.0, 12.0, 16.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), np.array([6.0, 0.0, 0.0, 4.0, 12.0])),
+            test_id="two_histograms_overlapping_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 10.0]), np.array([12.0, 24.0])),
+            right=Histogram(np.array([2.0, 6.0, 8.0, 12.0]), np.array([8.0, 10.0, 16.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]), np.array([6.0, 2.0, 4.0, -2.0, 0.0, -8.0])
+            ),
+            test_id="two_histograms_overlapping_no_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0]), np.array([8.0, 16.0])),
+            right=Histogram(np.array([10.0, 15.0, 20.0]), np.array([10.0, 25.0])),
+            expected_result=Histogram(
+                np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), np.array([8.0, 16.0, 0.0, -10.0, -25.0])
+            ),
+            test_id="two_histograms_disjoint",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([16.0, 20.0], dtype=np.float32)),
+            right=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 12.0], dtype=np.float32)),
+            expected_result=Histogram(
+                np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 8.0], dtype=np.float32)
+            ),
+            test_id="two_histograms_float32",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([9.0, 20.0])),
+            right=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 0.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 8.0]), np.array([9.0, 20.0])),
+            test_id="histogram_minus_zero_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([9.0, 28.0])),
+            right=2.0,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([3.0, 14.0])),
+            test_id="histogram_minus_scalar",
+        ),
+        TestCase(
+            left=10.0,
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([24.0, 49.0])),
+            test_id="scalar_minus_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([8.0, 20.0])),
+            right=np.array([2.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 17.0])),
+            test_id="histogram_minus_array",
+        ),
+        TestCase(
+            left=np.array([10.0, 25.0]),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 10.0])),
+            test_id="array_minus_histogram",
+        ),
+    ]
 
-    def test_rsub_scalar_from_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = 5.0 - histogram
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 3.0])
-
-    def test_subtract_array_from_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([5.0, 7.0]))
-        array = np.array([2.0, 3.0])
-        result = histogram - array
-        np.testing.assert_array_almost_equal(result.values, [3.0, 4.0])
-
-    def test_rsub_array_from_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([5.0, 7.0])
-        result = array - histogram
-        np.testing.assert_array_almost_equal(result.values, [4.0, 5.0])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_subtraction(self, test_case: TestCase) -> None:
+        if not expect_error(lambda: test_case.left - test_case.right, test_case.expected_result, match=test_case.match):
+            result = test_case.left - test_case.right
+            assert isinstance(test_case.expected_result, Histogram)
+            assert isinstance(result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
 
 
 class TestMultiplication:
-    def test_multiply_two_histograms_same_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 6.0]))
-        result = histogram1 * histogram2
-        np.testing.assert_array_almost_equal(result.densities, [6.0, 24.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_multiply_two_histograms_different_edges(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 6.0]))
-        histogram2 = Histogram(np.array([0.0, 2.0, 3.0]), np.array([4.0, 3.0]))
-        result = histogram1 * histogram2
-        expected_edges = np.array([0.0, 1.0, 2.0, 3.0])
-        np.testing.assert_array_almost_equal(result.edges, expected_edges)
+        left: Union[Histogram, Array, Numeric]
+        right: Union[Histogram, Array, Numeric]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_multiply_scalar_with_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = histogram * 3.0
-        np.testing.assert_array_almost_equal(result.values, [6.0, 18.0])
+    test_cases = [
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 20.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 60.0])),
+            test_id="two_histograms_same_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0, 12.0]), np.array([6.0, 10.0, 16.0])),
+            right=Histogram(np.array([0.0, 3.0, 6.0, 10.0]), np.array([4.0, 12.0, 20.0])),
+            expected_result=Histogram(
+                np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), np.array([8.0, 24.0, 20.0, 40.0, 0.0])
+            ),
+            test_id="two_histograms_overlapping_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 10.0]), np.array([8.0, 18.0])),
+            right=Histogram(np.array([2.0, 6.0, 8.0, 12.0]), np.array([8.0, 10.0, 16.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]), np.array([0.0, 8.0, 12.0, 30.0, 24.0, 0.0])
+            ),
+            test_id="two_histograms_overlapping_no_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0]), np.array([8.0, 16.0])),
+            right=Histogram(np.array([10.0, 15.0, 20.0]), np.array([10.0, 25.0])),
+            expected_result=Histogram(np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), np.array([0.0, 0.0, 0.0, 0.0, 0.0])),
+            test_id="two_histograms_disjoint",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 12.0], dtype=np.float32)),
+            right=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([12.0, 8.0], dtype=np.float32)),
+            expected_result=Histogram(
+                np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([24.0, 24.0], dtype=np.float32)
+            ),
+            test_id="two_histograms_float32",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 0.0])),
+            right=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 0.0])),
+            test_id="zero_histogram_times_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=3.0,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([18.0, 63.0])),
+            test_id="histogram_times_scalar",
+        ),
+        TestCase(
+            left=3.0,
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([18.0, 63.0])),
+            test_id="scalar_times_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=np.array([2.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 9.0])),
+            test_id="histogram_times_array",
+        ),
+        TestCase(
+            left=np.array([2.0, 3.0]),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 9.0])),
+            test_id="array_times_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([6.0, 15.0])),
+            right=np.array([0.0, 1.0]),
+            expected_result=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 3.0])),
+            test_id="histogram_times_array_with_zero",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right=np.array([2.0, 3.0, 4.0]),
+            expected_result=ValueError,
+            match="must match",
+            test_id="array_wrong_length_error",
+        ),
+    ]
 
-    def test_rmul_scalar_with_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = 3.0 * histogram
-        np.testing.assert_array_almost_equal(result.values, [6.0, 18.0])
-
-    def test_multiply_array_with_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        array = np.array([3.0, 2.0])
-        result = histogram * array
-        expected_densities = [2.0 * 3.0, 2.0 * 2.0]
-        np.testing.assert_array_almost_equal(result.densities, expected_densities)
-
-    def test_rmul_array_with_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        array = np.array([3.0, 2.0])
-        result = array * histogram
-        expected_densities = [2.0 * 3.0, 2.0 * 2.0]
-        np.testing.assert_array_almost_equal(result.densities, expected_densities)
-
-    def test_multiply_array_wrong_length(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([2.0, 3.0, 4.0])
-        with pytest.raises(ValueError, match="must match"):
-            _ = histogram * array
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_multiplication(self, test_case: TestCase) -> None:
+        if not expect_error(lambda: test_case.left * test_case.right, test_case.expected_result, match=test_case.match):
+            result = test_case.left * test_case.right
+            assert isinstance(test_case.expected_result, Histogram)
+            assert isinstance(result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
 
 
 class TestDivision:
-    def test_divide_histogram_by_scalar(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([6.0, 18.0]))
-        result = histogram / 3.0
-        np.testing.assert_array_almost_equal(result.values, [2.0, 6.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_divide_histogram_by_histogram(self) -> None:
-        histogram1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([6.0, 12.0]))
-        histogram2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = histogram1 / histogram2
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 3.0])
+        left: Union[Histogram, Array, Numeric]
+        right: Union[Histogram, Array, Numeric]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_divide_histogram_by_array(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([6.0, 12.0]))
-        array = np.array([2.0, 3.0])
-        result = histogram / array
-        np.testing.assert_array_almost_equal(result.values, [3.0, 4.0])
+    test_cases = [
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 42.0])),
+            right=2.0,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            test_id="histogram_divided_by_scalar",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 15.0])),
+            test_id="histogram_divided_by_histogram_same_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0, 10.0]), np.array([18.0, 30.0, 48.0])),
+            right=Histogram(np.array([0.0, 3.0, 6.0, 12.0]), np.array([6.0, 12.0, 20.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), np.array([9.0, 4.5, 3.6, 14.4, 0.0])),
+            test_id="histogram_divided_by_histogram_containing_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([2.0, 3.0, 4.0]), np.array([16.0, 36.0])),
+            right=Histogram(np.array([0.0, 6.0, 8.0, 12.0]), np.array([8.0, 10.0, 16.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]), np.array([0.0, 12.0, 27.0, 0.0, 0.0, 0.0])
+            ),
+            test_id="histogram_divided_by_histogram_containing_no_common_edges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 10.0]), np.array([16.0, 36.0])),
+            right=Histogram(np.array([2.0, 6.0, 8.0, 12.0]), np.array([8.0, 10.0, 16.0])),
+            expected_result=ZeroDivisionError,
+            test_id="histogram_divided_by_histogram_partially_overlapping",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0]), np.array([16.0, 24.0])),
+            right=Histogram(np.array([10.0, 15.0, 20.0]), np.array([10.0, 25.0])),
+            expected_result=ZeroDivisionError,
+            test_id="histogram_divided_by_disjoint_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([24.0, 16.0], dtype=np.float32)),
+            right=Histogram(np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([8.0, 16.0], dtype=np.float32)),
+            expected_result=Histogram(
+                np.array([0.0, 4.0, 8.0], dtype=np.float32), np.array([12.0, 4.0], dtype=np.float32)
+            ),
+            test_id="histogram_divided_by_histogram_float32",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([0.0, 0.0])),
+            expected_result=ZeroDivisionError,
+            test_id="histogram_divided_by_zero_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right=np.array([2.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 15.0])),
+            test_id="histogram_divided_by_array",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 8.0]), np.array([12.0, 30.0])),
+            right=np.array([2.0, 0.0]),
+            expected_result=ZeroDivisionError,
+            test_id="histogram_divided_by_array_with_zero",
+        ),
+        TestCase(
+            left=12.0,
+            right=Histogram(np.array([0.0, 3.0, 4.0]), np.array([6.0, 12.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 4.0]), np.array([18.0, 1.0])),
+            test_id="scalar_divided_by_histogram",
+        ),
+        TestCase(
+            left=12.0,
+            right=Histogram(np.array([0.0, 3.0, 8.0]), np.array([0.0, 0.0])),
+            expected_result=ZeroDivisionError,
+            test_id="scalar_divided_by_zero_histogram",
+        ),
+        TestCase(
+            left=np.array([12.0, 45.0]),
+            right=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([6.0, 15.0])),
+            test_id="array_divided_by_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right=np.array([2.0, 3.0, 4.0]),
+            expected_result=ValueError,
+            match="must match",
+            test_id="array_wrong_length_error",
+        ),
+    ]
 
-    def test_rtruediv_scalar_by_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = 6.0 / histogram
-        np.testing.assert_array_almost_equal(result.densities, [3.0, 3.0])
-
-    def test_rtruediv_array_by_histogram(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        array = np.array([6.0, 12.0])
-        result = array / histogram
-        np.testing.assert_array_almost_equal(result.values, [3.0, 3.0])
-
-    def test_divide_array_wrong_length(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([2.0, 3.0, 4.0])
-        with pytest.raises(ValueError, match="must match"):
-            _ = histogram / array
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_division(self, test_case: TestCase) -> None:
+        if not expect_error(lambda: test_case.left / test_case.right, test_case.expected_result, match=test_case.match):
+            result = test_case.left / test_case.right
+            assert isinstance(test_case.expected_result, Histogram)
+            assert isinstance(result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
 
 
 class TestPower:
-    def test_power_square(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = histogram**2
-        np.testing.assert_array_almost_equal(result.densities, [4.0, 4.0])
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_power_cube(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0]))
-        result = histogram**3
-        np.testing.assert_array_almost_equal(result.densities, [8.0, 8.0])
+        left: Union[Histogram, Array, Numeric]
+        right: Union[Histogram, Array, Numeric]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
 
-    def test_power_inverse(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([2.0, 6.0]))
-        result = histogram**-1
-        np.testing.assert_array_almost_equal(result.densities, [0.5, 0.5])
+    test_cases = [
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=2,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 63.0])),
+            test_id="histogram_power_square",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 10.0])),
+            right=3,
+            expected_result=Histogram(np.array([0.0, 2.0, 7.0]), np.array([16.0, 40.0])),
+            test_id="histogram_power_cube",
+        ),
+        TestCase(
+            left=Histogram(np.array([2.0, 3.0, 5.0]), np.array([5.0, 2.0])),
+            right=-1,
+            expected_result=Histogram(np.array([2.0, 3.0, 5.0]), np.array([0.2, 2.0])),
+            test_id="histogram_power_inverse",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 28.0])),
+            right=0.5,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 14.0])),
+            test_id="histogram_power_fractional",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=0,
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([3.0, 7.0])),
+            test_id="histogram_power_zero",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([8.0, 24.0], dtype=np.float32)),
+            right=2,
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 10.0], dtype=np.float32), np.array([32.0, 72.0], dtype=np.float32)
+            ),
+            test_id="histogram_power_square_float32",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=np.array([2.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 189.0])),
+            test_id="histogram_power_array",
+        ),
+        TestCase(
+            left=2.0,
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([4.0, 2097152.0])),
+            test_id="scalar_power_histogram",
+        ),
+        TestCase(
+            left=np.array([2.0, 3.0]),
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([4.0, 10460353203.0])),
+            test_id="array_power_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=np.array([2.0, 3.0, 4.0]),
+            expected_result=ValueError,
+            match="must match",
+            test_id="array_wrong_length_error",
+        ),
+    ]
 
-    def test_power_fractional(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 4.0]), np.array([4.0, 12.0]))
-        result = histogram**0.5
-        np.testing.assert_array_almost_equal(result.densities, [2.0, 2.0])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.test_id,
+    )
+    def test_power(self, test_case: TestCase) -> None:
+        if not expect_error(lambda: test_case.left**test_case.right, test_case.expected_result, match=test_case.match):
+            result = test_case.left**test_case.right
+            assert isinstance(test_case.expected_result, Histogram)
+            assert isinstance(result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
 
 
 class TestEdgeCases:
