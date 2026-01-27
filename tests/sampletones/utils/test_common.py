@@ -14,9 +14,9 @@ class TestNextPowerOfTwo:
     class TestCase:
         __test__ = False
 
+        test_id: str
         input_value: int
         expected_result: Union[int, type]
-        test_id: str
 
     test_cases = [
         TestCase(input_value=0, expected_result=1, test_id="zero"),
@@ -60,10 +60,10 @@ class TestFirstKeyForValue:
     class TestCase:
         __test__ = False
 
+        test_id: str
         dictionary: Any
         target: Any
         expected_result: Union[Optional[Any], Type[Exception]]
-        test_id: str
 
     test_cases = [
         TestCase(

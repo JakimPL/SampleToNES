@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -19,7 +19,7 @@ class TestTransformationIdentity:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -29,7 +29,7 @@ class TestTransformationIdentity:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -186,7 +186,7 @@ class TestTransformationExp:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -196,7 +196,7 @@ class TestTransformationExp:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -339,7 +339,7 @@ class TestTransformationPower:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -349,7 +349,7 @@ class TestTransformationPower:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -470,7 +470,7 @@ class TestTransformationReduce:
 
         transformation: Transformation
         operation: Any
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -560,7 +560,7 @@ class TestTransformationArithmeticMethods:
 
         transformation: Transformation
         method_name: str
-        inputs: tuple[Any, ...]
+        inputs: Tuple[Any, ...]
         expected_result: Any
         test_id: str
 
@@ -769,8 +769,8 @@ class TestTransformationErrors:
 
         transformation: Transformation
         method_name: str
-        args: tuple[Any, ...]
-        kwargs: dict[str, Any]
+        args: Tuple[Any, ...]
+        kwargs: Dict[str, Any]
         expected_result: Any
         test_id: str
 

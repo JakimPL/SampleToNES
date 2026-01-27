@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,7 +17,7 @@ class TestableCallbackClass(CallbackMixin):
         self.on_error: Optional[Any] = None
 
 
-def assert_callbacks_match(instance: TestableCallbackClass, expected_result: dict[str, Optional[Any]]) -> None:
+def assert_callbacks_match(instance: TestableCallbackClass, expected_result: Dict[str, Optional[Any]]) -> None:
     for attr_name in ["on_event", "on_data", "on_error"]:
         actual_callback = getattr(instance, attr_name)
         expected_callback = expected_result[attr_name]
@@ -36,8 +36,8 @@ class TestCall:
         __test__ = False
 
         callback: Optional[Any]
-        args: tuple[Any, ...]
-        kwargs: dict[str, Any]
+        args: Tuple[Any, ...]
+        kwargs: Dict[str, Any]
         expected_result: Union[Any, Type[Exception]]
         test_id: str
 
@@ -201,9 +201,9 @@ class TestSetCallbacks:
     class TestCase:
         __test__ = False
 
-        initial_callbacks: dict[str, Optional[Any]]
-        set_kwargs: dict[str, Optional[Any]]
-        expected_result: Union[dict[str, Optional[Any]], Type[Exception]]
+        initial_callbacks: Dict[str, Optional[Any]]
+        set_kwargs: Dict[str, Optional[Any]]
+        expected_result: Union[Dict[str, Optional[Any]], Type[Exception]]
         test_id: str
 
     test_cases = [
@@ -319,10 +319,10 @@ class TestResetCallbacks:
     class TestCase:
         __test__ = False
 
-        initial_callbacks: dict[str, Optional[Any]]
-        reset_names: tuple[str, ...]
-        expected_result: Union[dict[str, Optional[Any]], Type[Exception]]
         test_id: str
+        initial_callbacks: Dict[str, Optional[Any]]
+        reset_names: Tuple[str, ...]
+        expected_result: Union[Dict[str, Optional[Any]], Type[Exception]]
 
     test_cases = [
         TestCase(

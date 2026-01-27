@@ -158,6 +158,13 @@ class TestInit:
             test_id="values_as_list",
         ),
         TestCase(
+            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            values=xp.array([1.0, 2.0], dtype=xp.float32),
+            expected_result=TypeError,
+            match="edges and values must be of the same type",
+            test_id="edges_numpy_values_cupy_type_mismatch",
+        ),
+        TestCase(
             edges=Interval(0.0, 5.0),
             values=np.array([10.0], dtype=np.float32),
             expected_result=Histogram(np.array([0.0, 5.0]), np.array([10.0], dtype=np.float32)),
@@ -230,6 +237,13 @@ class TestInit:
             match="edges must contain only finite values",
             test_id="interval_unbounded_both_sides",
         ),
+        TestCase(
+            edges=xp.array([0.0, 1.0, 2.0]),
+            values=np.array([1.0, 2.0]),
+            expected_result=TypeError,
+            match="edges and values must be of the same type",
+            test_id="mismatched_types_cupy_edges_numpy_values",
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
@@ -246,54 +260,192 @@ class TestInit:
 
 
 class TestValidateHistogramEdges:
-    def test_same_edges_numpy(self) -> None:
-        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        hist2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 4.0]))
-        Histogram._validate_histogram_edges(hist1, hist2, equal_edges=True)
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_different_edges_numpy(self) -> None:
-        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        hist2 = Histogram(np.array([0.0, 1.5, 2.0]), np.array([3.0, 4.0]))
-        with pytest.raises(ValueError, match="All histograms must have the same edges"):
-            Histogram._validate_histogram_edges(hist1, hist2, equal_edges=True)
+        test_id: str
+        histograms: Tuple[Histogram, ...]
+        equal_edges: bool
+        expected_result: Union[None, Type[Exception]]
+        match: Optional[str] = None
 
-    def test_different_edges_allowed_with_flag(self) -> None:
-        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        hist2 = Histogram(np.array([0.0, 1.5, 2.0]), np.array([3.0, 4.0]))
-        Histogram._validate_histogram_edges(hist1, hist2, equal_edges=False)
+    test_cases = [
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 4.0])),
+            ),
+            equal_edges=True,
+            expected_result=None,
+            test_id="same_edges_two_histograms_numpy",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0])),
+                Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])),
+                Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([7.0, 8.0, 9.0])),
+            ),
+            equal_edges=True,
+            expected_result=None,
+            test_id="same_edges_three_histograms_numpy",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([1.0, 2.0])),
+                Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([3.0, 4.0])),
+            ),
+            equal_edges=True,
+            expected_result=None,
+            test_id="same_edges_two_histograms_cupy",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.5, 2.0]), np.array([3.0, 4.0])),
+            ),
+            equal_edges=True,
+            expected_result=ValueError,
+            match="All histograms must have the same edges",
+            test_id="different_edges_equal_edges_true_raises",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([4.0, 5.0])),
+            ),
+            equal_edges=True,
+            expected_result=ValueError,
+            match="All histograms must have the same edges",
+            test_id="different_lengths_equal_edges_true_raises",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.5, 2.5]), np.array([3.0, 4.0])),
+            ),
+            equal_edges=False,
+            expected_result=None,
+            test_id="different_edges_equal_edges_false_allowed",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(np.array([1.0, 2.0, 3.0, 4.0]), np.array([3.0, 4.0, 5.0])),
+                Histogram(np.array([0.5, 1.5, 2.5]), np.array([6.0, 7.0])),
+            ),
+            equal_edges=False,
+            expected_result=None,
+            test_id="different_edges_multiple_histograms_equal_edges_false_allowed",
+        ),
+        TestCase(
+            histograms=(),
+            equal_edges=True,
+            expected_result=ValueError,
+            match="At least one histogram is required",
+            test_id="no_histograms_raises",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+                Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([3.0, 4.0])),
+            ),
+            equal_edges=True,
+            expected_result=TypeError,
+            match="All histograms must be of the same array type",
+            test_id="mixed_numpy_cupy_raises",
+        ),
+        TestCase(
+            histograms=(
+                Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([1.0, 2.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 4.0])),
+                Histogram(np.array([0.0, 1.0, 2.0]), np.array([5.0, 6.0])),
+            ),
+            equal_edges=False,
+            expected_result=TypeError,
+            match="All histograms must be of the same array type",
+            test_id="mixed_numpy_cupy_multiple_histograms_raises",
+        ),
+    ]
 
-    def test_no_histograms(self) -> None:
-        with pytest.raises(ValueError, match="At least one histogram is required"):
-            Histogram._validate_histogram_edges()
-
-    def test_single_histogram(self) -> None:
-        hist = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        Histogram._validate_histogram_edges(hist, equal_edges=True)
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_validate_histogram_edges(self, test_case: TestCase) -> None:
+        expect_error(
+            Histogram._validate_histogram_edges,
+            test_case.expected_result,
+            *test_case.histograms,
+            equal_edges=test_case.equal_edges,
+            match=test_case.match,
+        )
 
 
 class TestValidateArrayLengths:
-    def test_matching_lengths(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array1 = np.array([3.0, 4.0])
-        array2 = np.array([5.0, 6.0])
-        histogram._validate_array_lengths(array1, array2)
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
 
-    def test_mismatched_length_single_array(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        array = np.array([3.0, 4.0, 5.0])
-        with pytest.raises(ValueError, match="Array length 3 must match values length 2"):
-            histogram._validate_array_lengths(array)
+        test_id: str
+        histogram: Histogram
+        arrays: Tuple[Array, ...]
+        expected_result: Union[None, Type[Exception]]
+        match: Optional[str] = None
 
-    def test_mismatched_length_multiple_arrays(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))
-        array1 = np.array([4.0, 5.0, 6.0])
-        array2 = np.array([7.0, 8.0])
-        with pytest.raises(ValueError, match="Array length 2 must match values length 3"):
-            histogram._validate_array_lengths(array1, array2)
+    test_cases = [
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            arrays=(np.array([3.0, 4.0]), np.array([5.0, 6.0])),
+            expected_result=None,
+            test_id="matching_lengths_two_arrays",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0])),
+            arrays=(np.array([4.0, 5.0, 6.0]), np.array([7.0, 8.0, 9.0]), np.array([10.0, 11.0, 12.0])),
+            expected_result=None,
+            test_id="matching_lengths_three_arrays",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            arrays=(np.array([3.0, 4.0, 5.0]),),
+            expected_result=ValueError,
+            match="Array length 3 must match values length 2",
+            test_id="mismatched_length_single_array_raises",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0])),
+            arrays=(np.array([4.0, 5.0, 6.0]), np.array([7.0, 8.0])),
+            expected_result=ValueError,
+            match="Array length 2 must match values length 3",
+            test_id="mismatched_length_second_array_raises",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0, 4.0]), np.array([1.0, 2.0, 3.0, 4.0])),
+            arrays=(np.array([5.0]), np.array([6.0, 7.0, 8.0, 9.0])),
+            expected_result=ValueError,
+            match="Array length 1 must match values length 4",
+            test_id="mismatched_length_first_array_raises",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            arrays=(),
+            expected_result=None,
+            test_id="no_arrays_passes",
+        ),
+        TestCase(
+            histogram=Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([1.0, 2.0])),
+            arrays=(xp.array([3.0, 4.0]),),
+            expected_result=None,
+            test_id="matching_lengths_cupy_arrays",
+        ),
+    ]
 
-    def test_no_arrays(self) -> None:
-        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
-        histogram._validate_array_lengths()
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_validate_array_lengths(self, test_case: TestCase) -> None:
+        expect_error(
+            test_case.histogram._validate_array_lengths,
+            test_case.expected_result,
+            *test_case.arrays,
+            match=test_case.match,
+        )
 
 
 class TestValidateNegativePower:
@@ -301,11 +453,11 @@ class TestValidateNegativePower:
     class TestCase:
         __test__ = False
 
+        test_id: str
         base: Union[Numeric, Array, Histogram]
         exponent: Union[Numeric, Array, Histogram]
         expected_result: Union[None, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -447,11 +599,13 @@ class TestValidateNegativePower:
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
     def test_validate_negative_power(self, test_case: TestCase) -> None:
-        if test_case.expected_result is None:
-            Histogram._validate_negative_power(test_case.base, test_case.exponent)
-        else:
-            with pytest.raises(test_case.expected_result, match=test_case.match):
-                Histogram._validate_negative_power(test_case.base, test_case.exponent)
+        expect_error(
+            Histogram._validate_negative_power,
+            test_case.expected_result,
+            test_case.base,
+            test_case.exponent,
+            match=test_case.match,
+        )
 
 
 class TestGetModule:
@@ -459,9 +613,9 @@ class TestGetModule:
     class TestCase:
         __test__ = False
 
+        test_id: str
         obj: Union[Histogram, Array, Numeric]
         expected_module: ModuleType
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -1379,6 +1533,110 @@ class TestAstype:
         assert converted.values.dtype == np.float32
 
 
+class TestToCupy:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        histogram: Histogram
+        expected_edges: Array
+        expected_values: Array
+
+    test_cases = [
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            expected_edges=xp.array([0.0, 1.0, 2.0]),
+            expected_values=xp.array([1.0, 2.0]),
+            test_id="numpy_histogram_converts_to_cupy",
+        ),
+        TestCase(
+            histogram=Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([1.0, 2.0])),
+            expected_edges=xp.array([0.0, 1.0, 2.0]),
+            expected_values=xp.array([1.0, 2.0]),
+            test_id="cupy_histogram_remains_cupy",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0, 4.0]), np.array([2.0, 4.0, 6.0, 8.0])),
+            expected_edges=xp.array([0.0, 1.0, 2.0, 3.0, 4.0]),
+            expected_values=xp.array([2.0, 4.0, 6.0, 8.0]),
+            test_id="larger_numpy_histogram_converts_to_cupy",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_to_cupy(self, test_case: TestCase) -> None:
+        cupy_histogram = test_case.histogram.to_cupy()
+        assert type(cupy_histogram.edges).__module__.startswith("cupy")
+        assert type(cupy_histogram.values).__module__.startswith("cupy")
+        assert_array_equal(cupy_histogram.edges, test_case.expected_edges)
+        assert_array_equal(cupy_histogram.values, test_case.expected_values)
+
+
+class TestDensityToValues:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        edges: Union[Array, Histogram, Any]
+        density: Union[Numeric, Array]
+        expected_result: Union[Array, Type[Exception]]
+        match: Optional[str] = None
+
+    test_cases = [
+        TestCase(
+            edges=Histogram(np.array([0.0, 2.0, 5.0]), np.array([4.0, 9.0])),
+            density=3.0,
+            expected_result=np.array([6.0, 9.0]),
+            test_id="histogram_with_scalar_density",
+        ),
+        TestCase(
+            edges=np.array([0.0, 1.0, 4.0]),
+            density=2.0,
+            expected_result=np.array([2.0, 6.0]),
+            test_id="array_edges_with_scalar_density",
+        ),
+        TestCase(
+            edges=np.array([0.0, 1.0, 3.0, 6.0]),
+            density=np.array([1.0, 2.0, 3.0]),
+            expected_result=np.array([1.0, 4.0, 9.0]),
+            test_id="array_edges_with_array_density",
+        ),
+        TestCase(
+            edges=Histogram(np.array([0.0, 1.0, 3.0]), np.array([2.0, 4.0])),
+            density=np.array([2.0, 3.0]),
+            expected_result=np.array([2.0, 6.0]),
+            test_id="histogram_with_array_density",
+        ),
+        TestCase(
+            edges=xp.array([0.0, 2.0, 5.0]),
+            density=4.0,
+            expected_result=xp.array([8.0, 12.0]),
+            test_id="cupy_array_edges_with_scalar_density",
+        ),
+        TestCase(
+            edges="invalid",
+            density=2.0,
+            expected_result=TypeError,
+            match="edges must be an Array or Histogram",
+            test_id="invalid_edges_type_raises",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_density_to_values(self, test_case: TestCase) -> None:
+        if not expect_error(
+            Histogram.density_to_values,
+            test_case.expected_result,
+            test_case.edges,
+            test_case.density,
+            match=test_case.match,
+        ):
+            values = Histogram.density_to_values(test_case.edges, test_case.density)
+            assert_array_equal(values, test_case.expected_result)
+
+
 class TestRebin:
     @dataclass(frozen=True)
     class TestCase:
@@ -1710,6 +1968,84 @@ class TestRebin:
         with pytest.raises(ValueError, match="strictly increasing"):
             histogram.rebin(np.array([0.0, 2.0, 1.0]))
 
+    def test_rebin_invalid_type(self) -> None:
+        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        with pytest.raises(TypeError, match="Unsupported target_bins"):
+            histogram.rebin("invalid")
+
+
+class TestStaticRebin:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        histogram: Histogram
+        target_bins: Union[Array, Any]
+        expected_result: Union[Histogram, Type[Exception]]
+        match: Optional[str] = None
+
+    test_cases = [
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            target_bins=np.array([0.0, 2.0]),
+            expected_result=Histogram(np.array([0.0, 2.0]), np.array([6.0])),
+            test_id="valid_rebin_combines_two_bins",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0, 4.0]), np.array([1.0, 2.0, 3.0, 4.0])),
+            target_bins=np.array([0.0, 2.0, 4.0]),
+            expected_result=Histogram(np.array([0.0, 2.0, 4.0]), np.array([3.0, 7.0])),
+            test_id="valid_rebin_combines_multiple_bins",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([5.0, 10.0, 15.0])),
+            target_bins=np.array([0.0, 3.0]),
+            expected_result=Histogram(np.array([0.0, 3.0]), np.array([30.0])),
+            test_id="valid_rebin_combines_all_bins",
+        ),
+        TestCase(
+            histogram=Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([2.0, 4.0])),
+            target_bins=xp.array([0.0, 2.0]),
+            expected_result=Histogram(xp.array([0.0, 2.0]), xp.array([6.0])),
+            test_id="valid_rebin_cupy_arrays",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            target_bins="invalid",
+            expected_result=TypeError,
+            match="target_bins must be an Array",
+            test_id="invalid_target_bins_type_raises",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            target_bins=np.array([0.0, 2.0, 1.5]),
+            expected_result=ValueError,
+            match="strictly increasing",
+            test_id="not_strictly_increasing_raises",
+        ),
+        TestCase(
+            histogram=Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([2.0, 4.0, 6.0])),
+            target_bins=np.array([0.0, 1.0, 1.0, 3.0]),
+            expected_result=ValueError,
+            match="strictly increasing",
+            test_id="duplicate_values_raises",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_static_rebin(self, test_case: TestCase) -> None:
+        if not expect_error(
+            Histogram._rebin,
+            test_case.expected_result,
+            test_case.histogram,
+            test_case.target_bins,
+            match=test_case.match,
+        ):
+            rebinned = Histogram._rebin(test_case.histogram, test_case.target_bins)
+            assert_array_equal(rebinned.edges, test_case.expected_result.edges)
+            assert_array_equal(rebinned.values, test_case.expected_result.values)
+
 
 class TestValidateOverlap:
     @dataclass(frozen=True)
@@ -1858,10 +2194,10 @@ class TestRefine:
     class TestCase:
         __test__ = False
 
+        test_id: str
         histograms: Tuple[Histogram, ...]
         expected_result: Union[Array, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2004,11 +2340,11 @@ class TestApply:
     class TestCase:
         __test__ = False
 
+        test_id: str
         function: Any
         histograms: Tuple[Histogram, ...]
         expected_densities: Union[Array, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2114,12 +2450,12 @@ class TestApplyWith:
     class TestCase:
         __test__ = False
 
+        test_id: str
         function: Any
         histogram: Histogram
         other_histograms: Tuple[Histogram, ...]
         expected_densities: Union[Array, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2187,11 +2523,11 @@ class TestReduce:
     class TestCase:
         __test__ = False
 
+        test_id: str
         function: Any
         histograms: Tuple[Histogram, ...]
         expected_densities: Union[Array, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2293,12 +2629,12 @@ class TestReduceWith:
     class TestCase:
         __test__ = False
 
+        test_id: str
         function: Any
         histogram: Histogram
         other_histograms: Tuple[Histogram, ...]
         expected_densities: Union[Array, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2369,11 +2705,11 @@ class TestAddition:
     class TestCase:
         __test__ = False
 
+        test_id: str
         left: Union[Histogram, Array, Numeric]
         right: Union[Histogram, Array, Numeric]
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2457,6 +2793,13 @@ class TestAddition:
             match="must match",
             test_id="array_wrong_length_error",
         ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right="invalid",
+            expected_result=TypeError,
+            match="Unsupported type for addition",
+            test_id="invalid_type_error",
+        ),
     ]
 
     @pytest.mark.parametrize(
@@ -2478,11 +2821,11 @@ class TestSubtraction:
     class TestCase:
         __test__ = False
 
+        test_id: str
         left: Union[Histogram, Array, Numeric]
         right: Union[Histogram, Array, Numeric]
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2572,11 +2915,11 @@ class TestMultiplication:
     class TestCase:
         __test__ = False
 
+        test_id: str
         left: Union[Histogram, Array, Numeric]
         right: Union[Histogram, Array, Numeric]
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2658,6 +3001,13 @@ class TestMultiplication:
             match="must match",
             test_id="array_wrong_length_error",
         ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([4.0, 15.0])),
+            right="invalid",
+            expected_result=TypeError,
+            match="Unsupported type for multiplication",
+            test_id="invalid_type_error",
+        ),
     ]
 
     @pytest.mark.parametrize(
@@ -2679,11 +3029,11 @@ class TestDivision:
     class TestCase:
         __test__ = False
 
+        test_id: str
         left: Union[Histogram, Array, Numeric]
         right: Union[Histogram, Array, Numeric]
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2775,6 +3125,20 @@ class TestDivision:
             match="must match",
             test_id="array_wrong_length_error",
         ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right=0.0,
+            expected_result=ZeroDivisionError,
+            match="Division by zero scalar is not allowed",
+            test_id="division_by_zero_scalar_error",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 7.0]), np.array([12.0, 45.0])),
+            right="invalid",
+            expected_result=TypeError,
+            match="Unsupported type for division",
+            test_id="invalid_type_error",
+        ),
     ]
 
     @pytest.mark.parametrize(
@@ -2796,11 +3160,11 @@ class TestPower:
     class TestCase:
         __test__ = False
 
+        test_id: str
         left: Union[Histogram, Array, Numeric]
         right: Union[Histogram, Array, Numeric]
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-        test_id: str = ""
 
     test_cases = [
         TestCase(
@@ -2865,6 +3229,112 @@ class TestPower:
             expected_result=ValueError,
             match="must match",
             test_id="array_wrong_length_error",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 14.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([48.0, 63.0])),
+            test_id="histogram_power_histogram",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            right="invalid",
+            expected_result=TypeError,
+            match="Unsupported type for power",
+            test_id="invalid_type_pow_error",
+        ),
+        TestCase(
+            left="invalid",
+            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
+            expected_result=TypeError,
+            match="Unsupported type for power",
+            test_id="invalid_type_rpow_error",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([4.0, 8.0, 12.0])),
+            right=Histogram(np.array([2.0, 4.0, 6.0]), np.array([2.0, 3.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 4.0, 6.0, 10.0]), np.array([2.0, 4.0, 5.656854249492381, 4.0])
+            ),
+            test_id="exponent_range_strictly_contained_in_base_range",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([4.0, 8.0, 12.0])),
+            right=Histogram(np.array([2.0, 4.0, 6.0]), np.array([-2.0, -3.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 4.0, 6.0, 10.0]), np.array([2.0, 1.0, 0.7071067811865476, 4.0])
+            ),
+            test_id="exponent_range_strictly_contained_in_base_range_negative_exponents",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([4.0, 0.0, 12.0])),
+            right=Histogram(np.array([2.0, 4.0, 6.0]), np.array([2.0, -3.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="exponent_range_strictly_contained_in_base_range_zero_density_negative_exponent",
+        ),
+        TestCase(
+            left=Histogram(np.array([2.0, 4.0, 6.0]), np.array([3.0, 5.0])),
+            right=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([2.0, 4.0, 3.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 4.0, 6.0, 10.0]), np.array([0.0, 3.0, 5.0, 0.0])),
+            test_id="base_range_strictly_contained_in_exponent_range",
+        ),
+        TestCase(
+            left=Histogram(np.array([2.0, 4.0, 6.0]), np.array([3.0, 5.0])),
+            right=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([-2.0, -4.0, -3.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_range_strictly_contained_in_exponent_range_negative_exponents",
+        ),
+        TestCase(
+            left=Histogram(np.array([2.0, 4.0, 6.0]), np.array([0.0, 5.0])),
+            right=Histogram(np.array([0.0, 2.0, 6.0, 10.0]), np.array([2.0, -4.0, 3.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_range_strictly_contained_in_exponent_range_zero_density_negative_exponent",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 7.0, 10.0]), np.array([6.0, 8.0, 10.0])),
+            right=Histogram(np.array([2.0, 5.0, 8.0, 12.0]), np.array([3.0, 6.0, 12.0])),
+            expected_result=Histogram(
+                np.array([0.0, 2.0, 3.0, 5.0, 7.0, 8.0, 10.0, 12.0]),
+                np.array([2.0, 2.0, 4.0, 8.0, 11.11111111111111, 74.07407407407408, 0.0]),
+            ),
+            test_id="base_and_exponent_overlap_partially",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 7.0, 10.0]), np.array([6.0, 8.0, 10.0])),
+            right=Histogram(np.array([2.0, 5.0, 8.0, 12.0]), np.array([-3.0, -6.0, -12.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_and_exponent_overlap_partially_negative_exponents",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 3.0, 7.0, 10.0]), np.array([6.0, 0.0, 10.0])),
+            right=Histogram(np.array([2.0, 5.0, 8.0, 12.0]), np.array([3.0, -6.0, 12.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_and_exponent_overlap_partially_zero_density_negative_exponent",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 5.0]), np.array([4.0, 6.0])),
+            right=Histogram(np.array([6.0, 8.0, 10.0]), np.array([2.0, 3.0])),
+            expected_result=Histogram(np.array([0.0, 2.0, 5.0, 6.0, 8.0, 10.0]), np.array([2.0, 3.0, 1.0, 0.0, 0.0])),
+            test_id="base_and_exponent_disjoint_ranges",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 5.0]), np.array([4.0, 6.0])),
+            right=Histogram(np.array([6.0, 8.0, 10.0]), np.array([-2.0, -3.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_and_exponent_disjoint_ranges_negative_exponents",
+        ),
+        TestCase(
+            left=Histogram(np.array([0.0, 2.0, 5.0]), np.array([0.0, 6.0])),
+            right=Histogram(np.array([6.0, 8.0, 10.0]), np.array([-2.0, 3.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="base_and_exponent_disjoint_ranges_zero_density",
         ),
     ]
 
