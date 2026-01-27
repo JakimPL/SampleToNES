@@ -10,7 +10,7 @@ from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
 from sampletones.types.array import (
     Array,
-    ArrayOrScalar,
+    ArrayOrNumeric,
     ArrayOrScalarClasses,
     MultaryTransformation,
     Numeric,
@@ -120,9 +120,9 @@ class FFTTransformer(BaseModel):
     def forward(self, spectrum: Histogram) -> Histogram: ...
 
     @overload
-    def forward(self, spectrum: ArrayOrScalar) -> ArrayOrScalar: ...
+    def forward(self, spectrum: ArrayOrNumeric) -> ArrayOrNumeric: ...
 
-    def forward(self, spectrum: Union[ArrayOrScalar, Histogram]) -> Union[ArrayOrScalar, Histogram]:
+    def forward(self, spectrum: Union[ArrayOrNumeric, Histogram]) -> Union[ArrayOrNumeric, Histogram]:
         """
         Apply the forward `x ↦ x ^ a` transformation on a spectrum/array/scalar.
 
@@ -147,9 +147,9 @@ class FFTTransformer(BaseModel):
     def backward(self, feature: Histogram) -> Histogram: ...
 
     @overload
-    def backward(self, feature: ArrayOrScalar) -> ArrayOrScalar: ...
+    def backward(self, feature: ArrayOrNumeric) -> ArrayOrNumeric: ...
 
-    def backward(self, feature: Union[ArrayOrScalar, Histogram]) -> Union[ArrayOrScalar, Histogram]:
+    def backward(self, feature: Union[ArrayOrNumeric, Histogram]) -> Union[ArrayOrNumeric, Histogram]:
         """
         Apply the backward `x ↦ x ^ (1 / a)` transformation on an FFT feature/array/scalar.
         The feature is expected to be of the form `spectrum ^ a`.
@@ -173,8 +173,8 @@ class FFTTransformer(BaseModel):
 
     def compose_function(
         self,
-        operation: MultaryTransformation[ArrayOrScalar],
-    ) -> MultaryTransformation[ArrayOrScalar]:
+        operation: MultaryTransformation[ArrayOrNumeric],
+    ) -> MultaryTransformation[ArrayOrNumeric]:
         """
         A wrapper for composing an operation on FFT features with transformations.
 
@@ -189,7 +189,7 @@ class FFTTransformer(BaseModel):
 
     def apply(
         self,
-        operation: MultaryTransformation[ArrayOrScalar],
+        operation: MultaryTransformation[ArrayOrNumeric],
         *features: Histogram,
     ) -> Histogram:
         """
@@ -215,7 +215,7 @@ class FFTTransformer(BaseModel):
 
     def reduce(
         self,
-        operation: MultaryTransformation[ArrayOrScalar],
+        operation: MultaryTransformation[ArrayOrNumeric],
         *features: Histogram,
     ) -> Histogram:
         """

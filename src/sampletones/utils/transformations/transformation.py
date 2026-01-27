@@ -5,7 +5,7 @@ from typing import NamedTuple, Union, overload
 
 import numpy as np
 
-from sampletones.types.array import ArrayOrScalar, BinaryTransformation, MultaryTransformation, UnaryTransformation
+from sampletones.types.array import ArrayOrNumeric, BinaryTransformation, MultaryTransformation, UnaryTransformation
 
 
 class Transformation(NamedTuple):
@@ -31,14 +31,14 @@ class Transformation(NamedTuple):
         `f[ f^-1( x ) ⋅ α ]`
     """
 
-    forward: UnaryTransformation[ArrayOrScalar]
-    backward: UnaryTransformation[ArrayOrScalar]
+    forward: UnaryTransformation[ArrayOrNumeric]
+    backward: UnaryTransformation[ArrayOrNumeric]
 
     def apply(
         self,
-        operation: MultaryTransformation[ArrayOrScalar],
-        *arrays: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        operation: MultaryTransformation[ArrayOrNumeric],
+        *arrays: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Apply a multary operation on FFT features with transformations.
 
@@ -55,9 +55,9 @@ class Transformation(NamedTuple):
 
     def reduce(
         self,
-        operation: BinaryTransformation[ArrayOrScalar],
-        *arrays: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        operation: BinaryTransformation[ArrayOrNumeric],
+        *arrays: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Reduce multiple FFT features using a binary operation with transformations.
 
@@ -88,12 +88,12 @@ class Transformation(NamedTuple):
     def compose(self, other: Transformation) -> Transformation: ...
 
     @overload
-    def compose(self, other: MultaryTransformation[ArrayOrScalar]) -> MultaryTransformation[ArrayOrScalar]: ...
+    def compose(self, other: MultaryTransformation[ArrayOrNumeric]) -> MultaryTransformation[ArrayOrNumeric]: ...
 
     def compose(
         self,
-        other: Union[Transformation, MultaryTransformation[ArrayOrScalar]],
-    ) -> Union[Transformation, MultaryTransformation[ArrayOrScalar]]:
+        other: Union[Transformation, MultaryTransformation[ArrayOrNumeric]],
+    ) -> Union[Transformation, MultaryTransformation[ArrayOrNumeric]]:
         """
         Compose the transformation with another transformation or
         a multary function.
@@ -109,7 +109,9 @@ class Transformation(NamedTuple):
 
         return self.compose_transformation(other)
 
-    def compose_function(self, operation: MultaryTransformation[ArrayOrScalar]) -> MultaryTransformation[ArrayOrScalar]:
+    def compose_function(
+        self, operation: MultaryTransformation[ArrayOrNumeric]
+    ) -> MultaryTransformation[ArrayOrNumeric]:
         """
         Compose a multary transformation with the backward operation:
 
@@ -127,7 +129,7 @@ class Transformation(NamedTuple):
         if not callable(operation):
             raise TypeError("Operation must be a callable multary transformation")
 
-        def composition(*arrays: ArrayOrScalar) -> ArrayOrScalar:
+        def composition(*arrays: ArrayOrNumeric) -> ArrayOrNumeric:
             backward = (self.backward(array) for array in arrays)
             return self.forward(operation(*backward))
 
@@ -147,18 +149,18 @@ class Transformation(NamedTuple):
             Composed transformation.
         """
 
-        def forward(x: ArrayOrScalar) -> ArrayOrScalar:
+        def forward(x: ArrayOrNumeric) -> ArrayOrNumeric:
             return other.forward(self.forward(x))
 
-        def backward(x: ArrayOrScalar) -> ArrayOrScalar:
+        def backward(x: ArrayOrNumeric) -> ArrayOrNumeric:
             return self.backward(other.backward(x))
 
         return Transformation(forward, backward)
 
     def add(
         self,
-        *arrays: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        *arrays: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Add multiple FFT features with transformations.
 
@@ -175,9 +177,9 @@ class Transformation(NamedTuple):
 
     def subtract(
         self,
-        array1: ArrayOrScalar,
-        array2: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        array1: ArrayOrNumeric,
+        array2: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Subtract two FFT features with transformations.
 
@@ -194,8 +196,8 @@ class Transformation(NamedTuple):
 
     def multiply(
         self,
-        *arrays: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        *arrays: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Multiply multiple FFT features with transformations.
 
@@ -211,9 +213,9 @@ class Transformation(NamedTuple):
 
     def divide(
         self,
-        array1: ArrayOrScalar,
-        array2: ArrayOrScalar,
-    ) -> ArrayOrScalar:
+        array1: ArrayOrNumeric,
+        array2: ArrayOrNumeric,
+    ) -> ArrayOrNumeric:
         """
         Divide two FFT features with transformations.
 

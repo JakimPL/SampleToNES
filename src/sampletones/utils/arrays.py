@@ -6,7 +6,7 @@ from sampletones import xp
 from sampletones.types.array import (
     Array,
     ArrayClasses,
-    ArrayOrScalar,
+    ArrayOrNumeric,
     ArrayOrScalarClasses,
     DTypeLike,
     Float,
@@ -102,9 +102,12 @@ def clamp(
     return value
 
 
-def isfinite(value: Optional[Numeric]) -> bool:
+def isfinite(value: Optional[ArrayOrNumeric]) -> bool:
     """
     Checks if a numeric value is finite (not NaN or infinite).
+    If the value is None, it is considered not finite.
+
+    If the argument is an array, checks if all elements are finite recursively.
 
     Args:
         value: The numeric value to check.
@@ -113,10 +116,13 @@ def isfinite(value: Optional[Numeric]) -> bool:
         True if the value is finite, False if it is NaN, infinite, or None.
 
     Raises:
-        TypeError: If the value is not a numeric type or `None`.
+        TypeError: If the value is not a numeric nor array type or `None`.
     """
     if value is None:
         return False
+
+    if isinstance(value, ArrayClasses):
+        return all(isfinite(v) for v in value)
 
     if not isinstance(value, NumericClasses):
         raise TypeError(f"Value must be a numeric type or None, got {type(value)}")
@@ -126,9 +132,11 @@ def isfinite(value: Optional[Numeric]) -> bool:
     return finite
 
 
-def isnan(value: Optional[Numeric]) -> bool:
+def isnan(value: Optional[ArrayOrNumeric]) -> bool:
     """
     Checks if a numeric value is NaN (Not a Number).
+
+    If the argument is an array, checks if all elements are NaN recursively.
 
     Args:
         value: The numeric value to check.
@@ -141,6 +149,9 @@ def isnan(value: Optional[Numeric]) -> bool:
     """
     if value is None:
         return True
+
+    if isinstance(value, ArrayClasses):
+        return all(isnan(v) for v in value)
 
     if not isinstance(value, NumericClasses):
         raise TypeError(f"Value must be a numeric type or None, got {type(value)}")
@@ -162,7 +173,7 @@ def cast_to_float(value: Float) -> Float: ...
 def cast_to_float(value: Array) -> Array: ...
 
 
-def cast_to_float(value: ArrayOrScalar) -> ArrayOrScalar:
+def cast_to_float(value: ArrayOrNumeric) -> ArrayOrNumeric:
     """
     Cast integer values to appropriate float types, preserve float types.
 

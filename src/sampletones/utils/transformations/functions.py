@@ -1,9 +1,9 @@
 import numpy as np
 
-from sampletones.types.array import ArrayOrScalar
+from sampletones.types.array import ArrayOrNumeric
 
 
-def identity(x: ArrayOrScalar) -> ArrayOrScalar:
+def identity(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
     Identity function.
 
@@ -16,7 +16,7 @@ def identity(x: ArrayOrScalar) -> ArrayOrScalar:
     return x
 
 
-def energy(x: ArrayOrScalar) -> ArrayOrScalar:
+def energy(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
     Calculates the energy by squaring the absolute value.
 
@@ -26,11 +26,11 @@ def energy(x: ArrayOrScalar) -> ArrayOrScalar:
     Returns:
         Square of the absolute value of the input.
     """
-    array: ArrayOrScalar = np.square(np.abs(x))
+    array: ArrayOrNumeric = np.square(np.abs(x))
     return array
 
 
-def exp(x: ArrayOrScalar) -> ArrayOrScalar:
+def exp(x: ArrayOrNumeric) -> ArrayOrNumeric:
     """
     Exponential function.
 
@@ -40,11 +40,11 @@ def exp(x: ArrayOrScalar) -> ArrayOrScalar:
     Returns:
         ArrayOrScalar: Exponential of the input.
     """
-    array: ArrayOrScalar = np.exp(x)
+    array: ArrayOrNumeric = np.exp(x)
     return array
 
 
-def power(x: ArrayOrScalar, a: float) -> ArrayOrScalar:
+def power(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     """
     Power function.
 
@@ -55,11 +55,11 @@ def power(x: ArrayOrScalar, a: float) -> ArrayOrScalar:
     Returns:
         Input raised to the power of `a`.
     """
-    array: ArrayOrScalar = np.power(x, a)
+    array: ArrayOrNumeric = np.power(x, a)
     return array
 
 
-def power_inverse(x: ArrayOrScalar, a: float) -> ArrayOrScalar:
+def power_inverse(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     """
     Inverse power function.
 
@@ -70,5 +70,5 @@ def power_inverse(x: ArrayOrScalar, a: float) -> ArrayOrScalar:
     Returns:
         Input raised to the power of `1 / a`.
     """
-    array: ArrayOrScalar = power(x, 1 / a)
+    array: ArrayOrNumeric = power(x, 1 / a)
     return array

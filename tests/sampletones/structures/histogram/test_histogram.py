@@ -17,20 +17,11 @@ class TestInit:
     class TestCase:
         __test__ = False
 
-        edges: Array
-        values: Union[Array, Float]
+        test_id: str
+        edges: Any
+        values: Any
         expected_result: Union[Histogram, Type[Exception]]
         match: Optional[str] = None
-
-        @property
-        def test_id(self) -> str:
-            if isinstance(self.expected_result, type) and issubclass(self.expected_result, Exception):
-                error_suffix = "_error"
-            else:
-                error_suffix = ""
-            edges_dtype = self.edges.dtype.name
-            values_dtype = self.values.dtype.name if isinstance(self.values, np.ndarray) else "scalar"
-            return f"edges_{edges_dtype}_values_{values_dtype}{error_suffix}"
 
     test_cases = [
         TestCase(
@@ -39,6 +30,7 @@ class TestInit:
             expected_result=Histogram(
                 np.array([0.0, 1.0, 2.0], dtype=np.float64), np.array([1.0, 2.0], dtype=np.float64)
             ),
+            test_id="basic_float64_array",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
@@ -46,6 +38,7 @@ class TestInit:
             expected_result=Histogram(
                 np.array([0.0, 1.0, 4.0], dtype=np.float32), np.array([2.0, 6.0], dtype=np.float32)
             ),
+            test_id="basic_float32_array",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float32),
@@ -53,6 +46,7 @@ class TestInit:
             expected_result=Histogram(
                 np.array([0.0, 1.0, 2.0, 3.0], dtype=np.float32), np.array([1.0, 2.0, 3.0], dtype=np.float32)
             ),
+            test_id="three_bins_float32",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
@@ -60,6 +54,7 @@ class TestInit:
             expected_result=Histogram(
                 np.array([0.0, 1.0, 4.0], dtype=np.float32), np.array([3.0, 9.0], dtype=np.float32)
             ),
+            test_id="constant_density_float32",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
@@ -67,71 +62,175 @@ class TestInit:
             expected_result=Histogram(
                 np.array([0.0, 1.0, 4.0], dtype=np.float64), np.array([3.0, 9.0], dtype=np.float64)
             ),
+            test_id="constant_density_float64",
         ),
         TestCase(
             edges=np.array([0, 1, 2], dtype=np.int64),
             values=np.array([1, 2], dtype=np.int64),
             expected_result=Histogram(np.array([0, 1, 2], dtype=np.int64), np.array([1, 2], dtype=np.int64)),
+            test_id="integer_int64",
         ),
         TestCase(
             edges=np.array([0, 1, 4], dtype=np.int32),
             values=np.array([2, 6], dtype=np.int32),
             expected_result=Histogram(np.array([0, 1, 4], dtype=np.int32), np.array([2, 6], dtype=np.int32)),
+            test_id="integer_int32",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, np.inf], dtype=np.float32),
             values=np.array([1.0, 2.0], dtype=np.float32),
             expected_result=ValidationError,
+            test_id="edges_with_positive_inf",
         ),
         TestCase(
             edges=np.array([-np.inf, 0.0, np.inf], dtype=np.float64),
             values=np.array([1.0, 2.0], dtype=np.float64),
             expected_result=ValidationError,
+            test_id="edges_with_negative_and_positive_inf",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
             values=np.array([np.nan, 2.0], dtype=np.float32),
             expected_result=ValidationError,
+            test_id="values_with_nan",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
             values=np.array([1.0], dtype=np.float64),
             expected_result=ValueError,
             match="edges should have exactly",
+            test_id="too_many_edges",
         ),
         TestCase(
             edges=np.array([0.0, 1.0], dtype=np.float32),
             values=np.array([1.0, 2.0], dtype=np.float32),
             expected_result=ValueError,
             match="edges should have exactly",
+            test_id="too_few_edges",
         ),
         TestCase(
             edges=np.array([0.0], dtype=np.float64),
             values=np.array([], dtype=np.float64),
             expected_result=ValueError,
             match="At least two edges",
+            test_id="single_edge",
         ),
         TestCase(
             edges=np.array([2.0, 1.0, 3.0], dtype=np.float32),
             values=np.array([1.0, 2.0], dtype=np.float32),
             expected_result=ValueError,
             match="strictly increasing",
+            test_id="edges_not_monotonic",
         ),
         TestCase(
             edges=np.array([0.0, 1.0, 1.0, 2.0], dtype=np.float64),
             values=np.array([1.0, 2.0, 3.0], dtype=np.float64),
             expected_result=ValueError,
             match="strictly increasing",
+            test_id="edges_with_duplicate",
         ),
         TestCase(
             edges=np.array([0, 1, 0], dtype=np.int32),
             values=np.array([1, 2], dtype=np.int32),
             expected_result=ValueError,
             match="strictly increasing",
+            test_id="edges_decreasing",
+        ),
+        TestCase(
+            edges=np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32),
+            values=np.array([1.0], dtype=np.float32),
+            expected_result=ValueError,
+            match="edges must be a one-dimensional array",
+            test_id="edges_2d_array",
+        ),
+        TestCase(
+            edges=[0.0, 1.0, 2.0],
+            values=np.array([1.0, 2.0], dtype=np.float32),
+            expected_result=ValidationError,
+            test_id="edges_as_list",
+        ),
+        TestCase(
+            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            values=[1.0, 2.0],
+            expected_result=ValidationError,
+            test_id="values_as_list",
+        ),
+        TestCase(
+            edges=Interval(0.0, 5.0),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=Histogram(np.array([0.0, 5.0]), np.array([10.0], dtype=np.float32)),
+            test_id="interval_with_array_values",
+        ),
+        TestCase(
+            edges=Interval(np.float32(0.0), np.float32(5.0)),
+            values=np.float32(3.0),
+            expected_result=Histogram(np.array([0.0, 5.0], dtype=np.float32), np.array([15.0], dtype=np.float32)),
+            test_id="interval_with_constant_density_float32",
+        ),
+        TestCase(
+            edges=Interval(2.0, 8.0),
+            values=np.array([12.0], dtype=np.float64),
+            expected_result=Histogram(np.array([2.0, 8.0], dtype=np.float64), np.array([12.0], dtype=np.float64)),
+            test_id="interval_with_array_values_float64",
+        ),
+        TestCase(
+            edges=Interval(-5.0, 5.0),
+            values=np.float64(2.0),
+            expected_result=Histogram(np.array([-5.0, 5.0], dtype=np.float64), np.array([20.0], dtype=np.float64)),
+            test_id="interval_with_constant_density_float64",
+        ),
+        TestCase(
+            edges=Interval(1.0, -1.0),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="strictly increasing",
+            test_id="interval_invalid_left_greater_than_right",
+        ),
+        TestCase(
+            edges=Interval(0.0, 0.0),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="strictly increasing",
+            test_id="interval_empty_equal_bounds",
+        ),
+        TestCase(
+            edges=Interval(np.nan, 5.0),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="edges must contain only finite values",
+            test_id="interval_with_nan_left",
+        ),
+        TestCase(
+            edges=Interval(0.0, np.nan),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="edges must contain only finite values",
+            test_id="interval_with_nan_right",
+        ),
+        TestCase(
+            edges=Interval(-np.inf, 5.0),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="edges must contain only finite values",
+            test_id="interval_with_negative_inf_left",
+        ),
+        TestCase(
+            edges=Interval(0.0, np.inf),
+            values=np.array([10.0], dtype=np.float32),
+            expected_result=ValidationError,
+            match="edges must contain only finite values",
+            test_id="interval_with_positive_inf_right",
+        ),
+        TestCase(
+            edges=Interval(-np.inf, np.inf),
+            values=np.float32(1.0),
+            expected_result=ValidationError,
+            match="edges must contain only finite values",
+            test_id="interval_unbounded_both_sides",
         ),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
     def test_init(self, test_case: TestCase) -> None:
         if not expect_error(
             Histogram, test_case.expected_result, test_case.edges, test_case.values, match=test_case.match
@@ -142,6 +241,57 @@ class TestInit:
             assert_array_equal(histogram.edges, test_case.expected_result.edges)
             assert histogram.edges.dtype == test_case.expected_result.edges.dtype
             assert histogram.values.dtype == test_case.expected_result.values.dtype
+
+
+class TestValidateHistogramEdges:
+    def test_same_edges_numpy(self) -> None:
+        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        hist2 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([3.0, 4.0]))
+        Histogram._validate_histogram_edges(hist1, hist2, equal_edges=True)
+
+    def test_different_edges_numpy(self) -> None:
+        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        hist2 = Histogram(np.array([0.0, 1.5, 2.0]), np.array([3.0, 4.0]))
+        with pytest.raises(ValueError, match="All histograms must have the same edges"):
+            Histogram._validate_histogram_edges(hist1, hist2, equal_edges=True)
+
+    def test_different_edges_allowed_with_flag(self) -> None:
+        hist1 = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        hist2 = Histogram(np.array([0.0, 1.5, 2.0]), np.array([3.0, 4.0]))
+        Histogram._validate_histogram_edges(hist1, hist2, equal_edges=False)
+
+    def test_no_histograms(self) -> None:
+        with pytest.raises(ValueError, match="At least one histogram is required"):
+            Histogram._validate_histogram_edges()
+
+    def test_single_histogram(self) -> None:
+        hist = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        Histogram._validate_histogram_edges(hist, equal_edges=True)
+
+
+class TestValidateArrayLengths:
+    def test_matching_lengths(self) -> None:
+        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        array1 = np.array([3.0, 4.0])
+        array2 = np.array([5.0, 6.0])
+        histogram._validate_array_lengths(array1, array2)
+
+    def test_mismatched_length_single_array(self) -> None:
+        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        array = np.array([3.0, 4.0, 5.0])
+        with pytest.raises(ValueError, match="Array length 3 must match values length 2"):
+            histogram._validate_array_lengths(array)
+
+    def test_mismatched_length_multiple_arrays(self) -> None:
+        histogram = Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))
+        array1 = np.array([4.0, 5.0, 6.0])
+        array2 = np.array([7.0, 8.0])
+        with pytest.raises(ValueError, match="Array length 2 must match values length 3"):
+            histogram._validate_array_lengths(array1, array2)
+
+    def test_no_arrays(self) -> None:
+        histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
+        histogram._validate_array_lengths()
 
 
 class TestImmutability:
@@ -2480,20 +2630,20 @@ class TestPower:
         ),
         TestCase(
             left=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
-            right=np.array([2.0, 3.0]),
-            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 189.0])),
+            right=np.array([6.0, 7.0]),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 21.0])),
             test_id="histogram_power_array",
         ),
         TestCase(
             left=2.0,
             right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
-            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([4.0, 2097152.0])),
+            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([12.0, 56.0])),
             test_id="scalar_power_histogram",
         ),
         TestCase(
-            left=np.array([2.0, 3.0]),
-            right=Histogram(np.array([0.0, 3.0, 10.0]), np.array([6.0, 21.0])),
-            expected_result=Histogram(np.array([0.0, 3.0, 10.0]), np.array([4.0, 10460353203.0])),
+            left=np.array([2.0, 50.0]),
+            right=Histogram(np.array([-1.0, 0.0, 2.0]), np.array([4.0, -4.0])),
+            expected_result=Histogram(np.array([-1.0, 0.0, 2.0]), np.array([16.0, 0.0032])),
             test_id="array_power_histogram",
         ),
         TestCase(

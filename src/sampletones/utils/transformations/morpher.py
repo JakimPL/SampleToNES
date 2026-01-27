@@ -2,7 +2,7 @@ from functools import cached_property, partial
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.types.array import ArrayOrScalar, UnaryTransformation
+from sampletones.types.array import ArrayOrNumeric, UnaryTransformation
 
 from .functions import identity, power, power_inverse
 from .transformation import Transformation
@@ -90,8 +90,8 @@ class PowerMorpher(BaseModel):
         Returns:
             Transformation: The transformation with forward=`x ^ a` and backward=`x ^ (1 / a)`.
         """
-        forward: UnaryTransformation[ArrayOrScalar]
-        backward: UnaryTransformation[ArrayOrScalar]
+        forward: UnaryTransformation[ArrayOrNumeric]
+        backward: UnaryTransformation[ArrayOrNumeric]
 
         if self.gamma == 0.5:
             forward = identity

@@ -1,9 +1,9 @@
 import math
 
-from sampletones.types.array import ArrayOrScalar, ArrayOrScalarClasses, get_array_module
+from sampletones.types.array import ArrayOrNumeric, ArrayOrScalarClasses, get_array_module
 
 
-def assert_array_equal(result: ArrayOrScalar, expected: ArrayOrScalar) -> None:
+def assert_array_equal(result: ArrayOrNumeric, expected: ArrayOrNumeric) -> None:
     if isinstance(result, (bool, int, float)):
         assert type(result) == type(expected)
         if isinstance(expected, float) and math.isnan(expected):

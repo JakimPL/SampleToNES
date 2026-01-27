@@ -8,7 +8,7 @@ import pytest
 
 from sampletones import xp
 from sampletones.types.array import DTypeLike
-from sampletones.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isnan, pad, trim
+from sampletones.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isfinite, isnan, pad, trim
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 
@@ -170,6 +170,91 @@ class TestIsnan:
                 expected_result=TypeError,
                 test_id="numpy_string_object_array_raises_type_error",
             ),
+            TestCase(
+                value=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+                expected_result=False,
+                test_id="array_float32_all_finite_not_nan",
+            ),
+            TestCase(
+                value=np.array([1.0, np.nan, 3.0], dtype=np.float32),
+                expected_result=False,
+                test_id="array_float32_with_nan_not_all_nan",
+            ),
+            TestCase(
+                value=np.array([np.nan, np.nan, np.nan], dtype=np.float32),
+                expected_result=True,
+                test_id="array_float32_all_nan",
+            ),
+            TestCase(
+                value=np.array([1.0, np.inf, -np.inf], dtype=np.float32),
+                expected_result=False,
+                test_id="array_float32_with_inf_not_nan",
+            ),
+            TestCase(
+                value=np.array([np.nan, np.inf, -np.inf, 0.0], dtype=np.float32),
+                expected_result=False,
+                test_id="array_float32_mixed_not_all_nan",
+            ),
+            TestCase(
+                value=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+                expected_result=False,
+                test_id="array_float64_all_finite_not_nan",
+            ),
+            TestCase(
+                value=np.array([1.0, np.nan, 3.0], dtype=np.float64),
+                expected_result=False,
+                test_id="array_float64_with_nan_not_all_nan",
+            ),
+            TestCase(
+                value=np.array([np.nan, np.nan], dtype=np.float64),
+                expected_result=True,
+                test_id="array_float64_all_nan",
+            ),
+            TestCase(
+                value=np.array([np.inf, -np.inf, 5.0], dtype=np.float64),
+                expected_result=False,
+                test_id="array_float64_with_inf_not_nan",
+            ),
+            TestCase(
+                value=np.array([1, 2, 3], dtype=np.int32),
+                expected_result=False,
+                test_id="array_int32_not_nan",
+            ),
+            TestCase(
+                value=np.array([0, -5, 100], dtype=np.int64),
+                expected_result=False,
+                test_id="array_int64_not_nan",
+            ),
+            TestCase(
+                value=np.array([1, 2], dtype=np.int8),
+                expected_result=False,
+                test_id="array_int8_not_nan",
+            ),
+            TestCase(
+                value=np.array([100, 200], dtype=np.uint16),
+                expected_result=False,
+                test_id="array_uint16_not_nan",
+            ),
+            TestCase(
+                value=np.array([], dtype=np.float32),
+                expected_result=True,
+                test_id="array_empty_float32_all_nan",
+            ),
+            TestCase(
+                value=np.array([], dtype=np.int64),
+                expected_result=True,
+                test_id="array_empty_int64_all_nan",
+            ),
+            TestCase(
+                value=np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+                expected_result=False,
+                test_id="matrix_float32_all_finite_not_nan",
+            ),
+            TestCase(
+                value=np.array([[np.nan, np.nan], [np.nan, np.nan]], dtype=np.float64),
+                expected_result=True,
+                test_id="matrix_float64_all_nan",
+            ),
         ],
         ids=lambda tc: tc.test_id,
     )
@@ -178,6 +263,307 @@ class TestIsnan:
             return
 
         result = isnan(test_case.value)
+        assert result == test_case.expected_result
+
+
+class TestIsfinite:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        value: Any
+        expected_result: Union[bool, Type[Exception]]
+        test_id: str
+
+    test_cases = [
+        TestCase(
+            value=None,
+            expected_result=False,
+            test_id="none_not_finite",
+        ),
+        TestCase(
+            value=float("nan"),
+            expected_result=False,
+            test_id="builtin_float_nan_not_finite",
+        ),
+        TestCase(
+            value=float("inf"),
+            expected_result=False,
+            test_id="builtin_float_inf_not_finite",
+        ),
+        TestCase(
+            value=float("-inf"),
+            expected_result=False,
+            test_id="builtin_float_neg_inf_not_finite",
+        ),
+        TestCase(
+            value=0.0,
+            expected_result=True,
+            test_id="builtin_float_zero_finite",
+        ),
+        TestCase(
+            value=1.5,
+            expected_result=True,
+            test_id="builtin_float_normal_finite",
+        ),
+        TestCase(
+            value=-3.14,
+            expected_result=True,
+            test_id="builtin_float_negative_finite",
+        ),
+        TestCase(
+            value=0,
+            expected_result=True,
+            test_id="builtin_int_zero_finite",
+        ),
+        TestCase(
+            value=42,
+            expected_result=True,
+            test_id="builtin_int_positive_finite",
+        ),
+        TestCase(
+            value=-17,
+            expected_result=True,
+            test_id="builtin_int_negative_finite",
+        ),
+        TestCase(
+            value=True,
+            expected_result=True,
+            test_id="builtin_bool_true_finite",
+        ),
+        TestCase(
+            value=False,
+            expected_result=True,
+            test_id="builtin_bool_false_finite",
+        ),
+        TestCase(
+            value=np.nan,
+            expected_result=False,
+            test_id="numpy_nan_not_finite",
+        ),
+        TestCase(
+            value=np.inf,
+            expected_result=False,
+            test_id="numpy_inf_not_finite",
+        ),
+        TestCase(
+            value=-np.inf,
+            expected_result=False,
+            test_id="numpy_neg_inf_not_finite",
+        ),
+        TestCase(
+            value=np.float32(np.nan),
+            expected_result=False,
+            test_id="numpy_float32_nan_not_finite",
+        ),
+        TestCase(
+            value=np.float64(np.nan),
+            expected_result=False,
+            test_id="numpy_float64_nan_not_finite",
+        ),
+        TestCase(
+            value=np.float32(np.inf),
+            expected_result=False,
+            test_id="numpy_float32_inf_not_finite",
+        ),
+        TestCase(
+            value=np.float64(-np.inf),
+            expected_result=False,
+            test_id="numpy_float64_neg_inf_not_finite",
+        ),
+        TestCase(
+            value=np.float32(3.14),
+            expected_result=True,
+            test_id="numpy_float32_normal_finite",
+        ),
+        TestCase(
+            value=np.float64(2.718),
+            expected_result=True,
+            test_id="numpy_float64_normal_finite",
+        ),
+        TestCase(
+            value=np.float32(0.0),
+            expected_result=True,
+            test_id="numpy_float32_zero_finite",
+        ),
+        TestCase(
+            value=np.int32(100),
+            expected_result=True,
+            test_id="numpy_int32_finite",
+        ),
+        TestCase(
+            value=np.int64(-256),
+            expected_result=True,
+            test_id="numpy_int64_finite",
+        ),
+        TestCase(
+            value=np.int8(5),
+            expected_result=True,
+            test_id="numpy_int8_finite",
+        ),
+        TestCase(
+            value=np.uint16(1000),
+            expected_result=True,
+            test_id="numpy_uint16_finite",
+        ),
+        TestCase(
+            value=np.uint32(0),
+            expected_result=True,
+            test_id="numpy_uint32_zero_finite",
+        ),
+        TestCase(
+            value=xp.nan,
+            expected_result=False,
+            test_id="xp_nan_not_finite",
+        ),
+        TestCase(
+            value=xp.inf,
+            expected_result=False,
+            test_id="xp_inf_not_finite",
+        ),
+        TestCase(
+            value=xp.float32(xp.inf),
+            expected_result=False,
+            test_id="xp_float32_inf_not_finite",
+        ),
+        TestCase(
+            value=xp.float64(42.0),
+            expected_result=True,
+            test_id="xp_float64_normal_finite",
+        ),
+        TestCase(
+            value=xp.int32(7),
+            expected_result=True,
+            test_id="xp_int32_finite",
+        ),
+        TestCase(
+            value="42",
+            expected_result=TypeError,
+            test_id="string_raises_type_error",
+        ),
+        TestCase(
+            value=[1, 2, 3],
+            expected_result=TypeError,
+            test_id="list_raises_type_error",
+        ),
+        TestCase(
+            value={"key": "value"},
+            expected_result=TypeError,
+            test_id="dict_raises_type_error",
+        ),
+        TestCase(
+            value=np.array([1.0, 2.0, 3.0], dtype=np.float32),
+            expected_result=True,
+            test_id="array_float32_all_finite",
+        ),
+        TestCase(
+            value=np.array([1.0, np.nan, 3.0], dtype=np.float32),
+            expected_result=False,
+            test_id="array_float32_with_nan_not_all_finite",
+        ),
+        TestCase(
+            value=np.array([np.nan, np.nan, np.nan], dtype=np.float32),
+            expected_result=False,
+            test_id="array_float32_all_nan_not_finite",
+        ),
+        TestCase(
+            value=np.array([1.0, np.inf, -np.inf], dtype=np.float32),
+            expected_result=False,
+            test_id="array_float32_with_inf_not_all_finite",
+        ),
+        TestCase(
+            value=np.array([np.inf, -np.inf, np.inf], dtype=np.float32),
+            expected_result=False,
+            test_id="array_float32_all_inf_not_finite",
+        ),
+        TestCase(
+            value=np.array([np.nan, np.inf, -np.inf, 0.0], dtype=np.float32),
+            expected_result=False,
+            test_id="array_float32_mixed_not_all_finite",
+        ),
+        TestCase(
+            value=np.array([0.0, 1.5, -2.3], dtype=np.float32),
+            expected_result=True,
+            test_id="array_float32_normal_values_all_finite",
+        ),
+        TestCase(
+            value=np.array([1.0, 2.0, 3.0], dtype=np.float64),
+            expected_result=True,
+            test_id="array_float64_all_finite",
+        ),
+        TestCase(
+            value=np.array([1.0, np.nan, 3.0], dtype=np.float64),
+            expected_result=False,
+            test_id="array_float64_with_nan_not_all_finite",
+        ),
+        TestCase(
+            value=np.array([np.nan, np.nan], dtype=np.float64),
+            expected_result=False,
+            test_id="array_float64_all_nan_not_finite",
+        ),
+        TestCase(
+            value=np.array([np.inf, -np.inf, 5.0], dtype=np.float64),
+            expected_result=False,
+            test_id="array_float64_with_inf_not_all_finite",
+        ),
+        TestCase(
+            value=np.array([1.23, 4.56, 7.89], dtype=np.float64),
+            expected_result=True,
+            test_id="array_float64_normal_values_all_finite",
+        ),
+        TestCase(
+            value=np.array([1, 2, 3], dtype=np.int32),
+            expected_result=True,
+            test_id="array_int32_all_finite",
+        ),
+        TestCase(
+            value=np.array([0, -5, 100], dtype=np.int64),
+            expected_result=True,
+            test_id="array_int64_all_finite",
+        ),
+        TestCase(
+            value=np.array([-128, 0, 127], dtype=np.int8),
+            expected_result=True,
+            test_id="array_int8_all_finite",
+        ),
+        TestCase(
+            value=np.array([0, 100, 65535], dtype=np.uint16),
+            expected_result=True,
+            test_id="array_uint16_all_finite",
+        ),
+        TestCase(
+            value=np.array([1000, 2000, 3000], dtype=np.uint32),
+            expected_result=True,
+            test_id="array_uint32_all_finite",
+        ),
+        TestCase(
+            value=np.array([], dtype=np.float32),
+            expected_result=True,
+            test_id="array_empty_float32_all_finite",
+        ),
+        TestCase(
+            value=np.array([], dtype=np.int64),
+            expected_result=True,
+            test_id="array_empty_int64_all_finite",
+        ),
+        TestCase(
+            value=np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32),
+            expected_result=True,
+            test_id="matrix_float32_all_finite",
+        ),
+        TestCase(
+            value=np.array([[1.0, np.nan], [np.inf, 4.0]], dtype=np.float64),
+            expected_result=False,
+            test_id="matrix_float64_with_nan_and_inf_not_all_finite",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_isfinite(self, test_case: TestCase) -> None:
+        if expect_error(isfinite, test_case.expected_result, test_case.value):
+            return
+
+        result = isfinite(test_case.value)
         assert result == test_case.expected_result
 
 

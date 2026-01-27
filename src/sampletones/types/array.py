@@ -12,7 +12,7 @@ Integer = Union[bool, int, np.integer, xp.integer]
 Float = Union[float, np.floating, xp.floating]
 Numeric = Union[Integer, Float]
 Array = Union[np.ndarray, xp.ndarray]
-ArrayOrScalar = Union[Numeric, Array]
+ArrayOrNumeric = Union[Numeric, Array]
 
 IntegerClasses = (int, np.integer, xp.integer)  # pylint: disable=invalid-name
 FloatClasses = (float, np.floating, xp.floating)  # pylint: disable=invalid-name
