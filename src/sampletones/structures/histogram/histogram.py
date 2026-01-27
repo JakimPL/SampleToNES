@@ -101,7 +101,7 @@ class Histogram(DataModel):
             edges = edges.to_array()
 
         if isinstance(values, NumericClasses):
-            values = self._density_to_values(edges, values)
+            values = self.density_to_values(edges, values)
 
         data["edges"] = edges
         data["values"] = values
@@ -118,19 +118,15 @@ class Histogram(DataModel):
             The validated histogram.
 
         Raises:
-            ValueError: If edges length is not values length + 1,
-                if fewer than 2 edges,
-                if edges are not strictly increasing,
-                or edges/values contain non-finite values.
-            TypeError: If edges or values are not numpy arrays.
-            TypeError: If edges and values are not of the same type.
+            ValueError:
+                If edges length is not values length + 1.
+                If edges have fewer than 2 elements.
+                If edges are not strictly increasing.
+                If edges or values contain non-finite values.
+                If edges are not one-dimensional.
+            TypeError:
+                If edges and values are not of the same type.
         """
-        if not isinstance(self.edges, ArrayClasses):
-            raise TypeError(f"edges must be a numpy array, got {type(self.edges)}")
-
-        if not isinstance(self.values, ArrayClasses):
-            raise TypeError(f"values must be a numpy array, got {type(self.values)}")
-
         if len({type(self.edges), type(self.values)}) != 1:
             raise TypeError("edges and values must be of the same type")
 
@@ -152,8 +148,11 @@ class Histogram(DataModel):
         if not is_increasing(self.edges):
             raise ValueError("edges need to be strictly increasing")
 
-        self.edges.setflags(write=False)
-        self.values.setflags(write=False)
+        try:
+            self.edges.setflags(write=False)
+            self.values.setflags(write=False)
+        except AttributeError:
+            pass
 
         return self
 
@@ -496,7 +495,7 @@ class Histogram(DataModel):
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
     @staticmethod
-    def _density_to_values(
+    def density_to_values(
         edges: Union[Array, Histogram],
         density: Numeric,
     ) -> Array:
@@ -539,7 +538,7 @@ class Histogram(DataModel):
         Returns:
             Histogram with constant densities.
         """
-        values: Array = Histogram._density_to_values(edges, density)
+        values: Array = Histogram.density_to_values(edges, density)
         return Histogram(edges=edges, values=values)
 
     def astype(self, dtype: DTypeLike) -> Histogram:
@@ -699,13 +698,8 @@ class Histogram(DataModel):
 
         Returns:
             values[i] / interval_length.
-            Returns 0.0 if interval is invalid (left >= right).
         """
         interval = self.interval(i)
-        if not interval:
-            zero: Float = self.values.dtype.type(0.0)
-            return zero
-
         density: Float = self.values[i] / interval.length
         return density
 

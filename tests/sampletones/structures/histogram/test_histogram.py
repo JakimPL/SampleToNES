@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from types import ModuleType
 from typing import Any, Optional, Tuple, Type, Union
 
 import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from sampletones import xp
 from sampletones.structures.histogram.histogram import Histogram
 from sampletones.structures.histogram.interval import Interval
 from sampletones.types.array import Array, Float, Numeric
@@ -292,6 +294,217 @@ class TestValidateArrayLengths:
     def test_no_arrays(self) -> None:
         histogram = Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0]))
         histogram._validate_array_lengths()
+
+
+class TestValidateNegativePower:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        base: Union[Numeric, Array, Histogram]
+        exponent: Union[Numeric, Array, Histogram]
+        expected_result: Union[None, Type[Exception]]
+        match: Optional[str] = None
+        test_id: str = ""
+
+    test_cases = [
+        TestCase(
+            base=2.0,
+            exponent=-1.0,
+            expected_result=None,
+            test_id="scalar_base_scalar_exponent_valid",
+        ),
+        TestCase(
+            base=0.0,
+            exponent=2.0,
+            expected_result=None,
+            test_id="scalar_base_zero_positive_exponent",
+        ),
+        TestCase(
+            base=0.0,
+            exponent=0.0,
+            expected_result=None,
+            test_id="scalar_base_zero_zero_exponent",
+        ),
+        TestCase(
+            base=0.0,
+            exponent=-1.0,
+            expected_result=ZeroDivisionError,
+            match="Zero cannot be raised to a negative power",
+            test_id="scalar_base_zero_negative_exponent_raises",
+        ),
+        TestCase(
+            base=np.array([1.0, 2.0, 3.0]),
+            exponent=-2.0,
+            expected_result=None,
+            test_id="array_base_scalar_exponent_valid",
+        ),
+        TestCase(
+            base=np.array([0.0, 2.0, 3.0]),
+            exponent=2.0,
+            expected_result=None,
+            test_id="array_base_scalar_exponent_with_zeros_positive_exponent",
+        ),
+        TestCase(
+            base=np.array([0.0, 2.0, 3.0]),
+            exponent=-1.0,
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="array_base_scalar_exponent_with_zeros_negative_exponent_raises",
+        ),
+        TestCase(
+            base=np.array([1.0, 2.0, 3.0]),
+            exponent=np.array([-1.0, -2.0, -3.0]),
+            expected_result=None,
+            test_id="array_base_array_exponent_valid",
+        ),
+        TestCase(
+            base=np.array([0.0, 2.0, 3.0]),
+            exponent=np.array([1.0, -1.0, -2.0]),
+            expected_result=None,
+            test_id="array_base_array_exponent_mixed_valid",
+        ),
+        TestCase(
+            base=np.array([1.0, 0.0, 3.0]),
+            exponent=np.array([1.0, -1.0, 2.0]),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="array_base_array_exponent_zero_base_negative_exponent_raises",
+        ),
+        TestCase(
+            base=2.0,
+            exponent=np.array([-1.0, -2.0, -3.0]),
+            expected_result=None,
+            test_id="scalar_base_array_exponent_valid",
+        ),
+        TestCase(
+            base=0.0,
+            exponent=np.array([1.0, -1.0, 2.0]),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="scalar_base_zero_array_exponent_with_negative_raises",
+        ),
+        TestCase(
+            base=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            exponent=-1.0,
+            expected_result=None,
+            test_id="histogram_base_scalar_exponent_valid",
+        ),
+        TestCase(
+            base=Histogram(np.array([0.0, 1.0, 2.0]), np.array([0.0, 4.0])),
+            exponent=-1.0,
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="histogram_base_scalar_exponent_with_zero_density_raises",
+        ),
+        TestCase(
+            base=Histogram(np.array([0.0, 1.0, 2.0]), np.array([2.0, 4.0])),
+            exponent=Histogram(np.array([0.0, 1.0, 2.0]), np.array([-2.0, -4.0])),
+            expected_result=None,
+            test_id="histogram_base_histogram_exponent_valid",
+        ),
+        TestCase(
+            base=Histogram(np.array([0.0, 1.0, 2.0]), np.array([0.0, 4.0])),
+            exponent=Histogram(np.array([0.0, 1.0, 2.0]), np.array([-2.0, 2.0])),
+            expected_result=ZeroDivisionError,
+            match="Zero densities cannot be raised to negative powers",
+            test_id="histogram_base_histogram_exponent_zero_density_negative_exponent_raises",
+        ),
+        TestCase(
+            base=2.0,
+            exponent=Histogram(np.array([0.0, 1.0, 2.0]), np.array([-2.0, -4.0])),
+            expected_result=None,
+            test_id="scalar_base_histogram_exponent_valid",
+        ),
+        TestCase(
+            base=np.array([1.0, 2.0]),
+            exponent=Histogram(np.array([0.0, 1.0, 2.0]), np.array([-2.0, -4.0])),
+            expected_result=None,
+            test_id="array_base_histogram_exponent_valid",
+        ),
+        TestCase(
+            base="invalid",
+            exponent=2.0,
+            expected_result=TypeError,
+            match="Unsupported base type",
+            test_id="unsupported_base_type_raises",
+        ),
+        TestCase(
+            base=2.0,
+            exponent="invalid",
+            expected_result=TypeError,
+            match="Unsupported exponent type",
+            test_id="unsupported_exponent_type_raises",
+        ),
+        TestCase(
+            base=np.array([1.0, 2.0, 3.0]),
+            exponent=xp.array([1.0, 2.0, 3.0]),
+            expected_result=TypeError,
+            match="Base and exponent must be of the same array type",
+            test_id="mismatched_array_modules_raises",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_validate_negative_power(self, test_case: TestCase) -> None:
+        if test_case.expected_result is None:
+            Histogram._validate_negative_power(test_case.base, test_case.exponent)
+        else:
+            with pytest.raises(test_case.expected_result, match=test_case.match):
+                Histogram._validate_negative_power(test_case.base, test_case.exponent)
+
+
+class TestGetModule:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        obj: Union[Histogram, Array, Numeric]
+        expected_module: ModuleType
+        test_id: str = ""
+
+    test_cases = [
+        TestCase(
+            obj=Histogram(np.array([0.0, 1.0, 2.0]), np.array([1.0, 2.0])),
+            expected_module=np,
+            test_id="histogram_numpy_returns_numpy",
+        ),
+        TestCase(
+            obj=np.array([1.0, 2.0, 3.0]),
+            expected_module=np,
+            test_id="numpy_array_returns_numpy",
+        ),
+        TestCase(
+            obj=xp.array([1.0, 2.0, 3.0]),
+            expected_module=xp,
+            test_id="cupy_array_returns_cupy",
+        ),
+        TestCase(
+            obj=np.float64(3.14),
+            expected_module=np,
+            test_id="numpy_scalar_returns_numpy",
+        ),
+        TestCase(
+            obj=3.14,
+            expected_module=np,
+            test_id="python_float_returns_numpy",
+        ),
+        TestCase(
+            obj=42,
+            expected_module=np,
+            test_id="python_int_returns_numpy",
+        ),
+        TestCase(
+            obj=Histogram(xp.array([0.0, 1.0, 2.0]), xp.array([1.0, 2.0])),
+            expected_module=xp,
+            test_id="histogram_cupy_returns_cupy",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_get_module(self, test_case: TestCase) -> None:
+        module = Histogram.get_module(test_case.obj)
+        assert module is test_case.expected_module
 
 
 class TestImmutability:

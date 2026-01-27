@@ -116,19 +116,16 @@ def isfinite(value: Optional[ArrayOrNumeric]) -> bool:
         True if the value is finite, False if it is NaN, infinite, or None.
 
     Raises:
-        TypeError: If the value is not a numeric nor array type or `None`.
+        TypeError: If the value is not `None` or array/scalar.
     """
     if value is None:
         return False
 
-    if isinstance(value, ArrayClasses):
-        return all(isfinite(v) for v in value)
-
-    if not isinstance(value, NumericClasses):
+    if not isinstance(value, (*ArrayClasses, NumericClasses)):
         raise TypeError(f"Value must be a numeric type or None, got {type(value)}")
 
     module = get_array_module(value)
-    finite: bool = bool(module.isfinite(value))
+    finite: bool = bool(module.all(module.isfinite(value)))
     return finite
 
 
@@ -145,19 +142,16 @@ def isnan(value: Optional[ArrayOrNumeric]) -> bool:
         True if the value is `None` or NaN, False otherwise.
 
     Raises:
-        TypeError: If the value is not a numeric type or `None`.
+        TypeError: If the value is not `None` or array/scalar.
     """
     if value is None:
         return True
 
-    if isinstance(value, ArrayClasses):
-        return all(isnan(v) for v in value)
-
-    if not isinstance(value, NumericClasses):
+    if not isinstance(value, (*ArrayClasses, NumericClasses)):
         raise TypeError(f"Value must be a numeric type or None, got {type(value)}")
 
     module = get_array_module(value)
-    nan: bool = bool(module.isnan(value))
+    nan: bool = bool(module.all(module.isnan(value)))
     return nan
 
 
