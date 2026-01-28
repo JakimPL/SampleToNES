@@ -696,7 +696,7 @@ class GUI:
         if current_reconstruction is not None:
             if current_reconstruction.exists():
                 try:
-                    self._load_reconstruction(current_reconstruction)
+                    self.reconstruction_manager.load_reconstruction(current_reconstruction)
                 except LoadReconstructionError:
                     self.application_config_manager.set_current_reconstruction(None)
             else:

@@ -333,6 +333,10 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Histogram: Resulting FFT feature.
+
+        Raises:
+            TypeError: If there are no histograms in the input.
+            TypeError: If any of the features is neither a Histogram nor a numeric scalar.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
         return self.reduce(lambda feature1, feature2: feature1 + feature2, *features)
@@ -357,6 +361,9 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Histogram: Resulting FFT feature.
+
+        Raises:
+            TypeError: If any of the features is neither a Histogram nor a numeric scalar.
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
         return self.apply(lambda feature1, feature2: np.abs(feature1 - feature2), feature1, feature2)
@@ -374,6 +381,10 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Histogram: Resulting FFT feature.
+
+        Raises:
+            TypeError: If there are no histograms in the input.
+            TypeError: If any of the features is neither a Histogram nor a numeric scalar.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
         return self.reduce(lambda feature1, feature2: feature1 * feature2, *features)
@@ -394,6 +405,9 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Histogram: Resulting FFT feature.
+
+        Raises:
+            TypeError: If any of the features is neither a Histogram nor a numeric scalar.
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
         return self.apply(lambda feature1, feature2: feature1 / feature2, feature1, feature2)
