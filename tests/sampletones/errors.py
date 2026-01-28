@@ -41,10 +41,11 @@ def expect_error(
         return True
 
     if isinstance(expected, tuple):
-        errors = tuple(filter(lambda e: inspect.isclass(e) and issubclass(e, BaseException), expected))
-        if errors:
-            _invoke_with_raises(function, errors, *args, match=match, **kwargs)
-        return True
+        all_errors = all(inspect.isclass(e) and issubclass(e, BaseException) for e in expected)
+        any_error = any(inspect.isclass(e) and issubclass(e, BaseException) for e in expected)
+        if all_errors and any_error:
+            _invoke_with_raises(function, expected, *args, match=match, **kwargs)
+            return True
 
     return False
 
@@ -60,8 +61,9 @@ def expect_warning(
         return _invoke_with_warns(function, expected, *args, match=match, **kwargs)
 
     if isinstance(expected, tuple):
-        warnings = tuple(filter(lambda e: inspect.isclass(e) and issubclass(e, Warning), expected))
-        if warnings:
-            return _invoke_with_warns(function, warnings, *args, match=match, **kwargs)
+        all_warnings = all(inspect.isclass(e) and issubclass(e, Warning) for e in expected)
+        any_warning = any(inspect.isclass(e) and issubclass(e, Warning) for e in expected)
+        if all_warnings and any_warning:
+            return _invoke_with_warns(function, expected, *args, match=match, **kwargs)
 
     return function(*args, **kwargs)

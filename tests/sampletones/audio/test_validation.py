@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Type, Union
+from typing import Any, Tuple, Type, Union
 
 import numpy as np
 import pytest
@@ -13,71 +13,100 @@ class TestValidateAudioArray:
     class TestCase:
         __test__ = False
 
-        id: str
+        test_id: str
         audio: Any
         expected_result: Union[None, Type[Exception]]
+        allowed_dims: Tuple[int, ...] = (1,)
 
     @pytest.mark.parametrize(
         "test_case",
         [
             TestCase(
-                id="valid_float64_array",
+                test_id="valid_float64_array",
                 audio=np.array([1.0, 2.0, 3.0]),
                 expected_result=None,
             ),
             TestCase(
-                id="empty_array",
+                test_id="empty_array",
                 audio=np.array([]),
                 expected_result=None,
             ),
             TestCase(
-                id="valid_float32_array",
+                test_id="valid_float32_array",
                 audio=np.array([1.0, 2.0, 3.0], dtype=np.float32),
                 expected_result=None,
             ),
             TestCase(
-                id="valid_int32_array",
+                test_id="valid_int32_array",
                 audio=np.array([1, 2, 3], dtype=np.int32),
                 expected_result=None,
             ),
             TestCase(
-                id="string_raises_type_error",
+                test_id="invalid_object_array",
+                audio=np.array(["1", "2", "3"], dtype=object),
+                expected_result=TypeError,
+            ),
+            TestCase(
+                test_id="string_raises_type_error",
                 audio="not an array",
                 expected_result=TypeError,
             ),
             TestCase(
-                id="list_raises_type_error",
+                test_id="list_raises_type_error",
                 audio=[1.0, 2.0, 3.0],
                 expected_result=TypeError,
             ),
             TestCase(
-                id="none_raises_type_error",
+                test_id="none_raises_type_error",
                 audio=None,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="int_raises_type_error",
+                test_id="int_raises_type_error",
                 audio=123,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="2d_array_raises_value_error",
+                test_id="2d_array_raises_value_error",
                 audio=np.array([[1, 2], [3, 4]]),
                 expected_result=ValueError,
             ),
             TestCase(
-                id="3d_array_raises_value_error",
+                test_id="3d_array_raises_value_error",
                 audio=np.array([[[1]]]),
                 expected_result=ValueError,
             ),
+            TestCase(
+                test_id="allowed_2d_array",
+                audio=np.array([[1.0, 2.0], [3.0, 4.0]]),
+                expected_result=None,
+                allowed_dims=(1, 2),
+            ),
+            TestCase(
+                test_id="not_allowed_3d_array",
+                audio=np.array([[[1.0, 2.0], [3.0, 4.0]]]),
+                expected_result=ValueError,
+                allowed_dims=(1, 2),
+            ),
+            TestCase(
+                test_id="empty_dimentsions",
+                audio=np.array([1]),
+                expected_result=ValueError,
+                allowed_dims=(),
+            ),
         ],
-        ids=lambda tc: tc.id,
+        ids=lambda tc: tc.test_id,
     )
     def test_validate_audio_array(self, test_case: TestCase) -> None:
-        if expect_error(validate_audio_array, test_case.expected_result, test_case.audio):
+        if expect_error(
+            validate_audio_array,
+            test_case.expected_result,
+            test_case.audio,
+            allowed_dims=test_case.allowed_dims,
+        ):
             return
 
-        validate_audio_array(test_case.audio)
+        validate_audio_array(test_case.audio, allowed_dims=test_case.allowed_dims)
 
 
 class TestValidateSampleRate:
@@ -85,7 +114,7 @@ class TestValidateSampleRate:
     class TestCase:
         __test__ = False
 
-        id: str
+        test_id: str
         sample_rate: Any
         expected_result: Union[None, Type[Exception]]
 
@@ -93,77 +122,77 @@ class TestValidateSampleRate:
         "test_case",
         [
             TestCase(
-                id="valid_8000",
+                test_id="valid_8000",
                 sample_rate=8000,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_16000",
+                test_id="valid_16000",
                 sample_rate=16000,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_22050",
+                test_id="valid_22050",
                 sample_rate=22050,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_44100",
+                test_id="valid_44100",
                 sample_rate=44100,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_48000",
+                test_id="valid_48000",
                 sample_rate=48000,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_96000",
+                test_id="valid_96000",
                 sample_rate=96000,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_192000",
+                test_id="valid_192000",
                 sample_rate=192000,
                 expected_result=None,
             ),
             TestCase(
-                id="invalid_rate_raises_value_error",
+                test_id="invalid_rate_raises_value_error",
                 sample_rate=12345,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="zero_raises_value_error",
+                test_id="zero_raises_value_error",
                 sample_rate=0,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="negative_raises_value_error",
+                test_id="negative_raises_value_error",
                 sample_rate=-44100,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="float_raises_type_error",
+                test_id="float_raises_type_error",
                 sample_rate=44100.0,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="string_raises_type_error",
+                test_id="string_raises_type_error",
                 sample_rate="44100",
                 expected_result=TypeError,
             ),
             TestCase(
-                id="none_raises_type_error",
+                test_id="none_raises_type_error",
                 sample_rate=None,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="list_raises_type_error",
+                test_id="list_raises_type_error",
                 sample_rate=[44100],
                 expected_result=TypeError,
             ),
         ],
-        ids=lambda tc: tc.id,
+        ids=lambda tc: tc.test_id,
     )
     def test_validate_sample_rate(self, test_case: TestCase) -> None:
         if expect_error(validate_sample_rate, test_case.expected_result, test_case.sample_rate):
@@ -177,7 +206,7 @@ class TestValidateBufferSize:
     class TestCase:
         __test__ = False
 
-        id: str
+        test_id: str
         buffer_size: Any
         expected_result: Union[None, Type[Exception]]
 
@@ -185,62 +214,62 @@ class TestValidateBufferSize:
         "test_case",
         [
             TestCase(
-                id="valid_256",
+                test_id="valid_256",
                 buffer_size=256,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_1024",
+                test_id="valid_1024",
                 buffer_size=1024,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_2048",
+                test_id="valid_2048",
                 buffer_size=2048,
                 expected_result=None,
             ),
             TestCase(
-                id="valid_4096",
+                test_id="valid_4096",
                 buffer_size=4096,
                 expected_result=None,
             ),
             TestCase(
-                id="invalid_size_raises_value_error",
+                test_id="invalid_size_raises_value_error",
                 buffer_size=1000,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="zero_raises_value_error",
+                test_id="zero_raises_value_error",
                 buffer_size=0,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="negative_raises_value_error",
+                test_id="negative_raises_value_error",
                 buffer_size=-1024,
                 expected_result=ValueError,
             ),
             TestCase(
-                id="float_raises_type_error",
+                test_id="float_raises_type_error",
                 buffer_size=1024.0,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="string_raises_type_error",
+                test_id="string_raises_type_error",
                 buffer_size="1024",
                 expected_result=TypeError,
             ),
             TestCase(
-                id="none_raises_type_error",
+                test_id="none_raises_type_error",
                 buffer_size=None,
                 expected_result=TypeError,
             ),
             TestCase(
-                id="list_raises_type_error",
+                test_id="list_raises_type_error",
                 buffer_size=[1024],
                 expected_result=TypeError,
             ),
         ],
-        ids=lambda tc: tc.id,
+        ids=lambda tc: tc.test_id,
     )
     def test_validate_buffer_size(self, test_case: TestCase) -> None:
         if expect_error(validate_buffer_size, test_case.expected_result, test_case.buffer_size):

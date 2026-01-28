@@ -124,6 +124,9 @@ def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np
     preserving peaks and troughs. Returns twice as many points as buckets
     (one min and one max per bucket) with corresponding x-coordinates.
 
+    If the audio length is less than num_buckets, reduces num_buckets
+    accordingly.
+
     Args:
         audio: Audio array to decimate.
         num_buckets: Number of buckets to divide audio into.
@@ -146,24 +149,17 @@ def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np
         return np.array([], dtype=np.float32), np.array([], dtype=np.float32)
 
     length = len(audio)
-    bucket_size = max(1.0, length / num_buckets)
-    num_buckets = int(np.ceil(length / bucket_size))
-
-    x_data = np.empty(num_buckets * 2, dtype=np.float32)
-    y_data = np.empty(num_buckets * 2, dtype=np.float32)
-
-    for i in range(num_buckets):
-        start = int(i * bucket_size)
-        end = length if i == num_buckets - 1 else int((i + 1) * bucket_size)
-        bucket = audio[start:end]
-
-        x_pos = (start + end) / 2
-        x_data[i * 2] = x_pos
-        x_data[i * 2 + 1] = x_pos
-        y_data[i * 2] = bucket.min()
-        y_data[i * 2 + 1] = bucket.max()
-
-    return x_data, y_data
+    num_buckets = min(num_buckets, length)
+    m = (-length) % num_buckets
+    padded = np.pad(audio.astype(float), (0, m), constant_values=np.nan)
+    buckets = padded.reshape(num_buckets, -1)
+    positions = np.nanmin(buckets, axis=1).repeat(2)
+    mins = np.nanmax(buckets, axis=1)
+    maxs = np.nanmean(buckets, axis=1)
+    minmax = np.empty(mins.size * 2, dtype=mins.dtype)
+    minmax[0::2] = mins
+    minmax[1::2] = maxs
+    return positions, minmax
 
 
 def normalize(audio: np.ndarray, nan_value: float = 0.0) -> np.ndarray:
