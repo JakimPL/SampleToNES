@@ -15,6 +15,7 @@ from sampletones.exceptions import (
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
     LibraryDisplayError,
+    LoadReconstructionError,
 )
 from sampletones.library import InstructionLibraryKey
 from sampletones.sequencer import Sequencer
@@ -693,7 +694,10 @@ class GUI:
 
         current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None and current_reconstruction.exists():
-            self._load_reconstruction(current_reconstruction)
+            try:
+                self._load_reconstruction(current_reconstruction)
+            except LoadReconstructionError:
+                self.application_config_manager.set_current_reconstruction(None)
 
     def _create_main_tab(self) -> None:
         with dpg.tab(

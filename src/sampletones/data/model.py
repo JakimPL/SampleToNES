@@ -53,7 +53,8 @@ class DataModel(BaseModel):
     def _construct(cls, fast: bool = True, **data: Any) -> Self:
         if fast:
             return cls.model_construct(**data)
-        return cls.model_construct(**data)
+
+        return cls(**data)
 
     def serialize_inner(self, builder: Builder) -> int:
         fb_builder = self.buffer_builder()

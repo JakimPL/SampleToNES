@@ -15,6 +15,7 @@ from .reconstruction import (
     IncompatibleReconstructionVersionError,
     InvalidReconstructionError,
     InvalidReconstructionValuesError,
+    LoadReconstructionError,
     NoFilesToProcessError,
     ReconstructionError,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "UnsupportedAudioFormatError",
     "PlaybackError",
     "ReconstructionError",
+    "LoadReconstructionError",
     "InvalidReconstructionError",
     "InvalidReconstructionValuesError",
     "IncompatibleReconstructionVersionError",
