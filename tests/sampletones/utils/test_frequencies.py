@@ -9,6 +9,7 @@ from sampletones.utils.frequencies import (
     clamp_period,
     clamp_pitch,
     frequency_to_pitch,
+    is_pitch_valid,
     period_to_name,
     pitch_to_frequency,
     pitch_to_name,
@@ -228,6 +229,18 @@ class TestValidateFrequency:
             return
 
         validate_frequency(test_case.frequency)
+
+
+class TestIsPitchValid:
+    def test_is_pitch_valid(self) -> None:
+        valid_pitches = range(MIN_PITCH, MAX_PITCH + 1)
+        for pitch in valid_pitches:
+            assert is_pitch_valid(pitch)
+
+        invalid_pitches = (0, LIMIT_MIN_PITCH, MIN_PITCH - 1, MAX_PITCH + 1, LIMIT_MAX_PITCH, 128)
+        for pitch in invalid_pitches:
+            with pytest.raises(ValueError):
+                validate_pitch(pitch)
 
 
 class TestValidatePeriod:
