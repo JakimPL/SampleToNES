@@ -7,6 +7,7 @@ from sampletones.constants.general import MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion, PulseGenerator
 from sampletones.instructions import InstructionFields, InstructionTypeUnion, PulseInstruction
 from sampletones.types.feature import FeatureMap
+from sampletones.utils import is_pitch_valid
 
 from .exporter import Exporter
 
@@ -18,8 +19,8 @@ class PulseExporter(Exporter[PulseInstruction]):
         FeatureKey.DUTY_CYCLE: "duty_cycle",
     }
 
-    @staticmethod
-    def extract_data(instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
+    @classmethod
+    def extract_data(cls, instructions: List[PulseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_pitch = None
 
         pitch = MIN_PITCH
@@ -52,9 +53,9 @@ class PulseExporter(Exporter[PulseInstruction]):
         initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes, duty_cycles
 
-    @staticmethod
-    def get_feature_map(instructions: List[PulseInstruction]) -> FeatureMap:
-        initial_pitch, pitches, volumes, duty_cycles = PulseExporter.extract_data(instructions)
+    @classmethod
+    def get_feature_map(cls, instructions: List[PulseInstruction]) -> FeatureMap:
+        initial_pitch, pitches, volumes, duty_cycles = cls.extract_data(instructions)
         arpeggio = np.array(pitches) - initial_pitch
 
         return {
@@ -71,7 +72,7 @@ class PulseExporter(Exporter[PulseInstruction]):
         initial_pitch: int,
     ) -> PulseInstruction:
         pitch = int(initial_pitch + dictionary["pitch"])
-        if not cls.is_pitch_valid(pitch):
+        if not is_pitch_valid(pitch):
             return PulseInstruction.null_instruction()
 
         return PulseInstruction(
@@ -81,10 +82,10 @@ class PulseExporter(Exporter[PulseInstruction]):
             duty_cycle=int(dictionary["duty_cycle"]),
         )
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return PulseInstruction
 
-    @staticmethod
-    def get_generator_type() -> GeneratorTypeUnion:
+    @classmethod
+    def get_generator_type(cls) -> GeneratorTypeUnion:
         return PulseGenerator

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Type
+from typing import Self, Type
 
 from pydantic import ConfigDict, Field
 
@@ -23,9 +23,9 @@ class Metadata(DataModel):
     library_data_version: str = Field(default=SAMPLETONES_LIBRARY_DATA_VERSION)
     reconstruction_data_version: str = Field(default=SAMPLETONES_RECONSTRUCTION_DATA_VERSION)
 
-    @staticmethod
-    def default() -> Metadata:
-        return Metadata()
+    @classmethod
+    def default(cls) -> Self:
+        return cls()
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:

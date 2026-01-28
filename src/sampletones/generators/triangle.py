@@ -77,8 +77,8 @@ class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):
 
         return triangle_instructions
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return TriangleInstruction
 
     @classmethod

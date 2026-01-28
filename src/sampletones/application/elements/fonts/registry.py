@@ -41,10 +41,10 @@ class FontRegistry:
         Font.ICON: FontData(TAG_FONT_ICON, VAL_FONT_SIZE_SMALL, FontResource.ICON),
     }
 
-    @staticmethod
-    def register_fonts() -> None:
+    @classmethod
+    def register_fonts(cls) -> None:
         with dpg.font_registry():
-            for font_data in FontRegistry._REGISTRY.values():
+            for font_data in cls._REGISTRY.values():
                 dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
                 dpg.add_font_range(0x0100, 0x024F, parent=font_data.tag)
                 dpg.add_font_range(0x1E00, 0x1EFF, parent=font_data.tag)

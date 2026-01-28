@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Type
+from typing import List, Self, Type
 
 from pydantic import ConfigDict, Field
 
@@ -37,15 +37,15 @@ class Config(DataModel):
         description="Application metadata",
     )
 
-    @staticmethod
-    def default() -> Config:
+    @classmethod
+    def default(cls) -> Self:
         if not CONFIG_PATH.exists():
-            return Config()
+            return cls()
 
-        return Config.load(CONFIG_PATH)
+        return cls.load(CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Pathlike, fast: bool = False) -> Config:
+    def load(cls, path: Pathlike, fast: bool = False) -> Self:
         path = to_path(path)
         config_dict = load_json(path)
         if not isinstance(config_dict, dict):

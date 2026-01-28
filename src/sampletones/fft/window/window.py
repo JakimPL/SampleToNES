@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Optional, Tuple, Union
+from typing import Tuple, Type, Union
 
 import numpy as np
 from pydantic import ConfigDict
 
 from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.data.model import DataModel
+from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.utils import pad
 
 from ..fft import calculate_weights
@@ -18,21 +19,23 @@ class Window(DataModel):
 
     config: InstructionsLibraryConfig
     on: bool = True
-    custom_size: Optional[int] = None
+    custom_size: int = 0
 
-    @property
+    @cached_property
     def size(self) -> int:
-        return self.custom_size if self.custom_size is not None else self.config.window_size
+        size = self.custom_size if self.custom_size else self.config.window_size
+        if size <= 0:
+            raise ValueError("Window size must be a positive integer")
+
+        return size
 
     @cached_property
     def left_offset(self) -> int:
-        size = self.size
-        return -int(np.ceil((size - self.frame_length) / 2.0))
+        return -int(np.ceil((self.size - self.frame_length) / 2.0))
 
     @cached_property
     def envelope(self) -> np.ndarray:
-        size = self.size
-        return self.create_window() if self.on else np.ones(size, dtype=np.float32)
+        return self.create_window() if self.on else np.ones(self.size, dtype=np.float32)
 
     @cached_property
     def backward_frames(self) -> int:
@@ -40,20 +43,18 @@ class Window(DataModel):
 
     @cached_property
     def forward_frames(self) -> int:
-        size = self.size
-        return -(-(size + self.left_offset) // self.config.frame_length)
+        return -(-(self.size + self.left_offset) // self.config.frame_length)
 
     @cached_property
     def weights(self) -> np.ndarray:
-        size = self.size
-        return calculate_weights(size, self.config.sample_rate)
+        return calculate_weights(self.size, self.config.sample_rate)
 
     @classmethod
     def from_config(
         cls,
         config: Union[Config, InstructionsLibraryConfig],
         on: bool = True,
-        custom_size: Optional[int] = None,
+        custom_size: int = 0,
     ) -> Window:
         if isinstance(config, InstructionsLibraryConfig):
             return cls(config=config, on=on, custom_size=custom_size)
@@ -134,3 +135,15 @@ class Window(DataModel):
     @property
     def sample_rate(self) -> int:
         return self.config.sample_rate
+
+    @classmethod
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
+        from sampletones_schemas.fft import FBWindow
+
+        return FBWindow
+
+    @classmethod
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
+        from sampletones_schemas.fft import FBWindow
+
+        return FBWindow.FBWindow

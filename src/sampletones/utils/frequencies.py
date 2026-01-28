@@ -33,6 +33,19 @@ def validate_pitch(pitch: int) -> None:
         raise ValueError(f"Pitch must be in the range {LIMIT_MIN_PITCH}-{LIMIT_MAX_PITCH}")
 
 
+def is_pitch_valid(pitch: int) -> bool:
+    """
+    Checks if a pitch value is in the defined range.
+
+    Args:
+        pitch: The pitch value to check.
+
+    Returns:
+        True if the pitch is valid, False otherwise.
+    """
+    return MIN_PITCH <= pitch <= MAX_PITCH
+
+
 def validate_frequency(frequency: float) -> None:
     """
     Validates that a frequency value is a positive finite number.

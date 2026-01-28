@@ -18,8 +18,8 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         FeatureKey.DUTY_CYCLE: "short",
     }
 
-    @staticmethod
-    def extract_data(instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
+    @classmethod
+    def extract_data(cls, instructions: List[NoiseInstruction]) -> Tuple[int, List[int], List[int], List[int]]:
         initial_period = None
 
         period = 0
@@ -52,9 +52,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
         initial_period = initial_period if initial_period is not None else 0
         return initial_period, periods, volumes, duty_cycles
 
-    @staticmethod
-    def get_feature_map(instructions: List[NoiseInstruction]) -> FeatureMap:
-        initial_period, periods, volumes, duty_cycles = NoiseExporter.extract_data(instructions)
+    @classmethod
+    def get_feature_map(cls, instructions: List[NoiseInstruction]) -> FeatureMap:
+        initial_period, periods, volumes, duty_cycles = cls.extract_data(instructions)
         arpeggio = (np.array(periods) - initial_period) % NUM_PERIODS
 
         return {
@@ -77,10 +77,10 @@ class NoiseExporter(Exporter[NoiseInstruction]):
             short=bool(dictionary["short"]),
         )
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return NoiseInstruction
 
-    @staticmethod
-    def get_generator_type() -> GeneratorTypeUnion:
+    @classmethod
+    def get_generator_type(cls) -> GeneratorTypeUnion:
         return NoiseGenerator

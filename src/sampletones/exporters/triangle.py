@@ -7,6 +7,7 @@ from sampletones.constants.general import MAX_VOLUME, MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion, TriangleGenerator
 from sampletones.instructions import InstructionFields, InstructionTypeUnion, TriangleInstruction
 from sampletones.types.feature import FeatureMap
+from sampletones.utils.frequencies import is_pitch_valid
 
 from .exporter import Exporter
 
@@ -17,8 +18,8 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         FeatureKey.ARPEGGIO: "pitch",
     }
 
-    @staticmethod
-    def extract_data(instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
+    @classmethod
+    def extract_data(cls, instructions: List[TriangleInstruction]) -> Tuple[int, List[int], List[int]]:
         initial_pitch = None
 
         pitch = MIN_PITCH
@@ -47,9 +48,9 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         initial_pitch = initial_pitch if initial_pitch is not None else MIN_PITCH
         return initial_pitch, pitches, volumes
 
-    @staticmethod
-    def get_feature_map(instructions: List[TriangleInstruction]) -> FeatureMap:
-        initial_pitch, pitches, volumes = TriangleExporter.extract_data(instructions)
+    @classmethod
+    def get_feature_map(cls, instructions: List[TriangleInstruction]) -> FeatureMap:
+        initial_pitch, pitches, volumes = cls.extract_data(instructions)
         arpeggio = np.array(pitches) - initial_pitch
 
         return {
@@ -65,7 +66,7 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         initial_pitch: int,
     ) -> TriangleInstruction:
         pitch = int(initial_pitch + dictionary["pitch"])
-        if not cls.is_pitch_valid(pitch):
+        if not is_pitch_valid(pitch):
             return TriangleInstruction.null_instruction()
 
         return TriangleInstruction(
@@ -73,10 +74,10 @@ class TriangleExporter(Exporter[TriangleInstruction]):
             pitch=pitch,
         )
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return TriangleInstruction
 
-    @staticmethod
-    def get_generator_type() -> GeneratorTypeUnion:
+    @classmethod
+    def get_generator_type(cls) -> GeneratorTypeUnion:
         return TriangleGenerator

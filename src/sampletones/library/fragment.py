@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Generic, List, Type
+from typing import Any, Generic, List, Self, Type
 
 import numpy as np
 from pydantic import ConfigDict
@@ -34,17 +34,18 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     def __reduce__(self) -> ReducedObject:
         return (_instruction_library_fragment, (dict(self),))
 
-    @staticmethod
+    @classmethod
     def create(
+        cls,
         generator: Generator[InstructionT, Any],
         instruction: InstructionT,
         window: Window,
         transformer: FFTTransformer,
-    ) -> InstructionLibraryFragment[InstructionT]:
+    ) -> Self:
         sample: CyclicArray = generator.generate_sample(instruction)
-        feature: Histogram = InstructionLibraryFragment._get_average_feature(sample, window, transformer)
+        feature: Histogram = cls._get_average_feature(sample, window, transformer)
 
-        return InstructionLibraryFragment(
+        return cls(
             generator_class=generator.class_name(),
             instruction_data=InstructionData.create(instruction),
             sample=sample,

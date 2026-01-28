@@ -37,21 +37,26 @@ class Fragment:
             config.library.sample_rate,
         )
 
-    @staticmethod
-    def create(config: Config, windowed_audio: np.ndarray, window: Window) -> Fragment:
+    @classmethod
+    def create(
+        cls,
+        config: Config,
+        windowed_audio: np.ndarray,
+        window: Window,
+    ) -> Self:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
-        transformer = Fragment._get_transformer(config)
+        transformer = cls._get_transformer(config)
         feature = transformer.calculate_feature(windowed_audio, window.size)
 
-        return Fragment(
+        return cls(
             audio=window.get_frame_from_window(windowed_audio),
             feature=feature,
             windowed_audio=windowed_audio,
             config=config,
         )
 
-    @staticmethod
-    def stack(fragments: List[Fragment]) -> Fragment:
+    @classmethod
+    def stack(cls, fragments: List[Self]) -> Self:
         if not fragments:
             raise ValueError("The fragments list cannot be empty")
 
@@ -86,14 +91,14 @@ class Fragment:
             values=concatenated_feature,
         )
 
-        return Fragment(
+        return cls(
             audio=concatenated_audio,
             feature=feature,
             windowed_audio=concatenated_windowed_audio,
             config=first_fragment.config,
         )
 
-    def __sub__(self, other: Self) -> Fragment:
+    def __sub__(self, other: Self) -> Self:
         if self.audio.shape != other.audio.shape:
             raise ValueError("Fragments must have the same shape to be subtracted")
 
@@ -112,29 +117,29 @@ class Fragment:
         else:
             feature = self.transformer.calculate_feature(windowed_audio, sample_rate)
 
-        return Fragment(
+        return self.__class__(
             audio=audio,
             feature=feature,
             windowed_audio=windowed_audio,
             config=self.config,
         )
 
-    def __mul__(self, scalar: float) -> Fragment:
+    def __mul__(self, scalar: float) -> Self:
         audio = self.audio * scalar
         windowed_audio = self.windowed_audio * scalar
         feature = self.feature * scalar
-        return Fragment(
+        return self.__class__(
             audio=audio,
             feature=feature,
             windowed_audio=windowed_audio,
             config=self.config,
         )
 
-    def to_cupy(self) -> Fragment:
+    def to_cupy(self) -> Self:
         audio = xp.asarray(self.audio)
         windowed_audio = xp.asarray(self.windowed_audio)
         feature = self.feature.to_cupy()
-        return Fragment(
+        return self.__class__(
             audio=audio,
             feature=feature,
             windowed_audio=windowed_audio,

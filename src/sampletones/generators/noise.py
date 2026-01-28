@@ -84,8 +84,8 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
 
         return noise_instructions
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return NoiseInstruction
 
     @classmethod

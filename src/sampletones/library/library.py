@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, ItemsView, KeysView, Optional, Union, ValuesView
+from typing import Dict, ItemsView, KeysView, Optional, Self, Union, ValuesView
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -30,9 +30,9 @@ class InstructionLibrary(BaseModel):
     def __getitem__(self, key: InstructionLibraryKey) -> InstructionLibraryData:
         return self.data[key]
 
-    @staticmethod
-    def from_config(config: Config) -> InstructionLibrary:
-        return InstructionLibrary(directory=str(config.general.library_directory))
+    @classmethod
+    def from_config(cls, config: Config) -> Self:
+        return cls(directory=str(config.general.library_directory))
 
     def create_key(self, config: Config, window: Window) -> InstructionLibraryKey:
         return InstructionLibraryKey.create(config.library, window)

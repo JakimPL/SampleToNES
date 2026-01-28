@@ -85,8 +85,8 @@ class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):
 
         return pulse_instructions
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         return PulseInstruction
 
     @classmethod

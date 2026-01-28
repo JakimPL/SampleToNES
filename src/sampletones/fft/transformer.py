@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Union, overload
+from typing import List, Optional, Self, Sequence, Union, overload
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,17 +27,23 @@ class FFTTransformer(BaseModel):
     """
     A Transformation wrapper specifically for FFT features.
 
-    Calculates FFT features on the spectrum and applies transformations
-    of the form:
+    Calculates FFT features on the spectrum and sends them to the feature space.
+    Features are of the form:
+
         `f(x) = x ^ a`
 
-    where `a` is from [0.25, 4] depending on the gamma parameter. The `a` is mapped
-    from gamma in [0, 100] to [0.25, 4] such that:
+    The feature space allows to shape the spectrum, either to flatten it or to sharpen its peaks.
+
+    The exponent `a` is a value from [0.25, 4], which depends on the `gamma` parameter in [0, 100].
+    The mapping from `gamma` to `a` is as follows:
         - `gamma = 0   -> a = 0.25`  (flat features)
         - `gamma = 50  -> a = 1.0`   (standard energy)
         - `gamma = 100 -> a = 4.0`   (sharp features)
 
-    More precisely, the general form of a transformation is:
+    FFTTransformer allows transforming features by applying operations in the original spectrum space,
+    and then mapping the result back to the feature space. More precisely, the general form of
+    a composed transformation is:
+
         `[ op( spectrum ^ (1 / a) ) ] ^ a`
 
     where:
@@ -47,8 +53,11 @@ class FFTTransformer(BaseModel):
 
     Elements of the form `spectrum ^ a` are called _FFT features_, or simply _features_.
 
-    The spectrum should be a positive real-valued array,
-    to ensure all that mapping `x ↦ x ^ a` is well-defined.
+    The spectrum should be a positive real-valued array, to ensure all that mapping:
+
+        `x ↦ x ^ a`
+
+    is well-defined. The condition of non-negativity is enforced only during spectrum calculation.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
@@ -65,8 +74,8 @@ class FFTTransformer(BaseModel):
         description="Method for computing the spectrum. Regular FFT is used by default.",
     )
 
-    @staticmethod
-    def from_gamma(gamma: int, sample_rate: int) -> FFTTransformer:
+    @classmethod
+    def from_gamma(cls, gamma: int, sample_rate: int) -> Self:
         """
         Create an FFTTransformer from a gamma parameter, and sample rate.
 
@@ -75,12 +84,12 @@ class FFTTransformer(BaseModel):
             sample_rate (int): Sample rate for FFT calculations.
 
         Returns:
-            FFTTransformer: Configured FFTTransformer instance.
+            Self: Configured FFTTransformer instance.
         """
         assert 0 <= gamma <= MAX_TRANSFORMATION_GAMMA, f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]"
         morpher = PowerMorpher(gamma=gamma / MAX_TRANSFORMATION_GAMMA)
         transformation = morpher.transformation
-        return FFTTransformer(transformation=transformation, sample_rate=sample_rate)
+        return cls(transformation=transformation, sample_rate=sample_rate)
 
     def calculate_spectrum(
         self,
@@ -88,7 +97,25 @@ class FFTTransformer(BaseModel):
         sample_rate: int,
         fft_size: Optional[int] = None,
     ) -> Histogram:
-        return calculate_spectrum(self.spectrum_method, audio, sample_rate, fft_size)
+        """
+        Calculate the FFT spectrum from audio, based on the provided spectrum method.
+
+        Args:
+            audio (np.ndarray): Input audio array.
+            sample_rate (int): Sample rate of the audio.
+            fft_size (Optional[int]): Size of the FFT. If None, uses the length of the audio array.
+
+        Returns:
+            Histogram: Calculated FFT spectrum.
+
+        Raises:
+            ValueError: If the calculated spectrum contains negative values.
+        """
+        spectrum: Histogram = calculate_spectrum(self.spectrum_method, audio, sample_rate, fft_size)
+        if not np.all(spectrum.values >= 0):
+            raise ValueError("FFT spectrum contains negative values")
+
+        return spectrum
 
     def calculate_feature(
         self,
@@ -101,6 +128,7 @@ class FFTTransformer(BaseModel):
         Applies the forward transformation to the base spectrum.
 
         The feature is calculated as:
+
             `feature = spectrum ^ a`
 
         where `a` is the power derived from gamma.
@@ -112,6 +140,9 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Histogram: Calculated FFT features.
+
+        Raises:
+            ValueError: If the calculated spectrum contains negative values.
         """
         spectrum: Histogram = self.calculate_spectrum(audio, sample_rate, fft_size)
         return self.forward(spectrum)
@@ -243,25 +274,28 @@ class FFTTransformer(BaseModel):
         """
         Convert a list of features/scalars to FFT features.
 
+        Sends constants to the feature space.
+
         Args:
-            *features_or_scalars: Input FFT features/scalars.
+            features_or_scalars: Input FFT features/scalars.
 
         Returns:
             Converted FFT features.
 
         Raises:
-            TypeError: If at least one of the features is not a Histogram.
+            TypeError: If there are no histograms in the input.
+            TypeError: If any of the features is neither a Histogram nor a numeric scalar.
             ValueError: If Histogram features have inconsistent edges.
         """
-        if not any(isinstance(feature, Histogram) for feature in features_or_scalars):
+        histograms: List[Histogram] = [feature for feature in features_or_scalars if isinstance(feature, Histogram)]
+        if not histograms:
             raise TypeError("At least one feature must be a Histogram instance")
 
-        edges: Array = [feature.edges for feature in features_or_scalars if isinstance(feature, Histogram)][0]
-        if not all(
-            isinstance(feature, Histogram) and np.array_equal(feature.edges, edges)
-            for feature in features_or_scalars
-            if isinstance(feature, Histogram)
-        ):
+        if any(not isinstance(feature, (Histogram, *NumericClasses)) for feature in features_or_scalars):
+            raise TypeError("All features must be Histogram instances or numeric scalars")
+
+        edges: Array = histograms[0].edges
+        if not all(np.array_equal(histogram.edges, edges) for histogram in histograms):
             raise ValueError("All Histogram features must have the same edges")
 
         features: List[Histogram] = [
@@ -280,30 +314,38 @@ class FFTTransformer(BaseModel):
 
             `[ feature₁ ^ (1 / a) + feature₂ ^ (1 / a) + ... + featureₙ ^ (1 / a) ] ^ a`
 
+        Scalars are transformed to the feature space before addition.
+
         Args:
-            features_or_scalars: Input FFT features/scalars.
+            *features_or_scalars: Input FFT features or scalars.
 
         Returns:
             Resulting FFT feature.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
-        return self.reduce(np.add, *features)
+        return self.reduce(lambda feature1, feature2: feature1 + feature2, *features)
 
     def subtract(
         self,
-        feature1: Histogram,
-        feature2: Histogram,
+        feature_or_scalar1: Union[Numeric, Histogram],
+        feature_or_scalar2: Union[Numeric, Histogram],
     ) -> Histogram:
         """
         A wrapper for binary subtraction of two FFT features with transformations.
 
             `[ feature₁ ^ (1 / a) - feature₂ ^ (1 / a) ] ^ a`
 
+        Scalars are transformed to the feature space before subtraction.
+
         Args:
-            feature1 (Histogram): First FFT feature.
-            feature2 (Histogram): Second FFT feature.
+            feature_or_scalar1: First FFT feature.
+            feature_or_scalar2: Second FFT feature.
+
+        Returns:
+            Histogram: Resulting FFT feature.
         """
-        return self.apply(np.subtract, feature1, feature2)
+        feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
+        return self.apply(lambda feature1, feature2: feature1 - feature2, feature1, feature2)
 
     def multiply(self, *features_or_scalars: Union[Numeric, Histogram]) -> Histogram:
         """
@@ -311,8 +353,10 @@ class FFTTransformer(BaseModel):
 
             `[ feature₁ ^ (1 / a) ⋅ feature₂ ^ (1 / a) ⋅ ... ⋅ featureₙ ^ (1 / a) ] ^ a`
 
+        Scalars are transformed to the feature space before multiplication.
+
         Args:
-            *features: Input FFT features/scalars.
+            *features_or_scalars: Input FFT features or scalars.
 
         Returns:
             Histogram: Resulting FFT feature.
@@ -321,7 +365,27 @@ class FFTTransformer(BaseModel):
             TypeError: If at least one of the features is not a Histogram.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
-        return self.reduce(np.multiply, *features)
+        return self.reduce(lambda feature1, feature2: feature1 * feature2, *features)
+
+    def divide(
+        self,
+        feature_or_scalar1: Union[Numeric, Histogram],
+        feature_or_scalar2: Union[Numeric, Histogram],
+    ) -> Histogram:
+        """
+        Divide an FFT feature by another feature with transformations.
+
+            `[ feature₁ ^ (1 / a) ÷ feature₂ ^ (1 / a) ] ^ a`
+
+        Args:
+            feature_or_scalar1: Numerator FFT feature or scalar.
+            feature_or_scalar2: Denominator FFT feature or scalar.
+
+        Returns:
+            Histogram: Resulting FFT feature.
+        """
+        feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
+        return self.apply(lambda feature1, feature2: feature1 / feature2, feature1, feature2)
 
     def mean(
         self,
@@ -332,6 +396,8 @@ class FFTTransformer(BaseModel):
 
             `[ mean(feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a)) ] ^ a`
 
+        Requires all edges to be consistent.
+
         Args:
             features: Input FFT features.
 
@@ -340,9 +406,10 @@ class FFTTransformer(BaseModel):
 
         Raises:
             ValueError: If no features are provided.
+            ValueError: If Histogram features have inconsistent edges.
         """
         if not features:
             raise ValueError("At least one feature is required to compute the mean")
 
-        divisor = self.forward(np.float32(len(features)))
-        return self.reduce(np.add, *features).apply_with(lambda x: x / divisor)
+        divisor = self.forward(len(features))
+        return self.reduce(np.add, *features).apply_with(lambda x: np.divide(x, divisor, out=x, casting="unsafe"))

@@ -3,7 +3,6 @@ from typing import Dict, Generic, Iterable, List, Optional, Union, cast
 import numpy as np
 
 from sampletones.constants.enums import FeatureKey
-from sampletones.constants.general import MAX_PITCH, MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion
 from sampletones.instructions import InstructionFields, InstructionT, InstructionTypeUnion
 from sampletones.timers import PhaseTimer
@@ -40,13 +39,9 @@ class Exporter(Generic[InstructionT]):
 
         return features
 
-    @staticmethod
-    def get_feature_map(instructions: List[InstructionT]) -> FeatureMap:
+    @classmethod
+    def get_feature_map(cls, instructions: List[InstructionT]) -> FeatureMap:
         raise NotImplementedError("Subclasses must implement this method")
-
-    @staticmethod
-    def is_pitch_valid(pitch: int) -> bool:
-        return MIN_PITCH <= pitch <= MAX_PITCH
 
     @classmethod
     def from_features(cls, features: Features) -> List[InstructionT]:
@@ -142,10 +137,10 @@ class Exporter(Generic[InstructionT]):
         frequency = pitch_to_frequency(pitch)
         return PhaseTimer.frequency_to_timer(frequency)
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         raise NotImplementedError("Subclasses must implement this method")
 
-    @staticmethod
-    def get_generator_type() -> GeneratorTypeUnion:
+    @classmethod
+    def get_generator_type(cls) -> GeneratorTypeUnion:
         raise NotImplementedError("Subclasses must implement this method")

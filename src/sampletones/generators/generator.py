@@ -95,6 +95,6 @@ class Generator(Generic[InstructionT, TimerT]):
     def class_name(cls) -> GeneratorClassName:
         raise NotImplementedError("Subclasses must implement this method")
 
-    @staticmethod
-    def get_instruction_type() -> InstructionTypeUnion:
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
         raise NotImplementedError("Subclasses must implement this method")

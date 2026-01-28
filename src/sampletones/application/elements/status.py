@@ -47,8 +47,13 @@ class GUIStatusBar:
 
         self.theme.bind_to_item(TAG_STATUS_WINDOW)
 
-    @staticmethod
-    def get_message(message_or_function: Union[str, MessageCallback], *args: Any, **kwargs: Any) -> str:
+    @classmethod
+    def get_message(
+        cls,
+        message_or_function: Union[str, MessageCallback],
+        *args: Any,
+        **kwargs: Any,
+    ) -> str:
         if isinstance(message_or_function, str):
             return message_or_function
 
@@ -90,8 +95,9 @@ class GUIStatusBar:
                 **kwargs,
             )
 
-    @staticmethod
+    @classmethod
     def create_message_function(
+        cls,
         message_or_function: Union[str, MessageCallback],
     ) -> MessageCallback:
         if isinstance(message_or_function, str):

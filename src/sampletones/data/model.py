@@ -59,7 +59,7 @@ class DataModel(BaseModel):
         fb_builder = self.buffer_builder()
         offsets = {}
 
-        for field_name, field_info in type(self).model_fields.items():
+        for field_name, field_info in self.__class__.model_fields.items():
             value = getattr(self, field_name)
             camel = snake_to_camel(field_name)
             add_method = f"Add{camel}"
@@ -287,9 +287,9 @@ class DataModel(BaseModel):
         return cls.deserialize_inner(wrapper)
 
     def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> Dict[Any, Any]:
-        union_map: Optional[Dict[int, Type[DataModel]]] = type(self).buffer_union_map()
+        union_map: Optional[Dict[int, Type[DataModel]]] = self.__class__.buffer_union_map()
         if union_map is None:
-            raise SerializationError(f"No union map defined for {type(self).__name__}")
+            raise SerializationError(f"No union map defined for {self.__class__.__name__}")
 
         tag: Optional[int] = None
         for tag_type, cls in union_map.items():
@@ -298,7 +298,7 @@ class DataModel(BaseModel):
                 break
 
         if tag is None:
-            raise SerializationError(f"No union tag for value {type(value).__name__} in {type(self).__name__}")
+            raise SerializationError(f"No union tag for value {type(value).__name__} in {self.__class__.__name__}")
 
         child_offset = value.serialize_inner(builder)
         return {field_name: child_offset, f"{field_name}_type": tag}

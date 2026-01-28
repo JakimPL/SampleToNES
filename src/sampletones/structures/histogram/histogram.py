@@ -173,16 +173,16 @@ class Histogram(DataModel):
         values_equal: bool = self.xp.array_equal(self.values, other.values)
         return edges_equal and values_equal
 
-    def __copy__(self) -> Histogram:
+    def __copy__(self) -> Self:
         """
         Create a shallow copy of the histogram.
 
         Returns:
             A new Histogram instance with copied edges and values.
         """
-        return Histogram(edges=self.edges, values=self.values)
+        return self.__class__(edges=self.edges, values=self.values)
 
-    def __deepcopy__(self, memo: Optional[Dict[int, object]] = None) -> Histogram:
+    def __deepcopy__(self, memo: Optional[Dict[int, object]] = None) -> Self:
         """
         Create a deep copy of the histogram.
 
@@ -194,7 +194,7 @@ class Histogram(DataModel):
         """
         edges_copy = self.xp.copy(self.edges)
         values_copy = self.xp.copy(self.values)
-        return Histogram(edges=edges_copy, values=values_copy)
+        return self.__class__(edges=edges_copy, values=values_copy)
 
     def __hash__(self) -> int:
         """
@@ -248,11 +248,12 @@ class Histogram(DataModel):
 
         return Interval(self.edges[i], self.edges[i + 1])
 
-    @staticmethod
+    @classmethod
     def _from_density(
+        cls,
         density: ArrayOrNumeric,
-        histogram: Histogram,
-    ) -> Histogram:
+        histogram: Self,
+    ) -> Self:
         """
         Create a histogram from a density operation result.
 
@@ -269,10 +270,10 @@ class Histogram(DataModel):
             New Histogram with transformed values.
         """
         values: Array = density * histogram.widths
-        return Histogram(edges=histogram.edges.copy(), values=values)
+        return cls(edges=histogram.edges.copy(), values=values)
 
-    @staticmethod
-    def _validate_histogram_edges(*histograms: Histogram, equal_edges: bool = True) -> None:
+    @classmethod
+    def _validate_histogram_edges(cls, *histograms: Self, equal_edges: bool = True) -> None:
         """
         Validate that all histograms have the same edges.
         Used for operations requiring aligned histograms,
@@ -294,7 +295,7 @@ class Histogram(DataModel):
         if len(types) != 1:
             raise TypeError(f"All histograms must be of the same array type, got {', '.join(str(t) for t in types)}")
 
-        module = Histogram.get_module(histograms[0])
+        module = cls.get_module(histograms[0])
         edges = histograms[0].edges
         if equal_edges and not all(module.array_equal(histogram.edges, edges) for histogram in histograms):
             raise ValueError("All histograms must have the same edges")
@@ -314,10 +315,11 @@ class Histogram(DataModel):
             if len(array) != length:
                 raise ValueError(f"Array length {len(array)} must match values length {length}")
 
-    @staticmethod
+    @classmethod
     def _validate_negative_power(
-        base: Union[Numeric, Array, Histogram],
-        exponent: Union[Numeric, Array, Histogram],
+        cls,
+        base: Union[Numeric, Array, Self],
+        exponent: Union[Numeric, Array, Self],
     ) -> None:
         """
         Validate that no zero densities are raised to negative powers.
@@ -330,24 +332,24 @@ class Histogram(DataModel):
             ZeroDivisionError: If any zero density is raised to a negative power.
             TypeError: If base or exponent are of unsupported types.
         """
-        if not isinstance(base, (*NumericClasses, *ArrayClasses, Histogram)):
+        if not isinstance(base, (*NumericClasses, *ArrayClasses, cls)):
             raise TypeError(f"Unsupported base type: {type(base)}, expected Numeric, Array, or Histogram")
 
-        if not isinstance(exponent, (*NumericClasses, *ArrayClasses, Histogram)):
+        if not isinstance(exponent, (*NumericClasses, *ArrayClasses, cls)):
             raise TypeError(f"Unsupported exponent type: {type(exponent)}, expected Numeric, Array, or Histogram")
 
-        module = Histogram.get_module(base)
-        if Histogram.get_module(exponent) != module:
+        module = cls.get_module(base)
+        if cls.get_module(exponent) != module:
             raise TypeError("Base and exponent must be of the same array type")
 
         if isinstance(base, NumericClasses) and isinstance(exponent, NumericClasses):
             if base == 0 and exponent < 0:
                 raise ZeroDivisionError("Zero cannot be raised to a negative power")
 
-        if isinstance(base, Histogram):
+        if isinstance(base, cls):
             base = base.densities
 
-        if isinstance(exponent, Histogram):
+        if isinstance(exponent, cls):
             exponent = exponent.densities
         elif isinstance(exponent, NumericClasses):
             exponent = module.full_like(base, exponent)
@@ -364,8 +366,8 @@ class Histogram(DataModel):
     def apply_with(
         self,
         function: MultaryTransformation[ArrayOrNumeric],
-        *histograms: Histogram,
-    ) -> Histogram:
+        *histograms: Self,
+    ) -> Self:
         """
         Apply a function to this histogram's densities along with other histograms.
 
@@ -382,13 +384,14 @@ class Histogram(DataModel):
             ValueError: If histograms have different edges.
             TypeError: If histograms are of different array types.
         """
-        return Histogram.apply(function, self, *histograms)
+        return self.__class__.apply(function, self, *histograms)
 
-    @staticmethod
+    @classmethod
     def apply(
+        cls,
         function: MultaryTransformation[ArrayOrNumeric],
-        *histograms: Histogram,
-    ) -> Histogram:
+        *histograms: Self,
+    ) -> Self:
         """
         Apply a function to histogram densities.
 
@@ -408,16 +411,16 @@ class Histogram(DataModel):
             ValueError: If histograms have different edges.
             TypeError: If histograms are of different array types.
         """
-        Histogram._validate_histogram_edges(*histograms)
+        cls._validate_histogram_edges(*histograms)
         densities = (histogram.densities for histogram in histograms)
         new_density = function(*densities)
-        return Histogram._from_density(new_density, histograms[0])
+        return cls._from_density(new_density, histograms[0])
 
     def reduce_with(
         self,
         function: BinaryTransformation[ArrayOrNumeric],
-        *histograms: Histogram,
-    ) -> Histogram:
+        *histograms: Self,
+    ) -> Self:
         """
         Reduce this histogram with others using a binary operation on densities.
 
@@ -434,13 +437,14 @@ class Histogram(DataModel):
             ValueError: If histograms have different edges.
             TypeError: If histograms are of different array types.
         """
-        return Histogram.reduce(function, self, *histograms)
+        return self.__class__.reduce(function, self, *histograms)
 
-    @staticmethod
+    @classmethod
     def reduce(
+        cls,
         function: BinaryTransformation[ArrayOrNumeric],
-        *histograms: Histogram,
-    ) -> Histogram:
+        *histograms: Self,
+    ) -> Self:
         """
         Reduce multiple histograms into one using the specified operation.
 
@@ -459,17 +463,17 @@ class Histogram(DataModel):
             ValueError: If histograms have different edges.
             TypeError: If histograms are of different array types.
         """
-        Histogram._validate_histogram_edges(*histograms)
+        cls._validate_histogram_edges(*histograms)
 
         if len(histograms) == 1:
             return histograms[0]
 
         densities: Generator[ArrayOrNumeric] = (histogram.densities for histogram in histograms)
         new_density = reduce(function, densities)
-        return Histogram._from_density(new_density, histograms[0])
+        return cls._from_density(new_density, histograms[0])
 
-    @staticmethod
-    def refine(*histograms: Histogram) -> Tuple[Histogram, ...]:
+    @classmethod
+    def refine(cls, *histograms: Self) -> Tuple[Self, ...]:
         """
         Rebin multiple histograms to the union of all their edge points.
 
@@ -487,15 +491,16 @@ class Histogram(DataModel):
             ValueError: If no histograms are provided.
             TypeError: If histograms are of different array types.
         """
-        Histogram._validate_histogram_edges(*histograms, equal_edges=False)
-        module = Histogram.get_module(histograms[0])
+        cls._validate_histogram_edges(*histograms, equal_edges=False)
+        module = cls.get_module(histograms[0])
         all_edges: Array = module.concatenate([histogram.edges for histogram in histograms])
         merged_edges: Array = cast_to_float(module.unique(all_edges))
         return tuple(histogram.rebin(merged_edges) for histogram in histograms)
 
-    @staticmethod
+    @classmethod
     def density_to_values(
-        edges: Union[Array, Histogram],
+        cls,
+        edges: Union[Array, Self],
         density: Numeric,
     ) -> Array:
         """
@@ -510,23 +515,24 @@ class Histogram(DataModel):
         """
         num_bins: int
         module: ModuleType
-        if isinstance(edges, Histogram):
+        if isinstance(edges, cls):
             edges = edges.edges
 
         elif not isinstance(edges, ArrayClasses):
             raise TypeError(f"edges must be an Array or Histogram, got {type(edges)}")
 
         num_bins = len(edges) - 1
-        module = Histogram.get_module(edges)
+        module = cls.get_module(edges)
         edges = module.diff(edges)
         values: Array = module.full(num_bins, density * edges)
         return values
 
-    @staticmethod
+    @classmethod
     def from_constant(
+        cls,
         density: Numeric,
         edges: Array,
-    ) -> Histogram:
+    ) -> Self:
         """
         Create a histogram with constant densities.
 
@@ -537,10 +543,10 @@ class Histogram(DataModel):
         Returns:
             Histogram with constant densities.
         """
-        values: Array = Histogram.density_to_values(edges, density)
-        return Histogram(edges=edges, values=values)
+        values: Array = cls.density_to_values(edges, density)
+        return cls(edges=edges, values=values)
 
-    def astype(self, dtype: DTypeLike) -> Histogram:
+    def astype(self, dtype: DTypeLike) -> Self:
         """
         Cast edges and values to a specified data type.
 
@@ -550,12 +556,12 @@ class Histogram(DataModel):
         Returns:
             New histogram with edges and values cast to the specified type.
         """
-        return Histogram(edges=self.edges.astype(dtype), values=self.values.astype(dtype))
+        return self.__class__(edges=self.edges.astype(dtype), values=self.values.astype(dtype))
 
     def rebin(
         self,
-        target_bins: Union[Array, Interval, Histogram],
-    ) -> Histogram:
+        target_bins: Union[Array, Interval, Self],
+    ) -> Self:
         """
         Rebin the histogram to new bins.
 
@@ -614,7 +620,7 @@ class Histogram(DataModel):
                 RuntimeWarning,
             )
 
-    def _rebin(self, target_bins: Array) -> Histogram:
+    def _rebin(self, target_bins: Array) -> Self:
         """
         Internal rebinning using cumulative sum interpolation.
 
@@ -653,7 +659,7 @@ class Histogram(DataModel):
         )
         edges: Array = target_bins.astype(dtype)
         values: Array = self.xp.diff(interpolation).astype(dtype)
-        return Histogram(edges=edges, values=values)
+        return self.__class__(edges=edges, values=values)
 
     @cached_property
     def range(self) -> Interval:
@@ -743,10 +749,10 @@ class Histogram(DataModel):
         Returns:
             The array module corresponding to the edges array type.
         """
-        return Histogram.get_module(self.edges)
+        return self.__class__.get_module(self.edges)
 
-    @staticmethod
-    def get_module(obj: Union[Histogram, Array, Numeric]) -> ModuleType:
+    @classmethod
+    def get_module(cls, obj: Union[Numeric, Array, Self]) -> ModuleType:
         """
         Get the array module (NumPy or CuPy) based on the object type.
 
@@ -759,12 +765,12 @@ class Histogram(DataModel):
         Raises:
             TypeError: If obj is not Histogram, Array, or Numeric.
         """
-        if isinstance(obj, Histogram):
+        if isinstance(obj, cls):
             return obj.xp
 
         return get_array_module(obj)
 
-    def to_cupy(self) -> Histogram:
+    def to_cupy(self) -> Self:
         """
         Convert histogram to CuPy arrays.
 
@@ -773,18 +779,18 @@ class Histogram(DataModel):
         """
         edges = xp.asarray(self.edges)
         values = xp.asarray(self.values)
-        return Histogram(edges=edges, values=values)
+        return self.__class__(edges=edges, values=values)
 
     @overload
-    def __add__(self, other: Histogram) -> Histogram: ...
+    def __add__(self, other: Self) -> Self: ...
 
     @overload
-    def __add__(self, other: Numeric) -> Histogram: ...
+    def __add__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __add__(self, other: Array) -> Histogram: ...
+    def __add__(self, other: Array) -> Self: ...
 
-    def __add__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
+    def __add__(self, other: Union[Numeric, Array, Self]) -> Self:
         """
         Add another histogram, array, or scalar to this histogram.
 
@@ -812,21 +818,21 @@ class Histogram(DataModel):
 
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
-            return Histogram(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
+            return self.__class__(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
 
         if isinstance(other, ArrayClasses):
             self._validate_array_lengths(other)
-            return Histogram(edges=self.edges.copy(), values=self.values + other)
+            return self.__class__(edges=self.edges.copy(), values=self.values + other)
 
         raise TypeError(f"Unsupported type for addition: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __radd__(self, other: Numeric) -> Histogram: ...
+    def __radd__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __radd__(self, other: Array) -> Histogram: ...
+    def __radd__(self, other: Array) -> Self: ...
 
-    def __radd__(self, other: Union[Numeric, Array]) -> Histogram:
+    def __radd__(self, other: Union[Numeric, Array]) -> Self:
         """
         Right addition: support array + histogram and scalar + histogram.
 
@@ -839,15 +845,15 @@ class Histogram(DataModel):
         return self.__add__(other)
 
     @overload
-    def __mul__(self, other: Histogram) -> Histogram: ...
+    def __mul__(self, other: Self) -> Self: ...
 
     @overload
-    def __mul__(self, other: Numeric) -> Histogram: ...
+    def __mul__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __mul__(self, other: Array) -> Histogram: ...
+    def __mul__(self, other: Array) -> Self: ...
 
-    def __mul__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
+    def __mul__(self, other: Union[Numeric, Array, Self]) -> Self:
         """
         Multiply this histogram by another histogram, array, or scalar.
 
@@ -869,26 +875,26 @@ class Histogram(DataModel):
             TypeError: If other is not Histogram, Array, or Numeric.
         """
         if isinstance(other, NumericClasses):
-            return Histogram(edges=self.edges.copy(), values=self.values * other)
+            return self.__class__(edges=self.edges.copy(), values=self.values * other)
 
         if isinstance(other, Histogram):
-            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            rebinned_self, rebinned_other = self.__class__.refine(self, other)
             return rebinned_self.reduce_with(rebinned_self.xp.multiply, rebinned_other)
 
         if isinstance(other, ArrayClasses):
             self._validate_array_lengths(other)
-            other_histogram = Histogram(edges=self.edges.copy(), values=other)
+            other_histogram = self.__class__(edges=self.edges.copy(), values=other)
             return self.reduce_with(self.xp.multiply, other_histogram)
 
         raise TypeError(f"Unsupported type for multiplication: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rmul__(self, other: Numeric) -> Histogram: ...
+    def __rmul__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __rmul__(self, other: Array) -> Histogram: ...
+    def __rmul__(self, other: Array) -> Self: ...
 
-    def __rmul__(self, other: Union[Numeric, Array]) -> Histogram:
+    def __rmul__(self, other: Union[Numeric, Array]) -> Self:
         """
         Right multiplication: support `array ⋅ histogram` and `scalar ⋅ histogram`.
 
@@ -901,15 +907,15 @@ class Histogram(DataModel):
         return self.__mul__(other)
 
     @overload
-    def __pow__(self, other: Histogram) -> Histogram: ...
+    def __pow__(self, other: Self) -> Self: ...
 
     @overload
-    def __pow__(self, other: Numeric) -> Histogram: ...
+    def __pow__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __pow__(self, other: Array) -> Histogram: ...
+    def __pow__(self, other: Array) -> Self: ...
 
-    def __pow__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
+    def __pow__(self, other: Union[Numeric, Array, Self]) -> Self:
         """
         Raise histogram to a power (applies exponent to densities).
 
@@ -936,25 +942,25 @@ class Histogram(DataModel):
             return self.apply_with(lambda d: d**other)
 
         if isinstance(other, Histogram):
-            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            rebinned_self, rebinned_other = self.__class__.refine(self, other)
             rebinned_self._validate_negative_power(rebinned_self, rebinned_other)
             return rebinned_self.reduce_with(rebinned_self.xp.power, rebinned_other)
 
         if isinstance(other, ArrayClasses):
             self._validate_array_lengths(other)
             self._validate_negative_power(self, other)
-            other_histogram = Histogram(edges=self.edges.copy(), values=other)
+            other_histogram = self.__class__(edges=self.edges.copy(), values=other)
             return self.reduce_with(self.xp.power, other_histogram)
 
         raise TypeError(f"Unsupported type for power: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rpow__(self, other: Numeric) -> Histogram: ...
+    def __rpow__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __rpow__(self, other: Array) -> Histogram: ...
+    def __rpow__(self, other: Array) -> Self: ...
 
-    def __rpow__(self, other: Union[Numeric, Array]) -> Histogram:
+    def __rpow__(self, other: Union[Numeric, Array]) -> Self:
         """
         Right power: support `array ** histogram` and `scalar ** histogram`.
 
@@ -975,21 +981,20 @@ class Histogram(DataModel):
         if isinstance(other, ArrayClasses):
             self._validate_negative_power(self, other)
             self._validate_array_lengths(other)
-            other_histogram = Histogram(edges=self.edges.copy(), values=other)
+            other_histogram = self.__class__(edges=self.edges.copy(), values=other)
             return other_histogram.reduce_with(self.xp.power, self)
 
         raise TypeError(f"Unsupported type for power: {type(other)}, expected Array or Numeric")
 
     @overload
-    def __sub__(self, other: Histogram) -> Histogram: ...
+    def __sub__(self, other: Self) -> Self: ...
 
     @overload
-    def __sub__(self, other: Numeric) -> Histogram: ...
-
+    def __sub__(self, other: Numeric) -> Self: ...
     @overload
-    def __sub__(self, other: Array) -> Histogram: ...
+    def __sub__(self, other: Array) -> Self: ...
 
-    def __sub__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
+    def __sub__(self, other: Union[Numeric, Array, Self]) -> Self:
         """
         Subtract another histogram, array, or scalar from this histogram.
 
@@ -1006,7 +1011,7 @@ class Histogram(DataModel):
         """
         return self.__add__(-other)
 
-    def __neg__(self) -> Histogram:
+    def __neg__(self) -> Self:
         """
         Multiply histogram by -1.
 
@@ -1016,12 +1021,12 @@ class Histogram(DataModel):
         return self.__mul__(-1)
 
     @overload
-    def __rsub__(self, other: Numeric) -> Histogram: ...
+    def __rsub__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __rsub__(self, other: Array) -> Histogram: ...
+    def __rsub__(self, other: Array) -> Self: ...
 
-    def __rsub__(self, other: Union[Numeric, Array]) -> Histogram:
+    def __rsub__(self, other: Union[Numeric, Array]) -> Self:
         """
         Right subtraction: support `array - histogram` and `scalar - histogram`.
 
@@ -1036,15 +1041,15 @@ class Histogram(DataModel):
         return (-self).__add__(other)
 
     @overload
-    def __truediv__(self, other: Histogram) -> Histogram: ...
+    def __truediv__(self, other: Self) -> Self: ...
 
     @overload
-    def __truediv__(self, other: Numeric) -> Histogram: ...
+    def __truediv__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __truediv__(self, other: Array) -> Histogram: ...
+    def __truediv__(self, other: Array) -> Self: ...
 
-    def __truediv__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
+    def __truediv__(self, other: Union[Numeric, Array, Self]) -> Self:
         """
         Divide this histogram by another histogram, array, or scalar.
 
@@ -1066,27 +1071,27 @@ class Histogram(DataModel):
             if other == 0.0:
                 raise ZeroDivisionError("Division by zero scalar is not allowed")
 
-            return Histogram(edges=self.edges.copy(), values=self.values / other)
+            return self.__class__(edges=self.edges.copy(), values=self.values / other)
 
         if isinstance(other, Histogram):
-            rebinned_self, rebinned_other = Histogram.refine(self, other)
+            rebinned_self, rebinned_other = self.__class__.refine(self, other)
             return rebinned_self.__mul__(rebinned_other**-1)
 
         if isinstance(other, ArrayClasses):
             self._validate_array_lengths(other)
             if self.xp.any(other == 0.0):
                 raise ZeroDivisionError("Division by zero in array is not allowed")
-            return Histogram(edges=self.edges.copy(), values=self.values / other)
+            return self.__class__(edges=self.edges.copy(), values=self.values / other)
 
         raise TypeError(f"Unsupported type for division: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rtruediv__(self, other: Numeric) -> Histogram: ...
+    def __rtruediv__(self, other: Numeric) -> Self: ...
 
     @overload
-    def __rtruediv__(self, other: Array) -> Histogram: ...
+    def __rtruediv__(self, other: Array) -> Self: ...
 
-    def __rtruediv__(self, other: Union[Numeric, Array]) -> Histogram:
+    def __rtruediv__(self, other: Union[Numeric, Array]) -> Self:
         """
         Right division: support `array / histogram` and `scalar / histogram`.
 
