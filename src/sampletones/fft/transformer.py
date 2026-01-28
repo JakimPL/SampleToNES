@@ -75,7 +75,7 @@ class FFTTransformer(BaseModel):
     )
 
     @classmethod
-    def from_gamma(cls, gamma: int, sample_rate: int) -> Self:
+    def from_gamma(cls, gamma: int, sample_rate: int, method: SpectrumMethod = SpectrumMethod.FFT) -> Self:
         """
         Create an FFTTransformer from a gamma parameter, and sample rate.
 
@@ -85,11 +85,20 @@ class FFTTransformer(BaseModel):
 
         Returns:
             Self: Configured FFTTransformer instance.
+
+        Raises:
+            ValueError: If gamma is not in the range [0, 100].
         """
-        assert 0 <= gamma <= MAX_TRANSFORMATION_GAMMA, f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]"
+        if not 0 <= gamma <= MAX_TRANSFORMATION_GAMMA:
+            raise ValueError(f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]")
+
         morpher = PowerMorpher(gamma=gamma / MAX_TRANSFORMATION_GAMMA)
         transformation = morpher.transformation
-        return cls(transformation=transformation, sample_rate=sample_rate)
+        return cls(
+            transformation=transformation,
+            sample_rate=sample_rate,
+            spectrum_method=method,
+        )
 
     def calculate_spectrum(
         self,
