@@ -158,10 +158,10 @@ class FFTTransformer(BaseModel):
         Apply the forward `x ↦ x ^ a` transformation on a spectrum/array/scalar.
 
         Args:
-            spectrum: Input FFT spectrum histogram.
+            spectrum (Union[ArrayOrNumeric, Histogram]): Input FFT spectrum histogram, array, or scalar.
 
         Returns:
-            FFT feature.
+            Union[ArrayOrNumeric, Histogram]: FFT feature (same type as input).
 
         Raises:
             TypeError: If the input is not a Histogram or Array/Numeric instance.
@@ -186,10 +186,10 @@ class FFTTransformer(BaseModel):
         The feature is expected to be of the form `spectrum ^ a`.
 
         Args:
-            feature: Input FFT feature histogram.
+            feature (Union[ArrayOrNumeric, Histogram]): Input FFT feature histogram, array, or scalar.
 
         Returns:
-            Spectrum.
+            Union[ArrayOrNumeric, Histogram]: Spectrum (same type as input).
 
         Raises:
             TypeError: If the input is not a Histogram or Array/Numeric instance.
@@ -214,7 +214,10 @@ class FFTTransformer(BaseModel):
             `[ op( x₁ ^ (1 / a), x₂ ^ (1 / a), ..., xₙ ^ (1 / a) ) ] ^ a`
 
         Args:
-            operation (MultaryTransformation): Operation to compose.
+            operation (MultaryTransformation[ArrayOrNumeric]): Operation to compose.
+
+        Returns:
+            MultaryTransformation[ArrayOrNumeric]: Composed transformation function.
         """
         return self.transformation.compose_function(operation)
 
@@ -229,11 +232,11 @@ class FFTTransformer(BaseModel):
             `[ op( feature ^ (1 / a) ) ] ^ a`
 
         Args:
-            operation: Operation to apply.
-            *features: Input FFT features.
+            operation (MultaryTransformation[ArrayOrNumeric]): Operation to apply.
+            *features (Histogram): Input FFT features.
 
         Returns:
-            Resulting FFT feature.
+            Histogram: Resulting FFT feature.
 
         Raises:
             TypeError: If any of the features is not a Histogram.
@@ -255,11 +258,11 @@ class FFTTransformer(BaseModel):
             `[ op( feature₁ ^ (1 / a), feature₂ ^ (1 / a), ..., featureₙ ^ (1 / a) ) ] ^ a`
 
         Args:
-            operation (MultaryTransformation): Operation to reduce with.
-            *features: Input FFT features.
+            operation (MultaryTransformation[ArrayOrNumeric]): Operation to reduce with.
+            *features (Histogram): Input FFT features.
 
         Returns:
-            Resulting FFT feature.
+            Histogram: Resulting FFT feature.
 
         Raises:
             TypeError: If any of the features is not a Histogram.
@@ -277,10 +280,10 @@ class FFTTransformer(BaseModel):
         Sends constants to the feature space.
 
         Args:
-            features_or_scalars: Input FFT features/scalars.
+            features_or_scalars (Sequence[Union[Numeric, Histogram]]): Input FFT features/scalars.
 
         Returns:
-            Converted FFT features.
+            List[Histogram]: Converted FFT features.
 
         Raises:
             TypeError: If there are no histograms in the input.
@@ -317,10 +320,10 @@ class FFTTransformer(BaseModel):
         Scalars are transformed to the feature space before addition.
 
         Args:
-            *features_or_scalars: Input FFT features or scalars.
+            *features_or_scalars (Union[Numeric, Histogram]): Input FFT features or scalars.
 
         Returns:
-            Resulting FFT feature.
+            Histogram: Resulting FFT feature.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
         return self.reduce(lambda feature1, feature2: feature1 + feature2, *features)
@@ -333,19 +336,21 @@ class FFTTransformer(BaseModel):
         """
         A wrapper for binary subtraction of two FFT features with transformations.
 
-            `[ feature₁ ^ (1 / a) - feature₂ ^ (1 / a) ] ^ a`
+            `[ |feature₁ ^ (1 / a) - feature₂ ^ (1 / a)| ] ^ a`
+
+        Absolute difference is used to ensure non-negativity.
 
         Scalars are transformed to the feature space before subtraction.
 
         Args:
-            feature_or_scalar1: First FFT feature.
-            feature_or_scalar2: Second FFT feature.
+            feature_or_scalar1 (Union[Numeric, Histogram]): First FFT feature or scalar.
+            feature_or_scalar2 (Union[Numeric, Histogram]): Second FFT feature or scalar.
 
         Returns:
             Histogram: Resulting FFT feature.
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
-        return self.apply(lambda feature1, feature2: feature1 - feature2, feature1, feature2)
+        return self.apply(lambda feature1, feature2: np.abs(feature1 - feature2), feature1, feature2)
 
     def multiply(self, *features_or_scalars: Union[Numeric, Histogram]) -> Histogram:
         """
@@ -356,13 +361,10 @@ class FFTTransformer(BaseModel):
         Scalars are transformed to the feature space before multiplication.
 
         Args:
-            *features_or_scalars: Input FFT features or scalars.
+            *features_or_scalars (Union[Numeric, Histogram]): Input FFT features or scalars.
 
         Returns:
             Histogram: Resulting FFT feature.
-
-        Raises:
-            TypeError: If at least one of the features is not a Histogram.
         """
         features: List[Histogram] = self.to_features(features_or_scalars)
         return self.reduce(lambda feature1, feature2: feature1 * feature2, *features)
@@ -378,8 +380,8 @@ class FFTTransformer(BaseModel):
             `[ feature₁ ^ (1 / a) ÷ feature₂ ^ (1 / a) ] ^ a`
 
         Args:
-            feature_or_scalar1: Numerator FFT feature or scalar.
-            feature_or_scalar2: Denominator FFT feature or scalar.
+            feature_or_scalar1 (Union[Numeric, Histogram]): Numerator FFT feature or scalar.
+            feature_or_scalar2 (Union[Numeric, Histogram]): Denominator FFT feature or scalar.
 
         Returns:
             Histogram: Resulting FFT feature.
@@ -399,7 +401,7 @@ class FFTTransformer(BaseModel):
         Requires all edges to be consistent.
 
         Args:
-            features: Input FFT features.
+            features (Sequence[Histogram]): Input FFT features.
 
         Returns:
             Histogram: Mean FFT feature.
@@ -407,6 +409,7 @@ class FFTTransformer(BaseModel):
         Raises:
             ValueError: If no features are provided.
             ValueError: If Histogram features have inconsistent edges.
+            TypeError: If any of the features is not a Histogram.
         """
         if not features:
             raise ValueError("At least one feature is required to compute the mean")
