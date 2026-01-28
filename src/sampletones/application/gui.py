@@ -693,10 +693,13 @@ class GUI:
             dpg.set_value(TAG_TABS, current_tab)
 
         current_reconstruction = self.application_config_manager.current_reconstruction
-        if current_reconstruction is not None and current_reconstruction.exists():
-            try:
-                self._load_reconstruction(current_reconstruction)
-            except LoadReconstructionError:
+        if current_reconstruction is not None:
+            if current_reconstruction.exists():
+                try:
+                    self._load_reconstruction(current_reconstruction)
+                except LoadReconstructionError:
+                    self.application_config_manager.set_current_reconstruction(None)
+            else:
                 self.application_config_manager.set_current_reconstruction(None)
 
     def _create_main_tab(self) -> None:

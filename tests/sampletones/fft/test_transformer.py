@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Optional, Type, Union
+from typing import Optional, Tuple, Type, Union
 from unittest.mock import patch
 
 import numpy as np
@@ -8,7 +8,7 @@ import pytest
 
 from sampletones.fft.transformer import FFTTransformer
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import Array, ArrayClasses, Numeric, NumericClasses
+from sampletones.types.array import Array, ArrayClasses, MultaryTransformation, Numeric, NumericClasses
 from sampletones.utils.transformations.morpher import PowerMorpher
 from sampletones.utils.transformations.transformation import Transformation
 from tests.sampletones.arrays import assert_array_equal
@@ -569,3 +569,365 @@ class TestBackward:
                 assert np.isclose(result, test_case.expected_result)
             else:
                 pytest.fail("Unreachable code reached")
+
+
+class TestComposeFunction:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        transformer: TransformerFixture
+        operation: MultaryTransformation[Union[Numeric, Array]]
+        arguments: Tuple[Union[Numeric, Array], ...]
+        expected_result: Union[float, Array]
+
+    test_cases = [
+        TestCase(
+            transformer=TransformerFixture.IDENTITY,
+            operation=lambda x: x * 2.0,
+            arguments=(np.array([4.0, 9.0, 16.0], dtype=np.float32),),
+            expected_result=np.array([8.0, 18.0, 32.0], dtype=np.float32),
+            test_id="identity_unary_multiply_by_2",
+        ),
+        TestCase(
+            transformer=TransformerFixture.IDENTITY,
+            operation=np.add,
+            arguments=(
+                np.array([1.0, 2.0, 3.0], dtype=np.float64),
+                np.array([4.0, 5.0, 6.0], dtype=np.float64),
+            ),
+            expected_result=np.array([5.0, 7.0, 9.0], dtype=np.float64),
+            test_id="identity_binary_add",
+        ),
+        TestCase(
+            transformer=TransformerFixture.IDENTITY,
+            operation=lambda x, y, z: x + y + z,
+            arguments=(
+                np.array([1.0, 2.0], dtype=np.float32),
+                np.array([3.0, 4.0], dtype=np.float32),
+                np.array([5.0, 6.0], dtype=np.float32),
+            ),
+            expected_result=np.array([9.0, 12.0], dtype=np.float32),
+            test_id="identity_ternary_sum",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x: x * 4.0,
+            arguments=(np.array([4.0, 6.0, 8.0], dtype=np.float64),),
+            expected_result=np.array([8.0, 12.0, 16.0], dtype=np.float64),
+            test_id="square_unary_multiply_by_4",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                np.array([3.0, 4.0], dtype=np.float32),
+                np.array([4.0, 3.0], dtype=np.float32),
+            ),
+            expected_result=np.array([5.0, 5.0], dtype=np.float32),
+            test_id="square_binary_add",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x, y, z: x + y + z,
+            arguments=(
+                np.array([3.0, 4.0, 12.0], dtype=np.float32),
+                np.array([4.0, 3.0, 5.0], dtype=np.float32),
+                np.array([12.0, 12.0, 0.0], dtype=np.float32),
+            ),
+            expected_result=np.array([13.0, 13.0, 13.0], dtype=np.float32),
+            test_id="square_ternary_sum",
+        ),
+        TestCase(
+            transformer=TransformerFixture.IDENTITY,
+            operation=lambda x: x * 2.0,
+            arguments=(9.0,),
+            expected_result=18.0,
+            test_id="identity_scalar_float",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x: x * 4.0,
+            arguments=(np.float32(3.0),),
+            expected_result=np.float32(6.0),
+            test_id="square_scalar_float32",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x: x * 4.0,
+            arguments=(np.float64(4.0),),
+            expected_result=np.float64(8.0),
+            test_id="square_scalar_float64",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_compose_function(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+        transformer = test_case.transformer.get_fixture(request)
+        composed_function = transformer.compose_function(test_case.operation)
+        result = composed_function(*test_case.arguments)
+
+        if isinstance(test_case.expected_result, ArrayClasses):
+            assert isinstance(result, ArrayClasses)
+            assert_array_equal(result, test_case.expected_result)
+        elif isinstance(test_case.expected_result, NumericClasses):
+            assert isinstance(result, NumericClasses)
+            assert np.isclose(result, test_case.expected_result)
+        else:
+            pytest.fail("Unreachable code reached")
+
+
+class TestApply:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        transformer: TransformerFixture
+        operation: MultaryTransformation
+        arguments: Tuple[Histogram, ...]
+        expected_result: Union[Histogram, Type[Exception]]
+
+    test_cases = [
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([400.0, 300.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32), values=np.array([500.0, 500.0], dtype=np.float32)
+            ),
+            test_id="square_binary_add",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.multiply,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([300.0, 400.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([400.0, 300.0], dtype=np.float64),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                values=np.array([1200.0, 1200.0], dtype=np.float64),
+            ),
+            test_id="square_binary_multiply",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x, y, z: x + y + z,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0, 1200.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([400.0, 300.0, 500.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([1200.0, 1200.0, 0.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([1300.0, 1300.0, 1300.0], dtype=np.float32),
+            ),
+            test_id="square_ternary_sum",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=lambda x, y, z: x * y * z,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([400.0, 900.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([900.0, 400.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([400.0, 400.0], dtype=np.float64),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                values=np.array([14400.0, 14400.0], dtype=np.float64),
+            ),
+            test_id="square_ternary_multiply",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.float32(5.0),
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([100.0, 400.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=TypeError,
+            test_id="non_callable_operation",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_apply(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+        transformer = test_case.transformer.get_fixture(request)
+
+        if not expect_error(
+            transformer.apply,
+            test_case.expected_result,
+            test_case.operation,
+            *test_case.arguments,
+        ):
+            result = transformer.apply(test_case.operation, *test_case.arguments)
+            assert isinstance(result, Histogram)
+            assert isinstance(test_case.expected_result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
+
+
+class TestReduce:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        transformer: TransformerFixture
+        operation: MultaryTransformation
+        arguments: Tuple[Histogram, ...]
+        expected_result: Union[Histogram, Type[Exception]]
+
+    test_cases = [
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([400.0, 300.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32), values=np.array([500.0, 500.0], dtype=np.float32)
+            ),
+            test_id="square_add_two_arrays",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0, 1200.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([400.0, 300.0, 500.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([1200.0, 1200.0, 0.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([1300.0, 1300.0, 1300.0], dtype=np.float32),
+            ),
+            test_id="square_add_three_arrays",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([0.0, 300.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([400.0, 0.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([300.0, 0.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([0.0, 400.0], dtype=np.float64),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                values=np.array([500.0, 500.0], dtype=np.float64),
+            ),
+            test_id="square_add_four_arrays",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.multiply,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([400.0, 900.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([900.0, 400.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([400.0, 400.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                values=np.array([14400.0, 14400.0], dtype=np.float32),
+            ),
+            test_id="square_multiply_three_arrays",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(),
+            expected_result=ValueError,
+            test_id="empty_arrays",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_reduce(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+        transformer = test_case.transformer.get_fixture(request)
+
+        if not expect_error(
+            transformer.reduce,
+            test_case.expected_result,
+            test_case.operation,
+            *test_case.arguments,
+        ):
+            result = transformer.reduce(test_case.operation, *test_case.arguments)
+            assert isinstance(result, Histogram)
+            assert isinstance(test_case.expected_result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
