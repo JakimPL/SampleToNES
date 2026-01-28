@@ -183,11 +183,11 @@ class Reconstruction(DataModel):
         return self.instructions.get(generator_name, [])
 
     @classmethod
-    def load(cls, path: Pathlike) -> Reconstruction:
+    def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
         binary = load_binary(path)
 
         try:
-            return cls.deserialize(binary, validation=cls.validate_metadata)
+            return cls.deserialize(binary, validation=cls.validate_metadata, fast=fast)
         except (ValidationError, TypeError) as exception:
             raise InvalidReconstructionValuesError(
                 f"Failed to deserialize ReconstructionData from {Path(path)} due to validation error",

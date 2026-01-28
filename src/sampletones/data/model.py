@@ -30,19 +30,30 @@ class DataModel(BaseModel):
         return bytes(builder.Output())
 
     @classmethod
-    def deserialize(cls, buffer: bytes, validation: Optional[Callback] = None) -> Self:
+    def deserialize(
+        cls,
+        buffer: bytes,
+        validation: Optional[Callback] = None,
+        fast: bool = True,
+    ) -> Self:
         fb_reader = cls.buffer_reader()
         root = fb_reader.GetRootAs(buffer, 0)
-        return cls.deserialize_inner(root, validation)
+        return cls.deserialize_inner(root, validation, fast=fast)
 
     def save(self, path: Pathlike) -> None:
         binary = self.serialize()
         save_binary(path, binary)
 
     @classmethod
-    def load(cls, path: Pathlike) -> Self:
+    def load(cls, path: Pathlike, fast: bool = True) -> Self:
         binary = load_binary(path)
-        return cls.deserialize(binary)
+        return cls.deserialize(binary, fast=fast)
+
+    @classmethod
+    def _construct(cls, fast: bool = True, **data: Any) -> Self:
+        if fast:
+            return cls.model_construct(**data)
+        return cls.model_construct(**data)
 
     def serialize_inner(self, builder: Builder) -> int:
         fb_builder = self.buffer_builder()
@@ -97,7 +108,12 @@ class DataModel(BaseModel):
         return offset
 
     @classmethod
-    def deserialize_inner(cls, fb_object: Any, validation: Optional[Callback] = None) -> Self:
+    def deserialize_inner(
+        cls,
+        fb_object: Any,
+        validation: Optional[Callback] = None,
+        fast: bool = True,
+    ) -> Self:
         field_values: SerializedData = {}
 
         for field_name, field_info in cls.model_fields.items():
@@ -125,7 +141,7 @@ class DataModel(BaseModel):
 
             elif issubclass(annotation, DataModel):
                 fb_child = getter()
-                value = annotation.deserialize_inner(fb_child)
+                value = annotation.deserialize_inner(fb_child, validation, fast=fast)
 
             elif issubclass(annotation, (str, StrEnum)):
                 value = cls._deserialize_string(getter(), annotation)
@@ -145,7 +161,7 @@ class DataModel(BaseModel):
 
             field_values[field_name] = value
 
-        return cls(**field_values)
+        return cls._construct(fast=fast, **field_values)
 
     def _serialize_list(self, builder: Builder, collection: List[Any], field_name: str) -> int:
         if len(collection) == 0:

@@ -102,11 +102,15 @@ class InstructionLibraryData(DataModel):
         return self.data.values()
 
     @classmethod
-    def load(cls, path: Pathlike) -> InstructionLibraryData:
+    def load(cls, path: Pathlike, fast: bool = True) -> InstructionLibraryData:
         binary = load_binary(path)
 
         try:
-            return InstructionLibraryData.deserialize(binary, validation=cls.validate_metadata)
+            return InstructionLibraryData.deserialize(
+                binary,
+                validation=cls.validate_metadata,
+                fast=fast,
+            )
         except (ValidationError, TypeError) as exception:
             raise InvalidLibraryDataValuesError(
                 f"Failed to deserialize LibraryData from {Path(path)} due to validation error",

@@ -16,7 +16,8 @@ from sampletones.exceptions import (
 from sampletones.exceptions.validation import DeserializationError
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
 from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryKey
+from sampletones.library import InstructionLibraryKey, get_display_name_from_key
+from sampletones.library.utils import create_key_from_filename
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.types.application import Sender
@@ -233,7 +234,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def update_status(self) -> None:
         key = self.config_manager.key
-        library_name = self.library_manager.get_display_name_from_key(key)
+        library_name = get_display_name_from_key(key)
         is_generating = self.library_manager.is_generating()
 
         if self.library_manager.is_library_loaded(key):
@@ -367,7 +368,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             return
 
         try:
-            library_key = self.library_manager.create_key_from_filename(filepath.name)
+            library_key = create_key_from_filename(filepath.name)
         except ValueError as exception:
             logger.error_with_traceback(exception, f"Invalid library file name format: {filepath.name}")
             show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_LOAD_ERROR)

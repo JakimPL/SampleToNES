@@ -30,9 +30,9 @@ class InstructionLibrary(BaseModel):
     def __getitem__(self, key: InstructionLibraryKey) -> InstructionLibraryData:
         return self.data[key]
 
-    @classmethod
-    def from_config(cls, config: Config) -> InstructionLibrary:
-        return cls(directory=str(config.general.library_directory))
+    @staticmethod
+    def from_config(config: Config) -> InstructionLibrary:
+        return InstructionLibrary(directory=str(config.general.library_directory))
 
     def create_key(self, config: Config, window: Window) -> InstructionLibraryKey:
         return InstructionLibraryKey.create(config.library, window)

@@ -27,16 +27,17 @@ class SpectrumLayer(Layer):
     brightness: np.ndarray = field(init=False)
 
     def __post_init__(self) -> None:
-        spectrum = self.data.feature / self.data.feature.total
+        spectrum = self.data.feature
         n_bins = min(len(self.data.feature), VAL_MAX_SPECTRUM_DISPLAY_BINS)
         bands = to_log_even_bands(spectrum.edges, CQT_CUTOFF_FREQUENCY, n_bins)
         spectrum = spectrum.rebin(bands)
-        object.__setattr__(self, "spectrum", spectrum)
 
+        values = spectrum.values / np.max(spectrum.values)
         frequencies = np.sqrt(spectrum.edges[:-1] * spectrum.edges[1:])
         bandwidths = frequencies[1:] - frequencies[:-1]
-        brightness = np.round(spectrum.values * 255).astype(np.int8)
+        brightness = np.round(values * VAL_MAX_SPECTRUM_GRAYSCALE).astype(np.uint8)
 
+        object.__setattr__(self, "spectrum", spectrum)
         object.__setattr__(self, "frequencies", frequencies)
         object.__setattr__(self, "bandwidths", bandwidths)
         object.__setattr__(self, "brightness", brightness)
@@ -51,7 +52,3 @@ class SpectrumLayer(Layer):
             brightness: int
             frequency, bandwidth, brightness = item
             yield frequency, bandwidth, brightness
-
-    def _brightness(self, index: int) -> int:
-        energy: float = self.spectrum.values[index]
-        return round(VAL_MAX_SPECTRUM_GRAYSCALE * energy)

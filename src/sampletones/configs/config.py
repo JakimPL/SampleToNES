@@ -45,13 +45,13 @@ class Config(DataModel):
         return Config.load(CONFIG_PATH)
 
     @classmethod
-    def load(cls, path: Pathlike) -> Config:
+    def load(cls, path: Pathlike, fast: bool = False) -> Config:
         path = to_path(path)
         config_dict = load_json(path)
         if not isinstance(config_dict, dict):
             raise TypeError(f"Expected config file to contain a dict, got {type(config_dict)}")
 
-        return cls(**config_dict)
+        return cls._construct(fast=fast, **config_dict)
 
     def save(self, path: Pathlike) -> None:
         path = to_path(path)

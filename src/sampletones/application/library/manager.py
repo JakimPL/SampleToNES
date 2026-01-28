@@ -12,6 +12,8 @@ from sampletones.library import (
     InstructionLibraryData,
     InstructionLibraryFragment,
     InstructionLibraryKey,
+    create_key_from_filename,
+    get_display_name_from_key,
 )
 from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
@@ -62,7 +64,7 @@ class InstructionsLibraryManager(CallbackMixin):
         new_library_files = {}
         for filepath in library_directory.iterdir():
             if filepath.is_file() and filepath.suffix == EXT_FILE_LIBRARY and self._is_library_file(filepath.stem):
-                library_key = self.create_key_from_filename(filepath.stem)
+                library_key = create_key_from_filename(filepath)
                 new_library_files[library_key] = filepath.stem
 
         removed_libraries = set(self.library_files.keys()) - set(new_library_files.keys())
@@ -113,7 +115,7 @@ class InstructionsLibraryManager(CallbackMixin):
         return True
 
     def load_library_file(self, filepath: Path) -> InstructionLibraryKey:
-        library_key = self.create_key_from_filename(filepath.stem)
+        library_key = create_key_from_filename(filepath)
         self.library.load_data(library_key)
         self.current_library_key = library_key
         return library_key
@@ -209,49 +211,20 @@ class InstructionsLibraryManager(CallbackMixin):
 
         return True
 
-    # TODO: change; relying on the filename is error-prone
-    def create_key_from_filename(self, filename: str) -> InstructionLibraryKey:
-        file_parts = filename.split("_")
-        if len(file_parts) != 10:
-            raise ValueError(f"Invalid library file name format: {filename}")
-
-        sample_rate = int(file_parts[1])
-        change_rate = int(file_parts[3])
-        window_size = int(file_parts[5])
-        transformation_gamma = int(file_parts[7])
-        config_hash = file_parts[9]
-        frame_length = round(sample_rate / change_rate)
-
-        return InstructionLibraryKey(
-            sample_rate=sample_rate,
-            frame_length=frame_length,
-            window_size=window_size,
-            transformation_gamma=transformation_gamma,
-            config_hash=config_hash,
-            filename=f"{filename}{EXT_FILE_LIBRARY}",
-        )
-
-    def get_display_name_from_key(self, key: InstructionLibraryKey) -> str:
-        sample_rate = key.sample_rate
-        change_rate = round(sample_rate / key.frame_length)
-        transformation_gamma = key.transformation_gamma
-        hash_part = key.config_hash[:7]
-        return f"{sample_rate}_{change_rate}_{transformation_gamma}_{hash_part}"
-
     def _get_display_name(self, filename: str) -> str:
-        key = self.create_key_from_filename(filename)
-        return self.get_display_name_from_key(key)
+        key = create_key_from_filename(filename)
+        return get_display_name_from_key(key)
 
     def rebuild_tree(self) -> None:
         root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
 
-        for library_key in sorted(self.library_files.keys(), key=self.get_display_name_from_key):
+        for library_key in sorted(self.library_files.keys(), key=get_display_name_from_key):
             self._build_library_node(library_key, root)
 
         self.tree.set_root(root)
 
     def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
-        display_name = self.get_display_name_from_key(library_key)
+        display_name = get_display_name_from_key(library_key)
         library_node = LibraryNode(display_name, library_key=library_key, parent=parent)
         self._build_generator_nodes(library_node)
         return library_node

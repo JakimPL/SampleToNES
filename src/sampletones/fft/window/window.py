@@ -1,46 +1,52 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Optional, Tuple, Union
 
 import numpy as np
+from pydantic import ConfigDict
 
 from sampletones.configs import Config, InstructionsLibraryConfig
+from sampletones.data.model import DataModel
 from sampletones.utils import pad
 
 from ..fft import calculate_weights
 
 
-@dataclass(frozen=True)
-class Window:
+class Window(DataModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
     config: InstructionsLibraryConfig
     on: bool = True
     custom_size: Optional[int] = None
 
-    size: int = field(init=False)
-    left_offset: int = field(init=False)
-    envelope: np.ndarray = field(init=False)
-    backward_frames: int = field(init=False)
-    forward_frames: int = field(init=False)
-    weights: np.ndarray = field(init=False)
+    @property
+    def size(self) -> int:
+        return self.custom_size if self.custom_size is not None else self.config.window_size
 
-    def __post_init__(self) -> None:
-        size = self.custom_size if self.custom_size is not None else self.config.window_size
+    @cached_property
+    def left_offset(self) -> int:
+        size = self.size
+        return -int(np.ceil((size - self.frame_length) / 2.0))
 
-        left_offset = -int(np.ceil((size - self.frame_length) / 2.0))
-        object.__setattr__(self, "size", size)
-        object.__setattr__(self, "left_offset", left_offset)
+    @cached_property
+    def envelope(self) -> np.ndarray:
+        size = self.size
+        return self.create_window() if self.on else np.ones(size, dtype=np.float32)
 
-        envelope = self.create_window() if self.on else np.ones(size)
-        object.__setattr__(self, "envelope", envelope)
+    @cached_property
+    def backward_frames(self) -> int:
+        return -(self.left_offset // self.config.frame_length)
 
-        backward_frames = -(left_offset // self.config.frame_length)
-        forward_frames = -(-(size + left_offset) // self.config.frame_length)
-        object.__setattr__(self, "backward_frames", backward_frames)
-        object.__setattr__(self, "forward_frames", forward_frames)
+    @cached_property
+    def forward_frames(self) -> int:
+        size = self.size
+        return -(-(size + self.left_offset) // self.config.frame_length)
 
-        weights = calculate_weights(size, self.config.sample_rate)
-        object.__setattr__(self, "weights", weights)
+    @cached_property
+    def weights(self) -> np.ndarray:
+        size = self.size
+        return calculate_weights(size, self.config.sample_rate)
 
     @classmethod
     def from_config(
@@ -88,6 +94,7 @@ class Window:
             idx_right = np.arange(right_taper_length)
             window[center_end + idx_right] = 0.5 * (1.0 + np.cos(np.pi * ((idx_right + 1) / float(right_taper_length))))
 
+        window.setflags(write=False)
         return window
 
     def get_windowed_frame(

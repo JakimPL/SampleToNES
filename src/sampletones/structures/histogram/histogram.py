@@ -22,8 +22,7 @@ from sampletones.types.array import (
     get_array_module,
 )
 from sampletones.types.data import SerializedData
-from sampletones.utils import is_increasing, isfinite, serialize_array
-from sampletones.utils.arrays import cast_to_float
+from sampletones.utils import cast_to_float, is_increasing, isfinite, serialize_array
 
 from .interval import Interval
 
@@ -139,10 +138,10 @@ class Histogram(DataModel):
         if len(self.edges) < 2:
             raise ValueError("At least two edges are required to create a histogram")
 
-        if not all(isfinite(edge) for edge in self.edges):
+        if not isfinite(self.edges):
             raise ValueError("edges must contain only finite values")
 
-        if not all(isfinite(value) for value in self.values):
+        if not isfinite(self.values):
             raise ValueError("values must contain only finite values")
 
         if not is_increasing(self.edges):

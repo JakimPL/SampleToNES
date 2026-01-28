@@ -11,7 +11,7 @@ USER_PATH_DATA: Final[Path] = Path(user_data_dir(SAMPLETONES_NAME, SAMPLETONES_G
 USER_PATH_CONFIG: Final[Path] = Path(user_config_dir(SAMPLETONES_NAME, SAMPLETONES_GROUP))
 
 # Application paths
-LIBRARY_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "library"
+LIBRARY_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "instructions"
 OUTPUT_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "reconstructions"
 CONFIG_PATH: Final[Path] = USER_PATH_DOCUMENTS / "config.json"
 APPLICATION_CONFIG_PATH: Final[Path] = USER_PATH_CONFIG / "sampletones.yaml"
