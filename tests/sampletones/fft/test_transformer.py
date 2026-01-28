@@ -785,6 +785,19 @@ class TestApply:
             expected_result=TypeError,
             test_id="non_callable_operation",
         ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+                np.array([1.0, 2.0], dtype=np.float32),
+            ),
+            expected_result=TypeError,
+            test_id="non_histogram_feature",
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
@@ -913,6 +926,19 @@ class TestReduce:
             arguments=(),
             expected_result=ValueError,
             test_id="empty_arrays",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            operation=np.add,
+            arguments=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+                np.array([1.0, 2.0], dtype=np.float32),
+            ),
+            expected_result=TypeError,
+            test_id="non_histogram_feature",
         ),
     ]
 
@@ -1688,6 +1714,128 @@ class TestDivide:
             test_case.input2,
         ):
             result = transformer.divide(test_case.input1, test_case.input2)
+            assert isinstance(result, Histogram)
+            assert isinstance(test_case.expected_result, Histogram)
+            assert_array_equal(result.edges, test_case.expected_result.edges)
+            assert_array_equal(result.values, test_case.expected_result.values)
+
+
+class TestMean:
+    @dataclass(frozen=True)
+    class TestCase:
+        __test__ = False
+
+        test_id: str
+        transformer: TransformerFixture
+        features: Tuple[Histogram, ...]
+        expected_result: Union[Histogram, Type[Exception]]
+
+    test_cases = [
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            features=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                values=np.array([300.0, 400.0], dtype=np.float32),
+            ),
+            test_id="single_histogram",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            features=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([7.0, 17.0], dtype=np.float64),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                    values=np.array([1.0, 7.0], dtype=np.float64),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float64),
+                values=np.array([5.0, 13.0], dtype=np.float64),
+            ),
+            test_id="two_histograms",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            features=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                    values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            ),
+            test_id="three_histograms",
+        ),
+        TestCase(
+            transformer=TransformerFixture.IDENTITY,
+            features=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 500.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([400.0, 300.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=Histogram(
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                values=np.array([350.0, 400.0], dtype=np.float32),
+            ),
+            test_id="identity_two_histograms",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            features=(),
+            expected_result=ValueError,
+            test_id="empty_features",
+        ),
+        TestCase(
+            transformer=TransformerFixture.SQUARE,
+            features=(
+                Histogram(
+                    edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                    values=np.array([300.0, 400.0], dtype=np.float32),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 100.0, 300.0], dtype=np.float32),
+                    values=np.array([400.0, 500.0], dtype=np.float32),
+                ),
+            ),
+            expected_result=ValueError,
+            test_id="inconsistent_edges",
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda tc: tc.test_id)
+    def test_mean(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
+        transformer = test_case.transformer.get_fixture(request)
+
+        if not expect_error(
+            transformer.mean,
+            test_case.expected_result,
+            test_case.features,
+        ):
+            result = transformer.mean(test_case.features)
             assert isinstance(result, Histogram)
             assert isinstance(test_case.expected_result, Histogram)
             assert_array_equal(result.edges, test_case.expected_result.edges)
