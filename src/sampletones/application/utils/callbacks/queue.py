@@ -8,12 +8,13 @@ from typing import Any, Callable, List, Optional, Union, cast
 from sampletones.exceptions import CallbackQueueStop
 from sampletones.types.callback import Callback, CallbackT
 from sampletones.utils.logger import logger
+from sampletones.utils.meta import NonInstantiableMeta
 
 from .priority import CallbackPriority
 from .task import CallbackTask
 
 
-class CallbackQueue:
+class CallbackQueue(metaclass=NonInstantiableMeta):
     _callbacks: List[CallbackTask] = []
     _lock: threading.Lock = threading.Lock()
     _condition: threading.Condition = threading.Condition(_lock)

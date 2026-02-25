@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Self, Type, TypeVar, Union, get_args, get_origin
@@ -22,7 +23,7 @@ from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBuf
 FLOAT32_SIZE = 4
 
 
-class DataModel(BaseModel):
+class DataModel(BaseModel, ABC):
     def serialize(self) -> bytes:
         builder = Builder(1024)
         offset = self.serialize_inner(builder)
@@ -337,12 +338,12 @@ class DataModel(BaseModel):
         return int(builder.EndVector(len(offsets)))
 
     @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        raise NotImplementedError("Subclasses must implement buffer_reader method")
+    @abstractmethod
+    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]: ...
 
     @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        raise NotImplementedError("Subclasses must implement buffer_builder method")
+    @abstractmethod
+    def buffer_builder(cls) -> FlatBufferBuilderProtocol: ...
 
     @classmethod
     def buffer_union_builder(cls) -> Optional[FlatBufferUnionProtocol]:

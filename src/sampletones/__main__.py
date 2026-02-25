@@ -1,7 +1,9 @@
 import argparse
 import multiprocessing
 from argparse import RawTextHelpFormatter
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from sampletones.constants.paths import EXT_FILES_AUDIO
 
@@ -23,25 +25,62 @@ HELP_HELP = """Show this help message and exit"""
 HELP_VERSION = "Show application version information"
 
 
+@dataclass(frozen=True)
+class ProgramArguments:
+    path: Optional[Path] = None
+    output: Optional[Path] = None
+    config: Optional[Path] = None
+
+    help: bool = False
+    version: bool = False
+    generate: bool = False
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="SampleToNES", add_help=False, formatter_class=RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        prog="SampleToNES",
+        add_help=False,
+        formatter_class=RawTextHelpFormatter,
+    )
     parser.add_argument(
         "path",
         nargs="?",
         default=None,
         help=HELP_PATH,
     )
-    parser.add_argument("--output", "-o", type=str, default=None, help=HELP_OUTPUT)
-    parser.add_argument("--config", "-c", type=str, default=None, help=HELP_CONFIG)
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        default=None,
+        help=HELP_OUTPUT,
+    )
+    parser.add_argument(
+        "--config",
+        "-c",
+        type=Path,
+        default=None,
+        help=HELP_CONFIG,
+    )
     parser.add_argument(
         "--generate",
         "-g",
         action="store_true",
         help=HELP_GENERATE,
     )
-    parser.add_argument("--help", "-h", action="store_true", help=HELP_HELP)
-    parser.add_argument("--version", "-v", action="store_true", help=HELP_VERSION)
-    args = parser.parse_args()
+    parser.add_argument(
+        "--help",
+        "-h",
+        action="store_true",
+        help=HELP_HELP,
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        action="store_true",
+        help=HELP_VERSION,
+    )
+    args: ProgramArguments = ProgramArguments(**vars(parser.parse_args()))
 
     if args.help:
         parser.print_help()
@@ -112,5 +151,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    main()
     multiprocessing.freeze_support()
     main()

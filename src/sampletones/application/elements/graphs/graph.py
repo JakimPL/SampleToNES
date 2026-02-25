@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
@@ -25,7 +26,7 @@ from ..panel import GUIPanel
 from .layers.type import LayerT
 
 
-class GUIGraph(GUIPanel, Generic[LayerT]):
+class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
     def __init__(
         self,
         tag: str,
@@ -77,8 +78,8 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
     def _bind_event_handler(self) -> None:
         dpg.bind_item_handler_registry(self.plot_tag, self.event_handler_tag)
 
-    def _create_content(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def _create_content(self) -> None: ...
 
     def _on_hover(self, sender: Sender, app_data: int, user_data: Any) -> None:
         shift = dpg.is_key_down(dpg.mvKey_LShift)
@@ -125,8 +126,8 @@ class GUIGraph(GUIPanel, Generic[LayerT]):
         dpg.set_axis_limits_auto(self.x_axis_tag)
         dpg.set_axis_limits_auto(self.y_axis_tag)
 
-    def _update_display(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def _update_display(self) -> None: ...
 
     @property
     def x_range(self) -> Tuple[float, float]:

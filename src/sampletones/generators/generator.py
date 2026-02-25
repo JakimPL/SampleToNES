@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any, Dict, Generic, List, Optional, Tuple
 
 import numpy as np
@@ -11,7 +12,7 @@ from sampletones.timers import TimerT, get_frequency_table
 from sampletones.types.data import Initials
 
 
-class Generator(Generic[InstructionT, TimerT]):
+class Generator(ABC, Generic[InstructionT, TimerT]):
     def __init__(self, config: Config, name: str) -> None:
         if not isinstance(config, Config):
             raise TypeError("config must be an instance of Config")
@@ -28,13 +29,13 @@ class Generator(Generic[InstructionT, TimerT]):
 
         self.timer: TimerT
 
+    @abstractmethod
     def __call__(
         self,
         instruction: InstructionT,
         initials: Initials = None,
         save: bool = False,
-    ) -> np.ndarray:
-        raise NotImplementedError("Subclasses must implement this method")
+    ) -> np.ndarray: ...
 
     def generate(
         self,
@@ -64,11 +65,11 @@ class Generator(Generic[InstructionT, TimerT]):
         if save:
             self.previous_instruction = instruction
 
-    def set_timer(self, instruction: InstructionT) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def set_timer(self, instruction: InstructionT) -> None: ...
 
-    def apply(self, output: np.ndarray, instruction: InstructionT) -> np.ndarray:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def apply(self, output: np.ndarray, instruction: InstructionT) -> np.ndarray: ...
 
     def reset(self) -> None:
         self.previous_instruction = None
@@ -84,17 +85,17 @@ class Generator(Generic[InstructionT, TimerT]):
     def get_frequency(self, pitch: int) -> float:
         return self.frequency_table[pitch]
 
-    def get_possible_instructions(self) -> List[InstructionT]:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get_possible_instructions(self) -> List[InstructionT]: ...
 
     @property
     def frame_length(self) -> int:
         return self.config.library.frame_length
 
     @classmethod
-    def class_name(cls) -> GeneratorClassName:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def class_name(cls) -> GeneratorClassName: ...
 
     @classmethod
-    def get_instruction_type(cls) -> InstructionTypeUnion:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion: ...

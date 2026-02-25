@@ -1,4 +1,5 @@
 import threading
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
@@ -299,16 +300,16 @@ class GUITreePanel(GUIPanel):
         if dpg.does_item_exist(node_tag) and dpg.does_item_exist(handler_tag):
             dpg.bind_item_handler_registry(node_tag, handler_tag)
 
+    @abstractmethod
     def _build_tree_node(
         self,
         node: TreeNode,
         state: TreeNodeState,
         **kwargs: Any,
-    ) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    ) -> None: ...
 
-    def _has_relevant_content(self, node: TreeNode) -> bool:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def _has_relevant_content(self, node: TreeNode) -> bool: ...
 
     def _should_expand_node(self, node: TreeNode) -> bool:
         if not self.tree.is_filtered():
@@ -439,8 +440,8 @@ class GUITreePanel(GUIPanel):
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
 
-    def _rebuild_tree(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def _rebuild_tree(self) -> None: ...
 
     def _update_tree_visibility(self) -> None:
         root = self.tree.get_root()
@@ -622,8 +623,8 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor = self._has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
 
-    def _set_tree_enabled(self, enabled: bool) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def _set_tree_enabled(self, enabled: bool) -> None: ...
 
     def _schedule_update_tree_visibility(self, query: str) -> None:
         self._pending_query = query

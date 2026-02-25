@@ -1,5 +1,6 @@
 import multiprocessing
 import threading
+from abc import ABC, abstractmethod
 from concurrent.futures._base import CancelledError
 from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 
@@ -20,7 +21,7 @@ CANCEL_TIMEOUT = 5
 STOP_TIMEOUT = 2
 
 
-class TaskProcessor(Generic[T], CallbackMixin):
+class TaskProcessor(ABC, CallbackMixin, Generic[T]):
     def __init__(self, max_workers: Optional[int] = None, logger: LoggerProtocol = default_logger) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
@@ -94,14 +95,14 @@ class TaskProcessor(Generic[T], CallbackMixin):
     def get_status(self) -> TaskStatus:
         return self.status
 
-    def _create_tasks(self) -> List[Any]:
-        raise NotImplementedError
+    @abstractmethod
+    def _create_tasks(self) -> List[Any]: ...
 
-    def _get_task_function(self) -> Callback:
-        raise NotImplementedError
+    @abstractmethod
+    def _get_task_function(self) -> Callback: ...
 
-    def _process_results(self, results: List[T]) -> Any:
-        raise NotImplementedError
+    @abstractmethod
+    def _process_results(self, results: List[T]) -> Any: ...
 
     def _reset_status(self) -> None:
         self.status = TaskStatus.PENDING

@@ -1,9 +1,11 @@
+from abc import ABC, abstractmethod
+
 from sampletones.utils.callbacks import CallbackMixin
 
 from ..utils.dpg import dpg_configure_item
 
 
-class GUIPanel(CallbackMixin):
+class GUIPanel(CallbackMixin, ABC):
     def __init__(
         self,
         tag: str,
@@ -20,8 +22,8 @@ class GUIPanel(CallbackMixin):
         if init:
             self.create_panel()
 
-    def create_panel(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def create_panel(self) -> None: ...
 
     def set_visibility(self, visible: bool) -> None:
         dpg_configure_item(self.tag, show=visible)

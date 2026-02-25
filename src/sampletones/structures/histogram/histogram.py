@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import warnings
 from functools import cached_property, reduce
 from types import ModuleType
 from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
@@ -23,6 +22,7 @@ from sampletones.types.array import (
 )
 from sampletones.types.data import SerializedData
 from sampletones.utils import cast_to_float, is_increasing, isfinite, serialize_array
+from sampletones.utils.logger import logger
 
 from .interval import Interval
 
@@ -610,9 +610,8 @@ class Histogram(DataModel):
         """
         edges_range: Interval = Interval(edges[0], edges[-1])
         if not edges_range.contains(self.range):
-            warnings.warn(
+            logger.debug(
                 "Rebinning to intervals outside of the histogram range may lead to unexpected results",
-                RuntimeWarning,
             )
 
     def _rebin(self, target_bins: Array) -> Self:

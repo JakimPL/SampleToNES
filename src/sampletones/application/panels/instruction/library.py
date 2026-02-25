@@ -377,6 +377,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._load_library_and_set_current(library_key)
         self.update_status()
 
+    def _has_relevant_content(self, node: TreeNode) -> bool:
+        return True
+
     @traverse(TreeTraversal.DFS)
     def _build_tree_node(
         self,

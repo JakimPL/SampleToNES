@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Self
 
 from pydantic import ConfigDict
@@ -6,29 +7,29 @@ from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel
 
 
-class Instruction(DataModel):
+class Instruction(DataModel, ABC):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     on: bool
 
     @property
-    def name(self) -> str:
-        raise NotImplementedError("Subclasses must implement 'name' property")
+    @abstractmethod
+    def name(self) -> str: ...
 
-    def distance(self, other: Self) -> float:
-        raise NotImplementedError("Subclasses must implement 'distance' method")
+    @abstractmethod
+    def distance(self, other: Self) -> float: ...
 
-    def __lt__(self, other: Self) -> bool:
-        raise NotImplementedError("Subclasses must implement '__lt__' method")
-
-    @classmethod
-    def null_instruction(cls) -> Self:
-        raise NotImplementedError("Subclasses must implement 'null_instruction' method")
+    @abstractmethod
+    def __lt__(self, other: Self) -> bool: ...
 
     @classmethod
-    def default_instruction(cls) -> Self:
-        raise NotImplementedError("Subclasses must implement 'default_instruction' method")
+    @abstractmethod
+    def null_instruction(cls) -> Self: ...
 
     @classmethod
-    def class_name(cls) -> InstructionClassName:
-        raise NotImplementedError("Subclasses must implement 'class_name' method")
+    @abstractmethod
+    def default_instruction(cls) -> Self: ...
+
+    @classmethod
+    @abstractmethod
+    def class_name(cls) -> InstructionClassName: ...

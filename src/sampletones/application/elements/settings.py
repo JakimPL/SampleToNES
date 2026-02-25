@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any, Literal, Union
 
 import dearpygui.dearpygui as dpg
@@ -13,7 +14,7 @@ from .panel import GUIPanel
 ConfigPanelKey = Literal["advanced", "config", "reconstructor"]
 
 
-class GUISettingsPanel(GUIPanel):
+class GUISettingsPanel(GUIPanel, ABC):
     def __init__(
         self,
         config_manager: ConfigManager,
@@ -71,5 +72,5 @@ class GUISettingsPanel(GUIPanel):
 
         return value
 
-    def update_gui_from_config(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def update_gui_from_config(self) -> None: ...

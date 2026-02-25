@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any, Optional, Tuple
 
 import numpy as np
@@ -7,7 +8,7 @@ from sampletones.fft import CyclicArray, Window
 from sampletones.types.data import Initials
 
 
-class Timer:
+class Timer(ABC):
     def __init__(
         self,
         sample_rate: int,
@@ -20,19 +21,19 @@ class Timer:
         self.change_rate: int = change_rate
         self.frame_length: int = round(self.sample_rate / self.change_rate)
 
+    @abstractmethod
     def __call__(
         self,
         initials: Initials = None,
         save: bool = True,
-    ) -> np.ndarray:
-        raise NotImplementedError("Subclasses must implement this method")
+    ) -> np.ndarray: ...
 
     @property
-    def initials(self) -> Tuple[Any, ...]:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def initials(self) -> Tuple[Any, ...]: ...
 
-    def calculate_offset(self, initials: Initials = None) -> int:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def calculate_offset(self, initials: Initials = None) -> int: ...
 
     def prepare_frame(self, window: Optional[Window] = None) -> np.ndarray:
         length = self.frame_length if window is None else window.size
@@ -71,20 +72,20 @@ class Timer:
         self.set(previous_initials)
         return frames
 
-    def generate_frame(self, save: bool = True) -> np.ndarray:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def generate_frame(self, save: bool = True) -> np.ndarray: ...
 
-    def reset(self) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def reset(self) -> None: ...
 
-    def validate(self, initials: Initials) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def validate(self, initials: Initials) -> None: ...
 
-    def get(self) -> Initials:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get(self) -> Initials: ...
 
-    def set(self, value: Initials) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def set(self, value: Initials) -> None: ...
 
     @property
     def real_frequency(self) -> float:

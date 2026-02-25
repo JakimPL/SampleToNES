@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from typing import Any
 
 import dearpygui.dearpygui as dpg
@@ -21,5 +22,5 @@ class GUIWindow(GUIPanel):
     def hide(self) -> None:
         dpg_delete_item(self.tag)
 
-    def prepare(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def prepare(self, *args: Any, **kwargs: Any) -> None: ...

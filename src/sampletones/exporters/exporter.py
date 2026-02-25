@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Dict, Generic, Iterable, List, Optional, Union, cast
 
 import numpy as np
@@ -12,7 +13,7 @@ from sampletones.utils import pitch_to_frequency, trim
 from .feature import Features
 
 
-class Exporter(Generic[InstructionT]):
+class Exporter(ABC, Generic[InstructionT]):
     _ATTRIBUTE_MAP: Dict[FeatureKey, InstructionFields]
 
     def to_features(
@@ -40,8 +41,8 @@ class Exporter(Generic[InstructionT]):
         return features
 
     @classmethod
-    def get_feature_map(cls, instructions: List[InstructionT]) -> FeatureMap:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get_feature_map(cls, instructions: List[InstructionT]) -> FeatureMap: ...
 
     @classmethod
     def from_features(cls, features: Features) -> List[InstructionT]:
@@ -81,12 +82,12 @@ class Exporter(Generic[InstructionT]):
         return instructions
 
     @classmethod
+    @abstractmethod
     def _features_dictionary_to_instruction(
         cls,
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
-    ) -> InstructionT:
-        raise NotImplementedError("Subclasses must implement this method")
+    ) -> InstructionT: ...
 
     @staticmethod
     def _infer_instruction_on(dictionary: Dict[str, Union[bool, int]]) -> bool:
@@ -138,9 +139,9 @@ class Exporter(Generic[InstructionT]):
         return PhaseTimer.frequency_to_timer(frequency)
 
     @classmethod
-    def get_instruction_type(cls) -> InstructionTypeUnion:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion: ...
 
     @classmethod
-    def get_generator_type(cls) -> GeneratorTypeUnion:
-        raise NotImplementedError("Subclasses must implement this method")
+    @abstractmethod
+    def get_generator_type(cls) -> GeneratorTypeUnion: ...
