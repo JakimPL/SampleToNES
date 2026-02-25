@@ -21,7 +21,6 @@ from sampletones.utils.system.system import System
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestToPath(BaseTestSuite):

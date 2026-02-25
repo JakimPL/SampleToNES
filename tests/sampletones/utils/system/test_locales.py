@@ -7,7 +7,6 @@ import pytest
 from sampletones.utils.system.locales import PREFERRED_ENCODING, to_utf8
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestToUtf8(BaseTestSuite):

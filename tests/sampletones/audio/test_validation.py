@@ -8,7 +8,6 @@ from sampletones.audio.validation import validate_audio_array, validate_buffer_s
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestValidateAudioArray(BaseTestSuite):

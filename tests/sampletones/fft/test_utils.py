@@ -8,7 +8,6 @@ from sampletones.fft.utils import calculate_n_bins, rectangle_window, to_log_eve
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestCalculateNBins(BaseTestSuite):

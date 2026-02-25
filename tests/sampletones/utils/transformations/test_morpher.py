@@ -12,7 +12,6 @@ from sampletones.utils.transformations.transformation import Transformation
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestPowerMorpherValidGamma(BaseTestSuite):

@@ -7,7 +7,7 @@ python -m pytest src/ --doctest-modules --no-cov
 DOCTEST_EXIT=$?
 
 echo "Running pytest with coverage..."
-python -m pytest --cov=src/sampletones
+python -m pytest -n 6 --cov=src/sampletones
 PYTEST_EXIT=$?
 
 if [[ $DOCTEST_EXIT -ne 0 ]] || [[ $PYTEST_EXIT -ne 0 ]]; then

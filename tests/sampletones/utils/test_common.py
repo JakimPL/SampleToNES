@@ -9,7 +9,6 @@ from sampletones.utils.common import first_key_for_value, next_power_of_two
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
-from tests.suite.parametrize import parametrized
 
 
 class TestNextPowerOfTwo(BaseTestSuite):
