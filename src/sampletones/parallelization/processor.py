@@ -8,7 +8,7 @@ from pebble import ProcessMapFuture, ProcessPool
 from sampletones.constants.general import MAX_WORKERS
 from sampletones.types.callback import Callback, VoidCallback
 from sampletones.utils.callbacks import CallbackMixin
-from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import LoggerProtocol
 from sampletones.utils.logger import logger as default_logger
 
 from .task import TaskProgress, TaskStatus
@@ -21,7 +21,7 @@ STOP_TIMEOUT = 2
 
 
 class TaskProcessor(Generic[T], CallbackMixin):
-    def __init__(self, max_workers: Optional[int] = None, logger: BaseLogger = default_logger) -> None:
+    def __init__(self, max_workers: Optional[int] = None, logger: LoggerProtocol = default_logger) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
         self.future: Optional[ProcessMapFuture] = None

@@ -6,6 +6,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.types.application import Sender
 from sampletones.types.callback import MessageCallback
+from sampletones.utils.meta import SingletonMeta
 
 from ..constants.general import SUF_HANDLER_STATUS, TAG_STATUS_BAR, TAG_STATUS_WINDOW, VAL_STATUS_BAR_DISPLAY_TIME
 from ..themes.status import StatusBarTheme
@@ -13,15 +14,7 @@ from ..utils.dpg import dpg_configure_item, dpg_delete_item, dpg_is_item_hovered
 from .button import GUIButton
 
 
-class GUIStatusBar:
-    _REGISTRY: Optional[GUIStatusBar] = None
-
-    def __new__(cls) -> GUIStatusBar:
-        if cls._REGISTRY is None:
-            cls._REGISTRY = super(GUIStatusBar, cls).__new__(cls)
-
-        return cls._REGISTRY
-
+class GUIStatusBar(metaclass=SingletonMeta):
     def __init__(
         self,
         tag: str = TAG_STATUS_BAR,
@@ -87,8 +80,9 @@ class GUIStatusBar:
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        if cls._REGISTRY is not None:
-            cls._REGISTRY.update(
+        instance = cls.get_instance()
+        if instance is not None:
+            instance.update(
                 message_or_function=message_or_function,
                 delta_time=0.0,
                 *args,
@@ -120,7 +114,8 @@ class GUIStatusBar:
         message_or_function: Union[str, MessageCallback],
     ) -> Optional[str]:
         message_function = cls.create_message_function(message_or_function)
-        if cls._REGISTRY is not None:
+        instance = cls.get_instance()
+        if instance is not None:
             handler_tag = f"{tag}{SUF_HANDLER_STATUS}"
 
             def on_mouse_action(sender: Sender, app_data: Any, user_data: str) -> None:

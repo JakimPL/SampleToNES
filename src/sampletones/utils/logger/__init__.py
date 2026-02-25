@@ -1,4 +1,4 @@
-from .base import BaseLogger
+from .base import LoggerProtocol
 from .main import Logger
 from .null import NullLogger
 
@@ -10,5 +10,5 @@ __all__ = [
     "null_logger",
     "Logger",
     "NullLogger",
-    "BaseLogger",
+    "LoggerProtocol",
 ]

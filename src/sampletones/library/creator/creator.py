@@ -7,7 +7,7 @@ from sampletones.fft import Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import LoggerProtocol
 from sampletones.utils.logger import logger as default_logger
 
 from ..data import InstructionLibraryData
@@ -21,7 +21,7 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
         self,
         config: Config,
         window: Window,
-        logger: BaseLogger = default_logger,
+        logger: LoggerProtocol = default_logger,
     ) -> None:
         super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()

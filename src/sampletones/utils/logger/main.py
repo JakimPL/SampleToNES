@@ -9,35 +9,25 @@ from rich.logging import RichHandler
 
 from sampletones.constants.application import SAMPLETONES_NAME
 from sampletones.types.path import Pathlike
+from sampletones.utils.meta import SingletonMeta
 
-from .base import BaseLogger
 
-
-class Logger(BaseLogger):
-    _instance: Optional[Logger] = None
+class Logger(metaclass=SingletonMeta):
     _logger: logging.Logger
 
-    def __new__(cls) -> Logger:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-
-        return cls._instance
-
     def __init__(self, level: int = logging.INFO) -> None:
-        if not hasattr(self, "_initialized"):
-            self._logger = logging.getLogger(SAMPLETONES_NAME)
-            self._logger.setLevel(level)
+        self._logger = logging.getLogger(SAMPLETONES_NAME)
+        self._logger.setLevel(level)
 
-            handler = RichHandler(
-                markup=True,
-                show_time=False,
-                show_level=True,
-                show_path=False,
-                rich_tracebacks=False,
-            )
-            handler.setLevel(level)
-            self._logger.addHandler(handler)
-            self._initialized = True
+        handler = RichHandler(
+            markup=True,
+            show_time=False,
+            show_level=True,
+            show_path=False,
+            rich_tracebacks=False,
+        )
+        handler.setLevel(level)
+        self._logger.addHandler(handler)
 
     def debug(self, message: str) -> None:
         self._logger.debug(message)

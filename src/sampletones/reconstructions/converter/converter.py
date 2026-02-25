@@ -4,7 +4,7 @@ from typing import Any, Callable, List, Optional, Tuple
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils.logger import BaseLogger
+from sampletones.utils.logger import LoggerProtocol
 from sampletones.utils.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
@@ -18,7 +18,7 @@ class ReconstructionConverter(TaskProcessor[Path]):
         config: Config,
         input_path: Path,
         is_file: bool,
-        logger: BaseLogger = default_logger,
+        logger: LoggerProtocol = default_logger,
     ) -> None:
         super().__init__(max_workers=config.general.max_workers, logger=logger)
         self.config = config.model_copy()

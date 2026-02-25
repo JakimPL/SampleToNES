@@ -3,11 +3,12 @@ from __future__ import annotations
 import heapq
 import threading
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import List
 
 import dearpygui.dearpygui as dpg
 
 from sampletones.types.callback import VoidCallback
+from sampletones.utils.meta import NonInstantiableMeta
 
 
 @dataclass(frozen=True)
@@ -19,18 +20,9 @@ class FrameCallback:
         return self.frame_count < other.frame_count
 
 
-class FrameCallbackManager:
-    _instances: Dict[type, FrameCallbackManager] = {}
+class FrameCallbackManager(metaclass=NonInstantiableMeta):
     _callbacks: List[FrameCallback] = []
     _lock = threading.Lock()
-
-    @classmethod
-    def get_instance(cls) -> FrameCallbackManager:
-        if cls not in cls._instances:
-            instance = cls()
-            cls._instances[cls] = instance
-
-        return cls._instances[cls]
 
     @classmethod
     def set_frame_callback(
