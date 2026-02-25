@@ -65,6 +65,7 @@ def read_wave(path: Pathlike) -> Tuple[np.ndarray, int]:
 
 def load_audio(
     path: Pathlike,
+    *,
     target_sample_rate: Optional[int] = None,
     normalize: bool = True,
     quantize: bool = True,

@@ -19,6 +19,7 @@ from .reconstruction import (
     NoFilesToProcessError,
     ReconstructionError,
 )
+from .structures import IncompleteHistogramRebinningWarning
 from .validation import DeserializationError, InvalidMetadataError, SerializationError
 from .window import WindowError, WindowNotAvailableError
 
@@ -46,4 +47,5 @@ __all__ = [
     "InvalidMetadataError",
     "CuPyNotInstalledWarning",
     "CallbackQueueStop",
+    "IncompleteHistogramRebinningWarning",
 ]

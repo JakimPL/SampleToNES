@@ -361,7 +361,7 @@ class TestCalculateHash:
         assert hash1 != hash3
         assert isinstance(hash1, str)
 
-    def test_hash_bool_different_representations(self) -> None:
+    def test_hash_null_different_representations(self) -> None:
         hash_false = calculate_hash(False)
         hash_zero = calculate_hash(0)
         hash_float_zero = calculate_hash(0.0)
@@ -371,8 +371,8 @@ class TestCalculateHash:
 
         assert hash_false == hash_zero
         assert hash_false == hash_float_zero
-        assert hash_false == hash_empty_string
         assert hash_false == hash_null_bytes
+        assert hash_false == hash_empty_string
         assert hash_false != hash_none
 
     def test_hash_base_model(self) -> None:

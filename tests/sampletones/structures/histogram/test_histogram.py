@@ -7,6 +7,7 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones import xp
+from sampletones.exceptions.structures import IncompleteHistogramRebinningWarning
 from sampletones.structures.histogram.histogram import Histogram
 from sampletones.structures.histogram.interval import Interval
 from sampletones.types.array import Array, Float, Numeric
@@ -19,7 +20,7 @@ from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
 class TestInit(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Union[Histogram, Type[Exception]] = NotImplementedError
+        expected: Union[Histogram, Type[Exception]]
         edges: Any
         values: Any
         match: Optional[str] = None
@@ -1979,7 +1980,7 @@ class TestRebin(BaseTestSuite):
         if test_case.expect_warning:
             rebinned = expect_warning(
                 test_case.histogram.rebin,
-                RuntimeWarning,
+                IncompleteHistogramRebinningWarning,
                 test_case.new_bins,
                 match="outside",
             )
@@ -2197,7 +2198,12 @@ class TestValidateOverlap(BaseTestSuite):
     )
     def test_validate_overlap(self, test_case: TestCase) -> None:
         if test_case.expect_warning:
-            expect_warning(test_case.histogram.validate_overlap, RuntimeWarning, test_case.new_edges, match="outside")
+            expect_warning(
+                test_case.histogram.validate_overlap,
+                IncompleteHistogramRebinningWarning,
+                test_case.new_edges,
+                match="outside",
+            )
         else:
             test_case.histogram.validate_overlap(test_case.new_edges)
 

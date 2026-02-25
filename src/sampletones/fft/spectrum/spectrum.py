@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 
@@ -11,7 +11,7 @@ from .method import SpectrumMethod
 
 
 def calculate_spectrum(
-    method: SpectrumMethod,
+    method: Union[str, SpectrumMethod],
     audio: np.ndarray,
     sample_rate: int,
     fft_size: Optional[int] = None,
@@ -38,6 +38,7 @@ def calculate_spectrum(
     Raises:
         ValueError: If an unsupported spectrum method is provided.
     """
+    method = SpectrumMethod(method)
     spectrum: Histogram
     match method:
         case SpectrumMethod.FFT:

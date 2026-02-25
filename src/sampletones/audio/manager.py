@@ -469,7 +469,7 @@ class AudioDeviceManager(CallbackMixin):
             if self._audio_data is not None:
                 self._position = max(0, min(position, len(self._audio_data)))
 
-    def play_file(self, filepath: Path, update: bool = True) -> None:
+    def play_file(self, filepath: Path, *, update: bool = True) -> None:
         """
         Load and play an audio file.
 
@@ -480,7 +480,7 @@ class AudioDeviceManager(CallbackMixin):
         audio = load_audio(filepath, normalize=False, quantize=False)
         self.play(audio, update=update)
 
-    def play(self, audio: np.ndarray, update: bool = True) -> None:
+    def play(self, audio: np.ndarray, *, update: bool = True) -> None:
         """
         Play audio data.
 
@@ -544,7 +544,7 @@ class AudioDeviceManager(CallbackMixin):
             if update and self._position_callback is not None:
                 self.call(self._position_callback, current_position)
 
-    def _playback_worker(self, update: bool = True) -> None:
+    def _playback_worker(self, *, update: bool = True) -> None:
         """
         Playback thread worker function.
 
@@ -573,9 +573,9 @@ class AudioDeviceManager(CallbackMixin):
         finally:
             stream.stop_stream()
             stream.close()
-            self._reset(update)
+            self._reset(update=update)
 
-    def _reset(self, update: bool = True) -> None:
+    def _reset(self, *, update: bool = True) -> None:
         """
         Reset playback state to idle.
 

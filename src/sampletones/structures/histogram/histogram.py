@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from functools import cached_property, reduce
 from types import ModuleType
 from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
@@ -8,6 +9,7 @@ from pydantic import ConfigDict, field_serializer, model_validator
 
 from sampletones import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones.exceptions import IncompleteHistogramRebinningWarning
 from sampletones.types.array import (
     Array,
     ArrayClasses,
@@ -22,7 +24,6 @@ from sampletones.types.array import (
 )
 from sampletones.types.data import SerializedData
 from sampletones.utils import cast_to_float, is_increasing, isfinite, serialize_array
-from sampletones.utils.logger import logger
 
 from .interval import Interval
 
@@ -124,8 +125,11 @@ class Histogram(DataModel):
         if len({type(self.edges), type(self.values)}) != 1:
             raise TypeError("edges and values must be of the same type")
 
-        if len(self.edges) != len(self.values) + 1:
-            raise ValueError("edges should have exactly |values| + 1 elements")
+        if self.edges.shape[-1] != self.values.shape[-1] + 1:
+            raise ValueError(
+                "edges should have exactly |values| + 1 elements, got "
+                f"{self.edges.shape[-1]} edges and {self.values.shape[-1]} values",
+            )
 
         if not self.edges.ndim == 1:
             raise ValueError("edges must be a one-dimensional array")
@@ -610,8 +614,9 @@ class Histogram(DataModel):
         """
         edges_range: Interval = Interval(edges[0], edges[-1])
         if not edges_range.contains(self.range):
-            logger.debug(
+            warnings.warn(
                 "Rebinning to intervals outside of the histogram range may lead to unexpected results",
+                IncompleteHistogramRebinningWarning,
             )
 
     def _rebin(self, target_bins: Array) -> Self:

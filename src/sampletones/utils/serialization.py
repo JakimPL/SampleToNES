@@ -177,7 +177,7 @@ def get_hash_bytes(data: Hashable) -> bytes:
     return unsigned.to_bytes(8, byteorder="big", signed=False)
 
 
-def calculate_hash(data: ModelHashable, length: int = HASH_LENGTH) -> str:
+def calculate_hash(data: ModelHashable, *, length: int = HASH_LENGTH) -> str:
     """
     Calculates a SHA-256 hash for hashable data types.
 
@@ -198,6 +198,17 @@ def calculate_hash(data: ModelHashable, length: int = HASH_LENGTH) -> str:
     raw: bytes
     if isinstance(data, BaseModel):
         raw = dump(data.model_dump()).encode("utf-8")
+    elif isinstance(data, (bool, int, float, bytes, str)):
+        if not data:
+            data = ""
+
+        if isinstance(data, (bool, int, float)):
+            data = str(float(data))
+
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+
+        raw = data
     else:
         raw = get_hash_bytes(data)
 
@@ -223,7 +234,7 @@ def hash_models(*models: BaseModel, length: int = HASH_LENGTH) -> str:
     return calculate_hash(json_string, length=length)
 
 
-def hash_model(model: BaseModel, length: int = HASH_LENGTH) -> str:
+def hash_model(model: BaseModel, *, length: int = HASH_LENGTH) -> str:
     """
     Calculates a hash for a single BaseModel instance.
 
