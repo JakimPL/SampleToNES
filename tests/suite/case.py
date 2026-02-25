@@ -13,12 +13,12 @@ class BaseTestCase(metaclass=NonInstantiableMeta):
 @dataclass(frozen=True, kw_only=True)
 class BaseRegularTestCase(BaseTestCase, metaclass=NonInstantiableMeta):
     label: str
-    expected: Any = None
+    expected: Any
 
 
 @dataclass(frozen=True, kw_only=True)
 class BaseAutolabelTestCase(BaseTestCase, metaclass=NonInstantiableMeta):
-    expected: Any = None
+    expected: Any
 
     @property
     @abstractmethod

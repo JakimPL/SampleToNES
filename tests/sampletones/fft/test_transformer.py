@@ -195,12 +195,12 @@ class TestCalculateSpectrum(BaseTestSuite):
             sample_rate=44100,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([0.0, 1000.0, 2000.0, 3000.0], dtype=np.float32),
-                np.array([100.0, 200.0, 300.0], dtype=np.float32),
+                edges=np.array([0.0, 1000.0, 2000.0, 3000.0], dtype=np.float32),
+                values=np.array([100.0, 200.0, 300.0], dtype=np.float32),
             ),
             expected=Histogram(
-                np.array([0.0, 1000.0, 2000.0, 3000.0], dtype=np.float32),
-                np.array([100.0, 200.0, 300.0], dtype=np.float32),
+                edges=np.array([0.0, 1000.0, 2000.0, 3000.0], dtype=np.float32),
+                values=np.array([100.0, 200.0, 300.0], dtype=np.float32),
             ),
             label="valid_spectrum_default_fft_size",
         ),
@@ -209,12 +209,10 @@ class TestCalculateSpectrum(BaseTestSuite):
             sample_rate=44100,
             fft_size=8,
             mock_spectrum=Histogram(
-                np.array([0.0, 500.0, 1000.0], dtype=np.float32),
-                np.array([50.0, 100.0], dtype=np.float32),
+                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32), values=np.array([50.0, 100.0], dtype=np.float32)
             ),
             expected=Histogram(
-                np.array([0.0, 500.0, 1000.0], dtype=np.float32),
-                np.array([50.0, 100.0], dtype=np.float32),
+                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32), values=np.array([50.0, 100.0], dtype=np.float32)
             ),
             label="valid_spectrum_custom_fft_size",
         ),
@@ -223,12 +221,12 @@ class TestCalculateSpectrum(BaseTestSuite):
             sample_rate=22050,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([10.0, 20.0, 30.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([10.0, 20.0, 30.0], dtype=np.float32),
             ),
             expected=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([10.0, 20.0, 30.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([10.0, 20.0, 30.0], dtype=np.float32),
             ),
             label="valid_spectrum_log_bins",
         ),
@@ -237,8 +235,8 @@ class TestCalculateSpectrum(BaseTestSuite):
             sample_rate=44100,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([0.0, 1000.0, 2000.0], dtype=np.float32),
-                np.array([-10.0, 20.0], dtype=np.float32),
+                edges=np.array([0.0, 1000.0, 2000.0], dtype=np.float32),
+                values=np.array([-10.0, 20.0], dtype=np.float32),
             ),
             expected=ValueError,
             match="negative values",
@@ -289,13 +287,13 @@ class TestCalculateFeature(BaseTestSuite):
             sample_rate=44100,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.IDENTITY,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             label="identity_transformation_no_change",
         ),
@@ -304,13 +302,13 @@ class TestCalculateFeature(BaseTestSuite):
             sample_rate=44100,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
-                np.array([4.0, 9.0, 16.0], dtype=np.float64),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float64),
             ),
             transformer=TransformerFixture.SQUARE,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
-                np.array([20.0, 30.0, 40.0], dtype=np.float64),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
+                values=np.array([20.0, 30.0, 40.0], dtype=np.float64),
             ),
             label="square_transformation_sqrt_densities",
         ),
@@ -319,13 +317,13 @@ class TestCalculateFeature(BaseTestSuite):
             sample_rate=22050,
             fft_size=4,
             mock_spectrum=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.IDENTITY,
             expected=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             label="identity_log_bins",
         ),
@@ -334,13 +332,13 @@ class TestCalculateFeature(BaseTestSuite):
             sample_rate=22050,
             fft_size=4,
             mock_spectrum=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([220.0, 440.0, 495.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([220.0, 440.0, 495.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.SQUARE,
             expected=Histogram(
-                np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
-                np.array([110.0, 220.0, 330.0], dtype=np.float32),
+                edges=np.array([55.0, 110.0, 220.0, 440.0], dtype=np.float32),
+                values=np.array([110.0, 220.0, 330.0], dtype=np.float32),
             ),
             label="square_log_bins",
         ),
@@ -349,8 +347,8 @@ class TestCalculateFeature(BaseTestSuite):
             sample_rate=44100,
             fft_size=None,
             mock_spectrum=Histogram(
-                np.array([0.0, 1000.0, 2000.0], dtype=np.float32),
-                np.array([-10.0, 20.0], dtype=np.float32),
+                edges=np.array([0.0, 1000.0, 2000.0], dtype=np.float32),
+                values=np.array([-10.0, 20.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.IDENTITY,
             expected=ValueError,
@@ -398,25 +396,25 @@ class TestForward(BaseTestSuite):
     test_cases = [
         TestCase(
             input_data=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.IDENTITY,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             label="identity_histogram_no_change",
         ),
         TestCase(
             input_data=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
-                np.array([4.0, 9.0, 16.0], dtype=np.float64),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float64),
             ),
             transformer=TransformerFixture.SQUARE,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
-                np.array([20.0, 30.0, 40.0], dtype=np.float64),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float64),
+                values=np.array([20.0, 30.0, 40.0], dtype=np.float64),
             ),
             label="square_histogram_sqrt_densities",
         ),
@@ -494,25 +492,25 @@ class TestBackward(BaseTestSuite):
     test_cases = [
         TestCase(
             input_data=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.IDENTITY,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([4.0, 9.0, 16.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([4.0, 9.0, 16.0], dtype=np.float32),
             ),
             label="identity_histogram_no_change",
         ),
         TestCase(
             input_data=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([2.0, 3.0, 4.0], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([2.0, 3.0, 4.0], dtype=np.float32),
             ),
             transformer=TransformerFixture.SQUARE,
             expected=Histogram(
-                np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
-                np.array([0.04, 0.09, 0.16], dtype=np.float32),
+                edges=np.array([0.0, 100.0, 200.0, 300.0], dtype=np.float32),
+                values=np.array([0.04, 0.09, 0.16], dtype=np.float32),
             ),
             label="square_histogram_square_densities",
         ),

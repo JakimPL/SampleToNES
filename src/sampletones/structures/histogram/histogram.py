@@ -50,12 +50,12 @@ class Histogram(DataModel):
         >>> import numpy as np
         >>> edges = np.array([0.0, 1.0, 4.0])  # explicit values
         >>> values = np.array([2.0, 6.0])
-        >>> histogram = Histogram(edges, values)
+        >>> histogram = Histogram(edges=edges, values=values)
         >>> len(histogram)
         2
         >>> histogram.densities
         array([2., 2.])
-        >>> uniform_histogram = Histogram(edges, 3.0)
+        >>> uniform_histogram = Histogram(edges=edges, values=3.0)
         >>> uniform_histogram.values
         array([3., 9.])
         >>> uniform_histogram.densities
@@ -69,42 +69,37 @@ class Histogram(DataModel):
     edges: Array
     values: Array
 
-    def __init__(self, edges: Union[Array, Interval], values: ArrayOrNumeric, **data: Array) -> None:
+    @model_validator(mode="before")
+    @classmethod
+    def _transform_inputs(cls, data: Dict[str, Union[Array, Interval, ArrayOrNumeric]]) -> Dict[str, Array]:
         """
-        Initialize histogram with edges and values.
-
-        Supports positional arguments for edges and values.
+        Transform input data before validation.
 
         If edges is an Interval, converts it to an array of two edge values.
 
         If values is a scalar, creates a histogram with constant density
         for all bins (values will be `density ⋅ bin_width` for each bin).
 
-        Protects edges and values from modification by setting them as read-only.
-
         Args:
-            edges: Interval or array of n + 1 strictly increasing bin edges.
-            values: Array of n bin values, or scalar for constant density.
+            data: Input data dictionary.
 
-        Examples:
-            >>> import numpy as np
-            >>> edges = np.array([0.0, 1.0, 3.0])
-            >>> histogram = Histogram(edges, np.array([1.0, 4.0]))
-            >>> histogram.values
-            array([1., 4.])
-            >>> uniform_histogram = Histogram(edges, 2.0)
-            >>> uniform_histogram.values
-            array([2., 4.])
+        Returns:
+            Transformed data dictionary with edges and values as arrays.
         """
-        if isinstance(edges, Interval):
+        data = data.copy()
+
+        edges = data.get("edges")
+        values = data.get("values")
+
+        if edges is not None and isinstance(edges, Interval):
             edges = edges.to_array()
+            data["edges"] = edges
 
-        if isinstance(values, NumericClasses):
-            values = self.density_to_values(edges, values)
+        if values is not None and edges is not None and isinstance(values, NumericClasses):
+            values = cls.density_to_values(edges, values)
+            data["values"] = values
 
-        data["edges"] = edges
-        data["values"] = values
-        super().__init__(**data)
+        return data
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
@@ -232,7 +227,7 @@ class Histogram(DataModel):
 
         Examples:
             >>> import numpy as np
-            >>> histogram = Histogram(np.array([0.0, 1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))
+            >>> histogram = Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([1.0, 2.0, 3.0]))
             >>> histogram.interval(0).float()
             Interval(left=0.0, right=1.0)
             >>> histogram.interval(2).float()

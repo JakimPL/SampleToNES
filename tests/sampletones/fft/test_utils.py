@@ -102,6 +102,7 @@ class TestRectangleWindow(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseAutolabelTestCase):
         length: int
+        expected: Any = None
 
         @property
         def label(self) -> str:

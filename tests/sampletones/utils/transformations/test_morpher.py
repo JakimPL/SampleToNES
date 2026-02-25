@@ -77,6 +77,7 @@ class TestPowerMorpherInvalidGamma(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
         gamma: float
+        expected: None = None
 
     test_cases = [
         TestCase(
