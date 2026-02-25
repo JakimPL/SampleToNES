@@ -157,7 +157,7 @@ class TestTransformationIdentity(BaseTestSuite):
 
     @pytest.mark.parametrize(
         "test_case",
-        reduce_test_cases,
+        apply_test_cases,
         ids=lambda tc: tc.label,
     )
     def test_apply(self, test_case: ApplyTestCase) -> None:
@@ -529,7 +529,6 @@ class TestTransformationReduce(BaseTestSuite):
 class TestTransformationArithmeticMethods(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
-        expected: Any
         transformation: Transformation
         method_name: str
         inputs: Tuple[Any, ...]
