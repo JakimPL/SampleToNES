@@ -7,146 +7,143 @@ import pytest
 
 from sampletones.utils.common import first_key_for_value, next_power_of_two
 from tests.sampletones.errors import expect_error
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseRegularTestCase
+from tests.suite.parametrize import parametrized
 
 
-class TestNextPowerOfTwo:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        test_id: str
+class TestNextPowerOfTwo(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        expected: Union[int, type]
         input_value: int
-        expected_result: Union[int, type]
 
     test_cases = [
-        TestCase(input_value=0, expected_result=1, test_id="zero"),
-        TestCase(input_value=1, expected_result=1, test_id="one"),
-        TestCase(input_value=2, expected_result=2, test_id="already_power_of_two"),
-        TestCase(input_value=3, expected_result=4, test_id="three"),
-        TestCase(input_value=5, expected_result=8, test_id="five"),
-        TestCase(input_value=7, expected_result=8, test_id="seven"),
-        TestCase(input_value=8, expected_result=8, test_id="eight_power_of_two"),
-        TestCase(input_value=9, expected_result=16, test_id="nine"),
-        TestCase(input_value=15, expected_result=16, test_id="fifteen"),
-        TestCase(input_value=16, expected_result=16, test_id="sixteen_power_of_two"),
-        TestCase(input_value=17, expected_result=32, test_id="seventeen"),
-        TestCase(input_value=100, expected_result=128, test_id="hundred"),
-        TestCase(input_value=1000, expected_result=1024, test_id="thousand"),
-        TestCase(input_value=1024, expected_result=1024, test_id="large_power_of_two"),
-        TestCase(input_value=1025, expected_result=2048, test_id="just_over_power_of_two"),
-        TestCase(input_value=1000000000, expected_result=1073741824, test_id="large_value"),
-        TestCase(input_value=-1, expected_result=ValueError, test_id="negative_one"),
-        TestCase(input_value=-5, expected_result=ValueError, test_id="negative_five"),
-        TestCase(input_value=-100, expected_result=ValueError, test_id="negative_large"),
-        TestCase(input_value=(1 << 64), expected_result=OverflowError, test_id="too_large_overflow"),
+        TestCase(input_value=0, expected=1, label="zero"),
+        TestCase(input_value=1, expected=1, label="one"),
+        TestCase(input_value=2, expected=2, label="already_power_of_two"),
+        TestCase(input_value=3, expected=4, label="three"),
+        TestCase(input_value=5, expected=8, label="five"),
+        TestCase(input_value=7, expected=8, label="seven"),
+        TestCase(input_value=8, expected=8, label="eight_power_of_two"),
+        TestCase(input_value=9, expected=16, label="nine"),
+        TestCase(input_value=15, expected=16, label="fifteen"),
+        TestCase(input_value=16, expected=16, label="sixteen_power_of_two"),
+        TestCase(input_value=17, expected=32, label="seventeen"),
+        TestCase(input_value=100, expected=128, label="hundred"),
+        TestCase(input_value=1000, expected=1024, label="thousand"),
+        TestCase(input_value=1024, expected=1024, label="large_power_of_two"),
+        TestCase(input_value=1025, expected=2048, label="just_over_power_of_two"),
+        TestCase(input_value=1000000000, expected=1073741824, label="large_value"),
+        TestCase(input_value=-1, expected=ValueError, label="negative_one"),
+        TestCase(input_value=-5, expected=ValueError, label="negative_five"),
+        TestCase(input_value=-100, expected=ValueError, label="negative_large"),
+        TestCase(input_value=(1 << 64), expected=OverflowError, label="too_large_overflow"),
     ]
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
-        ids=lambda tc: tc.test_id,
+        ids=lambda test_case: test_case.label,
     )
-    def test_next_power_of_two(self, test_case: TestNextPowerOfTwo.TestCase) -> None:
-        if expect_error(next_power_of_two, test_case.expected_result, test_case.input_value):
+    def test_next_power_of_two(self, test_case: TestCase) -> None:
+        if expect_error(next_power_of_two, test_case.expected, test_case.input_value):
             return
 
         result = next_power_of_two(test_case.input_value)
-        assert result == test_case.expected_result
-        assert type(result) == type(test_case.expected_result)
+        assert result == test_case.expected
+        assert type(result) == type(test_case.expected)
 
 
-class TestFirstKeyForValue:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        test_id: str
+class TestFirstKeyForValue(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        expected: Union[Optional[Any], Type[Exception]]
         dictionary: Any
         target: Any
-        expected_result: Union[Optional[Any], Type[Exception]]
 
     test_cases = [
         TestCase(
             dictionary={"a": 1, "b": 2, "c": 3},
             target=2,
-            expected_result="b",
-            test_id="value_found",
+            expected="b",
+            label="value_found",
         ),
         TestCase(
             dictionary={"a": 1, "b": 2, "c": 3},
             target=5,
-            expected_result=None,
-            test_id="value_not_found",
+            expected=None,
+            label="value_not_found",
         ),
         TestCase(
             dictionary={"a": 1, "b": 2, "c": 1},
             target=1,
-            expected_result="a",
-            test_id="duplicate_values_returns_first",
+            expected="a",
+            label="duplicate_values_returns_first",
         ),
         TestCase(
             dictionary={},
             target=1,
-            expected_result=None,
-            test_id="empty_dictionary",
+            expected=None,
+            label="empty_dictionary",
         ),
         TestCase(
             dictionary={"key": None, "other": "value"},
             target=None,
-            expected_result="key",
-            test_id="none_value",
+            expected="key",
+            label="none_value",
         ),
         TestCase(
             dictionary={None: "value", "key": "other"},
             target="value",
-            expected_result=None,
-            test_id="none_key",
+            expected=None,
+            label="none_key",
         ),
         TestCase(
             dictionary={"a": [1, 2], "b": [3, 4]},
             target=[1, 2],
-            expected_result="a",
-            test_id="list_value",
+            expected="a",
+            label="list_value",
         ),
         TestCase(
             dictionary={1: "one", 2: "two", 3: "one"},
             target="one",
-            expected_result=1,
-            test_id="int_keys_with_duplicates",
+            expected=1,
+            label="int_keys_with_duplicates",
         ),
         TestCase(
             dictionary={"x": False, "y": 0},
             target=0,
-            expected_result="x",
-            test_id="zero_and_false",
+            expected="x",
+            label="zero_and_false",
         ),
         TestCase(
             dictionary={"x": 1, "y": True},
             target=1,
-            expected_result="x",
-            test_id="one_and_true",
+            expected="x",
+            label="one_and_true",
         ),
         TestCase(
             dictionary="not_a_dict",
             target=1,
-            expected_result=TypeError,
-            test_id="not_a_dictionary",
+            expected=TypeError,
+            label="not_a_dictionary",
         ),
     ]
 
     @pytest.mark.parametrize(
         "test_case",
         test_cases,
-        ids=lambda tc: tc.test_id,
+        ids=lambda test_case: test_case.label,
     )
-    def test_first_key_for_value(self, test_case: TestFirstKeyForValue.TestCase) -> None:
+    def test_first_key_for_value(self, test_case: TestCase) -> None:
         if expect_error(
             first_key_for_value,
-            test_case.expected_result,
+            test_case.expected,
             test_case.dictionary,
             test_case.target,
         ):
             return
 
         result = first_key_for_value(test_case.dictionary, test_case.target)
-        assert result == test_case.expected_result
+        assert result == test_case.expected

@@ -8,18 +8,19 @@ from sampletones.structures.histogram.interval import Interval
 from sampletones.types.array import Float
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
+from tests.suite.base import BaseTestSuite
+from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
+from tests.suite.parametrize import parametrized
 
 
-class TestBool:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        interval: Interval
+class TestBool(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
         expected: bool
+        interval: Interval
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]_expect_{self.expected}"
 
     test_cases = [
@@ -43,21 +44,23 @@ class TestBool:
         TestCase(interval=Interval(np.nan, np.nan), expected=False),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_bool(self, test_case: TestCase) -> None:
         assert bool(test_case.interval) == test_case.expected
 
 
-class TestLength:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        interval: Interval
+class TestLength(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
         expected: Float
+        interval: Interval
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]"
 
     test_cases = [
@@ -76,92 +79,96 @@ class TestLength:
         TestCase(interval=Interval(np.inf, np.inf), expected=0.0),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_length(self, test_case: TestCase) -> None:
         result = test_case.interval.length
         assert_array_equal(result, test_case.expected)
 
 
-class TestZero:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
+class TestZero(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: type
         interval: Interval
-        expected_type: type
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             left_type = type(self.interval.left).__name__
             right_type = type(self.interval.right).__name__
             return f"{left_type}__{right_type}"
 
     test_cases = [
-        TestCase(interval=Interval(True, True), expected_type=int),
-        TestCase(interval=Interval(1, 2), expected_type=int),
-        TestCase(interval=Interval(1.0, 2.0), expected_type=float),
-        TestCase(interval=Interval(np.int8(1), np.int8(2)), expected_type=np.int8),
-        TestCase(interval=Interval(np.int32(1), np.int32(2)), expected_type=np.int32),
-        TestCase(interval=Interval(np.int64(1), np.int64(2)), expected_type=np.int64),
-        TestCase(interval=Interval(np.float32(1.0), np.float32(2.0)), expected_type=np.float32),
-        TestCase(interval=Interval(np.float64(1.0), np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(True, 1), expected_type=int),
-        TestCase(interval=Interval(1, True), expected_type=int),
-        TestCase(interval=Interval(True, 1.0), expected_type=float),
-        TestCase(interval=Interval(1.0, True), expected_type=float),
-        TestCase(interval=Interval(1, 1.0), expected_type=float),
-        TestCase(interval=Interval(1.0, 1), expected_type=float),
-        TestCase(interval=Interval(np.int8(1), np.int32(2)), expected_type=np.int32),
-        TestCase(interval=Interval(np.int32(1), np.int8(2)), expected_type=np.int32),
-        TestCase(interval=Interval(np.int8(1), np.int64(2)), expected_type=np.int64),
-        TestCase(interval=Interval(np.int64(1), np.int8(2)), expected_type=np.int64),
-        TestCase(interval=Interval(np.int32(1), np.int64(2)), expected_type=np.int64),
-        TestCase(interval=Interval(np.int64(1), np.int32(2)), expected_type=np.int64),
-        TestCase(interval=Interval(np.float32(1.0), np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.float32(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(1, np.int8(2)), expected_type=np.int8),
-        TestCase(interval=Interval(np.int8(1), 257), expected_type=np.int8),
-        TestCase(interval=Interval(1, np.int32(2)), expected_type=np.int32),
-        TestCase(interval=Interval(np.int32(1), 2), expected_type=np.int32),
-        TestCase(interval=Interval(1.0, np.float32(2.0)), expected_type=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), 2.0), expected_type=np.float32),
-        TestCase(interval=Interval(1.0, np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), 2.0), expected_type=np.float64),
-        TestCase(interval=Interval(1, np.float32(2.0)), expected_type=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), 2), expected_type=np.float32),
-        TestCase(interval=Interval(1, np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), 2), expected_type=np.float64),
-        TestCase(interval=Interval(np.int8(1), np.float32(2.0)), expected_type=np.float32),
-        TestCase(interval=Interval(np.float32(1.0), np.int8(2)), expected_type=np.float32),
-        TestCase(interval=Interval(np.int32(1), np.float32(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float32(1.0), np.int32(2)), expected_type=np.float64),
-        TestCase(interval=Interval(np.int64(1), np.float32(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float32(1.0), np.int64(2)), expected_type=np.float64),
-        TestCase(interval=Interval(np.int8(1), np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int8(2)), expected_type=np.float64),
-        TestCase(interval=Interval(np.int32(1), np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int32(2)), expected_type=np.float64),
-        TestCase(interval=Interval(np.int64(1), np.float64(2.0)), expected_type=np.float64),
-        TestCase(interval=Interval(np.float64(1.0), np.int64(2)), expected_type=np.float64),
+        TestCase(interval=Interval(True, True), expected=int),
+        TestCase(interval=Interval(1, 2), expected=int),
+        TestCase(interval=Interval(1.0, 2.0), expected=float),
+        TestCase(interval=Interval(np.int8(1), np.int8(2)), expected=np.int8),
+        TestCase(interval=Interval(np.int32(1), np.int32(2)), expected=np.int32),
+        TestCase(interval=Interval(np.int64(1), np.int64(2)), expected=np.int64),
+        TestCase(interval=Interval(np.float32(1.0), np.float32(2.0)), expected=np.float32),
+        TestCase(interval=Interval(np.float64(1.0), np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(True, 1), expected=int),
+        TestCase(interval=Interval(1, True), expected=int),
+        TestCase(interval=Interval(True, 1.0), expected=float),
+        TestCase(interval=Interval(1.0, True), expected=float),
+        TestCase(interval=Interval(1, 1.0), expected=float),
+        TestCase(interval=Interval(1.0, 1), expected=float),
+        TestCase(interval=Interval(np.int8(1), np.int32(2)), expected=np.int32),
+        TestCase(interval=Interval(np.int32(1), np.int8(2)), expected=np.int32),
+        TestCase(interval=Interval(np.int8(1), np.int64(2)), expected=np.int64),
+        TestCase(interval=Interval(np.int64(1), np.int8(2)), expected=np.int64),
+        TestCase(interval=Interval(np.int32(1), np.int64(2)), expected=np.int64),
+        TestCase(interval=Interval(np.int64(1), np.int32(2)), expected=np.int64),
+        TestCase(interval=Interval(np.float32(1.0), np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.float32(2.0)), expected=np.float64),
+        TestCase(interval=Interval(1, np.int8(2)), expected=np.int8),
+        TestCase(interval=Interval(np.int8(1), 257), expected=np.int8),
+        TestCase(interval=Interval(1, np.int32(2)), expected=np.int32),
+        TestCase(interval=Interval(np.int32(1), 2), expected=np.int32),
+        TestCase(interval=Interval(1.0, np.float32(2.0)), expected=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), 2.0), expected=np.float32),
+        TestCase(interval=Interval(1.0, np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), 2.0), expected=np.float64),
+        TestCase(interval=Interval(1, np.float32(2.0)), expected=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), 2), expected=np.float32),
+        TestCase(interval=Interval(1, np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), 2), expected=np.float64),
+        TestCase(interval=Interval(np.int8(1), np.float32(2.0)), expected=np.float32),
+        TestCase(interval=Interval(np.float32(1.0), np.int8(2)), expected=np.float32),
+        TestCase(interval=Interval(np.int32(1), np.float32(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float32(1.0), np.int32(2)), expected=np.float64),
+        TestCase(interval=Interval(np.int64(1), np.float32(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float32(1.0), np.int64(2)), expected=np.float64),
+        TestCase(interval=Interval(np.int8(1), np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int8(2)), expected=np.float64),
+        TestCase(interval=Interval(np.int32(1), np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int32(2)), expected=np.float64),
+        TestCase(interval=Interval(np.int64(1), np.float64(2.0)), expected=np.float64),
+        TestCase(interval=Interval(np.float64(1.0), np.int64(2)), expected=np.float64),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_zero_type(self, test_case: TestCase) -> None:
         result = test_case.interval.zero
-        assert type(result) == test_case.expected_type
-        assert_array_equal(result, test_case.expected_type(0))
+        assert type(result) == test_case.expected
+        assert_array_equal(result, test_case.expected(0))
 
 
-class TestMidpoint:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        interval: Interval
+class TestMidpoint(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
         expected: Optional[Float]
+        interval: Interval
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             return f"[{self.interval.left},{self.interval.right}]"
 
     test_cases = [
@@ -182,7 +189,11 @@ class TestMidpoint:
         TestCase(interval=Interval(0.0, np.nan), expected=None),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_midpoint(self, test_case: TestCase) -> None:
         result = test_case.interval.midpoint
         if test_case.expected is None:
@@ -191,18 +202,16 @@ class TestMidpoint:
             assert_array_equal(result, test_case.expected)
 
 
-class TestIntersection:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
+class TestIntersection(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: Union[Interval, Type[Exception]]
         interval1: Interval
         interval2: Union[Interval, str]
-        expected: Union[Interval, Type[Exception]]
         match: Optional[str] = None
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
             interval2_str = (
                 f"[{self.interval2.left},{self.interval2.right}]"
@@ -236,7 +245,11 @@ class TestIntersection:
         ),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_intersection(self, test_case: TestCase) -> None:
         other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
 
@@ -246,17 +259,15 @@ class TestIntersection:
             assert result == test_case.expected
 
 
-class TestContains:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
+class TestContains(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: bool
         interval1: Interval
         interval2: Interval
-        expected: bool
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             return f"[{self.interval1.left},{self.interval1.right}]_contains_[{self.interval2.left},{self.interval2.right}]_{self.expected}"
 
     test_cases = [
@@ -290,23 +301,25 @@ class TestContains:
         ),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_contains(self, test_case: TestCase) -> None:
         assert test_case.interval1.contains(test_case.interval2) == test_case.expected
 
 
-class TestRelativeMeasure:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
+class TestRelativeMeasure(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: Union[Float, Type[Exception]]
         interval1: Interval
         interval2: Union[Interval, str]
-        expected: Union[Float, Type[Exception]]
         match: Optional[str] = None
 
         @property
-        def test_id(self) -> str:
+        def label(self) -> str:
             error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
             interval2_str = (
                 f"[{self.interval2.left},{self.interval2.right}]"
@@ -346,7 +359,11 @@ class TestRelativeMeasure:
         ),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_relative_measure(self, test_case: TestCase) -> None:
         other = test_case.interval2 if isinstance(test_case.interval2, Interval) else test_case.interval2
 
@@ -356,34 +373,36 @@ class TestRelativeMeasure:
             assert_array_equal(result, test_case.expected)
 
 
-class TestFloat:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
-        interval: Interval
+class TestFloat(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: Interval
 
         @property
-        def test_id(self) -> str:
-            return f"left_{type(self.interval.left).__name__}_right_{type(self.interval.right).__name__}"
+        def label(self) -> str:
+            return f"left_{type(self.expected.left).__name__}_right_{type(self.expected.right).__name__}"
 
     test_cases = [
-        TestCase(interval=Interval(np.float32(1.5), np.float32(3.5))),
-        TestCase(interval=Interval(np.float64(2.0), np.float64(8.0))),
-        TestCase(interval=Interval(np.float32(-5.0), np.float32(5.0))),
-        TestCase(interval=Interval(1.0, 5.0)),
-        TestCase(interval=Interval(np.float64(10.5), np.float64(20.5))),
-        TestCase(interval=Interval(-np.inf, np.inf)),
-        TestCase(interval=Interval(np.float32(-np.inf), np.float32(5.0))),
+        TestCase(expected=Interval(np.float32(1.5), np.float32(3.5))),
+        TestCase(expected=Interval(np.float64(2.0), np.float64(8.0))),
+        TestCase(expected=Interval(np.float32(-5.0), np.float32(5.0))),
+        TestCase(expected=Interval(1.0, 5.0)),
+        TestCase(expected=Interval(np.float64(10.5), np.float64(20.5))),
+        TestCase(expected=Interval(-np.inf, np.inf)),
+        TestCase(expected=Interval(np.float32(-np.inf), np.float32(5.0))),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_float(self, test_case: TestCase) -> None:
-        result = test_case.interval.float()
+        result = test_case.expected.float()
         assert isinstance(result.left, float)
         assert isinstance(result.right, float)
-        assert_array_equal(result.left, float(test_case.interval.left))
-        assert_array_equal(result.right, float(test_case.interval.right))
+        assert_array_equal(result.left, float(test_case.expected.left))
+        assert_array_equal(result.right, float(test_case.expected.right))
 
 
 class TestUnit:
@@ -399,52 +418,46 @@ class TestUnit:
         assert bool(result) is True
 
 
-class TestFromEdges:
-    @dataclass(frozen=True)
-    class TestCase:
-        __test__ = False
-
+class TestFromEdges(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        expected: Union[int, Type[Exception]]
         edges: Union[np.ndarray, List[float]]
-        expected_result: Union[int, Type[Exception]]
         match: Optional[str] = None
 
         @property
-        def test_id(self) -> str:
-            error_suffix = (
-                "_error"
-                if isinstance(self.expected_result, type) and issubclass(self.expected_result, Exception)
-                else ""
-            )
+        def label(self) -> str:
+            error_suffix = "_error" if isinstance(self.expected, type) and issubclass(self.expected, Exception) else ""
             dtype_name = self.edges.dtype.name if isinstance(self.edges, np.ndarray) else type(self.edges).__name__
             return f"dtype_{dtype_name}_len_{len(self.edges)}{error_suffix}"
 
     test_cases = [
-        TestCase(edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), expected_result=2),
-        TestCase(edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64), expected_result=3),
-        TestCase(edges=np.array([1.0, 3.0, 7.0, 15.0, 31.0], dtype=np.float32), expected_result=4),
-        TestCase(edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64), expected_result=2),
-        TestCase(edges=np.array([0.0, 1.0], dtype=np.float32), expected_result=1),
-        TestCase(edges=[0.0, 1.0, 2.0], expected_result=TypeError, match="edges must be an Array"),
-        TestCase(edges=np.array([1.0], dtype=np.float32), expected_result=ValueError, match="At least two edges"),
-        TestCase(edges=np.array([], dtype=np.float64), expected_result=ValueError, match="At least two edges"),
-        TestCase(
-            edges=np.array([3.0, 2.0, 1.0], dtype=np.float32), expected_result=ValueError, match="strictly increasing"
-        ),
+        TestCase(edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), expected=2),
+        TestCase(edges=np.array([0.0, 2.0, 5.0, 10.0], dtype=np.float64), expected=3),
+        TestCase(edges=np.array([1.0, 3.0, 7.0, 15.0, 31.0], dtype=np.float32), expected=4),
+        TestCase(edges=np.array([-10.0, 0.0, 10.0], dtype=np.float64), expected=2),
+        TestCase(edges=np.array([0.0, 1.0], dtype=np.float32), expected=1),
+        TestCase(edges=[0.0, 1.0, 2.0], expected=TypeError, match="edges must be an Array"),
+        TestCase(edges=np.array([1.0], dtype=np.float32), expected=ValueError, match="At least two edges"),
+        TestCase(edges=np.array([], dtype=np.float64), expected=ValueError, match="At least two edges"),
+        TestCase(edges=np.array([3.0, 2.0, 1.0], dtype=np.float32), expected=ValueError, match="strictly increasing"),
         TestCase(
             edges=np.array([1.0, 2.0, 2.0, 3.0], dtype=np.float64),
-            expected_result=ValueError,
+            expected=ValueError,
             match="strictly increasing",
         ),
-        TestCase(
-            edges=np.array([1.0, 3.0, 2.0], dtype=np.float32), expected_result=ValueError, match="strictly increasing"
-        ),
+        TestCase(edges=np.array([1.0, 3.0, 2.0], dtype=np.float32), expected=ValueError, match="strictly increasing"),
     ]
 
-    @pytest.mark.parametrize("test_case", test_cases, ids=[tc.test_id for tc in test_cases])
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
     def test_from_edges(self, test_case: TestCase) -> None:
-        if not expect_error(Interval.from_edges, test_case.expected_result, test_case.edges, match=test_case.match):
+        if not expect_error(Interval.from_edges, test_case.expected, test_case.edges, match=test_case.match):
             result = Interval.from_edges(test_case.edges)
-            assert len(result) == test_case.expected_result
+            assert len(result) == test_case.expected
             assert all(isinstance(interval, Interval) for interval in result)
 
             for i, interval in enumerate(result):

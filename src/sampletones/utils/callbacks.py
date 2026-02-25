@@ -1,11 +1,12 @@
 from typing import Any, Optional
 
 from sampletones.types.callback import Callback
+from sampletones.utils.meta import NonInstantiableMeta
 
 from .logger import logger
 
 
-class CallbackMixin:
+class CallbackMixin(metaclass=NonInstantiableMeta):
     """
     Mixin class providing callback management functionality.
 
