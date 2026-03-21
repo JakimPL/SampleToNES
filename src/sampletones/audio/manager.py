@@ -496,6 +496,9 @@ class AudioDeviceManager(CallbackMixin):
             update: If True, invoke position callback during playback.
         """
         self.stop()
+        # In manager.py play() method, add after line 498:
+        logger.debug(f"Audio stats: min={audio.min()}, max={audio.max()}, mean={audio.mean()}, shape={audio.shape}")
+        logger.debug(f"Audio has {np.count_nonzero(audio)} non-zero samples out of {audio.size}")
         with self._lock:
             self._audio_data = audio.astype(np.float32)
             self._position = 0

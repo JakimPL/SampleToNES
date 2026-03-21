@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Tuple
+from typing import Tuple, Union
 
 from sampletones import xp
 from sampletones.configs import Config
 from sampletones.fft import Fragment, Window
+from sampletones.structures.histogram import Histogram
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,17 @@ class Criterion:
         spectral_loss = self.spectral_loss(fragment.feature, approximation.feature)
         return self.combine_losses(spectral_loss, temporal_loss)
 
-    def rmse(self, reference: xp.ndarray, candidates: xp.ndarray, with_weights: bool = True) -> xp.ndarray:
+    def rmse(
+        self,
+        reference: Union[xp.ndarray, Histogram],
+        candidates: Union[xp.ndarray, Histogram],
+        with_weights: bool = True,
+    ) -> xp.ndarray:
+        if isinstance(reference, Histogram):
+            reference = reference.values
+        if isinstance(candidates, Histogram):
+            candidates = candidates.values
+
         if reference.ndim != 1:
             raise ValueError("reference must be 1D")
 
@@ -63,8 +74,8 @@ class Criterion:
 
     def spectral_loss(
         self,
-        feature: xp.ndarray,
-        approximation_feature: xp.ndarray,
+        feature: Union[xp.ndarray, Histogram],
+        approximation_feature: Union[xp.ndarray, Histogram],
     ) -> xp.ndarray:
         return self.rmse(feature, approximation_feature, with_weights=True)
 

@@ -63,9 +63,21 @@ class FBConfig(object):
             return obj
         return None
 
+    # FBConfig
+    def Metadata(self):
+        o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(10))
+        if o != 0:
+            x = self._tab.Indirect(o + self._tab.Pos)
+            from sampletones_schemas.metadata.FBMetadata import FBMetadata
+
+            obj = FBMetadata()
+            obj.Init(self._tab.Bytes, x)
+            return obj
+        return None
+
 
 def FBConfigStart(builder):
-    builder.StartObject(3)
+    builder.StartObject(4)
 
 
 def Start(builder):
@@ -94,6 +106,14 @@ def FBConfigAddGeneration(builder, generation):
 
 def AddGeneration(builder, generation):
     return FBConfigAddGeneration(builder, generation)
+
+
+def FBConfigAddMetadata(builder, metadata):
+    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(metadata), 0)
+
+
+def AddMetadata(builder, metadata):
+    return FBConfigAddMetadata(builder, metadata)
 
 
 def FBConfigEnd(builder):

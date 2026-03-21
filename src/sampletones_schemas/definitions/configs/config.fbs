@@ -1,6 +1,7 @@
 include "configs/library.fbs";
 include "configs/general.fbs";
 include "configs/generation.fbs";
+include "metadata.fbs";
 
 namespace sampletones_schemas.configs;
 
@@ -8,6 +9,7 @@ table FBConfig {
 	general: sampletones_schemas.configs.FBGeneralConfig;
 	library: sampletones_schemas.configs.FBInstructionsLibraryConfig;
 	generation: sampletones_schemas.configs.FBGenerationConfig;
+	metadata: sampletones_schemas.metadata.FBMetadata;
 }
 
 root_type FBConfig;
