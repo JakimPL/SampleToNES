@@ -15,7 +15,7 @@ from sampletones.utils.meta import SingletonMeta
 class Logger(metaclass=SingletonMeta):
     _logger: logging.Logger
 
-    def __init__(self, level: int = logging.INFO) -> None:
+    def __init__(self, level: int = logging.DEBUG) -> None:
         self._logger = logging.getLogger(SAMPLETONES_NAME)
         self._logger.setLevel(level)
 

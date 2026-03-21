@@ -15,10 +15,23 @@ from sampletones.constants.application import (
     compare_versions,
 )
 from sampletones.constants.enums import GeneratorName
-from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata
-from sampletones.exceptions import IncompatibleReconstructionVersionError, InvalidMetadataError
+from sampletones.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+    Metadata,
+)
+from sampletones.exceptions import (
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+)
 from sampletones.exceptions.reconstruction import InvalidReconstructionValuesError
-from sampletones.exporters import INSTRUCTION_TO_EXPORTER_MAP, ExporterTypeUnion, ExporterUnion, Features
+from sampletones.exporters import (
+    INSTRUCTION_TO_EXPORTER_MAP,
+    ExporterTypeUnion,
+    ExporterUnion,
+    Features,
+)
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
 from sampletones.types.data import SerializedData
 from sampletones.types.path import Pathlike
@@ -79,6 +92,7 @@ class Reconstruction(DataModel):
         coefficient: float,
         audio_filepath: Path,
     ) -> Self:
+        approximation = np.nan_to_num(approximation, nan=0.0)
         approximations_data: List[ApproximationsItem] = [
             ApproximationsItem(generator_name=name, approximation=approximation)
             for name, approximation in approximations.items()

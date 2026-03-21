@@ -151,12 +151,17 @@ def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np
     length = len(audio)
     num_buckets = min(num_buckets, length)
     m = (-length) % num_buckets
-    padded = np.pad(audio.astype(float), (0, m), constant_values=np.nan)
+
+    if m > 0:
+        padded = np.pad(audio.astype(float), (0, m), mode="edge")
+    else:
+        padded = audio.astype(float)
+
     buckets = padded.reshape(num_buckets, -1)
-    positions = np.nanmin(buckets, axis=1).repeat(2)
-    mins = np.nanmax(buckets, axis=1)
-    maxs = np.nanmean(buckets, axis=1)
-    minmax = np.empty(mins.size * 2, dtype=mins.dtype)
+    mins = np.min(buckets, axis=1)
+    maxs = np.max(buckets, axis=1)
+    positions = np.arange(num_buckets, dtype=np.float32).repeat(2)
+    minmax = np.empty(num_buckets * 2, dtype=np.float32)
     minmax[0::2] = mins
     minmax[1::2] = maxs
     return positions, minmax
