@@ -8,7 +8,12 @@ from typing import Callable, Dict, Generator, List, Optional, cast
 import numpy as np
 import pyaudio
 
-from sampletones.constants.audio import DEFAULT_BUFFER_SIZE, SAMPLE_RATES, BufferSize, SampleRate
+from sampletones.constants.audio import (
+    DEFAULT_BUFFER_SIZE,
+    SAMPLE_RATES,
+    BufferSize,
+    SampleRate,
+)
 from sampletones.exceptions import PlaybackError
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
@@ -365,17 +370,16 @@ class AudioDeviceManager(CallbackMixin):
         device_index = self.find_device_index(current_device)
         if device_index != -1:
             return self.configure_device(
-                device_index=current_device.device_index,
+                device_index=device_index,
                 sample_rate=current_device.sample_rate,
             )
 
         if current_device.name:
-            logger.warning(f"Audio device '{current_device.name}' not found. Cannot set current device.")
+            logger.warning(f"Audio device '{current_device.name}' not found. " f"Falling back to default device.")
         else:
-            logger.info("Initializing the default audio device.")
-            self._initialize_default_device()
+            logger.info("No device specified. Initializing the default audio device.")
 
-        return None
+        return self._initialize_default_device()
 
     def find_device_index(
         self,
@@ -502,7 +506,7 @@ class AudioDeviceManager(CallbackMixin):
         self._resume_event.set()
         self._playback_thread = threading.Thread(
             target=self._playback_worker,
-            args=[update],
+            kwargs={"update": update},
             daemon=True,
             name="AudioPlaybackWorker",
         )
