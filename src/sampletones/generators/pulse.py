@@ -7,7 +7,7 @@ from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
 from sampletones.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones.timers import PhaseTimer
-from sampletones.types.data import Initials
+from sampletones_shared.types.data import Initials
 
 from .generator import Generator
 

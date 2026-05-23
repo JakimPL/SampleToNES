@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from sampletones.utils.meta import NonInstantiableMeta
+from sampletones_shared.meta import NonInstantiableMeta
 
 
 @dataclass(frozen=True, kw_only=True)

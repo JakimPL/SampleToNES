@@ -4,8 +4,8 @@ from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types.application import Color, Sender
-from sampletones.types.data import SerializedData
+from sampletones_shared.types.application import Color, Sender
+from sampletones_shared.types.data import SerializedData
 
 from ...constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
 from ...themes.tables.table import TableTheme

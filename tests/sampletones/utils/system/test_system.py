@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sampletones.utils.system.system import System
+from sampletones_shared.utils.system.system import System
 
 
 def test_current_system() -> None:

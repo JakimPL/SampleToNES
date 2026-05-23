@@ -3,8 +3,8 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
-from sampletones.exceptions import PlaybackError
-from sampletones.types.callback import VoidCallback
+from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.types.callback import VoidCallback
 
 from ..constants.player import (
     DIM_PANEL_HEIGHT_PLAYER,

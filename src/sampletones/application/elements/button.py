@@ -4,8 +4,8 @@ from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types.application import Sender
-from sampletones.types.callback import Callback
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import Callback
 
 from ..constants.general import SUF_BUTTON
 from ..themes.default import DefaultTheme

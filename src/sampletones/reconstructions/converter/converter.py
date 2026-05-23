@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
-from sampletones.exceptions import NoFilesToProcessError
-from sampletones.logger import LoggerProtocol
-from sampletones.logger import logger as default_logger
 from sampletones.parallelization import TaskProcessor
+from sampletones_shared.exceptions import NoFilesToProcessError
+from sampletones_shared.logger import LoggerProtocol
+from sampletones_shared.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file

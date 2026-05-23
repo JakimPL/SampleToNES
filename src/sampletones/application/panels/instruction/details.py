@@ -5,8 +5,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
 from sampletones.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
-from sampletones.types.application import Sender
-from sampletones.utils import clamp
+from sampletones_shared.types.application import Sender
+from sampletones_shared.utils import clamp
 
 from ...constants.general import MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
 from ...constants.instructions import (

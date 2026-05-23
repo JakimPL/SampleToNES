@@ -5,11 +5,11 @@ from tqdm import tqdm
 
 from sampletones.configs import Config
 from sampletones.library import InstructionLibrary
-from sampletones.logger import logger, null_logger
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.reconstructions import Reconstructor
 from sampletones.reconstructions.converter import ReconstructionConverter, get_output_path
 from sampletones.reconstructions.converter import reconstruct_file as _reconstruct_file
+from sampletones_shared.logger import logger, null_logger
 
 from .library import generate_library
 

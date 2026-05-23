@@ -5,10 +5,10 @@ from typing import List, Self
 
 import numpy as np
 
-from sampletones.array import xp
 from sampletones.configs import Config
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import Array, get_array_module
+from sampletones_shared.array import xp
+from sampletones_shared.types.array import Array, get_array_module
 
 from ..transformer import FFTTransformer
 from ..window.window import Window

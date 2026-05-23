@@ -7,10 +7,10 @@ from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones.constants.general import MAX_WORKERS
-from sampletones.logger import LoggerProtocol
-from sampletones.logger import logger as default_logger
-from sampletones.types.callback import Callback, VoidCallback
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.logger import LoggerProtocol
+from sampletones_shared.logger import logger as default_logger
+from sampletones_shared.types.callback import Callback, VoidCallback
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from .task import TaskProgress, TaskStatus
 

@@ -6,7 +6,7 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
-from sampletones.types.data import SerializedData
+from sampletones_shared.types.data import SerializedData
 
 from .maps import INSTRUCTION_CLASS_MAP
 from .types import InstructionT

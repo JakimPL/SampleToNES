@@ -6,8 +6,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pytest
 
-from sampletones.utils.transformations.functions import exp, identity, power
-from sampletones.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.functions import exp, identity, power
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite

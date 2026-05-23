@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sampletones.constants.enums import GeneratorName
-from sampletones.utils import period_to_name, pitch_to_name
+from sampletones.utils.frequencies import period_to_name, pitch_to_name
 
 
 def display_pitch(value: Optional[int], generator: GeneratorName) -> str:

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.callbacks import CallbackMixin
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

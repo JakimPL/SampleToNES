@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.enums import GeneratorName
 from sampletones.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
-from sampletones.types.application import Sender
+from sampletones_shared.types.application import Sender
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

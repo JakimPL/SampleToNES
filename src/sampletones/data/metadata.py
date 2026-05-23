@@ -4,7 +4,7 @@ from typing import Self, Type
 
 from pydantic import ConfigDict, Field
 
-from sampletones.constants.application import (
+from sampletones_shared.constants.application import (
     SAMPLETONES_LIBRARY_DATA_VERSION,
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,

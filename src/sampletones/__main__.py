@@ -87,7 +87,7 @@ def main() -> None:
         return None
 
     if args.version:
-        from sampletones.constants.application import SAMPLETONES_NAME_VERSION
+        from sampletones_shared.constants.application import SAMPLETONES_NAME_VERSION
 
         return print(SAMPLETONES_NAME_VERSION)
 
@@ -99,7 +99,7 @@ def main() -> None:
 
     from sampletones.configs import Config
     from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION
-    from sampletones.logger import logger
+    from sampletones_shared.logger import logger
 
     config = Config.load(config_path) if config_path else Config.default()
 

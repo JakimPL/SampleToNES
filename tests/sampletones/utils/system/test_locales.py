@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from sampletones.utils.system.locales import PREFERRED_ENCODING, to_utf8
+from sampletones_shared.utils.system.locales import PREFERRED_ENCODING, to_utf8
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
 

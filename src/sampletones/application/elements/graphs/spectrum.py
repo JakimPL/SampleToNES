@@ -6,7 +6,7 @@ import numpy as np
 from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones.constants.general import MIN_FREQUENCY
 from sampletones.library import InstructionLibraryFragment
-from sampletones.types.application import Color, Sender
+from sampletones_shared.types.application import Color, Sender
 
 from ...constants.graphs import (
     DIM_GRAPH_HEIGHT,

@@ -7,7 +7,7 @@ import pytest
 
 from sampletones.structures.collection.bidirectional import BidirectionalHashMap
 from sampletones.structures.collection.indexed import IndexedCollection
-from sampletones.types.data import ModelHashable
+from sampletones_shared.types.data import ModelHashable
 from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
 
 HashableT = TypeVar("HashableT", bound=ModelHashable)

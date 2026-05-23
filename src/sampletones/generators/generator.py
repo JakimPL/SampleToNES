@@ -9,7 +9,7 @@ from sampletones.constants.general import MIN_SAMPLE_LENGTH
 from sampletones.fft import CyclicArray
 from sampletones.instructions import InstructionT, InstructionTypeUnion
 from sampletones.timers import TimerT, get_frequency_table
-from sampletones.types.data import Initials
+from sampletones_shared.types.data import Initials
 
 
 class Generator(ABC, Generic[InstructionT, TimerT]):

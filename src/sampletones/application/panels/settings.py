@@ -4,7 +4,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDevice, AudioDeviceManager, CurrentDevice, validate_sample_rate
 from sampletones.constants.audio import BUFFER_SIZES, BufferSize, SampleRate
-from sampletones.types.application import Sender
+from sampletones_shared.types.application import Sender
 
 from ..config.settings import AudioSettingsData
 from ..constants.general import TTL_WINDOW_MAIN, VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME

@@ -10,13 +10,13 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
-from sampletones.array import xp
-from sampletones.exceptions import DeserializationError, SerializationError
-from sampletones.types.array import Array, ArrayClasses, Numeric, NumericClasses
-from sampletones.types.callback import Callback
-from sampletones.types.data import SerializedData
-from sampletones.types.path import Pathlike
-from sampletones.utils import load_binary, save_binary, snake_to_camel
+from sampletones_shared.array import xp
+from sampletones_shared.exceptions import DeserializationError, SerializationError
+from sampletones_shared.types.array import Array, ArrayClasses, Numeric, NumericClasses
+from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.data import SerializedData
+from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils import load_binary, save_binary, snake_to_camel
 
 from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 

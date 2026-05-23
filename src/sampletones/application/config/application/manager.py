@@ -6,8 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager, CurrentDevice
 from sampletones.constants.audio import BufferSize
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
-from sampletones.logger import logger
-from sampletones.utils import get_directory
+from sampletones_shared.logger import logger
+from sampletones_shared.utils import get_directory
 
 from ...constants.general import TAG_TABS
 from .config import ApplicationConfig

@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from sampletones.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
-from sampletones.types.array import Array, ArrayClasses, get_array_module
+from sampletones_shared.types.array import Array, ArrayClasses, get_array_module
 
 
 def calculate_n_bins(

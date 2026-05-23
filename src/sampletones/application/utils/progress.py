@@ -1,7 +1,7 @@
 import sys
 
-from sampletones.constants.application import SAMPLETONES_NAME
-from sampletones.logger import logger
+from sampletones_shared.constants.application import SAMPLETONES_NAME
+from sampletones_shared.logger import logger
 
 
 class SystemProgress:

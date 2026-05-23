@@ -2,9 +2,9 @@ from functools import wraps
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from sampletones.types.application import Sender
-from sampletones.types.data import SerializedData
-from sampletones.utils import to_path
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.data import SerializedData
+from sampletones_shared.utils import to_path
 
 T = TypeVar("T")
 

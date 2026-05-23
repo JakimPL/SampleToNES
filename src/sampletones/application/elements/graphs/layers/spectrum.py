@@ -7,7 +7,7 @@ from sampletones.constants.spectrum import CQT_CUTOFF_FREQUENCY
 from sampletones.fft.utils import to_log_even_bands
 from sampletones.library import InstructionLibraryFragment
 from sampletones.structures.histogram import Histogram
-from sampletones.types.application import Color
+from sampletones_shared.types.application import Color
 
 from ....constants.graphs import VAL_MAX_SPECTRUM_DISPLAY_BINS, VAL_MAX_SPECTRUM_GRAYSCALE
 from .layer import Layer

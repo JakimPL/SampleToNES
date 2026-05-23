@@ -7,7 +7,7 @@ from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones.generators import GeneratorUnion
 from sampletones.instructions import InstructionUnion
 from sampletones.types.feature import FeatureValue
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from ..constants.general import VAL_PRIORITY_SCHEDULE
 from ..utils.callbacks.queue import CallbackQueue

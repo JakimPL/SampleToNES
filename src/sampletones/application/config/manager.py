@@ -17,9 +17,9 @@ from sampletones.constants.general import (
 from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones.fft import Window
 from sampletones.library import InstructionLibraryKey
-from sampletones.logger import logger
-from sampletones.types.callback import VoidCallback
-from sampletones.types.data import SerializedData
+from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.data import SerializedData
 
 from ..config.parameters import ConfigParameter
 from ..constants.general import (

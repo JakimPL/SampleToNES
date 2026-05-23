@@ -4,7 +4,7 @@ from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Union
 
-from sampletones.types.path import Pathlike
+from sampletones_shared.types.path import Pathlike
 
 
 class ResourceLoader:

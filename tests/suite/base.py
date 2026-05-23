@@ -1,6 +1,6 @@
 from typing import Sequence, Type
 
-from sampletones.utils.meta import NonInstantiableMeta
+from sampletones_shared.meta import NonInstantiableMeta
 from tests.suite.case import BaseTestCase
 
 

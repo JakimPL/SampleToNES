@@ -5,8 +5,8 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from sampletones.constants.enums import GeneratorName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.types.data import SerializedData
-from sampletones.utils import serialize_array
+from sampletones_shared.types.data import SerializedData
+from sampletones_shared.utils import serialize_array
 
 
 class ApproximationsItem(DataModel):

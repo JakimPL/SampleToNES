@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from sampletones.utils.transformations.functions import identity
-from sampletones.utils.transformations.morpher import PowerMorpher
-from sampletones.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.functions import identity
+from sampletones_shared.utils.transformations.morpher import PowerMorpher
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

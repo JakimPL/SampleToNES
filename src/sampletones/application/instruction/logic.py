@@ -1,7 +1,8 @@
 from typing import Any, List, Optional, Tuple, Union
 
 from sampletones.constants.general import DUTY_CYCLES, NOISE_PERIODS
-from sampletones.utils import hash_model, pitch_to_name
+from sampletones.utils.frequencies import pitch_to_name
+from sampletones_shared.utils.serialization import hash_model
 
 from ..constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
 from ..constants.instructions import (

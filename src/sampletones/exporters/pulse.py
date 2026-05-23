@@ -7,7 +7,7 @@ from sampletones.constants.general import MIN_PITCH
 from sampletones.generators import GeneratorTypeUnion, PulseGenerator
 from sampletones.instructions import InstructionFields, InstructionTypeUnion, PulseInstruction
 from sampletones.types.feature import FeatureMap
-from sampletones.utils import is_pitch_valid
+from sampletones.utils.frequencies import is_pitch_valid
 
 from .exporter import Exporter
 

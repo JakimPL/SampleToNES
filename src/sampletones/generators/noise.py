@@ -7,7 +7,7 @@ from sampletones.constants.enums import GeneratorClassName, GeneratorName
 from sampletones.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
 from sampletones.instructions import InstructionTypeUnion, NoiseInstruction
 from sampletones.timers import LFSRTimer
-from sampletones.types.data import Initials
+from sampletones_shared.types.data import Initials
 
 from .generator import Generator
 

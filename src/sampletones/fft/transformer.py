@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import (
+from sampletones_shared.types.array import (
     Array,
     ArrayOrNumeric,
     ArrayOrScalarClasses,
@@ -16,8 +16,8 @@ from sampletones.types.array import (
     Numeric,
     NumericClasses,
 )
-from sampletones.utils.transformations.morpher import PowerMorpher
-from sampletones.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.morpher import PowerMorpher
+from sampletones_shared.utils.transformations.transformation import Transformation
 
 from .spectrum.method import SpectrumMethod
 from .spectrum.spectrum import calculate_spectrum

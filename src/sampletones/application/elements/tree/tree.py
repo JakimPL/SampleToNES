@@ -7,12 +7,12 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants import paths
-from sampletones.logger import logger
 from sampletones.reconstructions import Reconstruction
 from sampletones.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.types.application import Sender
-from sampletones.types.callback import Callback, MessageCallback, PathCallback
-from sampletones.utils import open_path_in_explorer
+from sampletones_shared.logger import logger
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import Callback, MessageCallback, PathCallback
+from sampletones_shared.utils import open_path_in_explorer
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (

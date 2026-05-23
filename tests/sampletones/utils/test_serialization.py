@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 import numpy as np
 import pytest
 
-from sampletones.utils.serialization import (
+from sampletones_shared.utils.serialization import (
     HASH_LENGTH,
     calculate_hash,
     deserialize_array,

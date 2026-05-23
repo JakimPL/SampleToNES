@@ -7,10 +7,10 @@ from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type,
 
 from pydantic import ConfigDict, field_serializer, model_validator
 
-from sampletones.array import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.exceptions import IncompleteHistogramRebinningWarning
-from sampletones.types.array import (
+from sampletones_shared.array import xp
+from sampletones_shared.exceptions import IncompleteHistogramRebinningWarning
+from sampletones_shared.types.array import (
     Array,
     ArrayClasses,
     ArrayOrNumeric,
@@ -22,8 +22,8 @@ from sampletones.types.array import (
     NumericClasses,
     get_array_module,
 )
-from sampletones.types.data import SerializedData
-from sampletones.utils import cast_to_float, is_increasing, isfinite, serialize_array
+from sampletones_shared.types.data import SerializedData
+from sampletones_shared.utils import cast_to_float, is_increasing, isfinite, serialize_array
 
 from .interval import Interval
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from sampletones.constants.paths import EXT_FILE_LIBRARY
-from sampletones.types.path import Pathlike
+from sampletones_shared.types.path import Pathlike
 
 from .key import InstructionLibraryKey
 

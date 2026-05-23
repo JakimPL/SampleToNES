@@ -6,16 +6,12 @@ import numpy as np
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones.exporters import Features
-from sampletones.logger import logger
-from sampletones.types.application import Sender
-from sampletones.types.callback import VoidCallback
 from sampletones.types.feature import FeatureValue
-from sampletones.utils import (
+from sampletones.utils.frequencies import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
     SANITIZED_NAME_TO_PERIOD,
     SANITIZED_NAME_TO_PITCH,
-    clamp,
     clamp_period,
     clamp_pitch,
     period_to_name,
@@ -23,6 +19,10 @@ from sampletones.utils import (
     sanitize_period,
     sanitize_pitch,
 )
+from sampletones_shared.logger import logger
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils.arrays import clamp
 
 from ...constants.general import (
     COL_TEXT_DISABLED_DEFAULT,

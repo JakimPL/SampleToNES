@@ -1,6 +1,6 @@
 import threading
 
-from sampletones.utils.meta import SingletonMeta
+from sampletones_shared.meta import SingletonMeta
 
 
 class TestSingleton:

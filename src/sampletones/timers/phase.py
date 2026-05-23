@@ -3,7 +3,7 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from sampletones.constants.general import APU_CLOCK, RESET_PHASE
-from sampletones.types.data import Initials
+from sampletones_shared.types.data import Initials
 
 from .timer import Timer
 

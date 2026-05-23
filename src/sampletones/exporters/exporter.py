@@ -8,7 +8,8 @@ from sampletones.generators import GeneratorTypeUnion
 from sampletones.instructions import InstructionFields, InstructionT, InstructionTypeUnion
 from sampletones.timers import PhaseTimer
 from sampletones.types.feature import FeatureMap
-from sampletones.utils import pitch_to_frequency, trim
+from sampletones.utils.frequencies import pitch_to_frequency
+from sampletones_shared.utils.arrays import trim
 
 from .feature import Features
 

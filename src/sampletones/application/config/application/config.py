@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.data import Metadata
-from sampletones.logger import logger
-from sampletones.types.path import Pathlike
-from sampletones.utils import load_yaml, save_yaml, to_path
+from sampletones_shared.logger import logger
+from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils import load_yaml, save_yaml, to_path
 
 from .audio import AudioConfig
 from .favorites import Favorites

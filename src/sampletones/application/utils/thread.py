@@ -2,7 +2,7 @@ import threading
 from functools import wraps
 from typing import Any, Callable, Optional, cast
 
-from sampletones.types.callback import CallbackT, VoidCallback
+from sampletones_shared.types.callback import CallbackT, VoidCallback
 
 
 class SingleThreadExecutor:

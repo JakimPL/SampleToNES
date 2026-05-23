@@ -7,9 +7,9 @@ from pydantic import ConfigDict, Field
 
 from sampletones.constants.enums import InstructionClassName
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionData, InstructionT
-from sampletones.types.data import SerializedData
+from sampletones_shared.exceptions import InstructionTypeMismatchError
+from sampletones_shared.types.data import SerializedData
 
 from .fragment import InstructionLibraryFragment
 

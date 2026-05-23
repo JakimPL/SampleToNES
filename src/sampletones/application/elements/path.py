@@ -3,11 +3,11 @@ from typing import Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.types.application import Sender
-from sampletones.types.callback import VoidCallback
-from sampletones.types.path import Pathlike
-from sampletones.utils import open_path_in_explorer, shorten_path, to_path
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.path import Pathlike
+from sampletones_shared.utils import open_path_in_explorer, shorten_path, to_path
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from ..constants.general import (
     COL_PATH_TEXT,

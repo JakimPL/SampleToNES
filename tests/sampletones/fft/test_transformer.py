@@ -8,9 +8,9 @@ import pytest
 
 from sampletones.fft.transformer import FFTTransformer
 from sampletones.structures.histogram import Histogram
-from sampletones.types.array import Array, ArrayClasses, MultaryTransformation, Numeric, NumericClasses
-from sampletones.utils.transformations.morpher import PowerMorpher
-from sampletones.utils.transformations.transformation import Transformation
+from sampletones_shared.types.array import Array, ArrayClasses, MultaryTransformation, Numeric, NumericClasses
+from sampletones_shared.utils.transformations.morpher import PowerMorpher
+from sampletones_shared.utils.transformations.transformation import Transformation
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.sampletones.functions import compare_functions

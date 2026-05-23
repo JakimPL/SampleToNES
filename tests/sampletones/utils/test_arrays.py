@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from sampletones.array import xp
-from sampletones.types.array import DTypeLike
-from sampletones.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isfinite, isnan, pad, trim
+from sampletones_shared.types.array import DTypeLike
+from sampletones_shared.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isfinite, isnan, pad, trim
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite

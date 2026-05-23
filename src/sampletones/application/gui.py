@@ -8,7 +8,9 @@ from screeninfo import Monitor, get_monitors
 
 from sampletones.audio import AudioDeviceManager
 from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
-from sampletones.exceptions import (
+from sampletones.library import InstructionLibraryKey
+from sampletones.sequencer import Sequencer
+from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
@@ -17,11 +19,9 @@ from sampletones.exceptions import (
     LibraryDisplayError,
     LoadReconstructionError,
 )
-from sampletones.library import InstructionLibraryKey
-from sampletones.logger import logger
-from sampletones.sequencer import Sequencer
-from sampletones.types.application import Sender
-from sampletones.types.callback import Callback, VoidCallback
+from sampletones_shared.logger import logger
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import Callback, VoidCallback
 
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager

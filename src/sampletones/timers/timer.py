@@ -5,7 +5,7 @@ import numpy as np
 
 from sampletones.constants.general import MAX_SAMPLE_LENGTH, MIN_SAMPLE_LENGTH, RESET_PHASE
 from sampletones.fft import CyclicArray, Window
-from sampletones.types.data import Initials
+from sampletones_shared.types.data import Initials
 
 
 class Timer(ABC):

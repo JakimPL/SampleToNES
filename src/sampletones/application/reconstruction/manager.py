@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import Optional
 
-from sampletones.logger import logger
 from sampletones.reconstructions import Reconstruction
-from sampletones.types.callback import VoidCallback
-from sampletones.utils import hash_model, open_path_in_explorer
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.utils import hash_model, open_path_in_explorer
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from ..constants.general import VAL_PRIORITY_SCHEDULE
 from ..utils.callbacks.queue import CallbackQueue

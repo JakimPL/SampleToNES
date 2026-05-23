@@ -5,13 +5,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from sampletones.array import CUPY_AVAILABLE, xp
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName, InstructionClassName
 from sampletones.fft import Fragment, FragmentedAudio, Window
 from sampletones.generators import GeneratorUnion, get_generator_by_instruction
 from sampletones.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
 from sampletones.library import InstructionLibraryData
+from sampletones_shared.array import CUPY_AVAILABLE, xp
 
 from ..criterion import Criterion
 from .approximation import ApproximationData

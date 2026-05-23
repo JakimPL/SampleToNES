@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from anytree import Node
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.types.callback import Callback
+from sampletones_shared.types.callback import Callback
 
 
 class Arguments(BaseModel):

@@ -14,10 +14,10 @@ from sampletones.constants.audio import (
     BufferSize,
     SampleRate,
 )
-from sampletones.exceptions import PlaybackError
-from sampletones.logger import logger
-from sampletones.utils import to_utf8
-from sampletones.utils.callbacks import CallbackMixin
+from sampletones_shared.exceptions import PlaybackError
+from sampletones_shared.logger import logger
+from sampletones_shared.utils import to_utf8
+from sampletones_shared.utils.callbacks import CallbackMixin
 
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio

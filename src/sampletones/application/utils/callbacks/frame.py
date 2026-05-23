@@ -7,8 +7,8 @@ from typing import List
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.meta import NonInstantiableMeta
-from sampletones.types.callback import VoidCallback
+from sampletones_shared.meta import NonInstantiableMeta
+from sampletones_shared.types.callback import VoidCallback
 
 
 @dataclass(frozen=True)

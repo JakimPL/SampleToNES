@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones.utils import System
+from sampletones_shared.utils import System
 
 from ..config.manager import ConfigManager
 from ..constants.general import LBL_TREE_ROOT

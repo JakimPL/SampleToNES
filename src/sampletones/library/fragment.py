@@ -10,12 +10,12 @@ from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName
 from sampletones.constants.general import LIBRARY_PHASES_PER_SAMPLE
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones.exceptions import InstructionTypeMismatchError
 from sampletones.fft import CyclicArray, FFTTransformer, Fragment, Window
 from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, Generator
 from sampletones.instructions import InstructionData, InstructionT
 from sampletones.structures.histogram import Histogram
-from sampletones.types.data import Initials, ReducedObject, SerializedData
+from sampletones_shared.exceptions import InstructionTypeMismatchError
+from sampletones_shared.types.data import Initials, ReducedObject, SerializedData
 
 
 def _instruction_library_fragment(data: SerializedData) -> InstructionLibraryFragment[Any]:

@@ -3,7 +3,7 @@ from typing import Final, Tuple
 
 from platformdirs import user_config_dir, user_data_dir, user_documents_path
 
-from sampletones.constants.application import SAMPLETONES_GROUP, SAMPLETONES_NAME
+from sampletones_shared.constants.application import SAMPLETONES_GROUP, SAMPLETONES_NAME
 
 # User paths
 USER_PATH_DOCUMENTS: Final[Path] = Path(user_documents_path()) / SAMPLETONES_NAME

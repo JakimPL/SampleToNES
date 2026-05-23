@@ -6,9 +6,9 @@ from sampletones.constants.general import BATCH_SIZE
 from sampletones.fft import Window
 from sampletones.generators import GeneratorUnion, get_generators_map
 from sampletones.instructions import InstructionUnion
-from sampletones.logger import LoggerProtocol
-from sampletones.logger import logger as default_logger
 from sampletones.parallelization import TaskProcessor
+from sampletones_shared.logger import LoggerProtocol
+from sampletones_shared.logger import logger as default_logger
 
 from ..data import InstructionLibraryData
 from ..fragment import InstructionLibraryFragment
