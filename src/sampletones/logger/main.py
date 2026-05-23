@@ -8,8 +8,8 @@ from urllib.parse import quote
 from rich.logging import RichHandler
 
 from sampletones.constants.application import SAMPLETONES_NAME
+from sampletones.meta import SingletonMeta
 from sampletones.types.path import Pathlike
-from sampletones.utils.meta import SingletonMeta
 
 
 class Logger(metaclass=SingletonMeta):

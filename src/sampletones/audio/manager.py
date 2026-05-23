@@ -15,9 +15,9 @@ from sampletones.constants.audio import (
     SampleRate,
 )
 from sampletones.exceptions import PlaybackError
+from sampletones.logger import logger
 from sampletones.utils import to_utf8
 from sampletones.utils.callbacks import CallbackMixin
-from sampletones.utils.logger import logger
 
 from .device import AudioDevice, CurrentDevice
 from .io import load_audio

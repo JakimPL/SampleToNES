@@ -6,6 +6,7 @@ import numpy as np
 from sampletones.constants.enums import FeatureKey, GeneratorName
 from sampletones.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones.exporters import Features
+from sampletones.logger import logger
 from sampletones.types.application import Sender
 from sampletones.types.callback import VoidCallback
 from sampletones.types.feature import FeatureValue
@@ -22,7 +23,6 @@ from sampletones.utils import (
     sanitize_period,
     sanitize_pitch,
 )
-from sampletones.utils.logger import logger
 
 from ...constants.general import (
     COL_TEXT_DISABLED_DEFAULT,

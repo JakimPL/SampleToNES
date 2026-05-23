@@ -99,7 +99,7 @@ def main() -> None:
 
     from sampletones.configs import Config
     from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION
-    from sampletones.utils.logger import logger
+    from sampletones.logger import logger
 
     config = Config.load(config_path) if config_path else Config.default()
 

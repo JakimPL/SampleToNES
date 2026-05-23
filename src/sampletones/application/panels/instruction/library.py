@@ -18,11 +18,11 @@ from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION
 from sampletones.instructions import InstructionUnion
 from sampletones.library import InstructionLibraryKey, get_display_name_from_key
 from sampletones.library.utils import create_key_from_filename
+from sampletones.logger import logger
 from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones.types.application import Sender
 from sampletones.types.callback import MessageCallback
-from sampletones.utils.logger import logger
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

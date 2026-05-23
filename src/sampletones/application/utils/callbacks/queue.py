@@ -6,9 +6,9 @@ from functools import wraps
 from typing import Any, Callable, List, Optional, Union, cast
 
 from sampletones.exceptions import CallbackQueueStop
+from sampletones.logger import logger
+from sampletones.meta import NonInstantiableMeta
 from sampletones.types.callback import Callback, CallbackT
-from sampletones.utils.logger import logger
-from sampletones.utils.meta import NonInstantiableMeta
 
 from .priority import CallbackPriority
 from .task import CallbackTask

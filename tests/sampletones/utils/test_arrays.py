@@ -6,7 +6,7 @@ from typing import Any, Type, Union
 import numpy as np
 import pytest
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.types.array import DTypeLike
 from sampletones.utils.arrays import cast_to_float, clamp, infer_dtype, is_increasing, isfinite, isnan, pad, trim
 from tests.sampletones.arrays import assert_array_equal

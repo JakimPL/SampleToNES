@@ -5,7 +5,7 @@ from typing import List, Self
 
 import numpy as np
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.configs import Config
 from sampletones.structures.histogram import Histogram
 from sampletones.types.array import Array, get_array_module

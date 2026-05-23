@@ -11,8 +11,8 @@ from sampletones.library import (
     InstructionLibraryKey,
 )
 from sampletones.library.creator import InstructionsLibraryCreator
+from sampletones.logger import logger, null_logger
 from sampletones.parallelization import TaskProgress, TaskStatus
-from sampletones.utils.logger import logger, null_logger
 
 
 def load_library(library_path: Path, config_path: Optional[Path] = None) -> None:

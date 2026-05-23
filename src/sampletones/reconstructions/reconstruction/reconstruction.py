@@ -33,10 +33,10 @@ from sampletones.exporters import (
     Features,
 )
 from sampletones.instructions import InstructionUnion, get_instruction_by_type
+from sampletones.logger import logger
 from sampletones.types.data import SerializedData
 from sampletones.types.path import Pathlike
 from sampletones.utils import pad, serialize_array
-from sampletones.utils.logger import logger
 from sampletones.utils.serialization import load_binary
 
 from ..reconstructor.state import ReconstructionState

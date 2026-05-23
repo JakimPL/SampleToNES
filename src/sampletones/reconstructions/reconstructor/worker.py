@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
-from sampletones import CUPY_AVAILABLE, xp
+from sampletones.array import CUPY_AVAILABLE, xp
 from sampletones.configs import Config
 from sampletones.constants.enums import GeneratorClassName, GeneratorName, InstructionClassName
 from sampletones.fft import Fragment, FragmentedAudio, Window

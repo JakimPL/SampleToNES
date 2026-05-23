@@ -18,10 +18,10 @@ from sampletones.exceptions import (
     LoadReconstructionError,
 )
 from sampletones.library import InstructionLibraryKey
+from sampletones.logger import logger
 from sampletones.sequencer import Sequencer
 from sampletones.types.application import Sender
 from sampletones.types.callback import Callback, VoidCallback
-from sampletones.utils.logger import logger
 
 from .config.application.manager import ApplicationConfigManager
 from .config.manager import ConfigManager

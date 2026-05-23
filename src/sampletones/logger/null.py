@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from sampletones.utils.meta import SingletonMeta
+from sampletones.meta import SingletonMeta
 
 
 class NullLogger(metaclass=SingletonMeta):

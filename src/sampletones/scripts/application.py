@@ -3,7 +3,7 @@ from typing import Optional
 
 from sampletones.application import GUI
 from sampletones.constants.application import SAMPLETONES_NAME_VERSION
-from sampletones.utils.logger import logger
+from sampletones.logger import logger
 
 
 def run_application(

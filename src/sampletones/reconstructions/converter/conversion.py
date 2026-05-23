@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Tuple
 
 from sampletones.exceptions import UnsupportedAudioFormatError
-from sampletones.utils.logger import logger
+from sampletones.logger import logger
 
 from ..reconstructor.reconstructor import Reconstructor
 

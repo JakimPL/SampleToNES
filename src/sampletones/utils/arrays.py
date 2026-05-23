@@ -2,7 +2,7 @@ from typing import Any, Optional, Union, overload
 
 import numpy as np
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.types.array import (
     Array,
     ArrayClasses,

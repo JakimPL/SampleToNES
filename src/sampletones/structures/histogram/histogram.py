@@ -7,7 +7,7 @@ from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type,
 
 from pydantic import ConfigDict, field_serializer, model_validator
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.exceptions import IncompleteHistogramRebinningWarning
 from sampletones.types.array import (

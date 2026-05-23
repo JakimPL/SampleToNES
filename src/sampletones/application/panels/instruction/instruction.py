@@ -5,8 +5,8 @@ import dearpygui.dearpygui as dpg
 from sampletones.audio import AudioDeviceManager
 from sampletones.configs import InstructionsLibraryConfig
 from sampletones.exceptions import LibraryDisplayError
+from sampletones.logger import logger
 from sampletones.types.callback import VoidCallback
-from sampletones.utils.logger import logger
 
 from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
 from ...constants.graphs import DIM_SPECTRUM_HEIGHT, DIM_SPECTRUM_WIDTH, DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH

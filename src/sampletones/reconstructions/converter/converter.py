@@ -3,9 +3,9 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from sampletones.configs import Config
 from sampletones.exceptions import NoFilesToProcessError
+from sampletones.logger import LoggerProtocol
+from sampletones.logger import logger as default_logger
 from sampletones.parallelization import TaskProcessor
-from sampletones.utils.logger import LoggerProtocol
-from sampletones.utils.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file

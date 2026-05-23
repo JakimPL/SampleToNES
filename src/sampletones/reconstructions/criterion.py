@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Union
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.configs import Config
 from sampletones.fft import Fragment, Window
 from sampletones.structures.histogram import Histogram

@@ -1,4 +1,4 @@
-.PHONY: pre_commit build install test clean help
+.PHONY: pre0commit build install test clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
@@ -41,7 +41,7 @@ clean:
 install:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/install$(SCRIPT_EXT) --dev
 
-pre_commit:
+pre-commit:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pre_commit$(SCRIPT_EXT)
 
 test:

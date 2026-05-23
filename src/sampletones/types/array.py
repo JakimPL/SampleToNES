@@ -4,7 +4,7 @@ from typing import Callable, TypeAlias, TypeVar, Union
 import numpy as np
 import numpy.typing as np_typing
 
-from sampletones import xp, xp_typing
+from sampletones.array import xp, xp_typing
 
 T = TypeVar("T")
 

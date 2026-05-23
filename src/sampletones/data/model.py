@@ -10,7 +10,7 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
-from sampletones import xp
+from sampletones.array import xp
 from sampletones.exceptions import DeserializationError, SerializationError
 from sampletones.types.array import Array, ArrayClasses, Numeric, NumericClasses
 from sampletones.types.callback import Callback
