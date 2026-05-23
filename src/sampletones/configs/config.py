@@ -10,7 +10,8 @@ from sampletones.constants.paths import CONFIG_PATH
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones.data.metadata import Metadata
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import load_json, save_json, to_path
+from sampletones_shared.utils.serialization import load_json, save_json
+from sampletones_shared.utils.system.paths import to_path
 
 from .general import GeneralConfig
 from .generation import GenerationConfig

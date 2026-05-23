@@ -6,7 +6,7 @@ from pydantic import ConfigDict, Field, field_serializer
 from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 from sampletones_shared.types.data import SerializedData
-from sampletones_shared.utils import serialize_array
+from sampletones_shared.utils.serialization import serialize_array
 
 from .window import Window
 

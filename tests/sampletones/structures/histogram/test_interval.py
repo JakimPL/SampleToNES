@@ -9,7 +9,7 @@ from sampletones_shared.types.array import Float
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
-from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
+from tests.suite.case import BaseAutolabelTestCase
 
 
 class TestBool(BaseTestSuite):

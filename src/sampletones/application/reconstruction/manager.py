@@ -4,8 +4,9 @@ from typing import Optional
 from sampletones.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils import hash_model, open_path_in_explorer
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.serialization import hash_model
+from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 from ..constants.general import VAL_PRIORITY_SCHEDULE
 from ..utils.callbacks.queue import CallbackQueue

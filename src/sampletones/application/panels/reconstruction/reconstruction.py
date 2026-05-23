@@ -9,7 +9,7 @@ from sampletones.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, VoidCallback
-from sampletones_shared.utils import to_path
+from sampletones_shared.utils.system.paths import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

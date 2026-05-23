@@ -10,7 +10,7 @@ from sampletones.reconstructions.converter import ReconstructionConverter, get_o
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
-from sampletones_shared.utils import to_path
+from sampletones_shared.utils.system.paths import to_path
 
 from ...config.manager import ConfigManager
 from ...constants.general import (

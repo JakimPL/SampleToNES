@@ -4,7 +4,7 @@ from typing import Callable, TypeVar
 
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.data import SerializedData
-from sampletones_shared.utils import to_path
+from sampletones_shared.utils.system.paths import to_path
 
 T = TypeVar("T")
 

@@ -11,7 +11,7 @@ from sampletones.generators import MIXER_LEVELS, GeneratorUnion, get_generators_
 from sampletones.library import InstructionLibrary, InstructionLibraryData
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import to_path
+from sampletones_shared.utils.system.paths import to_path
 
 from ..reconstruction.reconstruction import Reconstruction
 from .approximation import ApproximationData

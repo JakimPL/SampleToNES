@@ -12,7 +12,7 @@ from sampletones.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, MessageCallback, PathCallback
-from sampletones_shared.utils import open_path_in_explorer
+from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 from ...config.application.manager import ApplicationConfigManager
 from ...constants.general import (

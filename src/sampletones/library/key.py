@@ -8,7 +8,7 @@ from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones.constants.paths import EXT_FILE_LIBRARY
 from sampletones.fft import Window
-from sampletones_shared.utils import hash_model
+from sampletones_shared.utils.serialization import hash_model
 
 
 class InstructionLibraryKey(BaseModel):

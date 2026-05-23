@@ -16,7 +16,7 @@ from sampletones_shared.types.array import Array, ArrayClasses, Numeric, Numeric
 from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import load_binary, save_binary, snake_to_camel
+from sampletones_shared.utils.serialization import load_binary, save_binary, snake_to_camel
 
 from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
 

@@ -4,7 +4,8 @@ from typing import List, Tuple
 from sampletones.configs import Config
 from sampletones.constants.enums import GENERATOR_ABBREVIATIONS, GeneratorName
 from sampletones.constants.paths import EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
-from sampletones_shared.utils import hash_models, to_path
+from sampletones_shared.utils.serialization import hash_models
+from sampletones_shared.utils.system.paths import to_path
 
 
 def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:

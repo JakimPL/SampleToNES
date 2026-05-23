@@ -9,7 +9,7 @@ from pydantic import ConfigDict
 from sampletones.configs import Config, InstructionsLibraryConfig
 from sampletones.data.model import DataModel
 from sampletones.data.scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones_shared.utils import pad
+from sampletones_shared.utils.arrays import pad
 
 from ..fft import calculate_weights
 

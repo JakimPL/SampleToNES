@@ -55,7 +55,8 @@ def calculate_fft_frequencies(fragment_length: int, sample_rate: int) -> np.ndar
         >>> float(freqs[-1])
         22050.0
     """
-    return rfftfreq(fragment_length, 1.0 / sample_rate)
+    frequencies: np.ndarray = rfftfreq(fragment_length, 1.0 / sample_rate)
+    return frequencies
 
 
 def a_weighting(frequencies: np.ndarray) -> np.ndarray:

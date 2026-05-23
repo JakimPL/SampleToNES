@@ -6,8 +6,8 @@ import dearpygui.dearpygui as dpg
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import open_path_in_explorer, shorten_path, to_path
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.paths import open_path_in_explorer, shorten_path, to_path
 
 from ..constants.general import (
     COL_PATH_TEXT,

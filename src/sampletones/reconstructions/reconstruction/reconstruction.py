@@ -36,8 +36,8 @@ from sampletones_shared.exceptions.reconstruction import InvalidReconstructionVa
 from sampletones_shared.logger import logger
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import pad, serialize_array
-from sampletones_shared.utils.serialization import load_binary
+from sampletones_shared.utils.arrays import pad
+from sampletones_shared.utils.serialization import load_binary, serialize_array
 
 from ..reconstructor.state import ReconstructionState
 from .approximations import ApproximationsItem

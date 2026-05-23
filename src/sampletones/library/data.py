@@ -22,7 +22,7 @@ from sampletones_shared.exceptions import (
     InvalidMetadataError,
 )
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import load_binary
+from sampletones_shared.utils.serialization import load_binary
 
 from .fragment import InstructionLibraryFragment
 from .item import LibraryItem

@@ -6,7 +6,8 @@ from sampletones.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones.data import Metadata
 from sampletones_shared.logger import logger
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils import load_yaml, save_yaml, to_path
+from sampletones_shared.utils.serialization import load_yaml, save_yaml
+from sampletones_shared.utils.system.paths import to_path
 
 from .audio import AudioConfig
 from .favorites import Favorites

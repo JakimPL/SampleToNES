@@ -5,7 +5,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones.constants.general import MAX_WORKERS
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils import to_path
+from sampletones_shared.utils.system.paths import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

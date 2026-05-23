@@ -36,6 +36,7 @@ dev = [
     "pytest==9.0.2",
     "pytest-cov==7.0.0",
     "pytest-xdist==3.8.0",
+    "types-PyYAML",
 ]
 gpu = ["cupy==13.6.0"]
 
@@ -72,7 +73,7 @@ show_missing = true
 
 [tool.mypy]
 python_version = "3.12"
-files = "src/sampletones"
+files = ["src/sampletones", "src/sampletones_shared"]
 exclude = ["src/sampletones_schemas", "tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true

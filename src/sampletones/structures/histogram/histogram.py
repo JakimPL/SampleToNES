@@ -23,7 +23,8 @@ from sampletones_shared.types.array import (
     get_array_module,
 )
 from sampletones_shared.types.data import SerializedData
-from sampletones_shared.utils import cast_to_float, is_increasing, isfinite, serialize_array
+from sampletones_shared.utils.arrays import cast_to_float, is_increasing, isfinite
+from sampletones_shared.utils.serialization import serialize_array
 
 from .interval import Interval
 

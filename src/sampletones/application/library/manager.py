@@ -19,8 +19,8 @@ from sampletones.library.creator import InstructionsLibraryCreator
 from sampletones.parallelization import TaskProgress, TaskStatus
 from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.utils import to_path
 from sampletones_shared.utils.callbacks import CallbackMixin
+from sampletones_shared.utils.system.paths import to_path
 
 from ..config.manager import ConfigManager
 from ..constants.instructions import LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES
