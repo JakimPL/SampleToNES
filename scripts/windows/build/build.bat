@@ -7,9 +7,9 @@ pip install pyinstaller || exit /b
 pyinstaller --name sampletones ^
     --onefile ^
     --distpath . ^
-    --icon "src\sampletones\assets\icons\sampletones.ico" ^
-    --add-data "src\sampletones\assets\icons;assets\icons" ^
-    --add-data "src\sampletones\assets\fonts;assets\fonts" ^
+    --icon "src\sampletones_assets\icons\sampletones.ico" ^
+    --add-data "src\sampletones_assets\icons;assets\icons" ^
+    --add-data "src\sampletones_assets\fonts;assets\fonts" ^
     "src\sampletones\__main__.py" || exit /b
 
 if exist sampletones.exe (

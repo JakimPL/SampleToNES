@@ -6,6 +6,7 @@ __pycache__/
 .vscode/
 .github/
 .venv/
+.venv-build/
 
 build/
 dist/
@@ -30,6 +31,7 @@ sampletones
 *.fb
 *.npy
 *.lock
+!uv.lock
 
 *.json
 *.txt

@@ -3,11 +3,11 @@
 set +e
 
 echo "Running doctests..."
-python -m pytest src/ --doctest-modules --no-cov
+uv run python -m pytest src/ --doctest-modules --no-cov
 DOCTEST_EXIT=$?
 
 echo "Running pytest with coverage..."
-python -m pytest -n 6 --cov=src/sampletones
+uv run python -m pytest -n 6 --cov
 PYTEST_EXIT=$?
 
 if [[ $DOCTEST_EXIT -ne 0 ]] || [[ $PYTEST_EXIT -ne 0 ]]; then

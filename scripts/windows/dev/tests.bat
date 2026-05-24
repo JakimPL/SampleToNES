@@ -2,11 +2,11 @@
 setlocal
 
 echo Running doctests...
-python -m pytest src/ --doctest-modules --no-cov
+uv run python -m pytest src/ --doctest-modules --no-cov
 set DOCTEST_EXIT=%ERRORLEVEL%
 
 echo Running pytest with coverage...
-python -m pytest -n 6 --cov=src/sampletones
+uv run python -m pytest -n 6 --cov
 set PYTEST_EXIT=%ERRORLEVEL%
 
 if not %DOCTEST_EXIT%==0 (

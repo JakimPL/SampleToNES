@@ -3,8 +3,8 @@ setlocal
 
 echo Running type checking with mypy...
 if "%~1"=="" (
-    python -m mypy src/sampletones
+    uv run python -m mypy
 ) else (
-    python -m mypy %*
+    uv run python -m mypy %*
 )
 exit /b %ERRORLEVEL%

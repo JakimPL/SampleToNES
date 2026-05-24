@@ -4,8 +4,8 @@ set +e
 
 echo "Running linting with pylint..."
 if [ $# -eq 0 ]; then
-    python -m pylint src/sampletones
+    uv run python -m pylint src/sampletones
 else
-    python -m pylint "$@"
+    uv run python -m pylint "$@"
 fi
 exit $?

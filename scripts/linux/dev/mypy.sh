@@ -4,8 +4,8 @@ set +e
 
 echo "Running type checking with mypy..."
 if [ $# -eq 0 ]; then
-    python -m mypy src/sampletones
+    uv run python -m mypy
 else
-    python -m mypy "$@"
+    uv run python -m mypy "$@"
 fi
 exit $?

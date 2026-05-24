@@ -1,16 +1,14 @@
-.PHONY: pre-commit build install test clean help
+.PHONY: pre-commit build install setup test clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 
 ifeq ($(UNAME_S),Windows)
-	PYTHON := python
 	SCRIPTS_DIR := scripts\windows
 	SCRIPT_EXT := .bat
 	RUN_SCRIPT :=
 	BUILD_SCRIPT := install.bat
 	EXECUTABLE := sampletones.exe
 else
-	PYTHON := python3
 	SCRIPTS_DIR := scripts/linux
 	SCRIPT_EXT := .sh
 	RUN_SCRIPT := bash
@@ -20,20 +18,24 @@ endif
 
 help:
 	@echo "Available targets:"
+	@echo "  make setup       - Set up development environment (uv)"
 	@echo "  make pre_commit  - Install pre-commit hooks"
 	@echo "  make build       - Compile standalone executable"
-	@echo "  make install     - Install Python package locally"
+	@echo "  make install     - Install Python package into build venv"
 	@echo "  make test        - Run unit tests with coverage"
 	@echo "  make clean       - Remove build artifacts and cache files"
 	@echo "  make lint        - Run linting (pylint, mypy)"
 	@echo "  make format      - Auto-format code (isort, black)"
 	@echo "  make run         - Run SampleToNES application"
 
+setup:
+	uv sync --extra dev
+
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
 
 run:
-	$(PYTHON) -m sampletones
+	uv run python -m sampletones
 
 clean:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/clean$(SCRIPT_EXT)

@@ -7,9 +7,9 @@ echo "Building executable..."
 pyinstaller --name sampletones \
     --onefile \
     --distpath . \
-    --icon "src/sampletones/assets/icons/sampletones.png" \
-    --add-data "src/sampletones/assets/icons:assets/icons" \
-    --add-data "src/sampletones/assets/fonts:assets/fonts" \
+    --icon "src/sampletones_assets/icons/sampletones.png" \
+    --add-data "src/sampletones_assets/icons:assets/icons" \
+    --add-data "src/sampletones_assets/fonts:assets/fonts" \
     "src/sampletones/__main__.py"
 
 if [[ -f sampletones ]]; then
