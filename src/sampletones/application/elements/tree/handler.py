@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.structures.tree import NodeType
+from sampletones_core.structures.tree import NodeType
 from sampletones_shared.types.callback import Callback, MessageCallback
 
 

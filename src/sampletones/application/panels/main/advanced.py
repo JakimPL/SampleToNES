@@ -3,7 +3,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.constants.general import MAX_WORKERS
+from sampletones_core.constants.general import MAX_WORKERS
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.system.paths import to_path
 

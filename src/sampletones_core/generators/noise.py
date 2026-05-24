@@ -1,0 +1,93 @@
+from typing import List
+
+import numpy as np
+
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
+from sampletones_core.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
+from sampletones_core.instructions import InstructionTypeUnion, NoiseInstruction
+from sampletones_core.timers import LFSRTimer
+from sampletones_shared.types.data import Initials
+
+from .generator import Generator
+
+
+class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
+    def __init__(
+        self,
+        config: Config,
+        name: str = GeneratorName.NOISE,
+    ) -> None:
+        super().__init__(config, name)
+        self.timer = LFSRTimer(
+            sample_rate=config.library.sample_rate,
+            change_rate=config.library.change_rate,
+            reset_phase=config.generation.reset_phase,
+        )
+
+    def __call__(
+        self,
+        noise_instruction: NoiseInstruction,
+        initials: Initials = None,
+        save: bool = False,
+    ) -> np.ndarray:
+        if not isinstance(noise_instruction, NoiseInstruction):
+            raise TypeError("instruction must be an instance of NoiseInstruction")
+
+        self.validate(initials)
+        if not noise_instruction.on:
+            return np.zeros(self.frame_length, dtype=np.float32)
+
+        output = self.generate(
+            noise_instruction,
+            initials=initials,
+            save=save,
+        )
+
+        self.save_state(save, noise_instruction)
+
+        return output
+
+    def set_timer(self, instruction: NoiseInstruction) -> None:
+        if instruction.on:
+            self.timer.short = instruction.short
+            self.timer.period = instruction.period
+        else:
+            self.timer.short = False
+            self.timer.period = 0
+
+    def apply(self, output: np.ndarray, instruction: NoiseInstruction) -> np.ndarray:
+        volume = np.float32(MIXER_NOISE * 0.5 * float(instruction.volume) / float(MAX_VOLUME))
+        return volume * output
+
+    def get_possible_instructions(self) -> List[NoiseInstruction]:
+        noise_instructions = [
+            NoiseInstruction(
+                on=False,
+                period=0,
+                volume=0,
+                short=False,
+            ),
+        ]
+
+        for period in range(len(NOISE_PERIODS)):
+            for volume in range(1, MAX_VOLUME + 1):
+                for short in [False, True]:
+                    noise_instructions.append(
+                        NoiseInstruction(
+                            on=True,
+                            period=period,
+                            volume=volume,
+                            short=short,
+                        )
+                    )
+
+        return noise_instructions
+
+    @classmethod
+    def get_instruction_type(cls) -> InstructionTypeUnion:
+        return NoiseInstruction
+
+    @classmethod
+    def class_name(cls) -> GeneratorClassName:
+        return GeneratorClassName.NOISE_GENERATOR

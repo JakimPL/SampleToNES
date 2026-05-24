@@ -3,8 +3,8 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.enums import GeneratorName
-from sampletones.library import InstructionLibraryFragment
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
 
 from ...constants.graphs import (

@@ -5,8 +5,8 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.audio import clip_audio, to_mono
-from sampletones.library import InstructionLibraryFragment
+from sampletones_core.audio import clip_audio, to_mono
+from sampletones_core.library import InstructionLibraryFragment
 
 
 class AudioData(BaseModel):

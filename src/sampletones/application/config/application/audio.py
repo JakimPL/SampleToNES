@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.audio import AudioDeviceManager, CurrentDevice
-from sampletones.constants.audio import DEFAULT_BUFFER_SIZE, BufferSize
+from sampletones_core.audio import AudioDeviceManager, CurrentDevice
+from sampletones_core.constants.audio import DEFAULT_BUFFER_SIZE, BufferSize
 
 
 class AudioConfig(BaseModel):

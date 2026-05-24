@@ -3,11 +3,11 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.enums import FeatureKey, GeneratorName
-from sampletones.constants.general import MAX_PERIOD, MIN_PITCH
-from sampletones.exporters import Features
-from sampletones.types.feature import FeatureValue
-from sampletones.utils.frequencies import (
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
+from sampletones_core.exporters import Features
+from sampletones_core.types.feature import FeatureValue
+from sampletones_core.utils.frequencies import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
     SANITIZED_NAME_TO_PERIOD,

@@ -17,7 +17,7 @@ class ResourceLoader:
             resource_type = self.resource_directory.name
             return base_path / "assets" / resource_type / resource_name
 
-        package_name = f"sampletones.assets.{self.resource_directory.name}"
+        package_name = f"sampletones_assets.{self.resource_directory.name}"
         return files(package_name).joinpath(resource_name)
 
     def get_path(self, resource_name: str) -> str:

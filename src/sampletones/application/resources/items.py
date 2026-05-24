@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sampletones.constants.paths import ICON_UNIX_FILENAME, ICON_WIN_FILENAME
+from sampletones_core.constants.paths import ICON_UNIX_FILENAME, ICON_WIN_FILENAME
 
 
 class IconResource(Enum):

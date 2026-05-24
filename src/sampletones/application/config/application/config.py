@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones.constants.paths import APPLICATION_CONFIG_PATH
-from sampletones.data import Metadata
+from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
+from sampletones_core.data import Metadata
 from sampletones_shared.logger import logger
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml, save_yaml

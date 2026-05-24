@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from sampletones.constants.enums import FeatureKey
+from sampletones_core.constants.enums import FeatureKey
 from sampletones_shared.types.application import Color
 
 from ..constants.reconstructions import (

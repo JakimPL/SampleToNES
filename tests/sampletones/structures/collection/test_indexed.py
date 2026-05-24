@@ -5,8 +5,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones.structures.collection.bidirectional import BidirectionalHashMap
-from sampletones.structures.collection.indexed import IndexedCollection
+from sampletones_core.structures.collection.bidirectional import BidirectionalHashMap
+from sampletones_core.structures.collection.indexed import IndexedCollection
 from sampletones_shared.types.data import ModelHashable
 from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
 
@@ -278,7 +278,7 @@ class TestSetItem:
         item2_hash = IndexedCollection.hash("item2")
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value=item1_hash,
         ):
             with pytest.raises(ValueError, match="already exists"):
@@ -392,7 +392,7 @@ class TestContains:
         collection = IndexedCollection[str]([item1])
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value=IndexedCollection.hash(item1),
         ):
             item2 = "second"
@@ -402,7 +402,7 @@ class TestContains:
         collection = IndexedCollection[int]([42])
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value="fake_hash",
         ):
             assert 42 not in collection
@@ -545,7 +545,7 @@ class TestEq:
         hash1_20 = IndexedCollection.hash(20)
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             side_effect=[hash1_10, hash1_20],
         ):
             collection2 = IndexedCollection[int]([30, 40])
@@ -563,7 +563,7 @@ class TestEq:
         assert collection1 == collection2
 
     def test_eq_equal_items_different_hashes(self) -> None:
-        with patch("sampletones.structures.collection.indexed.IndexedCollection.hash") as mock:
+        with patch("sampletones_core.structures.collection.indexed.IndexedCollection.hash") as mock:
             mock.side_effect = ["hash_a", "hash_b"]
             collection1 = IndexedCollection[int]([1, 2])
 
@@ -573,7 +573,7 @@ class TestEq:
             assert collection1 != collection2
 
     def test_eq_vile_example_same_items_swapped_hashes(self) -> None:
-        with patch("sampletones.structures.collection.indexed.IndexedCollection.hash") as mock:
+        with patch("sampletones_core.structures.collection.indexed.IndexedCollection.hash") as mock:
             mock.side_effect = ["0", "1"]
             collection1 = IndexedCollection[int]([0, 1])
 
@@ -589,7 +589,7 @@ class TestEq:
             assert collection2.get_hash(1) == "0"
 
     def test_eq_vile_example_reversed_items_swapped_hashes(self) -> None:
-        with patch("sampletones.structures.collection.indexed.IndexedCollection.hash") as mock:
+        with patch("sampletones_core.structures.collection.indexed.IndexedCollection.hash") as mock:
             mock.side_effect = ["0", "1"]
             collection1 = IndexedCollection[int]([0, 1])
 
@@ -1051,7 +1051,7 @@ class TestRemove:
         item_hash = IndexedCollection.hash(item1)
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value=item_hash,
         ):
             collection.remove(item2)
@@ -1061,7 +1061,7 @@ class TestRemove:
         assert item1 not in collection
 
     def test_remove_same_item_different_hash(self) -> None:
-        with patch("sampletones.structures.collection.indexed.IndexedCollection.hash") as mock:
+        with patch("sampletones_core.structures.collection.indexed.IndexedCollection.hash") as mock:
             mock.return_value = "hash_a"
             collection = IndexedCollection[str](["item"])
 
@@ -1211,7 +1211,7 @@ class TestHashCollisions:
         collection = IndexedCollection[int]([1])
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value=IndexedCollection.hash(1),
         ):
             with pytest.raises(ValueError, match="already exists"):
@@ -1219,7 +1219,7 @@ class TestHashCollisions:
 
     def test_hash_collision_strings_different_items_same_hash(self) -> None:
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value="collision_hash",
         ):
             collection = IndexedCollection[str]()
@@ -1232,7 +1232,7 @@ class TestHashCollisions:
         item_hash = IndexedCollection.hash(3.14)
 
         with patch(
-            "sampletones.structures.collection.indexed.IndexedCollection.hash",
+            "sampletones_core.structures.collection.indexed.IndexedCollection.hash",
             return_value=item_hash,
         ):
             new_hash = IndexedCollection.hash(2.71)

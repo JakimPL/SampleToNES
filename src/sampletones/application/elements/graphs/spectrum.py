@@ -3,9 +3,9 @@ from typing import Any, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
-from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones.constants.general import MIN_FREQUENCY
-from sampletones.library import InstructionLibraryFragment
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones_core.constants.general import MIN_FREQUENCY
+from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Color, Sender
 
 from ...constants.graphs import (

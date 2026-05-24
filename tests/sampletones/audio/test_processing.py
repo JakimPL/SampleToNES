@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones.audio.processing import (
+from sampletones_core.audio.processing import (
     clip_audio,
     interpolate,
     minmax_decimate,

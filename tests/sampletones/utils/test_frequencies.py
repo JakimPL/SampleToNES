@@ -4,8 +4,8 @@ from typing import Any, Type, Union
 import numpy as np
 import pytest
 
-from sampletones.constants.general import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH, MAX_PERIOD, MAX_PITCH, MIN_PITCH
-from sampletones.utils.frequencies import (
+from sampletones_core.constants.general import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH, MAX_PERIOD, MAX_PITCH, MIN_PITCH
+from sampletones_core.utils.frequencies import (
     clamp_period,
     clamp_pitch,
     frequency_to_pitch,

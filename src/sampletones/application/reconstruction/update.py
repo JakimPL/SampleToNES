@@ -1,7 +1,7 @@
 from typing import NamedTuple
 
-from sampletones.constants.enums import FeatureKey, GeneratorName
-from sampletones.types.feature import FeatureValue
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.types.feature import FeatureValue
 
 
 class ReconstructionUpdate(NamedTuple):

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from sampletones.audio import minmax_decimate
+from sampletones_core.audio import minmax_decimate
 from sampletones_shared.types.application import Color
 
 from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_MAX_WAVEFORM_DISPLAY_POINTS, VAL_WAVEFORM_SAMPLE_THICKNESS

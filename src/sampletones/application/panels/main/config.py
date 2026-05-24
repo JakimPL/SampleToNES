@@ -1,12 +1,12 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones.constants.general import (
+from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.general import (
     MAX_CHANGE_RATE,
     MAX_TRANSFORMATION_GAMMA,
     MIN_CHANGE_RATE,
 )
-from sampletones.library import InstructionLibraryKey
+from sampletones_core.library import InstructionLibraryKey
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager

@@ -4,14 +4,14 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager
-from sampletones.constants.enums import LibraryGeneratorName
-from sampletones.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryKey, get_display_name_from_key
-from sampletones.library.utils import create_key_from_filename
-from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import LibraryGeneratorName
+from sampletones_core.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
+from sampletones_core.instructions import InstructionUnion
+from sampletones_core.library import InstructionLibraryKey, get_display_name_from_key
+from sampletones_core.library.utils import create_key_from_filename
+from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
+from sampletones_core.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,

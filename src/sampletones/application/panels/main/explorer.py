@@ -2,9 +2,9 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager
-from sampletones.constants import paths
-from sampletones.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants import paths
+from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback

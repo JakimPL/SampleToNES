@@ -6,7 +6,7 @@ from typing import Any, Optional
 import numpy as np
 import pytest
 
-from sampletones.array import xp
+from sampletones_core.array import xp
 from sampletones_shared.utils.transformations.functions import energy, exp, identity, power, power_inverse
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error, expect_warning

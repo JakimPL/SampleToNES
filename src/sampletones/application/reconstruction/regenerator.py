@@ -2,11 +2,11 @@ from typing import Callable, List, Optional, cast
 
 import numpy as np
 
-from sampletones.constants.enums import FeatureKey, GeneratorName
-from sampletones.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
-from sampletones.generators import GeneratorUnion
-from sampletones.instructions import InstructionUnion
-from sampletones.types.feature import FeatureValue
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
+from sampletones_core.generators import GeneratorUnion
+from sampletones_core.instructions import InstructionUnion
+from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 from ..constants.general import VAL_PRIORITY_SCHEDULE

@@ -6,8 +6,8 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones.fft.transformer import FFTTransformer
-from sampletones.structures.histogram import Histogram
+from sampletones_core.fft.transformer import FFTTransformer
+from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import Array, ArrayClasses, MultaryTransformation, Numeric, NumericClasses
 from sampletones_shared.utils.transformations.morpher import PowerMorpher
 from sampletones_shared.utils.transformations.transformation import Transformation
@@ -249,7 +249,7 @@ class TestCalculateSpectrum(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_calculate_spectrum(self, test_case: TestCase, transformer_identity: FFTTransformer) -> None:
-        with patch("sampletones.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
+        with patch("sampletones_core.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
             if not expect_error(
                 transformer_identity.calculate_spectrum,
                 test_case.expected,
@@ -364,7 +364,7 @@ class TestCalculateFeature(BaseTestSuite):
     def test_calculate_feature(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
-        with patch("sampletones.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
+        with patch("sampletones_core.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
             if not expect_error(
                 transformer.calculate_feature,
                 test_case.expected,

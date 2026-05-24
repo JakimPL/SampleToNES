@@ -2,8 +2,8 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager
-from sampletones.configs import InstructionsLibraryConfig
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback

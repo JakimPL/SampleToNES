@@ -1,4 +1,4 @@
-.PHONY: pre0commit build install test clean help
+.PHONY: pre-commit build install test clean help
 
 UNAME_S := $(shell uname -s 2>/dev/null || echo Windows)
 

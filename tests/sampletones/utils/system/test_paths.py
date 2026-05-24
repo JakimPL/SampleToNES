@@ -375,9 +375,9 @@ class TestShortenPath(BaseTestSuite):
         test_case: TestCase,
     ) -> None:
         with (
-            patch("sampletones.utils.system.paths.Path.expanduser") as mock_expand,
-            patch("sampletones.utils.system.paths.Path.resolve") as mock_resolve,
-            patch("sampletones.utils.system.paths.os.sep", test_case.os_sep),
+            patch("sampletones_shared.utils.system.paths.Path.expanduser") as mock_expand,
+            patch("sampletones_shared.utils.system.paths.Path.resolve") as mock_resolve,
+            patch("sampletones_shared.utils.system.paths.os.sep", test_case.os_sep),
         ):
             resolved_mock = self._create_resolved_mock(test_case.resolved_path)
             mock_expand.return_value.resolve.return_value = resolved_mock

@@ -3,8 +3,8 @@ from typing import Any
 
 import numpy as np
 
-from sampletones.generators import MIXER_LEVELS
-from sampletones.library import InstructionLibraryFragment
+from sampletones_core.generators import MIXER_LEVELS
+from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Color
 
 from ....constants.graphs import COL_WAVEFORM_DEFAULT, VAL_WAVEFORM_SAMPLE_THICKNESS

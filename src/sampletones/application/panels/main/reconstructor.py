@@ -2,8 +2,8 @@ from typing import Any
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.constants.enums import GeneratorName
-from sampletones.constants.general import MAX_MIXER
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MAX_MIXER
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.data import SerializedData
 

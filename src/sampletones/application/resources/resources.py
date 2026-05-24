@@ -1,4 +1,4 @@
-from sampletones.constants.paths import FONT_DIRECTORY, ICON_DIRECTORY
+from sampletones_core.constants.paths import FONT_DIRECTORY, ICON_DIRECTORY
 
 from .items import FontResource, IconResource
 from .loader import ResourceLoader

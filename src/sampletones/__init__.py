@@ -2,51 +2,51 @@ import importlib
 from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
-    from .configs import Config
-    from .constants.application import SAMPLETONES_VERSION as __version__
-    from .constants.enums import GeneratorName
-    from .fft import Window
-    from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
-    from .instructions import Instruction, NoiseInstruction, PulseInstruction, TriangleInstruction
-    from .library import InstructionLibrary
-    from .reconstructions import Reconstruction, Reconstructor
+    from sampletones_core.configs import Config
+    from sampletones_core.constants.application import SAMPLETONES_VERSION as __version__
+    from sampletones_core.constants.enums import GeneratorName
+    from sampletones_core.fft import Window
+    from sampletones_core.generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
+    from sampletones_core.instructions import Instruction, NoiseInstruction, PulseInstruction, TriangleInstruction
+    from sampletones_core.library import InstructionLibrary
+    from sampletones_core.reconstructions import Reconstruction, Reconstructor
 
 
 def __getattr__(name: str) -> Any:
     if name == "Config":
-        from .configs import Config
+        from sampletones_core.configs import Config
 
         return Config
 
     if name == "__version__":
-        from .constants.application import SAMPLETONES_VERSION
+        from sampletones_core.constants.application import SAMPLETONES_VERSION
 
         return SAMPLETONES_VERSION
 
     if name == "GeneratorName":
-        from .constants.enums import GeneratorName
+        from sampletones_core.constants.enums import GeneratorName
 
         return GeneratorName
 
     if name == "Window":
-        from .fft import Window
+        from sampletones_core.fft import Window
 
         return Window
 
     if name in ("Generator", "NoiseGenerator", "PulseGenerator", "TriangleGenerator"):
-        module = importlib.import_module(".generators", __package__)
+        module = importlib.import_module("sampletones_core.generators")
         return getattr(module, name)
 
     if name in ("Instruction", "NoiseInstruction", "PulseInstruction", "TriangleInstruction"):
-        module = importlib.import_module(".instructions", __package__)
+        module = importlib.import_module("sampletones_core.instructions")
         return getattr(module, name)
 
     if name in ("Reconstruction", "Reconstructor"):
-        module = importlib.import_module(".reconstruction", __package__)
+        module = importlib.import_module("sampletones_core.reconstructions")
         return getattr(module, name)
 
     if name == "InstructionLibrary":
-        from .library import InstructionLibrary
+        from sampletones_core.library import InstructionLibrary
 
         return InstructionLibrary
 
@@ -69,9 +69,6 @@ __all__ = [
     "NoiseInstruction",
     "GeneratorName",
     "__version__",
-    "xp",
-    "xp_typing",
-    "CUPY_AVAILABLE",
 ]
 
 

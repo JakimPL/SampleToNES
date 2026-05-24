@@ -4,7 +4,7 @@ from typing import List, Optional, Type, Union
 import numpy as np
 import pytest
 
-from sampletones.structures.histogram.interval import Interval
+from sampletones_core.structures.histogram.interval import Interval
 from sampletones_shared.types.array import Float
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error

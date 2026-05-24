@@ -2,9 +2,9 @@ from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager
-from sampletones.constants.enums import GeneratorName
-from sampletones.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 from sampletones_shared.types.application import Sender
 
 from ...config.application.manager import ApplicationConfigManager

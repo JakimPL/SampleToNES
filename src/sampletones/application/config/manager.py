@@ -3,10 +3,10 @@ from typing import Dict, List, Optional
 
 from pydantic import ValidationError
 
-from sampletones.configs import Config, GeneralConfig, GenerationConfig, InstructionsLibraryConfig
-from sampletones.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones.constants.enums import GeneratorName
-from sampletones.constants.general import (
+from sampletones_core.configs import Config, GeneralConfig, GenerationConfig, InstructionsLibraryConfig
+from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import (
     DEFAULT_CHANGE_RATE,
     MAX_WORKERS,
     MIXER,
@@ -14,9 +14,9 @@ from sampletones.constants.general import (
     QUANTIZE,
     TRANSFORMATION_GAMMA,
 )
-from sampletones.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
-from sampletones.fft import Window
-from sampletones.library import InstructionLibraryKey
+from sampletones_core.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
+from sampletones_core.fft import Window
+from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.data import SerializedData

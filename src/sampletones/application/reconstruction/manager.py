@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from sampletones.reconstructions import Reconstruction
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin

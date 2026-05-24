@@ -3,10 +3,10 @@ from typing import Any, Generator, Tuple
 
 import numpy as np
 
-from sampletones.constants.spectrum import CQT_CUTOFF_FREQUENCY
-from sampletones.fft.utils import to_log_even_bands
-from sampletones.library import InstructionLibraryFragment
-from sampletones.structures.histogram import Histogram
+from sampletones_core.constants.spectrum import CQT_CUTOFF_FREQUENCY
+from sampletones_core.fft.utils import to_log_even_bands
+from sampletones_core.library import InstructionLibraryFragment
+from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.application import Color
 
 from ....constants.graphs import VAL_MAX_SPECTRUM_DISPLAY_BINS, VAL_MAX_SPECTRUM_GRAYSCALE

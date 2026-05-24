@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from sampletones.constants.paths import EXT_FILES_AUDIO
+from sampletones_core.constants.paths import EXT_FILES_AUDIO
 
 HELP_PATH = """Path to either:
     * audio file path/directory to reconstruct
@@ -97,14 +97,14 @@ def main() -> None:
     config_path = Path(args.config) if args.config else None
     output_path = Path(args.output) if args.output else None
 
-    from sampletones.configs import Config
-    from sampletones.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION
+    from sampletones_core.configs import Config
+    from sampletones_core.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION
     from sampletones_shared.logger import logger
 
     config = Config.load(config_path) if config_path else Config.default()
 
     if args.generate:
-        from sampletones.scripts import generate_library
+        from sampletones_core.scripts.library import generate_library
 
         if output_path is not None:
             logger.warning("Output path is ignored when generating a library")
@@ -116,19 +116,19 @@ def main() -> None:
         if path.is_file():
             suffix = path.suffix.lower()
             if suffix in EXT_FILES_AUDIO:
-                from sampletones.scripts import reconstruct_file
+                from sampletones_core.scripts.reconstruction import reconstruct_file
 
                 return reconstruct_file(path, config, output_path)
 
             if suffix == EXT_FILE_RECONSTRUCTION:
-                from sampletones.scripts import load_reconstruction
+                from sampletones_core.scripts.reconstruction import load_reconstruction
 
                 return load_reconstruction(path, config_path)
 
             if suffix == EXT_FILE_LIBRARY:
                 if output_path is not None:
                     logger.warning("Output path is ignored when loading a library")
-                from sampletones.scripts import load_library
+                from sampletones_core.scripts.library import load_library
 
                 return load_library(path, config_path)
 
@@ -139,13 +139,13 @@ def main() -> None:
             )
 
         if path.is_dir():
-            from sampletones.scripts import reconstruct_directory
+            from sampletones_core.scripts.reconstruction import reconstruct_directory
 
             return reconstruct_directory(path, config)
 
         raise RuntimeError("Unsupported path type or file extensio.")
 
-    from sampletones.scripts import run_application
+    from sampletones.run import run_application
 
     return run_application(config_path)
 

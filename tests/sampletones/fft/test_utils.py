@@ -4,7 +4,7 @@ from typing import Any, Optional, Tuple, Type, Union
 import numpy as np
 import pytest
 
-from sampletones.fft.utils import calculate_n_bins, rectangle_window, to_log_even_bands
+from sampletones_core.fft.utils import calculate_n_bins, rectangle_window, to_log_even_bands
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase

@@ -5,10 +5,10 @@ from typing import Dict, List, Optional, cast
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.constants.enums import FeatureKey, GeneratorName
-from sampletones.exporters import Features
-from sampletones.reconstructions import Reconstruction
-from sampletones.types.feature import FeatureValue
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import Features
+from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.types.feature import FeatureValue
 
 
 class FeatureData(BaseModel):

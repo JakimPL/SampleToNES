@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.structures.tree import TreeNode
+from sampletones_core.structures.tree import TreeNode
 
 
 class TreeNodeState(BaseModel):

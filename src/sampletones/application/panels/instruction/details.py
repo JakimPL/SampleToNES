@@ -2,9 +2,9 @@ from typing import Any, Callable, List, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.constants.enums import GeneratorClassName, LibraryGeneratorName
-from sampletones.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
-from sampletones.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.constants.enums import GeneratorClassName, LibraryGeneratorName
+from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
+from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import clamp
 

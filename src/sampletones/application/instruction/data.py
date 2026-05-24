@@ -2,10 +2,10 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.configs import InstructionsLibraryConfig
-from sampletones.constants.enums import GeneratorClassName
-from sampletones.instructions import InstructionUnion
-from sampletones.library import InstructionLibraryFragment
+from sampletones_core.configs import InstructionsLibraryConfig
+from sampletones_core.constants.enums import GeneratorClassName
+from sampletones_core.instructions import InstructionUnion
+from sampletones_core.library import InstructionLibraryFragment
 
 
 class InstructionPanelData(BaseModel):

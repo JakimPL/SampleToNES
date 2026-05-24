@@ -4,10 +4,10 @@ from typing import List, Self
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from sampletones.audio import load_audio
-from sampletones.configs import Config
-from sampletones.constants.enums import GeneratorName
-from sampletones.reconstructions import Reconstruction
+from sampletones_core.audio import load_audio
+from sampletones_core.configs import Config
+from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 
 from .feature import FeatureData

@@ -4,9 +4,9 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.configs import Config
-from sampletones.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones.reconstructions.converter import ReconstructionConverter, get_output_path
+from sampletones_core.configs import Config
+from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
+from sampletones_core.reconstructions.converter import ReconstructionConverter, get_output_path
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback

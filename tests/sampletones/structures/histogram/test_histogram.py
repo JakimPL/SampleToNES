@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from sampletones.array import xp
-from sampletones.structures.histogram.histogram import Histogram
-from sampletones.structures.histogram.interval import Interval
+from sampletones_core.array import xp
+from sampletones_core.structures.histogram.histogram import Histogram
+from sampletones_core.structures.histogram.interval import Interval
 from sampletones_shared.exceptions.structures import IncompleteHistogramRebinningWarning
 from sampletones_shared.types.array import Array, Float, Numeric
 from tests.sampletones.arrays import assert_array_equal

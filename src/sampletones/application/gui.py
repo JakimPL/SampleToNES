@@ -6,10 +6,10 @@ from typing import Any, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
-from sampletones.audio import AudioDeviceManager
-from sampletones.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
-from sampletones.library import InstructionLibraryKey
-from sampletones.sequencer import Sequencer
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
+from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.sequencer import Sequencer
 from sampletones_shared.exceptions import (
     DeserializationError,
     IncompatibleReconstructionVersionError,

@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones.audio import AudioDeviceManager
+from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 
