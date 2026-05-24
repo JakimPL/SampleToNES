@@ -47,6 +47,7 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/sampletones",
+    "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_core",
     "src/sampletones_schemas",
@@ -62,6 +63,7 @@ profile = "black"
 line_length = 120
 known_first_party = [
     "sampletones",
+    "sampletones_application",
     "sampletones_assets",
     "sampletones_core",
     "sampletones_schemas",
@@ -74,17 +76,19 @@ addopts = """
 """
 
 [tool.coverage.run]
-source = [
-    "sampletones_core",
-    "sampletones_shared",
-]
+source = ["sampletones_core", "sampletones_shared"]
 
 [tool.coverage.report]
 show_missing = true
 
 [tool.mypy]
 python_version = "3.11"
-files = ["src/sampletones", "src/sampletones_core", "src/sampletones_shared"]
+files = [
+    "src/sampletones",
+    "src/sampletones_application",
+    "src/sampletones_core",
+    "src/sampletones_shared",
+]
 exclude = ["src/sampletones_schemas", "tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
