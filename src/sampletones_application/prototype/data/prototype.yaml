@@ -1,0 +1,22 @@
+layout:
+  viewport:
+    width: 900
+    height: 480
+  label_input:
+    panel_width: 430
+    panel_height: 200
+    input_width: 370
+  multiplier:
+    panel_width: 430
+    panel_height: 200
+    slider_width: 370
+  result:
+    panel_height: -1
+
+constraints:
+  label_input:
+    max_length: 20
+  multiplier:
+    min_value: 1
+    max_value: 10
+    default_value: 1

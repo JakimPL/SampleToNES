@@ -3,7 +3,7 @@ name = "sampletones"
 version = "0.2.4"
 description = "SampleToNES - Convert audio samples to FamiTracker instruments"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 authors = [{ name = "Jakim / Stage Magician" }]
 
 dependencies = [
@@ -56,7 +56,7 @@ packages = [
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py312"]
 
 [tool.isort]
 profile = "black"
@@ -82,7 +82,7 @@ source = ["sampletones_core", "sampletones_shared"]
 show_missing = true
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 files = [
     "src/sampletones",
     "src/sampletones_application",
