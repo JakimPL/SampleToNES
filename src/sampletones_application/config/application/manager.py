@@ -1,15 +1,12 @@
 from pathlib import Path
 from typing import Optional, Set
 
-import dearpygui.dearpygui as dpg
-
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import get_directory
 
-from ...constants.general import TAG_TABS
 from .config import ApplicationConfig
 
 
@@ -35,18 +32,8 @@ class ApplicationConfigManager:
             self.config.window.width = width
             self.config.window.height = height
 
-    def load_window_state(self) -> None:
-        window_x, window_y = dpg.get_viewport_pos()
-        if not self.config.window.fullscreen:
-            self.config.window.x = int(window_x)
-            self.config.window.y = int(window_y)
-            self.config.window.width = dpg.get_viewport_width()
-            self.config.window.height = dpg.get_viewport_height()
-
-    def save_current_tab(self) -> None:
-        current_tab = dpg.get_value(TAG_TABS)
-        current_tab = dpg.get_item_alias(current_tab)
-        self.config.gui.current_tab = current_tab
+    def set_current_tab(self, tab: str) -> None:
+        self.config.gui.current_tab = tab
 
     def toggle_show_advanced_settings(self) -> bool:
         self.config.gui.advanced_settings = not self.config.gui.advanced_settings
@@ -99,9 +86,6 @@ class ApplicationConfigManager:
         self.config.audio.set_audio_settings(audio_device_manager)
 
     def save_config(self) -> None:
-        self.load_window_state()
-        self.save_current_tab()
-
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(APPLICATION_CONFIG_PATH)

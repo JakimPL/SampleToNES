@@ -1210,7 +1210,7 @@ class GUI:
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)
-        self.application_config_manager.save_current_tab()
+        self.application_config_manager.set_current_tab(tab_tag)
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS)
@@ -1529,6 +1529,16 @@ class GUI:
                 self.converter_panel.converter.cleanup()
             self.config_manager.save_config()
             self.application_config_manager.set_current_audio_device(self.audio_device_manager)
+            if not self.application_config_manager.fullscreen:
+                viewport_x, viewport_y = dpg.get_viewport_pos()
+                self.application_config_manager.set_window_state(
+                    fullscreen=False,
+                    x=int(viewport_x),
+                    y=int(viewport_y),
+                    width=dpg.get_viewport_width(),
+                    height=dpg.get_viewport_height(),
+                )
+            self.application_config_manager.set_current_tab(self._get_current_tab())
             self.application_config_manager.save_config()
             self.audio_device_manager.terminate()
             dpg.destroy_context()
