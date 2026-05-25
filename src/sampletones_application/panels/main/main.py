@@ -12,7 +12,7 @@ from ...elements.panel import GUIPanel
 from ...utils.align import table_wrapper
 from .advanced import GUIAdvancedSettingsPanel
 from .config import GUIConfigPanel
-from .converter import GUIConverterPanel
+from .converter.panel import GUIConverterPanel
 from .reconstructor import GUIReconstructorPanel
 
 

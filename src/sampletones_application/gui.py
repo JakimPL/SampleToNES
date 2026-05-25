@@ -128,7 +128,13 @@ from .constants.general import (
     VAL_WINDOW_PRIMARY,
 )
 from .constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
-from .constants.main import DIM_PANEL_HEIGHT_MAIN_EXPLORER, DIM_PANEL_WIDTH_MAIN_EXPLORER
+from .constants.main import (
+    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
+    DIM_PANEL_WIDTH_MAIN_EXPLORER,
+    MSG_MAIN_CONVERTER_ERROR,
+    MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
+    TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
+)
 from .constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
@@ -150,7 +156,9 @@ from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
 from .panels.main.advanced import GUIAdvancedSettingsPanel
 from .panels.main.config import GUIConfigPanel
-from .panels.main.converter import GUIConverterPanel
+from .panels.main.converter.logic import ConverterLogic
+from .panels.main.converter.panel import GUIConverterPanel
+from .panels.main.converter.success_dialog import ConverterSuccessDialog
 from .panels.main.explorer import GUIExplorerPanel
 from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor import GUIReconstructorPanel
@@ -257,7 +265,9 @@ class GUI:
             self.config_manager,
             self.application_config_manager,
         )
-        self.converter_panel: GUIConverterPanel = GUIConverterPanel(self.config_manager)
+        self.converter_logic: ConverterLogic = ConverterLogic(self.config_manager)
+        self.converter_panel: GUIConverterPanel = GUIConverterPanel()
+        self.converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog()
         self.main_panel: GUIMainPanel = GUIMainPanel(
             self.config_panel,
             self.reconstructor_panel,
@@ -509,13 +519,22 @@ class GUI:
             on_reconstruction_instrument_updated=self.regenerator.regenerate,
             on_reconstruction_instrument_hovered=self.reconstruction_panel.set_overlay,
         )
-        self.converter_panel.set_callbacks(
-            on_load_file=self._on_converted_reconstruction_loaded,
-            on_load_directory=self.browser_panel.refresh,
-            on_cancelled=self.browser_panel.refresh,
-            generate_library=self._generate_library_if_not_loaded,
-            is_library_loaded=self.library_manager.is_library_loaded,
+        self.converter_logic.on_view_changed = self.converter_panel.update_view
+        self.converter_logic.on_success = self.converter_success_dialog.show
+        self.converter_logic.on_error = lambda error: show_error_dialog(error, MSG_MAIN_CONVERTER_ERROR)
+        self.converter_logic.on_no_files_to_process = lambda: show_info_dialog(
+            self.converter_panel.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_MAIN_CONVERTER_PROGRESS
         )
+        self.converter_logic.on_load_file = self._on_converted_reconstruction_loaded
+        self.converter_logic.on_load_directory = self.browser_panel.refresh
+        self.converter_logic.on_cancelled = self.browser_panel.refresh
+        self.converter_logic.generate_library = self._generate_library_if_not_loaded
+        self.converter_logic.is_library_loaded = self.library_manager.is_library_loaded
+        self.converter_panel.on_convert_requested = self.converter_logic.start_conversion
+        self.converter_panel.on_cancel_requested = self.converter_logic.cancel
+        self.converter_panel.on_close_requested = self.converter_logic.close
+        self.converter_panel.on_load_requested = self.converter_logic.handle_load_request
+        self.converter_logic.emit_initial_view()
 
     def _setup_handlers(self) -> None:
         self.shortcut_manager.setup_focus_handler()
@@ -914,7 +933,7 @@ class GUI:
         self.audio_settings_window.show()
 
     def _reconstruct_file_dialog(self) -> None:
-        if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
+        if self.converter_logic.is_running():
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
@@ -933,7 +952,7 @@ class GUI:
                 dpg.add_file_extension(extension)
 
     def _reconstruct_directory_dialog(self) -> None:
-        if self.converter_panel.converter is not None and self.converter_panel.converter.is_running():
+        if self.converter_logic.is_running():
             logger.warning("A conversion is already in progress; cannot start a new one")
             return
 
@@ -988,7 +1007,7 @@ class GUI:
         )
 
     def _is_generation_in_progress(self) -> bool:
-        return self.converter_panel.is_converter_running() or self.library_panel.is_library_generating()
+        return self.converter_logic.is_running() or self.library_panel.is_library_generating()
 
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
@@ -1052,14 +1071,14 @@ class GUI:
 
     def _assign_file_to_converter(self, filepath: Path) -> None:
         if not self._is_generation_in_progress():
-            self.converter_panel.set_input_path(filepath, convert=False)
+            self.converter_logic.set_input_path(filepath, convert=False)
 
     def _assign_directory_to_converter(self, directory_path: Path) -> None:
         if not self._is_generation_in_progress():
-            self.converter_panel.set_input_path(directory_path, convert=False)
+            self.converter_logic.set_input_path(directory_path, convert=False)
 
     def _reconstruct_file(self, filepath: Path) -> None:
-        self.converter_panel.set_input_path(filepath, convert=True)
+        self.converter_logic.set_input_path(filepath, convert=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
@@ -1077,7 +1096,7 @@ class GUI:
         self._reconstruct_file(filepath)
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
-        self.converter_panel.set_input_path(directory_path, convert=True)
+        self.converter_logic.set_input_path(directory_path, convert=True)
         self.application_config_manager.set_reconstruction_path(directory_path)
         self._set_current_tab(TAG_TAB_MAIN)
         self._update_menu()
@@ -1352,7 +1371,7 @@ class GUI:
             self._exit_application()
 
     def _is_converter_running(self) -> bool:
-        return self.converter_panel.is_converter_running()
+        return self.converter_logic.is_running()
 
     def _is_library_generating(self) -> bool:
         return self.library_panel.is_library_generating()
@@ -1363,8 +1382,7 @@ class GUI:
     def _exit_application(self) -> None:
         CallbackQueue.stop()
         self.audio_device_manager.stop()
-        if self.converter_panel.converter:
-            self.converter_panel.converter.cleanup()
+        self.converter_logic.cleanup()
 
         dpg.stop_dearpygui()
 
@@ -1541,8 +1559,7 @@ class GUI:
         except KeyboardInterrupt:
             return
         finally:
-            if self.converter_panel and self.converter_panel.converter:
-                self.converter_panel.converter.cleanup()
+            self.converter_logic.cleanup()
             self.config_manager.save_config()
             self._persist_application_state()
             self.audio_device_manager.terminate()
