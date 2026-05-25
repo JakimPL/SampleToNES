@@ -302,6 +302,7 @@ class GUI:
         self._set_callbacks()
         self._setup_handlers()
         self._create_main_window()
+        self.converter_logic.emit_initial_view()
         self.config_manager.update_gui()
         self._update_menu()
         self._restore_current_items()
@@ -534,7 +535,6 @@ class GUI:
         self.converter_panel.on_cancel_requested = self.converter_logic.cancel
         self.converter_panel.on_close_requested = self.converter_logic.close
         self.converter_panel.on_load_requested = self.converter_logic.handle_load_request
-        self.converter_logic.emit_initial_view()
 
     def _setup_handlers(self) -> None:
         self.shortcut_manager.setup_focus_handler()
