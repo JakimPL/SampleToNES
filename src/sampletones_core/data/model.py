@@ -10,7 +10,7 @@ from flatbuffers.builder import Builder
 from flatbuffers.table import Table
 from pydantic import BaseModel
 
-from sampletones_shared.array import xp
+from sampletones_shared.array import CUPY_AVAILABLE, xp
 from sampletones_shared.exceptions import DeserializationError, SerializationError
 from sampletones_shared.types.array import Array, ArrayClasses, Numeric, NumericClasses
 from sampletones_shared.types.callback import Callback
@@ -239,7 +239,7 @@ class DataModel(BaseModel, ABC):
         raise DeserializationError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
 
     def _serialize_numpy_array(self, builder: Builder, array: Array, field_name: str) -> int:
-        if isinstance(array, xp.ndarray):
+        if CUPY_AVAILABLE and isinstance(array, xp.ndarray):
             array = xp.asnumpy(array)
 
         if array.dtype != np.float32:
