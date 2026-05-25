@@ -5,10 +5,10 @@ import dearpygui.dearpygui as dpg
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_MIXER
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.data import SerializedData
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
+from ...config.updates import GenerationSettingsUpdate
 from ...constants.general import (
     DIM_INPUT_WIDTH,
     LBL_CHECKBOX_GLOBAL_NOISE,
@@ -45,7 +45,6 @@ class GUIReconstructorPanel(GUISettingsPanel):
         super().__init__(
             config_manager=config_manager,
             application_config_manager=application_config_manager,
-            config_panel_key="reconstructor",
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -122,29 +121,20 @@ class GUIReconstructorPanel(GUISettingsPanel):
         show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, LBL_TOOLTIP_MAIN_RECONSTRUCTOR_MIXER)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
-
-    def _get_all_gui_values(self) -> SerializedData:
-        gui_values = {}
-        for tag in self.config_manager.config_parameters["reconstructor"].keys():
-            gui_values[tag] = dpg.get_value(tag)
-
-        for generator_tag in self.config_manager.generator_tags.keys():
-            gui_values[generator_tag] = dpg.get_value(generator_tag)
-
-        return gui_values
+        generators = [
+            generator
+            for generator in GeneratorName
+            if dpg.get_value(TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value))
+        ]
+        generation_update = GenerationSettingsUpdate(
+            mixer=float(self._clamp_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER)),
+            generators=generators,
+        )
+        self.config_manager.apply_generation_settings(generation_update)
 
     def update_gui_from_config(self) -> None:
-        if not self.config_manager.config:
-            return
-
         config = self.config_manager.config
-        for tag, info in self.config_manager.config_parameters["reconstructor"].items():
-            section_name = info.section
-            section = getattr(config, section_name)
-            if hasattr(section, info.name):
-                dpg.set_value(tag, getattr(section, info.name))
-
-        for generator_tag, generator in self.config_manager.generator_tags.items():
-            dpg_set_value(generator_tag, generator in config.generation.generators)
+        dpg.set_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, config.generation.mixer)
+        for generator in GeneratorName:
+            tag = TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value)
+            dpg_set_value(tag, generator in config.generation.generators)

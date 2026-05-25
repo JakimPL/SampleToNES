@@ -1,43 +1,22 @@
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import ValidationError
 
-from sampletones_core.configs import Config, GeneralConfig, GenerationConfig, InstructionsLibraryConfig
-from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import (
-    DEFAULT_CHANGE_RATE,
-    MAX_WORKERS,
-    MIXER,
-    NORMALIZE,
-    QUANTIZE,
-    TRANSFORMATION_GAMMA,
-)
+from sampletones_core.configs import Config, GeneralConfig
 from sampletones_core.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
-from sampletones_shared.types.data import SerializedData
 
-from ..config.parameters import ConfigParameter
 from ..constants.general import (
     MSG_CONFIGURATION_INVALID_ERROR,
     MSG_CONFIGURATION_LOAD_ERROR,
     MSG_CONFIGURATION_SAVE_ERROR,
 )
-from ..constants.main import (
-    TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
-    TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
-    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
-    TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
-    TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
-    TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
-    TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
-    TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
-)
 from ..utils.dialogs import show_error_dialog
+from .updates import AdvancedSettingsUpdate, AudioSettingsUpdate, GenerationSettingsUpdate, LibrarySettingsUpdate
 
 
 class ConfigManager:
@@ -47,56 +26,8 @@ class ConfigManager:
 
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
-        self.generators: List[GeneratorName] = GeneratorName.items()
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
-        self.config_parameters: Dict[str, Dict[str, ConfigParameter]] = {
-            "config": {
-                TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE: ConfigParameter(
-                    name="normalize",
-                    section="general",
-                    default=NORMALIZE,
-                ),
-                TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE: ConfigParameter(
-                    name="quantize",
-                    section="general",
-                    default=QUANTIZE,
-                ),
-                TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: ConfigParameter(
-                    name="sample_rate",
-                    section="library",
-                    default=DEFAULT_SAMPLE_RATE,
-                ),
-                TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: ConfigParameter(
-                    name="change_rate",
-                    section="library",
-                    default=DEFAULT_CHANGE_RATE,
-                ),
-                TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: ConfigParameter(
-                    name="transformation_gamma",
-                    section="library",
-                    default=TRANSFORMATION_GAMMA,
-                ),
-            },
-            "reconstructor": {
-                TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER: ConfigParameter(
-                    name="mixer",
-                    section="generation",
-                    default=MIXER,
-                ),
-            },
-            "advanced": {
-                TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS: ConfigParameter(
-                    name="max_workers",
-                    section="general",
-                    default=MAX_WORKERS,
-                ),
-            },
-        }
-        self.generator_tags = {
-            TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value): generator
-            for generator in GeneratorName
-        }
 
         self.initialize(config_path)
 
@@ -142,48 +73,47 @@ class ConfigManager:
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
             show_error_dialog(exception, MSG_CONFIGURATION_SAVE_ERROR)
 
-    def update_config_from_gui_values(self, gui_values: SerializedData) -> None:
-        self._update_generators_from_gui_values(gui_values)
-        config_data = self._build_config_data_from_values(gui_values)
-        config_data["generation"]["generators"] = self.generators
-
-        general_config_data = {**self.config.general.model_dump(), **config_data["general"]}
-        library_config_data = {**self.config.library.model_dump(), **config_data["library"]}
-        generation_config_data = {**self.config.generation.model_dump(), **config_data["generation"]}
-        self.config = Config(
-            general=GeneralConfig(**general_config_data),
-            library=InstructionsLibraryConfig(**library_config_data),
-            generation=GenerationConfig(**generation_config_data),
+    def apply_audio_settings(self, update: AudioSettingsUpdate) -> None:
+        new_general = self.config.general.model_copy(
+            update={"normalize": update.normalize, "quantize": update.quantize}
         )
+        self.config = self.config.model_copy(update={"general": new_general})
         self.window = Window.from_config(self.config)
         self.update_gui()
 
-    def _build_config_data_from_values(self, gui_values: SerializedData) -> Dict[str, SerializedData]:
-        config_data = {
-            "general": {
-                "library_directory": str(self.library_directory),
-                "output_directory": str(self.output_directory),
-            },
-            "library": {},
-            "generation": {},
-        }
+    def apply_library_settings(self, update: LibrarySettingsUpdate) -> None:
+        new_library = self.config.library.model_copy(
+            update={
+                "sample_rate": update.sample_rate,
+                "change_rate": update.change_rate,
+                "transformation_gamma": update.transformation_gamma,
+            }
+        )
+        self.config = self.config.model_copy(update={"library": new_library})
+        self.window = Window.from_config(self.config)
+        self.update_gui()
 
-        for data in self.config_parameters.values():
-            for tag, info in data.items():
-                value = gui_values.get(tag)
-                if value is None:
-                    continue
+    def apply_generation_settings(self, update: GenerationSettingsUpdate) -> None:
+        new_generation = self.config.generation.model_copy(
+            update={"mixer": update.mixer, "generators": update.generators}
+        )
+        self.config = self.config.model_copy(update={"generation": new_generation})
+        self.window = Window.from_config(self.config)
+        self.update_gui()
 
-                section = str(info.section)
-                config_data[section][info.name] = value
-
-        return config_data
-
-    def _update_generators_from_gui_values(self, gui_values: SerializedData) -> None:
-        if any(tag not in gui_values for tag in self.generator_tags.keys()):
-            return
-
-        self.generators = [generator for tag, generator in self.generator_tags.items() if gui_values[tag]]
+    def apply_advanced_settings(self, update: AdvancedSettingsUpdate) -> None:
+        new_general = self.config.general.model_copy(
+            update={
+                "max_workers": update.max_workers,
+                "library_directory": str(update.library_directory),
+                "output_directory": str(update.output_directory),
+            }
+        )
+        self.config = self.config.model_copy(update={"general": new_general})
+        self.window = Window.from_config(self.config)
+        self.library_directory = update.library_directory
+        self.output_directory = update.output_directory
+        self.update_gui()
 
     def get_library_directory(self) -> Path:
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
@@ -202,10 +132,7 @@ class ConfigManager:
         for callback in self.config_change_callbacks:
             callback()
 
-    def apply_library_config(self, library_key: InstructionLibraryKey) -> SerializedData:
-        if not self.config:
-            raise ValueError("No config available")
-
+    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         sample_rate = library_key.sample_rate
         change_rate = round(sample_rate / library_key.frame_length)
         window_size = library_key.window_size
@@ -220,16 +147,9 @@ class ConfigManager:
             }
         )
 
-        new_config = self.config.model_copy(update={"library": new_library_config})
-
-        self.config = new_config
+        self.config = self.config.model_copy(update={"library": new_library_config})
         self.window = Window.from_config(self.config)
-
-        return {
-            TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE: sample_rate,
-            TAG_INPUT_MAIN_CONFIG_CHANGE_RATE: change_rate,
-            TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA: transformation_gamma,
-        }
+        self.update_gui()
 
     def load_default_config(self) -> None:
         self.load_config(Config())
@@ -248,7 +168,6 @@ class ConfigManager:
         self.window = Window.from_config(config)
         self.library_directory = Path(config.general.library_directory)
         self.output_directory = Path(config.general.output_directory)
-        self.generators = list(config.generation.generators)
         self.update_gui()
 
     def save_config_to_file(self, filepath: Path) -> None:

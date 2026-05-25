@@ -1,3 +1,5 @@
+from typing import Any
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
@@ -7,9 +9,11 @@ from sampletones_core.constants.general import (
     MIN_CHANGE_RATE,
 )
 from sampletones_core.library import InstructionLibraryKey
+from sampletones_shared.types.application import Sender
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
+from ...config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
 from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -37,7 +41,6 @@ from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
 from ...elements.settings import GUISettingsPanel
 from ...elements.status import GUIStatusBar
-from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
 
 
@@ -50,7 +53,6 @@ class GUIConfigPanel(GUISettingsPanel):
         super().__init__(
             config_manager=config_manager,
             application_config_manager=application_config_manager,
-            config_panel_key="config",
             tag=TAG_PANEL_MAIN_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -75,6 +77,19 @@ class GUIConfigPanel(GUISettingsPanel):
             dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
             dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
             dpg.add_item_edited_handler(callback=self._on_parameter_change)
+
+    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+        audio_update = AudioSettingsUpdate(
+            normalize=bool(dpg.get_value(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE)),
+            quantize=bool(dpg.get_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE)),
+        )
+        library_update = LibrarySettingsUpdate(
+            sample_rate=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE)),
+            change_rate=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE)),
+            transformation_gamma=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA)),
+        )
+        self.config_manager.apply_audio_settings(audio_update)
+        self.config_manager.apply_library_settings(library_update)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_CONFIG)
@@ -142,17 +157,12 @@ class GUIConfigPanel(GUISettingsPanel):
         show_tooltip(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA)
 
     def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
-        gui_updates = self.config_manager.apply_library_config(library_key)
-        for tag, value in gui_updates.items():
-            dpg_set_value(tag, value)
+        self.config_manager.apply_library_config(library_key)
 
     def update_gui_from_config(self) -> None:
-        if not self.config_manager.config:
-            return
-
         config = self.config_manager.config
-        for tag, info in self.config_manager.config_parameters[self._config_panel_key].items():
-            section_name = info.section
-            section = getattr(config, section_name)
-            if hasattr(section, info.name):
-                dpg.set_value(tag, getattr(section, info.name))
+        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, config.general.normalize)
+        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE, config.general.quantize)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, config.library.sample_rate)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, config.library.change_rate)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, config.library.transformation_gamma)

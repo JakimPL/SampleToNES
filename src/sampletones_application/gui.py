@@ -1217,6 +1217,24 @@ class GUI:
         alias: str = dpg.get_item_alias(current_tab)
         return alias
 
+    def _save_window_state(self) -> None:
+        if self.application_config_manager.fullscreen:
+            return
+        viewport_x, viewport_y = dpg.get_viewport_pos()
+        self.application_config_manager.set_window_state(
+            fullscreen=False,
+            x=int(viewport_x),
+            y=int(viewport_y),
+            width=dpg.get_viewport_width(),
+            height=dpg.get_viewport_height(),
+        )
+
+    def _persist_application_state(self) -> None:
+        self.application_config_manager.set_current_audio_device(self.audio_device_manager)
+        self._save_window_state()
+        self.application_config_manager.set_current_tab(self._get_current_tab())
+        self.application_config_manager.save_config()
+
     def _play_from_start(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
@@ -1528,17 +1546,6 @@ class GUI:
             if self.converter_panel and self.converter_panel.converter:
                 self.converter_panel.converter.cleanup()
             self.config_manager.save_config()
-            self.application_config_manager.set_current_audio_device(self.audio_device_manager)
-            if not self.application_config_manager.fullscreen:
-                viewport_x, viewport_y = dpg.get_viewport_pos()
-                self.application_config_manager.set_window_state(
-                    fullscreen=False,
-                    x=int(viewport_x),
-                    y=int(viewport_y),
-                    width=dpg.get_viewport_width(),
-                    height=dpg.get_viewport_height(),
-                )
-            self.application_config_manager.set_current_tab(self._get_current_tab())
-            self.application_config_manager.save_config()
+            self._persist_application_state()
             self.audio_device_manager.terminate()
             dpg.destroy_context()

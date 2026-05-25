@@ -1,14 +1,16 @@
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_core.constants.general import MAX_WORKERS
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.system.paths import to_path
 
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
+from ...config.updates import AdvancedSettingsUpdate
 from ...constants.general import DIM_DIALOG_HEIGHT_FILE, DIM_DIALOG_WIDTH_FILE, DIM_INPUT_WIDTH
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
@@ -58,7 +60,6 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
             tag=TAG_PANEL_MAIN_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
             height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
-            config_panel_key="advanced",
         )
 
     def create_panel(self) -> None:
@@ -74,6 +75,14 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
             self._create_workers_settings()
             self._create_path_settings()
             self._create_tooltips()
+
+    def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
+        advanced_update = AdvancedSettingsUpdate(
+            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            library_directory=self.config_manager.get_library_directory(),
+            output_directory=self.config_manager.get_output_directory(),
+        )
+        self.config_manager.apply_advanced_settings(advanced_update)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_ADVANCED)
@@ -162,9 +171,12 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
         self.application_config_manager.set_library_path(filepath)
 
     def change_library_directory(self, directory_path: Path) -> None:
-        self.config_manager.library_directory = directory_path
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
+        advanced_update = AdvancedSettingsUpdate(
+            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            library_directory=directory_path,
+            output_directory=self.config_manager.get_output_directory(),
+        )
+        self.config_manager.apply_advanced_settings(advanced_update)
 
         if self.library_path_text:
             self.library_path_text.set_path(directory_path)
@@ -187,9 +199,12 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
         self.change_output_directory(directory_path)
 
     def change_output_directory(self, directory_path: Path) -> None:
-        self.config_manager.output_directory = directory_path
-        gui_values = self._get_all_gui_values()
-        self.config_manager.update_config_from_gui_values(gui_values)
+        advanced_update = AdvancedSettingsUpdate(
+            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            library_directory=self.config_manager.get_library_directory(),
+            output_directory=directory_path,
+        )
+        self.config_manager.apply_advanced_settings(advanced_update)
 
         if self.output_path_text is not None:
             self.output_path_text.set_path(directory_path)
@@ -197,15 +212,8 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
         self.call(self.on_update_output_directory)
 
     def update_gui_from_config(self) -> None:
-        if not self.config_manager.config:
-            return
-
         config = self.config_manager.config
-        for tag, info in self.config_manager.config_parameters[self._config_panel_key].items():
-            section_name = info.section
-            section = getattr(config, section_name)
-            if hasattr(section, tag):
-                dpg.set_value(tag, getattr(section, tag))
+        dpg.set_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, config.general.max_workers)
 
         output_directory = to_path(config.general.output_directory)
         if self.output_path_text:
