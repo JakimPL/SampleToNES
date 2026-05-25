@@ -174,7 +174,8 @@ from .panels.main.explorer import GUIExplorerPanel
 from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
-from .panels.reconstruction.details import GUIReconstructionDetailsPanel
+from .panels.reconstruction.details.logic import ReconstructionDetailsLogic
+from .panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
 from .panels.reconstruction.logic import ReconstructionPanelLogic
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.sequencer.browser import GUISequencerBrowserPanel
@@ -254,6 +255,8 @@ class GUI:
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
             self.shortcut_manager,
+        )
+        self.reconstruction_details_logic: ReconstructionDetailsLogic = ReconstructionDetailsLogic(
             self.reconstruction_manager,
         )
         self.sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
@@ -584,11 +587,29 @@ class GUI:
             path, MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED
         )
 
-        self.reconstruction_details_panel.set_callbacks(
-            on_instrument_export=self.reconstruction_panel_logic.request_export_instrument_dialog,
-            on_instruments_export=self.reconstruction_panel_logic.request_export_instruments_dialog,
-            on_reconstruction_instrument_updated=self.regenerator.regenerate,
-            on_reconstruction_instrument_hovered=self.reconstruction_panel.set_overlay,
+        self.reconstruction_details_logic.on_view_changed = self.reconstruction_details_panel.update_view
+        self.reconstruction_details_logic.on_feature_data_changed = (
+            self.reconstruction_details_panel.update_feature_data
+        )
+        self.reconstruction_details_logic.on_pitch_changed = self.reconstruction_details_panel.update_pitch
+        self.reconstruction_details_logic.on_reconstruction_instrument_updated = self.regenerator.regenerate
+
+        self.reconstruction_details_panel.on_instrument_export = (
+            self.reconstruction_panel_logic.request_export_instrument_dialog
+        )
+        self.reconstruction_details_panel.on_instruments_export = (
+            self.reconstruction_panel_logic.request_export_instruments_dialog
+        )
+        self.reconstruction_details_panel.on_reconstruction_instrument_hovered = self.reconstruction_panel.set_overlay
+        self.reconstruction_details_panel.on_pitch_input = self.reconstruction_details_logic.handle_pitch_input
+        self.reconstruction_details_panel.on_pitch_step = self.reconstruction_details_logic.handle_pitch_step
+        self.reconstruction_details_panel.on_hold_tick = self.reconstruction_details_logic.handle_hold_tick
+        self.reconstruction_details_panel.on_hold_ended = self.reconstruction_details_logic.handle_hold_ended
+        self.reconstruction_details_panel.on_bar_data_changed = (
+            self.reconstruction_details_logic.handle_bar_point_clicked
+        )
+        self.reconstruction_details_panel.on_raw_data_changed = (
+            self.reconstruction_details_logic.handle_raw_data_changed
         )
         self.converter_logic.on_view_changed = self.converter_panel.update_view
         self.converter_logic.on_success = self.converter_success_dialog.show
@@ -1236,7 +1257,7 @@ class GUI:
         filepath = reconstruction_data.filepath
         self.config_manager.load_library_and_generation_config(reconstruction_data.config)
         self.reconstruction_panel_logic.display_reconstruction()
-        self.reconstruction_details_panel.update_display()
+        self.reconstruction_details_logic.update_display()
         self.application_config_manager.set_current_reconstruction(filepath)
 
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
@@ -1289,7 +1310,7 @@ class GUI:
 
     def _on_reconstruction_closed(self) -> None:
         self.reconstruction_panel_logic.close_reconstruction()
-        self.reconstruction_details_panel.update_display()
+        self.reconstruction_details_logic.update_display()
         self.application_config_manager.set_current_reconstruction(None)
         self._unsaved_reconstruction_changes = False
         self._update_menu()

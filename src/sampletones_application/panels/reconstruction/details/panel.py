@@ -5,26 +5,18 @@ import numpy as np
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
-from sampletones_core.exporters import Features
-from sampletones_core.types.feature import FeatureValue
 from sampletones_core.utils.frequencies import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
-    SANITIZED_NAME_TO_PERIOD,
-    SANITIZED_NAME_TO_PITCH,
-    clamp_period,
-    clamp_pitch,
     period_to_name,
     pitch_to_name,
-    sanitize_period,
-    sanitize_pitch,
 )
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
 
-from ...constants.general import (
+from ....constants.general import (
     COL_TEXT_DISABLED_DEFAULT,
     DIM_BUTTON_INPUT_INT,
     DIM_BUTTON_WIDTH_COPY,
@@ -42,11 +34,9 @@ from ...constants.general import (
     TAG_TAB_RECONSTRUCTIONS,
     VAL_CHARACTER_BUTTON_DECREMENT,
     VAL_CHARACTER_BUTTON_INCREMENT,
-    VAL_DELAY_SCHEDULE,
-    VAL_PRIORITY_SCHEDULE,
 )
-from ...constants.graphs import DIM_BAR_PLOT_HEIGHT, DIM_BAR_PLOT_WIDTH, SUF_GRAPH, SUF_GRAPH_RAW_DATA
-from ...constants.reconstructions import (
+from ....constants.graphs import DIM_BAR_PLOT_HEIGHT, DIM_BAR_PLOT_WIDTH, SUF_GRAPH, SUF_GRAPH_RAW_DATA
+from ....constants.reconstructions import (
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
     DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
@@ -71,43 +61,34 @@ from ...constants.reconstructions import (
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
     TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
-    VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
-from ...elements.button import GUIButton
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.graphs.bar import GUIBarGraph
-from ...elements.graphs.utils import extend_y_range
-from ...elements.panel import GUIPanel
-from ...elements.status import GUIStatusBar
-from ...reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CONFIGS, FeaturePlotConfig
-from ...reconstruction.feature import FeatureData
-from ...reconstruction.manager import ReconstructionManager
-from ...reconstruction.update import ReconstructionUpdate
-from ...themes.default import DefaultTheme
-from ...themes.input import InvalidInputTheme
-from ...themes.tables.initial_pitch import InitialPitchTableTheme
-from ...utils.callbacks.queue import CallbackQueue
-from ...utils.clipboard import copy_to_clipboard
-from ...utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
-from ...utils.shortcuts.manager import ShortcutManager
-from ...utils.tooltip import show_tooltip
+from ....elements.button import GUIButton
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.graphs.bar import GUIBarGraph
+from ....elements.graphs.utils import extend_y_range
+from ....elements.panel import GUIPanel
+from ....elements.status import GUIStatusBar
+from ....reconstruction.config import FEATURE_DISPLAY_ORDER, FEATURE_PLOT_CONFIGS, FeaturePlotConfig
+from ....reconstruction.feature import FeatureData
+from ....themes.default import DefaultTheme
+from ....themes.input import InvalidInputTheme
+from ....themes.tables.initial_pitch import InitialPitchTableTheme
+from ....utils.clipboard import copy_to_clipboard
+from ....utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
+from ....utils.shortcuts.manager import ShortcutManager
+from ....utils.tooltip import show_tooltip
+from .viewmodel import ReconstructionDetailsViewModel
 
 OnInstrumentExportCallback = Callable[[GeneratorName], None]
-OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, FeatureValue], None]
 OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
-    def __init__(
-        self,
-        shortcut_manager: ShortcutManager,
-        reconstruction_manager: ReconstructionManager,
-    ) -> None:
+    def __init__(self, shortcut_manager: ShortcutManager) -> None:
         self.shortcut_manager = shortcut_manager
-        self.reconstruction_manager = reconstruction_manager
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
 
@@ -121,15 +102,17 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.theme = DefaultTheme()
         self.invalid_input_theme = InvalidInputTheme()
         self.initial_pitch_theme = InitialPitchTableTheme()
-        self._initial_pitch_change_object: Optional[str] = None
-        self._initial_pitch_change_timer: Optional[float] = None
-
-        self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_instruments_export: Optional[VoidCallback] = None
-        self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
+
+        self.on_pitch_input: Optional[Callable[[GeneratorName, str, int], None]] = None
+        self.on_pitch_step: Optional[Callable[[GeneratorName, int], None]] = None
+        self.on_hold_tick: Optional[Callable[[bool, bool, float, GeneratorName], None]] = None
+        self.on_hold_ended: Optional[VoidCallback] = None
+        self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
+        self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -273,16 +256,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
             self.generator_plots[generator_name][feature_key] = plot
 
-    def _update_initial_pitch(self, generator_name: GeneratorName, window_tag: str) -> None:
-        features = self._get_features(generator_name)
+    def _apply_pitch_display(self, generator_name: GeneratorName, value: int) -> None:
         window_tag = self._get_window_tag(self._get_generator_tab_tag(generator_name))
-        initial_pitch = cast(int, features[FeatureKey.INITIAL_PITCH])
         input_tag = f"{window_tag}{SUF_INPUT}"
         value_tag = f"{input_tag}{SUF_TEXT}"
-
-        _, display_value = self._format_initial_pitch(generator_name, initial_pitch)
+        _, display_value = self._format_initial_pitch(generator_name, value)
         dpg_set_value(input_tag, display_value)
-        dpg_set_value(value_tag, initial_pitch)
+        dpg_set_value(value_tag, str(value))
 
     def _update_generator_plot(
         self,
@@ -318,33 +298,34 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
 
-    def update_display(self) -> None:
-        feature_data = self.current_features
-        clear = feature_data is None
-        dpg_configure_item(self.export_button_separator_tag, show=not clear)
-        dpg_configure_item(self.no_data_message_tag, show=clear)
-        dpg_configure_item(self.tab_bar_tag, show=not clear)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=not clear, enabled=not clear)
-        dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=not clear)
-
-        if clear or feature_data is None:
-            return
+    def update_view(self, viewmodel: ReconstructionDetailsViewModel) -> None:
+        is_loaded = viewmodel.reconstruction_loaded
+        dpg_configure_item(self.export_button_separator_tag, show=is_loaded)
+        dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
+        dpg_configure_item(self.tab_bar_tag, show=is_loaded)
+        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=is_loaded, enabled=is_loaded)
+        dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=is_loaded)
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
+            is_available = generator_name in viewmodel.available_generators
+            dpg_configure_item(tab_tag, show=is_available)
+
+    def update_feature_data(self, feature_data: Optional[FeatureData]) -> None:
+        if feature_data is None:
+            return
+
+        for generator_name in GeneratorName.items():
             if generator_name not in feature_data.generators:
-                dpg_configure_item(tab_tag, show=False)
                 continue
 
-            dpg_configure_item(tab_tag, show=True)
             generator_features = feature_data.get_generator_features(generator_name)
             if generator_features is None:
-                dpg_configure_item(tab_tag, show=False)
                 continue
 
-            dpg_configure_item(tab_tag, show=True)
-            window_tag = self._get_window_tag(tab_tag)
-            self._update_initial_pitch(generator_name, window_tag)
+            initial_pitch = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
+            self._apply_pitch_display(generator_name, initial_pitch)
+
             for key in FEATURE_DISPLAY_ORDER:
                 if key == FeatureKey.INITIAL_PITCH:
                     continue
@@ -353,17 +334,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 if feature is None:
                     feature = np.array([], dtype=np.int8)
 
-                self._update_generator_plot(
-                    generator_name,
-                    key,
-                    feature,
-                )
+                self._update_generator_plot(generator_name, key, feature)
+                self._update_raw_data_text(generator_name, key, feature)
 
-                self._update_raw_data_text(
-                    generator_name,
-                    key,
-                    feature,
-                )
+    def update_pitch(self, generator_name: GeneratorName, new_pitch: int) -> None:
+        self._apply_pitch_display(generator_name, new_pitch)
 
     def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
         if generator_name == GeneratorName.NOISE:
@@ -449,8 +424,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                         callback=self._change_initial_pitch,
                         user_data=(
                             generator_name,
-                            input_tag,
-                            value_tag,
                             -1,
                         ),
                     )
@@ -463,8 +436,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                         callback=self._change_initial_pitch,
                         user_data=(
                             generator_name,
-                            input_tag,
-                            value_tag,
                             1,
                         ),
                     )
@@ -483,8 +454,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             decrement_button_tag,
             increment_button_tag,
             generator_name,
-            input_tag,
-            value_tag,
         )
 
     def _setup_button_hold_handlers(
@@ -492,8 +461,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         decrement_button_tag: str,
         increment_button_tag: str,
         generator_name: GeneratorName,
-        input_tag: str,
-        value_tag: str,
     ) -> None:
         handler_registry_tag = f"{generator_name}{SUF_HANDLER_REGISTRY}".lower()
         dpg_delete_item(handler_registry_tag)
@@ -505,8 +472,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     decrement_button_tag,
                     increment_button_tag,
                     generator_name,
-                    input_tag,
-                    value_tag,
                 ),
             )
             dpg.add_mouse_release_handler(
@@ -518,40 +483,22 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self,
         sender: Sender,
         app_data: Any,
-        user_data: Tuple[str, str, GeneratorName, str, str],
+        user_data: Tuple[str, str, GeneratorName],
     ) -> None:
-        button_item = None
-        decrement_button_tag, increment_button_tag, generator_name, input_tag, value_tag = user_data
+        decrement_button_tag, increment_button_tag, generator_name = user_data
         if not dpg.does_item_exist(decrement_button_tag) or not dpg.does_item_exist(increment_button_tag):
             dpg_delete_item(sender)
             return
 
-        if dpg.is_item_hovered(decrement_button_tag):
-            button_item = decrement_button_tag
-            change = -1
-        elif dpg.is_item_hovered(increment_button_tag):
-            button_item = increment_button_tag
-            change = 1
-        else:
+        is_decrement = dpg.is_item_hovered(decrement_button_tag)
+        is_increment = dpg.is_item_hovered(increment_button_tag)
+        if not is_decrement and not is_increment:
             return
 
-        if self._initial_pitch_change_object != button_item or self._initial_pitch_change_timer is None:
-            self._initial_pitch_change_object = button_item
-            self._initial_pitch_change_timer = 3 * VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
-            return
-
-        self._initial_pitch_change_timer -= dpg.get_delta_time()
-        assert self._initial_pitch_change_timer is not None
-        if self._initial_pitch_change_timer > 0:
-            return
-
-        pitch_change_data = (generator_name, input_tag, value_tag, change)
-        self._change_initial_pitch(sender, app_data, pitch_change_data)
-        self._initial_pitch_change_timer = VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
+        self.call(self.on_hold_tick, is_decrement, is_increment, dpg.get_delta_time(), generator_name)
 
     def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
-        self._initial_pitch_change_timer = None
-        self._initial_pitch_change_object = None
+        self.call(self.on_hold_ended)
 
     def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)
@@ -587,45 +534,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self,
         sender: Sender,
         app_data: int,
-        user_data: Tuple[GeneratorName, str, str, int],
+        user_data: Tuple[GeneratorName, int],
     ) -> None:
         if user_data is None:
             return
-
-        generator_name, input_tag, value_tag, change = user_data
-        if generator_name == GeneratorName.NOISE:
-            current_name = sanitize_period(dpg.get_value(input_tag))
-            if current_name not in SANITIZED_NAME_TO_PERIOD:
-                return
-
-            value = SANITIZED_NAME_TO_PERIOD[current_name]
-            new_value = clamp_period(value + change)
-        else:
-            current_name = sanitize_pitch(dpg.get_value(input_tag))
-            if current_name not in SANITIZED_NAME_TO_PITCH:
-                return
-
-            value = SANITIZED_NAME_TO_PITCH[current_name]
-            new_value = clamp_pitch(value + change)
-
-        self._update_initial_pitch_display(
-            new_value,
-            generator_name,
-            input_tag,
-            value_tag,
-        )
-
-    def _update_initial_pitch_display(
-        self,
-        value: int,
-        generator_name: GeneratorName,
-        input_tag: str,
-        value_tag: str,
-    ) -> None:
-        _, display_value = self._format_initial_pitch(generator_name, value)
-        dpg_set_value(input_tag, display_value)
-        dpg_set_value(value_tag, str(value))
-        self._on_initial_pitch_changed(generator_name, value)
+        generator_name, direction = user_data
+        self.call(self.on_pitch_step, generator_name, direction)
 
     def _validate_and_update_initial_pitch_input(
         self,
@@ -634,33 +548,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         user_data: Tuple[GeneratorName, str, str],
     ) -> None:
         generator_name, input_tag, value_tag = user_data
-        try:
-            value = int(app_data)
-            if generator_name == GeneratorName.NOISE:
-                value = clamp_period(value)
-            else:
-                value = clamp_pitch(value)
-        except ValueError:
-            name = app_data.strip()
-            if generator_name == GeneratorName.NOISE:
-                name = sanitize_period(name)
-                if name not in SANITIZED_NAME_TO_PERIOD:
-                    value = int(dpg.get_value(value_tag))
-                else:
-                    value = SANITIZED_NAME_TO_PERIOD[name]
-            else:
-                name = sanitize_pitch(name)
-                if name not in SANITIZED_NAME_TO_PITCH:
-                    value = int(dpg.get_value(value_tag))
-                else:
-                    value = SANITIZED_NAME_TO_PITCH[name]
-
-        self._update_initial_pitch_display(
-            value,
-            generator_name,
-            input_tag,
-            value_tag,
-        )
+        self.call(self.on_pitch_input, generator_name, app_data, int(dpg.get_value(value_tag)))
 
     def _create_feature_display(
         self,
@@ -747,53 +635,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             on_bar_point_hovered=self._on_bar_point_hovered,
         )
 
-    def _on_initial_pitch_changed(
-        self,
-        generator_name: GeneratorName,
-        initial_pitch: int,
-    ) -> None:
-        self._schedule_on_reconstruction_instrument_updated(
-            generator_name,
-            FeatureKey.INITIAL_PITCH,
-            initial_pitch,
-        )
-
-    def _schedule_on_reconstruction_instrument_updated(
-        self,
-        generator_name: GeneratorName,
-        feature_key: FeatureKey,
-        data: FeatureValue,
-    ) -> None:
-        self._pending_reconstruction_update = ReconstructionUpdate(generator_name, feature_key, data)
-        CallbackQueue.add(
-            self._on_reconstruction_instrument_updated,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
-        )
-
-    def _on_reconstruction_instrument_updated(self) -> None:
-        if self._pending_reconstruction_update is not None:
-            generator_name, feature_key, data = self._pending_reconstruction_update
-            self._pending_reconstruction_update = None
-            self.call(
-                self.on_reconstruction_instrument_updated,
-                generator_name,
-                self._get_features(generator_name),
-                feature_key,
-                data,
-            )
-
-    def _get_features(self, generator_name: GeneratorName) -> Features:
-        assert self.current_features is not None, "Current features should not be None when creating feature plots"
-        feature_data = self.current_features.model_copy()
-        features = feature_data.get_generator_features(generator_name)
-        assert features is not None, f"Features for generator {generator_name} should not be None"
-        return features
-
-    def _format_data(self, data: np.ndarray) -> str:
-        string_data = [str(clamp(int(value), -128, 127)) for value in data]
-        return " ".join(string_data)
-
     def _on_bar_point_clicked(
         self,
         generator_name: GeneratorName,
@@ -803,11 +644,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     ) -> None:
         raw_data_tag = f"{plot_tag}{SUF_GRAPH_RAW_DATA}"
         dpg_set_value(raw_data_tag, self._format_data(data))
-        self._schedule_on_reconstruction_instrument_updated(
-            generator_name,
-            feature_key,
-            data,
-        )
+        self.call(self.on_bar_data_changed, generator_name, feature_key, data)
 
     def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
@@ -882,13 +719,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             return
 
         dpg.set_value(sender, self._format_data(raw_data))
-        self._schedule_on_reconstruction_instrument_updated(
-            generator_name,
-            feature_key,
-            raw_data,
-        )
+        self.call(self.on_raw_data_changed, generator_name, feature_key, raw_data)
 
         self._load_plot_data(plot, generator_name, feature_key, config, raw_data)
+
+    def _format_data(self, data: np.ndarray) -> str:
+        string_data = [str(clamp(int(value), -128, 127)) for value in data]
+        return " ".join(string_data)
 
     def _load_plot_data(
         self,
@@ -909,11 +746,3 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
         copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
-
-    @property
-    def current_features(self) -> Optional[FeatureData]:
-        return self.reconstruction_manager.current_features
-
-    @current_features.setter
-    def current_features(self, value: Optional[FeatureData]) -> None:
-        self.reconstruction_manager.current_features = value
