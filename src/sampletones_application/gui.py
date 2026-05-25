@@ -142,9 +142,20 @@ from .constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+    MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED,
+    TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
+    TTL_DIALOG_EXPORT_WAV,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
 )
 from .constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
 from .elements.fonts.registry import FontRegistry
@@ -164,6 +175,7 @@ from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details import GUIReconstructionDetailsPanel
+from .panels.reconstruction.logic import ReconstructionPanelLogic
 from .panels.reconstruction.reconstruction import GUIReconstructionPanel
 from .panels.sequencer.browser import GUISequencerBrowserPanel
 from .panels.sequencer.grid import GUISequencerGridPanel
@@ -182,6 +194,7 @@ from .utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
     show_info_dialog,
+    show_message_with_path_dialog,
     show_modal_dialog,
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
@@ -233,9 +246,10 @@ class GUI:
             self.reconstruction_manager,
         )
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
-            self.config_manager,
-            self.application_config_manager,
             self.audio_device_manager,
+        )
+        self.reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
+            self.application_config_manager,
             self.reconstruction_manager,
         )
         self.reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
@@ -510,13 +524,69 @@ class GUI:
             is_instruction_loaded=self.library_manager.get_current_instruction,
             on_instruction_changed=self.instruction_panel.display_instruction,
         )
-        self.reconstruction_panel.set_callbacks(
-            on_export_wav=self._export_reconstruction_wav_dialog,
-            on_change_audio_state=self._update_menu,
+        self.reconstruction_panel.on_change_audio_state = self._update_menu
+        self.reconstruction_panel.on_audio_source_changed = self.reconstruction_panel_logic.set_audio_source
+        self.reconstruction_panel.on_generators_changed = self.reconstruction_panel_logic.set_selected_generators
+        self.reconstruction_panel.on_export_wav_requested = self._export_reconstruction_wav_dialog
+        self.reconstruction_panel.on_export_instrument_confirmed = (
+            self.reconstruction_panel_logic.handle_export_instrument_confirmed
         )
+        self.reconstruction_panel.on_export_instruments_confirmed = (
+            self.reconstruction_panel_logic.handle_export_instruments_confirmed
+        )
+        self.reconstruction_panel.on_export_wav_confirmed = self.reconstruction_panel_logic.handle_export_wav_confirmed
+        self.reconstruction_panel.on_locate_original_audio_requested = (
+            self.reconstruction_panel_logic.handle_locate_original_audio
+        )
+
+        self.reconstruction_panel_logic.on_view_changed = self.reconstruction_panel.update_view
+        self.reconstruction_panel_logic.on_audio_data_changed = self.reconstruction_panel.update_audio_data
+        self.reconstruction_panel_logic.on_waveform_load_changed = self.reconstruction_panel.load_waveform_data
+        self.reconstruction_panel_logic.on_waveform_update_changed = self.reconstruction_panel.update_waveform_data
+        self.reconstruction_panel_logic.on_waveform_cleared = self.reconstruction_panel.clear_waveform
+        self.reconstruction_panel_logic.on_open_export_instrument_dialog = (
+            self.reconstruction_panel.open_export_instrument_dialog
+        )
+        self.reconstruction_panel_logic.on_open_export_instruments_dialog = (
+            self.reconstruction_panel.open_export_instruments_dialog
+        )
+        self.reconstruction_panel_logic.on_open_export_wav_dialog = self.reconstruction_panel.open_export_wav_dialog
+        self.reconstruction_panel_logic.on_export_instrument_success = lambda filepath: show_message_with_path_dialog(
+            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
+            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+            filepath,
+        )
+        self.reconstruction_panel_logic.on_export_instrument_error = lambda exception: show_error_dialog(
+            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED
+        )
+        self.reconstruction_panel_logic.on_export_instruments_success = lambda filepath: show_message_with_path_dialog(
+            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
+            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
+            filepath,
+        )
+        self.reconstruction_panel_logic.on_export_instruments_error = lambda exception: show_error_dialog(
+            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED
+        )
+        self.reconstruction_panel_logic.on_export_wav_success = lambda filepath: show_message_with_path_dialog(
+            TTL_DIALOG_EXPORT_WAV,
+            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+            filepath,
+        )
+        self.reconstruction_panel_logic.on_export_wav_error = lambda exception: show_error_dialog(
+            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED
+        )
+        self.reconstruction_panel_logic.on_locate_audio_missing = lambda: show_info_dialog(
+            TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+        )
+        self.reconstruction_panel_logic.on_locate_audio_not_found = lambda path: show_file_not_found_dialog(
+            path, MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED
+        )
+
         self.reconstruction_details_panel.set_callbacks(
-            on_instrument_export=self.reconstruction_panel.export_instrument_dialog,
-            on_instruments_export=self.reconstruction_panel.export_instruments_dialog,
+            on_instrument_export=self.reconstruction_panel_logic.request_export_instrument_dialog,
+            on_instruments_export=self.reconstruction_panel_logic.request_export_instruments_dialog,
             on_reconstruction_instrument_updated=self.regenerator.regenerate,
             on_reconstruction_instrument_hovered=self.reconstruction_panel.set_overlay,
         )
@@ -1020,11 +1090,11 @@ class GUI:
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_reconstruction_wav_dialog()
+            self.reconstruction_panel_logic.request_export_wav_dialog()
 
     def _export_reconstruction_ftis_dialog(self) -> None:
         if self._check_if_reconstruction_loaded():
-            self.reconstruction_panel.export_instruments_dialog()
+            self.reconstruction_panel_logic.request_export_instruments_dialog()
 
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():
@@ -1165,7 +1235,7 @@ class GUI:
 
         filepath = reconstruction_data.filepath
         self.config_manager.load_library_and_generation_config(reconstruction_data.config)
-        self.reconstruction_panel.display_reconstruction()
+        self.reconstruction_panel_logic.display_reconstruction()
         self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(filepath)
 
@@ -1184,7 +1254,7 @@ class GUI:
         self._load_reconstruction(filepath)
 
     def _on_reconstruction_updated(self) -> None:
-        self.reconstruction_panel.update_reconstruction()
+        self.reconstruction_panel_logic.update_reconstruction()
         self._unsaved_reconstruction_changes = True
         self._update_viewport_title()
 
@@ -1218,7 +1288,7 @@ class GUI:
         self.reconstruction_manager.close_reconstruction()
 
     def _on_reconstruction_closed(self) -> None:
-        self.reconstruction_panel.close_reconstruction()
+        self.reconstruction_panel_logic.close_reconstruction()
         self.reconstruction_details_panel.update_display()
         self.application_config_manager.set_current_reconstruction(None)
         self._unsaved_reconstruction_changes = False
@@ -1255,7 +1325,7 @@ class GUI:
     def _play_from_start(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self.reconstruction_panel.player_panel.play()
+            self.reconstruction_panel.play()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.play()
 
@@ -1264,7 +1334,7 @@ class GUI:
     def _play(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self.reconstruction_panel.player_panel.pause_or_resume()
+            self.reconstruction_panel.pause_or_resume()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.pause_or_resume()
 
@@ -1273,7 +1343,7 @@ class GUI:
     def _stop(self) -> None:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self.reconstruction_panel.player_panel.stop()
+            self.reconstruction_panel.stop()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             self.instruction_panel.player_panel.stop()
 
@@ -1285,9 +1355,9 @@ class GUI:
         loaded = False
         paused = False
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            playing = self.reconstruction_panel.player_panel.is_playing()
-            paused = self.reconstruction_panel.player_panel.is_paused()
-            loaded = self.reconstruction_panel.player_panel.is_loaded()
+            playing = self.reconstruction_panel.is_playing()
+            paused = self.reconstruction_panel.is_paused()
+            loaded = self.reconstruction_panel.is_loaded()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             playing = self.instruction_panel.player_panel.is_playing()
             paused = self.instruction_panel.player_panel.is_paused()
@@ -1302,7 +1372,7 @@ class GUI:
     def _is_play_or_pause_enabled(self) -> bool:
         current_tab_tag = self._get_current_tab()
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            return self.reconstruction_panel.player_panel.is_loaded()
+            return self.reconstruction_panel.is_loaded()
 
         if current_tab_tag == TAG_TAB_INSTRUCTIONS:
             return self.instruction_panel.player_panel.is_loaded()
@@ -1314,8 +1384,8 @@ class GUI:
         loaded = False
         playing = False
         if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            loaded = self.reconstruction_panel.player_panel.is_loaded()
-            playing = self.reconstruction_panel.player_panel.is_playing()
+            loaded = self.reconstruction_panel.is_loaded()
+            playing = self.reconstruction_panel.is_playing()
         elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
             loaded = self.instruction_panel.player_panel.is_loaded()
             playing = self.instruction_panel.player_panel.is_playing()
