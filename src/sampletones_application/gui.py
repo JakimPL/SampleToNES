@@ -249,11 +249,9 @@ class GUI:
         self.sequencer_instruments_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
             self.config_manager,
-            self.application_config_manager,
         )
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             self.config_manager,
-            self.application_config_manager,
         )
         self.advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             self.config_manager,

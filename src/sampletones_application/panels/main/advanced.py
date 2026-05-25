@@ -11,7 +11,7 @@ from sampletones_shared.utils.system.paths import to_path
 from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...config.updates import AdvancedSettingsUpdate
-from ...constants.general import DIM_DIALOG_HEIGHT_FILE, DIM_DIALOG_WIDTH_FILE, DIM_INPUT_WIDTH
+from ...constants.general import DIM_DIALOG_HEIGHT_FILE, DIM_DIALOG_WIDTH_FILE, DIM_INPUT_WIDTH, SUF_HANDLER_REGISTRY
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_ADVANCED,
     LBL_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
@@ -35,19 +35,24 @@ from ...constants.main import (
 from ...elements.button import GUIButton
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
+from ...elements.panel import GUIPanel
 from ...elements.path import GUIPathText
-from ...elements.settings import GUISettingsPanel
 from ...utils.align import table_wrapper
 from ...utils.file import file_dialog_handler
 from ...utils.tooltip import show_tooltip
+from ...utils.widgets import clamp_widget_value
 
 
-class GUIAdvancedSettingsPanel(GUISettingsPanel):
+class GUIAdvancedSettingsPanel(GUIPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
         application_config_manager: ApplicationConfigManager,
     ):
+        self.config_manager = config_manager
+        self.application_config_manager = application_config_manager
+        self._item_handler_tag = f"{TAG_PANEL_MAIN_ADVANCED}{SUF_HANDLER_REGISTRY}"
+
         self.on_update_library_directory: Optional[VoidCallback] = None
         self.on_update_output_directory: Optional[VoidCallback] = None
 
@@ -55,8 +60,6 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         super().__init__(
-            config_manager=config_manager,
-            application_config_manager=application_config_manager,
             tag=TAG_PANEL_MAIN_ADVANCED,
             parent=TAG_PANEL_MAIN_SETTINGS,
             height=DIM_PANEL_HEIGHT_MAIN_ADVANCED,
@@ -76,9 +79,15 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
             self._create_path_settings()
             self._create_tooltips()
 
+    def _setup_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._item_handler_tag):
+            dpg.add_item_deactivated_handler(callback=self._on_parameter_change)
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_parameter_change)
+            dpg.add_item_edited_handler(callback=self._on_parameter_change)
+
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
             library_directory=self.config_manager.get_library_directory(),
             output_directory=self.config_manager.get_output_directory(),
         )
@@ -172,7 +181,7 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
 
     def change_library_directory(self, directory_path: Path) -> None:
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
             library_directory=directory_path,
             output_directory=self.config_manager.get_output_directory(),
         )
@@ -200,7 +209,7 @@ class GUIAdvancedSettingsPanel(GUISettingsPanel):
 
     def change_output_directory(self, directory_path: Path) -> None:
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(self._clamp_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
             library_directory=self.config_manager.get_library_directory(),
             output_directory=directory_path,
         )

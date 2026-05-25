@@ -11,10 +11,9 @@ from sampletones_core.constants.general import (
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.types.application import Sender
 
-from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
-from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT
+from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
@@ -39,20 +38,20 @@ from ...constants.main import (
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.settings import GUISettingsPanel
+from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
 from ...utils.tooltip import show_tooltip
+from ...utils.widgets import clamp_widget_value
 
 
-class GUIConfigPanel(GUISettingsPanel):
+class GUIConfigPanel(GUIPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
     ):
+        self.config_manager = config_manager
+        self._item_handler_tag = f"{TAG_PANEL_MAIN_CONFIG}{SUF_HANDLER_REGISTRY}"
         super().__init__(
-            config_manager=config_manager,
-            application_config_manager=application_config_manager,
             tag=TAG_PANEL_MAIN_CONFIG,
             parent=TAG_PANEL_MAIN_CONFIG_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -84,9 +83,9 @@ class GUIConfigPanel(GUISettingsPanel):
             quantize=bool(dpg.get_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE)),
         )
         library_update = LibrarySettingsUpdate(
-            sample_rate=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE)),
-            change_rate=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE)),
-            transformation_gamma=int(self._clamp_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA)),
+            sample_rate=int(clamp_widget_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE)),
+            change_rate=int(clamp_widget_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE)),
+            transformation_gamma=int(clamp_widget_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA)),
         )
         self.config_manager.apply_audio_settings(audio_update)
         self.config_manager.apply_library_settings(library_update)

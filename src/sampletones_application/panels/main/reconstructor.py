@@ -6,7 +6,6 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_MIXER
 from sampletones_shared.types.application import Sender
 
-from ...config.application.manager import ApplicationConfigManager
 from ...config.manager import ConfigManager
 from ...config.updates import GenerationSettingsUpdate
 from ...constants.general import (
@@ -16,6 +15,7 @@ from ...constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
     MSG_STATUS_INPUT,
+    SUF_HANDLER_REGISTRY,
 )
 from ...constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -30,21 +30,21 @@ from ...constants.main import (
 )
 from ...elements.fonts.font import Font
 from ...elements.fonts.registry import FontRegistry
-from ...elements.settings import GUISettingsPanel
+from ...elements.panel import GUIPanel
 from ...elements.status import GUIStatusBar
 from ...utils.dpg import dpg_set_value
 from ...utils.tooltip import show_tooltip
+from ...utils.widgets import clamp_widget_value
 
 
-class GUIReconstructorPanel(GUISettingsPanel):
+class GUIReconstructorPanel(GUIPanel):
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
     ) -> None:
+        self.config_manager = config_manager
+        self._item_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
         super().__init__(
-            config_manager=config_manager,
-            application_config_manager=application_config_manager,
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
             parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
             height=DIM_PANEL_HEIGHT_MAIN_CONFIG,
@@ -127,7 +127,7 @@ class GUIReconstructorPanel(GUISettingsPanel):
             if dpg.get_value(TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value))
         ]
         generation_update = GenerationSettingsUpdate(
-            mixer=float(self._clamp_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER)),
+            mixer=float(clamp_widget_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER)),
             generators=generators,
         )
         self.config_manager.apply_generation_settings(generation_update)
