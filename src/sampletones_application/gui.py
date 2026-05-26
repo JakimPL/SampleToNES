@@ -166,7 +166,8 @@ from .panels.instruction.details.logic import InstructionDetailsPanelLogic
 from .panels.instruction.details.panel import GUIInstructionDetailsPanel
 from .panels.instruction.instruction.logic import InstructionPanelLogic
 from .panels.instruction.instruction.panel import GUIInstructionPanel
-from .panels.instruction.library import GUIInstructionsLibraryPanel
+from .panels.instruction.library.logic import LibraryLogic
+from .panels.instruction.library.panel import GUIInstructionsLibraryPanel
 from .panels.main.advanced.panel import GUIAdvancedSettingsPanel
 from .panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
 from .panels.main.config.panel import GUIConfigPanel
@@ -236,12 +237,12 @@ class GUI:
             self.audio_device_manager,
             self.shortcut_manager,
         )
+        self.library_logic: LibraryLogic = LibraryLogic(self.config_manager, self.library_manager)
         self.library_panel: GUIInstructionsLibraryPanel = GUIInstructionsLibraryPanel(
-            self.config_manager,
+            self.library_logic,
             self.application_config_manager,
             self.audio_device_manager,
             self.shortcut_manager,
-            self.library_manager,
         )
         self.instruction_panel_logic: InstructionPanelLogic = InstructionPanelLogic()
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
@@ -505,7 +506,7 @@ class GUI:
         self.shortcut_manager.bind_all()
 
     def _set_callbacks(self) -> None:
-        self.config_manager.add_config_change_callback(self.library_panel.update_status)
+        self.config_manager.add_config_change_callback(self.library_logic.update_status)
         self.config_manager.add_config_change_callback(self._update_menu)
         self.config_manager.add_config_change_callback(self._update_config_panel_view)
         self.config_manager.add_config_change_callback(self._update_reconstructor_panel_view)
@@ -539,7 +540,7 @@ class GUI:
             on_set_as_output_directory=self.advanced_settings_panel.change_output_directory,
             is_converter_running=self._is_generation_in_progress,
         )
-        self.library_panel.set_callbacks(
+        self.library_logic.set_callbacks(
             on_apply_library_config=self.config_manager.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
