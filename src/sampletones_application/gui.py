@@ -180,7 +180,8 @@ from .panels.main.explorer.panel import GUIExplorerPanel
 from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor.panel import GUIReconstructorPanel
 from .panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
-from .panels.reconstruction.browser import GUIBrowserPanel
+from .panels.reconstruction.browser.logic import BrowserLogic
+from .panels.reconstruction.browser.panel import GUIBrowserPanel
 from .panels.reconstruction.details.logic import ReconstructionDetailsLogic
 from .panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
 from .panels.reconstruction.reconstruction.logic import ReconstructionPanelLogic
@@ -250,13 +251,12 @@ class GUI:
             self.library_manager
         )
         self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
+        self.browser_logic: BrowserLogic = BrowserLogic(self.config_manager, self.browser_manager)
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
-            self.config_manager,
+            self.browser_logic,
             self.application_config_manager,
             self.audio_device_manager,
             self.shortcut_manager,
-            self.browser_manager,
-            self.reconstruction_manager,
         )
         self.reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self.audio_device_manager,
@@ -544,7 +544,7 @@ class GUI:
             on_apply_library_config=self.config_manager.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
-        self.browser_panel.set_callbacks(
+        self.browser_logic.set_callbacks(
             load_reconstruction_with_confirmation=self._load_reconstruction_with_confirmation,
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,

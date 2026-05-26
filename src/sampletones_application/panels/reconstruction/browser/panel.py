@@ -1,17 +1,15 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import PathCallback, VoidCallback
 
-from ...config.application.manager import ApplicationConfigManager
-from ...config.manager import ConfigManager
-from ...constants.general import SUF_PANEL_LEFT, TAG_TAB_RECONSTRUCTIONS
-from ...constants.reconstructions import (
+from ....config.application.manager import ApplicationConfigManager
+from ....constants.general import SUF_PANEL_LEFT, TAG_TAB_RECONSTRUCTIONS
+from ....constants.reconstructions import (
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
@@ -29,47 +27,32 @@ from ...constants.reconstructions import (
     VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
     VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
 )
-from ...elements.button import GUIButton
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.tree.handler import NodeHandler
-from ...elements.tree.state import TreeNodeState
-from ...elements.tree.tree import GUITreePanel
-from ...reconstruction.browser import BrowserManager
-from ...reconstruction.data import ReconstructionData
-from ...reconstruction.manager import ReconstructionManager
-from ...utils.dpg import dpg_configure_item
-from ...utils.shortcuts.manager import ShortcutManager
-from ...utils.thread import concurrent
-
-OnReconstructionLoadedCallback = Callable[[ReconstructionData], None]
+from ....elements.button import GUIButton
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.tree.handler import NodeHandler
+from ....elements.tree.state import TreeNodeState
+from ....elements.tree.tree import GUITreePanel
+from ....utils.dpg import dpg_configure_item
+from ....utils.shortcuts.manager import ShortcutManager
+from ....utils.thread import concurrent
+from .logic import BrowserLogic
 
 
 class GUIBrowserPanel(GUITreePanel):
     def __init__(
         self,
-        config_manager: ConfigManager,
+        browser_logic: BrowserLogic,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
-        browser_manager: BrowserManager,
-        reconstruction_manager: ReconstructionManager,
     ) -> None:
-        self.config_manager = config_manager
-        self.application_config_manager = application_config_manager
-        self.audio_device_manager = audio_device_manager
-        self.browser_manager = browser_manager
-        self.reconstruction_manager = reconstruction_manager
+        self.browser_logic = browser_logic
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
-        self.load_reconstruction_with_confirmation: Optional[PathCallback] = None
-        self.on_reconstruction_loaded: Optional[OnReconstructionLoadedCallback] = None
-        self.on_reconstruct_file: Optional[VoidCallback] = None
-        self.on_reconstruct_directory: Optional[VoidCallback] = None
-
         super().__init__(
-            tree=self.browser_manager.tree,
+            tree=self.browser_logic.tree,
             tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
             parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
@@ -162,8 +145,7 @@ class GUIBrowserPanel(GUITreePanel):
 
         self.lock()
         try:
-            output_directory = self.config_manager.get_output_directory()
-            self.browser_manager.set_output_directory(output_directory)
+            self.browser_logic.refresh_tree()
             self.build_tree()
         finally:
             self.unlock()
@@ -219,10 +201,10 @@ class GUIBrowserPanel(GUITreePanel):
         dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
 
     def _reconstruct_file(self) -> None:
-        self.call(self.on_reconstruct_file)
+        self.call(self.browser_logic.on_reconstruct_file)
 
     def _reconstruct_directory(self) -> None:
-        self.call(self.on_reconstruct_directory)
+        self.call(self.browser_logic.on_reconstruct_directory)
 
     def _on_directory_node_clicked(
         self,
@@ -310,4 +292,4 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         self.logic.cancel_autoplay()
-        self.call(self.load_reconstruction_with_confirmation, node.filepath)
+        self.call(self.browser_logic.load_reconstruction_with_confirmation, node.filepath)
