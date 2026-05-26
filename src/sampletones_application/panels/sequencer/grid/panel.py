@@ -7,16 +7,14 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 from sampletones_shared.types.application import Sender
 
-from ...config.application.manager import ApplicationConfigManager
-from ...config.manager import ConfigManager
-from ...constants.general import (
+from ....constants.general import (
     DIM_INPUT_WIDTH,
     MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_CENTER,
     TAG_TAB_SEQUENCER,
 )
-from ...constants.sequencer import (
+from ....constants.sequencer import (
     COL_PATTERN_HIGHLIGHT,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_GENERATOR,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_GRID_ROW,
@@ -50,24 +48,23 @@ from ...constants.sequencer import (
     VAL_SEQUENCER_GRID_TEMPO_MIN,
     VAL_SEQUENCER_GRID_TRACKER_ROWS,
 )
-from ...elements.button import GUIButton
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
-from ...elements.status import GUIStatusBar
-from ...panels.player import GUIAudioPlayerPanel
-from ...themes.tables.pattern import PatternTableTheme
+from ....elements.button import GUIButton
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.panel import GUIPanel
+from ....elements.status import GUIStatusBar
+from ....panels.player import GUIAudioPlayerPanel
+from ....themes.tables.pattern import PatternTableTheme
+from .logic import SequencerGridLogic
 
 
 class GUISequencerGridPanel(GUIPanel):
     def __init__(
         self,
-        config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
+        sequencer_grid_logic: SequencerGridLogic,
         audio_device_manager: AudioDeviceManager,
     ) -> None:
-        self.config_manager = config_manager
-        self.application_config_manager = application_config_manager
+        self.sequencer_grid_logic = sequencer_grid_logic
         self.audio_device_manager = audio_device_manager
 
         self.player_panel: GUIAudioPlayerPanel
@@ -117,7 +114,7 @@ class GUISequencerGridPanel(GUIPanel):
         with dpg.group(tag=TAG_GROUP_SEQUENCER_GRID_MODULE_OPTIONS):
             dpg.add_input_int(
                 label=LBL_TEXT_SEQUENCER_GRID_NES_FREQUENCY,
-                default_value=self.config_manager.config.library.change_rate,
+                default_value=self.sequencer_grid_logic.change_rate,
                 tag=TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
