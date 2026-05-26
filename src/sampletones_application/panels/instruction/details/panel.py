@@ -2,14 +2,14 @@ from typing import Any, Callable, List, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.constants.enums import GeneratorClassName, LibraryGeneratorName
+from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import clamp
 
-from ...constants.general import MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
-from ...constants.instructions import (
+from ....constants.general import MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY, SUF_PANEL_RIGHT, TAG_TAB_INSTRUCTIONS
+from ....constants.instructions import (
     DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
     LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
@@ -39,35 +39,26 @@ from ...constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
-from ...elements.status import GUIStatusBar
-from ...elements.table.table import GUITable
-from ...instruction.data import InstructionPanelData
-from ...instruction.logic import InstructionDetailsLogic
-from ...library.manager import InstructionsLibraryManager
-from ...utils.callbacks.queue import CallbackQueue
-from ...utils.dpg import dpg_configure_item, dpg_delete_children
-
-OnInstructionLoaded = Callable[[], Optional[InstructionPanelData]]
-OnInstructionChanged = Callable[[InstructionUnion], None]
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.panel import GUIPanel
+from ....elements.status import GUIStatusBar
+from ....elements.table.table import GUITable
+from ....instruction.data import InstructionPanelData
+from ....instruction.table import InstructionTableData
+from ....utils.dpg import dpg_configure_item, dpg_delete_children
+from .viewmodel import InstructionDetailsPanelViewModel
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
-    def __init__(self, library_manager: InstructionsLibraryManager) -> None:
-        self.library_manager: InstructionsLibraryManager = library_manager
-        self.logic = InstructionDetailsLogic()
+    def __init__(self) -> None:
+        self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self.general_table: GUITable
         self.parameters_table: GUITable
 
-        self._loaded_instruction_type: Optional[LibraryGeneratorName] = None
-
         self._item_handler_tag = f"{TAG_PANEL_INSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
-
-        self.is_instruction_loaded: Optional[OnInstructionLoaded] = None
-        self.on_instruction_changed: Optional[OnInstructionChanged] = None
+        self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
@@ -144,20 +135,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
             FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
             FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, Font.BOLD)
 
-    def display_instruction(self, instruction_data: InstructionPanelData) -> None:
-        self.logic.current_data = instruction_data
-        self._update_display()
+    def update_view(self, viewmodel: InstructionDetailsPanelViewModel) -> None:
+        self._current_viewmodel = viewmodel
+        self._update_tables(viewmodel.table_data)
+        self._update_instructions_choice_panel(viewmodel.instruction_data)
 
-    def clear_display(self) -> None:
-        self.logic.clear_data()
-        self._update_display()
-
-    def _update_display(self) -> None:
-        self._update_instructions_choice_panel()
-        self._update_tables()
-
-    def _update_tables(self, clear: bool = True) -> None:
-        table_data = self.logic.get_table_data()
+    def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
         if table_data is None:
             dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
             dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=False)
@@ -168,8 +151,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
         dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
 
-        self.parameters_table.update_rows(table_data.parameter_rows, clear=clear)
-        self.general_table.update_rows(table_data.general_rows, clear=clear)
+        self.parameters_table.update_rows(table_data.parameter_rows)
+        self.general_table.update_rows(table_data.general_rows)
 
     def _create_instructions_choice_inputs(self) -> None:
         with dpg.child_window(
@@ -180,9 +163,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         ):
             pass
 
-    def _update_instructions_choice_panel(self) -> None:
+    def _update_instructions_choice_panel(self, instruction_data: Optional[InstructionPanelData]) -> None:
         dpg_delete_children(TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
-        instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
         if instruction_data is None:
             return
 
@@ -300,10 +282,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
     def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
-        instruction_data: Optional[InstructionPanelData] = self.call(self.is_instruction_loaded)
-        if instruction_data is None:
+        if self._current_viewmodel is None or self._current_viewmodel.instruction_data is None:
             return
 
+        instruction_data = self._current_viewmodel.instruction_data
         tags: List[str] = []
         values: List[Union[int, bool]] = []
         generator_type = instruction_data.generator_class_name
@@ -368,14 +350,4 @@ class GUIInstructionDetailsPanel(GUIPanel):
         for tag, value in zip(tags, values):
             dpg.set_value(tag, value)
 
-        current_instruction = self.library_manager.current_instruction
-        if current_instruction is not None and current_instruction.instruction == instruction:
-            return
-
-        def load_instruction() -> None:
-            instruction_data = self.library_manager.load_instruction(instruction)
-            self.logic.current_data = instruction_data
-            self.call(self.on_instruction_changed, instruction_data)
-            self._update_tables(clear=False)
-
-        CallbackQueue.add(load_instruction)
+        self.call(self.on_instruction_parameter_changed, instruction)

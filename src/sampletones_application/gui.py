@@ -162,8 +162,10 @@ from .elements.fonts.registry import FontRegistry
 from .elements.status import GUIStatusBar
 from .instruction.data import InstructionPanelData
 from .library.manager import InstructionsLibraryManager
-from .panels.instruction.details import GUIInstructionDetailsPanel
-from .panels.instruction.instruction import GUIInstructionPanel
+from .panels.instruction.details.logic import InstructionDetailsPanelLogic
+from .panels.instruction.details.panel import GUIInstructionDetailsPanel
+from .panels.instruction.instruction.logic import InstructionPanelLogic
+from .panels.instruction.instruction.panel import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
 from .panels.main.advanced.panel import GUIAdvancedSettingsPanel
 from .panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
@@ -239,8 +241,12 @@ class GUI:
             self.shortcut_manager,
             self.library_manager,
         )
+        self.instruction_panel_logic: InstructionPanelLogic = InstructionPanelLogic()
         self.instruction_panel: GUIInstructionPanel = GUIInstructionPanel(self.audio_device_manager)
-        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel(self.library_manager)
+        self.instruction_details_logic: InstructionDetailsPanelLogic = InstructionDetailsPanelLogic(
+            self.library_manager
+        )
+        self.instruction_details_panel: GUIInstructionDetailsPanel = GUIInstructionDetailsPanel()
         self.browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self.config_manager,
             self.application_config_manager,
@@ -542,12 +548,14 @@ class GUI:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
         )
         self.instruction_panel.set_callbacks(
-            on_clear_instruction_details=self.instruction_details_panel.clear_display,
+            on_clear_instruction_details=self.instruction_details_logic.clear_display,
             on_change_audio_state=self._update_menu,
         )
-        self.instruction_details_panel.set_callbacks(
-            is_instruction_loaded=self.library_manager.get_current_instruction,
-            on_instruction_changed=self.instruction_panel.display_instruction,
+        self.instruction_panel.on_instruction_config_changed = self.instruction_panel_logic.update_config
+        self.instruction_details_logic.on_view_changed = self.instruction_details_panel.update_view
+        self.instruction_details_logic.on_instruction_changed = self.instruction_panel.display_instruction
+        self.instruction_details_panel.on_instruction_parameter_changed = (
+            self.instruction_details_logic.handle_instruction_parameter_changed
         )
         self.reconstruction_panel.on_change_audio_state = self._update_menu
         self.reconstruction_panel.on_audio_source_changed = self.reconstruction_panel_logic.set_audio_source
@@ -1155,7 +1163,7 @@ class GUI:
     def _on_instruction_loaded(self, instruction_data: InstructionPanelData) -> None:
         try:
             self.instruction_panel.display_instruction(instruction_data)
-            self.instruction_details_panel.display_instruction(instruction_data)
+            self.instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -8,9 +8,9 @@ from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
-from ...constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
-from ...constants.graphs import DIM_SPECTRUM_HEIGHT, DIM_SPECTRUM_WIDTH, DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
-from ...constants.instructions import (
+from ....constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
+from ....constants.graphs import DIM_SPECTRUM_HEIGHT, DIM_SPECTRUM_WIDTH, DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
+from ....constants.instructions import (
     LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
@@ -20,12 +20,13 @@ from ...constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
 )
-from ...elements.graphs.spectrum import GUISpectrumGraph
-from ...elements.graphs.waveform import GUIWaveformGraph
-from ...elements.panel import GUIPanel
-from ...instruction.data import InstructionPanelData
-from ...player.data import AudioData
-from ..player import GUIAudioPlayerPanel
+from ....elements.graphs.spectrum import GUISpectrumGraph
+from ....elements.graphs.waveform import GUIWaveformGraph
+from ....elements.panel import GUIPanel
+from ....instruction.data import InstructionPanelData
+from ....player.data import AudioData
+from ...player import GUIAudioPlayerPanel
+from .viewmodel import InstructionPanelViewModel
 
 
 class GUIInstructionPanel(GUIPanel):
@@ -34,10 +35,10 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformGraph
         self.spectrum_display: GUISpectrumGraph
-        self.library_config: Optional[InstructionsLibraryConfig] = None
 
         self.on_clear_instruction_details: Optional[VoidCallback] = None
         self.on_change_audio_state: Optional[VoidCallback] = None
+        self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
         self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
@@ -95,40 +96,33 @@ class GUIInstructionPanel(GUIPanel):
             on_change_audio_state=self.on_change_audio_state,
         )
 
+    def update_view(self, viewmodel: InstructionPanelViewModel) -> None:
+        pass
+
     def close_instruction(self) -> None:
-        self.library_config = None
-        self.player_panel.disable()
         self.waveform_display.clear_layers()
         self.spectrum_display.clear_layers()
         self.call(self.on_clear_instruction_details)
-        self.player_panel.enable()
+        self.call(self.on_instruction_config_changed, None)
 
-    def is_loaded(self) -> bool:
-        return self.library_config is not None
-
-    # TODO: move audio logic to the player panel
     def display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
         if instruction_data is None:
             self.close_instruction()
             return
 
-        self.library_config = instruction_data.config
+        config = instruction_data.config
         fragment = instruction_data.fragment
 
-        self.player_panel.disable()
-        sample_rate = self.library_config.sample_rate
-        frame_length = self.library_config.window_size
+        self.call(self.on_instruction_config_changed, config)
         try:
             self.waveform_display.load_library_fragment(fragment)
-            self.spectrum_display.load_library_fragment(fragment, sample_rate, frame_length)
+            self.spectrum_display.load_library_fragment(fragment, config.sample_rate, config.window_size)
         except Exception as exception:
             logger.error_with_traceback(exception, "Error while plotting library data")
-            self.player_panel.enable()
             raise LibraryDisplayError("Could not display library data") from exception
 
-        audio_data = AudioData.from_library_fragment(fragment, sample_rate)
-        self.player_panel.load_audio_data(audio_data)
-        self.player_panel.enable()
+        audio_data = AudioData.from_library_fragment(fragment, config.sample_rate)
+        self.player_panel.load(audio_data)
 
     def _on_player_position_changed(self, position: int) -> None:
         self.waveform_display.set_position(position)
