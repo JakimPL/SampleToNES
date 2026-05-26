@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -6,10 +6,9 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones_shared.types.application import Sender
 
-from ...config.application.manager import ApplicationConfigManager
-from ...config.manager import ConfigManager
-from ...constants.general import SUF_PANEL_LEFT, TAG_TAB_SEQUENCER
-from ...constants.sequencer import (
+from ....config.application.manager import ApplicationConfigManager
+from ....constants.general import SUF_PANEL_LEFT, TAG_TAB_SEQUENCER
+from ....constants.sequencer import (
     LBL_BUTTON_SEQUENCER_BROWSER_REFRESH_LIST,
     LBL_SEQUENCER_BROWSER_RECONSTRUCTIONS,
     LBL_TREE_SEQUENCER_BROWSER_RECONSTRUCTIONS,
@@ -22,36 +21,32 @@ from ...constants.sequencer import (
     VAL_PRIORITY_SEQUENCER_BROWSER_ADD_HANDLER,
     VAL_PRIORITY_SEQUENCER_BROWSER_ADD_NODE,
 )
-from ...elements.button import GUIButton
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.tree.handler import NodeHandler
-from ...elements.tree.state import TreeNodeState
-from ...elements.tree.tree import GUITreePanel
-from ...reconstruction.browser import BrowserManager
-from ...utils.dpg import dpg_configure_item
-from ...utils.shortcuts.manager import ShortcutManager
-from ...utils.thread import concurrent
+from ....elements.button import GUIButton
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.tree.handler import NodeHandler
+from ....elements.tree.state import TreeNodeState
+from ....elements.tree.tree import GUITreePanel
+from ....utils.dpg import dpg_configure_item
+from ....utils.shortcuts.manager import ShortcutManager
+from ....utils.thread import concurrent
+from .logic import SequencerBrowserLogic
 
 
 class GUISequencerBrowserPanel(GUITreePanel):
     def __init__(
         self,
-        config_manager: ConfigManager,
+        sequencer_browser_logic: SequencerBrowserLogic,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
-        browser_manager: BrowserManager,
     ) -> None:
-        self.config_manager = config_manager
-        self.application_config_manager = application_config_manager
-        self.audio_device_manager = audio_device_manager
-        self.browser_manager = browser_manager
+        self.sequencer_browser_logic = sequencer_browser_logic
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         super().__init__(
-            tree=self.browser_manager.tree,
+            tree=self.sequencer_browser_logic.tree,
             tag=TAG_PANEL_SEQUENCER_BROWSER,
             parent=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_SEQUENCER_BROWSER,
@@ -130,8 +125,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         self.lock()
         try:
-            output_directory = self.config_manager.get_output_directory()
-            self.browser_manager.set_output_directory(output_directory)
+            self.sequencer_browser_logic.refresh_tree()
             self.build_tree()
         finally:
             self.unlock()
