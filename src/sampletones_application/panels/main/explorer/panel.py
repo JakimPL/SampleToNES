@@ -9,10 +9,9 @@ from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
-from ...config.application.manager import ApplicationConfigManager
-from ...config.manager import ConfigManager
-from ...constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN, VAL_NODE_CHILDREN_SLOT
-from ...constants.main import (
+from ....config.application.manager import ApplicationConfigManager
+from ....constants.general import LBL_TREE_FILTER, SUF_PANEL_LEFT, TAG_TAB_MAIN, VAL_NODE_CHILDREN_SLOT
+from ....constants.main import (
     LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     LBL_BUTTON_MAIN_EXPLORER_REFRESH,
     LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
@@ -37,28 +36,28 @@ from ...constants.main import (
     VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
     VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
 )
-from ...elements.button import GUIButton
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.tree.handler import NodeHandler
-from ...elements.tree.state import TreeNodeState
-from ...elements.tree.tree import GUITreePanel
-from ...explorer.manager import ExplorerManager
-from ...utils.dialogs import show_info_dialog
-from ...utils.dpg import dpg_configure_item, dpg_delete_children
-from ...utils.shortcuts.manager import ShortcutManager
-from ...utils.thread import concurrent
+from ....elements.button import GUIButton
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.tree.handler import NodeHandler
+from ....elements.tree.state import TreeNodeState
+from ....elements.tree.tree import GUITreePanel
+from ....utils.dialogs import show_info_dialog
+from ....utils.dpg import dpg_configure_item, dpg_delete_children
+from ....utils.shortcuts.manager import ShortcutManager
+from ....utils.thread import concurrent
+from .logic import ExplorerLogic
 
 
 class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
-        config_manager: ConfigManager,
+        explorer_logic: ExplorerLogic,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
     ) -> None:
-        self.explorer_manager = ExplorerManager(config_manager)
+        self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
         self.shortcut_manager = shortcut_manager
@@ -76,7 +75,7 @@ class GUIExplorerPanel(GUITreePanel):
         self.is_converter_running: Optional[Callable[[], bool]] = None
 
         super().__init__(
-            tree=self.explorer_manager.tree,
+            tree=self.explorer_logic.tree,
             tag=TAG_PANEL_MAIN_EXPLORER,
             parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_MAIN_EXPLORER,
@@ -155,7 +154,7 @@ class GUIExplorerPanel(GUITreePanel):
                     pass
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
-        self.explorer_manager.collapse_all()
+        self.explorer_logic.collapse_all()
         children = dpg.get_item_children(self.tree_tag, VAL_NODE_CHILDREN_SLOT)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
@@ -171,7 +170,7 @@ class GUIExplorerPanel(GUITreePanel):
 
         self.lock()
         try:
-            self.explorer_manager.refresh_tree()
+            self.explorer_logic.refresh_tree()
             self.build_tree()
         finally:
             self.unlock()
@@ -192,7 +191,7 @@ class GUIExplorerPanel(GUITreePanel):
             return
 
         dpg_delete_children(node_tag)
-        if self.explorer_manager.is_directory_expanded(node.filepath):
+        if self.explorer_logic.is_directory_expanded(node.filepath):
             for child in node.children:
                 has_favorite_ancestor = self.logic.is_node_favorite(node) or self.logic.has_favorite_ancestor(child)
                 self._build_tree_node(
@@ -221,8 +220,8 @@ class GUIExplorerPanel(GUITreePanel):
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
-            should_expand = self._should_expand_node(node) or self.explorer_manager.is_directory_expanded(node.filepath)
-            is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+            should_expand = self._should_expand_node(node) or self.explorer_logic.is_directory_expanded(node.filepath)
+            is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
             self._queue_node(
                 node,
                 node_tag,
@@ -334,7 +333,7 @@ class GUIExplorerPanel(GUITreePanel):
         return self._create_status_bar_message_function(message_function)
 
     def _directory_node_clicked(self, node: FileSystemNode, node_tag: str) -> None:
-        has_content = self.explorer_manager.has_relevant_content(node.filepath)
+        has_content = self.explorer_logic.has_relevant_content(node.filepath)
         if not has_content:
             return
 
@@ -353,7 +352,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _has_relevant_content(self, node: TreeNode) -> bool:
         if isinstance(node, FileSystemNode):
-            return self.explorer_manager.has_relevant_content(node.filepath)
+            return self.explorer_logic.has_relevant_content(node.filepath)
 
         return True
 
@@ -377,10 +376,10 @@ class GUIExplorerPanel(GUITreePanel):
         if not dpg.does_item_exist(node_tag):
             return
 
-        is_directory_expanded = self.explorer_manager.is_directory_expanded(node.filepath)
+        is_directory_expanded = self.explorer_logic.is_directory_expanded(node.filepath)
         state = dpg.get_value(node_tag)
         if not is_directory_expanded:
-            self.explorer_manager.expand_directory(node)
+            self.explorer_logic.expand_directory(node)
             self._rebuild_directory_node(node, node_tag)
 
         dpg.set_value(node_tag, not state)

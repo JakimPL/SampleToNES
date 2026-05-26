@@ -174,7 +174,8 @@ from .panels.main.config.viewmodel import ConfigPanelViewModel
 from .panels.main.converter.logic import ConverterLogic
 from .panels.main.converter.panel import GUIConverterPanel
 from .panels.main.converter.success_dialog import ConverterSuccessDialog
-from .panels.main.explorer import GUIExplorerPanel
+from .panels.main.explorer.logic import ExplorerLogic
+from .panels.main.explorer.panel import GUIExplorerPanel
 from .panels.main.main import GUIMainPanel
 from .panels.main.reconstructor.panel import GUIReconstructorPanel
 from .panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
@@ -228,8 +229,9 @@ class GUI:
 
         self.fps_timer: FPSTimer = FPSTimer()
 
+        self.explorer_logic: ExplorerLogic = ExplorerLogic(self.config_manager)
         self.explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
-            self.config_manager,
+            self.explorer_logic,
             self.application_config_manager,
             self.audio_device_manager,
             self.shortcut_manager,
