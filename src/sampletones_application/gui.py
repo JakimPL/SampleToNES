@@ -165,14 +165,17 @@ from .library.manager import InstructionsLibraryManager
 from .panels.instruction.details import GUIInstructionDetailsPanel
 from .panels.instruction.instruction import GUIInstructionPanel
 from .panels.instruction.library import GUIInstructionsLibraryPanel
-from .panels.main.advanced import GUIAdvancedSettingsPanel
-from .panels.main.config import GUIConfigPanel
+from .panels.main.advanced.panel import GUIAdvancedSettingsPanel
+from .panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
+from .panels.main.config.panel import GUIConfigPanel
+from .panels.main.config.viewmodel import ConfigPanelViewModel
 from .panels.main.converter.logic import ConverterLogic
 from .panels.main.converter.panel import GUIConverterPanel
 from .panels.main.converter.success_dialog import ConverterSuccessDialog
 from .panels.main.explorer import GUIExplorerPanel
 from .panels.main.main import GUIMainPanel
-from .panels.main.reconstructor import GUIReconstructorPanel
+from .panels.main.reconstructor.panel import GUIReconstructorPanel
+from .panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details.logic import ReconstructionDetailsLogic
 from .panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
@@ -272,15 +275,28 @@ class GUI:
             self.audio_device_manager,
         )
         self.sequencer_instruments_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
+        _config = self.config_manager.config
         self.config_panel: GUIConfigPanel = GUIConfigPanel(
-            self.config_manager,
+            ConfigPanelViewModel(
+                normalize=_config.general.normalize,
+                quantize=_config.general.quantize,
+                sample_rate=_config.library.sample_rate,
+                change_rate=_config.library.change_rate,
+                transformation_gamma=_config.library.transformation_gamma,
+            )
         )
         self.reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
-            self.config_manager,
+            ReconstructorPanelViewModel(
+                generators=frozenset(_config.generation.generators),
+                mixer=_config.generation.mixer,
+            )
         )
         self.advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
-            self.config_manager,
-            self.application_config_manager,
+            AdvancedSettingsPanelViewModel(
+                max_workers=_config.general.max_workers,
+                library_directory=self.config_manager.get_library_directory(),
+                output_directory=self.config_manager.get_output_directory(),
+            )
         )
         self.converter_logic: ConverterLogic = ConverterLogic(self.config_manager)
         self.converter_panel: GUIConverterPanel = GUIConverterPanel()
@@ -483,9 +499,15 @@ class GUI:
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self.library_panel.update_status)
         self.config_manager.add_config_change_callback(self._update_menu)
-        self.config_manager.add_config_change_callback(self.config_panel.update_gui_from_config)
-        self.config_manager.add_config_change_callback(self.reconstructor_panel.update_gui_from_config)
-        self.config_manager.add_config_change_callback(self.advanced_settings_panel.update_gui_from_config)
+        self.config_manager.add_config_change_callback(self._update_config_panel_view)
+        self.config_manager.add_config_change_callback(self._update_reconstructor_panel_view)
+        self.config_manager.add_config_change_callback(self._update_advanced_settings_panel_view)
+
+        self.config_panel.on_audio_settings_changed = self.config_manager.apply_audio_settings
+        self.config_panel.on_library_settings_changed = self.config_manager.apply_library_settings
+        self.reconstructor_panel.on_generation_settings_changed = self.config_manager.apply_generation_settings
+        self.advanced_settings_panel.on_advanced_settings_changed = self.config_manager.apply_advanced_settings
+        self.advanced_settings_panel.on_library_path_memorized = self.application_config_manager.set_library_path
 
         self.audio_device_manager.set_callbacks(
             on_playback_error=self._on_playback_error,
@@ -510,7 +532,7 @@ class GUI:
             is_converter_running=self._is_generation_in_progress,
         )
         self.library_panel.set_callbacks(
-            on_apply_library_config=self.config_panel.apply_library_config,
+            on_apply_library_config=self.config_manager.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
         self.browser_panel.set_callbacks(
@@ -943,6 +965,36 @@ class GUI:
 
     def _create_main_panel(self) -> None:
         self.main_panel.create_panel()
+
+    def _update_config_panel_view(self) -> None:
+        config = self.config_manager.config
+        self.config_panel.update_view(
+            ConfigPanelViewModel(
+                normalize=config.general.normalize,
+                quantize=config.general.quantize,
+                sample_rate=config.library.sample_rate,
+                change_rate=config.library.change_rate,
+                transformation_gamma=config.library.transformation_gamma,
+            )
+        )
+
+    def _update_reconstructor_panel_view(self) -> None:
+        config = self.config_manager.config
+        self.reconstructor_panel.update_view(
+            ReconstructorPanelViewModel(
+                generators=frozenset(config.generation.generators),
+                mixer=config.generation.mixer,
+            )
+        )
+
+    def _update_advanced_settings_panel_view(self) -> None:
+        self.advanced_settings_panel.update_view(
+            AdvancedSettingsPanelViewModel(
+                max_workers=self.config_manager.config.general.max_workers,
+                library_directory=self.config_manager.get_library_directory(),
+                output_directory=self.config_manager.get_output_directory(),
+            )
+        )
 
     def _save_reconstruction_as_dialog(self) -> None:
         filepath = self.reconstruction_manager.filepath

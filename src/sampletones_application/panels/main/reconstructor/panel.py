@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -6,9 +6,8 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_MIXER
 from sampletones_shared.types.application import Sender
 
-from ...config.manager import ConfigManager
-from ...config.updates import GenerationSettingsUpdate
-from ...constants.general import (
+from ....config.updates import GenerationSettingsUpdate
+from ....constants.general import (
     DIM_INPUT_WIDTH,
     LBL_CHECKBOX_GLOBAL_NOISE,
     LBL_CHECKBOX_GLOBAL_PULSE_1,
@@ -17,7 +16,7 @@ from ...constants.general import (
     MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
 )
-from ...constants.main import (
+from ....constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_SECTION_MAIN_RECONSTRUCTOR,
     LBL_SECTION_MAIN_RECONSTRUCTOR_SETTINGS,
@@ -28,21 +27,20 @@ from ...constants.main import (
     TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
     TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR,
 )
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
-from ...elements.status import GUIStatusBar
-from ...utils.dpg import dpg_set_value
-from ...utils.tooltip import show_tooltip
-from ...utils.widgets import clamp_widget_value
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.panel import GUIPanel
+from ....elements.status import GUIStatusBar
+from ....utils.dpg import dpg_set_value
+from ....utils.tooltip import show_tooltip
+from ....utils.widgets import clamp_widget_value
+from .viewmodel import ReconstructorPanelViewModel
 
 
 class GUIReconstructorPanel(GUIPanel):
-    def __init__(
-        self,
-        config_manager: ConfigManager,
-    ) -> None:
-        self.config_manager = config_manager
+    def __init__(self, initial_view: ReconstructorPanelViewModel) -> None:
+        self._view = initial_view
+        self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
         super().__init__(
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
@@ -80,25 +78,25 @@ class GUIReconstructorPanel(GUIPanel):
 
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_PULSE_1,
-            default_value=GeneratorName.PULSE1 in self.config_manager.config.generation.generators,
+            default_value=GeneratorName.PULSE1 in self._view.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE1.value),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_PULSE_2,
-            default_value=GeneratorName.PULSE2 in self.config_manager.config.generation.generators,
+            default_value=GeneratorName.PULSE2 in self._view.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.PULSE2.value),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_TRIANGLE,
-            default_value=GeneratorName.TRIANGLE in self.config_manager.config.generation.generators,
+            default_value=GeneratorName.TRIANGLE in self._view.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.TRIANGLE.value),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_GLOBAL_NOISE,
-            default_value=GeneratorName.NOISE in self.config_manager.config.generation.generators,
+            default_value=GeneratorName.NOISE in self._view.generators,
             tag=TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(GeneratorName.NOISE.value),
             callback=self._on_parameter_change,
         )
@@ -110,7 +108,7 @@ class GUIReconstructorPanel(GUIPanel):
             tag=TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
-            default_value=self.config_manager.config.generation.mixer,
+            default_value=self._view.mixer,
             width=DIM_INPUT_WIDTH,
         )
 
@@ -130,11 +128,11 @@ class GUIReconstructorPanel(GUIPanel):
             mixer=float(clamp_widget_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER)),
             generators=generators,
         )
-        self.config_manager.apply_generation_settings(generation_update)
+        self.call(self.on_generation_settings_changed, generation_update)
 
-    def update_gui_from_config(self) -> None:
-        config = self.config_manager.config
-        dpg.set_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, config.generation.mixer)
+    def update_view(self, viewmodel: ReconstructorPanelViewModel) -> None:
+        self._view = viewmodel
+        dpg.set_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, viewmodel.mixer)
         for generator in GeneratorName:
             tag = TPL_TAG_CHECKBOX_MAIN_RECONSTRUCTION_GENERATOR.format(generator.value)
-            dpg_set_value(tag, generator in config.generation.generators)
+            dpg_set_value(tag, generator in viewmodel.generators)

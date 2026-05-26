@@ -10,10 +10,10 @@ from ...constants.main import (
 )
 from ...elements.panel import GUIPanel
 from ...utils.align import table_wrapper
-from .advanced import GUIAdvancedSettingsPanel
-from .config import GUIConfigPanel
+from .advanced.panel import GUIAdvancedSettingsPanel
+from .config.panel import GUIConfigPanel
 from .converter.panel import GUIConverterPanel
-from .reconstructor import GUIReconstructorPanel
+from .reconstructor.panel import GUIReconstructorPanel
 
 
 class GUIMainPanel(GUIPanel):

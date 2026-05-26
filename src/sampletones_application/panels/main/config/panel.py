@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -8,13 +8,11 @@ from sampletones_core.constants.general import (
     MAX_TRANSFORMATION_GAMMA,
     MIN_CHANGE_RATE,
 )
-from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.types.application import Sender
 
-from ...config.manager import ConfigManager
-from ...config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
-from ...constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
-from ...constants.main import (
+from ....config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
+from ....constants.general import DIM_INPUT_WIDTH, MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
+from ....constants.main import (
     DIM_PANEL_HEIGHT_MAIN_CONFIG,
     LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
     LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
@@ -36,20 +34,20 @@ from ...constants.main import (
     TAG_PANEL_MAIN_CONFIG,
     TAG_PANEL_MAIN_CONFIG_CELL,
 )
-from ...elements.fonts.font import Font
-from ...elements.fonts.registry import FontRegistry
-from ...elements.panel import GUIPanel
-from ...elements.status import GUIStatusBar
-from ...utils.tooltip import show_tooltip
-from ...utils.widgets import clamp_widget_value
+from ....elements.fonts.font import Font
+from ....elements.fonts.registry import FontRegistry
+from ....elements.panel import GUIPanel
+from ....elements.status import GUIStatusBar
+from ....utils.tooltip import show_tooltip
+from ....utils.widgets import clamp_widget_value
+from .viewmodel import ConfigPanelViewModel
 
 
 class GUIConfigPanel(GUIPanel):
-    def __init__(
-        self,
-        config_manager: ConfigManager,
-    ):
-        self.config_manager = config_manager
+    def __init__(self, initial_view: ConfigPanelViewModel) -> None:
+        self._view = initial_view
+        self.on_audio_settings_changed: Optional[Callable[[AudioSettingsUpdate], None]] = None
+        self.on_library_settings_changed: Optional[Callable[[LibrarySettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_PANEL_MAIN_CONFIG}{SUF_HANDLER_REGISTRY}"
         super().__init__(
             tag=TAG_PANEL_MAIN_CONFIG,
@@ -87,8 +85,8 @@ class GUIConfigPanel(GUIPanel):
             change_rate=int(clamp_widget_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE)),
             transformation_gamma=int(clamp_widget_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA)),
         )
-        self.config_manager.apply_audio_settings(audio_update)
-        self.config_manager.apply_library_settings(library_update)
+        self.call(self.on_audio_settings_changed, audio_update)
+        self.call(self.on_library_settings_changed, library_update)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(LBL_SECTION_MAIN_CONFIG)
@@ -98,13 +96,13 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_NORMALIZE_AUDIO,
-            default_value=self.config_manager.config.general.normalize,
+            default_value=self._view.normalize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=LBL_CHECKBOX_MAIN_CONFIG_QUANTIZE_AUDIO,
-            default_value=self.config_manager.config.general.quantize,
+            default_value=self._view.quantize,
             tag=TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
             callback=self._on_parameter_change,
         )
@@ -114,7 +112,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_text(LBL_SECTION_MAIN_CONFIG_LIBRARY_SETTINGS)
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_SAMPLE_RATE,
-            default_value=self.config_manager.config.library.sample_rate,
+            default_value=self._view.sample_rate,
             tag=TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE,
             min_value=MIN_SAMPLE_RATE,
             max_value=MAX_SAMPLE_RATE,
@@ -123,7 +121,7 @@ class GUIConfigPanel(GUIPanel):
         )
         dpg.add_input_int(
             label=LBL_INPUT_MAIN_CONFIG_CHANGE_RATE,
-            default_value=self.config_manager.config.library.change_rate,
+            default_value=self._view.change_rate,
             tag=TAG_INPUT_MAIN_CONFIG_CHANGE_RATE,
             min_value=MIN_CHANGE_RATE,
             max_value=MAX_CHANGE_RATE,
@@ -133,7 +131,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.add_slider_int(
             label=LBL_SLIDER_MAIN_CONFIG_TRANSFORMATION_GAMMA,
             tag=TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
-            default_value=self.config_manager.config.library.transformation_gamma,
+            default_value=self._view.transformation_gamma,
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
             width=DIM_INPUT_WIDTH,
@@ -155,13 +153,10 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, LBL_TOOLTIP_MAIN_CONFIG_CHANGE_RATE)
         show_tooltip(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, LBL_TOOLTIP_MAIN_TRANSFORMATION_GAMMA)
 
-    def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
-        self.config_manager.apply_library_config(library_key)
-
-    def update_gui_from_config(self) -> None:
-        config = self.config_manager.config
-        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, config.general.normalize)
-        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE, config.general.quantize)
-        dpg.set_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, config.library.sample_rate)
-        dpg.set_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, config.library.change_rate)
-        dpg.set_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, config.library.transformation_gamma)
+    def update_view(self, viewmodel: ConfigPanelViewModel) -> None:
+        self._view = viewmodel
+        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, viewmodel.normalize)
+        dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE, viewmodel.quantize)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, viewmodel.sample_rate)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, viewmodel.change_rate)
+        dpg.set_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, viewmodel.transformation_gamma)
