@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -47,8 +47,6 @@ class GUISequencerBrowserPanel(GUITreePanel):
         self.application_config_manager = application_config_manager
         self.audio_device_manager = audio_device_manager
         self.browser_manager = browser_manager
-
-        self._pending_autoplay_node: Optional[FileSystemNode] = None
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -127,7 +125,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._lock:
+        if self.locked:
             return
 
         self.lock()
@@ -157,7 +155,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
@@ -209,7 +207,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._schedule_autoplay(node)
+            self.logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(node, node_tag)
@@ -223,7 +221,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._pending_autoplay_node = None
+            self.logic.cancel_autoplay()
             self.call(self.on_add_to_sequencer, node.filepath)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:

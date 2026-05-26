@@ -63,8 +63,6 @@ class GUIExplorerPanel(GUITreePanel):
         self.application_config_manager = application_config_manager
         self.shortcut_manager = shortcut_manager
 
-        self._pending_autoplay_node: Optional[FileSystemNode] = None
-
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.on_wave_file_clicked: Optional[PathCallback] = None
@@ -196,7 +194,7 @@ class GUIExplorerPanel(GUITreePanel):
         dpg_delete_children(node_tag)
         if self.explorer_manager.is_directory_expanded(node.filepath):
             for child in node.children:
-                has_favorite_ancestor = self._is_node_favorite(node) or self._has_favorite_ancestor(child)
+                has_favorite_ancestor = self.logic.is_node_favorite(node) or self.logic.has_favorite_ancestor(child)
                 self._build_tree_node(
                     child,
                     TreeNodeState(
@@ -219,7 +217,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
 
         if node.node_type == NodeType.DIRECTORY:
@@ -280,10 +278,10 @@ class GUIExplorerPanel(GUITreePanel):
         if mouse_button == dpg.mvMouseButton_Left:
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    return self._schedule_autoplay(node)
+                    return self.logic.request_autoplay(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self.call(self.on_wave_file_clicked, node.filepath)
-                    return self._schedule_autoplay(node)
+                    return self.logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             return self._show_file_context_menu(node)
@@ -303,7 +301,7 @@ class GUIExplorerPanel(GUITreePanel):
                 case paths.EXT_FILE_RECONSTRUCTION:
                     self._load_reconstruction(node)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self._pending_autoplay_node = None
+                    self.logic.cancel_autoplay()
                     return self._reconstruct_file(node)
                 case paths.EXT_FILE_LIBRARY:
                     return self._load_library(node)

@@ -1,4 +1,3 @@
-import threading
 from abc import abstractmethod
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Tuple, Union
@@ -7,9 +6,7 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants import paths
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
-from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback, MessageCallback, PathCallback
 from sampletones_shared.utils.system.paths import open_path_in_explorer
@@ -37,10 +34,8 @@ from ...constants.general import (
     SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
     VAL_CHARACTER_STAR,
-    VAL_DELAY_SCHEDULE,
     VAL_PRIORITY_ADD_HANDLER,
     VAL_PRIORITY_ADD_NODE,
-    VAL_PRIORITY_SCHEDULE,
     VAL_TEXT_COLLAPSE,
     VAL_TEXT_EXPAND,
 )
@@ -70,6 +65,7 @@ from ..fonts.registry import FontRegistry
 from ..panel import GUIPanel
 from ..status import GUIStatusBar
 from .handler import NodeHandler
+from .logic import TreeLogic
 from .state import TreeNodeState
 
 
@@ -89,24 +85,20 @@ class GUITreePanel(GUIPanel):
     ) -> None:
         self.tree = tree
         self.tree_tag = tree_tag
-        self.application_config_manager = application_config_manager
-        self.audio_device_manager = audio_device_manager
         self.shortcut_manager = shortcut_manager
 
         self._selected_node_tag: Optional[Union[str, int]] = None
         self._search_input_tag: Optional[str] = None
         self._search_button_tag: Optional[str] = None
 
-        self._pending_query: Optional[str] = None
-        self._pending_autoplay_node: Optional[FileSystemNode] = None
-
         self._node_handlers: Dict[NodeType, NodeHandler] = {}
 
-        self._lock_counter: int = 0
-        self._lock: bool = False
-        self._thread_lock = threading.RLock()
-
         self.search_label = search_label
+
+        self.logic = TreeLogic(application_config_manager, audio_device_manager)
+        self.logic.on_lock_state_changed = self._set_tree_enabled
+        self.logic.on_favorite_changed = self._update_favorite_indicator
+        self.logic.on_search_update_needed = self._update_tree_visibility
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
 
@@ -329,7 +321,7 @@ class GUITreePanel(GUIPanel):
 
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
-            if self.application_config_manager.autoplay:
+            if self.logic.autoplay_enabled:
                 return MSG_STATUS_NODE_RECONSTRUCTION
 
             return MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY
@@ -354,7 +346,7 @@ class GUITreePanel(GUIPanel):
         return tag.replace(" ", "_").lower()
 
     def _add_context_menu_text(self, node: TreeNode) -> None:
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
         color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
 
         with dpg.group(horizontal=True):
@@ -391,7 +383,9 @@ class GUITreePanel(GUIPanel):
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
         label = (
-            LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE if self._is_node_favorite(node) else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
+            LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE
+            if self.logic.is_node_favorite(node)
+            else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
         )
         dpg.add_separator()
         dpg.add_menu_item(
@@ -417,12 +411,7 @@ class GUITreePanel(GUIPanel):
         else:
             self.clear_filter()
 
-        CallbackQueue.add(
-            self._schedule_update_tree_visibility,
-            query,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
-        )
+        self.logic.schedule_search_update(query)
 
     def _on_clear_search_clicked(self) -> None:
         if self._search_input_tag is not None:
@@ -430,12 +419,7 @@ class GUITreePanel(GUIPanel):
 
         self.clear_filter()
 
-        CallbackQueue.add(
-            self._schedule_update_tree_visibility,
-            "",
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
-        )
+        self.logic.schedule_search_update("")
 
     def _default_search_predicate(self, node: TreeNode, query: str) -> bool:
         return query.lower() in node.name.lower()
@@ -471,28 +455,6 @@ class GUITreePanel(GUIPanel):
     def _clear_children(self, tag: str) -> None:
         dpg_delete_children(tag)
 
-    def _is_node_favorite(self, node: TreeNode) -> bool:
-        if not isinstance(node, FileSystemNode):
-            return False
-
-        return node.filepath in self.application_config_manager.favorites
-
-    def _has_favorite_ancestor(self, node: FileSystemNode) -> bool:
-        current_node = node.parent
-        while current_node is not None:
-            if not isinstance(current_node, FileSystemNode):
-                break
-
-            if self._is_node_favorite(current_node):
-                return True
-
-            current_node = current_node.parent
-
-        return False
-
-    def _toggle_favorite(self, node: FileSystemNode) -> None:
-        self.application_config_manager.toggle_favorite(node.filepath)
-
     def _apply_node_theme(
         self,
         node_tag: str,
@@ -527,7 +489,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
     ) -> None:
         has_content = self._has_relevant_content(node)
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
 
         theme: Theme
         if is_favorite:
@@ -548,7 +510,7 @@ class GUITreePanel(GUIPanel):
         has_favorite_ancestor: bool = False,
         is_not_expanded: bool = False,
     ) -> None:
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
 
         theme: Theme
         if is_favorite:
@@ -602,7 +564,7 @@ class GUITreePanel(GUIPanel):
             has_favorite_ancestor=has_favorite_ancestor,
         )
         if node.node_type == NodeType.DIRECTORY:
-            is_favorite = self._is_node_favorite(node)
+            is_favorite = self.logic.is_node_favorite(node)
             child_has_favorite_ancestor = has_favorite_ancestor or is_favorite
 
             for child in node.children:
@@ -616,72 +578,21 @@ class GUITreePanel(GUIPanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        self._toggle_favorite(node)
-        self._update_favorite_indicator(node)
+        self.logic.toggle_favorite(node)
 
     def _update_favorite_indicator(self, node: FileSystemNode) -> None:
-        has_favorite_ancestor = self._has_favorite_ancestor(node)
+        has_favorite_ancestor = self.logic.has_favorite_ancestor(node)
         self._reapply_theme_recursively(node, has_favorite_ancestor)
 
     @abstractmethod
     def _set_tree_enabled(self, enabled: bool) -> None: ...
 
-    def _schedule_update_tree_visibility(self, query: str) -> None:
-        self._pending_query = query
-        CallbackQueue.add(
-            self._execute_update_tree_visibility,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
-        )
-
-    def _execute_update_tree_visibility(self) -> None:
-        if self._pending_query is not None:
-            self._pending_query = None
-            self._update_tree_visibility()
-
-    def _schedule_autoplay(self, node: FileSystemNode) -> None:
-        self._pending_autoplay_node = node
-        CallbackQueue.add(
-            self._execute_autoplay,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
-        )
-
-    def _autoplay_file(self, node: FileSystemNode) -> None:
-        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
-            return
-
-        if self.application_config_manager.autoplay:
-            match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
-                    try:
-                        reconstruction = Reconstruction.load(node.filepath)
-                        self.audio_device_manager.play(reconstruction.approximation, update=False)
-                    except Exception as exception:
-                        logger.error(f"Failed to autoplay reconstruction file: {exception}")
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self.audio_device_manager.play_file(node.filepath, update=False)
-
-    def _execute_autoplay(self) -> None:
-        if self._pending_autoplay_node is not None:
-            self._autoplay_file(self._pending_autoplay_node)
-            self._pending_autoplay_node = None
-
     def lock(self) -> None:
-        with self._thread_lock:
-            self._lock_counter += 1
-            self._lock = True
-            self._set_tree_enabled(False)
+        self.logic.lock()
 
     def unlock(self) -> None:
-        with self._thread_lock:
-            self._lock_counter -= 1
-            if self._lock_counter <= 0:
-                self._lock_counter = 0
-                self._lock = False
-                self._set_tree_enabled(True)
+        self.logic.unlock()
 
     @property
     def locked(self) -> bool:
-        with self._thread_lock:
-            return self._lock
+        return self.logic.locked

@@ -61,8 +61,6 @@ class GUIBrowserPanel(GUITreePanel):
         self.browser_manager = browser_manager
         self.reconstruction_manager = reconstruction_manager
 
-        self._pending_autoplay_node: Optional[FileSystemNode] = None
-
         self._node_handlers: Dict[NodeType, NodeHandler]
 
         self.load_reconstruction_with_confirmation: Optional[PathCallback] = None
@@ -159,7 +157,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
-        if self._lock:
+        if self.locked:
             return
 
         self.lock()
@@ -190,7 +188,7 @@ class GUIBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode):
             return
 
-        is_favorite = self._is_node_favorite(node)
+        is_favorite = self.logic.is_node_favorite(node)
         state.has_favorite_ancestor |= is_favorite
         if node.node_type == NodeType.DIRECTORY:
             should_expand = self._should_expand_node(node)
@@ -248,7 +246,7 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, node_tag = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._schedule_autoplay(node)
+            self.logic.request_autoplay(node)
 
         if mouse_button == dpg.mvMouseButton_Right:
             self._show_reconstruction_context_menu(node, node_tag)
@@ -262,7 +260,7 @@ class GUIBrowserPanel(GUITreePanel):
         mouse_button, _ = app_data
         node, _ = user_data
         if mouse_button == dpg.mvMouseButton_Left:
-            self._pending_autoplay_node = None
+            self.logic.cancel_autoplay()
             self._load_reconstruction(node)
 
     def _show_directory_context_menu(self, node: FileSystemNode) -> None:
@@ -311,5 +309,5 @@ class GUIBrowserPanel(GUITreePanel):
         self._load_reconstruction(user_data)
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
-        self._pending_autoplay_node = None
+        self.logic.cancel_autoplay()
         self.call(self.load_reconstruction_with_confirmation, node.filepath)
