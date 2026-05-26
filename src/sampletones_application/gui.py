@@ -176,8 +176,8 @@ from .panels.main.reconstructor import GUIReconstructorPanel
 from .panels.reconstruction.browser import GUIBrowserPanel
 from .panels.reconstruction.details.logic import ReconstructionDetailsLogic
 from .panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
-from .panels.reconstruction.logic import ReconstructionPanelLogic
-from .panels.reconstruction.reconstruction import GUIReconstructionPanel
+from .panels.reconstruction.reconstruction.logic import ReconstructionPanelLogic
+from .panels.reconstruction.reconstruction.panel import GUIReconstructionPanel
 from .panels.sequencer.browser import GUISequencerBrowserPanel
 from .panels.sequencer.grid import GUISequencerGridPanel
 from .panels.sequencer.samples import GUISequencerSamplesPanel
