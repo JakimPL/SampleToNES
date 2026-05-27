@@ -21,8 +21,8 @@ class ReconstructionPanelLogic(CallbackMixin):
         application_config_manager: ApplicationConfigManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
-        self.application_config_manager = application_config_manager
-        self.reconstruction_manager = reconstruction_manager
+        self._application_config_manager = application_config_manager
+        self._reconstruction_manager = reconstruction_manager
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._selected_generators: List[GeneratorName] = []
@@ -119,7 +119,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction = reconstruction_data.reconstruction
         filename = to_path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename} ({generator_name})"
-        default_path = str(self.application_config_manager.get_instrument_path())
+        default_path = str(self._application_config_manager.get_instrument_path())
 
         self._pending_generator_name = generator_name
         self.call(self.on_open_export_instrument_dialog, instrument_name, default_path)
@@ -131,7 +131,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         reconstruction = reconstruction_data.reconstruction
         default_filename = to_path(reconstruction.audio_filepath).stem
-        default_path = str(self.application_config_manager.get_instrument_path())
+        default_path = str(self._application_config_manager.get_instrument_path())
 
         self.call(self.on_open_export_instruments_dialog, default_filename, default_path)
 
@@ -142,7 +142,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         reconstruction = reconstruction_data.reconstruction
         default_filename = to_path(reconstruction.audio_filepath).stem
-        default_path = str(self.application_config_manager.get_audio_path())
+        default_path = str(self._application_config_manager.get_audio_path())
 
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
 
@@ -167,7 +167,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
             self.call(self.on_export_instrument_error, exception)
 
-        self.application_config_manager.set_instrument_path(filepath.parent)
+        self._application_config_manager.set_instrument_path(filepath.parent)
 
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
         if not self._reconstruction_data:
@@ -185,7 +185,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
             self.call(self.on_export_instruments_error, exception)
 
-        self.application_config_manager.set_instrument_path(directory.parent)
+        self._application_config_manager.set_instrument_path(directory.parent)
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data
@@ -204,16 +204,16 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
             self.call(self.on_export_wav_error, exception)
 
-        self.application_config_manager.set_audio_path(filepath)
+        self._application_config_manager.set_audio_path(filepath)
 
     def handle_locate_original_audio(self) -> None:
-        path = self.reconstruction_manager.audio_filepath
+        path = self._reconstruction_manager.audio_filepath
         if path is None:
             self.call(self.on_locate_audio_missing)
             return
 
         try:
-            self.reconstruction_manager.locate_original_audio()
+            self._reconstruction_manager.locate_original_audio()
         except FileNotFoundError:
             logger.warning(f"Original audio file could not be found: '{path}'")
             self.call(self.on_locate_audio_not_found, path)
@@ -272,4 +272,4 @@ class ReconstructionPanelLogic(CallbackMixin):
 
     @property
     def _reconstruction_data(self) -> Optional[ReconstructionData]:
-        return self.reconstruction_manager.current_reconstruction
+        return self._reconstruction_manager.current_reconstruction

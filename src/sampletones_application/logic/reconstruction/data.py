@@ -1,8 +1,8 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Self
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
 
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.audio import load_audio
@@ -12,9 +12,8 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 
 
-class ReconstructionData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass(frozen=True)
+class ReconstructionData:
     config: Config
     reconstruction: Reconstruction
     original_audio: np.ndarray

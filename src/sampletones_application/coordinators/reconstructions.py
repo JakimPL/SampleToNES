@@ -38,6 +38,7 @@ from sampletones_application.constants.reconstructions import (
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
 )
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.details import (
@@ -93,8 +94,9 @@ class ReconstructionsTabCoordinator:
             audio_device_manager,
             shortcut_manager,
         )
+        self._reconstruction_player_logic = PlayerLogic(audio_device_manager, on_change_audio_state)
         self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
-            audio_device_manager,
+            self._reconstruction_player_logic,
         )
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             application_config_manager,
@@ -114,7 +116,6 @@ class ReconstructionsTabCoordinator:
             on_reconstruct_directory=on_reconstruct_directory,
         )
 
-        self._reconstruction_panel.on_change_audio_state = on_change_audio_state
         self._reconstruction_panel.on_audio_source_changed = self._reconstruction_panel_logic.set_audio_source
         self._reconstruction_panel.on_generators_changed = self._reconstruction_panel_logic.set_selected_generators
         self._reconstruction_panel.on_export_wav_requested = self.request_export_wav_dialog

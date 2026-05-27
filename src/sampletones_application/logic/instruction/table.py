@@ -2,7 +2,7 @@ from typing import Tuple
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_application.ui.elements.table.cell import TableCell
+from sampletones_application.logic.instruction.cell import TableCell
 
 
 class InstructionTableData(BaseModel):

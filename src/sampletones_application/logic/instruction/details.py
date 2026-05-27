@@ -29,7 +29,7 @@ class InstructionDetailsPanelLogic(CallbackMixin):
         return self._table_logic.current_data
 
     def handle_instruction_parameter_changed(self, instruction: InstructionUnion) -> None:
-        current = self._library_manager.current_instruction
+        current = self._table_logic.current_data
         if current is not None and current.instruction == instruction:
             return
 

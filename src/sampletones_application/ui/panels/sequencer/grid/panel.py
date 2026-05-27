@@ -43,6 +43,7 @@ from sampletones_application.constants.sequencer import (
     VAL_SEQUENCER_GRID_TEMPO_MIN,
     VAL_SEQUENCER_GRID_TRACKER_ROWS,
 )
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -51,7 +52,6 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 from sampletones_shared.types.application import Sender
@@ -61,10 +61,10 @@ class GUISequencerGridPanel(GUIPanel):
     def __init__(
         self,
         sequencer_grid_logic: SequencerGridLogic,
-        audio_device_manager: AudioDeviceManager,
+        player_logic: PlayerLogic,
     ) -> None:
         self.sequencer_grid_logic = sequencer_grid_logic
-        self.audio_device_manager = audio_device_manager
+        self._player_logic = player_logic
 
         self.player_panel: GUIAudioPlayerPanel
 
@@ -102,7 +102,7 @@ class GUISequencerGridPanel(GUIPanel):
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_PANEL_SEQUENCER_GRID_PLAYER,
             parent=TAG_PANEL_SEQUENCER_GRID,
-            audio_device_manager=self.audio_device_manager,
+            player_logic=self._player_logic,
         )
 
     def _create_module_options(self) -> None:

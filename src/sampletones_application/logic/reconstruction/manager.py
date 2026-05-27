@@ -15,10 +15,10 @@ from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 class ReconstructionManager(CallbackMixin):
     def __init__(self) -> None:
-        self.current_reconstruction: Optional[ReconstructionData] = None
-        self.current_features: Optional[FeatureData] = None
-        self.reconstruction_hash: str = ""
-        self.coefficient: float = 1.0
+        self._current_reconstruction: Optional[ReconstructionData] = None
+        self._current_features: Optional[FeatureData] = None
+        self._reconstruction_hash: str = ""
+        self._coefficient: float = 1.0
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
         self.on_reconstruction_closed: Optional[VoidCallback] = None
@@ -35,35 +35,35 @@ class ReconstructionManager(CallbackMixin):
         self.call(self.on_reconstruction_loaded)
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
-        self.current_reconstruction = ReconstructionData.load(filepath)
-        self.coefficient = self.current_reconstruction.reconstruction.coefficient
+        self._current_reconstruction = ReconstructionData.load(filepath)
+        self._coefficient = self._current_reconstruction.reconstruction.coefficient
 
     def _load_reconstruction_features(self) -> None:
-        if self.current_reconstruction is None:
+        if self._current_reconstruction is None:
             raise RuntimeError("No reconstruction is loaded when trying to load features")
 
-        reconstruction = self.current_reconstruction.reconstruction
+        reconstruction = self._current_reconstruction.reconstruction
         feature_data = FeatureData.load(reconstruction)
-        self.current_features = feature_data
-        self.reconstruction_hash = hash_model(reconstruction)
+        self._current_features = feature_data
+        self._reconstruction_hash = hash_model(reconstruction)
 
     def is_reconstruction_loaded(self) -> bool:
-        return self.current_reconstruction is not None
+        return self._current_reconstruction is not None
 
     def save_reconstruction(self, filepath: Optional[Path] = None) -> None:
-        if not self.current_reconstruction:
+        if not self._current_reconstruction:
             return
 
-        reconstruction = self.current_reconstruction.reconstruction
-        target_path = filepath or self.current_reconstruction.filepath
+        reconstruction = self._current_reconstruction.reconstruction
+        target_path = filepath or self._current_reconstruction.filepath
         reconstruction.save(target_path)
         logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
 
     def close_reconstruction(self) -> None:
-        self.current_reconstruction = None
-        self.current_features = None
-        self.reconstruction_hash = ""
-        self.coefficient = 1.0
+        self._current_reconstruction = None
+        self._current_features = None
+        self._reconstruction_hash = ""
+        self._coefficient = 1.0
         CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=VAL_PRIORITY_SCHEDULE)
 
     def locate_original_audio(self) -> None:
@@ -77,22 +77,30 @@ class ReconstructionManager(CallbackMixin):
         open_path_in_explorer(original_audio_path)
 
     @property
+    def current_reconstruction(self) -> Optional[ReconstructionData]:
+        return self._current_reconstruction
+
+    @property
+    def current_features(self) -> Optional[FeatureData]:
+        return self._current_features
+
+    @property
     def reconstruction(self) -> Optional[Reconstruction]:
-        if self.current_reconstruction is None:
+        if self._current_reconstruction is None:
             return None
 
-        return self.current_reconstruction.reconstruction
+        return self._current_reconstruction.reconstruction
 
     @property
     def filepath(self) -> Optional[Path]:
-        if self.current_reconstruction is None:
+        if self._current_reconstruction is None:
             return None
 
-        return self.current_reconstruction.filepath
+        return self._current_reconstruction.filepath
 
     @property
     def audio_filepath(self) -> Optional[Path]:
-        if self.current_reconstruction is None:
+        if self._current_reconstruction is None:
             return None
 
-        return self.current_reconstruction.reconstruction.audio_filepath
+        return self._current_reconstruction.reconstruction.audio_filepath

@@ -21,12 +21,11 @@ from sampletones_application.constants.instructions import (
 )
 from sampletones_application.logic.instruction.data import InstructionPanelData
 from sampletones_application.logic.player.data import AudioData
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.view_model.instruction.instruction import InstructionPanelViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
@@ -34,14 +33,13 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIInstructionPanel(GUIPanel):
-    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.audio_device_manager = audio_device_manager
+    def __init__(self, player_logic: PlayerLogic) -> None:
+        self._player_logic = player_logic
         self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformGraph
         self.spectrum_display: GUISpectrumGraph
 
         self.on_clear_instruction_details: Optional[VoidCallback] = None
-        self.on_change_audio_state: Optional[VoidCallback] = None
         self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
@@ -95,13 +93,9 @@ class GUIInstructionPanel(GUIPanel):
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
             parent=self.parent,
-            audio_device_manager=self.audio_device_manager,
+            player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,
-            on_change_audio_state=self.on_change_audio_state,
         )
-
-    def update_view(self, viewmodel: InstructionPanelViewModel) -> None:
-        pass
 
     def close_instruction(self) -> None:
         self.waveform_display.clear_layers()

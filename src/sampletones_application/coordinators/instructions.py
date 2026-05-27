@@ -19,9 +19,9 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
 from sampletones_application.logic.instruction.data import InstructionPanelData
 from sampletones_application.logic.instruction.details import InstructionDetailsPanelLogic
-from sampletones_application.logic.instruction.instruction import InstructionPanelLogic
 from sampletones_application.logic.library.library import LibraryLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.ui.panels.instruction.details.panel import GUIInstructionDetailsPanel
 from sampletones_application.ui.panels.instruction.instruction.panel import GUIInstructionPanel
 from sampletones_application.ui.panels.instruction.library.panel import GUIInstructionsLibraryPanel
@@ -57,8 +57,8 @@ class InstructionsTabCoordinator:
             audio_device_manager,
             shortcut_manager,
         )
-        self._instruction_panel_logic = InstructionPanelLogic()
-        self._instruction_panel = GUIInstructionPanel(audio_device_manager)
+        self._instruction_player_logic = PlayerLogic(audio_device_manager, on_audio_state_changed)
+        self._instruction_panel = GUIInstructionPanel(self._instruction_player_logic)
         self._instruction_details_logic = InstructionDetailsPanelLogic(library_manager)
         self._instruction_details_panel = GUIInstructionDetailsPanel()
 
@@ -70,9 +70,7 @@ class InstructionsTabCoordinator:
         )
         self._instruction_panel.set_callbacks(
             on_clear_instruction_details=self._instruction_details_logic.clear_display,
-            on_change_audio_state=on_audio_state_changed,
         )
-        self._instruction_panel.on_instruction_config_changed = self._instruction_panel_logic.update_config
         self._instruction_details_logic.on_view_changed = self._instruction_details_panel.update_view
         self._instruction_details_logic.on_instruction_changed = self._instruction_panel.display_instruction
         self._instruction_details_panel.on_instruction_parameter_changed = (

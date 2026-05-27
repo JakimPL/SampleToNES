@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Dict, List, Optional, cast
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
@@ -11,9 +11,8 @@ from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 
 
-class FeatureData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass(frozen=True)
+class FeatureData:
     generators: Dict[GeneratorName, Features]
 
     def __getitem__(self, generator_name: GeneratorName) -> Features:

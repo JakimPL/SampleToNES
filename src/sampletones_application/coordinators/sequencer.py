@@ -14,6 +14,7 @@ from sampletones_application.constants.general import (
     TAG_TABS,
 )
 from sampletones_application.constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
@@ -41,9 +42,10 @@ class SequencerTabCoordinator:
             shortcut_manager,
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(config_manager)
+        self._sequencer_player_logic = PlayerLogic(audio_device_manager)
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             self._sequencer_grid_logic,
-            audio_device_manager,
+            self._sequencer_player_logic,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel()
 

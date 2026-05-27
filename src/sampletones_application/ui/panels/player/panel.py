@@ -31,9 +31,7 @@ from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.dialogs import show_error_dialog, show_modal_dialog
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_label, dpg_set_value
 from sampletones_application.view_model.player.player import PlayerViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import PlaybackError
-from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIAudioPlayerPanel(GUIPanel):
@@ -41,9 +39,8 @@ class GUIAudioPlayerPanel(GUIPanel):
         self,
         tag: str,
         parent: str,
-        audio_device_manager: AudioDeviceManager,
+        player_logic: PlayerLogic,
         on_position_changed: Optional[Callable[[int], None]] = None,
-        on_change_audio_state: Optional[VoidCallback] = None,
     ):
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
@@ -54,7 +51,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         self.no_audio_popup_tag = f"{tag}{SUF_PLAYER_NO_AUDIO_POPUP}"
         self.error_popup_tag = f"{tag}{SUF_PLAYER_ERROR_POPUP}"
 
-        self.player_logic = PlayerLogic(audio_device_manager, on_change_audio_state)
+        self.player_logic = player_logic
         self.player_logic.on_view_changed = self.update_view
         self.player_logic.on_position_changed = on_position_changed
 

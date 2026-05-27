@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
+from sampletones_application.logic.instruction.cell import TableCell
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.elements.table.cell import TableCell
 from sampletones_application.ui.themes.tables.table import TableTheme
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.dpg import dpg_delete_children

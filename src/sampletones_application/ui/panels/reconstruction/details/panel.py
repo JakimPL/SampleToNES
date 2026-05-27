@@ -56,11 +56,6 @@ from sampletones_application.constants.reconstructions import (
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
-from sampletones_application.logic.reconstruction.config import (
-    FEATURE_DISPLAY_ORDER,
-    FEATURE_PLOT_CONFIGS,
-    FeaturePlotConfig,
-)
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -69,6 +64,11 @@ from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.reconstruction.details.config import (
+    FEATURE_DISPLAY_ORDER,
+    FEATURE_PLOT_CONFIGS,
+    FeaturePlotConfig,
+)
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.input import InvalidInputTheme
 from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme

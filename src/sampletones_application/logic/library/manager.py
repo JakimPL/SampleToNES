@@ -33,15 +33,14 @@ OnGenerationErrorCallback = Callable[[Exception], None]
 
 class InstructionsLibraryManager(CallbackMixin):
     def __init__(self, config_manager: ConfigManager) -> None:
-        self.config_manager = config_manager
+        self._config_manager = config_manager
         library_directory = config_manager.get_library_directory()
-        self.library = InstructionLibrary(directory=str(library_directory))
-        self.library_files: Dict[InstructionLibraryKey, str] = {}
-        self.current_library_key: Optional[InstructionLibraryKey] = None
-        self.current_instruction: Optional[InstructionPanelData] = None
+        self._library = InstructionLibrary(directory=str(library_directory))
+        self._library_files: Dict[InstructionLibraryKey, str] = {}
+        self._current_library_key: Optional[InstructionLibraryKey] = None
 
-        self.tree = Tree()
-        self.creator: Optional[InstructionsLibraryCreator] = None
+        self._tree = Tree()
+        self._creator: Optional[InstructionsLibraryCreator] = None
 
         self.on_generation_start: Optional[VoidCallback] = None
         self.on_generation_completed: Optional[VoidCallback] = None
@@ -50,13 +49,13 @@ class InstructionsLibraryManager(CallbackMixin):
         self.on_generation_cancelled: Optional[VoidCallback] = None
 
     def set_library_directory(self, directory: Path) -> None:
-        self.library = InstructionLibrary(directory=str(directory))
+        self._library = InstructionLibrary(directory=str(directory))
         self.gather_available_libraries()
 
     def gather_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
-        library_directory = to_path(self.library.directory)
+        library_directory = to_path(self._library.directory)
         if not library_directory.exists():
-            self.library_files.clear()
+            self._library_files.clear()
             self.rebuild_tree()
             return {}
 
@@ -66,23 +65,23 @@ class InstructionsLibraryManager(CallbackMixin):
                 library_key = create_key_from_filename(filepath)
                 new_library_files[library_key] = filepath.stem
 
-        removed_libraries = set(self.library_files.keys()) - set(new_library_files.keys())
+        removed_libraries = set(self._library_files.keys()) - set(new_library_files.keys())
         for removed_key in removed_libraries:
-            if removed_key in self.library.data:
-                del self.library.data[removed_key]
+            if removed_key in self._library.data:
+                del self._library.data[removed_key]
 
-        self.library_files = new_library_files
-        return self.library_files
+        self._library_files = new_library_files
+        return self._library_files
 
     def get_available_libraries(self) -> Dict[InstructionLibraryKey, str]:
-        return self.library_files.copy()
+        return self._library_files.copy()
 
     def get_library_key(self, library_key: Optional[InstructionLibraryKey] = None) -> Optional[InstructionLibraryKey]:
         if library_key is None:
-            if self.current_library_key is None:
+            if self._current_library_key is None:
                 return None
 
-            library_key = self.current_library_key
+            library_key = self._current_library_key
 
         return library_key
 
@@ -91,7 +90,7 @@ class InstructionsLibraryManager(CallbackMixin):
         if not self.does_library_exist(library_key):
             return False
 
-        return library_key in self.library.data
+        return library_key in self._library.data
 
     def does_library_exist(self, library_key: Optional[InstructionLibraryKey] = None) -> bool:
         library_key = self.get_library_key(library_key)
@@ -103,59 +102,56 @@ class InstructionsLibraryManager(CallbackMixin):
 
     def load_library(self, library_key: InstructionLibraryKey) -> bool:
         if self.is_library_loaded(library_key):
-            self.current_library_key = library_key
+            self._current_library_key = library_key
             return True
 
-        if library_key not in self.library_files:
+        if library_key not in self._library_files:
             return False
 
-        self.library.load_data(library_key)
-        self.current_library_key = library_key
+        self._library.load_data(library_key)
+        self._current_library_key = library_key
         return True
 
     def load_library_file(self, filepath: Path) -> InstructionLibraryKey:
         library_key = create_key_from_filename(filepath)
-        self.library.load_data(library_key)
-        self.current_library_key = library_key
+        self._library.load_data(library_key)
+        self._current_library_key = library_key
         return library_key
 
     def load_instruction(self, instruction: InstructionUnion) -> Optional[InstructionPanelData]:
-        if not self.current_library_key or not self.is_library_loaded(self.current_library_key):
+        if not self._current_library_key or not self.is_library_loaded(self._current_library_key):
             return None
 
-        data = self.library.data[self.current_library_key]
+        data = self._library.data[self._current_library_key]
         fragment = data[instruction]
         library_config = data.config
-        self.current_instruction = InstructionPanelData(
+        instruction_data = InstructionPanelData(
             instruction=instruction,
             config=library_config,
             fragment=fragment,
         )
 
-        return self.current_instruction
-
-    def get_current_instruction(self) -> Optional[InstructionPanelData]:
-        return self.current_instruction
+        return instruction_data
 
     def get_path(self, library_key: InstructionLibraryKey) -> Path:
-        return self.library.get_path(library_key)
+        return self._library.get_path(library_key)
 
     def get_library_data(self, library_key: InstructionLibraryKey) -> Optional[InstructionLibraryData]:
-        return self.library.data.get(library_key)
+        return self._library.data.get(library_key)
 
     def sync_with_config_key(self, config_key: InstructionLibraryKey) -> Optional[InstructionLibraryKey]:
         if self.library_exists_for_key(config_key):
-            self.current_library_key = config_key
+            self._current_library_key = config_key
             return config_key
 
         return None
 
     def library_exists_for_key(self, key: InstructionLibraryKey) -> bool:
-        return self.library.exists(key)
+        return self._library.exists(key)
 
     def generate_library(self, config: Config, window: Window) -> None:
-        self.creator = InstructionsLibraryCreator(config, window)
-        self.creator.set_callbacks(
+        self._creator = InstructionsLibraryCreator(config, window)
+        self._creator.set_callbacks(
             on_start=self.on_generation_start,
             on_completed=self._complete_generation,
             on_error=self.on_generation_error,
@@ -163,13 +159,13 @@ class InstructionsLibraryManager(CallbackMixin):
             on_progress=self.on_generation_progress,
         )
 
-        self.creator.start()
+        self._creator.start()
 
     def _complete_generation(self, result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
         try:
             key, library_data = result
-            self.library.save_data(key, library_data)
-            self.current_library_key = key
+            self._library.save_data(key, library_data)
+            self._current_library_key = key
         except Exception as exception:
             self.call(self.on_generation_error, exception)
             raise exception
@@ -177,21 +173,33 @@ class InstructionsLibraryManager(CallbackMixin):
         self.call(self.on_generation_completed)
 
     def is_generating(self) -> bool:
-        return self.creator is not None and self.creator.is_running()
+        return self._creator is not None and self._creator.is_running()
+
+    @property
+    def tree(self) -> Tree:
+        return self._tree
+
+    @property
+    def current_library_key(self) -> Optional[InstructionLibraryKey]:
+        return self._current_library_key
+
+    @property
+    def creator(self) -> Optional[InstructionsLibraryCreator]:
+        return self._creator
 
     def cancel_generation(self) -> None:
-        if self.creator:
-            self.creator.cancel()
+        if self._creator:
+            self._creator.cancel()
 
     def cleanup_creator(self) -> None:
-        if self.creator:
-            self.creator.cleanup()
-            self.creator = None
+        if self._creator:
+            self._creator.cleanup()
+            self._creator = None
 
     def clear_all_libraries(self) -> None:
-        self.library.purge()
-        self.library_files.clear()
-        self.current_library_key = None
+        self._library.purge()
+        self._library_files.clear()
+        self._current_library_key = None
 
     def _is_library_file(self, filename: str) -> bool:
         file_parts = filename.split("_")
@@ -217,10 +225,10 @@ class InstructionsLibraryManager(CallbackMixin):
     def rebuild_tree(self) -> None:
         root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
 
-        for library_key in sorted(self.library_files.keys(), key=get_display_name_from_key):
+        for library_key in sorted(self._library_files.keys(), key=get_display_name_from_key):
             self._build_library_node(library_key, root)
 
-        self.tree.set_root(root)
+        self._tree.set_root(root)
 
     def _build_library_node(self, library_key: InstructionLibraryKey, parent: TreeNode) -> LibraryNode:
         display_name = get_display_name_from_key(library_key)
@@ -237,10 +245,10 @@ class InstructionsLibraryManager(CallbackMixin):
             )
 
     def refresh_library_node(self, library_key: InstructionLibraryKey) -> None:
-        if not self.tree.root:
+        if not self._tree.root:
             return
 
-        library_node = self.tree.find_node(
+        library_node = self._tree.find_node(
             lambda node: isinstance(node, LibraryNode) and node.library_key == library_key
         )
 

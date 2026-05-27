@@ -33,13 +33,13 @@ from sampletones_application.constants.general import (
     VAL_TEXT_EXPAND,
 )
 from sampletones_application.constants.main import MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY
+from sampletones_application.logic.tree.tree_logic import TreeLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.handler import NodeHandler
-from sampletones_application.ui.elements.tree.logic import TreeLogic
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme

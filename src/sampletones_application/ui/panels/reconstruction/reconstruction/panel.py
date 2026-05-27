@@ -45,6 +45,7 @@ from sampletones_application.constants.reconstructions import (
     VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
 from sampletones_application.logic.player.data import AudioData
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -57,7 +58,6 @@ from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
-from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
@@ -65,8 +65,8 @@ from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
 
 class GUIReconstructionPanel(GUIPanel):
-    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.audio_device_manager = audio_device_manager
+    def __init__(self, player_logic: PlayerLogic) -> None:
+        self._player_logic = player_logic
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
@@ -80,7 +80,6 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_export_instruments_confirmed: Optional[Callable[[Path], None]] = None
         self.on_export_wav_confirmed: Optional[Callable[[Path], None]] = None
         self.on_locate_original_audio_requested: Optional[VoidCallback] = None
-        self.on_change_audio_state: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
@@ -234,9 +233,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.player_panel = GUIAudioPlayerPanel(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_PLAYER,
             parent=self.parent,
-            audio_device_manager=self.audio_device_manager,
+            player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,
-            on_change_audio_state=self.on_change_audio_state,
         )
 
     def _create_audio_source_radio_buttons(self) -> None:

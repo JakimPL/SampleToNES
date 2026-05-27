@@ -74,7 +74,7 @@ class PlayerLogic(CallbackMixin):
 
     def _build_viewmodel(self) -> PlayerViewModel:
         has_audio = self._audio_player.audio_data.is_loaded()
-        current_position = self._audio_player.audio_data.current_position if has_audio else 0
+        current_position = self._audio_player.current_position if has_audio else 0
         total_samples = self._audio_player.audio_data.samples if has_audio else 0
         return PlayerViewModel(
             has_audio=has_audio,

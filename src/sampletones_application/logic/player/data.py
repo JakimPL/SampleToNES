@@ -1,20 +1,18 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
 
 from sampletones_core.audio import clip_audio, to_mono
 from sampletones_core.library import InstructionLibraryFragment
 
 
-class AudioData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass(frozen=True)
+class AudioData:
     sample: np.ndarray
     sample_rate: int
-    current_position: int = 0
 
     @property
     def samples(self) -> int:
@@ -33,32 +31,18 @@ class AudioData(BaseModel):
         return cls(
             sample=audio,
             sample_rate=sample_rate,
-            current_position=0,
         )
 
     @classmethod
     def from_array(cls, sample: np.ndarray, sample_rate: int) -> AudioData:
-        return cls(sample=sample.copy(), sample_rate=sample_rate, current_position=0)
+        return cls(sample=sample.copy(), sample_rate=sample_rate)
 
     @classmethod
     def empty(cls, sample_rate: int) -> AudioData:
-        return cls(sample=np.array([], dtype=np.float32), sample_rate=sample_rate, current_position=0)
+        return cls(sample=np.array([], dtype=np.float32), sample_rate=sample_rate)
 
     def is_loaded(self) -> bool:
         return len(self.sample) > 0
 
     def get_duration_seconds(self) -> float:
         return self.samples / self.sample_rate if self.sample_rate > 0 else 0.0
-
-    def get_position_seconds(self) -> float:
-        return self.current_position / self.sample_rate if self.sample_rate > 0 else 0.0
-
-    def set_position(self, position: int) -> None:
-        self.current_position = max(0, min(position, self.samples))
-
-    def set_position_seconds(self, seconds: float) -> None:
-        position = int(seconds * self.sample_rate)
-        self.set_position(position)
-
-    def reset_position(self) -> None:
-        self.current_position = 0
