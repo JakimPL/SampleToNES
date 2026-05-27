@@ -243,12 +243,6 @@ class Application:
         dpg.show_viewport()
         dpg.render_dearpygui_frame()
 
-    def _update_viewport_title(self, name: Optional[str] = None) -> None:
-        if name is not None:
-            self._reconstruction_name = name
-
-        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
-
     def _set_fonts(self) -> None:
         FontRegistry.register_fonts()
 
@@ -767,7 +761,8 @@ class Application:
 
         self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
         self._unsaved_reconstruction_changes = False
-        self._update_viewport_title(filepath.stem)
+        self._reconstruction_name = filepath.stem
+        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
         self._update_menu()
 
     def _on_playback_error(self, exception: Exception) -> None:
@@ -782,7 +777,7 @@ class Application:
     def _on_reconstruction_updated(self) -> None:
         self._reconstructions_tab.update_reconstruction()
         self._unsaved_reconstruction_changes = True
-        self._update_viewport_title()
+        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstructions_tab.refresh_browser()
@@ -791,8 +786,9 @@ class Application:
     def _save_reconstruction(self, filepath: Optional[Path] = None) -> None:
         self.reconstruction_manager.save_reconstruction(filepath)
         self._unsaved_reconstruction_changes = False
-        name = filepath.stem if filepath is not None else None
-        self._update_viewport_title(name)
+        if filepath is not None:
+            self._reconstruction_name = filepath.stem
+        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
@@ -812,9 +808,10 @@ class Application:
     def _on_reconstruction_closed(self) -> None:
         self._reconstructions_tab.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
+        self._reconstruction_name = ""
         self._unsaved_reconstruction_changes = False
         self._update_menu()
-        self._update_viewport_title("")
+        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)
