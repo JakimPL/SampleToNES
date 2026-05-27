@@ -34,13 +34,13 @@ from sampletones_application.constants.main import (
     VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
     VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
 )
+from sampletones_application.logic.explorer.explorer import ExplorerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.ui.panels.main.explorer.logic import ExplorerLogic
 from sampletones_application.utils.dialogs import show_info_dialog
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
 from sampletones_application.utils.shortcuts.manager import ShortcutManager

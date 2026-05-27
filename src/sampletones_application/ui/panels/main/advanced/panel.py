@@ -35,11 +35,11 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
-from sampletones_application.ui.panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
 from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.utils.widgets import clamp_widget_value
+from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
 

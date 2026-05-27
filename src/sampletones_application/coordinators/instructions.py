@@ -18,12 +18,12 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
 from sampletones_application.logic.instruction.data import InstructionPanelData
+from sampletones_application.logic.instruction.details import InstructionDetailsPanelLogic
+from sampletones_application.logic.instruction.instruction import InstructionPanelLogic
+from sampletones_application.logic.library.library import LibraryLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
-from sampletones_application.ui.panels.instruction.details.logic import InstructionDetailsPanelLogic
 from sampletones_application.ui.panels.instruction.details.panel import GUIInstructionDetailsPanel
-from sampletones_application.ui.panels.instruction.instruction.logic import InstructionPanelLogic
 from sampletones_application.ui.panels.instruction.instruction.panel import GUIInstructionPanel
-from sampletones_application.ui.panels.instruction.library.logic import LibraryLogic
 from sampletones_application.ui.panels.instruction.library.panel import GUIInstructionsLibraryPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.dialogs import show_error_dialog

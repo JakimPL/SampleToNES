@@ -45,8 +45,8 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
-from sampletones_application.ui.panels.instruction.details.viewmodel import InstructionDetailsPanelViewModel
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction

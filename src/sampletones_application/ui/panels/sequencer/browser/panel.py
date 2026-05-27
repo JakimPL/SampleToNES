@@ -17,13 +17,13 @@ from sampletones_application.constants.sequencer import (
     VAL_PRIORITY_SEQUENCER_BROWSER_ADD_HANDLER,
     VAL_PRIORITY_SEQUENCER_BROWSER_ADD_NODE,
 )
+from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.ui.panels.sequencer.browser.logic import SequencerBrowserLogic
 from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent

@@ -5,7 +5,7 @@ from sampletones_application.config.application.manager import ApplicationConfig
 from sampletones_application.logic.player.data import AudioData
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.ui.panels.reconstruction.reconstruction.viewmodel import ReconstructionViewModel
+from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
 from sampletones_core.audio import write_wave
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT

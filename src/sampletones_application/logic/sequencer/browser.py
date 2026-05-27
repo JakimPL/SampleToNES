@@ -1,5 +1,5 @@
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.logic.reconstruction.browser import BrowserManager
+from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.utils.callbacks import CallbackMixin
 

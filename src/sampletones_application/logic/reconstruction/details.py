@@ -10,8 +10,8 @@ from sampletones_application.constants.reconstructions import VAL_DELAY_RECONSTR
 from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.update import ReconstructionUpdate
-from sampletones_application.ui.panels.reconstruction.details.viewmodel import ReconstructionDetailsViewModel
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.types.feature import FeatureValue

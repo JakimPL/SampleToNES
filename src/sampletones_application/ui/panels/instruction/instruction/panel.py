@@ -24,8 +24,8 @@ from sampletones_application.logic.player.data import AudioData
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.instruction.instruction.viewmodel import InstructionPanelViewModel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.view_model.instruction.instruction import InstructionPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_shared.exceptions import LibraryDisplayError

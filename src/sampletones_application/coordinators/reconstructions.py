@@ -38,16 +38,16 @@ from sampletones_application.constants.reconstructions import (
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
 )
-from sampletones_application.logic.reconstruction.browser import BrowserManager
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.ui.panels.reconstruction.browser.logic import BrowserLogic
-from sampletones_application.ui.panels.reconstruction.browser.panel import GUIBrowserPanel
-from sampletones_application.ui.panels.reconstruction.details.logic import (
+from sampletones_application.logic.reconstruction.browser import BrowserLogic
+from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.details import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionDetailsLogic,
 )
+from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
+from sampletones_application.ui.panels.reconstruction.browser.panel import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
-from sampletones_application.ui.panels.reconstruction.reconstruction.logic import ReconstructionPanelLogic
 from sampletones_application.ui.panels.reconstruction.reconstruction.panel import GUIReconstructionPanel
 from sampletones_application.utils.dialogs import (
     show_error_dialog,

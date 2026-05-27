@@ -29,7 +29,7 @@ from sampletones_application.constants.instructions import (
     TPL_INSTRUCTIONS_LIBRARY_NOT_EXISTS,
 )
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
-from sampletones_application.ui.panels.instruction.library.viewmodel import LibraryPanelViewModel
+from sampletones_application.view_model.library.library import LibraryPanelViewModel
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
 from sampletones_core.instructions import InstructionUnion

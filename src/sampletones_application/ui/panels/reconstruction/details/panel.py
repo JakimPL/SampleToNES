@@ -69,7 +69,6 @@ from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.reconstruction.details.viewmodel import ReconstructionDetailsViewModel
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.input import InvalidInputTheme
 from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme
@@ -77,6 +76,7 @@ from sampletones_application.utils.clipboard import copy_to_clipboard
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.utils.frequencies import (

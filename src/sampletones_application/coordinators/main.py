@@ -19,21 +19,21 @@ from sampletones_application.constants.main import (
     MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
     TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
 )
+from sampletones_application.logic.converter.converter import ConverterLogic
+from sampletones_application.logic.explorer.explorer import ExplorerLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
 from sampletones_application.ui.panels.main.advanced.panel import GUIAdvancedSettingsPanel
-from sampletones_application.ui.panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
 from sampletones_application.ui.panels.main.config.panel import GUIConfigPanel
-from sampletones_application.ui.panels.main.config.viewmodel import ConfigPanelViewModel
-from sampletones_application.ui.panels.main.converter.logic import ConverterLogic
 from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
 from sampletones_application.ui.panels.main.converter.success_dialog import ConverterSuccessDialog
-from sampletones_application.ui.panels.main.explorer.logic import ExplorerLogic
 from sampletones_application.ui.panels.main.explorer.panel import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
-from sampletones_application.ui.panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
 from sampletones_application.utils.dialogs import show_error_dialog, show_info_dialog
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel
+from sampletones_application.view_model.main.config import ConfigPanelViewModel
+from sampletones_application.view_model.main.reconstructor import ReconstructorPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.types.callback import PathCallback
 

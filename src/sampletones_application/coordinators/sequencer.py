@@ -14,10 +14,10 @@ from sampletones_application.constants.general import (
     TAG_TABS,
 )
 from sampletones_application.constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
-from sampletones_application.logic.reconstruction.browser import BrowserManager
-from sampletones_application.ui.panels.sequencer.browser.logic import SequencerBrowserLogic
+from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
+from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.ui.panels.sequencer.browser.panel import GUISequencerBrowserPanel
-from sampletones_application.ui.panels.sequencer.grid.logic import SequencerGridLogic
 from sampletones_application.ui.panels.sequencer.grid.panel import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.utils.shortcuts.manager import ShortcutManager

@@ -53,10 +53,10 @@ from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
-from sampletones_application.ui.panels.reconstruction.reconstruction.viewmodel import ReconstructionViewModel
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE

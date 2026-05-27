@@ -1,86 +1,85 @@
 from typing import Callable, Optional
 
+from sampletones_application.logic.player.audio_player import AudioPlayer
 from sampletones_application.logic.player.data import AudioData
+from sampletones_application.view_model.player.player import PlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
-class AudioPlayer(CallbackMixin):
+class PlayerLogic(CallbackMixin):
     def __init__(
         self,
         audio_device_manager: AudioDeviceManager,
-        on_position_changed: Optional[Callable[[int], None]] = None,
         on_change_audio_state: Optional[VoidCallback] = None,
-        sample_rate: int = DEFAULT_SAMPLE_RATE,
-    ):
-        self.audio_device_manager = audio_device_manager
-        self.audio_data: AudioData = AudioData.empty(sample_rate)
-
-        self.on_position_changed = on_position_changed
-        self.on_change_audio_state = on_change_audio_state
+    ) -> None:
+        self._audio_player = AudioPlayer(
+            audio_device_manager,
+            on_position_changed=self._on_position_changed,
+            on_change_audio_state=on_change_audio_state,
+        )
+        self.on_view_changed: Optional[Callable[[PlayerViewModel], None]] = None
+        self.on_position_changed: Optional[Callable[[int], None]] = None
 
     def load_audio_data(self, audio_data: AudioData) -> None:
-        self.audio_data = audio_data
+        self._audio_player.load_audio_data(audio_data)
+        self._emit_view()
 
     def clear_audio(self) -> None:
-        self.stop()
-        self.audio_data = AudioData.empty(self.audio_data.sample_rate)
-
-    def _on_device_position_changed(self, position: int) -> None:
-        if self.audio_data.is_loaded():
-            self.audio_data.set_position(position)
-            self.call(self.on_position_changed, position)
-
-        if position == 0:
-            self._notify_audio_state_changed()
-
-    def set_position(self, position: int) -> None:
-        if self.audio_data.is_loaded():
-            self.audio_data.set_position(position)
-            self.audio_device_manager.set_position(position)
-            self.call(self.on_position_changed, position)
+        self._audio_player.clear_audio()
+        self._emit_view()
 
     def play(self) -> None:
-        if not self.audio_data.is_loaded():
-            self._notify_audio_state_changed()
-            return
-
-        self.audio_device_manager.set_position_callback(self._on_device_position_changed)
-        audio = self.audio_data.sample
-
         try:
-            self.audio_device_manager.play(audio)
-        except Exception as exception:
-            raise PlaybackError(f"Audio playback failed: {exception}") from exception
-
-        self._notify_audio_state_changed()
+            self._audio_player.play()
+        finally:
+            self._emit_view()
 
     def pause(self) -> None:
-        self.audio_device_manager.pause()
-        self._notify_audio_state_changed()
+        self._audio_player.pause()
+        self._emit_view()
 
     def resume(self) -> None:
-        self.audio_device_manager.resume()
-        self._notify_audio_state_changed()
+        self._audio_player.resume()
+        self._emit_view()
 
     def stop(self) -> None:
-        self.audio_device_manager.stop()
-        if self.audio_data.is_loaded():
-            self.audio_data.reset_position()
+        self._audio_player.stop()
+        self._emit_view()
 
-        self.call(self.on_position_changed, 0)
-        self._notify_audio_state_changed()
+    def pause_or_resume(self) -> None:
+        if not self._audio_player.is_playing:
+            self.play()
+        elif self._audio_player.is_paused:
+            self.resume()
+        else:
+            self.pause()
 
-    @property
+    def is_loaded(self) -> bool:
+        return self._audio_player.audio_data.is_loaded()
+
     def is_playing(self) -> bool:
-        return self.audio_device_manager.is_playing()
+        return self._audio_player.is_playing
 
-    @property
     def is_paused(self) -> bool:
-        return self.audio_device_manager.is_paused()
+        return self._audio_player.is_paused
 
-    def _notify_audio_state_changed(self) -> None:
-        self.call(self.on_change_audio_state)
+    def _on_position_changed(self, position: int) -> None:
+        self._emit_view()
+        self.call(self.on_position_changed, position)
+
+    def _emit_view(self) -> None:
+        self.call(self.on_view_changed, self._build_viewmodel())
+
+    def _build_viewmodel(self) -> PlayerViewModel:
+        has_audio = self._audio_player.audio_data.is_loaded()
+        current_position = self._audio_player.audio_data.current_position if has_audio else 0
+        total_samples = self._audio_player.audio_data.samples if has_audio else 0
+        return PlayerViewModel(
+            has_audio=has_audio,
+            is_playing=self._audio_player.is_playing,
+            is_paused=self._audio_player.is_paused,
+            current_position=current_position,
+            total_samples=total_samples,
+        )

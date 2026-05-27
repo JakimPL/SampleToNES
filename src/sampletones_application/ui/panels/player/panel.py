@@ -24,13 +24,13 @@ from sampletones_application.constants.player import (
     TTL_DIALOG_PLAYER_NO_AUDIO,
 )
 from sampletones_application.logic.player.data import AudioData
+from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player.logic import PlayerLogic
-from sampletones_application.ui.panels.player.viewmodel import PlayerViewModel
 from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.dialogs import show_error_dialog, show_modal_dialog
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_label, dpg_set_value
+from sampletones_application.view_model.player.player import PlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import PlaybackError
 from sampletones_shared.types.callback import VoidCallback

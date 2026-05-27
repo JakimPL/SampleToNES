@@ -21,9 +21,9 @@ from sampletones_application.constants.main import (
     MSG_MAIN_CONVERTER_WAITING,
     TPL_MAIN_CONVERTER_PROGRESS,
 )
-from sampletones_application.ui.panels.main.converter.viewmodel import ConversionPhase, ConverterViewModel
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.progress import SystemProgress
+from sampletones_application.view_model.converter.converter import ConversionPhase, ConverterViewModel
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones_core.reconstructions.converter import ReconstructionConverter, get_output_path

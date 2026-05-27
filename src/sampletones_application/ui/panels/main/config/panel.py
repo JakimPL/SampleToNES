@@ -30,9 +30,9 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.panels.main.config.viewmodel import ConfigPanelViewModel
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.utils.widgets import clamp_widget_value
+from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.general import (
     MAX_CHANGE_RATE,
