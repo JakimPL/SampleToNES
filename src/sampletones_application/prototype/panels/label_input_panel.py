@@ -2,21 +2,20 @@ from typing import Any, Callable
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
-from sampletones_shared.types.application import Sender
-
-from ...elements.panel import GUIPanel
-from ..config.constraints import LabelInputConstraints
-from ..config.layout import LabelInputLayout
-from ..constants.label_input import (
+from sampletones_application.prototype.config.constraints import LabelInputConstraints
+from sampletones_application.prototype.config.layout import LabelInputLayout
+from sampletones_application.prototype.constants.label_input import (
     TAG_INPUT_PROTOTYPE_LABEL,
     TAG_PANEL_PROTOTYPE_LABEL,
     TAG_TEXT_PROTOTYPE_VALIDATION,
 )
-from ..models.label_input import LabelValidationViewModel
-from ..text.elements import LabelInputElements
+from sampletones_application.prototype.models.label_input import LabelValidationViewModel
+from sampletones_application.prototype.text.elements import LabelInputElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
+from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_shared.types.application import Sender
 
 _KEY_SECTION = TextKey(Page.PROTOTYPE, Panel.LABEL_INPUT, TextType.LABEL, LabelInputElements.SECTION_HEADER)
 _KEY_INPUT_HINT = TextKey(Page.PROTOTYPE, Panel.LABEL_INPUT, TextType.HINT, LabelInputElements.INPUT)

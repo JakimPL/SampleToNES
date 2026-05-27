@@ -1,8 +1,7 @@
 from pathlib import Path
 
+from sampletones_application.text.key import TextKey
 from sampletones_shared.utils.serialization import load_yaml
-
-from .key import TextKey
 
 
 class LanguageManager:

@@ -2,13 +2,9 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_shared.exceptions import LibraryDisplayError
-from sampletones_shared.types.callback import VoidCallback
-
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants.general import (
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.manager import ConfigManager
+from sampletones_application.constants.general import (
     DIM_PANEL_HEIGHT_LEFT,
     DIM_PANEL_HEIGHT_RIGHT,
     DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
@@ -20,18 +16,21 @@ from ..constants.general import (
     TAG_TAB_INSTRUCTIONS,
     TAG_TABS,
 )
-from ..constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
-from ..instruction.data import InstructionPanelData
-from ..library.manager import InstructionsLibraryManager
-from ..panels.instruction.details.logic import InstructionDetailsPanelLogic
-from ..panels.instruction.details.panel import GUIInstructionDetailsPanel
-from ..panels.instruction.instruction.logic import InstructionPanelLogic
-from ..panels.instruction.instruction.panel import GUIInstructionPanel
-from ..panels.instruction.library.logic import LibraryLogic
-from ..panels.instruction.library.panel import GUIInstructionsLibraryPanel
-from ..panels.player import GUIAudioPlayerPanel
-from ..utils.dialogs import show_error_dialog
-from ..utils.shortcuts.manager import ShortcutManager
+from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
+from sampletones_application.logic.instruction.data import InstructionPanelData
+from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.ui.panels.instruction.details.logic import InstructionDetailsPanelLogic
+from sampletones_application.ui.panels.instruction.details.panel import GUIInstructionDetailsPanel
+from sampletones_application.ui.panels.instruction.instruction.logic import InstructionPanelLogic
+from sampletones_application.ui.panels.instruction.instruction.panel import GUIInstructionPanel
+from sampletones_application.ui.panels.instruction.library.logic import LibraryLogic
+from sampletones_application.ui.panels.instruction.library.panel import GUIInstructionsLibraryPanel
+from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.utils.dialogs import show_error_dialog
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_shared.exceptions import LibraryDisplayError
+from sampletones_shared.types.callback import VoidCallback
 
 
 class InstructionsTabCoordinator:

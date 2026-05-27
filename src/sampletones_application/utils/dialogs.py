@@ -4,9 +4,7 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.types.callback import Callback
-
-from ..constants.general import (
+from sampletones_application.constants.general import (
     COL_PATH_TEXT,
     COL_TEXT_ERROR,
     DIM_DIALOG_HEIGHT,
@@ -35,16 +33,17 @@ from ..constants.general import (
     TTL_DIALOG_ERROR,
     TTL_DIALOG_FILE_NOT_FOUND,
 )
-from ..constants.reconstructions import (
+from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
 )
-from ..elements.button import GUIButton
-from ..elements.path import GUIPathText
-from ..elements.trace import GUITraceback
-from .align import table_wrapper
-from .callbacks.frame import FrameCallbackManager
-from .dpg import dpg_configure_item, dpg_delete_item
+from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.path import GUIPathText
+from sampletones_application.ui.elements.trace import GUITraceback
+from sampletones_application.utils.align import table_wrapper
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
+from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item
+from sampletones_shared.types.callback import Callback
 
 
 def get_center(width: int, height: int) -> Tuple[int, int]:

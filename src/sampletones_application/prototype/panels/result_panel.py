@@ -1,18 +1,17 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
-
-from ...elements.panel import GUIPanel
-from ..config.layout import ResultLayout
-from ..constants.result import (
+from sampletones_application.prototype.config.layout import ResultLayout
+from sampletones_application.prototype.constants.result import (
     TAG_PANEL_PROTOTYPE_RESULT,
     TAG_TEXT_PROTOTYPE_RESULT,
     TAG_TEXT_PROTOTYPE_SCORE,
 )
-from ..models.score import ScoreResultViewModel
-from ..text.elements import ResultElements
+from sampletones_application.prototype.models.score import ScoreResultViewModel
+from sampletones_application.prototype.text.elements import ResultElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
+from sampletones_application.ui.elements.panel import GUIPanel
 
 _KEY_SECTION = TextKey(Page.PROTOTYPE, Panel.RESULT, TextType.LABEL, ResultElements.SECTION_HEADER)
 _KEY_NO_RESULT = TextKey(Page.PROTOTYPE, Panel.RESULT, TextType.MESSAGE, ResultElements.NO_RESULT)

@@ -1,7 +1,7 @@
 from typing import Final, NamedTuple
 
-from .abstract import AbstractElement
-from .hierarchy import Page, Panel, TextType
+from sampletones_application.text.abstract import AbstractElement
+from sampletones_application.text.hierarchy import Page, Panel, TextType
 
 _KEY_SEPARATOR: Final[str] = "."
 

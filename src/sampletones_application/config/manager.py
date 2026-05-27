@@ -3,20 +3,24 @@ from typing import List, Optional
 
 from pydantic import ValidationError
 
+from sampletones_application.config.updates import (
+    AdvancedSettingsUpdate,
+    AudioSettingsUpdate,
+    GenerationSettingsUpdate,
+    LibrarySettingsUpdate,
+)
+from sampletones_application.constants.general import (
+    MSG_CONFIGURATION_INVALID_ERROR,
+    MSG_CONFIGURATION_LOAD_ERROR,
+    MSG_CONFIGURATION_SAVE_ERROR,
+)
+from sampletones_application.utils.dialogs import show_error_dialog
 from sampletones_core.configs import Config, GeneralConfig
 from sampletones_core.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
-
-from ..constants.general import (
-    MSG_CONFIGURATION_INVALID_ERROR,
-    MSG_CONFIGURATION_LOAD_ERROR,
-    MSG_CONFIGURATION_SAVE_ERROR,
-)
-from ..utils.dialogs import show_error_dialog
-from .updates import AdvancedSettingsUpdate, AudioSettingsUpdate, GenerationSettingsUpdate, LibrarySettingsUpdate
 
 
 class ConfigManager:

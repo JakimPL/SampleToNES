@@ -2,12 +2,11 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.constants.general import TAG_HANDLER_FOCUS
+from sampletones_application.utils.shortcuts.keys import Modifier
+from sampletones_application.utils.shortcuts.shortcut import Shortcut, ShortcutId
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
-
-from ...constants.general import TAG_HANDLER_FOCUS
-from .keys import Modifier
-from .shortcut import Shortcut, ShortcutId
 
 
 class ShortcutManager:

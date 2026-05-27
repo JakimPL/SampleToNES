@@ -2,18 +2,17 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.prototype.config.loader import load_prototype_config
+from sampletones_application.prototype.constants.application import TAG_GROUP_TOP_PANELS, TAG_WINDOW_PROTOTYPE
+from sampletones_application.prototype.logic.label_validation import LabelValidationLogic
+from sampletones_application.prototype.logic.score import ScoreLogic
+from sampletones_application.prototype.panels.label_input_panel import LabelInputPanel
+from sampletones_application.prototype.panels.multiplier_panel import MultiplierPanel
+from sampletones_application.prototype.panels.result_panel import ResultPanel
+from sampletones_application.prototype.text.elements import PrototypePageElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
 from sampletones_application.text.manager import LanguageManager
-
-from .config.loader import load_prototype_config
-from .constants.application import TAG_GROUP_TOP_PANELS, TAG_WINDOW_PROTOTYPE
-from .logic.label_validation import LabelValidationLogic
-from .logic.score import ScoreLogic
-from .panels.label_input_panel import LabelInputPanel
-from .panels.multiplier_panel import MultiplierPanel
-from .panels.result_panel import ResultPanel
-from .text.elements import PrototypePageElements
 
 _KEY_WINDOW_TITLE = TextKey(Page.PROTOTYPE, Panel.PAGE, TextType.TITLE, PrototypePageElements.WINDOW_TITLE)
 

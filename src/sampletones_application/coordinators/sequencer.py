@@ -1,10 +1,8 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.audio import AudioDeviceManager
-
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants.general import (
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.manager import ConfigManager
+from sampletones_application.constants.general import (
     DIM_PANEL_HEIGHT_LEFT,
     DIM_PANEL_HEIGHT_RIGHT,
     DIM_PANEL_WIDTH_LEFT,
@@ -15,14 +13,15 @@ from ..constants.general import (
     TAG_TAB_SEQUENCER,
     TAG_TABS,
 )
-from ..constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
-from ..panels.sequencer.browser.logic import SequencerBrowserLogic
-from ..panels.sequencer.browser.panel import GUISequencerBrowserPanel
-from ..panels.sequencer.grid.logic import SequencerGridLogic
-from ..panels.sequencer.grid.panel import GUISequencerGridPanel
-from ..panels.sequencer.samples import GUISequencerSamplesPanel
-from ..reconstruction.browser import BrowserManager
-from ..utils.shortcuts.manager import ShortcutManager
+from sampletones_application.constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
+from sampletones_application.logic.reconstruction.browser import BrowserManager
+from sampletones_application.ui.panels.sequencer.browser.logic import SequencerBrowserLogic
+from sampletones_application.ui.panels.sequencer.browser.panel import GUISequencerBrowserPanel
+from sampletones_application.ui.panels.sequencer.grid.logic import SequencerGridLogic
+from sampletones_application.ui.panels.sequencer.grid.panel import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_core.audio import AudioDeviceManager
 
 
 class SequencerTabCoordinator:

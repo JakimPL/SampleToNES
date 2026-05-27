@@ -1,8 +1,7 @@
 from typing import Callable, Optional
 
+from sampletones_application.prototype.models.score import ScoreResultViewModel
 from sampletones_shared.utils.callbacks import CallbackMixin
-
-from ..models.score import ScoreResultViewModel
 
 
 class ScoreLogic(CallbackMixin):

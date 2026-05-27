@@ -1,13 +1,12 @@
 from typing import Callable, Optional
 
+from sampletones_application.prototype.config.constraints import LabelInputConstraints
+from sampletones_application.prototype.models.label_input import LabelValidationViewModel
+from sampletones_application.prototype.text.elements import LabelInputElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
 from sampletones_application.text.manager import LanguageManager
 from sampletones_shared.utils.callbacks import CallbackMixin
-
-from ..config.constraints import LabelInputConstraints
-from ..models.label_input import LabelValidationViewModel
-from ..text.elements import LabelInputElements
 
 _KEY_FEEDBACK_EMPTY = TextKey(Page.PROTOTYPE, Panel.LABEL_INPUT, TextType.FEEDBACK, LabelInputElements.VALIDATION_EMPTY)
 _KEY_FEEDBACK_TOO_LONG = TextKey(

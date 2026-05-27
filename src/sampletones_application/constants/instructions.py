@@ -1,4 +1,4 @@
-from .general import COL_TEXT_DEFAULT
+from sampletones_application.constants.general import COL_TEXT_DEFAULT
 
 TAG_PANEL_INSTRUCTIONS_LIBRARY = "panel_instructions_library"
 TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS = "text_instructions_library_status"

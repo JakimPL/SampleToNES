@@ -1,13 +1,12 @@
 from pathlib import Path
 from typing import Optional, Set
 
+from sampletones_application.config.application.config import ApplicationConfig
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import get_directory
-
-from .config import ApplicationConfig
 
 
 class ApplicationConfigManager:

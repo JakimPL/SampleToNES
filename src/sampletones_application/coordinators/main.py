@@ -3,40 +3,39 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_shared.types.callback import PathCallback
-
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants.general import (
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.manager import ConfigManager
+from sampletones_application.constants.general import (
     LBL_TAB_MAIN,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     TAG_TAB_MAIN,
     TAG_TABS,
 )
-from ..constants.main import (
+from sampletones_application.constants.main import (
     DIM_PANEL_HEIGHT_MAIN_EXPLORER,
     DIM_PANEL_WIDTH_MAIN_EXPLORER,
     MSG_MAIN_CONVERTER_ERROR,
     MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
     TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
 )
-from ..library.manager import InstructionsLibraryManager
-from ..panels.main.advanced.panel import GUIAdvancedSettingsPanel
-from ..panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
-from ..panels.main.config.panel import GUIConfigPanel
-from ..panels.main.config.viewmodel import ConfigPanelViewModel
-from ..panels.main.converter.logic import ConverterLogic
-from ..panels.main.converter.panel import GUIConverterPanel
-from ..panels.main.converter.success_dialog import ConverterSuccessDialog
-from ..panels.main.explorer.logic import ExplorerLogic
-from ..panels.main.explorer.panel import GUIExplorerPanel
-from ..panels.main.main import GUIMainPanel
-from ..panels.main.reconstructor.panel import GUIReconstructorPanel
-from ..panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
-from ..utils.dialogs import show_error_dialog, show_info_dialog
-from ..utils.shortcuts.manager import ShortcutManager
+from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.ui.panels.main.advanced.panel import GUIAdvancedSettingsPanel
+from sampletones_application.ui.panels.main.advanced.viewmodel import AdvancedSettingsPanelViewModel
+from sampletones_application.ui.panels.main.config.panel import GUIConfigPanel
+from sampletones_application.ui.panels.main.config.viewmodel import ConfigPanelViewModel
+from sampletones_application.ui.panels.main.converter.logic import ConverterLogic
+from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
+from sampletones_application.ui.panels.main.converter.success_dialog import ConverterSuccessDialog
+from sampletones_application.ui.panels.main.explorer.logic import ExplorerLogic
+from sampletones_application.ui.panels.main.explorer.panel import GUIExplorerPanel
+from sampletones_application.ui.panels.main.main import GUIMainPanel
+from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.reconstructor.viewmodel import ReconstructorPanelViewModel
+from sampletones_application.utils.dialogs import show_error_dialog, show_info_dialog
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_shared.types.callback import PathCallback
 
 
 class MainTabCoordinator:

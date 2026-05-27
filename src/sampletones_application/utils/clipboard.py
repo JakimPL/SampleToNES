@@ -2,8 +2,8 @@ import threading
 
 import dearpygui.dearpygui as dpg
 
-from ..constants.general import LBL_BUTTON_GLOBAL_COPIED
-from .dpg import dpg_configure_item
+from sampletones_application.constants.general import LBL_BUTTON_GLOBAL_COPIED
+from sampletones_application.utils.dpg import dpg_configure_item
 
 
 def copy_to_clipboard(text: str, label: str, button_tag: str) -> None:

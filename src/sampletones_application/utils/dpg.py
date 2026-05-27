@@ -3,10 +3,9 @@ from typing import Any, Callable, Concatenate, Optional, ParamSpec, TypeVar, cas
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.ui.elements.button import GUIButton
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
-
-from ..elements.button import GUIButton
 
 P = ParamSpec("P")
 R = TypeVar("R")

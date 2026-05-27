@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, NamedTuple, Tuple
 
+from sampletones_application.utils.callbacks.priority import CallbackPriority
 from sampletones_shared.types.callback import Callback
-
-from .priority import CallbackPriority
 
 
 class CallbackTask(NamedTuple):

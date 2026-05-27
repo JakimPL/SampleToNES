@@ -1,4 +1,4 @@
-from .general import SUF_BUTTON
+from sampletones_application.constants.general import SUF_BUTTON
 
 TAG_THEME_GRAPH_INDICATOR = "theme_graph_indicator"
 TAG_THEME_GRAPH_ZERO_LINE = "theme_zero_line"

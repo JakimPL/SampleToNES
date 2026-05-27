@@ -2,19 +2,18 @@ from typing import Any, Callable
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
-from sampletones_shared.types.application import Sender
-
-from ...elements.panel import GUIPanel
-from ..config.constraints import MultiplierConstraints
-from ..config.layout import MultiplierLayout
-from ..constants.multiplier import (
+from sampletones_application.prototype.config.constraints import MultiplierConstraints
+from sampletones_application.prototype.config.layout import MultiplierLayout
+from sampletones_application.prototype.constants.multiplier import (
     TAG_PANEL_PROTOTYPE_MULTIPLIER,
     TAG_SLIDER_PROTOTYPE_MULTIPLIER,
 )
-from ..text.elements import MultiplierElements
+from sampletones_application.prototype.text.elements import MultiplierElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
+from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_shared.types.application import Sender
 
 _KEY_SECTION = TextKey(Page.PROTOTYPE, Panel.MULTIPLIER, TextType.LABEL, MultiplierElements.SECTION_HEADER)
 _KEY_SLIDER = TextKey(Page.PROTOTYPE, Panel.MULTIPLIER, TextType.LABEL, MultiplierElements.SLIDER)

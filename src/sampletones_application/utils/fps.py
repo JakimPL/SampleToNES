@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ..constants.main import VAL_FPS_TIME_INTERVAL
+from sampletones_application.constants.main import VAL_FPS_TIME_INTERVAL
 
 
 class FPSTimer:

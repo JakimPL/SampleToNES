@@ -5,13 +5,12 @@ import threading
 from functools import wraps
 from typing import Any, Callable, List, Optional, Union, cast
 
+from sampletones_application.utils.callbacks.priority import CallbackPriority
+from sampletones_application.utils.callbacks.task import CallbackTask
 from sampletones_shared.exceptions import CallbackQueueStop
 from sampletones_shared.logger import logger
 from sampletones_shared.meta import NonInstantiableMeta
 from sampletones_shared.types.callback import Callback, CallbackT
-
-from .priority import CallbackPriority
-from .task import CallbackTask
 
 
 class CallbackQueue(metaclass=NonInstantiableMeta):

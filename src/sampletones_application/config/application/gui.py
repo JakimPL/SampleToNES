@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
-from ...constants.general import TAG_TAB_MAIN
+from sampletones_application.constants.general import TAG_TAB_MAIN
 
 
 class GUIState(BaseModel):

@@ -3,17 +3,9 @@ from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
-from sampletones_core.sequencer import Sequencer
-from sampletones_shared.exceptions import LoadReconstructionError
-from sampletones_shared.logger import logger
-from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback
-
-from .config.application.manager import ApplicationConfigManager
-from .config.manager import ConfigManager
-from .constants.general import (
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.manager import ConfigManager
+from sampletones_application.constants.general import (
     DIM_DIALOG_HEIGHT_FILE,
     DIM_DIALOG_WIDTH_FILE,
     DIM_STATUS_HEIGHT,
@@ -99,26 +91,26 @@ from .constants.general import (
     VAL_PRIORITY_UPDATE_STATUS,
     VAL_WINDOW_PRIMARY,
 )
-from .constants.reconstructions import (
+from sampletones_application.constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
     MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
     TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
-from .coordinators.instructions import InstructionsTabCoordinator
-from .coordinators.main import MainTabCoordinator
-from .coordinators.reconstructions import ReconstructionsTabCoordinator
-from .coordinators.sequencer import SequencerTabCoordinator
-from .elements.fonts.registry import FontRegistry
-from .elements.status import GUIStatusBar
-from .library.manager import InstructionsLibraryManager
-from .panels.settings import GUIAudioSettingsWindow
-from .reconstruction.browser import BrowserManager
-from .reconstruction.manager import ReconstructionManager
-from .reconstruction.regenerator import Regenerator
-from .themes.default import DefaultTheme
-from .themes.fps import FPSTimerTheme
-from .utils.callbacks.queue import CallbackQueue
-from .utils.dialogs import (
+from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.logic.reconstruction.browser import BrowserManager
+from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.regenerator import Regenerator
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
+from sampletones_application.ui.themes.default import DefaultTheme
+from sampletones_application.ui.themes.fps import FPSTimerTheme
+from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.utils.dialogs import (
     show_confirmation_dialog,
     show_error_dialog,
     show_file_not_found_dialog,
@@ -127,13 +119,20 @@ from .utils.dialogs import (
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
 )
-from .utils.dpg import dpg_configure_item, dpg_set_value
-from .utils.file import file_dialog_handler
-from .utils.fps import FPSTimer
-from .utils.shortcuts.keys import Modifier
-from .utils.shortcuts.manager import ShortcutManager
-from .utils.shortcuts.shortcut import Shortcut, ShortcutId
-from .viewport import ViewportManager
+from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.file import file_dialog_handler
+from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.shortcuts.keys import Modifier
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.shortcuts.shortcut import Shortcut, ShortcutId
+from sampletones_application.viewport import ViewportManager
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
+from sampletones_core.sequencer import Sequencer
+from sampletones_shared.exceptions import LoadReconstructionError
+from sampletones_shared.logger import logger
+from sampletones_shared.types.application import Sender
+from sampletones_shared.types.callback import Callback
 
 
 class Application:

@@ -3,20 +3,9 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_core.audio import AudioDeviceManager
-from sampletones_shared.exceptions import (
-    DeserializationError,
-    IncompatibleReconstructionVersionError,
-    InvalidMetadataError,
-    InvalidReconstructionError,
-    InvalidReconstructionValuesError,
-)
-from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import VoidCallback
-
-from ..config.application.manager import ApplicationConfigManager
-from ..config.manager import ConfigManager
-from ..constants.general import (
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.manager import ConfigManager
+from sampletones_application.constants.general import (
     DIM_PANEL_HEIGHT_LEFT,
     DIM_PANEL_HEIGHT_RIGHT,
     DIM_PANEL_WIDTH_LEFT,
@@ -29,7 +18,7 @@ from ..constants.general import (
     TAG_TAB_RECONSTRUCTIONS,
     TAG_TABS,
 )
-from ..constants.reconstructions import (
+from sampletones_application.constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
     MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
@@ -49,24 +38,34 @@ from ..constants.reconstructions import (
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
 )
-from ..panels.reconstruction.browser.logic import BrowserLogic
-from ..panels.reconstruction.browser.panel import GUIBrowserPanel
-from ..panels.reconstruction.details.logic import (
+from sampletones_application.logic.reconstruction.browser import BrowserManager
+from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.ui.panels.reconstruction.browser.logic import BrowserLogic
+from sampletones_application.ui.panels.reconstruction.browser.panel import GUIBrowserPanel
+from sampletones_application.ui.panels.reconstruction.details.logic import (
     OnReconstructionInstrumentUpdatedCallback,
     ReconstructionDetailsLogic,
 )
-from ..panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
-from ..panels.reconstruction.reconstruction.logic import ReconstructionPanelLogic
-from ..panels.reconstruction.reconstruction.panel import GUIReconstructionPanel
-from ..reconstruction.browser import BrowserManager
-from ..reconstruction.manager import ReconstructionManager
-from ..utils.dialogs import (
+from sampletones_application.ui.panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
+from sampletones_application.ui.panels.reconstruction.reconstruction.logic import ReconstructionPanelLogic
+from sampletones_application.ui.panels.reconstruction.reconstruction.panel import GUIReconstructionPanel
+from sampletones_application.utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,
     show_info_dialog,
     show_message_with_path_dialog,
 )
-from ..utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_core.audio import AudioDeviceManager
+from sampletones_shared.exceptions import (
+    DeserializationError,
+    IncompatibleReconstructionVersionError,
+    InvalidMetadataError,
+    InvalidReconstructionError,
+    InvalidReconstructionValuesError,
+)
+from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import VoidCallback
 
 
 class ReconstructionsTabCoordinator:

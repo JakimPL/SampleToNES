@@ -5,13 +5,12 @@ from typing import List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
+from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.constants.general import DIM_WINDOW_HEIGHT, DIM_WINDOW_WIDTH, TTL_WINDOW_MAIN
+from sampletones_application.ui.resources.items import IconResource
+from sampletones_application.ui.resources.resources import get_icon_path
+from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_shared.types.callback import VoidCallback
-
-from .config.application.manager import ApplicationConfigManager
-from .constants.general import DIM_WINDOW_HEIGHT, DIM_WINDOW_WIDTH, TTL_WINDOW_MAIN
-from .resources.items import IconResource
-from .resources.resources import get_icon_path
-from .themes.default import DefaultTheme
 
 
 class ViewportManager:

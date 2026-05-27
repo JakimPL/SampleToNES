@@ -4,7 +4,7 @@ from unittest.mock import patch
 import dearpygui.dearpygui as dpg
 import pytest
 
-from sampletones_application.gui import GUI
+from sampletones_application.application import Application
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -37,4 +37,4 @@ class TestGUIStartup:
         with ExitStack() as stack:
             for p in all_patches:
                 stack.enter_context(p)
-            GUI()
+            Application()

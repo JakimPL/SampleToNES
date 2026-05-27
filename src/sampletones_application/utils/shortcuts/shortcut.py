@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Tuple
 
-from .keys import KEY_DISPLAY_NAMES, Modifier
+from sampletones_application.utils.shortcuts.keys import KEY_DISPLAY_NAMES, Modifier
 
 
 @dataclass(frozen=True)

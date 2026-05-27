@@ -1,8 +1,7 @@
 from pathlib import Path
 
+from sampletones_application.prototype.config.prototype import PrototypeConfig
 from sampletones_shared.utils.serialization import load_yaml
-
-from .prototype import PrototypeConfig
 
 
 def load_prototype_config(path: Path) -> PrototypeConfig:

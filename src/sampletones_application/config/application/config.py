@@ -2,18 +2,17 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_application.config.application.audio import AudioConfig
+from sampletones_application.config.application.favorites import Favorites
+from sampletones_application.config.application.gui import GUIState
+from sampletones_application.config.application.paths import LastPaths
+from sampletones_application.config.application.window import WindowState
 from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones_core.data import Metadata
 from sampletones_shared.logger import logger
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_yaml, save_yaml
 from sampletones_shared.utils.system.paths import to_path
-
-from .audio import AudioConfig
-from .favorites import Favorites
-from .gui import GUIState
-from .paths import LastPaths
-from .window import WindowState
 
 
 class ApplicationConfig(BaseModel):
