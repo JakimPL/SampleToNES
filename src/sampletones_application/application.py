@@ -13,31 +13,6 @@ from sampletones_application.constants.general import (
     LBL_BUTTON_GLOBAL_DISCARD,
     LBL_BUTTON_GLOBAL_EXIT,
     LBL_BUTTON_GLOBAL_OK,
-    LBL_MENU_GROUP_CONFIGURATION,
-    LBL_MENU_GROUP_GENERAL,
-    LBL_MENU_GROUP_PLAYBACK,
-    LBL_MENU_GROUP_RECONSTRUCTION,
-    LBL_MENU_GROUP_VIEW,
-    LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
-    LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
-    LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
-    LBL_MENU_ITEM_GENERAL_EXIT,
-    LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-    LBL_MENU_ITEM_PLAYBACK_PAUSE,
-    LBL_MENU_ITEM_PLAYBACK_PLAY,
-    LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-    LBL_MENU_ITEM_PLAYBACK_RESUME,
-    LBL_MENU_ITEM_PLAYBACK_STOP,
-    LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-    LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-    LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
-    LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-    LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-    LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
-    LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-    LBL_MENU_ITEM_VIEW_FULLSCREEN,
-    LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     MSG_ALL_AUDIO_FORMATS,
     MSG_AUDIO_PLAYBACK_ERROR,
     MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
@@ -53,28 +28,9 @@ from sampletones_application.constants.general import (
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
     TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
-    TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
-    TAG_MENU_ITEM_PLAYBACK_PLAY,
-    TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-    TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-    TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
-    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-    TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
-    TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-    TAG_MENU_ITEM_VIEW_FULLSCREEN,
-    TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-    TAG_MENU_TEXT_FPS,
     TAG_STATUS_WINDOW,
-    TAG_TAB_INSTRUCTIONS,
-    TAG_TAB_MAIN,
-    TAG_TAB_RECONSTRUCTIONS,
     TAG_TABS,
     TAG_WINDOW_MAIN,
-    TPL_MENU_TEXT_FPS,
     TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_CONFIG_STATUS,
     TTL_DIALOG_EXIT_CONFIRMATION,
@@ -98,14 +54,19 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
+from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol, PlaybackRouter
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.logic.menu.viewmodel import MenuBarViewModel
 from sampletones_application.logic.reconstruction.browser import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.regenerator import Regenerator
+from sampletones_application.logic.reconstruction.session import ReconstructionSession
+from sampletones_application.text.hierarchy import Tab
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.fps import FPSTimerTheme
@@ -119,7 +80,7 @@ from sampletones_application.utils.dialogs import (
     show_reconstruction_not_loaded_dialog,
     show_save_confirmation_dialog,
 )
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.keys import Modifier
@@ -155,13 +116,14 @@ class Application:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
-        self._unsaved_reconstruction_changes: bool = False
-        self._reconstruction_name: Optional[str] = None
+        self._reconstruction_session = ReconstructionSession()
+
+        self._menu_bar = MenuBar(shortcut_manager=self.shortcut_manager, fps_theme=self.fps_theme)
 
         self._viewport_manager = ViewportManager(
             self.application_config_manager,
             self.theme,
-            on_fullscreen_state_changed=self._update_fullscreen_menu_item,
+            on_fullscreen_state_changed=self._update_menu,
         )
 
         self._main_tab = MainTabCoordinator(
@@ -208,6 +170,12 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             browser_manager=self.browser_manager,
         )
+
+        self._playback_router = PlaybackRouter(
+            current_player_fn=self._get_current_player,
+        )
+
+        self._reconstruction_session.on_state_changed = self._on_reconstruction_state_changed
 
         self._setup_gui()
         self._load_settings()
@@ -373,129 +341,22 @@ class Application:
         dpg.set_primary_window(TAG_WINDOW_MAIN, VAL_WINDOW_PRIMARY)
 
     def _create_menu_bar(self) -> None:
-        with dpg.menu_bar():
-            with dpg.menu(label=LBL_MENU_GROUP_GENERAL):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.AUDIO_SETTINGS,
-                    label=LBL_MENU_ITEM_GENERAL_AUDIO_SETTINGS,
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.EXIT,
-                    label=LBL_MENU_ITEM_GENERAL_EXIT,
-                )
-            with dpg.menu(label=LBL_MENU_GROUP_RECONSTRUCTION):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_RECONSTRUCTION_AS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_CLOSE,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_LOAD,
-                    enabled=not self._is_reconstruction_loaded(),
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.RECONSTRUCT_FILE,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.RECONSTRUCT_DIRECTORY,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-                    label=LBL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-                    enabled=self._is_reconstruction_loaded(),
-                )
-            with dpg.menu(label=LBL_MENU_GROUP_CONFIGURATION):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_CONFIGURATION,
-                    label=LBL_MENU_ITEM_CONFIGURATION_SAVE_CONFIG,
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_CONFIGURATION,
-                    label=LBL_MENU_ITEM_CONFIGURATION_LOAD_CONFIG,
-                )
-            with dpg.menu(label=LBL_MENU_GROUP_PLAYBACK):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.PLAY,
-                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY,
-                    label=self._get_play_label(),
-                    enabled=self._is_play_or_pause_enabled(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.PLAY_FROM_START,
-                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-                    label=LBL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-                    enabled=self._is_play_or_pause_enabled(),
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.STOP,
-                    tag=TAG_MENU_ITEM_PLAYBACK_STOP,
-                    label=LBL_MENU_ITEM_PLAYBACK_STOP,
-                    enabled=self._is_stop_enabled(),
-                )
-                dpg.add_separator()
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_AUTOPLAY,
-                    tag=TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
-                    label=LBL_MENU_ITEM_PLAYBACK_AUTOPLAY,
-                    check=True,
-                )
-            with dpg.menu(label=LBL_MENU_GROUP_VIEW):
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-                    tag=TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-                    label=LBL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-                    check=True,
-                )
-                self.shortcut_manager.add_menu_item(
-                    ShortcutId.TOGGLE_FULLSCREEN,
-                    tag=TAG_MENU_ITEM_VIEW_FULLSCREEN,
-                    label=LBL_MENU_ITEM_VIEW_FULLSCREEN,
-                    check=True,
-                )
+        self._menu_bar.create(self._build_menu_bar_viewmodel())
 
-            dpg.add_button(
-                label=TPL_MENU_TEXT_FPS.format(fps=0),
-                tag=TAG_MENU_TEXT_FPS,
-                width=-1,
-                enabled=False,
-            )
-
-            self.fps_theme.bind_to_item(TAG_MENU_TEXT_FPS)
+    def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
+        return MenuBarViewModel(
+            reconstruction_loaded=self._is_reconstruction_loaded(),
+            play_label=self._playback_router.play_label,
+            play_or_pause_enabled=self._playback_router.is_play_enabled,
+            stop_enabled=self._playback_router.is_stop_enabled,
+            autoplay=self.application_config_manager.autoplay,
+            fullscreen=self.application_config_manager.fullscreen,
+            advanced_settings=self.application_config_manager.advanced_settings,
+        )
 
     def _update_menu(self) -> None:
-        self._update_reconstruction_menu_items()
-        self._update_playback_menu_items()
-        self._update_fullscreen_menu_item()
-        self._update_advanced_settings_menu_item()
+        self._main_tab.sync_advanced_settings_visibility()
+        self._menu_bar.update(self._build_menu_bar_viewmodel())
 
     def _create_tabs(self) -> None:
         with dpg.child_window(
@@ -719,13 +580,13 @@ class Application:
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)
         self.application_config_manager.set_reconstruction_path(filepath.parent)
-        self._set_current_tab(TAG_TAB_MAIN)
+        self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
     def _load_library(self, filepath: Path) -> None:
         self._instructions_tab.load_library_file(filepath)
         self.config_manager.update_gui()
-        self._set_current_tab(TAG_TAB_INSTRUCTIONS)
+        self._set_current_tab(Tab.INSTRUCTIONS)
         self._update_menu()
 
     @file_dialog_handler
@@ -735,7 +596,7 @@ class Application:
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.set_input_path(directory_path, convert=True)
         self.application_config_manager.set_reconstruction_path(directory_path)
-        self._set_current_tab(TAG_TAB_MAIN)
+        self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
     @file_dialog_handler
@@ -759,11 +620,8 @@ class Application:
         self._reconstructions_tab.display_reconstruction()
         self.application_config_manager.set_current_reconstruction(filepath)
 
-        self._set_current_tab(TAG_TAB_RECONSTRUCTIONS)
-        self._unsaved_reconstruction_changes = False
-        self._reconstruction_name = filepath.stem
-        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
-        self._update_menu()
+        self._set_current_tab(Tab.RECONSTRUCTIONS)
+        self._reconstruction_session.mark_loaded(filepath.stem)
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
@@ -776,8 +634,7 @@ class Application:
 
     def _on_reconstruction_updated(self) -> None:
         self._reconstructions_tab.update_reconstruction()
-        self._unsaved_reconstruction_changes = True
-        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
+        self._reconstruction_session.mark_updated()
 
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstructions_tab.refresh_browser()
@@ -785,10 +642,7 @@ class Application:
 
     def _save_reconstruction(self, filepath: Optional[Path] = None) -> None:
         self.reconstruction_manager.save_reconstruction(filepath)
-        self._unsaved_reconstruction_changes = False
-        if filepath is not None:
-            self._reconstruction_name = filepath.stem
-        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
+        self._reconstruction_session.mark_saved(filepath.stem if filepath is not None else None)
 
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
@@ -808,10 +662,14 @@ class Application:
     def _on_reconstruction_closed(self) -> None:
         self._reconstructions_tab.close_reconstruction()
         self.application_config_manager.set_current_reconstruction(None)
-        self._reconstruction_name = ""
-        self._unsaved_reconstruction_changes = False
+        self._reconstruction_session.mark_closed()
+
+    def _on_reconstruction_state_changed(self) -> None:
+        self._viewport_manager.update_title(
+            self._reconstruction_session.name,
+            self._reconstruction_session.unsaved_changes,
+        )
         self._update_menu()
-        self._viewport_manager.update_title(self._reconstruction_name, self._unsaved_reconstruction_changes)
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS, tab_tag)
@@ -822,6 +680,15 @@ class Application:
         alias: str = dpg.get_item_alias(current_tab)
         return alias
 
+    def _get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
+        match self._get_current_tab():
+            case Tab.RECONSTRUCTIONS:
+                return self._reconstructions_tab.player_panel
+            case Tab.INSTRUCTIONS:
+                return self._instructions_tab.player_panel
+            case _:
+                return None
+
     def _persist_application_state(self) -> None:
         self.application_config_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
@@ -829,74 +696,46 @@ class Application:
         self.application_config_manager.save_config()
 
     def _play_from_start(self) -> None:
-        current_tab_tag = self._get_current_tab()
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self._reconstructions_tab.player_panel.play()
-        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            self._instructions_tab.player_panel.play()
-
+        self._playback_router.play_from_start()
         self._update_menu()
 
     def _play(self) -> None:
-        current_tab_tag = self._get_current_tab()
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self._reconstructions_tab.player_panel.pause_or_resume()
-        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            self._instructions_tab.player_panel.pause_or_resume()
-
+        self._playback_router.play()
         self._update_menu()
 
     def _stop(self) -> None:
-        current_tab_tag = self._get_current_tab()
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            self._reconstructions_tab.player_panel.stop()
-        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            self._instructions_tab.player_panel.stop()
-
+        self._playback_router.stop()
         self._update_menu()
 
-    def _get_play_label(self) -> str:
-        current_tab_tag = self._get_current_tab()
-        playing = False
-        loaded = False
-        paused = False
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            playing = self._reconstructions_tab.player_panel.is_playing()
-            paused = self._reconstructions_tab.player_panel.is_paused()
-            loaded = self._reconstructions_tab.player_panel.is_loaded()
-        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            playing = self._instructions_tab.player_panel.is_playing()
-            paused = self._instructions_tab.player_panel.is_paused()
-            loaded = self._instructions_tab.player_panel.is_loaded()
+    def _toggle_fullscreen(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self._viewport_manager.toggle_fullscreen()
 
-        is_playing = loaded and playing
-        if is_playing:
-            return LBL_MENU_ITEM_PLAYBACK_RESUME if paused else LBL_MENU_ITEM_PLAYBACK_PAUSE
+    def _toggle_autoplay(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.application_config_manager.toggle_autoplay()
+        self._update_menu()
 
-        return LBL_MENU_ITEM_PLAYBACK_PLAY
+    def _toggle_advanced_settings(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self._main_tab.toggle_advanced_settings()
+        self._update_menu()
 
-    def _is_play_or_pause_enabled(self) -> bool:
-        current_tab_tag = self._get_current_tab()
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            return self._reconstructions_tab.player_panel.is_loaded()
-
-        if current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            return self._instructions_tab.player_panel.is_loaded()
-
-        return False
-
-    def _is_stop_enabled(self) -> bool:
-        current_tab_tag = self._get_current_tab()
-        loaded = False
-        playing = False
-        if current_tab_tag == TAG_TAB_RECONSTRUCTIONS:
-            loaded = self._reconstructions_tab.player_panel.is_loaded()
-            playing = self._reconstructions_tab.player_panel.is_playing()
-        elif current_tab_tag == TAG_TAB_INSTRUCTIONS:
-            loaded = self._instructions_tab.player_panel.is_loaded()
-            playing = self._instructions_tab.player_panel.is_playing()
-
-        return loaded and playing
+    def _update_fps(self, delta_time: float) -> None:
+        fps = self.fps_timer.update(delta_time)
+        self._menu_bar.update_fps(fps)
 
     def _show_confirmation_dialog(self, message: str, ok_label: str = LBL_BUTTON_GLOBAL_OK) -> None:
         show_confirmation_dialog(
@@ -953,7 +792,7 @@ class Application:
         return self._instructions_tab.is_library_generating()
 
     def _is_reconstruction_unsaved(self) -> bool:
-        return self._unsaved_reconstruction_changes
+        return self._reconstruction_session.unsaved_changes
 
     def _exit_application(self) -> None:
         CallbackQueue.stop()
@@ -961,63 +800,6 @@ class Application:
         self._main_tab.converter_logic.cleanup()
 
         dpg.stop_dearpygui()
-
-    def _toggle_fullscreen(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._viewport_manager.toggle_fullscreen()
-
-    def _update_fullscreen_menu_item(self) -> None:
-        fullscreen = self.application_config_manager.fullscreen
-        dpg_set_value(TAG_MENU_ITEM_VIEW_FULLSCREEN, fullscreen)
-
-    def _toggle_autoplay(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self.application_config_manager.toggle_autoplay()
-        self._update_playback_menu_items()
-
-    def _update_reconstruction_menu_items(self) -> None:
-        reconstruction_loaded = self._is_reconstruction_loaded()
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS, enabled=reconstruction_loaded)
-
-    def _update_playback_menu_items(self) -> None:
-        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=self._is_play_or_pause_enabled())
-        dpg_configure_item(
-            TAG_MENU_ITEM_PLAYBACK_PLAY,
-            label=self._get_play_label(),
-            enabled=self._is_play_or_pause_enabled(),
-        )
-        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_STOP, enabled=self._is_stop_enabled())
-        dpg_set_value(TAG_MENU_ITEM_PLAYBACK_AUTOPLAY, self.application_config_manager.autoplay)
-
-    def _toggle_advanced_settings(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._main_tab.toggle_advanced_settings()
-        self._update_advanced_settings_menu_item()
-
-    def _update_advanced_settings_menu_item(self) -> None:
-        advanced_settings = self.application_config_manager.advanced_settings
-        self._main_tab.sync_advanced_settings_visibility()
-        dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, advanced_settings)
-
-    def _update_fps(self, delta_time: float) -> None:
-        fps = self.fps_timer.update(delta_time)
-        dpg_configure_item(TAG_MENU_TEXT_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))
 
     def _update_status(self) -> None:
         delta_time = dpg.get_delta_time()

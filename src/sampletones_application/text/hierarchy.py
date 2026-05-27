@@ -17,6 +17,13 @@ class Page(StrEnum):
     PROTOTYPE = "prototype"
 
 
+class Tab(StrEnum):
+    MAIN = "tab_main"
+    RECONSTRUCTIONS = "tab_reconstructions"
+    SEQUENCER = "tab_sequencer"
+    INSTRUCTIONS = "tab_instructions"
+
+
 class Panel(StrEnum):
     PLAYER = "player"
     LIBRARY = "library"

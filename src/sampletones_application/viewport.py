@@ -18,6 +18,7 @@ class ViewportManager:
         self,
         application_config_manager: ApplicationConfigManager,
         theme: DefaultTheme,
+        *,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._application_config_manager = application_config_manager
