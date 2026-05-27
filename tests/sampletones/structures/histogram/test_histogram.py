@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.array import xp
+from sampletones_core.array import CUPY_AVAILABLE, xp
 from sampletones_core.structures.histogram.histogram import Histogram
 from sampletones_core.structures.histogram.interval import Interval
 from sampletones_shared.exceptions.structures import IncompleteHistogramRebinningWarning
@@ -15,6 +15,8 @@ from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error, expect_warning
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
+
+CUPY_REQUIRED_REASON = "CuPy is not installed"
 
 
 class TestInit(BaseTestSuite):
@@ -159,13 +161,6 @@ class TestInit(BaseTestSuite):
             label="values_as_list",
         ),
         TestCase(
-            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
-            values=xp.array([1.0, 2.0], dtype=xp.float32),
-            expected=TypeError,
-            match="edges and values must be of the same type",
-            label="edges_numpy_values_cupy_type_mismatch",
-        ),
-        TestCase(
             edges=Interval(0.0, 5.0),
             values=np.array([10.0], dtype=np.float32),
             expected=Histogram(edges=np.array([0.0, 5.0]), values=np.array([10.0], dtype=np.float32)),
@@ -240,14 +235,27 @@ class TestInit(BaseTestSuite):
             match="edges must contain only finite values",
             label="interval_unbounded_both_sides",
         ),
-        TestCase(
-            edges=xp.array([0.0, 1.0, 2.0]),
-            values=np.array([1.0, 2.0]),
-            expected=TypeError,
-            match="edges and values must be of the same type",
-            label="mismatched_types_cupy_edges_numpy_values",
-        ),
     ]
+
+    if CUPY_AVAILABLE:
+        test_cases.extend(
+            [
+                TestCase(
+                    edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                    values=xp.array([1.0, 2.0], dtype=xp.float32),
+                    expected=TypeError,
+                    match="edges and values must be of the same type",
+                    label="edges_numpy_values_cupy_type_mismatch",
+                ),
+                TestCase(
+                    edges=xp.array([0.0, 1.0, 2.0]),
+                    values=np.array([1.0, 2.0]),
+                    expected=TypeError,
+                    match="edges and values must be of the same type",
+                    label="mismatched_types_cupy_edges_numpy_values",
+                ),
+            ]
+        )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -349,28 +357,34 @@ class TestValidateHistogramEdges(BaseTestSuite):
             match="At least one histogram is required",
             label="no_histograms_raises",
         ),
-        TestCase(
-            histograms=(
-                Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
-                Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([3.0, 4.0])),
-            ),
-            equal_edges=True,
-            expected=TypeError,
-            match="All histograms must be of the same array type",
-            label="mixed_numpy_cupy_raises",
-        ),
-        TestCase(
-            histograms=(
-                Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([1.0, 2.0])),
-                Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([3.0, 4.0])),
-                Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([5.0, 6.0])),
-            ),
-            equal_edges=False,
-            expected=TypeError,
-            match="All histograms must be of the same array type",
-            label="mixed_numpy_cupy_multiple_histograms_raises",
-        ),
     ]
+
+    if CUPY_AVAILABLE:
+        test_cases.extend(
+            [
+                TestCase(
+                    histograms=(
+                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
+                        Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([3.0, 4.0])),
+                    ),
+                    equal_edges=True,
+                    expected=TypeError,
+                    match="All histograms must be of the same array type",
+                    label="mixed_numpy_cupy_raises",
+                ),
+                TestCase(
+                    histograms=(
+                        Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([1.0, 2.0])),
+                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([3.0, 4.0])),
+                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([5.0, 6.0])),
+                    ),
+                    equal_edges=False,
+                    expected=TypeError,
+                    match="All histograms must be of the same array type",
+                    label="mixed_numpy_cupy_multiple_histograms_raises",
+                ),
+            ]
+        )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -594,14 +608,18 @@ class TestValidateNegativePower(BaseTestSuite):
             match="Unsupported exponent type",
             label="unsupported_exponent_type_raises",
         ),
-        TestCase(
-            base=np.array([1.0, 2.0, 3.0]),
-            exponent=xp.array([1.0, 2.0, 3.0]),
-            expected=TypeError,
-            match="Base and exponent must be of the same array type",
-            label="mismatched_array_modules_raises",
-        ),
     ]
+
+    if CUPY_AVAILABLE:
+        test_cases.append(
+            TestCase(
+                base=np.array([1.0, 2.0, 3.0]),
+                exponent=xp.array([1.0, 2.0, 3.0]),
+                expected=TypeError,
+                match="Base and exponent must be of the same array type",
+                label="mismatched_array_modules_raises",
+            )
+        )
 
     @pytest.mark.parametrize(
         "test_case",
@@ -1597,6 +1615,7 @@ class TestAstype:
         assert converted.values.dtype == np.float32
 
 
+@pytest.mark.skipif(not CUPY_AVAILABLE, reason=CUPY_REQUIRED_REASON)
 class TestToCupy(BaseTestSuite):
     @dataclass(frozen=True, kw_only=True)
     class TestCase(BaseRegularTestCase):
