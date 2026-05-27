@@ -31,6 +31,7 @@ repos:
         entry: python scripts/check_logic_boundary.py
         language: system
         types: [python]
+        files: ^src/sampletones_application/logic/
         verbose: true
 
   - repo: local
