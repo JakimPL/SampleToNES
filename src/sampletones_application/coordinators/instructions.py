@@ -22,9 +22,9 @@ from sampletones_application.logic.instruction.details import InstructionDetails
 from sampletones_application.logic.library.library import LibraryLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
 from sampletones_application.logic.player.player import PlayerLogic
-from sampletones_application.ui.panels.instruction.details.panel import GUIInstructionDetailsPanel
-from sampletones_application.ui.panels.instruction.instruction.panel import GUIInstructionPanel
-from sampletones_application.ui.panels.instruction.library.panel import GUIInstructionsLibraryPanel
+from sampletones_application.ui.panels.instruction.details.details import GUIInstructionDetailsPanel
+from sampletones_application.ui.panels.instruction.instruction.instruction import GUIInstructionPanel
+from sampletones_application.ui.panels.instruction.library.library import GUIInstructionsLibraryPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.dialogs import show_error_dialog
 from sampletones_application.utils.shortcuts.manager import ShortcutManager

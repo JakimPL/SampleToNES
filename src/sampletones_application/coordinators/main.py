@@ -22,13 +22,13 @@ from sampletones_application.constants.main import (
 from sampletones_application.logic.converter.converter import ConverterLogic
 from sampletones_application.logic.explorer.explorer import ExplorerLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
-from sampletones_application.ui.panels.main.advanced.panel import GUIAdvancedSettingsPanel
-from sampletones_application.ui.panels.main.config.panel import GUIConfigPanel
-from sampletones_application.ui.panels.main.converter.panel import GUIConverterPanel
+from sampletones_application.ui.panels.main.advanced.advanced import GUIAdvancedSettingsPanel
+from sampletones_application.ui.panels.main.config.config import GUIConfigPanel
+from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
 from sampletones_application.ui.panels.main.converter.success_dialog import ConverterSuccessDialog
-from sampletones_application.ui.panels.main.explorer.panel import GUIExplorerPanel
+from sampletones_application.ui.panels.main.explorer.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
-from sampletones_application.ui.panels.main.reconstructor.panel import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.reconstructor.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.dialogs import show_error_dialog, show_info_dialog
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel

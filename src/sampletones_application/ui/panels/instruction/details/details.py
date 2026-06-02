@@ -39,7 +39,7 @@ from sampletones_application.constants.instructions import (
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table import InstructionTableData
+from sampletones_application.logic.instruction.table_data import InstructionTableData
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel

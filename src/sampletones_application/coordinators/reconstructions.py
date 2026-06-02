@@ -47,9 +47,9 @@ from sampletones_application.logic.reconstruction.details import (
 )
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
-from sampletones_application.ui.panels.reconstruction.browser.panel import GUIBrowserPanel
-from sampletones_application.ui.panels.reconstruction.details.panel import GUIReconstructionDetailsPanel
-from sampletones_application.ui.panels.reconstruction.reconstruction.panel import GUIReconstructionPanel
+from sampletones_application.ui.panels.reconstruction.browser.browser import GUIBrowserPanel
+from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
+from sampletones_application.ui.panels.reconstruction.reconstruction.reconstruction import GUIReconstructionPanel
 from sampletones_application.utils.dialogs import (
     show_error_dialog,
     show_file_not_found_dialog,

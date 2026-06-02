@@ -1,7 +1,7 @@
 from typing import Callable, Optional
 
 from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table_logic import InstructionDetailsLogic as _InstructionTableLogic
+from sampletones_application.logic.instruction.table import InstructionTableLogic as _InstructionTableLogic
 from sampletones_application.logic.library.manager import InstructionsLibraryManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel

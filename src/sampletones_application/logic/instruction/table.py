@@ -1,20 +1,167 @@
-from typing import Tuple
+from typing import Any, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, ConfigDict
-
+from sampletones_application.constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
+from sampletones_application.constants.instructions import (
+    LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
+    LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE,
+    LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+    LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
+    LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
+    LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
+    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
+    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES,
+    TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+    TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD,
+    TPL_CELL_INSTRUCTIONS_DETAILS_PITCH,
+    VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT,
+)
 from sampletones_application.logic.instruction.cell import TableCell
+from sampletones_application.logic.instruction.data import InstructionPanelData
+from sampletones_application.logic.instruction.table_data import InstructionTableData
+from sampletones_core.constants.general import DUTY_CYCLES, NOISE_PERIODS
+from sampletones_core.utils.frequencies import pitch_to_name
+from sampletones_shared.utils.serialization import hash_model
 
 
-class InstructionTableData(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class InstructionTableLogic:
+    def __init__(self) -> None:
+        self._current_data: Optional[InstructionPanelData] = None
+        self._current_hash: str = ""
+        self._current_change_rate: Optional[int] = None
 
-    general_rows: Tuple[TableCell, ...]
-    parameter_rows: Tuple[TableCell, ...]
+    def clear_data(self) -> None:
+        self.current_data = None
+
+    def get_table_data(self) -> Optional[InstructionTableData]:
+        if not self.current_data:
+            return None
+
+        general_rows = self._build_general_rows()
+        parameter_rows = self._build_parameter_rows()
+
+        return InstructionTableData(
+            general_rows=tuple(general_rows),
+            parameter_rows=tuple(parameter_rows),
+        )
+
+    def _build_general_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
+        if self.current_data.fragment:
+            fragment = self.current_data.fragment
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
+                    value=str(self._current_change_rate),
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
+                    value=fragment.generator_class,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+                    value=TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY.format(fragment.frequency),
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
+                    value=f"{fragment.length}{LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES}",
+                )
+            )
+        else:
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
+                    value=self.current_data.generator_class_name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
+                    value=self.current_data.instruction.name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
+                    value=LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
+                )
+            )
+
+        return rows
+
+    def _build_parameter_rows(self) -> List[TableCell]:
+        if not self.current_data:
+            return []
+
+        rows: List[TableCell] = []
+        instruction = self.current_data.instruction
+
+        for field_name, field_value in instruction.model_dump().items():
+            formatted_value = self._format_parameter_value(field_name, field_value)
+            rows.append(
+                TableCell(
+                    label=field_name,
+                    value=formatted_value,
+                )
+            )
+
+        return rows
+
+    def _format_parameter_value(
+        self,
+        name: str,
+        value: Union[float, bool, List[Any], Tuple[Any, ...], str, int],
+    ) -> str:
+        if name == "pitch" and isinstance(value, (int, float)):
+            return TPL_CELL_INSTRUCTIONS_DETAILS_PITCH.format(pitch_to_name(round(value)), value)
+
+        if name == "duty_cycle" and isinstance(value, int):
+            duty_cycle = DUTY_CYCLES[value] * 100
+            return LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE.format(duty_cycle, value)
+
+        if name == "period" and isinstance(value, int):
+            period = NOISE_PERIODS[value]
+            return TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD.format(period, value)
+
+        if isinstance(value, float):
+            return f"{value:.{VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT}f}"
+
+        if isinstance(value, bool):
+            return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO
+
+        if isinstance(value, (list, tuple)):
+            return f"[{', '.join(str(element) for element in value)}]"
+
+        return str(value)
 
     @property
-    def has_data(self) -> bool:
-        return len(self.general_rows) > 0
+    def current_data(self) -> Optional[InstructionPanelData]:
+        return self._current_data
+
+    @current_data.setter
+    def current_data(self, instruction_data: Optional[InstructionPanelData]) -> None:
+        if instruction_data is None:
+            self._current_data = None
+            self._current_hash = ""
+            self._current_change_rate = None
+            return
+
+        self._current_data = instruction_data
+        self._current_hash = hash_model(self._current_data)
+        self._current_change_rate = instruction_data.config.change_rate
 
     @property
-    def has_parameters(self) -> bool:
-        return len(self.parameter_rows) > 0
+    def current_hash(self) -> str:
+        return self._current_hash
+
+    @property
+    def current_change_rate(self) -> Optional[int]:
+        return self._current_change_rate

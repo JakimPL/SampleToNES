@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table import InstructionTableData
+from sampletones_application.logic.instruction.table_data import InstructionTableData
 
 
 class InstructionDetailsPanelViewModel(BaseModel):
