@@ -2,169 +2,128 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.config.application.config import ApplicationConfig
+from sampletones_application.config.application.config_manager import ApplicationConfigManager
 from sampletones_application.config.application.state import ApplicationState
-from sampletones_application.paths import APPLICATION_CONFIG_PATH
+from sampletones_application.config.application.state_manager import ApplicationStateManager
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
-from sampletones_shared.logger import logger
-from sampletones_shared.utils.serialization import load_yaml, save_yaml
-from sampletones_shared.utils.system.paths import get_directory, to_path
 
 
 class SessionManager:
     def __init__(self) -> None:
-        self.config: ApplicationConfig
-        self.state: ApplicationState
-        self._load()
+        self._config_manager = ApplicationConfigManager()
+        self._state_manager = ApplicationStateManager()
 
-    def _load(self) -> None:
-        if not APPLICATION_CONFIG_PATH.exists():
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist." " Loading default configuration."
-            )
-            self.config = ApplicationConfig()
-            self.state = ApplicationState()
-            return
+    @property
+    def config(self) -> ApplicationConfig:
+        return self._config_manager.config
 
-        raw = load_yaml(to_path(APPLICATION_CONFIG_PATH))
-        if not raw or not isinstance(raw, dict):
-            logger.warning(
-                f"Application config file '{APPLICATION_CONFIG_PATH}' is empty or invalid."
-                " Loading default configuration."
-            )
-            self.config = ApplicationConfig()
-            self.state = ApplicationState()
-            return
+    @property
+    def state(self) -> ApplicationState:
+        return self._state_manager.state
 
-        state_dict = raw.pop("state", None) or {}
-        self.config = ApplicationConfig(**raw)
-        self.state = ApplicationState(**state_dict)
-
-    def set_window_state(
-        self,
-        fullscreen: bool,
-        x: int,
-        y: int,
-        width: int,
-        height: int,
-    ) -> None:
-        self.config.window.fullscreen = fullscreen
-        if not fullscreen:
-            self.config.window.x = x
-            self.config.window.y = y
-            self.config.window.width = width
-            self.config.window.height = height
+    def set_window_state(self, fullscreen: bool, x: int, y: int, width: int, height: int) -> None:
+        self._config_manager.set_window_state(fullscreen, x, y, width, height)
 
     def set_current_tab(self, tab: str) -> None:
-        self.state.current_tab = tab
+        self._state_manager.set_current_tab(tab)
 
     def toggle_show_advanced_settings(self) -> bool:
-        self.state.advanced_settings = not self.state.advanced_settings
-        return self.state.advanced_settings
+        return self._state_manager.toggle_show_advanced_settings()
 
     def toggle_autoplay(self) -> bool:
-        self.state.autoplay = not self.state.autoplay
-        return self.state.autoplay
+        return self._state_manager.toggle_autoplay()
 
     def toggle_favorite(self, path: Path) -> None:
-        self.config.favorites.toggle_favorite(path)
+        self._config_manager.toggle_favorite(path)
 
     def load_current_tab(self) -> str:
-        return self.state.current_tab
+        return self._state_manager.load_current_tab()
 
     def set_config_path(self, path: Path) -> None:
-        self.config.last_paths.config = get_directory(path)
+        self._config_manager.set_config_path(path)
 
     def get_config_path(self) -> Path:
-        return self.config.last_paths.config
+        return self._config_manager.get_config_path()
 
     def set_library_path(self, path: Path) -> None:
-        self.config.last_paths.library = get_directory(path)
+        self._config_manager.set_library_path(path)
 
     def get_library_path(self) -> Path:
-        return self.config.last_paths.library
+        return self._config_manager.get_library_path()
 
     def set_instrument_path(self, path: Path) -> None:
-        self.config.last_paths.instrument = get_directory(path)
+        self._config_manager.set_instrument_path(path)
 
     def get_instrument_path(self) -> Path:
-        return self.config.last_paths.instrument
+        return self._config_manager.get_instrument_path()
 
     def set_reconstruction_path(self, path: Path) -> None:
-        self.config.last_paths.reconstruction = get_directory(path)
+        self._config_manager.set_reconstruction_path(path)
 
     def get_reconstruction_path(self) -> Path:
-        return self.config.last_paths.reconstruction
+        return self._config_manager.get_reconstruction_path()
 
     def set_audio_path(self, path: Path) -> None:
-        self.config.last_paths.audio = get_directory(path)
+        self._config_manager.set_audio_path(path)
 
     def get_audio_path(self) -> Path:
-        return self.config.last_paths.audio
+        return self._config_manager.get_audio_path()
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.state.current_reconstruction = path
+        self._state_manager.set_current_reconstruction(path)
 
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
-        self.config.audio.set_audio_settings(audio_device_manager)
+        self._config_manager.set_current_audio_device(audio_device_manager)
 
     def save_config(self) -> None:
-        try:
-            APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            data = self.config.model_dump()
-            data["state"] = self.state.model_dump()
-            save_yaml(APPLICATION_CONFIG_PATH, data)
-        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
-            logger.error_with_traceback(
-                exception, f"File error while saving application config from {APPLICATION_CONFIG_PATH}"
-            )
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to save application config to {APPLICATION_CONFIG_PATH}")
+        self._config_manager.save()
+        self._state_manager.save()
 
     @property
     def fullscreen(self) -> bool:
-        return self.config.window.fullscreen
+        return self._config_manager.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self.config.window.x
+        return self._config_manager.window_x
 
     @property
     def window_y(self) -> int:
-        return self.config.window.y
+        return self._config_manager.window_y
 
     @property
     def window_width(self) -> int:
-        return self.config.window.width
+        return self._config_manager.window_width
 
     @property
     def window_height(self) -> int:
-        return self.config.window.height
+        return self._config_manager.window_height
 
     @property
     def current_tab(self) -> str:
-        return self.state.current_tab
+        return self._state_manager.current_tab
 
     @property
     def current_reconstruction(self) -> Optional[Path]:
-        return self.state.current_reconstruction
+        return self._state_manager.current_reconstruction
 
     @property
     def current_audio_device(self) -> CurrentDevice:
-        return self.config.audio.current_device
+        return self._config_manager.current_audio_device
 
     @property
     def current_buffer_size(self) -> BufferSize:
-        return self.config.audio.buffer_size
+        return self._config_manager.current_buffer_size
 
     @property
     def advanced_settings(self) -> bool:
-        return self.state.advanced_settings
+        return self._state_manager.advanced_settings
 
     @property
     def autoplay(self) -> bool:
-        return self.state.autoplay
+        return self._state_manager.autoplay
 
     @property
     def favorites(self) -> Set[Path]:
-        return self.config.favorites.paths
+        return self._config_manager.favorites

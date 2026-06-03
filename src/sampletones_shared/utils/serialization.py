@@ -2,6 +2,8 @@ import base64
 import hashlib
 import json
 from collections.abc import Hashable
+from contextlib import suppress
+from pathlib import Path
 from typing import Any, List, Union
 
 import numpy as np
@@ -72,6 +74,18 @@ def save_yaml(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> Non
     """
     with open(filepath, "w", encoding="utf-8") as file:
         yaml.dump(data, file)
+
+
+def save_yaml_atomic(filepath: Pathlike, data: Union[List[Any], SerializedData]) -> None:
+    path = Path(filepath)
+    tmp = path.with_suffix(".tmp")
+    try:
+        save_yaml(tmp, data)
+        tmp.replace(path)
+    except Exception:
+        with suppress(FileNotFoundError):
+            tmp.unlink()
+        raise
 
 
 def load_yaml(filepath: Pathlike) -> Union[List[Any], SerializedData]:

@@ -6,10 +6,14 @@ from sampletones_core.constants.paths import (
     CONFIG_PATH,
     LIBRARY_DIRECTORY,
     OUTPUT_DIRECTORY,
+    USER_PATH_CONFIG,
 )
+
+APPLICATION_STATE_PATH: Final[Path] = USER_PATH_CONFIG / "sampletones_state.yaml"
 
 __all__ = [
     "APPLICATION_CONFIG_PATH",
+    "APPLICATION_STATE_PATH",
     "CONFIG_PATH",
     "LIBRARY_DIRECTORY",
     "OUTPUT_DIRECTORY",
