@@ -12,7 +12,7 @@ from sampletones_application.constants.general import (
     COL_TABLE_BORDER,
     COL_TEXT_DEFAULT,
     COL_TEXT_DISABLED_DEFAULT,
-    TAG_THEME_DEFAULT,
+    TAG_THEME_GLOBAL_DEFAULT,
     VAL_BUTTON_FRAME_PADDING,
     VAL_BUTTON_FRAME_ROUNDING,
 )
@@ -22,7 +22,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class DefaultTheme(Theme):
-    tag: str = TAG_THEME_DEFAULT
+    tag: str = TAG_THEME_GLOBAL_DEFAULT
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvAll): [

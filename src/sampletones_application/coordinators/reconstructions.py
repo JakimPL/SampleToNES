@@ -15,8 +15,8 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_TAB_RECONSTRUCTIONS,
-    TAG_TABS,
+    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+    TAG_TABS_GLOBAL,
 )
 from sampletones_application.constants.reconstructions import (
     MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR,
@@ -205,12 +205,12 @@ class ReconstructionsTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_TAB_RECONSTRUCTIONS,
-            parent=TAG_TABS,
+            tag=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+            parent=TAG_TABS_GLOBAL,
             label=LBL_TAB_RECONSTRUCTIONS,
         ):
             with dpg.table(
-                parent=TAG_TAB_RECONSTRUCTIONS,
+                parent=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -221,7 +221,7 @@ class ReconstructionsTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
                         width=DIM_PANEL_WIDTH_LEFT,
                         height=DIM_PANEL_HEIGHT_LEFT,
                         no_scrollbar=True,
@@ -230,13 +230,13 @@ class ReconstructionsTabCoordinator:
                         self._browser_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._reconstruction_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
                         width=DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
                         height=DIM_PANEL_HEIGHT_RIGHT,
                         no_scrollbar=True,

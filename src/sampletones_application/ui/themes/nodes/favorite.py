@@ -3,8 +3,8 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.constants.general import (
     COL_TEXT_FAVORITE,
     COL_TEXT_FAVORITE_CHILD,
-    TAG_THEME_FAVORITE,
-    TAG_THEME_FAVORITE_CHILD,
+    TAG_THEME_GLOBAL_FAVORITE,
+    TAG_THEME_GLOBAL_FAVORITE_CHILD,
 )
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import ThemeColor, ThemeParameter
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class FavoriteNodeTheme(Theme):
-    tag: str = TAG_THEME_FAVORITE
+    tag: str = TAG_THEME_GLOBAL_FAVORITE
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
@@ -26,7 +26,7 @@ class FavoriteNodeTheme(Theme):
 
 
 class FavoriteChildNodeTheme(Theme):
-    tag: str = TAG_THEME_FAVORITE_CHILD
+    tag: str = TAG_THEME_GLOBAL_FAVORITE_CHILD
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [

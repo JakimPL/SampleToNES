@@ -6,11 +6,11 @@ from sampletones_application.constants.general import (
     COL_TEXT_FILE_LIBRARY,
     COL_TEXT_FILE_RECONSTRUCTION,
     COL_TEXT_FILE_WAVE,
-    TAG_THEME_FILE_LIBRARY,
-    TAG_THEME_FILE_NO_CONTENT,
-    TAG_THEME_FILE_NOT_EXPANDED_DIRECTORY,
-    TAG_THEME_FILE_RECONSTRUCTION,
-    TAG_THEME_FILE_WAVE,
+    TAG_THEME_GLOBAL_FILE_LIBRARY,
+    TAG_THEME_GLOBAL_FILE_NO_CONTENT,
+    TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY,
+    TAG_THEME_GLOBAL_FILE_RECONSTRUCTION,
+    TAG_THEME_GLOBAL_FILE_WAVE,
 )
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import ThemeColor, ThemeParameter
@@ -18,7 +18,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class NoContentFileNodeTheme(Theme):
-    tag: str = TAG_THEME_FILE_NO_CONTENT
+    tag: str = TAG_THEME_GLOBAL_FILE_NO_CONTENT
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
@@ -29,7 +29,7 @@ class NoContentFileNodeTheme(Theme):
 
 
 class ReconstructionFileNodeTheme(Theme):
-    tag: str = TAG_THEME_FILE_RECONSTRUCTION
+    tag: str = TAG_THEME_GLOBAL_FILE_RECONSTRUCTION
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
@@ -40,7 +40,7 @@ class ReconstructionFileNodeTheme(Theme):
 
 
 class LibraryFileNodeTheme(Theme):
-    tag: str = TAG_THEME_FILE_LIBRARY
+    tag: str = TAG_THEME_GLOBAL_FILE_LIBRARY
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
@@ -51,7 +51,7 @@ class LibraryFileNodeTheme(Theme):
 
 
 class WaveFileNodeTheme(Theme):
-    tag: str = TAG_THEME_FILE_WAVE
+    tag: str = TAG_THEME_GLOBAL_FILE_WAVE
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [
@@ -62,7 +62,7 @@ class WaveFileNodeTheme(Theme):
 
 
 class NotExpandedDirectoryNodeTheme(Theme):
-    tag: str = TAG_THEME_FILE_NOT_EXPANDED_DIRECTORY
+    tag: str = TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTreeNode): [

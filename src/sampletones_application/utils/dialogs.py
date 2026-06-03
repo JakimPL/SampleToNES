@@ -34,7 +34,7 @@ from sampletones_application.constants.general import (
     TTL_DIALOG_FILE_NOT_FOUND,
 )
 from sampletones_application.constants.reconstructions import (
-    TAG_RECONSTRUCTION_NOT_LOADED_DIALOG,
+    TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_NOT_LOADED,
 )
 from sampletones_application.ui.elements.button import GUIButton
@@ -359,7 +359,7 @@ def show_file_not_found_dialog(filepath: Path, message: str) -> None:
 
 
 def show_reconstruction_not_loaded_dialog() -> None:
-    tag = get_dialog_tag(TAG_RECONSTRUCTION_NOT_LOADED_DIALOG)
+    tag = get_dialog_tag(TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED)
 
     def content(parent: str) -> None:
         dpg.add_text(

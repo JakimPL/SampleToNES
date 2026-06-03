@@ -9,8 +9,8 @@ from sampletones_application.constants.general import (
     LBL_TAB_MAIN,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
-    TAG_TAB_MAIN,
-    TAG_TABS,
+    TAG_TAB_GLOBAL_MAIN,
+    TAG_TABS_GLOBAL,
 )
 from sampletones_application.constants.main import (
     DIM_PANEL_HEIGHT_MAIN_EXPLORER,
@@ -178,8 +178,8 @@ class MainTabCoordinator:
     def create_tab(self) -> None:
         with dpg.tab(
             label=LBL_TAB_MAIN,
-            tag=TAG_TAB_MAIN,
-            parent=TAG_TABS,
+            tag=TAG_TAB_GLOBAL_MAIN,
+            parent=TAG_TABS_GLOBAL,
         ):
             with dpg.table(
                 header_row=False,
@@ -191,7 +191,7 @@ class MainTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_LEFT}",
                         width=DIM_PANEL_WIDTH_MAIN_EXPLORER,
                         height=DIM_PANEL_HEIGHT_MAIN_EXPLORER,
                         no_scrollbar=True,
@@ -200,7 +200,7 @@ class MainTabCoordinator:
                         self._explorer_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_MAIN}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._main_panel.create_panel()

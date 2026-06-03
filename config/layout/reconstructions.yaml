@@ -1,0 +1,28 @@
+initial_pitch_table:
+  label_width: 160
+  display_width: 28
+  button_width: 32
+  cell_padding: [2, 2]
+
+values:
+  pitch_change_delay: 0.075
+
+bar_plots:
+  arpeggio:
+    min_y: -128.0
+    max_y: 127.0
+  pitch:
+    min_y: -128.0
+    max_y: 127.0
+  volume:
+    min_y: 0.0
+    max_y: 15.0
+  duty_cycle:
+    min_y: 0.0
+    max_y: 3.0
+
+colors:
+  pitch: [100, 200, 255, 255]
+  volume: [100, 255, 100, 255]
+  arpeggio: [255, 150, 100, 255]
+  duty_cycle: [255, 200, 100, 255]

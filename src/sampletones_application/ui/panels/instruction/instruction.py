@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_PANEL_CENTER, TAG_TAB_INSTRUCTIONS
+from sampletones_application.constants.general import SUF_PANEL_CENTER, TAG_TAB_GLOBAL_INSTRUCTIONS
 from sampletones_application.constants.graphs import (
     DIM_SPECTRUM_HEIGHT,
     DIM_SPECTRUM_WIDTH,
@@ -47,7 +47,7 @@ class GUIInstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+            parent=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:

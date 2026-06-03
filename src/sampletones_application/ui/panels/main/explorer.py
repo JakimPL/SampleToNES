@@ -6,7 +6,7 @@ from sampletones_application.config.application.manager import ApplicationConfig
 from sampletones_application.constants.general import (
     LBL_TREE_FILTER,
     SUF_PANEL_LEFT,
-    TAG_TAB_MAIN,
+    TAG_TAB_GLOBAL_MAIN,
     VAL_NODE_CHILDREN_SLOT,
 )
 from sampletones_application.constants.main import (
@@ -81,7 +81,7 @@ class GUIExplorerPanel(GUITreePanel):
         super().__init__(
             tree=self.explorer_logic.tree,
             tag=TAG_PANEL_MAIN_EXPLORER,
-            parent=f"{TAG_TAB_MAIN}{SUF_PANEL_LEFT}",
+            parent=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_MAIN_EXPLORER,
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,

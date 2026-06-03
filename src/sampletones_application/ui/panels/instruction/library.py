@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
-    TAG_TAB_INSTRUCTIONS,
+    TAG_TAB_GLOBAL_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
     LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
@@ -67,7 +67,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         super().__init__(
             self.library_logic.tree,
             tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+            parent=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,

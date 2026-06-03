@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.config.application.config import ApplicationConfig
+from sampletones_application.paths import APPLICATION_CONFIG_PATH
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
-from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import get_directory
 
@@ -32,21 +32,21 @@ class ApplicationConfigManager:
             self.config.window.height = height
 
     def set_current_tab(self, tab: str) -> None:
-        self.config.gui.current_tab = tab
+        self.config.state.current_tab = tab
 
     def toggle_show_advanced_settings(self) -> bool:
-        self.config.gui.advanced_settings = not self.config.gui.advanced_settings
-        return self.config.gui.advanced_settings
+        self.config.state.advanced_settings = not self.config.state.advanced_settings
+        return self.config.state.advanced_settings
 
     def toggle_autoplay(self) -> bool:
-        self.config.gui.autoplay = not self.config.gui.autoplay
-        return self.config.gui.autoplay
+        self.config.state.autoplay = not self.config.state.autoplay
+        return self.config.state.autoplay
 
     def toggle_favorite(self, path: Path) -> None:
         self.config.favorites.toggle_favorite(path)
 
     def load_current_tab(self) -> str:
-        return self.config.gui.current_tab
+        return self.config.state.current_tab
 
     def set_config_path(self, path: Path) -> None:
         self.config.last_paths.config = get_directory(path)
@@ -79,7 +79,7 @@ class ApplicationConfigManager:
         return self.config.last_paths.audio
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.config.gui.current_reconstruction = path
+        self.config.state.current_reconstruction = path
 
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self.config.audio.set_audio_settings(audio_device_manager)
@@ -117,11 +117,11 @@ class ApplicationConfigManager:
 
     @property
     def current_tab(self) -> str:
-        return self.config.gui.current_tab
+        return self.config.state.current_tab
 
     @property
     def current_reconstruction(self) -> Optional[Path]:
-        return self.config.gui.current_reconstruction
+        return self.config.state.current_reconstruction
 
     @property
     def current_audio_device(self) -> CurrentDevice:
@@ -133,11 +133,11 @@ class ApplicationConfigManager:
 
     @property
     def advanced_settings(self) -> bool:
-        return self.config.gui.advanced_settings
+        return self.config.state.advanced_settings
 
     @property
     def autoplay(self) -> bool:
-        return self.config.gui.autoplay
+        return self.config.state.autoplay
 
     @property
     def favorites(self) -> Set[Path]:

@@ -1,7 +1,7 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    TAG_THEME_TABLE,
+    TAG_THEME_GLOBAL_TABLE,
     VAL_TABLE_CELL_PADDING,
     VAL_TABLE_FRAME_ROUNDING,
 )
@@ -11,7 +11,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class TableTheme(Theme):
-    tag: str = TAG_THEME_TABLE
+    tag: str = TAG_THEME_GLOBAL_TABLE
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [

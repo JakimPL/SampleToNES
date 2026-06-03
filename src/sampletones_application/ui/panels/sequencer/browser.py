@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
-from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_SEQUENCER
+from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_SEQUENCER
 from sampletones_application.constants.sequencer import (
     LBL_BUTTON_SEQUENCER_BROWSER_REFRESH_LIST,
     LBL_SEQUENCER_BROWSER_RECONSTRUCTIONS,
@@ -47,7 +47,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super().__init__(
             tree=self.sequencer_browser_logic.tree,
             tag=TAG_PANEL_SEQUENCER_BROWSER,
-            parent=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_SEQUENCER_BROWSER,
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,

@@ -6,7 +6,7 @@ from sampletones_application.constants.general import (
     MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
-    TAG_TAB_INSTRUCTIONS,
+    TAG_TAB_GLOBAL_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
     DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
@@ -23,19 +23,19 @@ from sampletones_application.constants.instructions import (
     LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
     MSG_INSTRUCTIONS_DETAILS_NO_INSTRUCTION_SELECTED,
     TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+    TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
     TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
+    TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL,
+    TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
     TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
-    TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
-    TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
-    TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
-    TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
     TAG_PANEL_INSTRUCTIONS_DETAILS,
-    TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+    TAG_TABLE_INSTRUCTIONS_DETAILS_GENERAL,
+    TAG_TABLE_INSTRUCTIONS_DETAILS_PARAMETERS,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from sampletones_application.ui.elements.fonts.font import Font
@@ -66,7 +66,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
-            parent=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
+            parent=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
     def create_panel(self) -> None:
@@ -111,33 +111,33 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
             dpg.add_text(
                 LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
-                tag=TAG_INSTRUCTION_DETAILS_GENERAL_HEADER,
+                tag=TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 show=False,
             )
 
             self.general_table = GUITable(
-                tag=TAG_INSTRUCTION_DETAILS_GENERAL_TABLE,
+                tag=TAG_TABLE_INSTRUCTIONS_DETAILS_GENERAL,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 rows=tuple(),
-                before=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
+                before=TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
             )
 
             dpg.add_text(
                 LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
-                tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER,
+                tag=TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 show=False,
             )
 
             self.parameters_table = GUITable(
-                tag=TAG_INSTRUCTION_DETAILS_PARAMETERS_TABLE,
+                tag=TAG_TABLE_INSTRUCTIONS_DETAILS_PARAMETERS,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 rows=tuple(),
             )
 
-            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, Font.BOLD)
-            FontRegistry.bind_to_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, Font.BOLD)
+            FontRegistry.bind_to_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, Font.BOLD)
+            FontRegistry.bind_to_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, Font.BOLD)
 
     def update_view(self, viewmodel: InstructionDetailsPanelViewModel) -> None:
         self._current_viewmodel = viewmodel
@@ -147,20 +147,20 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
         if table_data is None:
             dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
-            dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=False)
-            dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=False)
+            dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, show=False)
+            dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, show=False)
             return
 
         dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=False)
-        dpg_configure_item(TAG_INSTRUCTION_DETAILS_GENERAL_HEADER, show=True)
-        dpg_configure_item(TAG_INSTRUCTION_DETAILS_PARAMETERS_HEADER, show=table_data.has_parameters)
+        dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, show=True)
+        dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, show=table_data.has_parameters)
 
         self.parameters_table.update_rows(table_data.parameter_rows)
         self.general_table.update_rows(table_data.general_rows)
 
     def _create_instructions_choice_inputs(self) -> None:
         with dpg.child_window(
-            tag=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            tag=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             parent=self.tag,
             height=DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
             border=False,
@@ -168,13 +168,13 @@ class GUIInstructionDetailsPanel(GUIPanel):
             pass
 
     def _update_instructions_choice_panel(self, instruction_data: Optional[InstructionPanelData]) -> None:
-        dpg_delete_children(TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
+        dpg_delete_children(TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
         if instruction_data is None:
             return
 
         generator_type = instruction_data.generator_class_name
         instruction = instruction_data.instruction
-        dpg.add_separator(parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
+        dpg.add_separator(parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE)
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
                 assert isinstance(instruction, PulseInstruction)
@@ -189,7 +189,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
@@ -199,7 +199,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
             default_value=instruction.volume,
             min_value=1,
@@ -209,7 +209,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
             default_value=instruction.duty_cycle,
             min_value=0,
@@ -229,7 +229,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
@@ -250,7 +250,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
     def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
             default_value=instruction.period,
             min_value=0,
@@ -260,7 +260,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
             default_value=instruction.volume,
             min_value=1,
@@ -270,7 +270,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
         dpg.add_checkbox(
             tag=TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
-            parent=TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
+            parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             default_value=instruction.short,
             callback=self._on_instruction_changed,

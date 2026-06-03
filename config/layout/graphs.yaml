@@ -1,0 +1,38 @@
+dimensions:
+  width: -1
+  height: 292
+  bar_plot_height: 220
+
+waveform:
+  sample_thickness: 1.5
+  reconstruction_thickness: 1.2
+  position_indicator_thickness: 2.0
+  zoom_factor: 0.2
+  max_display_points: 4096
+
+spectrum:
+  max_display_bins: 128
+  offset_log: 0.01
+
+graph:
+  min_x: 0.0
+  max_x: 1.0
+  min_y: -1.1
+  max_y: 1.1
+
+bar_plot:
+  min_x: 0.0
+  min_y: 0.0
+  max_y: 100.0
+  bar_weight: 0.8
+  zero_line_thickness: 1.0
+  hover_alpha: 80
+
+colors:
+  bar_plot: [100, 200, 255, 255]
+  bar_plot_zero_line: [200, 200, 200, 255]
+  waveform_default: [255, 255, 255, 255]
+  waveform_sample: [100, 200, 255, 255]
+  waveform_reconstruction: [255, 200, 100, 255]
+  waveform_position_indicator: [255, 255, 255, 255]
+  waveform_overlay: [255, 255, 255, 32]

@@ -4,10 +4,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_application.config.application.audio import AudioConfig
 from sampletones_application.config.application.favorites import Favorites
-from sampletones_application.config.application.gui import GUIState
 from sampletones_application.config.application.paths import LastPaths
+from sampletones_application.config.application.state import ApplicationState
 from sampletones_application.config.application.window import WindowState
-from sampletones_core.constants.paths import APPLICATION_CONFIG_PATH
+from sampletones_application.paths import APPLICATION_CONFIG_PATH
 from sampletones_core.data import Metadata
 from sampletones_shared.logger import logger
 from sampletones_shared.types.path import Pathlike
@@ -30,9 +30,9 @@ class ApplicationConfig(BaseModel):
         default_factory=WindowState,
         description="The state of the main application window.",
     )
-    gui: GUIState = Field(
-        default_factory=GUIState,
-        description="The state of the graphical user interface.",
+    state: ApplicationState = Field(
+        default_factory=ApplicationState,
+        description="Auto-managed session state (current tab, reconstruction, autoplay).",
     )
     last_paths: LastPaths = Field(
         default_factory=LastPaths,

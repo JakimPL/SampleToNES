@@ -13,8 +13,8 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_TAB_INSTRUCTIONS,
-    TAG_TABS,
+    TAG_TAB_GLOBAL_INSTRUCTIONS,
+    TAG_TABS_GLOBAL,
 )
 from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
@@ -87,12 +87,12 @@ class InstructionsTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_TAB_INSTRUCTIONS,
-            parent=TAG_TABS,
+            tag=TAG_TAB_GLOBAL_INSTRUCTIONS,
+            parent=TAG_TABS_GLOBAL,
             label=LBL_TAB_INSTRUCTIONS,
         ):
             with dpg.table(
-                parent=TAG_TAB_INSTRUCTIONS,
+                parent=TAG_TAB_GLOBAL_INSTRUCTIONS,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -103,7 +103,7 @@ class InstructionsTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_LEFT}",
                         width=DIM_PANEL_WIDTH_LEFT,
                         height=DIM_PANEL_HEIGHT_LEFT,
                         no_scrollbar=True,
@@ -112,13 +112,13 @@ class InstructionsTabCoordinator:
                         self._library_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._instruction_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
                         width=DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
                         height=DIM_PANEL_HEIGHT_RIGHT,
                         no_scrollbar=True,

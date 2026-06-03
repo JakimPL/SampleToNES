@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_TAB_SEQUENCER
+from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_TAB_GLOBAL_SEQUENCER
 from sampletones_application.constants.sequencer import (
     DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_ID,
     DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_NAME,
@@ -20,7 +20,7 @@ class GUISequencerSamplesPanel(GUIPanel):
     def __init__(self) -> None:
         super().__init__(
             tag=TAG_PANEL_SEQUENCER_SAMPLES,
-            parent=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
+            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_RIGHT}",
             width=-1,
             height=-1,
         )

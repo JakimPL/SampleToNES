@@ -18,7 +18,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
     SUF_TABLE,
     SUF_TEXT,
-    TAG_TAB_RECONSTRUCTIONS,
+    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
     VAL_CHARACTER_BUTTON_DECREMENT,
     VAL_CHARACTER_BUTTON_INCREMENT,
 )
@@ -124,7 +124,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
-            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+            parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
     def create_panel(self) -> None:

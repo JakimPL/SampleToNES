@@ -10,8 +10,8 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_TAB_SEQUENCER,
-    TAG_TABS,
+    TAG_TAB_GLOBAL_SEQUENCER,
+    TAG_TABS_GLOBAL,
 )
 from sampletones_application.constants.sequencer import DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
@@ -51,12 +51,12 @@ class SequencerTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_TAB_SEQUENCER,
-            parent=TAG_TABS,
+            tag=TAG_TAB_GLOBAL_SEQUENCER,
+            parent=TAG_TABS_GLOBAL,
             label=LBL_TAB_SEQUENCER,
         ):
             with dpg.table(
-                parent=TAG_TAB_SEQUENCER,
+                parent=TAG_TAB_GLOBAL_SEQUENCER,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -67,7 +67,7 @@ class SequencerTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_LEFT}",
                         width=DIM_PANEL_WIDTH_LEFT,
                         height=DIM_PANEL_HEIGHT_LEFT,
                         no_scrollbar=True,
@@ -76,13 +76,13 @@ class SequencerTabCoordinator:
                         self._sequencer_browser_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_grid_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
+                        tag=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_RIGHT}",
                         width=DIM_PANEL_WIDTH_SEQUENCER_INSTRUMENTS,
                         height=DIM_PANEL_HEIGHT_RIGHT,
                         no_scrollbar=True,

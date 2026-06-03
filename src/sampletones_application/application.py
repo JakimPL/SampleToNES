@@ -28,9 +28,9 @@ from sampletones_application.constants.general import (
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
     TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
-    TAG_STATUS_WINDOW,
-    TAG_TABS,
-    TAG_WINDOW_MAIN,
+    TAG_STATUS_WINDOW_GLOBAL,
+    TAG_TABS_GLOBAL,
+    TAG_WINDOW_GLOBAL_MAIN,
     TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
     TTL_DIALOG_CONFIG_STATUS,
     TTL_DIALOG_EXIT_CONFIRMATION,
@@ -57,11 +57,13 @@ from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol, PlaybackRouter
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.regenerator import Regenerator
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
+from sampletones_application.paths import BEHAVIOR_DIR, LAYOUT_DIR
 from sampletones_application.text.hierarchy import Tab
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -98,6 +100,7 @@ from sampletones_shared.types.callback import Callback
 
 class Application:
     def __init__(self, config_path: Optional[Path] = None) -> None:
+        self.layout: LayoutConfig = load_layout_config(LAYOUT_DIR, BEHAVIOR_DIR)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
@@ -332,13 +335,13 @@ class Application:
     def _create_main_window(self) -> None:
         with dpg.window(
             label=TTL_WINDOW_MAIN,
-            tag=TAG_WINDOW_MAIN,
+            tag=TAG_WINDOW_GLOBAL_MAIN,
         ):
             self._create_menu_bar()
             self._create_tabs()
             self._create_status_bar()
 
-        dpg.set_primary_window(TAG_WINDOW_MAIN, VAL_WINDOW_PRIMARY)
+        dpg.set_primary_window(TAG_WINDOW_GLOBAL_MAIN, VAL_WINDOW_PRIMARY)
 
     def _create_menu_bar(self) -> None:
         self._menu_bar.create(self._build_menu_bar_viewmodel())
@@ -364,7 +367,7 @@ class Application:
             border=False,
         ):
             with dpg.tab_bar(
-                tag=TAG_TABS,
+                tag=TAG_TABS_GLOBAL,
                 callback=self._on_tab_changed,
             ):
                 self._main_tab.create_tab()
@@ -374,8 +377,8 @@ class Application:
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(
-            tag=TAG_STATUS_WINDOW,
-            parent=TAG_WINDOW_MAIN,
+            tag=TAG_STATUS_WINDOW_GLOBAL,
+            parent=TAG_WINDOW_GLOBAL_MAIN,
             width=-1,
             height=-1,
             indent=0,
@@ -390,7 +393,7 @@ class Application:
     def _restore_current_items(self) -> None:
         current_tab = self.application_config_manager.load_current_tab()
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
-            dpg.set_value(TAG_TABS, current_tab)
+            dpg.set_value(TAG_TABS_GLOBAL, current_tab)
 
         current_reconstruction = self.application_config_manager.current_reconstruction
         if current_reconstruction is not None:
@@ -672,11 +675,11 @@ class Application:
         self._update_menu()
 
     def _set_current_tab(self, tab_tag: str) -> None:
-        dpg_set_value(TAG_TABS, tab_tag)
+        dpg_set_value(TAG_TABS_GLOBAL, tab_tag)
         self.application_config_manager.set_current_tab(tab_tag)
 
     def _get_current_tab(self) -> str:
-        current_tab = dpg.get_value(TAG_TABS)
+        current_tab = dpg.get_value(TAG_TABS_GLOBAL)
         alias: str = dpg.get_item_alias(current_tab)
         return alias
 

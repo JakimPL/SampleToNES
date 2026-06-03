@@ -1,0 +1,57 @@
+from pydantic import BaseModel
+
+RGBA = tuple[int, int, int, int]
+
+
+class GraphDimensions(BaseModel, frozen=True):
+    width: int
+    height: int
+    bar_plot_height: int
+
+
+class WaveformLayout(BaseModel, frozen=True):
+    sample_thickness: float
+    reconstruction_thickness: float
+    position_indicator_thickness: float
+    zoom_factor: float
+    max_display_points: int
+
+
+class SpectrumLayout(BaseModel, frozen=True):
+    max_display_bins: int
+    offset_log: float
+
+
+class GraphRange(BaseModel, frozen=True):
+    min_x: float
+    max_x: float
+    min_y: float
+    max_y: float
+
+
+class BarPlotLayout(BaseModel, frozen=True):
+    min_x: float
+    min_y: float
+    max_y: float
+    bar_weight: float
+    zero_line_thickness: float
+    hover_alpha: int
+
+
+class GraphColors(BaseModel, frozen=True):
+    bar_plot: RGBA
+    bar_plot_zero_line: RGBA
+    waveform_default: RGBA
+    waveform_sample: RGBA
+    waveform_reconstruction: RGBA
+    waveform_position_indicator: RGBA
+    waveform_overlay: RGBA
+
+
+class GraphsLayout(BaseModel, frozen=True):
+    dimensions: GraphDimensions
+    waveform: WaveformLayout
+    spectrum: SpectrumLayout
+    graph: GraphRange
+    bar_plot: BarPlotLayout
+    colors: GraphColors

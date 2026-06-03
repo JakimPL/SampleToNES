@@ -1,0 +1,101 @@
+window:
+  width: 1280
+  height: 800
+  position_x: 200
+  position_y: 200
+  fullscreen: false
+
+panels:
+  left:
+    width: 360
+    height: -1
+  right:
+    width: 460
+    height: -1
+  instructions_details:
+    width: 360
+  reconstructions_details:
+    width: 420
+
+status_bar:
+  height: 32
+  frame_rounding: 0
+  frame_padding: [0, 0]
+
+fonts:
+  size: 22
+  size_small: 19
+  size_large: 26
+  scale: 1
+
+dialogs:
+  default:
+    width: 420
+    height: 100
+  error:
+    width: 600
+    height: 120
+  file:
+    width: 720
+    height: 400
+  confirmation:
+    height: 130
+  traceback:
+    width: 0
+    height: 400
+
+inputs:
+  default_width: -180
+  search_width: -80
+
+buttons:
+  copy_width: 80
+  search_width: -1
+  int_width: 30
+  frame_rounding: 6
+  frame_padding: [10, 4]
+
+tables:
+  label_width: 130
+  cell_padding: [8, 4]
+  frame_rounding: 4
+
+menu:
+  fps_text_offset: 10
+
+colors:
+  text:
+    white: [255, 255, 255, 255]
+    default: [220, 220, 220, 255]
+    disabled: [130, 130, 130, 255]
+    error: [255, 100, 100, 255]
+    traceback: [192, 192, 192, 255]
+  files:
+    wave: [100, 200, 255, 255]
+    library: [150, 255, 150, 255]
+    reconstruction: [180, 180, 255, 255]
+    directory_not_expanded: [180, 180, 180, 255]
+  favorites:
+    default: [255, 215, 110, 255]
+    child: [231, 219, 183, 255]
+  buttons:
+    default: [54, 54, 72, 255]
+    active: [90, 90, 120, 255]
+    hovered: [72, 72, 108, 255]
+    light: [64, 64, 96, 255]
+  backgrounds:
+    default: [36, 36, 36, 255]
+    dark: [28, 28, 28, 255]
+    light: [44, 44, 44, 255]
+    menu: [50, 50, 50, 255]
+    input_invalid: [192, 32, 32, 100]
+  tables:
+    header: [45, 50, 65, 255]
+    row: [30, 32, 40, 255]
+    row_alternative: [38, 40, 52, 255]
+    border: [60, 65, 85, 255]
+    label: [140, 160, 200, 255]
+    value: [200, 205, 220, 255]
+  paths:
+    default: [100, 150, 255, 255]
+    hover: [150, 200, 255, 255]

@@ -14,9 +14,9 @@ from sampletones_application.constants.general import (
     MSG_CONFIGURATION_LOAD_ERROR,
     MSG_CONFIGURATION_SAVE_ERROR,
 )
+from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones_application.utils.dialogs import show_error_dialog
 from sampletones_core.configs import Config, GeneralConfig
-from sampletones_core.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.logger import logger

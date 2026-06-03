@@ -1,0 +1,6 @@
+panel:
+  width: -1
+  height: 65
+
+controls_table:
+  height: 32

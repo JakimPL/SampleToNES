@@ -3,7 +3,7 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.constants.general import (
     COL_BACKGROUND_MENU,
     COL_TEXT_DEFAULT,
-    TAG_THEME_STATUS,
+    TAG_THEME_GLOBAL_STATUS,
     VAL_STATUS_FRAME_PADDING,
     VAL_STATUS_FRAME_ROUNDING,
 )
@@ -13,7 +13,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class StatusBarTheme(Theme):
-    tag: str = TAG_THEME_STATUS
+    tag: str = TAG_THEME_GLOBAL_STATUS
     _theme: ThemeItems = ThemeItems(
         items={
             ThemeParameter(item_type=dpg.mvAll): [

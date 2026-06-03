@@ -7,7 +7,7 @@ from sampletones_application.constants.general import (
     MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_CENTER,
-    TAG_TAB_SEQUENCER,
+    TAG_TAB_GLOBAL_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
     COL_PATTERN_HIGHLIGHT,
@@ -76,7 +76,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_SEQUENCER_GRID,
-            parent=f"{TAG_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
+            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:

@@ -11,7 +11,7 @@ from sampletones_application.constants.general import (
     LBL_CHECKBOX_GLOBAL_PULSE_2,
     LBL_CHECKBOX_GLOBAL_TRIANGLE,
     SUF_PANEL_CENTER,
-    TAG_TAB_RECONSTRUCTIONS,
+    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
     VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
     VAL_TEXT_OFF,
     VAL_TEXT_ON,
@@ -87,7 +87,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
-            parent=f"{TAG_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+            parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:

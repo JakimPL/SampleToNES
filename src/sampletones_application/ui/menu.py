@@ -37,7 +37,7 @@ from sampletones_application.constants.general import (
     TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
     TAG_MENU_ITEM_VIEW_FULLSCREEN,
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-    TAG_MENU_TEXT_FPS,
+    TAG_TEXT_GLOBAL_MENU_FPS,
     TPL_MENU_TEXT_FPS,
 )
 from sampletones_application.ui.themes.fps import FPSTimerTheme
@@ -169,11 +169,11 @@ class MenuBar:
 
             dpg.add_button(
                 label=TPL_MENU_TEXT_FPS.format(fps=0),
-                tag=TAG_MENU_TEXT_FPS,
+                tag=TAG_TEXT_GLOBAL_MENU_FPS,
                 width=-1,
                 enabled=False,
             )
-            self._fps_theme.bind_to_item(TAG_MENU_TEXT_FPS)
+            self._fps_theme.bind_to_item(TAG_TEXT_GLOBAL_MENU_FPS)
 
     def update(self, state: MenuBarViewModel) -> None:
         dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV, enabled=state.reconstruction_loaded)
@@ -193,4 +193,4 @@ class MenuBar:
         dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
 
     def update_fps(self, fps: float) -> None:
-        dpg_configure_item(TAG_MENU_TEXT_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))
+        dpg_configure_item(TAG_TEXT_GLOBAL_MENU_FPS, label=TPL_MENU_TEXT_FPS.format(fps=fps))

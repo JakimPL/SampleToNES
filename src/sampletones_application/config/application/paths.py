@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_serializer
 
-from sampletones_core.constants.paths import CONFIG_PATH, LIBRARY_DIRECTORY
+from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY
 
 
 class LastPaths(BaseModel):

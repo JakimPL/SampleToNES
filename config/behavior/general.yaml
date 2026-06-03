@@ -1,0 +1,31 @@
+scheduling:
+  delay_gui_action: 2
+  delay_schedule: 12
+  delay_cancel: 30
+  priority_update_status: 0
+  priority_gui_action: 2
+  priority_schedule: 1
+  priority_add_handler: 10
+  priority_add_node: 5
+
+ui:
+  status_bar_display_time: 2.0
+
+main:
+  fps_update_interval: 2.0
+  max_workers_minimum: 1
+  explorer:
+    priority_add_handler: 8
+    priority_add_node: 7
+
+instructions:
+  priority_add_handler: 6
+  priority_add_node: 5
+
+reconstructions:
+  priority_add_handler: 10
+  priority_add_node: 9
+
+sequencer:
+  priority_add_node: 100
+  priority_add_handler: 200

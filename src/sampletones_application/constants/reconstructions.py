@@ -1,4 +1,4 @@
-TAG_RECONSTRUCTION_NOT_LOADED_DIALOG = "reconstruction_not_loaded_dialog"
+TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED = "dialog_reconstructions_not_loaded"
 TAG_PANEL_RECONSTRUCTIONS_BROWSER = "panel_reconstructions_browser"
 TAG_TREE_RECONSTRUCTIONS_BROWSER = "tree_reconstructions_browser"
 TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE = "group_reconstructions_browser_tree"
