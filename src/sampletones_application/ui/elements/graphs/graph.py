@@ -5,21 +5,18 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.graphs import (
-    DIM_GRAPH_HEIGHT,
-    DIM_GRAPH_WIDTH,
-    LBL_PLOT_LABEL_WAVEFORM,
     SUF_GRAPH_CONTROLS,
     SUF_GRAPH_INFO,
     SUF_GRAPH_LEGEND,
     SUF_GRAPH_PLOT,
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
-    VAL_MAX_GRAPH_DEFAULT_X,
-    VAL_MAX_GRAPH_DEFAULT_Y,
-    VAL_MIN_GRAPH_DEFAULT_X,
-    VAL_MIN_GRAPH_DEFAULT_Y,
-    VAL_WAVEFORM_ZOOM_FACTOR,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.text.elements.global_ import GraphElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_shared.types.application import Sender
@@ -30,11 +27,12 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_WIDTH,
-        height: int = DIM_GRAPH_HEIGHT,
-        label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        width: int,
+        height: int,
+        label: str,
+        x_range: Tuple[float, float],
+        y_range: Tuple[float, float],
+        zoom_factor: float,
     ):
         self.label = label
         self.plot_tag = f"{tag}{SUF_GRAPH_PLOT}"
@@ -45,7 +43,7 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
         self.info_tag = f"{tag}{SUF_GRAPH_INFO}"
         self.event_handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
 
-        self.zoom_factor = VAL_WAVEFORM_ZOOM_FACTOR
+        self.zoom_factor = zoom_factor
         self._x_range: Tuple[float, float] = x_range
         self._y_range: Tuple[float, float] = y_range
         self._default_x_range = self._x_range
@@ -101,10 +99,10 @@ class GUIGraph(GUIPanel, ABC, Generic[LayerT]):
     def _update_ranges(self) -> None:
         layers = [layer for layer in self.layers.values() if layer.x_data.size > 0 and layer.y_data.size > 0]
         if layers:
-            x_min = float(min(min(layer.x_data.min() for layer in layers), VAL_MIN_GRAPH_DEFAULT_X))
-            x_max = float(max(max(layer.x_data.max() for layer in layers), VAL_MAX_GRAPH_DEFAULT_X))
-            y_min = float(min(min(layer.y_data.min() for layer in layers), VAL_MIN_GRAPH_DEFAULT_Y))
-            y_max = float(max(max(layer.y_data.max() for layer in layers), VAL_MAX_GRAPH_DEFAULT_Y))
+            x_min = float(min(min(layer.x_data.min() for layer in layers), self._default_x_range[0]))
+            x_max = float(max(max(layer.x_data.max() for layer in layers), self._default_x_range[1]))
+            y_min = float(min(min(layer.y_data.min() for layer in layers), self._default_y_range[0]))
+            y_max = float(max(max(layer.y_data.max() for layer in layers), self._default_y_range[1]))
             self.x_range = x_min, x_max
             self.y_range = y_min, y_max
 

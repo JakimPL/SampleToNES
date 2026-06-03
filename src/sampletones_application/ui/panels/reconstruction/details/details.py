@@ -36,7 +36,7 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
-from sampletones_application.text.elements.global_ import GlobalMessageElements
+from sampletones_application.text.elements.global_ import DialogElements, GlobalMessageElements
 from sampletones_application.text.elements.reconstructions import ReconstructionsDetailsElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
@@ -197,6 +197,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 GlobalMessageElements.RECONSTRUCTION_NO_DATA,
             )
         ]
+        self._lbl_copied = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.COPIED)]
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -677,8 +678,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             tag=plot_tag,
             parent=parent,
             data_range=config.data_range,
-            width=self._layout_graphs.dimensions.width,
-            height=self._layout_graphs.dimensions.bar_plot_height,
+            layout=self._layout_graphs,
+            language_manager=None,
             label=config.label,
             y_range=(y_min, y_max),
         )
@@ -826,4 +827,4 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(text, self._lbl_copy, button_tag)
+        copy_to_clipboard(text, self._lbl_copy, button_tag, copied_label=self._lbl_copied)

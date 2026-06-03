@@ -81,9 +81,9 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.waveform_display = GUIWaveformGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
-                width=self._layout.dimensions.width,
-                height=self._layout.dimensions.height,
                 parent=self.waveform_tag,
+                layout=self._layout,
+                language_manager=self._language_manager,
                 label=self._lbl_waveform,
             )
 
@@ -98,9 +98,9 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-                width=self._layout.dimensions.width,
-                height=self._layout.dimensions.height,
                 parent=self.spectrum_tag,
+                layout=self._layout,
+                language_manager=self._language_manager,
                 label=self._lbl_spectrum,
             )
 

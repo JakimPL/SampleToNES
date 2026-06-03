@@ -4,13 +4,6 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from sampletones_application.constants.main import (
-    LBL_BUTTON_MAIN_CONVERTER_CANCEL,
-    LBL_BUTTON_MAIN_CONVERTER_CLOSE,
-    LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY,
-    LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE,
-)
-
 
 class ConversionPhase(StrEnum):
     IDLE = "idle"
@@ -46,15 +39,3 @@ class ConverterViewModel(BaseModel, frozen=True):
     @property
     def is_done(self) -> bool:
         return self.phase in (ConversionPhase.COMPLETED, ConversionPhase.CANCELLED, ConversionPhase.FAILED)
-
-    @property
-    def cancel_button_label(self) -> str:
-        return LBL_BUTTON_MAIN_CONVERTER_CLOSE if self.is_done else LBL_BUTTON_MAIN_CONVERTER_CANCEL
-
-    @property
-    def convert_button_label(self) -> str:
-        base = LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE if self.is_file else LBL_BUTTON_MAIN_CONVERTER_CONVERT_DIRECTORY
-        if self.input_path is not None:
-            return f"{base}: {self.input_path.name}"
-
-        return base

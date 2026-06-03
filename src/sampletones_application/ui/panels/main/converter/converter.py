@@ -53,6 +53,12 @@ class GUIConverterPanel(GUIPanel):
         self._lbl_convert_button = language_manager[
             TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CONVERT_SAMPLE_BUTTON)
         ]
+        self._lbl_close_button = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CLOSE_BUTTON)
+        ]
+        self._lbl_convert_directory_button = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CONVERT_DIRECTORY_BUTTON)
+        ]
         self._msg_input = language_manager[
             TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_INPUT_LABEL)
         ]
@@ -93,13 +99,18 @@ class GUIConverterPanel(GUIPanel):
         if self.output_path_text is not None and viewmodel.output_path is not None:
             self.output_path_text.set_path(viewmodel.output_path)
 
+        _cancel_label = self._lbl_close_button if viewmodel.is_done else self._lbl_cancel_button
+        _base_convert = self._lbl_convert_button if viewmodel.is_file else self._lbl_convert_directory_button
+        _convert_label = (
+            f"{_base_convert}: {viewmodel.input_path.name}" if viewmodel.input_path is not None else _base_convert
+        )
         dpg_configure_item(
             TAG_BUTTON_MAIN_CONVERTER_CONVERT,
-            label=viewmodel.convert_button_label,
+            label=_convert_label,
             enabled=viewmodel.convert_button_enabled,
         )
         dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=viewmodel.load_button_enabled)
-        dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_CANCEL, label=viewmodel.cancel_button_label)
+        dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_CANCEL, label=_cancel_label)
 
         if viewmodel.is_done:
             dpg_set_item_callback(TAG_BUTTON_MAIN_CONVERTER_CANCEL, self._on_close_clicked)

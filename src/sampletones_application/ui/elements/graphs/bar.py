@@ -4,19 +4,16 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.constants.graphs import (
-    DIM_GRAPH_HEIGHT,
-    DIM_GRAPH_WIDTH,
-    LBL_PLOT_LABEL_BAR,
     SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_MOUSE_HANDLER,
     SUF_BAR_PLOT_ZERO_LINE,
     SUF_GRAPH_THEME,
-    VAL_BAR_PLOT_HOVER_ALPHA,
-    VAL_MAX_GRAPH_DEFAULT_X,
-    VAL_MAX_GRAPH_DEFAULT_Y,
-    VAL_MIN_GRAPH_DEFAULT_X,
-    VAL_MIN_GRAPH_DEFAULT_Y,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.text.elements.global_ import GraphElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
 from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
@@ -45,13 +42,23 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         tag: str,
         parent: str,
         data_range: Tuple[int, int],
-        width: int = DIM_GRAPH_WIDTH,
-        height: int = DIM_GRAPH_HEIGHT,
-        label: str = LBL_PLOT_LABEL_BAR,
-        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        *,
+        layout: GraphsLayout,
+        language_manager: Optional[LanguageManager] = None,
+        label: str = "",
+        y_range: Tuple[float, float] = (0.0, 0.0),
         zero_line_theme: Theme = ZeroLineGraphTheme(),
     ):
+        self._layout = layout
+        self._hover_alpha = layout.bar_plot.hover_alpha
+
+        if label:
+            _label = label
+        elif language_manager is not None:
+            _label = language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.BAR_DISPLAY)]
+        else:
+            _label = ""
+
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
         self.hover_theme_tag = f"{self.hover_bar_tag}{SUF_GRAPH_THEME}"
         self.mouse_handler_tag = f"{tag}{SUF_BAR_PLOT_MOUSE_HANDLER}"
@@ -66,14 +73,21 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.on_bar_point_clicked: Optional[OnBarPointClickedCallback] = None
         self.on_bar_point_hovered: Optional[OnBarPointHoveredCallback] = None
 
+        _min_x = layout.graph.min_x
+        _max_x = layout.graph.max_x
+        _min_y = layout.graph.min_y
+        _max_y = layout.graph.max_y
+
+        _y_range = y_range if y_range != (0.0, 0.0) else (_min_y, _max_y)
         super().__init__(
             tag,
             parent,
-            width,
-            height,
-            label,
-            x_range,
-            y_range,
+            layout.dimensions.width,
+            layout.dimensions.bar_plot_height,
+            _label,
+            (_min_x, _max_x),
+            _y_range,
+            layout.waveform.zoom_factor,
         )
 
     def _create_content(self) -> None:
@@ -141,7 +155,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        hover_color = (layer.color[0], layer.color[1], layer.color[2], VAL_BAR_PLOT_HOVER_ALPHA)
+        hover_color = (layer.color[0], layer.color[1], layer.color[2], self._hover_alpha)
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg.add_theme_color(
@@ -168,6 +182,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
                 data=data,
                 name=name,
                 color=color,
+                bar_weight=self._layout.bar_plot.bar_weight,
             ),
         )
 
@@ -203,7 +218,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         x_min = -0.5
         x_max = 1.0 + max(
             (layer.x_data.max() for layer in self.layers.values() if layer.x_data.size > 0),
-            default=VAL_MAX_GRAPH_DEFAULT_X,
+            default=self._layout.graph.max_x,
         )
         self.x_range = (x_min, x_max)
         self._update_axes_limits()

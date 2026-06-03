@@ -1,31 +1,31 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
-from sampletones_application.constants.graphs import (
-    COL_WAVEFORM_DEFAULT,
-    VAL_MAX_WAVEFORM_DISPLAY_POINTS,
-    VAL_WAVEFORM_SAMPLE_THICKNESS,
-)
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
 from sampletones_core.audio import minmax_decimate
 from sampletones_shared.types.application import Color
+
+_DEFAULT_COLOR: Color = (255, 255, 255, 255)
+_DEFAULT_LINE_THICKNESS: float = 1.5
+_DEFAULT_MAX_DISPLAY_POINTS: int = 4096
 
 
 @dataclass(frozen=True)
 class ArrayLayer(Layer):
     data: np.ndarray
     name: str
-    color: Color = COL_WAVEFORM_DEFAULT
-    line_thickness: float = VAL_WAVEFORM_SAMPLE_THICKNESS
+    color: Color = field(default_factory=lambda: _DEFAULT_COLOR)
+    line_thickness: float = _DEFAULT_LINE_THICKNESS
+    max_display_points: int = _DEFAULT_MAX_DISPLAY_POINTS
 
     def __post_init__(self) -> None:
         y_data = self.data.astype(np.float32)
         length = y_data.shape[0]
 
         assert y_data.ndim == 1, "ArrayLayer data must be a 1D numpy array"
-        if length > VAL_MAX_WAVEFORM_DISPLAY_POINTS:
-            x_data, y_data = minmax_decimate(y_data, num_buckets=VAL_MAX_WAVEFORM_DISPLAY_POINTS)
+        if length > self.max_display_points:
+            x_data, y_data = minmax_decimate(y_data, num_buckets=self.max_display_points)
         else:
             x_data = np.arange(y_data.shape[0], dtype=np.float32)
 

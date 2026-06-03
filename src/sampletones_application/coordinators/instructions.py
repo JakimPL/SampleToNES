@@ -66,7 +66,7 @@ class InstructionsTabCoordinator:
             )
         ]
 
-        self._library_logic = LibraryLogic(config_manager, library_manager)
+        self._library_logic = LibraryLogic(config_manager, library_manager, language_manager=language_manager)
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
             application_config_manager,

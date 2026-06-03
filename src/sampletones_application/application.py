@@ -126,7 +126,9 @@ class Application:
 
         self._reconstruction_session = ReconstructionSession()
 
-        self._menu_bar = MenuBar(shortcut_manager=self.shortcut_manager, fps_theme=self.fps_theme)
+        self._menu_bar = MenuBar(
+            shortcut_manager=self.shortcut_manager, fps_theme=self.fps_theme, language_manager=self.language_manager
+        )
 
         self._viewport_manager = ViewportManager(
             self.application_config_manager,
@@ -190,6 +192,7 @@ class Application:
 
         self._playback_router = PlaybackRouter(
             current_player_fn=self._get_current_player,
+            language_manager=self.language_manager,
         )
 
         self._reconstruction_session.on_state_changed = self._on_reconstruction_state_changed

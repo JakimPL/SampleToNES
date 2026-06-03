@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import traceback
-from typing import Dict
+from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -10,6 +10,10 @@ from sampletones_application.constants.general import (
     SUF_TEXT,
     SUF_TRACEBACK,
 )
+from sampletones_application.text.elements.global_ import DialogElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.theme import Theme
@@ -24,12 +28,20 @@ class GUITraceback:
         self,
         parent: str,
         exception: Exception,
+        language_manager: Optional[LanguageManager] = None,
         theme: Theme = TracebackTheme(),
         button_theme: Theme = DefaultTheme(),
     ) -> None:
         self._parent = parent
         self._tag = f"{parent}{SUF_TRACEBACK}]"
         self._text = "".join(traceback.format_exception(type(exception), exception, exception.__traceback__))
+
+        if language_manager is not None:
+            self._lbl_copied = language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.COPIED)
+            ]
+        else:
+            self._lbl_copied = "Copied!"
 
         self.theme = theme
         traceback_text_tag = f"{self._tag}{SUF_TEXT}"
@@ -51,7 +63,9 @@ class GUITraceback:
             GUIButton(
                 tag=traceback_copy_tag,
                 label="Copy to clipboard",
-                callback=lambda: copy_to_clipboard(self._text, "Copy to clipboard", traceback_copy_tag),
+                callback=lambda: copy_to_clipboard(
+                    self._text, "Copy to clipboard", traceback_copy_tag, copied_label=self._lbl_copied
+                ),
                 width=-1,
                 theme=button_theme,
             )

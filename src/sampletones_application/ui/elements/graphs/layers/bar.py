@@ -1,18 +1,20 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
-from sampletones_application.constants.graphs import COL_BAR_PLOT, VAL_BAR_PLOT_BAR_WEIGHT
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
 from sampletones_shared.types.application import Color
+
+_DEFAULT_COLOR: Color = (100, 200, 255, 255)
+_DEFAULT_BAR_WEIGHT: float = 0.8
 
 
 @dataclass(frozen=True)
 class BarLayer(Layer):
     data: np.ndarray
     name: str
-    color: Color = COL_BAR_PLOT
-    bar_weight: float = VAL_BAR_PLOT_BAR_WEIGHT
+    color: Color = field(default_factory=lambda: _DEFAULT_COLOR)
+    bar_weight: float = _DEFAULT_BAR_WEIGHT
 
     def __post_init__(self) -> None:
         data = self.data.astype(np.int64)

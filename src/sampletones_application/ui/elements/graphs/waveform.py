@@ -4,27 +4,15 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.constants.graphs import (
-    COL_WAVEFORM_LAYER_RECONSTRUCTION,
-    COL_WAVEFORM_LAYER_SAMPLE,
-    DIM_GRAPH_HEIGHT,
-    DIM_GRAPH_WIDTH,
-    LBL_GRAPH_WAVEFORM_ORIGINAL,
-    LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
-    LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
-    LBL_PLOT_AXIS_WAVEFORM_TIME,
-    LBL_PLOT_LABEL_WAVEFORM,
-    LBL_PLOT_NAME_WAVEFORM_SAMPLE,
-    MSG_STATUS_WAVEFORM_NAVIGATION,
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
-    VAL_MAX_GRAPH_DEFAULT_X,
-    VAL_MAX_GRAPH_DEFAULT_Y,
-    VAL_MIN_GRAPH_DEFAULT_X,
-    VAL_MIN_GRAPH_DEFAULT_Y,
-    VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
-    VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.text.elements.global_ import GraphElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import InstructionLayer
@@ -54,12 +42,38 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_WIDTH,
-        height: int = DIM_GRAPH_HEIGHT,
-        label: str = LBL_PLOT_LABEL_WAVEFORM,
-        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        y_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y),
+        *,
+        layout: GraphsLayout,
+        language_manager: LanguageManager,
+        label: str = "",
     ):
+        self._layout = layout
+
+        self._lbl_waveform_original = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_ORIGINAL)
+        ]
+        self._lbl_waveform_reconstruction = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_RECONSTRUCTION)
+        ]
+        self._lbl_axis_time = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_TIME_AXIS)
+        ]
+        self._lbl_axis_amplitude = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_AMPLITUDE_AXIS)
+        ]
+        self._lbl_sample_name = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_SAMPLE_NAME)
+        ]
+        self._msg_navigation = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.MESSAGE, GraphElements.WAVEFORM_NAVIGATION)
+        ]
+
+        _label = (
+            label
+            if label
+            else language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_DISPLAY)]
+        )
+
         self.reconstruction_autoscale = True
 
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
@@ -71,14 +85,20 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
         self.current_position: int = 0
 
+        _min_x = layout.graph.min_x
+        _max_x = layout.graph.max_x
+        _min_y = layout.graph.min_y
+        _max_y = layout.graph.max_y
+
         super().__init__(
             tag,
             parent,
-            width,
-            height,
-            label,
-            x_range,
-            y_range,
+            layout.dimensions.width,
+            layout.dimensions.height,
+            _label,
+            (_min_x, _max_x),
+            (_min_y, _max_y),
+            layout.waveform.zoom_factor,
         )
 
     @property
@@ -92,6 +112,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         return 0
 
     def _create_content(self) -> None:
+        _min_y = self._layout.graph.min_y
+        _max_y = self._layout.graph.max_y
+
         with dpg.plot(
             label=self.label,
             tag=self.plot_tag,
@@ -111,14 +134,14 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
                 parent=self.plot_tag,
-                label=LBL_PLOT_AXIS_WAVEFORM_TIME,
+                label=self._lbl_axis_time,
                 no_label=True,
             )
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 tag=self.y_axis_tag,
                 parent=self.plot_tag,
-                label=LBL_PLOT_AXIS_WAVEFORM_AMPLITUDE,
+                label=self._lbl_axis_amplitude,
             )
             self._add_position_indicator()
             self._set_overlay_rectangle()
@@ -131,14 +154,17 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         super()._on_hover(sender, app_data, user_data)
-        GUIStatusBar.set(MSG_STATUS_WAVEFORM_NAVIGATION)
+        GUIStatusBar.set(self._msg_navigation)
 
     def _set_overlay_rectangle(self, x_start: float = 0.0, x_end: float = 0.0) -> None:
+        _min_y = self._layout.graph.min_y
+        _max_y = self._layout.graph.max_y
+
         if not dpg.does_item_exist(self.overlay_rectangle_tag):
             dpg.add_shade_series(
                 [x_start, x_end],
-                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
-                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
+                y1=[_min_y, _min_y],
+                y2=[_max_y, _max_y],
                 tag=self.overlay_rectangle_tag,
                 parent=self.y_axis_tag,
             )
@@ -148,8 +174,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             dpg.configure_item(
                 self.overlay_rectangle_tag,
                 x=[x_start, x_end],
-                y1=[VAL_MIN_GRAPH_DEFAULT_Y, VAL_MIN_GRAPH_DEFAULT_Y],
-                y2=[VAL_MAX_GRAPH_DEFAULT_Y, VAL_MAX_GRAPH_DEFAULT_Y],
+                y1=[_min_y, _min_y],
+                y2=[_max_y, _max_y],
             )
 
     def load_library_fragment(self, fragment: InstructionLibraryFragment[Any]) -> None:
@@ -160,9 +186,9 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.add_layer(
             InstructionLayer(
                 data=fragment,
-                name=LBL_PLOT_NAME_WAVEFORM_SAMPLE,
-                color=COL_WAVEFORM_LAYER_SAMPLE,
-                line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+                name=self._lbl_sample_name,
+                color=self._layout.colors.waveform_sample,
+                line_thickness=self._layout.waveform.sample_thickness,
             )
         )
 
@@ -222,8 +248,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             selected_generators,
         )
 
-        self.layers[LBL_GRAPH_WAVEFORM_RECONSTRUCTION] = reconstruction_layer
-        self.layers[LBL_GRAPH_WAVEFORM_ORIGINAL] = sample_layer
+        self.layers[self._lbl_waveform_reconstruction] = reconstruction_layer
+        self.layers[self._lbl_waveform_original] = sample_layer
         self._update_display()
 
     def load_reconstruction_data(
@@ -243,17 +269,19 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
     def reconstruction_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
             data=data,
-            name=LBL_GRAPH_WAVEFORM_RECONSTRUCTION,
-            color=COL_WAVEFORM_LAYER_RECONSTRUCTION,
-            line_thickness=VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
+            name=self._lbl_waveform_reconstruction,
+            color=self._layout.colors.waveform_reconstruction,
+            line_thickness=self._layout.waveform.reconstruction_thickness,
+            max_display_points=self._layout.waveform.max_display_points,
         )
 
     def sample_layer(self, data: np.ndarray) -> ArrayLayer:
         return ArrayLayer(
             data=data,
-            name=LBL_GRAPH_WAVEFORM_ORIGINAL,
-            color=COL_WAVEFORM_LAYER_SAMPLE,
-            line_thickness=VAL_WAVEFORM_SAMPLE_THICKNESS,
+            name=self._lbl_waveform_original,
+            color=self._layout.colors.waveform_sample,
+            line_thickness=self._layout.waveform.sample_thickness,
+            max_display_points=self._layout.waveform.max_display_points,
         )
 
     def _add_reconstruction_layers(

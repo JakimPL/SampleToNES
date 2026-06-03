@@ -1,10 +1,9 @@
 from typing import Callable, Optional, Protocol
 
-from sampletones_application.constants.general import (
-    LBL_MENU_ITEM_PLAYBACK_PAUSE,
-    LBL_MENU_ITEM_PLAYBACK_PLAY,
-    LBL_MENU_ITEM_PLAYBACK_RESUME,
-)
+from sampletones_application.text.elements.global_ import MenuElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 
 
 class AudioPlayerPanelProtocol(Protocol):
@@ -25,8 +24,19 @@ class PlaybackRouter:
     def __init__(
         self,
         current_player_fn: Callable[[], Optional[AudioPlayerPanelProtocol]],
+        *,
+        language_manager: LanguageManager,
     ) -> None:
         self._current_player_fn = current_player_fn
+        self._lbl_pause = language_manager[
+            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PAUSE)
+        ]
+        self._lbl_play = language_manager[
+            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY)
+        ]
+        self._lbl_resume = language_manager[
+            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_RESUME)
+        ]
 
     def play(self) -> None:
         player = self._current_player_fn()
@@ -47,9 +57,9 @@ class PlaybackRouter:
     def play_label(self) -> str:
         player = self._current_player_fn()
         if player is not None and player.is_loaded() and player.is_playing():
-            return LBL_MENU_ITEM_PLAYBACK_RESUME if player.is_paused() else LBL_MENU_ITEM_PLAYBACK_PAUSE
+            return self._lbl_resume if player.is_paused() else self._lbl_pause
 
-        return LBL_MENU_ITEM_PLAYBACK_PLAY
+        return self._lbl_play
 
     @property
     def is_play_enabled(self) -> bool:

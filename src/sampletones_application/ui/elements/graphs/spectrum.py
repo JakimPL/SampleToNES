@@ -4,17 +4,13 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.constants.graphs import (
-    DIM_GRAPH_HEIGHT,
-    DIM_GRAPH_WIDTH,
-    LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
-    LBL_PLOT_AXIS_SPECTRUM_X,
-    LBL_PLOT_LABEL_SPECTRUM,
-    LBL_PLOT_NAME_SPECTRUM,
-    MSG_STATUS_SPECTRUM_NAVIGATION,
     SUF_GRAPH_THEME,
-    VAL_MAX_GRAPH_DEFAULT_X,
-    VAL_MIN_GRAPH_DEFAULT_X,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.text.elements.global_ import GraphElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
 from sampletones_application.ui.elements.status import GUIStatusBar
@@ -36,12 +32,32 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self,
         tag: str,
         parent: str,
-        width: int = DIM_GRAPH_WIDTH,
-        height: int = DIM_GRAPH_HEIGHT,
-        label: str = LBL_PLOT_LABEL_SPECTRUM,
-        x_range: Tuple[float, float] = (VAL_MIN_GRAPH_DEFAULT_X, VAL_MAX_GRAPH_DEFAULT_X),
-        y_range: Tuple[float, float] = (MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
+        *,
+        layout: GraphsLayout,
+        language_manager: LanguageManager,
+        label: str = "",
     ) -> None:
+        self._layout = layout
+
+        self._lbl_axis_x = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_X_AXIS)
+        ]
+        self._lbl_axis_frequency = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_FREQUENCY_AXIS)
+        ]
+        self._lbl_spectrum_name = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_NAME)
+        ]
+        self._msg_navigation = language_manager[
+            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.MESSAGE, GraphElements.SPECTRUM_NAVIGATION)
+        ]
+
+        _label = (
+            label
+            if label
+            else language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_DISPLAY)]
+        )
+
         self.spectrum: Optional[np.ndarray] = None
         self.frequencies: Optional[np.ndarray] = None
         self.current_library_fragment: Optional[InstructionLibraryFragment[Any]] = None
@@ -51,11 +67,12 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         super().__init__(
             tag,
             parent,
-            width,
-            height,
-            label,
-            x_range,
-            y_range,
+            layout.dimensions.width,
+            layout.dimensions.height,
+            _label,
+            (layout.graph.min_x, layout.graph.max_x),
+            (MIN_FREQUENCY, DEFAULT_SAMPLE_RATE / 2),
+            layout.waveform.zoom_factor,
         )
 
     def _create_content(self) -> None:
@@ -74,7 +91,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
                 parent=self.plot_tag,
-                label=LBL_PLOT_AXIS_SPECTRUM_X,
+                label=self._lbl_axis_x,
                 no_tick_labels=True,
                 no_tick_marks=True,
                 no_label=True,
@@ -82,7 +99,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             dpg.add_plot_axis(
                 dpg.mvYAxis,
                 tag=self.y_axis_tag,
-                label=LBL_PLOT_AXIS_SPECTRUM_FREQUENCY,
+                label=self._lbl_axis_frequency,
                 parent=self.plot_tag,
                 scale=dpg.mvPlotScale_Log10,
             )
@@ -102,16 +119,17 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self.add_layer(
             SpectrumLayer(
                 data=fragment,
-                name=LBL_PLOT_NAME_SPECTRUM,
+                name=self._lbl_spectrum_name,
                 sample_rate=sample_rate,
                 frame_length=frame_length,
+                max_display_bins=self._layout.spectrum.max_display_bins,
             )
         )
 
         self._update_ranges()
 
     def _on_hover(self, sender: Sender, app_data: Any, user_data: Any) -> None:
-        GUIStatusBar.set(MSG_STATUS_SPECTRUM_NAVIGATION)
+        GUIStatusBar.set(self._msg_navigation)
 
     def _update_ranges(self) -> None:
         if not self.layers:
@@ -146,7 +164,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             for index, (frequency, band_width, brightness) in enumerate(layer):
                 series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}_{index}".lower()
                 dpg.add_bar_series(
-                    x=[VAL_MAX_GRAPH_DEFAULT_X],
+                    x=[self._layout.graph.max_x],
                     y=[frequency],
                     label="",
                     parent=self.y_axis_tag,

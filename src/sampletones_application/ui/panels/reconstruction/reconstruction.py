@@ -405,9 +405,9 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
-            width=self._layout_graphs.dimensions.width,
-            height=self._layout_graphs.dimensions.height,
             parent=self.plot_tag,
+            layout=self._layout_graphs,
+            language_manager=self._language_manager,
             label=self._lbl_waveform,
         )
 
