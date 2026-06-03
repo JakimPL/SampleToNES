@@ -11,7 +11,7 @@ from .approximation import ApproximationData
 
 
 class FragmentReconstructionState(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     fragment: Fragment
     instruction: InstructionUnion

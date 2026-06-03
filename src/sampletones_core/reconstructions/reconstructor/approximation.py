@@ -6,7 +6,7 @@ from sampletones_core.instructions import InstructionUnion
 
 
 class ApproximationData(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     generator_name: GeneratorName
     approximation: Fragment
