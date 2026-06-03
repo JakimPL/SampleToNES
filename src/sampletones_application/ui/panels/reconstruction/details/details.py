@@ -4,9 +4,6 @@ import dearpygui.dearpygui as dpg
 import numpy as np
 
 from sampletones_application.constants.general import (
-    COL_TEXT_DISABLED_DEFAULT,
-    DIM_BUTTON_INPUT_INT,
-    DIM_BUTTON_WIDTH_COPY,
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
     SUF_GROUP,
@@ -486,7 +483,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     dpg.add_text(
                         str(initial_pitch),
                         tag=value_tag,
-                        color=COL_TEXT_DISABLED_DEFAULT,
+                        color=self._layout_general.colors.text.disabled,
                     )
                 with dpg.table_cell():
                     dpg.add_input_text(
@@ -506,7 +503,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     GUIButton(
                         label="-",
                         tag=decrement_button_tag,
-                        width=DIM_BUTTON_INPUT_INT,
+                        width=self._layout_general.buttons.int_width,
                         callback=self._change_initial_pitch,
                         user_data=(
                             generator_name,
@@ -518,7 +515,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                     GUIButton(
                         label="+",
                         tag=increment_button_tag,
-                        width=DIM_BUTTON_INPUT_INT,
+                        width=self._layout_general.buttons.int_width,
                         callback=self._change_initial_pitch,
                         user_data=(
                             generator_name,
@@ -751,7 +748,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             GUIButton(
                 tag=copy_button_tag,
                 label=self._lbl_copy,
-                width=DIM_BUTTON_WIDTH_COPY,
+                width=self._layout_general.buttons.copy_width,
                 callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
             )
 

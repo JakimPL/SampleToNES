@@ -3,7 +3,6 @@ from typing import Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_CENTER,
     TAG_TAB_GLOBAL_SEQUENCER,
@@ -23,6 +22,7 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.text.elements.global_ import StatusElements
 from sampletones_application.text.elements.sequencer import SequencerGridElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
@@ -104,6 +104,9 @@ class GUISequencerGridPanel(GUIPanel):
         self._lbl_col_noise = language_manager[
             TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_NOISE)
         ]
+        self._msg_status_input = language_manager[
+            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+        ]
 
         super().__init__(
             tag=TAG_PANEL_SEQUENCER_GRID,
@@ -170,9 +173,9 @@ class GUISequencerGridPanel(GUIPanel):
                 width=self._input_width,
             )
 
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY, MSG_STATUS_INPUT)
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_TEMPO, MSG_STATUS_INPUT)
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_SPEED, MSG_STATUS_INPUT)
+        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_TEMPO, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_SPEED, self._msg_status_input)
 
     def _create_export_button(self) -> None:
         dpg.add_separator()

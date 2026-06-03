@@ -1,10 +1,10 @@
-from typing import Optional
+from typing import Final, Optional
 
-from sampletones_application.constants.main import VAL_FPS_TIME_INTERVAL
+_DEFAULT_INTERVAL: Final = 2.0
 
 
 class FPSTimer:
-    def __init__(self, interval: float = VAL_FPS_TIME_INTERVAL) -> None:
+    def __init__(self, interval: float = _DEFAULT_INTERVAL) -> None:
         self._interval: float = interval
         self.fps_timer: float = interval
         self.fps_delta: float = 0.0

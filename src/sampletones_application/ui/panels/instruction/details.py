@@ -3,7 +3,6 @@ from typing import Any, Callable, List, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    MSG_STATUS_INPUT,
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
     TAG_TAB_GLOBAL_INSTRUCTIONS,
@@ -26,6 +25,7 @@ from sampletones_application.constants.instructions import (
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.text.elements.global_ import StatusElements
 from sampletones_application.text.elements.instructions import InstructionsDetailsElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
@@ -99,6 +99,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 TextType.MESSAGE,
                 InstructionsDetailsElements.NO_INSTRUCTION_SELECTED,
             )
+        ]
+        self._msg_status_input = language_manager[
+            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
         ]
 
         super().__init__(
@@ -260,7 +263,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
         ]:
-            GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
+            GUIStatusBar.bind_to_item(tag, self._msg_status_input)
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
@@ -277,7 +280,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
         GUIStatusBar.bind_to_item(
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
-            MSG_STATUS_INPUT,
+            self._msg_status_input,
         )
         dpg.bind_item_handler_registry(
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
@@ -318,7 +321,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
             TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
         ]:
-            GUIStatusBar.bind_to_item(tag, MSG_STATUS_INPUT)
+            GUIStatusBar.bind_to_item(tag, self._msg_status_input)
             if tag != TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT:
                 dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 

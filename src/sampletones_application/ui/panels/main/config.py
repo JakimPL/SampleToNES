@@ -3,7 +3,7 @@ from typing import Any, Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
-from sampletones_application.constants.general import MSG_STATUS_INPUT, SUF_HANDLER_REGISTRY
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
     TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE,
@@ -13,6 +13,7 @@ from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_CONFIG,
     TAG_PANEL_MAIN_CONFIG_CELL,
 )
+from sampletones_application.text.elements.global_ import StatusElements
 from sampletones_application.text.elements.main import ConfigPanelElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
@@ -83,6 +84,9 @@ class GUIConfigPanel(GUIPanel):
         ]
         self._tooltip_gamma = language_manager[
             TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA)
+        ]
+        self._msg_status_input = language_manager[
+            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
         ]
 
         super().__init__(
@@ -180,7 +184,7 @@ class GUIConfigPanel(GUIPanel):
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
-        GUIStatusBar.bind_to_item(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, MSG_STATUS_INPUT)
+        GUIStatusBar.bind_to_item(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE, self._tooltip_normalize)

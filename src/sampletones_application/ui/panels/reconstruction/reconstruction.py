@@ -18,8 +18,6 @@ from sampletones_application.constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_PLAYER,
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
-    TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR,
-    TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
@@ -213,7 +211,7 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_plot_panel()
 
     def update_view(self, viewmodel: ReconstructionViewModel) -> None:
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format("selector")
+        radio_tag = "reconstruction_audio_source_selector"
 
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
@@ -362,7 +360,7 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.audio_tag,
             horizontal=True,
         ):
-            radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format("selector")
+            radio_button_tag = "reconstruction_audio_source_selector"
             dpg.add_radio_button(
                 items=[
                     self._lbl_reconstruction_radio,
@@ -462,12 +460,12 @@ class GUIReconstructionPanel(GUIPanel):
         return message_function
 
     def _get_generator_checkbox_tag(self, generator_name: GeneratorName) -> str:
-        return TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name.value)
+        return f"reconstruction_generator_{generator_name.value}"
 
     def _read_selected_generators(self) -> List[GeneratorName]:
         selected_generators: List[GeneratorName] = []
         for generator_name in GeneratorName:
-            tag = TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR.format(generator_name).lower()
+            tag = f"reconstruction_generator_{generator_name}".lower()
             if dpg.get_value(tag):
                 selected_generators.append(generator_name)
         return selected_generators

@@ -3,16 +3,13 @@ from typing import Any, Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.updates import GenerationSettingsUpdate
-from sampletones_application.constants.general import (
-    MSG_STATUS_INPUT,
-    SUF_HANDLER_REGISTRY,
-)
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_RECONSTRUCTOR,
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
 )
-from sampletones_application.text.elements.global_ import ContextElements
+from sampletones_application.text.elements.global_ import ContextElements, StatusElements
 from sampletones_application.text.elements.main import ReconstructorElements
 from sampletones_application.text.hierarchy import Page, Panel, TextType
 from sampletones_application.text.key import TextKey
@@ -66,6 +63,9 @@ class GUIReconstructorPanel(GUIPanel):
             TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_2)
         ]
         self._lbl_noise = language_manager[TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.NOISE)]
+        self._msg_status_input = language_manager[
+            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+        ]
 
         super().__init__(
             tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
@@ -138,7 +138,7 @@ class GUIReconstructorPanel(GUIPanel):
         )
 
         dpg.bind_item_handler_registry(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._item_handler_tag)
-        GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, MSG_STATUS_INPUT)
+        GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
         show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._tooltip_mixer)
