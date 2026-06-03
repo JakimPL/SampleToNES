@@ -34,6 +34,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 from sampletones_shared.types.application import Sender
@@ -49,6 +50,7 @@ class GUISequencerGridPanel(GUIPanel):
         layout_player: PlayerLayout,
         input_width: int,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self.sequencer_grid_logic = sequencer_grid_logic
         self._player_logic = player_logic
@@ -56,6 +58,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._layout_player = layout_player
         self._input_width = input_width
         self._language_manager = language_manager
+        self._dialogs = dialogs
 
         self.player_panel: GUIAudioPlayerPanel
 
@@ -133,6 +136,7 @@ class GUISequencerGridPanel(GUIPanel):
             player_logic=self._player_logic,
             layout=self._layout_player,
             language_manager=self._language_manager,
+            dialogs=self._dialogs,
         )
 
     def _create_module_options(self) -> None:

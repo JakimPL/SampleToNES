@@ -10,7 +10,7 @@ from sampletones_application.config.updates import (
     LibrarySettingsUpdate,
 )
 from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
-from sampletones_application.utils.dialogs import show_error_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 
 _MSG_INVALID_ERROR: Final = "Invalid configuration file."
 _MSG_LOAD_ERROR: Final = "Error loading configuration."
@@ -23,9 +23,10 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class ConfigManager:
-    def __init__(self, config_path: Optional[Path] = None) -> None:
+    def __init__(self, config_path: Optional[Path] = None, *, dialogs: DialogsRenderer) -> None:
         self.config: Config
         self.window: Window
+        self._dialogs = dialogs
 
         self.library_directory: Optional[Path] = None
         self.output_directory: Optional[Path] = None
@@ -44,19 +45,19 @@ class ConfigManager:
             except FileNotFoundError as exception:
                 self.load_default_config()
                 logger.error(f"Config file not found: {config_path}")
-                show_error_dialog(exception, _MSG_LOAD_ERROR)
+                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
             except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
-                show_error_dialog(exception, _MSG_LOAD_ERROR)
+                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
             except ValidationError as exception:
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"Invalid config file: {config_path}")
-                show_error_dialog(exception, _MSG_INVALID_ERROR)
+                self._dialogs.show_error(exception, _MSG_INVALID_ERROR)
             except Exception as exception:  # TODO: specify exception type
                 self.load_default_config()
                 logger.error_with_traceback(exception, f"Failed to load config from {config_path}")
-                show_error_dialog(exception, _MSG_LOAD_ERROR)
+                self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
         else:
             self.load_default_config()
             logger.warning(f"Config file does not exist: {config_path}")
@@ -71,10 +72,10 @@ class ConfigManager:
             self.config.save(self.config_path)
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
-            show_error_dialog(exception, _MSG_SAVE_ERROR)
+            self._dialogs.show_error(exception, _MSG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
-            show_error_dialog(exception, _MSG_SAVE_ERROR)
+            self._dialogs.show_error(exception, _MSG_SAVE_ERROR)
 
     def apply_audio_settings(self, update: AudioSettingsUpdate) -> None:
         new_general = self.config.general.model_copy(

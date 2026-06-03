@@ -33,7 +33,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.utils.dialogs import show_error_dialog, show_file_not_found_dialog, show_info_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
@@ -55,8 +55,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self.library_logic = library_logic
+        self._dialogs = dialogs
         self._tree_behavior = tree_behavior
 
         self._lbl_generate = language_manager[
@@ -425,24 +427,24 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _on_generation_completed_dialog(self) -> None:
         if not dpg.get_item_configuration(TAG_PANEL_MAIN_CONVERTER)["show"]:
-            show_info_dialog(
+            self._dialogs.show_info(
                 self.tag,
                 self._msg_generation_success,
                 self._ttl_generation_status,
             )
 
     def _on_generation_error_dialog(self, exception: Exception) -> None:
-        show_error_dialog(exception, self._msg_generation_failed)
+        self._dialogs.show_error(exception, self._msg_generation_failed)
 
     def _on_generation_cancelled_dialog(self) -> None:
-        show_info_dialog(
+        self._dialogs.show_info(
             self.tag,
             self._msg_generation_cancelled,
             self._ttl_generation_status,
         )
 
     def _on_load_file_not_found(self, path: Path, message: str) -> None:
-        show_file_not_found_dialog(path, message)
+        self._dialogs.show_file_not_found(path, message)
 
     def _on_load_error(self, exception: Exception, message: str) -> None:
-        show_error_dialog(exception, message)
+        self._dialogs.show_error(exception, message)

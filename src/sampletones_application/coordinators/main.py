@@ -27,7 +27,7 @@ from sampletones_application.ui.panels.main.converter.success_dialog import Conv
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
-from sampletones_application.utils.dialogs import show_error_dialog, show_info_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
@@ -52,6 +52,7 @@ class MainTabCoordinator:
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self._config_manager = config_manager
         self._application_config_manager = application_config_manager
@@ -84,6 +85,7 @@ class MainTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
+            dialogs=dialogs,
         )
 
         _config = config_manager.config
@@ -132,6 +134,7 @@ class MainTabCoordinator:
         )
         self._converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog(
             language_manager=language_manager,
+            dialogs=dialogs,
         )
         self._main_panel: GUIMainPanel = GUIMainPanel(
             self._config_panel,
@@ -165,8 +168,8 @@ class MainTabCoordinator:
 
         self._converter_logic.on_view_changed = self._converter_panel.update_view
         self._converter_logic.on_success = self._converter_success_dialog.show
-        self._converter_logic.on_error = lambda error: show_error_dialog(error, _msg_converter_error)
-        self._converter_logic.on_no_files_to_process = lambda: show_info_dialog(
+        self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
+        self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
             self._converter_panel.tag, _msg_no_files, _title_progress
         )
         self._converter_logic.is_library_loaded = library_manager.is_library_loaded

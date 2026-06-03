@@ -19,7 +19,7 @@ from sampletones_application.text.key import TextKey
 from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.utils.dialogs import show_error_dialog, show_modal_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_label, dpg_set_value
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.player import PlayerViewModel
@@ -36,6 +36,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         *,
         layout: PlayerLayout,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ):
         self.play_button_tag = f"{tag}{SUF_PLAYER_PLAY}"
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
@@ -50,6 +51,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         self.player_logic.on_view_changed = self.update_view
         self.player_logic.on_position_changed = on_position_changed
 
+        self._dialogs = dialogs
         self._layout = layout
         self._lbl_play = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PLAY)]
         self._lbl_pause = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PAUSE)]
@@ -168,13 +170,13 @@ class GUIAudioPlayerPanel(GUIPanel):
         try:
             self.player_logic.play()
         except PlaybackError as exception:
-            show_error_dialog(exception, self._msg_playback_error)
+            self._dialogs.show_error(exception, self._msg_playback_error)
 
     def pause_or_resume(self) -> None:
         try:
             self.player_logic.pause_or_resume()
         except PlaybackError as exception:
-            show_error_dialog(exception, self._msg_playback_error)
+            self._dialogs.show_error(exception, self._msg_playback_error)
 
     def pause(self) -> None:
         self.player_logic.pause()
@@ -198,7 +200,7 @@ class GUIAudioPlayerPanel(GUIPanel):
         def content(parent: str) -> None:
             dpg.add_text(self._msg_no_audio, parent=parent)
 
-        show_modal_dialog(
+        self._dialogs.show_modal(
             tag=self.no_audio_popup_tag,
             title=self._ttl_no_audio,
             content=content,

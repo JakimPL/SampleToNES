@@ -30,7 +30,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
-from sampletones_application.utils.dialogs import show_info_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
@@ -53,12 +53,14 @@ class GUIExplorerPanel(GUITreePanel):
         scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
+        self._dialogs = dialogs
 
         self._lbl_section = language_manager[
             TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.SECTION)
@@ -506,7 +508,7 @@ class GUIExplorerPanel(GUITreePanel):
         is_running = self.call(self.is_converter_running)
         if is_running:
             logger.warning("Conversion is already running. Wait or cancel the current operation.")
-            show_info_dialog(
+            self._dialogs.show_info(
                 tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
                 message=self._msg_converter_running,
                 title=self._ttl_converter_running,

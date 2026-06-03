@@ -21,6 +21,7 @@ from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_core.audio import AudioDeviceManager
 
@@ -36,6 +37,7 @@ class SequencerTabCoordinator:
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self._tab_label = language_manager[TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_SEQUENCER)]
         self._left_width = layout.general.panels.left.width
@@ -62,6 +64,7 @@ class SequencerTabCoordinator:
             layout_player=layout.player,
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
+            dialogs=dialogs,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,

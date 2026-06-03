@@ -68,15 +68,7 @@ from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.ui.themes.tables.table import TableTheme
 from sampletones_application.ui.themes.trace import TracebackTheme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dialogs import (
-    show_confirmation_dialog,
-    show_error_dialog,
-    show_file_not_found_dialog,
-    show_info_dialog,
-    show_modal_dialog,
-    show_reconstruction_not_loaded_dialog,
-    show_save_confirmation_dialog,
-)
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
@@ -98,9 +90,12 @@ class Application:
     def __init__(self, config_path: Optional[Path] = None) -> None:
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIR, BEHAVIOR_DIR)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
+        self.dialogs: DialogsRenderer = DialogsRenderer(
+            layout=self.layout.general, language_manager=self.language_manager
+        )
         self._setup_themes()
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
-        self.config_manager = ConfigManager(config_path)
+        self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
@@ -150,6 +145,7 @@ class Application:
             is_generation_in_progress=self._is_generation_in_progress,
             layout=self.layout,
             language_manager=self.language_manager,
+            dialogs=self.dialogs,
         )
 
         self._reconstructions_tab = ReconstructionsTabCoordinator(
@@ -167,6 +163,7 @@ class Application:
             on_reconstruction_instrument_updated=self.regenerator.regenerate,
             layout=self.layout,
             language_manager=self.language_manager,
+            dialogs=self.dialogs,
         )
 
         self._instructions_tab = InstructionsTabCoordinator(
@@ -178,6 +175,7 @@ class Application:
             on_audio_state_changed=self._update_menu,
             layout=self.layout,
             language_manager=self.language_manager,
+            dialogs=self.dialogs,
         )
 
         self._sequencer_tab = SequencerTabCoordinator(
@@ -188,6 +186,7 @@ class Application:
             browser_manager=self.browser_manager,
             layout=self.layout,
             language_manager=self.language_manager,
+            dialogs=self.dialogs,
         )
 
         self._playback_router = PlaybackRouter(
@@ -509,7 +508,7 @@ class Application:
             )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
-            show_error_dialog(
+            self.dialogs.show_error(
                 exception,
                 self.language_manager[
                     TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.CONFIG_SAVE_FAILED)
@@ -522,7 +521,7 @@ class Application:
     def _handle_save_reconstruction_as(self, filepath: Path) -> None:
         try:
             self._save_reconstruction(filepath)
-            show_info_dialog(
+            self.dialogs.show_info(
                 TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
                 self.language_manager[
                     TextKey(
@@ -538,7 +537,7 @@ class Application:
             )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
-            show_error_dialog(
+            self.dialogs.show_error(
                 exception,
                 self.language_manager[
                     TextKey(
@@ -578,7 +577,7 @@ class Application:
             )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            show_error_dialog(
+            self.dialogs.show_error(
                 exception,
                 self.language_manager[
                     TextKey(
@@ -687,7 +686,7 @@ class Application:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent)
 
-        show_modal_dialog(
+        self.dialogs.show_modal(
             tag=TAG_DIALOG_GLOBAL_CONFIG_STATUS,
             title=self.language_manager[
                 TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.CONFIG_STATUS)
@@ -709,7 +708,7 @@ class Application:
     def _check_if_reconstruction_loaded(self) -> bool:
         if not self._is_reconstruction_loaded():
             logger.warning("No reconstruction loaded; cannot proceed")
-            show_reconstruction_not_loaded_dialog()
+            self.dialogs.show_reconstruction_not_loaded()
             return False
 
         return True
@@ -750,7 +749,7 @@ class Application:
 
         self.audio_device_manager.stop()
         if not reconstruction_data.reconstruction.audio_filepath.exists():
-            show_file_not_found_dialog(
+            self.dialogs.show_file_not_found(
                 reconstruction_data.reconstruction.audio_filepath,
                 self.language_manager[
                     TextKey(
@@ -772,7 +771,7 @@ class Application:
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
-        show_error_dialog(
+        self.dialogs.show_error(
             exception,
             self.language_manager[
                 TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.AUDIO_PLAYBACK_ERROR)
@@ -910,7 +909,7 @@ class Application:
         message: str,
         ok_label: str,
     ) -> None:
-        show_confirmation_dialog(
+        self.dialogs.show_confirmation(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=self.language_manager[
                 TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.EXIT_CONFIRMATION)
@@ -928,7 +927,7 @@ class Application:
         on_confirm: Callback,
         ok_label: str,
     ) -> None:
-        show_save_confirmation_dialog(
+        self.dialogs.show_save_confirmation(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=title,
             message=message,

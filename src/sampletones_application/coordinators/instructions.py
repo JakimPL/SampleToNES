@@ -25,7 +25,7 @@ from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.instruction.details import GUIInstructionDetailsPanel
 from sampletones_application.ui.panels.instruction.instruction import GUIInstructionPanel
 from sampletones_application.ui.panels.instruction.library import GUIInstructionsLibraryPanel
-from sampletones_application.utils.dialogs import show_error_dialog
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.audio import AudioDeviceManager
@@ -45,6 +45,7 @@ class InstructionsTabCoordinator:
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self._config_manager = config_manager
         self._application_config_manager = application_config_manager
@@ -52,6 +53,7 @@ class InstructionsTabCoordinator:
         self._shortcut_manager = shortcut_manager
         self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
+        self._dialogs = dialogs
 
         self._tab_label = language_manager[
             TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_INSTRUCTIONS)
@@ -75,6 +77,7 @@ class InstructionsTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
+            dialogs=dialogs,
         )
         self._instruction_player_logic = PlayerLogic(audio_device_manager, on_audio_state_changed)
         self._instruction_panel = GUIInstructionPanel(
@@ -82,6 +85,7 @@ class InstructionsTabCoordinator:
             layout=layout.graphs,
             layout_player=layout.player,
             language_manager=language_manager,
+            dialogs=dialogs,
         )
         self._instruction_details_logic = InstructionDetailsPanelLogic(
             library_manager,
@@ -113,7 +117,7 @@ class InstructionsTabCoordinator:
             self._instruction_panel.display_instruction(instruction_data)
             self._instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
-            show_error_dialog(exception, self._msg_display_error)
+            self._dialogs.show_error(exception, self._msg_display_error)
         self._on_audio_state_changed()
 
     def create_tab(self) -> None:

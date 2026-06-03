@@ -22,6 +22,7 @@ from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.configs import InstructionsLibraryConfig
@@ -38,11 +39,13 @@ class GUIInstructionPanel(GUIPanel):
         layout: GraphsLayout,
         layout_player: PlayerLayout,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self._player_logic = player_logic
         self._layout = layout
         self._layout_player = layout_player
         self._language_manager = language_manager
+        self._dialogs = dialogs
         self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformGraph
         self.spectrum_display: GUISpectrumGraph
@@ -112,6 +115,7 @@ class GUIInstructionPanel(GUIPanel):
             on_position_changed=self._on_player_position_changed,
             layout=self._layout_player,
             language_manager=self._language_manager,
+            dialogs=self._dialogs,
         )
 
     def close_instruction(self) -> None:

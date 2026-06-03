@@ -39,6 +39,7 @@ from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
@@ -61,12 +62,14 @@ class GUIReconstructionPanel(GUIPanel):
         file_dialog_width: int,
         file_dialog_height: int,
         language_manager: LanguageManager,
+        dialogs: DialogsRenderer,
     ) -> None:
         self._player_logic = player_logic
         self._layout_graphs = layout_graphs
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
         self._layout_player = layout_player
+        self._dialogs = dialogs
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
@@ -349,6 +352,7 @@ class GUIReconstructionPanel(GUIPanel):
             on_position_changed=self._on_player_position_changed,
             layout=self._layout_player,
             language_manager=self._language_manager,
+            dialogs=self._dialogs,
         )
 
     def _create_audio_source_radio_buttons(self) -> None:

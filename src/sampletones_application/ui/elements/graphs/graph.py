@@ -12,11 +12,6 @@ from sampletones_application.constants.graphs import (
     SUF_GRAPH_X_AXIS,
     SUF_GRAPH_Y_AXIS,
 )
-from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.text.elements.global_ import GraphElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.layers.type import LayerT
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_shared.types.application import Sender
