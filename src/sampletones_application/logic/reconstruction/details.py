@@ -43,7 +43,7 @@ class ReconstructionDetailsLogic(CallbackMixin):
         self.on_reconstruction_instrument_updated: Optional[OnReconstructionInstrumentUpdatedCallback] = None
 
     def update_display(self) -> None:
-        feature_data = self.reconstruction_manager._current_features
+        feature_data = self.reconstruction_manager.current_features
         if feature_data is None:
             self._current_pitches = {}
             self.call(
@@ -213,7 +213,7 @@ class ReconstructionDetailsLogic(CallbackMixin):
         )
 
     def _get_features(self, generator_name: GeneratorName) -> Features:
-        current_features = self.reconstruction_manager._current_features
+        current_features = self.reconstruction_manager.current_features
         assert current_features is not None, "Current features should not be None"
 
         features = current_features.get_generator_features(generator_name)

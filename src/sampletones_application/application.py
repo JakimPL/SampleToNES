@@ -604,7 +604,7 @@ class Application:
         self._reconstruct_directory(directory_path)
 
     def _on_reconstruction_loaded(self) -> None:
-        reconstruction_data = self.reconstruction_manager._current_reconstruction
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
             raise RuntimeError("No reconstruction is loaded after loading process")
 

@@ -38,6 +38,7 @@ from sampletones_application.constants.reconstructions import (
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
     TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
 )
+from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.details import (
@@ -264,7 +265,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic.update_reconstruction()
 
     @property
-    def player_panel(self) -> GUIReconstructionPanel:
+    def player_panel(self) -> AudioPlayerPanelProtocol:
         return self._reconstruction_panel
 
     def request_export_wav_dialog(self) -> None:

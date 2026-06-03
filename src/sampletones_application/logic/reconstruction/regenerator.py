@@ -55,4 +55,4 @@ class Regenerator(CallbackMixin):
 
     @property
     def reconstruction_data(self) -> Optional[ReconstructionData]:
-        return self.reconstruction_manager._current_reconstruction
+        return self.reconstruction_manager.current_reconstruction
