@@ -2,19 +2,43 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.config.application.config import ApplicationConfig
+from sampletones_application.config.application.state import ApplicationState
 from sampletones_application.paths import APPLICATION_CONFIG_PATH
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 from sampletones_shared.logger import logger
-from sampletones_shared.utils.system.paths import get_directory
+from sampletones_shared.utils.serialization import load_yaml, save_yaml
+from sampletones_shared.utils.system.paths import get_directory, to_path
 
 
-class ApplicationConfigManager:
+class SessionManager:
     def __init__(self) -> None:
-        self.config: ApplicationConfig = self.load_config()
+        self.config: ApplicationConfig
+        self.state: ApplicationState
+        self._load()
 
-    def load_config(self) -> ApplicationConfig:
-        return ApplicationConfig.default()
+    def _load(self) -> None:
+        if not APPLICATION_CONFIG_PATH.exists():
+            logger.warning(
+                f"Application config file '{APPLICATION_CONFIG_PATH}' does not exist." " Loading default configuration."
+            )
+            self.config = ApplicationConfig()
+            self.state = ApplicationState()
+            return
+
+        raw = load_yaml(to_path(APPLICATION_CONFIG_PATH))
+        if not raw or not isinstance(raw, dict):
+            logger.warning(
+                f"Application config file '{APPLICATION_CONFIG_PATH}' is empty or invalid."
+                " Loading default configuration."
+            )
+            self.config = ApplicationConfig()
+            self.state = ApplicationState()
+            return
+
+        state_dict = raw.pop("state", None) or {}
+        self.config = ApplicationConfig(**raw)
+        self.state = ApplicationState(**state_dict)
 
     def set_window_state(
         self,
@@ -32,21 +56,21 @@ class ApplicationConfigManager:
             self.config.window.height = height
 
     def set_current_tab(self, tab: str) -> None:
-        self.config.state.current_tab = tab
+        self.state.current_tab = tab
 
     def toggle_show_advanced_settings(self) -> bool:
-        self.config.state.advanced_settings = not self.config.state.advanced_settings
-        return self.config.state.advanced_settings
+        self.state.advanced_settings = not self.state.advanced_settings
+        return self.state.advanced_settings
 
     def toggle_autoplay(self) -> bool:
-        self.config.state.autoplay = not self.config.state.autoplay
-        return self.config.state.autoplay
+        self.state.autoplay = not self.state.autoplay
+        return self.state.autoplay
 
     def toggle_favorite(self, path: Path) -> None:
         self.config.favorites.toggle_favorite(path)
 
     def load_current_tab(self) -> str:
-        return self.config.state.current_tab
+        return self.state.current_tab
 
     def set_config_path(self, path: Path) -> None:
         self.config.last_paths.config = get_directory(path)
@@ -79,7 +103,7 @@ class ApplicationConfigManager:
         return self.config.last_paths.audio
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.config.state.current_reconstruction = path
+        self.state.current_reconstruction = path
 
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self.config.audio.set_audio_settings(audio_device_manager)
@@ -87,7 +111,9 @@ class ApplicationConfigManager:
     def save_config(self) -> None:
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            self.config.save(APPLICATION_CONFIG_PATH)
+            data = self.config.model_dump()
+            data["state"] = self.state.model_dump()
+            save_yaml(APPLICATION_CONFIG_PATH, data)
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(
                 exception, f"File error while saving application config from {APPLICATION_CONFIG_PATH}"
@@ -117,11 +143,11 @@ class ApplicationConfigManager:
 
     @property
     def current_tab(self) -> str:
-        return self.config.state.current_tab
+        return self.state.current_tab
 
     @property
     def current_reconstruction(self) -> Optional[Path]:
-        return self.config.state.current_reconstruction
+        return self.state.current_reconstruction
 
     @property
     def current_audio_device(self) -> CurrentDevice:
@@ -133,11 +159,11 @@ class ApplicationConfigManager:
 
     @property
     def advanced_settings(self) -> bool:
-        return self.config.state.advanced_settings
+        return self.state.advanced_settings
 
     @property
     def autoplay(self) -> bool:
-        return self.config.state.autoplay
+        return self.state.autoplay
 
     @property
     def favorites(self) -> Set[Path]:

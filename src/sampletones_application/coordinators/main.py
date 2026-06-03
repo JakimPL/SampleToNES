@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -40,7 +40,7 @@ class MainTabCoordinator:
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
@@ -55,7 +55,7 @@ class MainTabCoordinator:
         dialogs: DialogsRenderer,
     ) -> None:
         self._config_manager = config_manager
-        self._application_config_manager = application_config_manager
+        self._session_manager = session_manager
         self._library_manager = library_manager
         self._on_reconstruct_file = on_reconstruct_file
         self._on_reconstruct_directory = on_reconstruct_directory
@@ -79,7 +79,7 @@ class MainTabCoordinator:
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self._explorer_logic,
-            application_config_manager,
+            session_manager,
             audio_device_manager,
             shortcut_manager,
             scheduling=layout.behavior.scheduling,
@@ -152,7 +152,7 @@ class MainTabCoordinator:
         self._config_panel.on_library_settings_changed = config_manager.apply_library_settings
         self._reconstructor_panel.on_generation_settings_changed = config_manager.apply_generation_settings
         self._advanced_settings_panel.on_advanced_settings_changed = config_manager.apply_advanced_settings
-        self._advanced_settings_panel.on_library_path_memorized = application_config_manager.set_library_path
+        self._advanced_settings_panel.on_library_path_memorized = session_manager.set_library_path
 
         self._explorer_panel.set_callbacks(
             on_wave_file_clicked=self._on_wave_file_clicked,
@@ -257,11 +257,11 @@ class MainTabCoordinator:
         self._explorer_panel.refresh()
 
     def toggle_advanced_settings(self) -> None:
-        advanced_settings = self._application_config_manager.toggle_show_advanced_settings()
+        advanced_settings = self._session_manager.toggle_show_advanced_settings()
         self._advanced_settings_panel.set_visibility(advanced_settings)
 
     def sync_advanced_settings_visibility(self) -> None:
-        self._advanced_settings_panel.set_visibility(self._application_config_manager.advanced_settings)
+        self._advanced_settings_panel.set_visibility(self._session_manager.advanced_settings)
 
     def emit_initial_view(self) -> None:
         self._converter_logic.emit_initial_view()

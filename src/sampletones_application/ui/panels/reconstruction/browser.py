@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_RECONSTRUCTIONS
 from sampletones_application.constants.reconstructions import (
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
@@ -40,7 +40,7 @@ class GUIBrowserPanel(GUITreePanel):
     def __init__(
         self,
         browser_logic: BrowserLogic,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         *,
@@ -91,7 +91,7 @@ class GUIBrowserPanel(GUITreePanel):
             tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
             parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
-            application_config_manager=application_config_manager,
+            session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,

@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
@@ -96,7 +96,7 @@ class Application:
         self._setup_themes()
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
-        self.application_config_manager = ApplicationConfigManager()
+        self.session_manager = SessionManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
         self.library_manager = InstructionsLibraryManager(self.config_manager, language_manager=self.language_manager)
@@ -126,7 +126,7 @@ class Application:
         )
 
         self._viewport_manager = ViewportManager(
-            self.application_config_manager,
+            self.session_manager,
             self.theme,
             layout=self.layout.general,
             on_fullscreen_state_changed=self._update_menu,
@@ -134,7 +134,7 @@ class Application:
 
         self._main_tab = MainTabCoordinator(
             config_manager=self.config_manager,
-            application_config_manager=self.application_config_manager,
+            session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
@@ -150,7 +150,7 @@ class Application:
 
         self._reconstructions_tab = ReconstructionsTabCoordinator(
             config_manager=self.config_manager,
-            application_config_manager=self.application_config_manager,
+            session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             reconstruction_manager=self.reconstruction_manager,
@@ -168,7 +168,7 @@ class Application:
 
         self._instructions_tab = InstructionsTabCoordinator(
             config_manager=self.config_manager,
-            application_config_manager=self.application_config_manager,
+            session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
@@ -180,7 +180,7 @@ class Application:
 
         self._sequencer_tab = SequencerTabCoordinator(
             config_manager=self.config_manager,
-            application_config_manager=self.application_config_manager,
+            session_manager=self.session_manager,
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             browser_manager=self.browser_manager,
@@ -200,8 +200,8 @@ class Application:
         self._load_settings()
 
     def _load_settings(self) -> None:
-        audio_device = self.application_config_manager.current_audio_device
-        buffer_size = self.application_config_manager.current_buffer_size
+        audio_device = self.session_manager.current_audio_device
+        buffer_size = self.session_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
 
@@ -407,9 +407,9 @@ class Application:
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
             stop_enabled=self._playback_router.is_stop_enabled,
-            autoplay=self.application_config_manager.autoplay,
-            fullscreen=self.application_config_manager.fullscreen,
-            advanced_settings=self.application_config_manager.advanced_settings,
+            autoplay=self.session_manager.autoplay,
+            fullscreen=self.session_manager.fullscreen,
+            advanced_settings=self.session_manager.advanced_settings,
         )
 
     def _update_menu(self) -> None:
@@ -446,19 +446,19 @@ class Application:
         self._update_menu()
 
     def _restore_current_items(self) -> None:
-        current_tab = self.application_config_manager.load_current_tab()
+        current_tab = self.session_manager.load_current_tab()
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
             dpg.set_value(TAG_TABS_GLOBAL, current_tab)
 
-        current_reconstruction = self.application_config_manager.current_reconstruction
+        current_reconstruction = self.session_manager.current_reconstruction
         if current_reconstruction is not None:
             if current_reconstruction.exists():
                 try:
                     self.reconstruction_manager.load_reconstruction(current_reconstruction)
                 except LoadReconstructionError:
-                    self.application_config_manager.set_current_reconstruction(None)
+                    self.session_manager.set_current_reconstruction(None)
             else:
-                self.application_config_manager.set_current_reconstruction(None)
+                self.session_manager.set_current_reconstruction(None)
 
     def _save_reconstruction_as_dialog(self) -> None:
         filepath = self.reconstruction_manager.filepath
@@ -488,7 +488,7 @@ class Application:
             callback=self._handle_save_config,
             file_count=1,
             default_filename="config",
-            default_path=str(self.application_config_manager.get_config_path()),
+            default_path=str(self.session_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -515,7 +515,7 @@ class Application:
                 ],
             )
 
-        self.application_config_manager.set_config_path(filepath)
+        self.session_manager.set_config_path(filepath)
 
     @file_dialog_handler
     def _handle_save_reconstruction_as(self, filepath: Path) -> None:
@@ -546,7 +546,7 @@ class Application:
                 ],
             )
 
-        self.application_config_manager.set_reconstruction_path(filepath)
+        self.session_manager.set_reconstruction_path(filepath)
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
@@ -557,7 +557,7 @@ class Application:
             height=self.layout.general.dialogs.file.height,
             callback=self._handle_load_config,
             file_count=1,
-            default_path=str(self.application_config_manager.get_config_path()),
+            default_path=str(self.session_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
 
@@ -589,7 +589,7 @@ class Application:
                 ],
             )
 
-        self.application_config_manager.set_config_path(filepath)
+        self.session_manager.set_config_path(filepath)
 
     def _open_audio_settings(self) -> None:
         self.audio_settings_window.show()
@@ -608,7 +608,7 @@ class Application:
             height=self.layout.general.dialogs.file.height,
             callback=self._handle_reconstruct_file,
             file_count=1,
-            default_path=str(self.application_config_manager.get_reconstruction_path()),
+            default_path=str(self.session_manager.get_reconstruction_path()),
         ):
             all_file_extensions = ",".join(EXT_FILES_AUDIO)
             dpg.add_file_extension(
@@ -632,7 +632,7 @@ class Application:
             height=self.layout.general.dialogs.file.height,
             callback=self._handle_reconstruct_directory,
             directory_selector=True,
-            default_path=str(self.application_config_manager.get_reconstruction_path()),
+            default_path=str(self.session_manager.get_reconstruction_path()),
             show=True,
         )
 
@@ -650,7 +650,7 @@ class Application:
             height=self.layout.general.dialogs.file.height,
             callback=self._handle_load_reconstruction,
             file_count=1,
-            default_path=str(self.application_config_manager.get_reconstruction_path()),
+            default_path=str(self.session_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
@@ -718,7 +718,7 @@ class Application:
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)
-        self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.session_manager.set_reconstruction_path(filepath.parent)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
@@ -734,7 +734,7 @@ class Application:
 
     def _reconstruct_directory(self, directory_path: Path) -> None:
         self._main_tab.set_input_path(directory_path, convert=True)
-        self.application_config_manager.set_reconstruction_path(directory_path)
+        self.session_manager.set_reconstruction_path(directory_path)
         self._set_current_tab(Tab.MAIN)
         self._update_menu()
 
@@ -764,7 +764,7 @@ class Application:
         filepath = reconstruction_data.filepath
         self.config_manager.load_library_and_generation_config(reconstruction_data.config)
         self._reconstructions_tab.display_reconstruction()
-        self.application_config_manager.set_current_reconstruction(filepath)
+        self.session_manager.set_current_reconstruction(filepath)
 
         self._set_current_tab(Tab.RECONSTRUCTIONS)
         self._reconstruction_session.mark_loaded(filepath.stem)
@@ -780,7 +780,7 @@ class Application:
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
-        self.application_config_manager.set_reconstruction_path(filepath.parent)
+        self.session_manager.set_reconstruction_path(filepath.parent)
         self._reconstructions_tab.load_reconstruction(filepath)
 
     def _on_reconstruction_updated(self) -> None:
@@ -825,7 +825,7 @@ class Application:
 
     def _on_reconstruction_closed(self) -> None:
         self._reconstructions_tab.close_reconstruction()
-        self.application_config_manager.set_current_reconstruction(None)
+        self.session_manager.set_current_reconstruction(None)
         self._reconstruction_session.mark_closed()
 
     def _on_reconstruction_state_changed(self) -> None:
@@ -840,7 +840,7 @@ class Application:
 
     def _set_current_tab(self, tab_tag: str) -> None:
         dpg_set_value(TAG_TABS_GLOBAL, tab_tag)
-        self.application_config_manager.set_current_tab(tab_tag)
+        self.session_manager.set_current_tab(tab_tag)
 
     def _get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_TABS_GLOBAL)
@@ -857,10 +857,10 @@ class Application:
                 return None
 
     def _persist_application_state(self) -> None:
-        self.application_config_manager.set_current_audio_device(self.audio_device_manager)
+        self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
-        self.application_config_manager.set_current_tab(self._get_current_tab())
-        self.application_config_manager.save_config()
+        self.session_manager.set_current_tab(self._get_current_tab())
+        self.session_manager.save_config()
 
     def _play_from_start(self) -> None:
         self._playback_router.play_from_start()
@@ -888,7 +888,7 @@ class Application:
         app_data: Optional[Any] = None,
         user_data: Optional[Any] = None,
     ) -> None:
-        self.application_config_manager.toggle_autoplay()
+        self.session_manager.toggle_autoplay()
         self._update_menu()
 
     def _toggle_advanced_settings(

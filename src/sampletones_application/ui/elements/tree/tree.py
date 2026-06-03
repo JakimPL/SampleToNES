@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
@@ -53,7 +53,7 @@ class GUITreePanel(GUIPanel):
         tag: str,
         parent: str,
         tree_tag: str,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         width: int = -1,
@@ -74,7 +74,7 @@ class GUITreePanel(GUIPanel):
 
         self.search_label = search_label
 
-        self.logic = TreeLogic(application_config_manager, audio_device_manager, scheduling=scheduling)
+        self.logic = TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
         self.logic.on_lock_state_changed = self._set_tree_enabled
         self.logic.on_favorite_changed = self._update_favorite_indicator
         self.logic.on_search_update_needed = self._update_tree_visibility

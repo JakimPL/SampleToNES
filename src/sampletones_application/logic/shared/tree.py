@@ -1,7 +1,7 @@
 import threading
 from typing import Callable, Optional
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.audio import AudioDeviceManager
@@ -17,12 +17,12 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 class TreeLogic(CallbackMixin):
     def __init__(
         self,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         *,
         scheduling: SchedulingBehavior,
     ) -> None:
-        self._application_config_manager = application_config_manager
+        self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
         self._scheduling = scheduling
 
@@ -76,7 +76,7 @@ class TreeLogic(CallbackMixin):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
-        if self._application_config_manager.autoplay:
+        if self._session_manager.autoplay:
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
                     try:
@@ -92,7 +92,7 @@ class TreeLogic(CallbackMixin):
         if not isinstance(node, FileSystemNode):
             return False
 
-        return node.filepath in self._application_config_manager.favorites
+        return node.filepath in self._session_manager.favorites
 
     def has_favorite_ancestor(self, node: FileSystemNode) -> bool:
         current_node = node.parent
@@ -108,7 +108,7 @@ class TreeLogic(CallbackMixin):
         return False
 
     def toggle_favorite(self, node: FileSystemNode) -> None:
-        self._application_config_manager.toggle_favorite(node.filepath)
+        self._session_manager.toggle_favorite(node.filepath)
         self.call(self.on_favorite_changed, node)
 
     def schedule_search_update(self, query: str) -> None:
@@ -126,4 +126,4 @@ class TreeLogic(CallbackMixin):
 
     @property
     def autoplay_enabled(self) -> bool:
-        return self._application_config_manager.autoplay
+        return self._session_manager.autoplay

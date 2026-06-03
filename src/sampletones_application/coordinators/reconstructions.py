@@ -3,7 +3,7 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -54,7 +54,7 @@ class ReconstructionsTabCoordinator:
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         reconstruction_manager: ReconstructionManager,
@@ -191,7 +191,7 @@ class ReconstructionsTabCoordinator:
         self._browser_logic: BrowserLogic = BrowserLogic(config_manager, browser_manager)
         self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
             self._browser_logic,
-            application_config_manager,
+            session_manager,
             audio_device_manager,
             shortcut_manager,
             scheduling=layout.behavior.scheduling,
@@ -209,7 +209,7 @@ class ReconstructionsTabCoordinator:
             dialogs=dialogs,
         )
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
-            application_config_manager,
+            session_manager,
             reconstruction_manager,
         )
         self._reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(

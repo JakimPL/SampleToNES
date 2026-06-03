@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -30,7 +30,7 @@ class SequencerTabCoordinator:
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         browser_manager: BrowserManager,
@@ -48,7 +48,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(config_manager, browser_manager)
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
             self._sequencer_browser_logic,
-            application_config_manager,
+            session_manager,
             audio_device_manager,
             shortcut_manager,
             scheduling=layout.behavior.scheduling,

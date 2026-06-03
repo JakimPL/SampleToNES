@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
     TAG_TAB_GLOBAL_MAIN,
@@ -46,7 +46,7 @@ class GUIExplorerPanel(GUITreePanel):
     def __init__(
         self,
         explorer_logic: ExplorerLogic,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         *,
@@ -57,7 +57,7 @@ class GUIExplorerPanel(GUITreePanel):
     ) -> None:
         self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
-        self.application_config_manager = application_config_manager
+        self.session_manager = session_manager
         self.shortcut_manager = shortcut_manager
         self._tree_behavior = tree_behavior
         self._dialogs = dialogs
@@ -119,7 +119,7 @@ class GUIExplorerPanel(GUITreePanel):
             tag=TAG_PANEL_MAIN_EXPLORER,
             parent=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_LEFT}",
             tree_tag=TAG_TREE_MAIN_EXPLORER,
-            application_config_manager=application_config_manager,
+            session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
@@ -366,7 +366,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _create_status_bar_message_function_for_audio_node(self) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
-            if self.application_config_manager.autoplay:
+            if self.session_manager.autoplay:
                 return self._msg_status_audio
 
             return self._msg_status_audio_no_autoplay

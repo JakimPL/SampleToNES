@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Callable, FrozenSet, List, Optional
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
@@ -18,10 +18,10 @@ from sampletones_shared.utils.system.paths import to_path
 class ReconstructionPanelLogic(CallbackMixin):
     def __init__(
         self,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
     ) -> None:
-        self._application_config_manager = application_config_manager
+        self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
@@ -119,7 +119,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         reconstruction = reconstruction_data.reconstruction
         filename = to_path(reconstruction.audio_filepath).stem
         instrument_name = f"{filename} ({generator_name})"
-        default_path = str(self._application_config_manager.get_instrument_path())
+        default_path = str(self._session_manager.get_instrument_path())
 
         self._pending_generator_name = generator_name
         self.call(self.on_open_export_instrument_dialog, instrument_name, default_path)
@@ -131,7 +131,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         reconstruction = reconstruction_data.reconstruction
         default_filename = to_path(reconstruction.audio_filepath).stem
-        default_path = str(self._application_config_manager.get_instrument_path())
+        default_path = str(self._session_manager.get_instrument_path())
 
         self.call(self.on_open_export_instruments_dialog, default_filename, default_path)
 
@@ -142,7 +142,7 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         reconstruction = reconstruction_data.reconstruction
         default_filename = to_path(reconstruction.audio_filepath).stem
-        default_path = str(self._application_config_manager.get_audio_path())
+        default_path = str(self._session_manager.get_audio_path())
 
         self.call(self.on_open_export_wav_dialog, default_filename, default_path)
 
@@ -167,7 +167,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
             self.call(self.on_export_instrument_error, exception)
 
-        self._application_config_manager.set_instrument_path(filepath.parent)
+        self._session_manager.set_instrument_path(filepath.parent)
 
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
         if not self._reconstruction_data:
@@ -185,7 +185,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
             self.call(self.on_export_instruments_error, exception)
 
-        self._application_config_manager.set_instrument_path(directory.parent)
+        self._session_manager.set_instrument_path(directory.parent)
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data
@@ -204,7 +204,7 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
             self.call(self.on_export_wav_error, exception)
 
-        self._application_config_manager.set_audio_path(filepath)
+        self._session_manager.set_audio_path(filepath)
 
     def handle_locate_original_audio(self) -> None:
         path = self._reconstruction_manager.audio_filepath

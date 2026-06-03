@@ -2,7 +2,7 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.application.manager import ApplicationConfigManager
+from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -37,7 +37,7 @@ class InstructionsTabCoordinator:
     def __init__(
         self,
         config_manager: ConfigManager,
-        application_config_manager: ApplicationConfigManager,
+        session_manager: SessionManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
@@ -48,7 +48,7 @@ class InstructionsTabCoordinator:
         dialogs: DialogsRenderer,
     ) -> None:
         self._config_manager = config_manager
-        self._application_config_manager = application_config_manager
+        self._session_manager = session_manager
         self._audio_device_manager = audio_device_manager
         self._shortcut_manager = shortcut_manager
         self._library_manager = library_manager
@@ -71,7 +71,7 @@ class InstructionsTabCoordinator:
         self._library_logic = LibraryLogic(config_manager, library_manager, language_manager=language_manager)
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
-            application_config_manager,
+            session_manager,
             audio_device_manager,
             shortcut_manager,
             scheduling=layout.behavior.scheduling,
