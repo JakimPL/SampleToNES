@@ -29,10 +29,10 @@ bar_plot:
   hover_alpha: 80
 
 colors:
-  bar_plot: [100, 200, 255, 255]
-  bar_plot_zero_line: [200, 200, 200, 255]
-  waveform_default: [255, 255, 255, 255]
-  waveform_sample: [100, 200, 255, 255]
-  waveform_reconstruction: [255, 200, 100, 255]
-  waveform_position_indicator: [255, 255, 255, 255]
-  waveform_overlay: [255, 255, 255, 32]
+  bar_plot: "#64c8ff"
+  bar_plot_zero_line: "#c8c8c8"
+  waveform_default: "#ffffff"
+  waveform_sample: "#64c8ff"
+  waveform_reconstruction: "#ffc864"
+  waveform_position_indicator: "#ffffff"
+  waveform_overlay: "#ffffff20"

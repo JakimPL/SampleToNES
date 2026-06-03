@@ -6,7 +6,7 @@ values:
   float_precision: 4
 
 colors:
-  library: [220, 220, 220, 255]
-  generator: [210, 232, 210, 255]
-  group: [210, 232, 232, 255]
-  instruction: [210, 210, 210, 255]
+  library: "#dcdcdc"
+  generator: "#d2e8d2"
+  group: "#d2e8e8"
+  instruction: "#d2d2d2"

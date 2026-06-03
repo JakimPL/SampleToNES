@@ -22,7 +22,7 @@ bar_plots:
     max_y: 3.0
 
 colors:
-  pitch: [100, 200, 255, 255]
-  volume: [100, 255, 100, 255]
-  arpeggio: [255, 150, 100, 255]
-  duty_cycle: [255, 200, 100, 255]
+  pitch: "#64c8ff"
+  volume: "#64ff64"
+  arpeggio: "#ff9664"
+  duty_cycle: "#ffc864"

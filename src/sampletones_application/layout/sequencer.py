@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-RGBA = tuple[int, int, int, int]
+from sampletones_application.utils.color import RGBA
 
 
 class SequencerTableCells(BaseModel, frozen=True):

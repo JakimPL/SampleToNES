@@ -22,4 +22,4 @@ tracker:
   row_height: 20
 
 colors:
-  pattern_highlight: [255, 255, 255, 24]
+  pattern_highlight: "#ffffff18"
