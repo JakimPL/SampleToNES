@@ -1,12 +1,13 @@
 __pycache__/
+.claude/
+.github/
+.idea/
 .ipynb_checkpoints/
 .mypy_cache/
 .pytest_cache/
-.idea/
-.vscode/
-.github/
 .venv/
 .venv-build/
+.vscode/
 
 build/
 dist/
@@ -52,4 +53,3 @@ sampletones
 *.exe
 *.dll
 *.so
-.claude/worktrees/
