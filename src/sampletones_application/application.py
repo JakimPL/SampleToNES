@@ -6,51 +6,12 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    DIM_DIALOG_HEIGHT_FILE,
-    DIM_DIALOG_WIDTH_FILE,
-    DIM_STATUS_HEIGHT,
-    LBL_BUTTON_GLOBAL_CLOSE,
-    LBL_BUTTON_GLOBAL_DISCARD,
-    LBL_BUTTON_GLOBAL_EXIT,
-    LBL_BUTTON_GLOBAL_OK,
-    MSG_ALL_AUDIO_FORMATS,
-    MSG_AUDIO_PLAYBACK_ERROR,
-    MSG_CONFIGURATION_LOADED_SUCCESSFULLY,
-    MSG_CONFIGURATION_SAVED_SUCCESSFULLY,
-    MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
-    MSG_GLOBAL_CONFIG_SAVE_FAILED,
-    MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
-    MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
-    MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
-    MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
-    MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED,
-    MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
     TAG_DIALOG_GLOBAL_CONFIG_STATUS,
     TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
     TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
     TAG_STATUS_WINDOW_GLOBAL,
     TAG_TABS_GLOBAL,
     TAG_WINDOW_GLOBAL_MAIN,
-    TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
-    TTL_DIALOG_CONFIG_STATUS,
-    TTL_DIALOG_EXIT_CONFIRMATION,
-    TTL_DIALOG_LOAD_CONFIG,
-    TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
-    TTL_DIALOG_RECONSTRUCT_DIRECTORY,
-    TTL_DIALOG_RECONSTRUCT_FILE,
-    TTL_DIALOG_RECONSTRUCTION_SAVED,
-    TTL_DIALOG_SAVE_CONFIG,
-    TTL_DIALOG_SAVE_RECONSTRUCTION,
-    TTL_WINDOW_MAIN,
-    VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
-    VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
-    VAL_PRIORITY_UPDATE_STATUS,
-    VAL_WINDOW_PRIMARY,
-)
-from sampletones_application.constants.reconstructions import (
-    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
-    TTL_DIALOG_LOAD_RECONSTRUCTION,
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
@@ -63,14 +24,49 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.regenerator import Regenerator
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
-from sampletones_application.paths import BEHAVIOR_DIR, LAYOUT_DIR
-from sampletones_application.text.hierarchy import Tab
+from sampletones_application.paths import BEHAVIOR_DIR, LANG_EN, LAYOUT_DIR
+from sampletones_application.text.elements.global_ import (
+    DialogElements,
+    GlobalDialogTitleElements,
+    GlobalMessageElements,
+)
+from sampletones_application.text.elements.reconstructions import (
+    ReconstructionPanelElements,
+    ReconstructionsBrowserElements,
+)
+from sampletones_application.text.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
+from sampletones_application.ui.themes.converter import ConverterTheme
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.fps import FPSTimerTheme
+from sampletones_application.ui.themes.graphs.indicator import IndicatorGraphTheme
+from sampletones_application.ui.themes.graphs.overlay import OverlayGraphTheme
+from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
+from sampletones_application.ui.themes.input import InvalidInputTheme
+from sampletones_application.ui.themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from sampletones_application.ui.themes.nodes.file import (
+    LibraryFileNodeTheme,
+    NoContentFileNodeTheme,
+    NotExpandedDirectoryNodeTheme,
+    ReconstructionFileNodeTheme,
+    WaveFileNodeTheme,
+)
+from sampletones_application.ui.themes.nodes.library import (
+    LibraryGeneratorNodeTheme,
+    LibraryGroupNodeTheme,
+    LibraryInstructionNodeTheme,
+    LibraryLibraryNodeTheme,
+)
+from sampletones_application.ui.themes.status import StatusBarTheme
+from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme
+from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
+from sampletones_application.ui.themes.tables.table import TableTheme
+from sampletones_application.ui.themes.trace import TracebackTheme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dialogs import (
     show_confirmation_dialog,
@@ -101,21 +97,30 @@ from sampletones_shared.types.callback import Callback
 class Application:
     def __init__(self, config_path: Optional[Path] = None) -> None:
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIR, BEHAVIOR_DIR)
+        self.language_manager: LanguageManager = LanguageManager(LANG_EN)
+        self._setup_themes()
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path)
         self.application_config_manager = ApplicationConfigManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
-        self.library_manager = InstructionsLibraryManager(self.config_manager)
-        self.browser_manager = BrowserManager(self.config_manager)
-        self.reconstruction_manager = ReconstructionManager()
-        self.regenerator: Regenerator = Regenerator(self.reconstruction_manager)
+        self.library_manager = InstructionsLibraryManager(self.config_manager, language_manager=self.language_manager)
+        self.browser_manager = BrowserManager(self.config_manager, language_manager=self.language_manager)
+        self.reconstruction_manager = ReconstructionManager(scheduling=self.layout.behavior.scheduling)
+        self.regenerator: Regenerator = Regenerator(
+            self.reconstruction_manager,
+            scheduling=self.layout.behavior.scheduling,
+        )
         self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
 
-        self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(self.audio_device_manager)
-        self.status_bar = GUIStatusBar()
+        self.audio_settings_window: GUIAudioSettingsWindow = GUIAudioSettingsWindow(
+            self.audio_device_manager,
+            layout=self.layout.settings,
+            language_manager=self.language_manager,
+        )
+        self.status_bar = GUIStatusBar(display_time=self.layout.behavior.ui.status_bar_display_time)
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
@@ -126,6 +131,7 @@ class Application:
         self._viewport_manager = ViewportManager(
             self.application_config_manager,
             self.theme,
+            layout=self.layout.general,
             on_fullscreen_state_changed=self._update_menu,
         )
 
@@ -140,6 +146,8 @@ class Application:
             on_load_reconstruction=self._load_reconstruction_with_confirmation,
             on_load_library=self._load_library,
             is_generation_in_progress=self._is_generation_in_progress,
+            layout=self.layout,
+            language_manager=self.language_manager,
         )
 
         self._reconstructions_tab = ReconstructionsTabCoordinator(
@@ -155,6 +163,8 @@ class Application:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
             on_reconstruction_instrument_updated=self.regenerator.regenerate,
+            layout=self.layout,
+            language_manager=self.language_manager,
         )
 
         self._instructions_tab = InstructionsTabCoordinator(
@@ -164,6 +174,8 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
+            layout=self.layout,
+            language_manager=self.language_manager,
         )
 
         self._sequencer_tab = SequencerTabCoordinator(
@@ -172,6 +184,8 @@ class Application:
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             browser_manager=self.browser_manager,
+            layout=self.layout,
+            language_manager=self.language_manager,
         )
 
         self._playback_router = PlaybackRouter(
@@ -188,6 +202,43 @@ class Application:
         buffer_size = self.application_config_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
+
+    def _setup_themes(self) -> None:
+        general = self.layout.general
+        graphs = self.layout.graphs
+        instructions = self.layout.instructions
+        reconstructions = self.layout.reconstructions
+        sequencer = self.layout.sequencer
+
+        FontRegistry.setup(general.fonts)
+
+        DefaultTheme.setup(general)
+        StatusBarTheme.setup(general)
+        FPSTimerTheme.setup(general)
+        ConverterTheme.setup(general)
+        InvalidInputTheme.setup(general)
+        TracebackTheme.setup(general)
+        TableTheme.setup(general)
+
+        FavoriteNodeTheme.setup(general)
+        FavoriteChildNodeTheme.setup(general)
+        NoContentFileNodeTheme.setup(general)
+        ReconstructionFileNodeTheme.setup(general)
+        LibraryFileNodeTheme.setup(general)
+        WaveFileNodeTheme.setup(general)
+        NotExpandedDirectoryNodeTheme.setup(general)
+
+        LibraryLibraryNodeTheme.setup(instructions)
+        LibraryGeneratorNodeTheme.setup(instructions)
+        LibraryGroupNodeTheme.setup(instructions)
+        LibraryInstructionNodeTheme.setup(instructions)
+
+        IndicatorGraphTheme.setup(graphs)
+        OverlayGraphTheme.setup(graphs)
+        ZeroLineGraphTheme.setup(graphs)
+
+        InitialPitchTableTheme.setup(reconstructions)
+        PatternTableTheme.setup(general, sequencer)
 
     def _setup_gui(self) -> None:
         dpg.create_context()
@@ -215,7 +266,7 @@ class Application:
         dpg.render_dearpygui_frame()
 
     def _set_fonts(self) -> None:
-        FontRegistry.register_fonts()
+        FontRegistry.register_fonts(self.layout.general.fonts.scale)
 
     def _set_default_theme(self) -> None:
         self.theme.bind()
@@ -334,14 +385,16 @@ class Application:
 
     def _create_main_window(self) -> None:
         with dpg.window(
-            label=TTL_WINDOW_MAIN,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.MAIN_WINDOW)
+            ],
             tag=TAG_WINDOW_GLOBAL_MAIN,
         ):
             self._create_menu_bar()
             self._create_tabs()
             self._create_status_bar()
 
-        dpg.set_primary_window(TAG_WINDOW_GLOBAL_MAIN, VAL_WINDOW_PRIMARY)
+        dpg.set_primary_window(TAG_WINDOW_GLOBAL_MAIN, True)
 
     def _create_menu_bar(self) -> None:
         self._menu_bar.create(self._build_menu_bar_viewmodel())
@@ -363,7 +416,7 @@ class Application:
 
     def _create_tabs(self) -> None:
         with dpg.child_window(
-            height=-DIM_STATUS_HEIGHT,
+            height=-self.layout.general.status_bar.height,
             border=False,
         ):
             with dpg.tab_bar(
@@ -411,11 +464,13 @@ class Application:
             return
 
         with dpg.file_dialog(
-            label=TTL_DIALOG_SAVE_RECONSTRUCTION,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.SAVE_RECONSTRUCTION)
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_save_reconstruction_as,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_filename=filepath.name,
             default_path=str(filepath.parent),
         ):
@@ -423,12 +478,14 @@ class Application:
 
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_SAVE_CONFIG,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.SAVE_CONFIG)
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_save_config,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
-            default_filename=VAL_DIALOG_GLOBAL_DEFAULT_CONFIG_FILENAME,
+            file_count=1,
+            default_filename="config",
             default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
@@ -437,10 +494,24 @@ class Application:
     def _handle_save_config(self, filepath: Path) -> None:
         try:
             self.config_manager.save_config_to_file(filepath)
-            self._show_config_status_dialog(MSG_CONFIGURATION_SAVED_SUCCESSFULLY)
+            self._show_config_status_dialog(
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
+                    )
+                ]
+            )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
-            show_error_dialog(exception, MSG_GLOBAL_CONFIG_SAVE_FAILED)
+            show_error_dialog(
+                exception,
+                self.language_manager[
+                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.CONFIG_SAVE_FAILED)
+                ],
+            )
 
         self.application_config_manager.set_config_path(filepath)
 
@@ -450,22 +521,40 @@ class Application:
             self._save_reconstruction(filepath)
             show_info_dialog(
                 TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
-                MSG_GLOBAL_RECONSTRUCTION_SAVED_SUCCESSFULLY,
-                TTL_DIALOG_RECONSTRUCTION_SAVED,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
+                    )
+                ],
+                self.language_manager[
+                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCTION_SAVED)
+                ],
             )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
-            show_error_dialog(exception, MSG_GLOBAL_RECONSTRUCTION_SAVE_FAILED)
+            show_error_dialog(
+                exception,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED
+                    )
+                ],
+            )
 
         self.application_config_manager.set_reconstruction_path(filepath)
 
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_LOAD_CONFIG,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.LOAD_CONFIG)
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_load_config,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_path=str(self.application_config_manager.get_config_path()),
         ):
             dpg.add_file_extension(EXT_FILE_JSON)
@@ -474,10 +563,29 @@ class Application:
     def _handle_load_config(self, filepath: Path) -> None:
         try:
             self.config_manager.load_config_from_file(filepath)
-            self._show_config_status_dialog(MSG_CONFIGURATION_LOADED_SUCCESSFULLY)
+            self._show_config_status_dialog(
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY,
+                    )
+                ]
+            )
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED)
+            show_error_dialog(
+                exception,
+                self.language_manager[
+                    TextKey(
+                        Page.RECONSTRUCTIONS,
+                        Panel.RECONSTRUCTION,
+                        TextType.MESSAGE,
+                        ReconstructionPanelElements.EXPORT_WAV_FAILED,
+                    )
+                ],
+            )
 
         self.application_config_manager.set_config_path(filepath)
 
@@ -491,15 +599,20 @@ class Application:
 
         self._instructions_tab.ensure_library_loaded()
         with dpg.file_dialog(
-            label=TTL_DIALOG_RECONSTRUCT_FILE,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCT_FILE)
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_reconstruct_file,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             all_file_extensions = ",".join(EXT_FILES_AUDIO)
-            dpg.add_file_extension(f"{MSG_ALL_AUDIO_FORMATS}{{{all_file_extensions}}}", color=(0, 255, 255, 255))
+            dpg.add_file_extension(
+                f"{self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.ALL_AUDIO_FORMATS)]}{{{all_file_extensions}}}",
+                color=(0, 255, 255, 255),
+            )
             for extension in EXT_FILES_AUDIO:
                 dpg.add_file_extension(extension)
 
@@ -510,9 +623,11 @@ class Application:
 
         self._instructions_tab.ensure_library_loaded()
         dpg.add_file_dialog(
-            label=TTL_DIALOG_RECONSTRUCT_DIRECTORY,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY)
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_reconstruct_directory,
             directory_selector=True,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
@@ -521,11 +636,18 @@ class Application:
 
     def _load_reconstruction_dialog(self) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_LOAD_RECONSTRUCTION,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self.language_manager[
+                TextKey(
+                    Page.RECONSTRUCTIONS,
+                    Panel.BROWSER,
+                    TextType.TITLE,
+                    ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
+                )
+            ],
+            width=self.layout.general.dialogs.file.width,
+            height=self.layout.general.dialogs.file.height,
             callback=self._handle_load_reconstruction,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_path=str(self.application_config_manager.get_reconstruction_path()),
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
@@ -539,11 +661,21 @@ class Application:
 
         if self._is_reconstruction_unsaved():
             self._show_save_confirmation_dialog(
-                TTL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION,
-                MSG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION
+                    )
+                ],
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION
+                    )
+                ],
                 on_confirm=load_reconstruction,
                 on_save=self._save_reconstruction,
-                ok_label=LBL_BUTTON_GLOBAL_DISCARD,
+                ok_label=self.language_manager[
+                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.DISCARD)
+                ],
             )
         else:
             load_reconstruction()
@@ -554,7 +686,9 @@ class Application:
 
         show_modal_dialog(
             tag=TAG_DIALOG_GLOBAL_CONFIG_STATUS,
-            title=TTL_DIALOG_CONFIG_STATUS,
+            title=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.CONFIG_STATUS)
+            ],
             content=content,
         )
 
@@ -615,7 +749,14 @@ class Application:
         if not reconstruction_data.reconstruction.audio_filepath.exists():
             show_file_not_found_dialog(
                 reconstruction_data.reconstruction.audio_filepath,
-                MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_AUDIO_FILE_NOT_FOUND,
+                self.language_manager[
+                    TextKey(
+                        Page.RECONSTRUCTIONS,
+                        Panel.BROWSER,
+                        TextType.MESSAGE,
+                        ReconstructionsBrowserElements.AUDIO_FILE_NOT_FOUND,
+                    )
+                ],
             )
 
         filepath = reconstruction_data.filepath
@@ -628,7 +769,12 @@ class Application:
 
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
-        show_error_dialog(exception, MSG_AUDIO_PLAYBACK_ERROR)
+        show_error_dialog(
+            exception,
+            self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.AUDIO_PLAYBACK_ERROR)
+            ],
+        )
 
     @file_dialog_handler
     def _handle_load_reconstruction(self, filepath: Path) -> None:
@@ -650,11 +796,24 @@ class Application:
     def _close_reconstruction_with_confirmation(self) -> None:
         if self._is_reconstruction_unsaved():
             self._show_save_confirmation_dialog(
-                TTL_DIALOG_CLOSE_UNSAVED_RECONSTRUCTION,
-                MSG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.TITLE,
+                        GlobalDialogTitleElements.CLOSE_UNSAVED_RECONSTRUCTION,
+                    )
+                ],
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION
+                    )
+                ],
                 on_confirm=self._close_reconstruction,
                 on_save=self._save_reconstruction,
-                ok_label=LBL_BUTTON_GLOBAL_CLOSE,
+                ok_label=self.language_manager[
+                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CLOSE)
+                ],
             )
         else:
             self._close_reconstruction()
@@ -671,6 +830,9 @@ class Application:
         self._viewport_manager.update_title(
             self._reconstruction_session.name,
             self._reconstruction_session.unsaved_changes,
+            title=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.MAIN_WINDOW)
+            ],
         )
         self._update_menu()
 
@@ -740,10 +902,16 @@ class Application:
         fps = self.fps_timer.update(delta_time)
         self._menu_bar.update_fps(fps)
 
-    def _show_confirmation_dialog(self, message: str, ok_label: str = LBL_BUTTON_GLOBAL_OK) -> None:
+    def _show_confirmation_dialog(
+        self,
+        message: str,
+        ok_label: str,
+    ) -> None:
         show_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
-            title=TTL_DIALOG_EXIT_CONFIRMATION,
+            title=self.language_manager[
+                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.EXIT_CONFIRMATION)
+            ],
             message=message,
             on_confirm=self._exit_application,
             ok_label=ok_label,
@@ -755,7 +923,7 @@ class Application:
         message: str,
         on_save: Callback,
         on_confirm: Callback,
-        ok_label: str = LBL_BUTTON_GLOBAL_OK,
+        ok_label: str,
     ) -> None:
         show_save_confirmation_dialog(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
@@ -769,21 +937,38 @@ class Application:
     def _on_close(self) -> None:
         if self._is_reconstruction_unsaved():
             self._show_save_confirmation_dialog(
-                TTL_DIALOG_EXIT_CONFIRMATION,
-                MSG_GLOBAL_EXIT_UNSAVED_RECONSTRUCTION,
+                self.language_manager[
+                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.EXIT_CONFIRMATION)
+                ],
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION
+                    )
+                ],
                 on_save=self._save_reconstruction,
                 on_confirm=self._exit_application,
-                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
             )
         elif self._is_converter_running():
             self._show_confirmation_dialog(
-                MSG_GLOBAL_EXIT_CONVERSION_IN_PROGRESS,
-                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS
+                    )
+                ],
+                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
             )
         elif self._is_library_generating():
             self._show_confirmation_dialog(
-                MSG_GLOBAL_EXIT_LIBRARY_GENERATION_IN_PROGRESS,
-                ok_label=LBL_BUTTON_GLOBAL_EXIT,
+                self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.EXIT_LIBRARY_GENERATION_IN_PROGRESS,
+                    )
+                ],
+                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
             )
         else:
             self._exit_application()
@@ -817,7 +1002,7 @@ class Application:
 
     def _post_frame(self) -> None:
         CallbackQueue.notify_frame()
-        CallbackQueue.add(self._update_status, priority=VAL_PRIORITY_UPDATE_STATUS)
+        CallbackQueue.add(self._update_status, priority=self.layout.behavior.scheduling.priority_update_status)
 
     def run(self) -> None:
         try:

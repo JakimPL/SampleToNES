@@ -2,11 +2,7 @@ from typing import Callable, Dict, FrozenSet, Optional, cast
 
 import numpy as np
 
-from sampletones_application.constants.general import (
-    VAL_DELAY_SCHEDULE,
-    VAL_PRIORITY_SCHEDULE,
-)
-from sampletones_application.constants.reconstructions import VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
@@ -29,8 +25,16 @@ OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, F
 
 
 class ReconstructionDetailsLogic(CallbackMixin):
-    def __init__(self, reconstruction_manager: ReconstructionManager) -> None:
+    def __init__(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        *,
+        scheduling: SchedulingBehavior,
+        pitch_change_delay: float,
+    ) -> None:
         self.reconstruction_manager = reconstruction_manager
+        self._scheduling = scheduling
+        self._pitch_change_delay = pitch_change_delay
 
         self._pending_reconstruction_update: Optional[ReconstructionUpdate] = None
         self._hold_direction: Optional[int] = None
@@ -159,14 +163,14 @@ class ReconstructionDetailsLogic(CallbackMixin):
         direction = -1 if is_decrement else 1
         if self._hold_direction != direction or self._hold_timer is None:
             self._hold_direction = direction
-            self._hold_timer = 3 * VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
+            self._hold_timer = 3 * self._pitch_change_delay
             return None
 
         self._hold_timer -= delta_time
         if self._hold_timer > 0:
             return None
 
-        self._hold_timer = VAL_DELAY_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_CHANGE
+        self._hold_timer = self._pitch_change_delay
         return direction
 
     def _parse_pitch_text(self, generator_name: GeneratorName, text: str, current_raw_value: int) -> int:
@@ -194,8 +198,8 @@ class ReconstructionDetailsLogic(CallbackMixin):
         self._pending_reconstruction_update = update
         CallbackQueue.add(
             self._on_reconstruction_update_scheduled,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
+            priority=self._scheduling.priority_schedule,
+            delay=self._scheduling.delay_schedule,
         )
 
     def _on_reconstruction_update_scheduled(self) -> None:

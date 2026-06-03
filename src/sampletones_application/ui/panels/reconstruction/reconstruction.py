@@ -4,30 +4,10 @@ from typing import Any, Callable, List, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    DIM_DIALOG_HEIGHT_FILE,
-    DIM_DIALOG_WIDTH_FILE,
-    LBL_CHECKBOX_GLOBAL_NOISE,
-    LBL_CHECKBOX_GLOBAL_PULSE_1,
-    LBL_CHECKBOX_GLOBAL_PULSE_2,
-    LBL_CHECKBOX_GLOBAL_TRIANGLE,
     SUF_PANEL_CENTER,
     TAG_TAB_GLOBAL_RECONSTRUCTIONS,
-    VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
-    VAL_TEXT_OFF,
-    VAL_TEXT_ON,
 )
-from sampletones_application.constants.graphs import DIM_WAVEFORM_HEIGHT, DIM_WAVEFORM_WIDTH
 from sampletones_application.constants.reconstructions import (
-    LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
-    LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
-    LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
-    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
-    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
-    LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
-    LBL_TOOLTIP_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
@@ -40,11 +20,18 @@ from sampletones_application.constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
     TPL_TAG_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_GENERATOR,
     TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
-    TTL_DIALOG_EXPORT_FTI,
-    TTL_DIALOG_EXPORT_WAV,
-    VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.text.elements.global_ import ContextElements, GlobalTemplateElements
+from sampletones_application.text.elements.reconstructions import (
+    ReconstructionPanelElements,
+    ReconstructionsDetailsElements,
+)
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -65,8 +52,21 @@ from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
 
 class GUIReconstructionPanel(GUIPanel):
-    def __init__(self, player_logic: PlayerLogic) -> None:
+    def __init__(
+        self,
+        player_logic: PlayerLogic,
+        *,
+        layout_graphs: GraphsLayout,
+        layout_player: PlayerLayout,
+        file_dialog_width: int,
+        file_dialog_height: int,
+        language_manager: LanguageManager,
+    ) -> None:
         self._player_logic = player_logic
+        self._layout_graphs = layout_graphs
+        self._file_dialog_width = file_dialog_width
+        self._file_dialog_height = file_dialog_height
+        self._layout_player = layout_player
 
         self.waveform_display: GUIWaveformGraph
         self.player_panel: GUIAudioPlayerPanel
@@ -85,6 +85,120 @@ class GUIReconstructionPanel(GUIPanel):
         self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
         self.autoscale_tag = f"{self.plot_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
 
+        self._lbl_audio_source = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.AUDIO_SOURCE_LABEL,
+            )
+        ]
+        self._lbl_autoscale = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.AUTOSCALE_CHECKBOX,
+            )
+        ]
+        self._lbl_export_wav = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.EXPORT_WAV_BUTTON,
+            )
+        ]
+        self._lbl_locate_audio = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
+            )
+        ]
+        self._lbl_original_audio = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.ORIGINAL_AUDIO_RADIO,
+            )
+        ]
+        self._lbl_reconstruction_radio = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.RECONSTRUCTION_RADIO,
+            )
+        ]
+        self._lbl_waveform = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.LABEL,
+                ReconstructionPanelElements.WAVEFORM_LABEL,
+            )
+        ]
+        self._tooltip_autoscale = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.TOOLTIP,
+                ReconstructionPanelElements.AUTOSCALE_TOOLTIP,
+            )
+        ]
+        self._msg_generator_toggle = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_GENERATOR_TOGGLE,
+            )
+        ]
+        self._msg_generator_not_available = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_GENERATOR_NOT_AVAILABLE,
+            )
+        ]
+        self._ttl_export_wav = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TITLE,
+                ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
+            )
+        ]
+        self._ttl_export_fti = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TITLE,
+                ReconstructionsDetailsElements.EXPORT_FTI_DIALOG,
+            )
+        ]
+        self._lbl_pulse_1 = language_manager[
+            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_1)
+        ]
+        self._lbl_pulse_2 = language_manager[
+            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_2)
+        ]
+        self._lbl_triangle = language_manager[
+            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.TRIANGLE)
+        ]
+        self._lbl_noise = language_manager[TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.NOISE)]
+        self._val_text_on = language_manager[
+            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.ON)
+        ]
+        self._val_text_off = language_manager[
+            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.OFF)
+        ]
+        self._language_manager = language_manager
+
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
             parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
@@ -96,9 +210,7 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_plot_panel()
 
     def update_view(self, viewmodel: ReconstructionViewModel) -> None:
-        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
-            VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
-        )
+        radio_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format("selector")
 
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
@@ -108,7 +220,7 @@ class GUIReconstructionPanel(GUIPanel):
 
         dpg_configure_item(radio_tag, enabled=viewmodel.audio_source_enabled)
         if not viewmodel.audio_source_enabled:
-            dpg_set_value(radio_tag, LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO)
+            dpg_set_value(radio_tag, self._lbl_reconstruction_radio)
 
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=viewmodel.buttons_enabled)
         dpg_configure_item(
@@ -134,11 +246,11 @@ class GUIReconstructionPanel(GUIPanel):
 
     def open_export_instrument_dialog(self, default_filename: str, default_path: str) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_EXPORT_FTI,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self._ttl_export_fti,
+            width=self._file_dialog_width,
+            height=self._file_dialog_height,
             callback=self._handle_export_instrument,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_filename=default_filename,
             default_path=default_path,
         ):
@@ -146,11 +258,11 @@ class GUIReconstructionPanel(GUIPanel):
 
     def open_export_instruments_dialog(self, default_filename: str, default_path: str) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_EXPORT_FTI,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self._ttl_export_fti,
+            width=self._file_dialog_width,
+            height=self._file_dialog_height,
             callback=self._handle_export_instruments,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             directory_selector=True,
             default_filename=default_filename,
             default_path=default_path,
@@ -159,11 +271,11 @@ class GUIReconstructionPanel(GUIPanel):
 
     def open_export_wav_dialog(self, default_filename: str, default_path: str) -> None:
         with dpg.file_dialog(
-            label=TTL_DIALOG_EXPORT_WAV,
-            width=DIM_DIALOG_WIDTH_FILE,
-            height=DIM_DIALOG_HEIGHT_FILE,
+            label=self._ttl_export_wav,
+            width=self._file_dialog_width,
+            height=self._file_dialog_height,
             callback=self._handle_wav_export,
-            file_count=VAL_DIALOG_GLOBAL_FILE_COUNT_SINGLE,
+            file_count=1,
             default_filename=default_filename,
             default_path=default_path,
         ):
@@ -235,25 +347,25 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.parent,
             player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,
+            layout=self._layout_player,
+            language_manager=self._language_manager,
         )
 
     def _create_audio_source_radio_buttons(self) -> None:
-        dpg.add_text(LBL_TEXT_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE)
+        dpg.add_text(self._lbl_audio_source)
         with dpg.group(
             tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
             parent=self.audio_tag,
             horizontal=True,
         ):
-            radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format(
-                VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE
-            )
+            radio_button_tag = TPL_TAG_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE.format("selector")
             dpg.add_radio_button(
                 items=[
-                    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
-                    LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO,
+                    self._lbl_reconstruction_radio,
+                    self._lbl_original_audio,
                 ],
                 tag=radio_button_tag,
-                default_value=LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
+                default_value=self._lbl_reconstruction_radio,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
                 enabled=False,
@@ -262,7 +374,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _create_locate_original_audio_button(self) -> None:
         GUIButton(
-            label=LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            label=self._lbl_locate_audio,
             tag=TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
             parent=self.audio_tag,
             callback=self._handle_locate_original_audio_button_click,
@@ -272,7 +384,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _create_export_wav_button(self) -> None:
         GUIButton(
-            label=LBL_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            label=self._lbl_export_wav,
             tag=TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
             parent=self.audio_tag,
             callback=self._handle_export_wav_button_click,
@@ -282,7 +394,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _create_autoscale_checkbox(self) -> None:
         dpg.add_checkbox(
-            label=LBL_CHECKBOX_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
+            label=self._lbl_autoscale,
             tag=self.autoscale_tag,
             parent=self.plot_tag,
             default_value=True,
@@ -293,18 +405,18 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
             tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
-            width=DIM_WAVEFORM_WIDTH,
-            height=DIM_WAVEFORM_HEIGHT,
+            width=self._layout_graphs.dimensions.width,
+            height=self._layout_graphs.dimensions.height,
             parent=self.plot_tag,
-            label=LBL_PLOT_LABEL_RECONSTRUCTIONS_RECONSTRUCION_WAVEFORM,
+            label=self._lbl_waveform,
         )
 
     def _create_generator_checkboxes(self) -> None:
         generator_labels = {
-            GeneratorName.PULSE1: LBL_CHECKBOX_GLOBAL_PULSE_1,
-            GeneratorName.PULSE2: LBL_CHECKBOX_GLOBAL_PULSE_2,
-            GeneratorName.TRIANGLE: LBL_CHECKBOX_GLOBAL_TRIANGLE,
-            GeneratorName.NOISE: LBL_CHECKBOX_GLOBAL_NOISE,
+            GeneratorName.PULSE1: self._lbl_pulse_1,
+            GeneratorName.PULSE2: self._lbl_pulse_2,
+            GeneratorName.TRIANGLE: self._lbl_triangle,
+            GeneratorName.NOISE: self._lbl_noise,
         }
 
         with dpg.group(
@@ -328,7 +440,7 @@ class GUIReconstructionPanel(GUIPanel):
                 )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(self.autoscale_tag, LBL_TOOLTIP_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE)
+        show_tooltip(self.autoscale_tag, self._tooltip_autoscale)
 
     def _create_message_function_for_generator_checkbox(self, generator_name: GeneratorName) -> MessageCallback:
         tag = self._get_generator_checkbox_tag(generator_name)
@@ -336,11 +448,11 @@ class GUIReconstructionPanel(GUIPanel):
 
         def message_function(*args: Any, **kwargs: Any) -> str:
             if not dpg.is_item_enabled(tag):
-                return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_NOT_AVAILABLE.format(generator_name=name)
+                return self._msg_generator_not_available.format(generator_name=name)
 
-            return MSG_STATUS_RECONSTRUCTIONS_DETAILS_GENERATOR_TOGGLE.format(
+            return self._msg_generator_toggle.format(
                 generator_name=name,
-                on_or_off=(VAL_TEXT_OFF if dpg.get_value(tag) else VAL_TEXT_ON),
+                on_or_off=(self._val_text_off if dpg.get_value(tag) else self._val_text_on),
             )
 
         return message_function
@@ -361,7 +473,7 @@ class GUIReconstructionPanel(GUIPanel):
         self.call(self.on_generators_changed, selected_generators)
 
     def _on_audio_source_changed(self, sender: Sender, app_data: str) -> None:
-        if app_data == LBL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_ORIGINAL_AUDIO:
+        if app_data == self._lbl_original_audio:
             audio_source = AudioSourceType.ORIGINAL
         else:
             audio_source = AudioSourceType.RECONSTRUCTION

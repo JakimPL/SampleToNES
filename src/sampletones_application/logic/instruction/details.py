@@ -1,7 +1,9 @@
 from typing import Callable, Optional
 
+from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.instruction.table import InstructionTableLogic as _InstructionTableLogic
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel
@@ -10,9 +12,18 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class InstructionDetailsPanelLogic(CallbackMixin):
-    def __init__(self, library_manager: InstructionsLibraryManager) -> None:
+    def __init__(
+        self,
+        library_manager: InstructionsLibraryManager,
+        *,
+        layout: InstructionsLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self._library_manager = library_manager
-        self._table_logic = _InstructionTableLogic()
+        self._table_logic = _InstructionTableLogic(
+            language_manager=language_manager,
+            float_precision=layout.values.float_precision,
+        )
 
         self.on_view_changed: Optional[Callable[[InstructionDetailsPanelViewModel], None]] = None
         self.on_instruction_changed: Optional[Callable[[InstructionPanelData], None]] = None

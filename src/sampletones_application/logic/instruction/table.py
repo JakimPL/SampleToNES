@@ -1,20 +1,10 @@
 from typing import Any, List, Optional, Tuple, Union
 
-from sampletones_application.constants.general import LBL_GLOBAL_NO, LBL_GLOBAL_YES
-from sampletones_application.constants.instructions import (
-    LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
-    LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE,
-    LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
-    LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
-    LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
-    LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
-    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
-    LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES,
-    TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
-    TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD,
-    TPL_CELL_INSTRUCTIONS_DETAILS_PITCH,
-    VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT,
-)
+from sampletones_application.text.elements.global_ import DialogElements
+from sampletones_application.text.elements.instructions import InstructionsDetailsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.view_model.instruction.cell import TableCell
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.table_data import InstructionTableData
@@ -24,7 +14,46 @@ from sampletones_shared.utils.serialization import hash_model
 
 
 class InstructionTableLogic:
-    def __init__(self) -> None:
+    def __init__(self, *, language_manager: LanguageManager, float_precision: int) -> None:
+        self._float_precision = float_precision
+        self._lbl_change_rate = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_CHANGE_RATE)
+        ]
+        self._lbl_generator = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_GENERATOR)
+        ]
+        self._lbl_frequency = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_FREQUENCY)
+        ]
+        self._lbl_sample_length = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_SAMPLE_LENGTH)
+        ]
+        self._lbl_samples = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_SAMPLES_SUFFIX)
+        ]
+        self._lbl_name = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_NAME)
+        ]
+        self._lbl_no_frequency = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_NO_FREQUENCY)
+        ]
+        self._lbl_yes = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.YES)]
+        self._lbl_no = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.NO)]
+        self._tpl_frequency = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.FREQUENCY_TEMPLATE)
+        ]
+        self._tpl_pitch = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.PITCH_TEMPLATE)
+        ]
+        self._tpl_period = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.PERIOD_TEMPLATE)
+        ]
+        self._tpl_duty_cycle = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE
+            )
+        ]
+
         self._current_data: Optional[InstructionPanelData] = None
         self._current_hash: str = ""
         self._current_change_rate: Optional[int] = None
@@ -51,49 +80,24 @@ class InstructionTableLogic:
         rows: List[TableCell] = []
         if self.current_data.fragment:
             fragment = self.current_data.fragment
+            rows.append(TableCell(label=self._lbl_change_rate, value=str(self._current_change_rate)))
+            rows.append(TableCell(label=self._lbl_generator, value=fragment.generator_class))
             rows.append(
                 TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_CHANGE_RATE,
-                    value=str(self._current_change_rate),
+                    label=self._lbl_frequency,
+                    value=self._tpl_frequency.format(fragment.frequency),
                 )
             )
             rows.append(
                 TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
-                    value=fragment.generator_class,
-                )
-            )
-            rows.append(
-                TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
-                    value=TPL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY.format(fragment.frequency),
-                )
-            )
-            rows.append(
-                TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLE_LENGTH,
-                    value=f"{fragment.length}{LBL_CELL_INSTRUCTIONS_DETAILS_SAMPLES}",
+                    label=self._lbl_sample_length,
+                    value=f"{fragment.length}{self._lbl_samples}",
                 )
             )
         else:
-            rows.append(
-                TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_GENERATOR,
-                    value=self.current_data.generator_class_name,
-                )
-            )
-            rows.append(
-                TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_NAME,
-                    value=self.current_data.instruction.name,
-                )
-            )
-            rows.append(
-                TableCell(
-                    label=LBL_CELL_INSTRUCTIONS_DETAILS_FREQUENCY,
-                    value=LBL_CELL_INSTRUCTIONS_DETAILS_NO_FREQUENCY,
-                )
-            )
+            rows.append(TableCell(label=self._lbl_generator, value=self.current_data.generator_class_name))
+            rows.append(TableCell(label=self._lbl_name, value=self.current_data.instruction.name))
+            rows.append(TableCell(label=self._lbl_frequency, value=self._lbl_no_frequency))
 
         return rows
 
@@ -106,12 +110,7 @@ class InstructionTableLogic:
 
         for field_name, field_value in instruction.model_dump().items():
             formatted_value = self._format_parameter_value(field_name, field_value)
-            rows.append(
-                TableCell(
-                    label=field_name,
-                    value=formatted_value,
-                )
-            )
+            rows.append(TableCell(label=field_name, value=formatted_value))
 
         return rows
 
@@ -121,21 +120,21 @@ class InstructionTableLogic:
         value: Union[float, bool, List[Any], Tuple[Any, ...], str, int],
     ) -> str:
         if name == "pitch" and isinstance(value, (int, float)):
-            return TPL_CELL_INSTRUCTIONS_DETAILS_PITCH.format(pitch_to_name(round(value)), value)
+            return self._tpl_pitch.format(pitch_to_name(round(value)), value)
 
         if name == "duty_cycle" and isinstance(value, int):
             duty_cycle = DUTY_CYCLES[value] * 100
-            return LBL_CELL_INSTRUCTIONS_DETAILS_DUTY_CYCLE.format(duty_cycle, value)
+            return self._tpl_duty_cycle.format(duty_cycle, value)
 
         if name == "period" and isinstance(value, int):
             period = NOISE_PERIODS[value]
-            return TPL_CELL_INSTRUCTIONS_DETAILS_PERIOD.format(period, value)
+            return self._tpl_period.format(period, value)
 
         if isinstance(value, float):
-            return f"{value:.{VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT}f}"
+            return f"{value:.{self._float_precision}f}"
 
         if isinstance(value, bool):
-            return LBL_GLOBAL_YES if value else LBL_GLOBAL_NO
+            return self._lbl_yes if value else self._lbl_no
 
         if isinstance(value, (list, tuple)):
             return f"[{', '.join(str(element) for element in value)}]"

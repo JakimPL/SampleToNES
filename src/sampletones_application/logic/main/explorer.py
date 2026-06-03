@@ -2,12 +2,13 @@ from pathlib import Path
 
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.logic.main.explorer_manager import ExplorerManager
+from sampletones_application.text.manager import LanguageManager
 from sampletones_core.structures.tree import FileSystemNode, Tree
 
 
 class ExplorerLogic:
-    def __init__(self, config_manager: ConfigManager) -> None:
-        self._manager = ExplorerManager(config_manager)
+    def __init__(self, config_manager: ConfigManager, *, language_manager: LanguageManager) -> None:
+        self._manager = ExplorerManager(config_manager, language_manager=language_manager)
 
     @property
     def tree(self) -> Tree:

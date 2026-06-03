@@ -2,15 +2,19 @@ from pathlib import Path
 from typing import List, Optional
 
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.constants.general import LBL_TREE_ROOT
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_core.constants.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 
 
 class BrowserManager:
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(self, config_manager: ConfigManager, *, language_manager: LanguageManager) -> None:
         self.config_manager = config_manager
         self.output_directory = config_manager.get_output_directory()
+        self._root_label = language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.ROOT)]
 
         self.tree = Tree()
 
@@ -23,7 +27,7 @@ class BrowserManager:
             self.tree.set_root(None)
             return
 
-        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NodeType.ROOT)
+        container_root = TreeNode(name=self._root_label, node_type=NodeType.ROOT)
         for path in sorted(self.output_directory.iterdir()):
             self._build_tree(path, parent=container_root)
 

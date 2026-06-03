@@ -9,19 +9,6 @@ from sampletones_application.constants.general import (
     TAG_TAB_GLOBAL_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
-    DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-    DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
-    LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
-    LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS,
-    LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
-    LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
-    MSG_INSTRUCTIONS_DETAILS_NO_INSTRUCTION_SELECTED,
     TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
     TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
     TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
@@ -38,6 +25,11 @@ from sampletones_application.constants.instructions import (
     TAG_TABLE_INSTRUCTIONS_DETAILS_PARAMETERS,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
+from sampletones_application.layout.instructions import InstructionsLayout
+from sampletones_application.text.elements.instructions import InstructionsDetailsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -55,14 +47,59 @@ from sampletones_shared.utils.arrays import clamp
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
-    def __init__(self) -> None:
+    def __init__(self, *, layout: InstructionsLayout, language_manager: LanguageManager) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self.general_table: GUITable
         self.parameters_table: GUITable
 
+        self._layout = layout
         self._item_handler_tag = f"{TAG_PANEL_INSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
         self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
+
+        self._lbl_section = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.DETAILS_TEXT)
+        ]
+        self._lbl_parameters = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.PARAMETERS_TEXT)
+        ]
+        self._lbl_general = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.GENERAL_TEXT)
+        ]
+        self._lbl_window_pulse_pitch = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_PULSE_PITCH)
+        ]
+        self._lbl_window_pulse_volume = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_PULSE_VOLUME)
+        ]
+        self._lbl_window_pulse_duty_cycle = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_PULSE_DUTY_CYCLE,
+            )
+        ]
+        self._lbl_window_noise_period = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_PERIOD)
+        ]
+        self._lbl_window_noise_volume = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_VOLUME)
+        ]
+        self._lbl_window_noise_short = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_SHORT)
+        ]
+        self._lbl_window_triangle_pitch = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH)
+        ]
+        self._msg_no_instruction = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                InstructionsDetailsElements.NO_INSTRUCTION_SELECTED,
+            )
+        ]
 
         super().__init__(
             tag=TAG_PANEL_INSTRUCTIONS_DETAILS,
@@ -94,7 +131,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_TEXT_INSTRUCTIONS_DETAILS_INSTRUCTION_DETAILS)
+        section_text = dpg.add_text(self._lbl_section)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_instruction_tables(self) -> None:
@@ -104,13 +141,13 @@ class GUIInstructionDetailsPanel(GUIPanel):
         ):
             dpg.add_separator()
             dpg.add_text(
-                MSG_INSTRUCTIONS_DETAILS_NO_INSTRUCTION_SELECTED,
+                self._msg_no_instruction,
                 tag=TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
             )
 
             dpg.add_text(
-                LBL_TEXT_INSTRUCTIONS_DETAILS_GENERAL,
+                self._lbl_general,
                 tag=TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 show=False,
@@ -124,7 +161,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
 
             dpg.add_text(
-                LBL_TEXT_INSTRUCTIONS_DETAILS_PARAMETERS,
+                self._lbl_parameters,
                 tag=TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
                 parent=TAG_GROUP_INSTRUCTIONS_DETAILS_TABLES,
                 show=False,
@@ -162,7 +199,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
         with dpg.child_window(
             tag=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
             parent=self.tag,
-            height=DIM_PANEL_HEIGHT_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            height=self._layout.dimensions.instruction_choice_height,
             border=False,
         ):
             pass
@@ -190,32 +227,32 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_PITCH,
+            label=self._lbl_window_pulse_pitch,
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_VOLUME,
+            label=self._lbl_window_pulse_volume,
             default_value=instruction.volume,
             min_value=1,
             max_value=MAX_VOLUME,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_PULSE_DUTY_CYCLE,
+            label=self._lbl_window_pulse_duty_cycle,
             default_value=instruction.duty_cycle,
             min_value=0,
             max_value=MAX_DUTY_CYCLE,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
 
         for tag in [
@@ -230,12 +267,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_TRIANGLE_PITCH,
+            label=self._lbl_window_triangle_pitch,
             default_value=instruction.pitch,
             min_value=MIN_PITCH,
             max_value=MAX_PITCH,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
 
         GUIStatusBar.bind_to_item(
@@ -251,27 +288,27 @@ class GUIInstructionDetailsPanel(GUIPanel):
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_PERIOD,
+            label=self._lbl_window_noise_period,
             default_value=instruction.period,
             min_value=0,
             max_value=MAX_PERIOD,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
         dpg.add_slider_int(
             tag=TAG_INPUT_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_VOLUME,
+            label=self._lbl_window_noise_volume,
             default_value=instruction.volume,
             min_value=1,
             max_value=MAX_VOLUME,
             clamped=True,
-            width=DIM_INPUT_WIDTH_INSTRUCTIONS_DETAILS_INSTRUCTION_CHOICE,
+            width=self._layout.dimensions.instruction_choice_input_width,
         )
         dpg.add_checkbox(
             tag=TAG_CHECKBOX_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
             parent=TAG_GROUP_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
-            label=LBL_WINDOW_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE_NOISE_SHORT,
+            label=self._lbl_window_noise_short,
             default_value=instruction.short,
             callback=self._on_instruction_changed,
         )

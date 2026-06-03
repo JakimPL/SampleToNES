@@ -3,17 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union, cast
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.settings import AudioSettingsData
-from sampletones_application.constants.general import TTL_WINDOW_MAIN, VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME
 from sampletones_application.constants.settings import (
-    DIM_COMBO_WIDTH_SETTINGS_AUDIO,
-    DIM_TEXT_WIDTH_SETTINGS_AUDIO,
-    DIM_WINDOW_HEIGHT_SETTINGS_AUDIO,
-    DIM_WINDOW_WIDTH_SETTINGS_AUDIO,
-    LBL_BUTTON_SETTINGS_AUDIO_APPLY,
-    LBL_BUTTON_SETTINGS_AUDIO_REFRESH_DEVICES,
-    LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE,
-    LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE,
-    LBL_TEXT_SETTINGS_AUDIO_SAMPLE_RATE,
     SUF_SETTINGS_AUDIO_HZ,
     TAG_BUTTON_SETTINGS_AUDIO_APPLY,
     TAG_BUTTON_SETTINGS_AUDIO_REFRESH,
@@ -24,8 +14,13 @@ from sampletones_application.constants.settings import (
     TAG_GROUP_SETTINGS_AUDIO_DEVICE,
     TAG_GROUP_SETTINGS_AUDIO_SAMPLE_RATE,
     TAG_WINDOW_SETTINGS_AUDIO,
-    TTL_SETTINGS_AUDIO,
 )
+from sampletones_application.layout.settings import SettingsLayout
+from sampletones_application.text.elements.global_ import GlobalDialogTitleElements
+from sampletones_application.text.elements.settings import AudioSettingsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.window import GUIWindow
 from sampletones_application.utils.align import table_wrapper
@@ -36,8 +31,15 @@ from sampletones_shared.types.application import Sender
 
 
 class GUIAudioSettingsWindow(GUIWindow):
-    def __init__(self, audio_device_manager: AudioDeviceManager) -> None:
+    def __init__(
+        self,
+        audio_device_manager: AudioDeviceManager,
+        *,
+        layout: SettingsLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self.audio_device_manager = audio_device_manager
+        self._layout = layout
 
         self._devices: Dict[int, AudioDevice] = {}
         self._current_device: Optional[CurrentDevice] = None
@@ -47,11 +49,33 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_sample_rate: str = ""
         self._current_buffer_size: str = ""
 
+        self._ttl_main_window = language_manager[
+            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.MAIN_WINDOW)
+        ]
+        self._ttl_audio = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.TITLE, AudioSettingsElements.WINDOW_TITLE)
+        ]
+        self._lbl_output_device = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.LABEL, AudioSettingsElements.OUTPUT_DEVICE)
+        ]
+        self._lbl_sample_rate = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.LABEL, AudioSettingsElements.SAMPLE_RATE)
+        ]
+        self._lbl_buffer_size = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.LABEL, AudioSettingsElements.BUFFER_SIZE)
+        ]
+        self._lbl_apply_button = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.LABEL, AudioSettingsElements.APPLY_BUTTON)
+        ]
+        self._lbl_refresh_button = language_manager[
+            TextKey(Page.SETTINGS, Panel.AUDIO, TextType.LABEL, AudioSettingsElements.REFRESH_DEVICES_BUTTON)
+        ]
+
         super().__init__(
             tag=TAG_WINDOW_SETTINGS_AUDIO,
-            parent=TTL_WINDOW_MAIN,
-            width=DIM_WINDOW_WIDTH_SETTINGS_AUDIO,
-            height=DIM_WINDOW_HEIGHT_SETTINGS_AUDIO,
+            parent=self._ttl_main_window,
+            width=layout.window.width,
+            height=layout.window.height,
         )
 
     def prepare(self, *args: Any, **kwargs: Any) -> None:
@@ -66,7 +90,7 @@ class GUIAudioSettingsWindow(GUIWindow):
     def create_panel(self) -> None:
         with dpg.window(
             tag=self.tag,
-            label=TTL_SETTINGS_AUDIO,
+            label=self._ttl_audio,
             width=self.width,
             height=self.height,
             no_resize=True,
@@ -90,10 +114,10 @@ class GUIAudioSettingsWindow(GUIWindow):
         return self._get_device_label_from_index_name(device_index, device.name)
 
     def _get_device_label_from_index_name(self, device_index: int, device_name: str) -> str:
-        return f"{device_index}{VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME}{device_name}"
+        return f"{device_index}{': '}{device_name}"
 
     def _retrieve_device_index_and_name(self, device_label: str) -> Tuple[int, str]:
-        separator = VAL_SEPARATOR_DEVICE_LABEL_INDEX_NAME
+        separator = ": "
         index = device_label.find(separator)
         if index == -1:
             raise ValueError(f"Invalid device label format: {device_label}")
@@ -104,55 +128,49 @@ class GUIAudioSettingsWindow(GUIWindow):
 
     def _create_device_selection(self) -> None:
         with dpg.group(tag=TAG_GROUP_SETTINGS_AUDIO_DEVICE, horizontal=True):
-            dpg.add_text(LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE)
-            dpg.add_spacer(
-                width=DIM_TEXT_WIDTH_SETTINGS_AUDIO - int(dpg.get_text_size(LBL_TEXT_SETTINGS_AUDIO_OUTPUT_DEVICE)[0])
-            )
+            dpg.add_text(self._lbl_output_device)
+            dpg.add_spacer(width=self._layout.label_width - int(dpg.get_text_size(self._lbl_output_device)[0]))
             dpg.add_combo(
                 tag=TAG_COMBO_SETTINGS_AUDIO_DEVICE,
                 items=self._device_items,
                 default_value=self._get_device_label(self._current_device),
-                width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
+                width=self._layout.combo_width,
                 callback=self._on_device_changed,
             )
 
     def _create_sample_rate_selection(self) -> None:
         with dpg.group(tag=TAG_GROUP_SETTINGS_AUDIO_SAMPLE_RATE, horizontal=True):
-            dpg.add_text(LBL_TEXT_SETTINGS_AUDIO_SAMPLE_RATE)
-            dpg.add_spacer(
-                width=DIM_TEXT_WIDTH_SETTINGS_AUDIO - int(dpg.get_text_size(LBL_TEXT_SETTINGS_AUDIO_SAMPLE_RATE)[0])
-            )
+            dpg.add_text(self._lbl_sample_rate)
+            dpg.add_spacer(width=self._layout.label_width - int(dpg.get_text_size(self._lbl_sample_rate)[0]))
             dpg.add_combo(
                 tag=TAG_COMBO_SETTINGS_AUDIO_SAMPLE_RATE,
                 items=[],
                 default_value=self._current_sample_rate,
-                width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
+                width=self._layout.combo_width,
             )
 
     def _create_buffer_size_selection(self) -> None:
         with dpg.group(tag=TAG_GROUP_SETTINGS_AUDIO_BUFFER_SIZE, horizontal=True):
-            dpg.add_text(LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE)
-            dpg.add_spacer(
-                width=DIM_TEXT_WIDTH_SETTINGS_AUDIO - int(dpg.get_text_size(LBL_TEXT_SETTINGS_AUDIO_BUFFER_SIZE)[0])
-            )
+            dpg.add_text(self._lbl_buffer_size)
+            dpg.add_spacer(width=self._layout.label_width - int(dpg.get_text_size(self._lbl_buffer_size)[0]))
             dpg.add_combo(
                 tag=TAG_COMBO_SETTINGS_AUDIO_BUFFER_SIZE,
                 items=[str(size) for size in BUFFER_SIZES],
                 default_value=self._current_buffer_size,
-                width=DIM_COMBO_WIDTH_SETTINGS_AUDIO,
+                width=self._layout.combo_width,
             )
 
     @table_wrapper(columns=2)
     def _create_action_buttons(self) -> None:
         GUIButton(
             tag=TAG_BUTTON_SETTINGS_AUDIO_REFRESH,
-            label=LBL_BUTTON_SETTINGS_AUDIO_REFRESH_DEVICES,
+            label=self._lbl_refresh_button,
             callback=self._refresh_devices,
             width=-1,
         )
         GUIButton(
             tag=TAG_BUTTON_SETTINGS_AUDIO_APPLY,
-            label=LBL_BUTTON_SETTINGS_AUDIO_APPLY,
+            label=self._lbl_apply_button,
             callback=self._apply,
             width=-1,
         )

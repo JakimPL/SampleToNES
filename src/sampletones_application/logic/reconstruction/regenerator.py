@@ -2,7 +2,7 @@ from typing import Callable, List, Optional, cast
 
 import numpy as np
 
-from sampletones_application.constants.general import VAL_PRIORITY_SCHEDULE
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.thread import concurrent
@@ -18,8 +18,9 @@ OnRegenerationFinished = Callable[[ReconstructionData], None]
 
 
 class Regenerator(CallbackMixin):
-    def __init__(self, reconstruction_manager: ReconstructionManager) -> None:
+    def __init__(self, reconstruction_manager: ReconstructionManager, *, scheduling: SchedulingBehavior) -> None:
         self.reconstruction_manager = reconstruction_manager
+        self._scheduling = scheduling
 
         self.on_regeneration_finished: Optional[OnRegenerationFinished] = None
 
@@ -44,7 +45,7 @@ class Regenerator(CallbackMixin):
         audio = self._generate_generator_audio(generator, instructions)
 
         self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=VAL_PRIORITY_SCHEDULE)
+        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=self._scheduling.priority_schedule)
 
     def _generate_generator_audio(
         self,

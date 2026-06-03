@@ -6,39 +6,15 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    DIM_PANEL_HEIGHT_LEFT,
-    DIM_PANEL_HEIGHT_RIGHT,
-    DIM_PANEL_WIDTH_LEFT,
-    DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
-    LBL_TAB_RECONSTRUCTIONS,
-    MSG_GLOBAL_INVALID_METADATA_ERROR,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_TAB_GLOBAL_RECONSTRUCTIONS,
     TAG_TABS_GLOBAL,
 )
-from sampletones_application.constants.reconstructions import (
-    MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR,
-    MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR,
-    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE,
-    MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES,
-    MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
-    MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED,
-    TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
-    TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE,
-    TTL_DIALOG_EXPORT_WAV,
-    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
-    TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
-)
+from sampletones_application.constants.reconstructions import TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.details import (
@@ -48,6 +24,15 @@ from sampletones_application.logic.reconstruction.details import (
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.text.elements.global_ import GlobalMessageElements, MenuElements
+from sampletones_application.text.elements.reconstructions import (
+    ReconstructionPanelElements,
+    ReconstructionsBrowserElements,
+    ReconstructionsDetailsElements,
+)
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
@@ -85,8 +70,126 @@ class ReconstructionsTabCoordinator:
         on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
+        *,
+        layout: LayoutConfig,
+        language_manager: LanguageManager,
     ) -> None:
         self._reconstruction_manager = reconstruction_manager
+
+        self._tab_label = language_manager[
+            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_RECONSTRUCTIONS)
+        ]
+        self._left_width = layout.general.panels.left.width
+        self._left_height = layout.general.panels.left.height
+        self._details_width = layout.general.panels.reconstructions_details.width
+        self._right_height = layout.general.panels.right.height
+
+        # Pre-fetch messages used in callbacks and load_reconstruction
+        self._msg_file_not_found = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.MESSAGE, ReconstructionsBrowserElements.FILE_NOT_FOUND
+            )
+        ]
+        self._msg_load_error = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.MESSAGE, ReconstructionsBrowserElements.LOAD_ERROR)
+        ]
+        self._msg_invalid_metadata = language_manager[
+            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.INVALID_METADATA_ERROR)
+        ]
+        self._msg_invalid_values = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.MESSAGE, ReconstructionsBrowserElements.INVALID_VALUES
+            )
+        ]
+        self._msg_invalid_file = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.MESSAGE, ReconstructionsBrowserElements.INVALID_FILE)
+        ]
+        self._msg_deserialization_error = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.MESSAGE,
+                ReconstructionsBrowserElements.DESERIALIZATION_ERROR,
+            )
+        ]
+        self._tpl_incompatible_version = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.TEMPLATE,
+                ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
+            )
+        ]
+        _ttl_export_status = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.TITLE, ReconstructionsDetailsElements.EXPORT_STATUS_DIALOG
+            )
+        ]
+        _msg_export_fti_success = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.EXPORT_FTI_SUCCESS
+            )
+        ]
+        _msg_export_fti_failed = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.EXPORT_FTI_FAILED
+            )
+        ]
+        _msg_export_ftis_success = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.EXPORT_FTIS_SUCCESS,
+            )
+        ]
+        _msg_export_ftis_failed = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.EXPORT_FTIS_FAILED
+            )
+        ]
+        _ttl_export_wav = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.TITLE, ReconstructionsDetailsElements.EXPORT_WAV_DIALOG
+            )
+        ]
+        _msg_export_wav_success = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.MESSAGE,
+                ReconstructionPanelElements.EXPORT_WAV_SUCCESS,
+            )
+        ]
+        _msg_export_wav_failed = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.MESSAGE,
+                ReconstructionPanelElements.EXPORT_WAV_FAILED,
+            )
+        ]
+        _msg_audio_missing = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, TextType.MESSAGE, ReconstructionPanelElements.AUDIO_MISSING
+            )
+        ]
+        _ttl_audio_missing = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.TITLE,
+                ReconstructionPanelElements.AUDIO_MISSING_DIALOG,
+            )
+        ]
+        _msg_locate_audio_failed = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.RECONSTRUCTION,
+                TextType.MESSAGE,
+                ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
+            )
+        ]
 
         self._browser_logic: BrowserLogic = BrowserLogic(config_manager, browser_manager)
         self._browser_panel: GUIBrowserPanel = GUIBrowserPanel(
@@ -94,10 +197,18 @@ class ReconstructionsTabCoordinator:
             application_config_manager,
             audio_device_manager,
             shortcut_manager,
+            scheduling=layout.behavior.scheduling,
+            tree_behavior=layout.behavior.reconstructions,
+            language_manager=language_manager,
         )
         self._reconstruction_player_logic = PlayerLogic(audio_device_manager, on_change_audio_state)
         self._reconstruction_panel: GUIReconstructionPanel = GUIReconstructionPanel(
             self._reconstruction_player_logic,
+            layout_graphs=layout.graphs,
+            layout_player=layout.player,
+            file_dialog_width=layout.general.dialogs.file.width,
+            file_dialog_height=layout.general.dialogs.file.height,
+            language_manager=language_manager,
         )
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             application_config_manager,
@@ -105,9 +216,15 @@ class ReconstructionsTabCoordinator:
         )
         self._reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
             shortcut_manager,
+            layout_general=layout.general,
+            layout_graphs=layout.graphs,
+            layout_reconstructions=layout.reconstructions,
+            language_manager=language_manager,
         )
         self._reconstruction_details_logic: ReconstructionDetailsLogic = ReconstructionDetailsLogic(
             reconstruction_manager,
+            scheduling=layout.behavior.scheduling,
+            pitch_change_delay=layout.reconstructions.values.pitch_change_delay,
         )
 
         self._browser_logic.set_callbacks(
@@ -146,36 +263,36 @@ class ReconstructionsTabCoordinator:
         )
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._reconstruction_panel.open_export_wav_dialog
         self._reconstruction_panel_logic.on_export_instrument_success = lambda filepath: show_message_with_path_dialog(
-            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
-            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_SUCCESS,
+            _ttl_export_status,
+            _msg_export_fti_success,
             filepath,
         )
         self._reconstruction_panel_logic.on_export_instrument_error = lambda exception: show_error_dialog(
-            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTI_FAILED
+            exception, _msg_export_fti_failed
         )
         self._reconstruction_panel_logic.on_export_instruments_success = lambda filepath: show_message_with_path_dialog(
-            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_STATUS,
-            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_SUCCESS,
+            _ttl_export_status,
+            _msg_export_ftis_success,
             filepath,
         )
         self._reconstruction_panel_logic.on_export_instruments_error = lambda exception: show_error_dialog(
-            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_FTIS_FAILED
+            exception, _msg_export_ftis_failed
         )
         self._reconstruction_panel_logic.on_export_wav_success = lambda filepath: show_message_with_path_dialog(
-            TTL_DIALOG_EXPORT_WAV,
-            MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_SUCCESS,
+            _ttl_export_wav,
+            _msg_export_wav_success,
             filepath,
         )
         self._reconstruction_panel_logic.on_export_wav_error = lambda exception: show_error_dialog(
-            exception, MSG_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV_FAILED
+            exception, _msg_export_wav_failed
         )
         self._reconstruction_panel_logic.on_locate_audio_missing = lambda: show_info_dialog(
             TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
-            MSG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
-            TTL_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            _msg_audio_missing,
+            _ttl_audio_missing,
         )
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: show_file_not_found_dialog(
-            path, MSG_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_AUDIO_FAILED
+            path, _msg_locate_audio_failed
         )
 
         self._reconstruction_details_logic.on_view_changed = self._reconstruction_details_panel.update_view
@@ -207,7 +324,7 @@ class ReconstructionsTabCoordinator:
         with dpg.tab(
             tag=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
             parent=TAG_TABS_GLOBAL,
-            label=LBL_TAB_RECONSTRUCTIONS,
+            label=self._tab_label,
         ):
             with dpg.table(
                 parent=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
@@ -222,8 +339,8 @@ class ReconstructionsTabCoordinator:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
-                        width=DIM_PANEL_WIDTH_LEFT,
-                        height=DIM_PANEL_HEIGHT_LEFT,
+                        width=self._left_width,
+                        height=self._left_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
@@ -237,8 +354,8 @@ class ReconstructionsTabCoordinator:
 
                     with dpg.child_window(
                         tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                        width=DIM_PANEL_WIDTH_RECONSTRUCTIONS_DETAILS,
-                        height=DIM_PANEL_HEIGHT_RIGHT,
+                        width=self._details_width,
+                        height=self._right_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
@@ -281,19 +398,19 @@ class ReconstructionsTabCoordinator:
             logger.info(f"Loaded reconstruction: {logger.format_path(filepath)}")
         except FileNotFoundError as exception:
             logger.error_with_traceback(exception, f"Failed to load reconstruction data from {filepath}")
-            show_file_not_found_dialog(filepath, MSG_RECONSTRUCTIONS_BROWSER_RECONSTRUCTION_FILE_NOT_FOUND)
+            show_file_not_found_dialog(filepath, self._msg_file_not_found)
         except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
             logger.error_with_traceback(exception, f"Error while loading reconstruction data from {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+            show_error_dialog(exception, self._msg_load_error)
         except InvalidMetadataError as exception:
             logger.error_with_traceback(exception, f"Invalid metadata in the reconstruction file {filepath}")
-            show_error_dialog(exception, MSG_GLOBAL_INVALID_METADATA_ERROR)
+            show_error_dialog(exception, self._msg_invalid_metadata)
         except InvalidReconstructionValuesError as exception:
             logger.error_with_traceback(exception, f"Reconstruction contains invalid values: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_VALUES)
+            show_error_dialog(exception, self._msg_invalid_values)
         except InvalidReconstructionError as exception:
             logger.error_with_traceback(exception, f"Invalid reconstruction file: {filepath}")
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_INVALID_RECONSTRUCTION_FILE)
+            show_error_dialog(exception, self._msg_invalid_file)
         except IncompatibleReconstructionVersionError as exception:
             logger.error_with_traceback(
                 exception,
@@ -302,7 +419,7 @@ class ReconstructionsTabCoordinator:
             )
             show_error_dialog(
                 exception,
-                TPL_RECONSTRUCTIONS_BROWSER_INCOMPATIBLE_RECONSTRUCTION_FILE.format(
+                self._tpl_incompatible_version.format(
                     exception.actual_version,
                     exception.expected_version,
                 ),
@@ -311,11 +428,11 @@ class ReconstructionsTabCoordinator:
             logger.error_with_traceback(
                 exception, f"Deserialization error while loading reconstruction from {filepath}"
             )
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_DESERIALIZATION_ERROR)
+            show_error_dialog(exception, self._msg_deserialization_error)
         except Exception as exception:  # TODO: narrow
             logger.error_with_traceback(
                 exception, f"Unexpected error while loading reconstruction data from {filepath}"
             )
-            show_error_dialog(exception, MSG_RECONSTRUCTIONS_BROWSER_FILE_LOAD_ERROR)
+            show_error_dialog(exception, self._msg_load_error)
         finally:
             self._browser_panel.unlock()

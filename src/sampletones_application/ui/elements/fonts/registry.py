@@ -13,12 +13,8 @@ from sampletones_application.constants.general import (
     TAG_FONT_GLOBAL_REGULAR,
     TAG_FONT_GLOBAL_REGULAR_LARGE,
     TAG_FONT_GLOBAL_REGULAR_SMALL,
-    VAL_CHARACTER_STAR,
-    VAL_FONT_SCALE,
-    VAL_FONT_SIZE,
-    VAL_FONT_SIZE_LARGE,
-    VAL_FONT_SIZE_SMALL,
 )
+from sampletones_application.layout.general import FontsLayout
 from sampletones_application.ui.elements.fonts.data import FontData
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.resources.items import FontResource
@@ -27,21 +23,25 @@ from sampletones_shared.types.application import Sender
 
 
 class FontRegistry:
-    _REGISTRY: Dict[Font, FontData] = {
-        Font.REGULAR: FontData(TAG_FONT_GLOBAL_REGULAR, VAL_FONT_SIZE, FontResource.REGULAR),
-        Font.REGULAR_SMALL: FontData(TAG_FONT_GLOBAL_REGULAR_SMALL, VAL_FONT_SIZE_SMALL, FontResource.REGULAR),
-        Font.REGULAR_LARGE: FontData(TAG_FONT_GLOBAL_REGULAR_LARGE, VAL_FONT_SIZE_LARGE, FontResource.REGULAR),
-        Font.ITALIC: FontData(TAG_FONT_GLOBAL_ITALIC, VAL_FONT_SIZE, FontResource.ITALIC),
-        Font.ITALIC_SMALL: FontData(TAG_FONT_GLOBAL_ITALIC_SMALL, VAL_FONT_SIZE_SMALL, FontResource.ITALIC),
-        Font.ITALIC_LARGE: FontData(TAG_FONT_GLOBAL_ITALIC_LARGE, VAL_FONT_SIZE_LARGE, FontResource.ITALIC),
-        Font.BOLD: FontData(TAG_FONT_GLOBAL_BOLD, VAL_FONT_SIZE, FontResource.BOLD),
-        Font.BOLD_SMALL: FontData(TAG_FONT_GLOBAL_BOLD_SMALL, VAL_FONT_SIZE_SMALL, FontResource.BOLD),
-        Font.BOLD_LARGE: FontData(TAG_FONT_GLOBAL_BOLD_LARGE, VAL_FONT_SIZE_LARGE, FontResource.BOLD),
-        Font.ICON: FontData(TAG_FONT_GLOBAL_ICON, VAL_FONT_SIZE_SMALL, FontResource.ICON),
-    }
+    _REGISTRY: Dict[Font, FontData] = {}
 
     @classmethod
-    def register_fonts(cls) -> None:
+    def setup(cls, layout: FontsLayout) -> None:
+        cls._REGISTRY = {
+            Font.REGULAR: FontData(TAG_FONT_GLOBAL_REGULAR, layout.size, FontResource.REGULAR),
+            Font.REGULAR_SMALL: FontData(TAG_FONT_GLOBAL_REGULAR_SMALL, layout.size_small, FontResource.REGULAR),
+            Font.REGULAR_LARGE: FontData(TAG_FONT_GLOBAL_REGULAR_LARGE, layout.size_large, FontResource.REGULAR),
+            Font.ITALIC: FontData(TAG_FONT_GLOBAL_ITALIC, layout.size, FontResource.ITALIC),
+            Font.ITALIC_SMALL: FontData(TAG_FONT_GLOBAL_ITALIC_SMALL, layout.size_small, FontResource.ITALIC),
+            Font.ITALIC_LARGE: FontData(TAG_FONT_GLOBAL_ITALIC_LARGE, layout.size_large, FontResource.ITALIC),
+            Font.BOLD: FontData(TAG_FONT_GLOBAL_BOLD, layout.size, FontResource.BOLD),
+            Font.BOLD_SMALL: FontData(TAG_FONT_GLOBAL_BOLD_SMALL, layout.size_small, FontResource.BOLD),
+            Font.BOLD_LARGE: FontData(TAG_FONT_GLOBAL_BOLD_LARGE, layout.size_large, FontResource.BOLD),
+            Font.ICON: FontData(TAG_FONT_GLOBAL_ICON, layout.size_small, FontResource.ICON),
+        }
+
+    @classmethod
+    def register_fonts(cls, scale: int = 1) -> None:
         with dpg.font_registry():
             for font_data in cls._REGISTRY.values():
                 dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
@@ -51,10 +51,10 @@ class FontRegistry:
                 dpg.add_font_range(0x2C60, 0x2C7F, parent=font_data.tag)
                 dpg.add_font_range(0xA720, 0xA7FF, parent=font_data.tag)
 
-            dpg.add_font_chars([VAL_CHARACTER_STAR], parent=TAG_FONT_GLOBAL_ICON)
+            dpg.add_font_chars([0x2605], parent=TAG_FONT_GLOBAL_ICON)
             dpg.bind_font(TAG_FONT_GLOBAL_REGULAR)
 
-        dpg.set_global_font_scale(VAL_FONT_SCALE)
+        dpg.set_global_font_scale(scale)
 
     @classmethod
     def get_font(cls, font: Font) -> FontData:

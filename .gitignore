@@ -52,3 +52,4 @@ sampletones
 *.exe
 *.dll
 *.so
+.claude/worktrees/

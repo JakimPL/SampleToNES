@@ -4,7 +4,6 @@ from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import COL_TABLE_LABEL, COL_TABLE_VALUE, DIM_TABLE_WIDTH_LABEL
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.themes.tables.table import TableTheme
@@ -24,7 +23,7 @@ class GUITable:
         rows: Tuple[TableCell, ...],
         parent: Optional[str] = None,
         before: Optional[str] = None,
-        label_column_width: int = DIM_TABLE_WIDTH_LABEL,
+        label_column_width: int = 130,
         header_row: bool = False,
         borders_inner_horizontal: bool = True,
         borders_outer_horizontal: bool = True,
@@ -32,8 +31,8 @@ class GUITable:
         borders_outer_vertical: bool = True,
         row_background: bool = True,
         resizable: bool = False,
-        label_color: Color = COL_TABLE_LABEL,
-        value_color: Color = COL_TABLE_VALUE,
+        label_color: Color = (140, 160, 200, 255),
+        value_color: Color = (200, 205, 220, 255),
         bold_labels: bool = True,
         theme: Theme = TableTheme(),
     ) -> None:

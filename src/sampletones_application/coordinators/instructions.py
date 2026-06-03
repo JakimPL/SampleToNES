@@ -5,23 +5,23 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    DIM_PANEL_HEIGHT_LEFT,
-    DIM_PANEL_HEIGHT_RIGHT,
-    DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
-    DIM_PANEL_WIDTH_LEFT,
-    LBL_TAB_INSTRUCTIONS,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
     TAG_TAB_GLOBAL_INSTRUCTIONS,
     TAG_TABS_GLOBAL,
 )
-from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
+from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.details import InstructionDetailsPanelLogic
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.text.elements.global_ import MenuElements
+from sampletones_application.text.elements.instructions import InstructionsLibraryElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.instruction.details import GUIInstructionDetailsPanel
 from sampletones_application.ui.panels.instruction.instruction import GUIInstructionPanel
 from sampletones_application.ui.panels.instruction.library import GUIInstructionsLibraryPanel
@@ -42,6 +42,9 @@ class InstructionsTabCoordinator:
         shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
         on_audio_state_changed: VoidCallback,
+        *,
+        layout: LayoutConfig,
+        language_manager: LanguageManager,
     ) -> None:
         self._config_manager = config_manager
         self._application_config_manager = application_config_manager
@@ -50,17 +53,45 @@ class InstructionsTabCoordinator:
         self._library_manager = library_manager
         self._on_audio_state_changed = on_audio_state_changed
 
+        self._tab_label = language_manager[
+            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_INSTRUCTIONS)
+        ]
+        self._left_width = layout.general.panels.left.width
+        self._left_height = layout.general.panels.left.height
+        self._details_width = layout.general.panels.instructions_details.width
+        self._right_height = layout.general.panels.right.height
+        self._msg_display_error = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_DISPLAY_ERROR
+            )
+        ]
+
         self._library_logic = LibraryLogic(config_manager, library_manager)
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
             application_config_manager,
             audio_device_manager,
             shortcut_manager,
+            scheduling=layout.behavior.scheduling,
+            tree_behavior=layout.behavior.instructions,
+            language_manager=language_manager,
         )
         self._instruction_player_logic = PlayerLogic(audio_device_manager, on_audio_state_changed)
-        self._instruction_panel = GUIInstructionPanel(self._instruction_player_logic)
-        self._instruction_details_logic = InstructionDetailsPanelLogic(library_manager)
-        self._instruction_details_panel = GUIInstructionDetailsPanel()
+        self._instruction_panel = GUIInstructionPanel(
+            self._instruction_player_logic,
+            layout=layout.graphs,
+            layout_player=layout.player,
+            language_manager=language_manager,
+        )
+        self._instruction_details_logic = InstructionDetailsPanelLogic(
+            library_manager,
+            layout=layout.instructions,
+            language_manager=language_manager,
+        )
+        self._instruction_details_panel = GUIInstructionDetailsPanel(
+            layout=layout.instructions,
+            language_manager=language_manager,
+        )
 
         config_manager.add_config_change_callback(self._library_logic.update_status)
 
@@ -82,14 +113,14 @@ class InstructionsTabCoordinator:
             self._instruction_panel.display_instruction(instruction_data)
             self._instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
-            show_error_dialog(exception, MSG_LIBRARY_DISPLAY_ERROR)
+            show_error_dialog(exception, self._msg_display_error)
         self._on_audio_state_changed()
 
     def create_tab(self) -> None:
         with dpg.tab(
             tag=TAG_TAB_GLOBAL_INSTRUCTIONS,
             parent=TAG_TABS_GLOBAL,
-            label=LBL_TAB_INSTRUCTIONS,
+            label=self._tab_label,
         ):
             with dpg.table(
                 parent=TAG_TAB_GLOBAL_INSTRUCTIONS,
@@ -104,8 +135,8 @@ class InstructionsTabCoordinator:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_LEFT}",
-                        width=DIM_PANEL_WIDTH_LEFT,
-                        height=DIM_PANEL_HEIGHT_LEFT,
+                        width=self._left_width,
+                        height=self._left_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
@@ -119,8 +150,8 @@ class InstructionsTabCoordinator:
 
                     with dpg.child_window(
                         tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
-                        width=DIM_PANEL_WIDTH_INSTRUCTIONS_DETAILS,
-                        height=DIM_PANEL_HEIGHT_RIGHT,
+                        width=self._details_width,
+                        height=self._right_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):

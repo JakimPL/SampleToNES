@@ -2,7 +2,10 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.constants.general import LBL_TREE_ROOT
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_core.constants.paths import EXT_FILE_LIBRARY, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
 from sampletones_shared.utils.system.system import System
@@ -13,15 +16,18 @@ class ExplorerManager:
         self,
         config_manager: ConfigManager,
         depth: int = 0,
+        *,
+        language_manager: LanguageManager,
     ) -> None:
         self.tree = Tree()
         self.config_manager = config_manager
+        self._root_label = language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.ROOT)]
 
         self._expanded_directories: Dict[Path, bool] = {}
         self.depth = depth
 
     def refresh_tree(self) -> None:
-        container_root = TreeNode(name=LBL_TREE_ROOT, node_type=NodeType.ROOT)
+        container_root = TreeNode(name=self._root_label, node_type=NodeType.ROOT)
 
         filesystems = self._get_filesystems()
         for filesystem_path in filesystems:

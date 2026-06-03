@@ -2,22 +2,33 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_TAB_GLOBAL_SEQUENCER
 from sampletones_application.constants.sequencer import (
-    DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_ID,
-    DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_NAME,
-    LBL_TABLE_SEQUENCER_SAMPLES_COLUMN_ID,
-    LBL_TABLE_SEQUENCER_SAMPLES_COLUMN_NAME,
-    LBL_TEXT_SEQUENCER_SAMPLES,
     TAG_PANEL_SEQUENCER_SAMPLES,
     TAG_TABLE_SEQUENCER_SAMPLES,
     TAG_WINDOW_SEQUENCER_SAMPLES,
 )
+from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.text.elements.sequencer import SequencerInstrumentsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 
 
 class GUISequencerSamplesPanel(GUIPanel):
-    def __init__(self) -> None:
+    def __init__(self, *, layout: SequencerLayout, language_manager: LanguageManager) -> None:
+        self._layout = layout
+        self._lbl_instruments = language_manager[
+            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.INSTRUMENTS_TEXT)
+        ]
+        self._lbl_column_id = language_manager[
+            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.COLUMN_ID)
+        ]
+        self._lbl_column_name = language_manager[
+            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.COLUMN_NAME)
+        ]
+
         super().__init__(
             tag=TAG_PANEL_SEQUENCER_SAMPLES,
             parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_RIGHT}",
@@ -37,7 +48,7 @@ class GUISequencerSamplesPanel(GUIPanel):
             self._create_samples_table()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_TEXT_SEQUENCER_SAMPLES)
+        section_text = dpg.add_text(self._lbl_instruments)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_samples_table(self) -> None:
@@ -62,11 +73,11 @@ class GUISequencerSamplesPanel(GUIPanel):
                 policy=dpg.mvTable_SizingFixedFit,
             ):
                 dpg.add_table_column(
-                    label=LBL_TABLE_SEQUENCER_SAMPLES_COLUMN_ID,
+                    label=self._lbl_column_id,
                     width_fixed=True,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_ID,
+                    init_width_or_weight=self._layout.table_cells.instrument_id,
                 )
                 dpg.add_table_column(
-                    label=LBL_TABLE_SEQUENCER_SAMPLES_COLUMN_NAME,
-                    init_width_or_weight=DIM_TABLE_CELL_WIDTH_SEQUENCER_SAMPLES_NAME,
+                    label=self._lbl_column_name,
+                    init_width_or_weight=self._layout.table_cells.instrument_name,
                 )

@@ -2,7 +2,10 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.constants.instructions import LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES
+from sampletones_application.text.elements.instructions import InstructionsLibraryElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName
@@ -32,8 +35,11 @@ OnGenerationErrorCallback = Callable[[Exception], None]
 
 
 class InstructionsLibraryManager(CallbackMixin):
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(self, config_manager: ConfigManager, *, language_manager: LanguageManager) -> None:
         self._config_manager = config_manager
+        self._libraries_node_label = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.LIBRARIES_NODE)
+        ]
         library_directory = config_manager.get_library_directory()
         self._library = InstructionLibrary(directory=str(library_directory))
         self._library_files: Dict[InstructionLibraryKey, str] = {}
@@ -223,7 +229,7 @@ class InstructionsLibraryManager(CallbackMixin):
         return get_display_name_from_key(key)
 
     def rebuild_tree(self) -> None:
-        root = TreeNode(LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES, node_type=NodeType.ROOT)
+        root = TreeNode(self._libraries_node_label, node_type=NodeType.ROOT)
 
         for library_key in sorted(self._library_files.keys(), key=get_display_name_from_key):
             self._build_library_node(library_key, root)

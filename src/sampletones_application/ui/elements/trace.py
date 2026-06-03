@@ -6,8 +6,6 @@ from typing import Dict
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    DIM_DIALOG_HEIGHT_TRACEBACK,
-    LBL_BUTTON_TRACEBACK_COPY,
     SUF_BUTTON_COPY,
     SUF_TEXT,
     SUF_TRACEBACK,
@@ -44,7 +42,7 @@ class GUITraceback:
                 default_value=self._text,
                 multiline=True,
                 readonly=True,
-                height=DIM_DIALOG_HEIGHT_TRACEBACK,
+                height=400,
                 width=-1,
             )
 
@@ -52,8 +50,8 @@ class GUITraceback:
 
             GUIButton(
                 tag=traceback_copy_tag,
-                label=LBL_BUTTON_TRACEBACK_COPY,
-                callback=lambda: copy_to_clipboard(self._text, LBL_BUTTON_TRACEBACK_COPY, traceback_copy_tag),
+                label="Copy to clipboard",
+                callback=lambda: copy_to_clipboard(self._text, "Copy to clipboard", traceback_copy_tag),
                 width=-1,
                 theme=button_theme,
             )

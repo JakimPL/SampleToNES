@@ -3,15 +3,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import SUF_PANEL_CENTER, TAG_TAB_GLOBAL_INSTRUCTIONS
-from sampletones_application.constants.graphs import (
-    DIM_SPECTRUM_HEIGHT,
-    DIM_SPECTRUM_WIDTH,
-    DIM_WAVEFORM_HEIGHT,
-    DIM_WAVEFORM_WIDTH,
-)
 from sampletones_application.constants.instructions import (
-    LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-    LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
@@ -19,7 +11,13 @@ from sampletones_application.constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
 )
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.text.elements.instructions import InstructionPanelElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -33,14 +31,31 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIInstructionPanel(GUIPanel):
-    def __init__(self, player_logic: PlayerLogic) -> None:
+    def __init__(
+        self,
+        player_logic: PlayerLogic,
+        *,
+        layout: GraphsLayout,
+        layout_player: PlayerLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self._player_logic = player_logic
+        self._layout = layout
+        self._layout_player = layout_player
+        self._language_manager = language_manager
         self.player_panel: GUIAudioPlayerPanel
         self.waveform_display: GUIWaveformGraph
         self.spectrum_display: GUISpectrumGraph
 
         self.on_clear_instruction_details: Optional[VoidCallback] = None
         self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
+
+        self._lbl_waveform = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.INSTRUCTION, TextType.LABEL, InstructionPanelElements.WAVEFORM_LABEL)
+        ]
+        self._lbl_spectrum = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.INSTRUCTION, TextType.LABEL, InstructionPanelElements.SPECTRUM_LABEL)
+        ]
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
         self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
@@ -66,10 +81,10 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.waveform_display = GUIWaveformGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
-                width=DIM_WAVEFORM_WIDTH,
-                height=DIM_WAVEFORM_HEIGHT,
+                width=self._layout.dimensions.width,
+                height=self._layout.dimensions.height,
                 parent=self.waveform_tag,
-                label=LBL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+                label=self._lbl_waveform,
             )
 
     def _create_spectrum_display(self) -> None:
@@ -83,10 +98,10 @@ class GUIInstructionPanel(GUIPanel):
         ):
             self.spectrum_display = GUISpectrumGraph(
                 tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-                width=DIM_SPECTRUM_WIDTH,
-                height=DIM_SPECTRUM_HEIGHT,
+                width=self._layout.dimensions.width,
+                height=self._layout.dimensions.height,
                 parent=self.spectrum_tag,
-                label=LBL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+                label=self._lbl_spectrum,
             )
 
     def _create_player_panel(self) -> None:
@@ -95,6 +110,8 @@ class GUIInstructionPanel(GUIPanel):
             parent=self.parent,
             player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,
+            layout=self._layout_player,
+            language_manager=self._language_manager,
         )
 
     def close_instruction(self) -> None:

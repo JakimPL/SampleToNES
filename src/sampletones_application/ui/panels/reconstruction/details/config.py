@@ -1,25 +1,11 @@
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
-from sampletones_application.constants.reconstructions import (
-    COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
-    COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
-    COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_PITCH,
-    COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_VOLUME,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_HI_PITCH,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_PITCH,
-    LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_VOLUME,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_ARPEGGIO_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_DUTY_CYCLE_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_PITCH_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_VOLUME_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_ARPEGGIO_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_DUTY_CYCLE_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_PITCH_Y,
-    VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_VOLUME_Y,
-)
+from sampletones_application.layout.reconstructions import ReconstructionsLayout
+from sampletones_application.text.elements.reconstructions import ReconstructionsDetailsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_shared.types.application import Color
 
@@ -35,53 +21,74 @@ class FeaturePlotConfig:
     data_range: Tuple[int, int]
 
 
-FEATURE_PLOT_CONFIGS: Dict[FeatureKey, FeaturePlotConfig] = {
-    FeatureKey.VOLUME: FeaturePlotConfig(
-        feature_key=FeatureKey.VOLUME,
-        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_VOLUME,
-        color=COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_VOLUME,
-        y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_VOLUME_Y,
-        y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_VOLUME_Y,
-        y_ticks=(0, 4, 8, 12, 16),
-        data_range=(0, 15),
-    ),
-    FeatureKey.ARPEGGIO: FeaturePlotConfig(
-        feature_key=FeatureKey.ARPEGGIO,
-        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
-        color=COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_ARPEGGIO,
-        y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_ARPEGGIO_Y,
-        y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_ARPEGGIO_Y,
-        y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
-        data_range=(-128, 127),
-    ),
-    FeatureKey.PITCH: FeaturePlotConfig(
-        feature_key=FeatureKey.PITCH,
-        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_PITCH,
-        color=COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_PITCH,
-        y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_PITCH_Y,
-        y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_PITCH_Y,
-        y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
-        data_range=(-128, 127),
-    ),
-    FeatureKey.HI_PITCH: FeaturePlotConfig(
-        feature_key=FeatureKey.HI_PITCH,
-        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_HI_PITCH,
-        color=COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_PITCH,
-        y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_PITCH_Y,
-        y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_PITCH_Y,
-        y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
-        data_range=(-128, 127),
-    ),
-    FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
-        feature_key=FeatureKey.DUTY_CYCLE,
-        label=LBL_PLOT_LABEL_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
-        color=COL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_DUTY_CYCLE,
-        y_min=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MIN_DUTY_CYCLE_Y,
-        y_max=VAL_BAR_PLOT_RECONSTRUCTIONS_DETAILS_MAX_DUTY_CYCLE_Y,
-        y_ticks=(0, 1, 2, 3),
-        data_range=(0, 3),
-    ),
-}
+def make_feature_plot_configs(
+    layout: ReconstructionsLayout,
+    language_manager: LanguageManager,
+) -> Dict[FeatureKey, FeaturePlotConfig]:
+    lbl_volume = language_manager[
+        TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.VOLUME_LABEL)
+    ]
+    lbl_arpeggio = language_manager[
+        TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.ARPEGGIO_LABEL)
+    ]
+    lbl_pitch = language_manager[
+        TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.PITCH_LABEL)
+    ]
+    lbl_hi_pitch = language_manager[
+        TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.HI_PITCH_LABEL)
+    ]
+    lbl_duty_cycle = language_manager[
+        TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.DUTY_CYCLE_LABEL)
+    ]
+
+    return {
+        FeatureKey.VOLUME: FeaturePlotConfig(
+            feature_key=FeatureKey.VOLUME,
+            label=lbl_volume,
+            color=layout.colors.volume,
+            y_min=layout.bar_plots.volume.min_y,
+            y_max=layout.bar_plots.volume.max_y,
+            y_ticks=(0, 4, 8, 12, 16),
+            data_range=(0, 15),
+        ),
+        FeatureKey.ARPEGGIO: FeaturePlotConfig(
+            feature_key=FeatureKey.ARPEGGIO,
+            label=lbl_arpeggio,
+            color=layout.colors.arpeggio,
+            y_min=layout.bar_plots.arpeggio.min_y,
+            y_max=layout.bar_plots.arpeggio.max_y,
+            y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
+            data_range=(-128, 127),
+        ),
+        FeatureKey.PITCH: FeaturePlotConfig(
+            feature_key=FeatureKey.PITCH,
+            label=lbl_pitch,
+            color=layout.colors.pitch,
+            y_min=layout.bar_plots.pitch.min_y,
+            y_max=layout.bar_plots.pitch.max_y,
+            y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
+            data_range=(-128, 127),
+        ),
+        FeatureKey.HI_PITCH: FeaturePlotConfig(
+            feature_key=FeatureKey.HI_PITCH,
+            label=lbl_hi_pitch,
+            color=layout.colors.pitch,
+            y_min=layout.bar_plots.pitch.min_y,
+            y_max=layout.bar_plots.pitch.max_y,
+            y_ticks=(-128, -96, -64, -32, 0, 32, 64, 96, 128),
+            data_range=(-128, 127),
+        ),
+        FeatureKey.DUTY_CYCLE: FeaturePlotConfig(
+            feature_key=FeatureKey.DUTY_CYCLE,
+            label=lbl_duty_cycle,
+            color=layout.colors.duty_cycle,
+            y_min=layout.bar_plots.duty_cycle.min_y,
+            y_max=layout.bar_plots.duty_cycle.max_y,
+            y_ticks=(0, 1, 2, 3),
+            data_range=(0, 3),
+        ),
+    }
+
 
 FEATURE_DISPLAY_ORDER: List[FeatureKey] = [
     FeatureKey.VOLUME,

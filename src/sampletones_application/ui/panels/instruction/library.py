@@ -9,17 +9,6 @@ from sampletones_application.constants.general import (
     TAG_TAB_GLOBAL_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
-    LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
-    LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
-    LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_GENERATOR,
-    LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
-    LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
-    LBL_INSTRUCTIONS_LIBRARY_LIBRARIES,
-    MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION,
-    MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED,
-    MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
-    MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR,
-    MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
     TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
     TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
@@ -29,12 +18,15 @@ from sampletones_application.constants.instructions import (
     TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
     TAG_TREE_INSTRUCTIONS_LIBRARY,
     TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
-    TTL_DIALOG_LIBRARY_GENERATION_STATUS,
-    VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_HANDLER,
-    VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE,
 )
 from sampletones_application.constants.main import TAG_PANEL_MAIN_CONVERTER
+from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
 from sampletones_application.logic.instruction.library import LibraryLogic
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.elements.instructions import InstructionsLibraryElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -59,8 +51,77 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
+        *,
+        scheduling: SchedulingBehavior,
+        tree_behavior: TreeBehavior,
+        language_manager: LanguageManager,
     ) -> None:
         self.library_logic = library_logic
+        self._tree_behavior = tree_behavior
+
+        self._lbl_generate = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON
+            )
+        ]
+        self._lbl_refresh = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON
+            )
+        ]
+        self._lbl_libraries = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.LIBRARIES_TEXT)
+        ]
+        self._lbl_available_libraries = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT
+            )
+        ]
+        self._lbl_ctx_load_generator = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR
+            )
+        ]
+        self._lbl_ctx_load_library = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY)
+        ]
+        self._msg_generation_cancelled = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
+            )
+        ]
+        self._msg_generation_failed = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_GENERATION_FAILED,
+            )
+        ]
+        self._msg_generation_success = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_GENERATION_SUCCESS,
+            )
+        ]
+        self._msg_status_node_generator = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_NODE_GENERATOR
+            )
+        ]
+        self._msg_status_node_library = language_manager[
+            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_NODE_LIBRARY)
+        ]
+        self._ttl_generation_status = language_manager[
+            TextKey(
+                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.TITLE, InstructionsLibraryElements.GENERATION_STATUS_DIALOG
+            )
+        ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -72,6 +133,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
+            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
         )
 
         self.library_logic.configure_lock(self.lock, self.unlock, lambda: self.locked)
@@ -118,7 +181,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.library_logic.refresh_libraries(load_if_needed=False)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_INSTRUCTIONS_LIBRARY_LIBRARIES)
+        section_text = dpg.add_text(self._lbl_libraries)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_library_status(self) -> None:
@@ -127,24 +190,22 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def _create_library_controls(self) -> None:
-        from sampletones_application.constants.general import VAL_GLOBAL_DEFAULT_FLOAT
-
         with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS):
             dpg.add_progress_bar(
                 tag=TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
                 show=False,
                 width=-1,
-                default_value=VAL_GLOBAL_DEFAULT_FLOAT,
+                default_value=0.0,
             )
             GUIButton(
                 tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
-                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
+                label=self._lbl_refresh,
                 width=-1,
                 callback=self.refresh,
             )
             GUIButton(
                 tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
-                label=LBL_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+                label=self._lbl_generate,
                 width=-1,
                 callback=self.generate_library,
                 font=Font.BOLD,
@@ -160,7 +221,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         ):
             with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
                 with dpg.tree_node(
-                    label=LBL_INSTRUCTIONS_LIBRARY_AVAILABLE_LIBRARIES,
+                    label=self._lbl_available_libraries,
                     tag=self.tree_tag,
                     default_open=True,
                 ):
@@ -243,8 +304,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             leaf=leaf,
             should_expand=should_expand,
             open_on_double_click=True,
-            add_node_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE,
-            add_handler_priority=VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_HANDLER,
+            add_node_priority=self._tree_behavior.priority_add_node,
+            add_handler_priority=self._tree_behavior.priority_add_handler,
         )
 
         state.parent = node_tag
@@ -254,12 +315,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             node, _ = user_data
             match node.node_type:
                 case NodeType.LIBRARY:
-                    message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_LIBRARY
+                    message = self._msg_status_node_library
                 case NodeType.GENERATOR:
                     parent = node.parent
                     assert isinstance(node, GeneratorNode), "Node is not a GeneratorNode"
                     assert isinstance(parent, LibraryNode), "Generator node parent is not a LibraryNode"
-                    message = MSG_STATUS_NODE_INSTRUCTIONS_LIBRARY_GENERATOR.format(
+                    message = self._msg_status_node_generator.format(
                         generator=node.generator_name,
                         library_key=parent.library_key.filename,
                     )
@@ -324,7 +385,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _add_context_menu_library_node(self, node: LibraryNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_LIBRARY,
+            label=self._lbl_ctx_load_library,
             callback=lambda: self.library_logic.load_library_and_set_current(node.library_key),
         )
 
@@ -346,7 +407,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def _add_context_menu_generator_node(self, node: GeneratorNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_INSTRUCTIONS_LIBRARY_LOAD_GENERATOR,
+            label=self._lbl_ctx_load_generator,
             callback=self._on_load_generator,
             user_data=node,
         )
@@ -366,18 +427,18 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         if not dpg.get_item_configuration(TAG_PANEL_MAIN_CONVERTER)["show"]:
             show_info_dialog(
                 self.tag,
-                MSG_INSTRUCTIONS_LIBRARY_GENERATION_SUCCESS,
-                TTL_DIALOG_LIBRARY_GENERATION_STATUS,
+                self._msg_generation_success,
+                self._ttl_generation_status,
             )
 
     def _on_generation_error_dialog(self, exception: Exception) -> None:
-        show_error_dialog(exception, MSG_INSTRUCTIONS_LIBRARY_GENERATION_FAILED)
+        show_error_dialog(exception, self._msg_generation_failed)
 
     def _on_generation_cancelled_dialog(self) -> None:
         show_info_dialog(
             self.tag,
-            MSG_INSTRUCTIONS_LIBRARY_GENERATION_CANCELLATION,
-            TTL_DIALOG_LIBRARY_GENERATION_STATUS,
+            self._msg_generation_cancelled,
+            self._ttl_generation_status,
         )
 
     def _on_load_file_not_found(self, path: Path, message: str) -> None:

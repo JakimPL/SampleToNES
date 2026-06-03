@@ -7,7 +7,6 @@ from sampletones_application.constants.general import (
     COL_TEXT_DISABLED_DEFAULT,
     DIM_BUTTON_INPUT_INT,
     DIM_BUTTON_WIDTH_COPY,
-    MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
     SUF_GROUP,
@@ -19,31 +18,12 @@ from sampletones_application.constants.general import (
     SUF_TABLE,
     SUF_TEXT,
     TAG_TAB_GLOBAL_RECONSTRUCTIONS,
-    VAL_CHARACTER_BUTTON_DECREMENT,
-    VAL_CHARACTER_BUTTON_INCREMENT,
 )
 from sampletones_application.constants.graphs import (
-    DIM_BAR_PLOT_HEIGHT,
-    DIM_BAR_PLOT_WIDTH,
     SUF_GRAPH,
     SUF_GRAPH_RAW_DATA,
 )
 from sampletones_application.constants.reconstructions import (
-    DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
-    DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
-    DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
-    LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
-    LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
-    LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
-    LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
-    LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PERIOD,
-    LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
-    LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE,
-    MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE,
     SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
@@ -52,10 +32,15 @@ from sampletones_application.constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_DETAILS,
     TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
     TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
-    TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH,
-    VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
-    VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
+from sampletones_application.layout.general import GeneralLayout
+from sampletones_application.layout.graphs import GraphsLayout
+from sampletones_application.layout.reconstructions import ReconstructionsLayout
+from sampletones_application.text.elements.global_ import GlobalMessageElements
+from sampletones_application.text.elements.reconstructions import ReconstructionsDetailsElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -65,8 +50,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.details.config import (
     FEATURE_DISPLAY_ORDER,
-    FEATURE_PLOT_CONFIGS,
     FeaturePlotConfig,
+    make_feature_plot_configs,
 )
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.input import InvalidInputTheme
@@ -95,7 +80,15 @@ OnReconstructionInstrumentHoveredCallback = Callable[[Optional[int]], None]
 
 
 class GUIReconstructionDetailsPanel(GUIPanel):
-    def __init__(self, shortcut_manager: ShortcutManager) -> None:
+    def __init__(
+        self,
+        shortcut_manager: ShortcutManager,
+        *,
+        layout_general: GeneralLayout,
+        layout_graphs: GraphsLayout,
+        layout_reconstructions: ReconstructionsLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self.shortcut_manager = shortcut_manager
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
@@ -106,6 +99,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.mouse_item_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
+        self._layout_general = layout_general
+        self._layout_graphs = layout_graphs
+        self._layout_reconstructions = layout_reconstructions
+        self._feature_plot_configs = make_feature_plot_configs(layout_reconstructions, language_manager)
 
         self.theme = DefaultTheme()
         self.invalid_input_theme = InvalidInputTheme()
@@ -121,6 +118,85 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.on_hold_ended: Optional[VoidCallback] = None
         self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
+
+        self._lbl_section = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.RECONSTRUCTION_DETAILS,
+            )
+        ]
+        self._lbl_export_fti = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.EXPORT_FTI_BUTTON
+            )
+        ]
+        self._lbl_export_ftis = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON
+            )
+        ]
+        self._lbl_copy = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.COPY_BUTTON)
+        ]
+        self._lbl_generators = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.GENERATORS_TEXT)
+        ]
+        self._lbl_initial_period = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.INITIAL_PERIOD)
+        ]
+        self._lbl_initial_pitch = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.INITIAL_PITCH)
+        ]
+        self._msg_input_pitch = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_INPUT_PITCH,
+            )
+        ]
+        self._msg_input_period = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_INPUT_PERIOD,
+            )
+        ]
+        self._msg_bar = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.STATUS_BAR)
+        ]
+        self._msg_sequence = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.STATUS_SEQUENCE
+            )
+        ]
+        self._msg_copy_sequence = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_COPY_SEQUENCE,
+            )
+        ]
+        self._tpl_pitch_tooltip = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TEMPLATE,
+                ReconstructionsDetailsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
+            )
+        ]
+        self._msg_reconstruction_no_data = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.RECONSTRUCTION_NO_DATA,
+            )
+        ]
 
         super().__init__(
             tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
@@ -142,14 +218,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._setup_mouse_event_handler()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_TEXT_RECONSTRUCTIONS_DETAILS_RECONSTRUCTION_DETAILS)
+        section_text = dpg.add_text(self._lbl_section)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_export_button(self) -> None:
         dpg.add_separator()
         GUIButton(
             tag=TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
-            label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
+            label=self._lbl_export_ftis,
             width=-1,
             callback=self._export_instruments,
             enabled=False,
@@ -162,12 +238,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg.add_text(
             tag=self.no_data_message_tag,
             parent=self.tag,
-            default_value=MSG_GLOBAL_RECONSTRUCTION_NO_DATA,
+            default_value=self._msg_reconstruction_no_data,
             show=True,
         )
 
         dpg.add_text(
-            LBL_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+            self._lbl_generators,
             tag=TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
             parent=self.tag,
             show=False,
@@ -223,7 +299,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
-                label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
+                label=self._lbl_export_fti,
                 width=-1,
                 callback=self._handle_export_button_clicked,
                 user_data=generator_name,
@@ -286,7 +362,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         if plot is None:
             return
 
-        config = FEATURE_PLOT_CONFIGS[feature_key]
+        config = self._feature_plot_configs[feature_key]
         self._configure_plot_data(
             plot,
             generator_name,
@@ -350,10 +426,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
         if generator_name == GeneratorName.NOISE:
-            label = LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PERIOD
+            label = self._lbl_initial_period
             display_value = period_to_name(initial_pitch)
         else:
-            label = LBL_TEXT_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH
+            label = self._lbl_initial_pitch
             display_value = pitch_to_name(initial_pitch)
 
         return label, display_value
@@ -367,6 +443,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         increment_button_tag = f"{input_tag}{SUF_INCREMENT}"
 
         label, display_value = self._format_initial_pitch(generator_name, initial_pitch)
+        pitch_table = self._layout_reconstructions.initial_pitch_table
         with dpg.table(
             tag=table_tag,
             parent=parent,
@@ -377,29 +454,29 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             height=0,
         ):
             dpg.add_table_column(
-                width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
+                width=pitch_table.label_width,
                 width_fixed=True,
                 no_resize=True,
-                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_LABEL,
+                init_width_or_weight=pitch_table.label_width,
             )
             dpg.add_table_column(
-                width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
+                width=pitch_table.display_width,
                 width_fixed=True,
                 no_resize=True,
-                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_DISPLAY,
+                init_width_or_weight=pitch_table.display_width,
             )
             dpg.add_table_column(width_stretch=True)
             dpg.add_table_column(
-                width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
+                width=pitch_table.button_width,
                 width_fixed=True,
                 no_resize=True,
-                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
+                init_width_or_weight=pitch_table.button_width,
             )
             dpg.add_table_column(
-                width=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
+                width=pitch_table.button_width,
                 width_fixed=True,
                 no_resize=True,
-                init_width_or_weight=DIM_TABLE_CELL_WIDTH_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_BUTTON,
+                init_width_or_weight=pitch_table.button_width,
             )
             with dpg.table_row():
                 with dpg.table_cell():
@@ -426,7 +503,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
                 with dpg.table_cell():
                     GUIButton(
-                        label=VAL_CHARACTER_BUTTON_DECREMENT,
+                        label="-",
                         tag=decrement_button_tag,
                         width=DIM_BUTTON_INPUT_INT,
                         callback=self._change_initial_pitch,
@@ -438,7 +515,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
                 with dpg.table_cell():
                     GUIButton(
-                        label=VAL_CHARACTER_BUTTON_INCREMENT,
+                        label="+",
                         tag=increment_button_tag,
                         width=DIM_BUTTON_INPUT_INT,
                         callback=self._change_initial_pitch,
@@ -450,11 +527,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self.initial_pitch_theme.bind_to_item(table_tag)
         self._create_initial_pitch_tooltip(generator_name, input_tag)
-        status_message = (
-            MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PITCH_VALUE
-            if generator_name != GeneratorName.NOISE
-            else MSG_STATUS_RECONSTRUCTIONS_DETAILS_INPUT_PERIOD_VALUE
-        )
+        status_message = self._msg_input_pitch if generator_name != GeneratorName.NOISE else self._msg_input_period
         GUIStatusBar.bind_to_item(input_tag, status_message)
 
         self.shortcut_manager.setup_input_focus_handlers(input_tag)
@@ -522,16 +595,16 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
         if generator_name == GeneratorName.NOISE:
             pitch_type = "period"
-            example_name = VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE
+            example_name = "4-#"
             example_value = NAME_TO_PERIOD[example_name]
         else:
             pitch_type = "pitch"
-            example_name = VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE
+            example_name = "C-4"
             example_value = NAME_TO_PITCH[example_name]
 
         show_tooltip(
             input_tag,
-            TPL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH.format(
+            self._tpl_pitch_tooltip.format(
                 pitch_type,
                 example_name,
                 example_value,
@@ -565,7 +638,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         data: np.ndarray,
         parent: str,
     ) -> GUIBarGraph:
-        config = FEATURE_PLOT_CONFIGS[feature_key]
+        config = self._feature_plot_configs[feature_key]
         plot = self._add_bar_plot(parent, config, data, generator_name, feature_key)
         self._add_raw_data_text(parent, generator_name, feature_key, config, plot, data)
         return plot
@@ -604,8 +677,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             tag=plot_tag,
             parent=parent,
             data_range=config.data_range,
-            width=DIM_BAR_PLOT_WIDTH,
-            height=DIM_BAR_PLOT_HEIGHT,
+            width=self._layout_graphs.dimensions.width,
+            height=self._layout_graphs.dimensions.bar_plot_height,
             label=config.label,
             y_range=(y_min, y_max),
         )
@@ -657,7 +730,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _on_bar_point_hovered(self, label: Optional[str], index: Optional[int]) -> None:
         self.call(self.on_reconstruction_instrument_hovered, index)
         if label is not None:
-            GUIStatusBar.set(MSG_STATUS_RECONSTRUCTIONS_DETAILS_BAR.format(instrument_feature=label))
+            GUIStatusBar.set(self._msg_bar.format(instrument_feature=label))
 
     def _add_raw_data_text(
         self,
@@ -676,7 +749,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         with dpg.group(tag=text_group_tag, parent=parent, horizontal=True):
             GUIButton(
                 tag=copy_button_tag,
-                label=LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY,
+                label=self._lbl_copy,
                 width=DIM_BUTTON_WIDTH_COPY,
                 callback=lambda: self._on_copy_button_clicked(raw_data_text, copy_button_tag),
             )
@@ -698,10 +771,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
 
         self.shortcut_manager.setup_input_focus_handlers(raw_data_tag)
-        GUIStatusBar.bind_to_item(copy_button_tag, MSG_STATUS_RECONSTRUCTIONS_DETAILS_COPY_SEQUENCE)
+        GUIStatusBar.bind_to_item(copy_button_tag, self._msg_copy_sequence)
         GUIStatusBar.bind_to_item(
             raw_data_tag,
-            MSG_STATUS_RECONSTRUCTIONS_DETAILS_SEQUENCE.format(
+            self._msg_sequence.format(
                 instrument_feature=feature_key.capitalized,
             ),
         )
@@ -753,4 +826,4 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         )
 
     def _on_copy_button_clicked(self, text: str, button_tag: str) -> None:
-        copy_to_clipboard(text, LBL_BUTTON_RECONSTRUCTIONS_DETAILS_COPY, button_tag)
+        copy_to_clipboard(text, self._lbl_copy, button_tag)

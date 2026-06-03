@@ -6,33 +6,11 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.constants.general import (
-    COL_PATH_TEXT_HOVER,
-    COL_TEXT_FAVORITE,
-    DIM_BUTTON_WIDTH_SEARCH,
-    DIM_INPUT_WIDTH_SEARCH,
-    LBL_BUTTON_TREE_CLEAR_SEARCH,
-    LBL_CONTEXT_ITEM_ADD_TO_SEQUENCER,
-    LBL_CONTEXT_ITEM_COPY_FILENAME,
-    LBL_CONTEXT_ITEM_COPY_PATH,
-    LBL_CONTEXT_ITEM_MARK_AS_FAVORITE,
-    LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
-    LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE,
-    LBL_TREE_SEARCH,
-    MSG_STATUS_NODE_DIRECTORY,
-    MSG_STATUS_NODE_RECONSTRUCTION,
-    MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY,
-    MSG_STATUS_TREE_SEARCH,
-    MSG_TREE_NO_RESULTS_FOUND,
     SUF_BUTTON_SEARCH,
     SUF_NODE_HANDLER,
     SUF_TREE_SEARCH_INPUT,
-    VAL_CHARACTER_STAR,
-    VAL_PRIORITY_ADD_HANDLER,
-    VAL_PRIORITY_ADD_NODE,
-    VAL_TEXT_COLLAPSE,
-    VAL_TEXT_EXPAND,
 )
-from sampletones_application.constants.main import MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -80,7 +58,9 @@ class GUITreePanel(GUIPanel):
         shortcut_manager: ShortcutManager,
         width: int = -1,
         height: int = -1,
-        search_label: str = LBL_TREE_SEARCH,
+        *,
+        scheduling: SchedulingBehavior,
+        search_label: str,
     ) -> None:
         self.tree = tree
         self.tree_tag = tree_tag
@@ -94,7 +74,7 @@ class GUITreePanel(GUIPanel):
 
         self.search_label = search_label
 
-        self.logic = TreeLogic(application_config_manager, audio_device_manager)
+        self.logic = TreeLogic(application_config_manager, audio_device_manager, scheduling=scheduling)
         self.logic.on_lock_state_changed = self._set_tree_enabled
         self.logic.on_favorite_changed = self._update_favorite_indicator
         self.logic.on_search_update_needed = self._update_tree_visibility
@@ -116,7 +96,7 @@ class GUITreePanel(GUIPanel):
         root = self.tree.get_root()
         if root is None:
             if self.tree.is_filtered():
-                dpg.add_text(MSG_TREE_NO_RESULTS_FOUND, parent=root_tag)
+                dpg.add_text("No results found.", parent=root_tag)
             return
 
         self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
@@ -130,17 +110,17 @@ class GUITreePanel(GUIPanel):
                 tag=self._search_input_tag,
                 hint=self.search_label,
                 callback=self._on_search_changed,
-                width=DIM_INPUT_WIDTH_SEARCH,
+                width=-80,
             )
             GUIButton(
-                label=LBL_BUTTON_TREE_CLEAR_SEARCH,
+                label="Clear",
                 tag=self._search_button_tag,
                 callback=self._on_clear_search_clicked,
-                width=DIM_BUTTON_WIDTH_SEARCH,
+                width=-1,
             )
 
         self.shortcut_manager.setup_input_focus_handlers(self._search_input_tag)
-        GUIStatusBar.bind_to_item(self._search_input_tag, MSG_STATUS_TREE_SEARCH)
+        GUIStatusBar.bind_to_item(self._search_input_tag, "Type query to filter nodes.")
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
         return f"{self.tag}_{node_type.value}{SUF_NODE_HANDLER}"
@@ -189,8 +169,8 @@ class GUITreePanel(GUIPanel):
         should_expand: bool = False,
         has_favorite_ancestor: bool = False,
         is_node_expanded: bool = False,
-        add_node_priority: int = VAL_PRIORITY_ADD_NODE,
-        add_handler_priority: int = VAL_PRIORITY_ADD_HANDLER,
+        add_node_priority: int = 5,
+        add_handler_priority: int = 10,
     ) -> None:
         CallbackQueue.add(
             self._add_node,
@@ -321,21 +301,25 @@ class GUITreePanel(GUIPanel):
     def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self.logic.autoplay_enabled:
-                return MSG_STATUS_NODE_RECONSTRUCTION
+                return (
+                    "Click to play reconstruction. "
+                    "Double-click to open reconstruction. Right-click to open context menu."
+                )
 
-            return MSG_STATUS_NODE_RECONSTRUCTION_NO_AUTOPLAY
+            return "Double-click to open reconstruction. Right-click to open context menu."
 
         return self._create_status_bar_message_function(message_function)
 
     def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
-        return self._create_status_bar_message_function(MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY)
+        return self._create_status_bar_message_function(
+            "Double-click to open instructions library. Right-click to open context menu."
+        )
 
     def _create_status_bar_message_function_for_directory_node(self) -> MessageCallback:
         def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
             _, node_tag = user_data
-            return MSG_STATUS_NODE_DIRECTORY.format(
-                expand_or_collapse=VAL_TEXT_COLLAPSE if dpg_get_value(node_tag) else VAL_TEXT_EXPAND,
-            )
+            expand_or_collapse = "collapse" if dpg_get_value(node_tag) else "expand"
+            return f"Click to {expand_or_collapse}. Right-click to open context menu."
 
         return self._create_status_bar_message_function(message_function)
 
@@ -346,11 +330,11 @@ class GUITreePanel(GUIPanel):
 
     def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self.logic.is_node_favorite(node)
-        color = COL_TEXT_FAVORITE if is_favorite else COL_PATH_TEXT_HOVER
+        color = (255, 215, 110, 255) if is_favorite else (150, 200, 255)
 
         with dpg.group(horizontal=True):
             if is_favorite:
-                star = chr(VAL_CHARACTER_STAR)
+                star = chr(0x2605)
                 star_text = dpg.add_text(star, color=color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
@@ -360,32 +344,28 @@ class GUITreePanel(GUIPanel):
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_COPY_FILENAME,
+            label="Copy filename to clipboard",
             callback=lambda: dpg.set_clipboard_text(str(path.name)),
         )
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_COPY_PATH,
+            label="Copy path to clipboard",
             callback=lambda: dpg.set_clipboard_text(str(path)),
         )
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_OPEN_IN_EXPLORER,
+            label="Open in explorer",
             callback=lambda: open_path_in_explorer(path),
         )
 
     def _add_context_menu_sequencer_items(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_ADD_TO_SEQUENCER,
+            label="Add to Sequencer",
             callback=self._on_add_to_sequencer,
             user_data=node,
         )
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:
-        label = (
-            LBL_CONTEXT_ITEM_UNMARK_AS_FAVORITE
-            if self.logic.is_node_favorite(node)
-            else LBL_CONTEXT_ITEM_MARK_AS_FAVORITE
-        )
+        label = "Unmark as favorite" if self.logic.is_node_favorite(node) else "Mark as favorite"
         dpg.add_separator()
         dpg.add_menu_item(
             label=label,

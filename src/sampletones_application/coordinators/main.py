@@ -6,22 +6,20 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    LBL_TAB_MAIN,
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     TAG_TAB_GLOBAL_MAIN,
     TAG_TABS_GLOBAL,
 )
-from sampletones_application.constants.main import (
-    DIM_PANEL_HEIGHT_MAIN_EXPLORER,
-    DIM_PANEL_WIDTH_MAIN_EXPLORER,
-    MSG_MAIN_CONVERTER_ERROR,
-    MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS,
-    TTL_DIALOG_MAIN_CONVERTER_PROGRESS,
-)
+from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.text.elements.global_ import MenuElements
+from sampletones_application.text.elements.main import ConverterElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
@@ -51,6 +49,9 @@ class MainTabCoordinator:
         on_load_reconstruction: Callable[[Optional[Path]], None],
         on_load_library: PathCallback,
         is_generation_in_progress: Callable[[], bool],
+        *,
+        layout: LayoutConfig,
+        language_manager: LanguageManager,
     ) -> None:
         self._config_manager = config_manager
         self._application_config_manager = application_config_manager
@@ -61,12 +62,28 @@ class MainTabCoordinator:
         self._on_load_library = on_load_library
         self._is_generation_in_progress = is_generation_in_progress
 
-        self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager)
+        self._tab_label = language_manager[TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_MAIN)]
+        self._explorer_width = layout.main.explorer.width
+        self._explorer_height = layout.main.explorer.height
+        _msg_converter_error = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_ERROR)
+        ]
+        _msg_no_files = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_NO_FILES)
+        ]
+        _title_progress = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.TITLE, ConverterElements.PROGRESS_DIALOG)
+        ]
+
+        self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
         self._explorer_panel: GUIExplorerPanel = GUIExplorerPanel(
             self._explorer_logic,
             application_config_manager,
             audio_device_manager,
             shortcut_manager,
+            scheduling=layout.behavior.scheduling,
+            tree_behavior=layout.behavior.main.explorer,
+            language_manager=language_manager,
         )
 
         _config = config_manager.config
@@ -77,29 +94,51 @@ class MainTabCoordinator:
                 sample_rate=_config.library.sample_rate,
                 change_rate=_config.library.change_rate,
                 transformation_gamma=_config.library.transformation_gamma,
-            )
+            ),
+            input_width=layout.general.inputs.default_width,
+            panel_height=layout.main.config.height,
+            language_manager=language_manager,
         )
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
                 generators=frozenset(_config.generation.generators),
                 mixer=_config.generation.mixer,
-            )
+            ),
+            input_width=layout.general.inputs.default_width,
+            panel_height=layout.main.config.height,
+            language_manager=language_manager,
         )
         self._advanced_settings_panel: GUIAdvancedSettingsPanel = GUIAdvancedSettingsPanel(
             AdvancedSettingsPanelViewModel(
                 max_workers=_config.general.max_workers,
                 library_directory=config_manager.get_library_directory(),
                 output_directory=config_manager.get_output_directory(),
-            )
+            ),
+            panel_height=layout.main.advanced.height,
+            input_width=layout.general.inputs.default_width,
+            file_dialog_width=layout.general.dialogs.file.width,
+            file_dialog_height=layout.general.dialogs.file.height,
+            max_workers_minimum=layout.behavior.main.max_workers_minimum,
+            language_manager=language_manager,
         )
-        self._converter_logic: ConverterLogic = ConverterLogic(config_manager)
-        self._converter_panel: GUIConverterPanel = GUIConverterPanel()
-        self._converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog()
+        self._converter_logic: ConverterLogic = ConverterLogic(
+            config_manager,
+            scheduling=layout.behavior.scheduling,
+            language_manager=language_manager,
+        )
+        self._converter_panel: GUIConverterPanel = GUIConverterPanel(
+            layout=layout.main.converter,
+            language_manager=language_manager,
+        )
+        self._converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog(
+            language_manager=language_manager,
+        )
         self._main_panel: GUIMainPanel = GUIMainPanel(
             self._config_panel,
             self._reconstructor_panel,
             self._advanced_settings_panel,
             self._converter_panel,
+            layout=layout.main,
         )
 
         config_manager.add_config_change_callback(self._update_config_panel_view)
@@ -126,9 +165,9 @@ class MainTabCoordinator:
 
         self._converter_logic.on_view_changed = self._converter_panel.update_view
         self._converter_logic.on_success = self._converter_success_dialog.show
-        self._converter_logic.on_error = lambda error: show_error_dialog(error, MSG_MAIN_CONVERTER_ERROR)
+        self._converter_logic.on_error = lambda error: show_error_dialog(error, _msg_converter_error)
         self._converter_logic.on_no_files_to_process = lambda: show_info_dialog(
-            self._converter_panel.tag, MSG_MAIN_CONVERTER_NO_FILES_TO_PROCESS, TTL_DIALOG_MAIN_CONVERTER_PROGRESS
+            self._converter_panel.tag, _msg_no_files, _title_progress
         )
         self._converter_logic.is_library_loaded = library_manager.is_library_loaded
 
@@ -177,7 +216,7 @@ class MainTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            label=LBL_TAB_MAIN,
+            label=self._tab_label,
             tag=TAG_TAB_GLOBAL_MAIN,
             parent=TAG_TABS_GLOBAL,
         ):
@@ -192,8 +231,8 @@ class MainTabCoordinator:
                 with dpg.table_row():
                     with dpg.child_window(
                         tag=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_LEFT}",
-                        width=DIM_PANEL_WIDTH_MAIN_EXPLORER,
-                        height=DIM_PANEL_HEIGHT_MAIN_EXPLORER,
+                        width=self._explorer_width,
+                        height=self._explorer_height,
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):

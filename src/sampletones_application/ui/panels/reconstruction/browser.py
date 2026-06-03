@@ -6,12 +6,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_RECONSTRUCTIONS
 from sampletones_application.constants.reconstructions import (
-    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
-    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
-    LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
-    LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
-    LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
-    LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
@@ -20,10 +14,14 @@ from sampletones_application.constants.reconstructions import (
     TAG_PANEL_RECONSTRUCTIONS_BROWSER,
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
-    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
-    VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
 )
+from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.elements.reconstructions import ReconstructionsBrowserElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -45,8 +43,46 @@ class GUIBrowserPanel(GUITreePanel):
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
+        *,
+        scheduling: SchedulingBehavior,
+        tree_behavior: TreeBehavior,
+        language_manager: LanguageManager,
     ) -> None:
         self.browser_logic = browser_logic
+        self._tree_behavior = tree_behavior
+
+        self._lbl_reconstruct_file = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.LABEL,
+                ReconstructionsBrowserElements.RECONSTRUCT_FILE_BUTTON,
+            )
+        ]
+        self._lbl_reconstruct_directory = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.LABEL,
+                ReconstructionsBrowserElements.RECONSTRUCT_DIRECTORY_BUTTON,
+            )
+        ]
+        self._lbl_refresh = language_manager[
+            TextKey(Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.LABEL, ReconstructionsBrowserElements.REFRESH_BUTTON)
+        ]
+        self._lbl_context_load = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.LABEL,
+                ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
+            )
+        ]
+        self._lbl_reconstructions = language_manager[
+            TextKey(
+                Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.LABEL, ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE
+            )
+        ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -58,6 +94,8 @@ class GUIBrowserPanel(GUITreePanel):
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
+            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
         )
 
     def create_panel(self) -> None:
@@ -95,7 +133,7 @@ class GUIBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS)
+        section_text = dpg.add_text(self._lbl_reconstructions)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_buttons(self) -> None:
@@ -103,20 +141,20 @@ class GUIBrowserPanel(GUITreePanel):
         with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS):
             GUIButton(
                 tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
-                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_LIST,
+                label=self._lbl_refresh,
                 width=-1,
                 callback=self._rebuild_tree,
             )
             GUIButton(
                 tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
-                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
+                label=self._lbl_reconstruct_file,
                 width=-1,
                 callback=self._reconstruct_file,
                 font=Font.BOLD,
             )
             GUIButton(
                 tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
-                label=LBL_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
+                label=self._lbl_reconstruct_directory,
                 width=-1,
                 callback=self._reconstruct_directory,
                 font=Font.BOLD,
@@ -128,7 +166,7 @@ class GUIBrowserPanel(GUITreePanel):
         with dpg.child_window(tag=TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE):
             with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE):
                 with dpg.tree_node(
-                    label=LBL_TREE_RECONSTRUCTIONS_BROWSER_RECONSTRUCTIONS,
+                    label=self._lbl_reconstructions,
                     tag=self.tree_tag,
                     default_open=True,
                 ):
@@ -179,8 +217,8 @@ class GUIBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
             self._queue_node(
@@ -189,8 +227,8 @@ class GUIBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_RECONSTRUCTIONS_BROWSER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag
@@ -281,7 +319,7 @@ class GUIBrowserPanel(GUITreePanel):
     def _add_context_menu_load_reconstruction_item(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_RECONSTRUCTIONS_BROWSER_LOAD_RECONSTRUCTION,
+            label=self._lbl_context_load,
             callback=self._on_load_reconstruction,
             user_data=node,
         )

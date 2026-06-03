@@ -3,24 +3,12 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.constants.general import (
-    TPL_GLOBAL_TIME_ESTIMATION,
-    VAL_DELAY_CANCEL,
-    VAL_DELAY_SCHEDULE,
-    VAL_GLOBAL_PROGRESS_COMPLETE,
-    VAL_GLOBAL_PROGRESS_START,
-    VAL_PRIORITY_SCHEDULE,
-)
-from sampletones_application.constants.main import (
-    MSG_MAIN_CONVERTER_CANCELLED,
-    MSG_MAIN_CONVERTER_CANCELLING,
-    MSG_MAIN_CONVERTER_ERROR,
-    MSG_MAIN_CONVERTER_GENERATING_LIBRARY,
-    MSG_MAIN_CONVERTER_IDLE,
-    MSG_MAIN_CONVERTER_RECONSTRUCTION_COMPLETED,
-    MSG_MAIN_CONVERTER_WAITING,
-    TPL_MAIN_CONVERTER_PROGRESS,
-)
+from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.text.elements.global_ import GlobalTemplateElements
+from sampletones_application.text.elements.main import ConverterElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.progress import SystemProgress
 from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
@@ -35,8 +23,42 @@ from sampletones_shared.utils.system.paths import to_path
 
 
 class ConverterLogic(CallbackMixin):
-    def __init__(self, config_manager: ConfigManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        *,
+        scheduling: SchedulingBehavior,
+        language_manager: LanguageManager,
+    ) -> None:
         self._config_manager = config_manager
+        self._scheduling = scheduling
+        self._msg_idle = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_IDLE)
+        ]
+        self._msg_waiting = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_WAITING)
+        ]
+        self._msg_cancelling = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_CANCELLING)
+        ]
+        self._msg_generating_library = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_GENERATING_LIBRARY)
+        ]
+        self._msg_completed = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_RECONSTRUCTION_COMPLETED)
+        ]
+        self._msg_error = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_ERROR)
+        ]
+        self._msg_cancelled = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_CANCELLED)
+        ]
+        self._tpl_progress = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.TEMPLATE, ConverterElements.PROGRESS_TEMPLATE)
+        ]
+        self._tpl_eta = language_manager[
+            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.TIME_ESTIMATION)
+        ]
         self._converter: Optional[ReconstructionConverter] = None
         self._eta_estimator: Optional[ETAEstimator] = None
         self._config: Optional[Config] = None
@@ -63,7 +85,7 @@ class ConverterLogic(CallbackMixin):
         )
 
     def emit_initial_view(self) -> None:
-        self._emit_view_model(MSG_MAIN_CONVERTER_IDLE, VAL_GLOBAL_PROGRESS_START, "0%")
+        self._emit_view_model(self._msg_idle, 0.0, "0%")
 
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
         config = self._config_manager.config.model_copy()
@@ -72,7 +94,7 @@ class ConverterLogic(CallbackMixin):
 
         if not self.is_running():
             self._phase = ConversionPhase.IDLE
-            self._emit_view_model(MSG_MAIN_CONVERTER_IDLE, VAL_GLOBAL_PROGRESS_START, "0%")
+            self._emit_view_model(self._msg_idle, 0.0, "0%")
 
         if convert:
             self.start_conversion()
@@ -84,14 +106,14 @@ class ConverterLogic(CallbackMixin):
 
         self._config = self._config_manager.config.model_copy()
         self._phase = ConversionPhase.WAITING
-        self._emit_view_model(MSG_MAIN_CONVERTER_WAITING, VAL_GLOBAL_PROGRESS_START, "0%")
+        self._emit_view_model(self._msg_waiting, 0.0, "0%")
         self.call(self.generate_library)
         self._wait_for_library_and_start()
 
     def cancel(self) -> None:
         if self._converter and self._converter.is_running():
             self._phase = ConversionPhase.CANCELLING
-            self._emit_view_model(MSG_MAIN_CONVERTER_CANCELLING, VAL_GLOBAL_PROGRESS_START, "0%")
+            self._emit_view_model(self._msg_cancelling, 0.0, "0%")
             self._system_progress.error()
             self._converter.cancel()
 
@@ -106,7 +128,7 @@ class ConverterLogic(CallbackMixin):
             self._converter = None
             self._eta_estimator = None
             self._phase = ConversionPhase.IDLE
-            self._emit_view_model(MSG_MAIN_CONVERTER_IDLE, VAL_GLOBAL_PROGRESS_START, "0%")
+            self._emit_view_model(self._msg_idle, 0.0, "0%")
 
     def handle_load_request(self) -> None:
         if self._is_file:
@@ -149,11 +171,11 @@ class ConverterLogic(CallbackMixin):
 
     def _wait_for_library_and_start(self) -> None:
         if not self.call(self.is_library_loaded):
-            self._emit_view_model(MSG_MAIN_CONVERTER_GENERATING_LIBRARY, VAL_GLOBAL_PROGRESS_START, "0%")
+            self._emit_view_model(self._msg_generating_library, 0.0, "0%")
             CallbackQueue.add(
                 self._wait_for_library_and_start,
-                priority=VAL_PRIORITY_SCHEDULE,
-                delay=VAL_DELAY_SCHEDULE,
+                priority=self._scheduling.priority_schedule,
+                delay=self._scheduling.delay_schedule,
             )
         else:
             self._start_conversion()
@@ -187,13 +209,13 @@ class ConverterLogic(CallbackMixin):
             self._output_path = output_path
 
         self._phase = ConversionPhase.COMPLETED
-        self._emit_view_model(MSG_MAIN_CONVERTER_RECONSTRUCTION_COMPLETED, VAL_GLOBAL_PROGRESS_COMPLETE, "100%")
+        self._emit_view_model(self._msg_completed, 1.0, "100%")
         self.call(self.on_success)
 
     def _on_conversion_error(self, exception: Exception) -> None:
         self._system_progress.error()
         self._phase = ConversionPhase.FAILED
-        self._emit_view_model(MSG_MAIN_CONVERTER_ERROR, VAL_GLOBAL_PROGRESS_START, "100%")
+        self._emit_view_model(self._msg_error, 0.0, "100%")
         if isinstance(exception, NoFilesToProcessError):
             self.call(self.on_no_files_to_process)
         else:
@@ -201,11 +223,11 @@ class ConverterLogic(CallbackMixin):
 
     def _on_cancellation_complete(self) -> None:
         self._phase = ConversionPhase.CANCELLED
-        self._emit_view_model(MSG_MAIN_CONVERTER_CANCELLED, VAL_GLOBAL_PROGRESS_START, "100%")
+        self._emit_view_model(self._msg_cancelled, 0.0, "100%")
         CallbackQueue.add(
             self.close,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_CANCEL,
+            priority=self._scheduling.priority_schedule,
+            delay=self._scheduling.delay_cancel,
         )
         self.call(self.on_cancelled)
 
@@ -214,7 +236,7 @@ class ConverterLogic(CallbackMixin):
             match task_status:
                 case TaskStatus.CANCELLING:
                     self._phase = ConversionPhase.CANCELLING
-                    self._emit_view_model(MSG_MAIN_CONVERTER_CANCELLING, task_progress.get_progress(), "0%")
+                    self._emit_view_model(self._msg_cancelling, task_progress.get_progress(), "0%")
                 case TaskStatus.RUNNING:
                     self._handle_running_update(task_progress)
                 case _:
@@ -227,10 +249,10 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.set(task_progress.completed, task_progress.total)
         eta_string = self._eta_estimator.update(task_progress.completed)
         percent_string = self._eta_estimator.get_percent_string()
-        status_text = TPL_MAIN_CONVERTER_PROGRESS.format(self._converter.completed_files, self._converter.total_files)
+        status_text = self._tpl_progress.format(self._converter.completed_files, self._converter.total_files)
 
         if eta_string:
-            status_text += TPL_GLOBAL_TIME_ESTIMATION.format(eta_string=eta_string)
+            status_text += self._tpl_eta.format(eta_string=eta_string)
 
         current_item = task_progress.current_item
         display_input_path = to_path(current_item) if current_item is not None else self._input_path

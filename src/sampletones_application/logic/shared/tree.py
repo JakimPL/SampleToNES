@@ -2,7 +2,7 @@ import threading
 from typing import Callable, Optional
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
-from sampletones_application.constants.general import VAL_DELAY_SCHEDULE, VAL_PRIORITY_SCHEDULE
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants import paths
@@ -19,9 +19,12 @@ class TreeLogic(CallbackMixin):
         self,
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
+        *,
+        scheduling: SchedulingBehavior,
     ) -> None:
         self._application_config_manager = application_config_manager
         self._audio_device_manager = audio_device_manager
+        self._scheduling = scheduling
 
         self._lock_counter: int = 0
         self._is_locked: bool = False
@@ -57,8 +60,8 @@ class TreeLogic(CallbackMixin):
         self._pending_autoplay_node = node
         CallbackQueue.add(
             self._execute_autoplay,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
+            priority=self._scheduling.priority_schedule,
+            delay=self._scheduling.delay_schedule,
         )
 
     def cancel_autoplay(self) -> None:
@@ -112,8 +115,8 @@ class TreeLogic(CallbackMixin):
         self._pending_search_query = query
         CallbackQueue.add(
             self._execute_search_update,
-            priority=VAL_PRIORITY_SCHEDULE,
-            delay=VAL_DELAY_SCHEDULE,
+            priority=self._scheduling.priority_schedule,
+            delay=self._scheduling.delay_schedule,
         )
 
     def _execute_search_update(self) -> None:

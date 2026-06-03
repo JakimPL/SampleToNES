@@ -8,7 +8,6 @@ from sampletones_application.constants.general import (
     SUF_HANDLER_STATUS,
     TAG_STATUS_BAR_GLOBAL,
     TAG_STATUS_WINDOW_GLOBAL,
-    VAL_STATUS_BAR_DISPLAY_TIME,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.status import StatusBarTheme
@@ -23,9 +22,11 @@ class GUIStatusBar(metaclass=SingletonMeta):
         self,
         tag: str = TAG_STATUS_BAR_GLOBAL,
         parent: str = TAG_STATUS_WINDOW_GLOBAL,
+        display_time: float = 2.0,
     ) -> None:
         self.tag = tag
         self.parent = parent
+        self._display_time = display_time
 
         self.message: Optional[str] = None
         self.theme = StatusBarTheme()
@@ -68,7 +69,7 @@ class GUIStatusBar(metaclass=SingletonMeta):
     ) -> None:
         if message_or_function is not None:
             self.message = self.get_message(message_or_function, *args, **kwargs)
-            self.timer = VAL_STATUS_BAR_DISPLAY_TIME
+            self.timer = self._display_time
 
         dpg_configure_item(self.tag, label=self.message)
         if self.timer > 0.0 and delta_time is not None:

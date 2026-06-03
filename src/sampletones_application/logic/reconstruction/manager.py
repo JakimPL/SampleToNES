@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
-from sampletones_application.constants.general import VAL_PRIORITY_SCHEDULE
+from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.feature import FeatureData
@@ -14,7 +14,8 @@ from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 class ReconstructionManager(CallbackMixin):
-    def __init__(self) -> None:
+    def __init__(self, *, scheduling: SchedulingBehavior) -> None:
+        self._scheduling = scheduling
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[FeatureData] = None
         self._reconstruction_hash: str = ""
@@ -64,7 +65,7 @@ class ReconstructionManager(CallbackMixin):
         self._current_features = None
         self._reconstruction_hash = ""
         self._coefficient = 1.0
-        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=VAL_PRIORITY_SCHEDULE)
+        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=self._scheduling.priority_schedule)
 
     def locate_original_audio(self) -> None:
         original_audio_path = self.audio_filepath

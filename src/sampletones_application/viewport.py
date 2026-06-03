@@ -6,7 +6,7 @@ import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
-from sampletones_application.constants.general import DIM_WINDOW_HEIGHT, DIM_WINDOW_WIDTH, TTL_WINDOW_MAIN
+from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
 from sampletones_application.ui.themes.default import DefaultTheme
@@ -19,10 +19,12 @@ class ViewportManager:
         application_config_manager: ApplicationConfigManager,
         theme: DefaultTheme,
         *,
+        layout: GeneralLayout,
         on_fullscreen_state_changed: VoidCallback,
     ) -> None:
         self._application_config_manager = application_config_manager
         self._theme = theme
+        self._layout = layout
         self._on_fullscreen_state_changed = on_fullscreen_state_changed
 
     def create_viewport(self) -> None:
@@ -34,9 +36,9 @@ class ViewportManager:
         icon_file_path = get_icon_path(icon_filename)
 
         dpg.create_viewport(
-            title=TTL_WINDOW_MAIN,
-            width=DIM_WINDOW_WIDTH,
-            height=DIM_WINDOW_HEIGHT,
+            title="SampleToNES",
+            width=self._layout.window.width,
+            height=self._layout.window.height,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
             x_pos=self._application_config_manager.window_x,
@@ -54,11 +56,11 @@ class ViewportManager:
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
 
-    def update_title(self, name: Optional[str], has_unsaved_changes: bool) -> None:
+    def update_title(self, name: Optional[str], has_unsaved_changes: bool, title: str = "SampleToNES") -> None:
         if not name:
-            base_name = TTL_WINDOW_MAIN
+            base_name = title
         else:
-            base_name = f"{TTL_WINDOW_MAIN} - {name}"
+            base_name = f"{title} - {name}"
             if has_unsaved_changes:
                 base_name += "*"
 

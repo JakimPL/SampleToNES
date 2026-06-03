@@ -2,20 +2,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import (
-    VAL_GLOBAL_PROGRESS_START,
-)
 from sampletones_application.constants.main import (
-    DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
-    DIM_BUTTON_WIDTH_MAIN_CONVERTER,
-    DIM_PANEL_HEIGHT_MAIN_CONVERTER,
-    LBL_BUTTON_MAIN_CONVERTER_CANCEL,
-    LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE,
-    LBL_BUTTON_MAIN_CONVERTER_LOAD,
-    LBL_SECTION_MAIN_CONVERTER,
-    MSG_MAIN_CONVERTER_INPUT,
-    MSG_MAIN_CONVERTER_OUTPUT,
-    MSG_MAIN_CONVERTER_WAITING,
     TAG_BUTTON_MAIN_CONVERTER_CANCEL,
     TAG_BUTTON_MAIN_CONVERTER_CONVERT,
     TAG_BUTTON_MAIN_CONVERTER_LOAD,
@@ -27,6 +14,11 @@ from sampletones_application.constants.main import (
     TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
     TAG_TEXT_MAIN_CONVERTER_STATUS,
 )
+from sampletones_application.layout.main import ConverterLayout
+from sampletones_application.text.elements.main import ConverterElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -39,7 +31,7 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIConverterPanel(GUIPanel):
-    def __init__(self) -> None:
+    def __init__(self, *, layout: ConverterLayout, language_manager: LanguageManager) -> None:
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
@@ -48,10 +40,33 @@ class GUIConverterPanel(GUIPanel):
         self.on_close_requested: Optional[VoidCallback] = None
         self.on_load_requested: Optional[VoidCallback] = None
 
+        self._layout = layout
+        self._lbl_section = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.SECTION)
+        ]
+        self._lbl_cancel_button = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CANCEL_BUTTON)
+        ]
+        self._lbl_load_button = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.LOAD_BUTTON)
+        ]
+        self._lbl_convert_button = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CONVERT_SAMPLE_BUTTON)
+        ]
+        self._msg_input = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_INPUT_LABEL)
+        ]
+        self._msg_output = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_OUTPUT_LABEL)
+        ]
+        self._msg_waiting = language_manager[
+            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_WAITING)
+        ]
+
         super().__init__(
             tag=TAG_PANEL_MAIN_CONVERTER,
             parent=TAG_PANEL_MAIN,
-            height=DIM_PANEL_HEIGHT_MAIN_CONVERTER,
+            height=layout.height,
         )
 
     def create_panel(self) -> None:
@@ -92,16 +107,16 @@ class GUIConverterPanel(GUIPanel):
             dpg_set_item_callback(TAG_BUTTON_MAIN_CONVERTER_CANCEL, self._on_cancel_clicked)
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_MAIN_CONVERTER)
+        section_text = dpg.add_text(self._lbl_section)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_export_button(self) -> None:
         dpg.add_separator()
         GUIButton(
-            label=LBL_BUTTON_MAIN_CONVERTER_CONVERT_SAMPLE,
+            label=self._lbl_convert_button,
             tag=TAG_BUTTON_MAIN_CONVERTER_CONVERT,
-            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
-            height=DIM_BUTTON_HEIGHT_MAIN_CONVERTER,
+            width=self._layout.width,
+            height=self._layout.button_height,
             font=Font.BOLD_LARGE,
             enabled=False,
             callback=self._on_convert_clicked,
@@ -110,14 +125,14 @@ class GUIConverterPanel(GUIPanel):
     def _create_paths(self) -> None:
         self.input_path_text = GUIPathText(
             path=None,
-            prefix=MSG_MAIN_CONVERTER_INPUT,
+            prefix=self._msg_input,
             tag=TAG_PATH_MAIN_CONVERTER_INPUT_PATH,
             parent=TAG_GROUP_MAIN_CONVERTER,
             font=Font.REGULAR_SMALL,
         )
         self.output_path_text = GUIPathText(
             path=None,
-            prefix=MSG_MAIN_CONVERTER_OUTPUT,
+            prefix=self._msg_output,
             tag=TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
             parent=TAG_GROUP_MAIN_CONVERTER,
             font=Font.REGULAR_SMALL,
@@ -131,14 +146,14 @@ class GUIConverterPanel(GUIPanel):
         ):
             dpg.add_separator()
             dpg.add_text(
-                MSG_MAIN_CONVERTER_WAITING,
+                self._msg_waiting,
                 tag=TAG_TEXT_MAIN_CONVERTER_STATUS,
                 parent=TAG_GROUP_MAIN_CONVERTER,
             )
             dpg.add_progress_bar(
                 tag=TAG_PROGRESS_MAIN_CONVERTER,
                 parent=TAG_GROUP_MAIN_CONVERTER,
-                default_value=VAL_GLOBAL_PROGRESS_START,
+                default_value=0.0,
                 width=-1,
                 overlay="0%",
             )
@@ -148,16 +163,16 @@ class GUIConverterPanel(GUIPanel):
     @table_wrapper(columns=2)
     def _add_buttons(self) -> None:
         GUIButton(
-            label=LBL_BUTTON_MAIN_CONVERTER_LOAD,
+            label=self._lbl_load_button,
             tag=TAG_BUTTON_MAIN_CONVERTER_LOAD,
-            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
+            width=self._layout.width,
             callback=self._on_load_clicked,
             enabled=False,
         )
         GUIButton(
-            label=LBL_BUTTON_MAIN_CONVERTER_CANCEL,
+            label=self._lbl_cancel_button,
             tag=TAG_BUTTON_MAIN_CONVERTER_CANCEL,
-            width=DIM_BUTTON_WIDTH_MAIN_CONVERTER,
+            width=self._layout.width,
             callback=self._on_cancel_clicked,
         )
 

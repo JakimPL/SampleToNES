@@ -4,13 +4,9 @@ from typing import Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    COL_PATH_TEXT,
-    COL_PATH_TEXT_HOVER,
-    MSG_STATUS_PATH,
     SUF_GROUP,
     SUF_LABEL,
     SUF_PATH_HANDLER,
-    VAL_DELAY_GUI_ACTION,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -33,8 +29,8 @@ class GUIPathText(CallbackMixin):
         parent: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
-        color: Tuple[int, int, int] = COL_PATH_TEXT,
-        hover_color: Tuple[int, int, int] = COL_PATH_TEXT_HOVER,
+        color: Optional[Tuple[int, int, int]] = None,
+        hover_color: Optional[Tuple[int, int, int]] = None,
     ) -> None:
         self.tag = tag
         self.path = path or Path()
@@ -44,8 +40,8 @@ class GUIPathText(CallbackMixin):
         self.tooltip: Optional[Sender] = None
 
         self.font = font
-        self.color = color
-        self.hover_color = hover_color
+        self.color = color or (100, 150, 255)
+        self.hover_color = hover_color or (150, 200, 255)
 
         self.parent = parent
         self.label_tag = f"{tag}{SUF_LABEL}"
@@ -92,11 +88,11 @@ class GUIPathText(CallbackMixin):
     def _on_hover(self) -> None:
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                GUIStatusBar.set(MSG_STATUS_PATH)
+                GUIStatusBar.set("Click to open path in file explorer.")
                 dpg.configure_item(self.tag, color=self.hover_color)
                 FrameCallbackManager.set_frame_callback(
                     self._on_hover,
-                    VAL_DELAY_GUI_ACTION,
+                    2,
                 )
             else:
                 dpg.configure_item(self.tag, color=self.color)

@@ -4,24 +4,10 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.constants.general import (
-    LBL_TREE_FILTER,
     SUF_PANEL_LEFT,
     TAG_TAB_GLOBAL_MAIN,
-    VAL_NODE_CHILDREN_SLOT,
 )
 from sampletones_application.constants.main import (
-    LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-    LBL_BUTTON_MAIN_EXPLORER_REFRESH,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
-    LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
-    LBL_SECTION_MAIN_EXPLORER,
-    MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
-    MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO,
-    MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY,
     TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
     TAG_BUTTON_MAIN_EXPLORER_REFRESH,
     TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
@@ -30,11 +16,14 @@ from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_EXPLORER,
     TAG_TREE_MAIN_EXPLORER,
     TAG_WINDOW_MAIN_EXPLORER_TREE,
-    TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
-    VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
-    VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
 )
+from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
 from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.elements.main import ExplorerElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -60,11 +49,56 @@ class GUIExplorerPanel(GUITreePanel):
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
+        *,
+        scheduling: SchedulingBehavior,
+        tree_behavior: TreeBehavior,
+        language_manager: LanguageManager,
     ) -> None:
         self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
         self.application_config_manager = application_config_manager
         self.shortcut_manager = shortcut_manager
+        self._tree_behavior = tree_behavior
+
+        self._lbl_section = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.SECTION)
+        ]
+        self._lbl_refresh = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.REFRESH_BUTTON)
+        ]
+        self._lbl_collapse_all = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.COLLAPSE_ALL_BUTTON)
+        ]
+        self._lbl_ctx_load_reconstruction = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION)
+        ]
+        self._lbl_ctx_load_library = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_LOAD_LIBRARY)
+        ]
+        self._lbl_ctx_reconstruct_file = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_RECONSTRUCT_FILE)
+        ]
+        self._lbl_ctx_reconstruct_directory = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY)
+        ]
+        self._lbl_ctx_set_library = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY)
+        ]
+        self._lbl_ctx_set_output = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY)
+        ]
+        self._msg_converter_running = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.CONVERTER_RUNNING_MSG)
+        ]
+        self._msg_status_audio_no_autoplay = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY)
+        ]
+        self._msg_status_audio = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.STATUS_NODE_AUDIO)
+        ]
+        self._ttl_converter_running = language_manager[
+            TextKey(Page.MAIN, Panel.EXPLORER, TextType.TITLE, ExplorerElements.CONVERTER_RUNNING_DIALOG)
+        ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -86,7 +120,8 @@ class GUIExplorerPanel(GUITreePanel):
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
-            search_label=LBL_TREE_FILTER,
+            scheduling=scheduling,
+            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.FILTER)],
         )
 
     def create_panel(self) -> None:
@@ -124,7 +159,7 @@ class GUIExplorerPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SECTION_MAIN_EXPLORER)
+        section_text = dpg.add_text(self._lbl_section)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_buttons(self) -> None:
@@ -132,14 +167,14 @@ class GUIExplorerPanel(GUITreePanel):
         with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_CONTROLS):
             GUIButton(
                 tag=TAG_BUTTON_MAIN_EXPLORER_REFRESH,
-                label=LBL_BUTTON_MAIN_EXPLORER_REFRESH,
+                label=self._lbl_refresh,
                 parent=self.tag,
                 width=-1,
                 callback=self.refresh,
             )
             GUIButton(
                 tag=TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-                label=LBL_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+                label=self._lbl_collapse_all,
                 parent=self.tag,
                 width=-1,
                 callback=self.collapse_all,
@@ -151,7 +186,7 @@ class GUIExplorerPanel(GUITreePanel):
         with dpg.child_window(tag=TAG_WINDOW_MAIN_EXPLORER_TREE):
             with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_TREE):
                 with dpg.tree_node(
-                    label=LBL_SECTION_MAIN_EXPLORER,
+                    label=self._lbl_section,
                     tag=self.tree_tag,
                     default_open=True,
                 ):
@@ -159,7 +194,7 @@ class GUIExplorerPanel(GUITreePanel):
 
     def collapse_all(self, sender: Sender, app_data: int, user_data: object) -> None:
         self.explorer_logic.collapse_all()
-        children = dpg.get_item_children(self.tree_tag, VAL_NODE_CHILDREN_SLOT)
+        children = dpg.get_item_children(self.tree_tag, 1)
         assert children is not None, "Explorer tree has no children."
         for node_tag in children:
             dpg.set_value(node_tag, False)
@@ -234,8 +269,8 @@ class GUIExplorerPanel(GUITreePanel):
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
                 is_node_expanded=is_directory_expanded,
-                add_node_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
             self._queue_node(
@@ -244,8 +279,8 @@ class GUIExplorerPanel(GUITreePanel):
                 state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag
@@ -330,9 +365,9 @@ class GUIExplorerPanel(GUITreePanel):
     def _create_status_bar_message_function_for_audio_node(self) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self.application_config_manager.autoplay:
-                return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO
+                return self._msg_status_audio
 
-            return MSG_STATUS_NODE_MAIN_EXPLORER_AUDIO_NO_AUTOPLAY
+            return self._msg_status_audio_no_autoplay
 
         return self._create_status_bar_message_function(message_function)
 
@@ -394,17 +429,17 @@ class GUIExplorerPanel(GUITreePanel):
         match suffix:
             case paths.EXT_FILE_RECONSTRUCTION:
                 dpg.add_menu_item(
-                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_RECONSTRUCTION,
+                    label=self._lbl_ctx_load_reconstruction,
                     callback=lambda: self._load_reconstruction(node),
                 )
             case paths.EXT_FILE_LIBRARY:
                 dpg.add_menu_item(
-                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_LOAD_LIBRARY,
+                    label=self._lbl_ctx_load_library,
                     callback=lambda: self._load_library(node),
                 )
             case suffix if suffix in paths.EXT_FILES_AUDIO:
                 dpg.add_menu_item(
-                    label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
+                    label=self._lbl_ctx_reconstruct_file,
                     callback=lambda: self._context_reconstruct_file(node),
                 )
 
@@ -427,26 +462,26 @@ class GUIExplorerPanel(GUITreePanel):
     def _add_context_menu_reconstruction_directory(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_DIRECTORY,
+            label=self._lbl_ctx_reconstruct_directory,
             callback=lambda: self._context_reconstruct_directory(node),
         )
 
     def _add_context_menu_reconstruction_file(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_RECONSTRUCT_FILE,
+            label=self._lbl_ctx_reconstruct_file,
             callback=lambda: self._context_reconstruct_file(node),
         )
 
     def _add_context_menu_set_directory_items(self, node: FileSystemNode) -> None:
         dpg.add_separator()
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_OUTPUT_DIRECTORY,
+            label=self._lbl_ctx_set_output,
             callback=lambda: self._context_set_as_output_directory(node),
         )
 
         dpg.add_menu_item(
-            label=LBL_CONTEXT_ITEM_MAIN_EXPLORER_SET_AS_LIBRARY_DIRECTORY,
+            label=self._lbl_ctx_set_library,
             callback=lambda: self._context_set_as_library_directory(node),
         )
 
@@ -473,8 +508,8 @@ class GUIExplorerPanel(GUITreePanel):
             logger.warning("Conversion is already running. Wait or cancel the current operation.")
             show_info_dialog(
                 tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
-                message=MSG_MAIN_EXPLORER_CONVERTER_RUNNING,
-                title=TTL_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                message=self._msg_converter_running,
+                title=self._ttl_converter_running,
             )
             return True
 

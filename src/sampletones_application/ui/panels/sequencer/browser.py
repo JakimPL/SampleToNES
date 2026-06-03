@@ -5,19 +5,20 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import ApplicationConfigManager
 from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_SEQUENCER
 from sampletones_application.constants.sequencer import (
-    LBL_BUTTON_SEQUENCER_BROWSER_REFRESH_LIST,
-    LBL_SEQUENCER_BROWSER_RECONSTRUCTIONS,
-    LBL_TREE_SEQUENCER_BROWSER_RECONSTRUCTIONS,
     TAG_BUTTON_SEQUENCER_BROWSER_REFRESH_RECONSTRUCTIONS,
     TAG_GROUP_SEQUENCER_BROWSER_CONTROLS,
     TAG_GROUP_SEQUENCER_BROWSER_TREE,
     TAG_PANEL_SEQUENCER_BROWSER,
     TAG_TREE_SEQUENCER_BROWSER,
     TAG_WINDOW_SEQUENCER_BROWSER_TREE,
-    VAL_PRIORITY_SEQUENCER_BROWSER_ADD_HANDLER,
-    VAL_PRIORITY_SEQUENCER_BROWSER_ADD_NODE,
 )
+from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
+from sampletones_application.text.elements.global_ import TreeElements
+from sampletones_application.text.elements.sequencer import SequencerBrowserElements
+from sampletones_application.text.hierarchy import Page, Panel, TextType
+from sampletones_application.text.key import TextKey
+from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -39,8 +40,19 @@ class GUISequencerBrowserPanel(GUITreePanel):
         application_config_manager: ApplicationConfigManager,
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
+        *,
+        scheduling: SchedulingBehavior,
+        tree_behavior: TreeBehavior,
+        language_manager: LanguageManager,
     ) -> None:
         self.sequencer_browser_logic = sequencer_browser_logic
+        self._tree_behavior = tree_behavior
+        self._lbl_refresh = language_manager[
+            TextKey(Page.SEQUENCER, Panel.BROWSER, TextType.LABEL, SequencerBrowserElements.REFRESH_BUTTON)
+        ]
+        self._lbl_reconstructions = language_manager[
+            TextKey(Page.SEQUENCER, Panel.BROWSER, TextType.LABEL, SequencerBrowserElements.RECONSTRUCTIONS_TREE)
+        ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
 
@@ -52,6 +64,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
             application_config_manager=application_config_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
+            scheduling=scheduling,
+            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
         )
 
     def create_panel(self) -> None:
@@ -89,7 +103,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         super()._setup_handlers()
 
     def _create_section_text(self) -> None:
-        section_text = dpg.add_text(LBL_SEQUENCER_BROWSER_RECONSTRUCTIONS)
+        section_text = dpg.add_text(self._lbl_reconstructions)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
     def _create_buttons(self) -> None:
@@ -97,7 +111,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         with dpg.group(tag=TAG_GROUP_SEQUENCER_BROWSER_CONTROLS):
             GUIButton(
                 tag=TAG_BUTTON_SEQUENCER_BROWSER_REFRESH_RECONSTRUCTIONS,
-                label=LBL_BUTTON_SEQUENCER_BROWSER_REFRESH_LIST,
+                label=self._lbl_refresh,
                 width=-1,
                 callback=self._rebuild_tree,
             )
@@ -108,7 +122,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         with dpg.child_window(tag=TAG_WINDOW_SEQUENCER_BROWSER_TREE):
             with dpg.group(tag=TAG_GROUP_SEQUENCER_BROWSER_TREE):
                 with dpg.tree_node(
-                    label=LBL_TREE_SEQUENCER_BROWSER_RECONSTRUCTIONS,
+                    label=self._lbl_reconstructions,
                     tag=self.tree_tag,
                     default_open=True,
                 ):
@@ -159,8 +173,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 should_expand=should_expand,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=VAL_PRIORITY_SEQUENCER_BROWSER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_SEQUENCER_BROWSER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
         else:
             self._queue_node(
@@ -169,8 +183,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
                 parent=state.parent,
                 leaf=True,
                 has_favorite_ancestor=state.has_favorite_ancestor,
-                add_node_priority=VAL_PRIORITY_SEQUENCER_BROWSER_ADD_NODE,
-                add_handler_priority=VAL_PRIORITY_SEQUENCER_BROWSER_ADD_HANDLER,
+                add_node_priority=self._tree_behavior.priority_add_node,
+                add_handler_priority=self._tree_behavior.priority_add_handler,
             )
 
         state.parent = node_tag
