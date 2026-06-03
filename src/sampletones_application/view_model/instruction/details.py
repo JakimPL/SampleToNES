@@ -2,8 +2,8 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table_data import InstructionTableData
+from sampletones_application.view_model.instruction.data import InstructionPanelData
+from sampletones_application.view_model.instruction.table_data import InstructionTableData
 
 
 class InstructionDetailsPanelViewModel(BaseModel):

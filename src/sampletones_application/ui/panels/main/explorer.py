@@ -34,7 +34,7 @@ from sampletones_application.constants.main import (
     VAL_PRIORITY_MAIN_EXPLORER_ADD_HANDLER,
     VAL_PRIORITY_MAIN_EXPLORER_ADD_NODE,
 )
-from sampletones_application.logic.explorer.explorer import ExplorerLogic
+from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

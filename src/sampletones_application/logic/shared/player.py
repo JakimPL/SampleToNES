@@ -1,8 +1,8 @@
 from typing import Callable, Optional
 
-from sampletones_application.logic.player.audio_player import AudioPlayer
-from sampletones_application.logic.player.data import AudioData
-from sampletones_application.view_model.player.player import PlayerViewModel
+from sampletones_application.logic.shared.audio_player import AudioPlayer
+from sampletones_application.view_model.shared.audio_data import AudioData
+from sampletones_application.view_model.shared.player import PlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin

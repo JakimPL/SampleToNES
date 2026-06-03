@@ -34,7 +34,7 @@ from sampletones_application.constants.instructions import (
     VAL_PRIORITY_INSTRUCTIONS_LIBRARY_ADD_NODE,
 )
 from sampletones_application.constants.main import TAG_PANEL_MAIN_CONVERTER
-from sampletones_application.logic.library.library import LibraryLogic
+from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -45,7 +45,7 @@ from sampletones_application.utils.dialogs import show_error_dialog, show_file_n
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
-from sampletones_application.view_model.library.library import LibraryPanelViewModel
+from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
 from sampletones_shared.types.application import Sender

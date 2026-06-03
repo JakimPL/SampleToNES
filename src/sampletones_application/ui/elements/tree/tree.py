@@ -33,7 +33,7 @@ from sampletones_application.constants.general import (
     VAL_TEXT_EXPAND,
 )
 from sampletones_application.constants.main import MSG_STATUS_NODE_MAIN_EXPLORER_LIBRARY
-from sampletones_application.logic.tree.tree import TreeLogic
+from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

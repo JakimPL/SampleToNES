@@ -17,17 +17,17 @@ from sampletones_application.constants.general import (
     TAG_TABS,
 )
 from sampletones_application.constants.instructions import MSG_LIBRARY_DISPLAY_ERROR
-from sampletones_application.logic.instruction.data import InstructionPanelData
 from sampletones_application.logic.instruction.details import InstructionDetailsPanelLogic
-from sampletones_application.logic.library.library import LibraryLogic
-from sampletones_application.logic.library.manager import InstructionsLibraryManager
-from sampletones_application.logic.player.player import PlayerLogic
-from sampletones_application.ui.panels.instruction.details.details import GUIInstructionDetailsPanel
-from sampletones_application.ui.panels.instruction.instruction.instruction import GUIInstructionPanel
-from sampletones_application.ui.panels.instruction.library.library import GUIInstructionsLibraryPanel
+from sampletones_application.logic.instruction.library import LibraryLogic
+from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.ui.panels.instruction.details import GUIInstructionDetailsPanel
+from sampletones_application.ui.panels.instruction.instruction import GUIInstructionPanel
+from sampletones_application.ui.panels.instruction.library import GUIInstructionsLibraryPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.dialogs import show_error_dialog
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.types.callback import VoidCallback

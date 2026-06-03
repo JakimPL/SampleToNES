@@ -2,7 +2,7 @@ from typing import Callable, Optional
 
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
-from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin

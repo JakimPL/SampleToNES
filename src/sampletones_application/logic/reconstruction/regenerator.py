@@ -3,10 +3,10 @@ from typing import Callable, List, Optional, cast
 import numpy as np
 
 from sampletones_application.constants.general import VAL_PRIORITY_SCHEDULE
-from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.thread import concurrent
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones_core.generators import GeneratorUnion

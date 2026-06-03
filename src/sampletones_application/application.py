@@ -57,7 +57,7 @@ from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol, PlaybackRouter
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
-from sampletones_application.logic.library.manager import InstructionsLibraryManager
+from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.regenerator import Regenerator
@@ -85,7 +85,7 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.keys import Modifier
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.shortcuts.shortcut import Shortcut, ShortcutId
-from sampletones_application.view_model.menu.menu import MenuBarViewModel
+from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO

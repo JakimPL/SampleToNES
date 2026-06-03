@@ -38,15 +38,15 @@ from sampletones_application.constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_DETAILS_INSTRUCTIONS_CHOICE,
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
-from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table_data import InstructionTableData
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel
+from sampletones_application.view_model.instruction.table_data import InstructionTableData
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
 from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction

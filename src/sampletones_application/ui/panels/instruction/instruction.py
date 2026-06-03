@@ -19,13 +19,13 @@ from sampletones_application.constants.instructions import (
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
     TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
 )
-from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.player.data import AudioData
-from sampletones_application.logic.player.player import PlayerLogic
+from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.view_model.instruction.data import InstructionPanelData
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger

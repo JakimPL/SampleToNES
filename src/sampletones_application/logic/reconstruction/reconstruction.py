@@ -2,10 +2,10 @@ from pathlib import Path
 from typing import Callable, FrozenSet, List, Optional
 
 from sampletones_application.config.application.manager import ApplicationConfigManager
-from sampletones_application.logic.player.data import AudioData
-from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import write_wave
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT

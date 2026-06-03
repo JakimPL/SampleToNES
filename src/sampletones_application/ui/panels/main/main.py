@@ -9,10 +9,10 @@ from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_SETTINGS,
 )
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.main.advanced.advanced import GUIAdvancedSettingsPanel
-from sampletones_application.ui.panels.main.config.config import GUIConfigPanel
+from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
+from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
-from sampletones_application.ui.panels.main.reconstructor.reconstructor import GUIReconstructorPanel
+from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.align import table_wrapper
 
 

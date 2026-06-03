@@ -44,7 +44,7 @@ from sampletones_application.ui.themes.fps import FPSTimerTheme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.shortcuts.shortcut import ShortcutId
-from sampletones_application.view_model.menu.menu import MenuBarViewModel
+from sampletones_application.view_model.shared.menu import MenuBarViewModel
 
 
 class MenuBar:

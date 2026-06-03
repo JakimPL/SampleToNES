@@ -43,8 +43,8 @@ from sampletones_application.constants.sequencer import (
     VAL_SEQUENCER_GRID_TEMPO_MIN,
     VAL_SEQUENCER_GRID_TRACKER_ROWS,
 )
-from sampletones_application.logic.player.player import PlayerLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
+from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry

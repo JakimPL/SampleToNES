@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Optional
 
 from sampletones_application.constants.general import VAL_PRIORITY_SCHEDULE
-from sampletones_application.logic.reconstruction.data import ReconstructionData
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
+from sampletones_application.view_model.reconstruction.feature import FeatureData
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback

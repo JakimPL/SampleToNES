@@ -34,7 +34,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
-from sampletones_application.view_model.converter.converter import ConverterViewModel
+from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_shared.types.callback import VoidCallback
 
 

@@ -3,7 +3,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.instructions import LBL_NODE_INSTRUCTIONS_LIBRARY_LIBRARIES
-from sampletones_application.logic.instruction.data import InstructionPanelData
+from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName
 from sampletones_core.constants.paths import EXT_FILE_LIBRARY

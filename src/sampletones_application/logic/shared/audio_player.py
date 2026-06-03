@@ -1,6 +1,6 @@
 from typing import Callable, Optional
 
-from sampletones_application.logic.player.data import AudioData
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_shared.exceptions import PlaybackError

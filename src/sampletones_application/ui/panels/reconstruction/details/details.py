@@ -56,7 +56,6 @@ from sampletones_application.constants.reconstructions import (
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PERIOD_EXAMPLE,
     VAL_TOOLTIP_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH_PITCH_EXAMPLE,
 )
-from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -77,6 +76,7 @@ from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_ite
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
+from sampletones_application.view_model.reconstruction.feature import FeatureData
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.utils.frequencies import (

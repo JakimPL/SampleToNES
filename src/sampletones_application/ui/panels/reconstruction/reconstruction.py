@@ -44,9 +44,7 @@ from sampletones_application.constants.reconstructions import (
     TTL_DIALOG_EXPORT_WAV,
     VAL_RADIO_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
 )
-from sampletones_application.logic.player.data import AudioData
-from sampletones_application.logic.player.player import PlayerLogic
-from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -57,7 +55,9 @@ from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
+from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender

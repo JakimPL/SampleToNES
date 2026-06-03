@@ -25,7 +25,6 @@ from sampletones_application.constants.graphs import (
     VAL_WAVEFORM_RECONSTRUCTION_THICKNESS,
     VAL_WAVEFORM_SAMPLE_THICKNESS,
 )
-from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
 from sampletones_application.ui.elements.graphs.layers.instruction import InstructionLayer
@@ -38,6 +37,7 @@ from sampletones_application.utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
+from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender

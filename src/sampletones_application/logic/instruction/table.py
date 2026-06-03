@@ -15,9 +15,9 @@ from sampletones_application.constants.instructions import (
     TPL_CELL_INSTRUCTIONS_DETAILS_PITCH,
     VAL_PRECISION_INSTRUCTIONS_DETAILS_FLOAT,
 )
-from sampletones_application.logic.instruction.cell import TableCell
-from sampletones_application.logic.instruction.data import InstructionPanelData
-from sampletones_application.logic.instruction.table_data import InstructionTableData
+from sampletones_application.view_model.instruction.cell import TableCell
+from sampletones_application.view_model.instruction.data import InstructionPanelData
+from sampletones_application.view_model.instruction.table_data import InstructionTableData
 from sampletones_core.constants.general import DUTY_CYCLES, NOISE_PERIODS
 from sampletones_core.utils.frequencies import pitch_to_name
 from sampletones_shared.utils.serialization import hash_model
