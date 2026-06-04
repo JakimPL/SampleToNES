@@ -8,23 +8,20 @@ from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
-from sampletones_application.categories.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsBrowserElements,
-)
+from sampletones_application.categories.elements.reconstructions import ReconstructionsBrowserElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    TAG_GLOBAL_DIALOG_CONFIG_STATUS,
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
     TAG_GLOBAL_STATUS_WINDOW,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_WINDOW_MAIN,
 )
+from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import (
@@ -69,11 +66,7 @@ from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
-from sampletones_core.paths import (
-    EXT_FILE_JSON,
-    EXT_FILE_RECONSTRUCTION,
-    EXT_FILES_AUDIO,
-)
+from sampletones_core.paths import EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
 from sampletones_core.sequencer import Sequencer
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import LoadReconstructionError
@@ -205,6 +198,14 @@ class Application:
             language_manager=self.language_manager,
         )
 
+        self._config_coordinator = ConfigCoordinator(
+            self.config_manager,
+            self.session_manager,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            layout=self.layout,
+        )
+
         self._reconstruction_session.on_state_changed = self._on_reconstruction_state_changed
 
         self._setup_gui()
@@ -271,12 +272,12 @@ class Application:
         self.shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
-            self._save_config_dialog,
+            self._config_coordinator.save_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
             Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
-            self._load_config_dialog,
+            self._config_coordinator.load_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.AUDIO_SETTINGS,
@@ -462,55 +463,6 @@ class Application:
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
-    def _save_config_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.SAVE_CONFIG,
-                )
-            ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_save_config,
-            file_count=1,
-            default_filename="config",
-            default_path=str(self.session_manager.get_config_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_JSON)
-
-    @file_dialog_handler
-    def _handle_save_config(self, filepath: Path) -> None:
-        try:
-            self.config_manager.save_config_to_file(filepath)
-            self._show_config_status_dialog(
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
-                    )
-                ]
-            )
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to save config to {filepath}")
-            self.dialogs.show_error(
-                exception,
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIG_SAVE_FAILED,
-                    )
-                ],
-            )
-
-        self.session_manager.set_config_path(filepath)
-
     @file_dialog_handler
     def _handle_save_reconstruction_as(self, filepath: Path) -> None:
         try:
@@ -549,54 +501,6 @@ class Application:
             )
 
         self.session_manager.set_reconstruction_path(filepath)
-
-    def _load_config_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.LOAD_CONFIG,
-                )
-            ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_load_config,
-            file_count=1,
-            default_path=str(self.session_manager.get_config_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_JSON)
-
-    @file_dialog_handler
-    def _handle_load_config(self, filepath: Path) -> None:
-        try:
-            self.config_manager.load_config_from_file(filepath)
-            self._show_config_status_dialog(
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY,
-                    )
-                ]
-            )
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to load config from {filepath}")
-            self.dialogs.show_error(
-                exception,
-                self.language_manager[
-                    TextKey(
-                        Page.RECONSTRUCTIONS,
-                        Panel.RECONSTRUCTION,
-                        TextType.MESSAGE,
-                        ReconstructionPanelElements.EXPORT_WAV_FAILED,
-                    )
-                ],
-            )
-
-        self.session_manager.set_config_path(filepath)
 
     def _open_audio_settings(self) -> None:
         self.audio_settings_window.show()
@@ -715,23 +619,6 @@ class Application:
             )
         else:
             load_reconstruction()
-
-    def _show_config_status_dialog(self, message: str) -> None:
-        def content(parent: str) -> None:
-            dpg.add_text(message, parent=parent)
-
-        self.dialogs.show_modal(
-            tag=TAG_GLOBAL_DIALOG_CONFIG_STATUS,
-            title=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.CONFIG_STATUS,
-                )
-            ],
-            content=content,
-        )
 
     def _is_generation_in_progress(self) -> bool:
         return self._main_tab.is_converter_running() or self._instructions_tab.is_library_generating()
