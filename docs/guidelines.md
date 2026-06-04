@@ -55,9 +55,11 @@
 
 ## Documentation
 
-1. Avoid comments and docstrings that restate code.
-2. Use clear names instead of explanatory comments.
-3. Comments are acceptable for tensor shapes, third-party API quirks, or non-obvious invariants.
+1. Documentation should explain the intention of a class/function and context of usage.
+2. If a function does some decisions, logic should be explained with a justification for arbitrary choices.
+3. Avoid comments and docstrings that restate code.
+4. Use clear names instead of explanatory comments.
+5. Avoid code comments. Comments are acceptable for tensor shapes, third-party API quirks, or non-obvious invariants.
 
 ## Tests
 

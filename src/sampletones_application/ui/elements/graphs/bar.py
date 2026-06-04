@@ -9,9 +9,9 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_BAR_PLOT_HOVER_BAR,
-    SUF_BAR_PLOT_MOUSE_HANDLER,
     SUF_BAR_PLOT_ZERO_LINE,
     SUF_GRAPH_THEME,
+    SUF_HANDLER_MOUSE,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
@@ -68,7 +68,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
 
         self.hover_bar_tag = f"{tag}{SUF_BAR_PLOT_HOVER_BAR}"
         self.hover_theme_tag = f"{self.hover_bar_tag}{SUF_GRAPH_THEME}"
-        self.mouse_handler_tag = f"{tag}{SUF_BAR_PLOT_MOUSE_HANDLER}"
+        self.mouse_handler_tag = f"{tag}{SUF_HANDLER_MOUSE}"
 
         self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
         self.zero_line_theme = zero_line_theme

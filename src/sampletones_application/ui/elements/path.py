@@ -5,8 +5,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
     SUF_GROUP,
+    SUF_HANDLER_REGISTRY,
     SUF_LABEL,
-    SUF_PATH_HANDLER,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -49,7 +49,7 @@ class GUIPathText(CallbackMixin):
 
         self.parent = parent
         self.label_tag = f"{tag}{SUF_LABEL}"
-        self.handler_tag = f"{tag}{SUF_PATH_HANDLER}"
+        self.handler_tag = f"{tag}{SUF_HANDLER_REGISTRY}"
         self.group_tag = f"{tag}{SUF_GROUP}"
 
         self.on_path_hovered: Optional[VoidCallback] = None

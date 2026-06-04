@@ -21,16 +21,14 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_OK,
     SUF_BUTTON_SAVE,
     SUF_BUTTON_SHOW_TRACEBACK,
+    SUF_DIALOG_INFO,
     SUF_GROUP,
-    SUF_INFO_DIALOG,
-    SUF_PATH_TEXT,
+    SUF_PATH,
     TAG_GLOBAL_DIALOG_ERROR,
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
 )
-from sampletones_application.constants.reconstructions import (
-    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
-)
+from sampletones_application.constants.reconstructions import TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.path import GUIPathText
@@ -185,7 +183,7 @@ class DialogsRenderer:
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
 
-        info_tag = f"{tag}{SUF_INFO_DIALOG}"
+        info_tag = f"{tag}{SUF_DIALOG_INFO}"
         dpg_delete_item(info_tag)
         _show_modal_dialog(
             tag=info_tag,
@@ -450,7 +448,7 @@ class DialogsRenderer:
             with dpg.group(parent=parent):
                 dpg.add_text(message, parent=group_tag, wrap=self._error_wrap)
                 GUIPathText(
-                    tag=f"{group_tag}{SUF_PATH_TEXT}",
+                    tag=f"{group_tag}{SUF_PATH}",
                     path=path,
                     parent=group_tag,
                 )

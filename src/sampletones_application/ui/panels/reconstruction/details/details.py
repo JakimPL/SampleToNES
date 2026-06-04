@@ -15,10 +15,10 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
-    SUF_DECREMENT,
+    SUF_BUTTON_DECREMENT,
+    SUF_BUTTON_INCREMENT,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
-    SUF_INCREMENT,
     SUF_INPUT,
     SUF_LABEL,
     SUF_PANEL_RIGHT,
@@ -490,8 +490,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         input_tag = f"{parent}{SUF_INPUT}"
         value_tag = f"{input_tag}{SUF_TEXT}"
         table_tag = f"{parent}{SUF_TABLE}"
-        decrement_button_tag = f"{input_tag}{SUF_DECREMENT}"
-        increment_button_tag = f"{input_tag}{SUF_INCREMENT}"
+        decrement_button_tag = f"{input_tag}{SUF_BUTTON_DECREMENT}"
+        increment_button_tag = f"{input_tag}{SUF_BUTTON_INCREMENT}"
 
         label, display_value = self._format_initial_pitch(generator_name, initial_pitch)
         pitch_table = self._layout_reconstructions.initial_pitch_table

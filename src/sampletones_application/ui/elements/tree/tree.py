@@ -7,8 +7,8 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_SEARCH,
-    SUF_NODE_HANDLER,
-    SUF_TREE_SEARCH_INPUT,
+    SUF_HANDLER_NODE,
+    SUF_INPUT_SEARCH,
 )
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.shared.tree import TreeLogic
@@ -114,7 +114,7 @@ class GUITreePanel(GUIPanel):
         self._build_tree_node(root, state=TreeNodeState(parent=root_tag))
 
     def create_search(self, parent: str) -> None:
-        self._search_input_tag = f"{self.tag}{SUF_TREE_SEARCH_INPUT}"
+        self._search_input_tag = f"{self.tag}{SUF_INPUT_SEARCH}"
         self._search_button_tag = f"{self.tag}{SUF_BUTTON_SEARCH}"
 
         with dpg.group(horizontal=True, parent=parent):
@@ -135,7 +135,7 @@ class GUITreePanel(GUIPanel):
         GUIStatusBar.bind_to_item(self._search_input_tag, "Type query to filter nodes.")
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
-        return f"{self.tag}_{node_type.value}{SUF_NODE_HANDLER}"
+        return f"{self.tag}_{node_type.value}{SUF_HANDLER_NODE}"
 
     def _add_node(
         self,

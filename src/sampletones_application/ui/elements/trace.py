@@ -11,8 +11,8 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
+    SUF_GROUP_TRACEBACK,
     SUF_TEXT,
-    SUF_TRACEBACK,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.default import DefaultTheme
@@ -33,7 +33,7 @@ class GUITraceback:
         button_theme: Theme = DefaultTheme(),
     ) -> None:
         self._parent = parent
-        self._tag = f"{parent}{SUF_TRACEBACK}]"
+        self._tag = f"{parent}{SUF_GROUP_TRACEBACK}"
         self._text = "".join(
             traceback.format_exception(
                 type(exception),
