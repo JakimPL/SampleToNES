@@ -1,8 +1,6 @@
 from typing import List
 from unittest.mock import MagicMock, call, patch
 
-import pytest
-
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 

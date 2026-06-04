@@ -56,7 +56,7 @@ class TestConversionServiceStart:
         instance.start.assert_called_once()
 
     def test_start_wires_five_lifecycle_callbacks(self, mock_converter_class) -> None:
-        cls, instance, callbacks = mock_converter_class
+        _, _, callbacks = mock_converter_class
         conversion_service = ConversionService()
         conversion_service.start(MagicMock(), MagicMock())
 
@@ -202,9 +202,21 @@ class TestConversionServiceETA:
         callbacks["on_start"]()
         results.clear()
 
-        callbacks["on_progress"](TaskStatus.RUNNING, TaskProgress(total=10, completed=1))
+        callbacks["on_progress"](
+            TaskStatus.RUNNING,
+            TaskProgress(
+                total=10,
+                completed=1,
+            ),
+        )
         sleep(0.02)
-        callbacks["on_progress"](TaskStatus.RUNNING, TaskProgress(total=10, completed=2))
+        callbacks["on_progress"](
+            TaskStatus.RUNNING,
+            TaskProgress(
+                total=10,
+                completed=2,
+            ),
+        )
 
         assert results[-1].eta_seconds is not None
         assert results[-1].eta_seconds > 0
