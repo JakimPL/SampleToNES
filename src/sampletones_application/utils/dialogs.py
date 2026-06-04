@@ -8,6 +8,7 @@ from sampletones_application.categories.elements.global_ import (
     DialogElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
+    StatusElements,
     TracebackElements,
 )
 from sampletones_application.categories.elements.reconstructions import (
@@ -97,6 +98,7 @@ def _show_modal_dialog(
 
 class DialogsRenderer:
     def __init__(self, *, layout: GeneralLayout, language_manager: LanguageManager) -> None:
+        self._language_manager = language_manager
         self._default_width = layout.dialogs.default.width
         self._default_height = layout.dialogs.default.height
         self._error_width = layout.dialogs.error.width
@@ -106,6 +108,8 @@ class DialogsRenderer:
         self._error_wrap = layout.dialogs.error.width - 10
         self._col_text_error = layout.colors.text.error
         self._col_path = layout.colors.paths.default
+        self._col_path_hover = layout.colors.paths.hover
+        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
 
         self._lbl_ok = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.OK)]
         self._lbl_cancel = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CANCEL)]
@@ -224,7 +228,7 @@ class DialogsRenderer:
                     color=self._col_text_error,
                 )
 
-            traceback = GUITraceback(parent=tag, exception=exception)
+            traceback = GUITraceback(parent=tag, exception=exception, language_manager=self._language_manager)
 
             dpg.add_separator()
 
@@ -451,6 +455,9 @@ class DialogsRenderer:
                     tag=f"{group_tag}{SUF_PATH}",
                     path=path,
                     parent=group_tag,
+                    color=self._col_path,
+                    hover_color=self._col_path_hover,
+                    status_message=self._msg_path,
                 )
 
         _show_modal_dialog(

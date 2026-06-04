@@ -108,6 +108,8 @@ class MainTabCoordinator:
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
             dialogs=dialogs,
+            favorite_color=layout.general.colors.favorites.default,
+            node_color=layout.general.colors.paths.hover,
         )
 
         _config = config_manager.config
@@ -144,6 +146,7 @@ class MainTabCoordinator:
             file_dialog_height=layout.general.dialogs.file.height,
             max_workers_minimum=layout.behavior.main.max_workers_minimum,
             language_manager=language_manager,
+            path_colors=layout.general.colors.paths,
         )
         self._converter_logic: ConverterLogic = ConverterLogic(
             config_manager,
@@ -152,6 +155,7 @@ class MainTabCoordinator:
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
+            path_colors=layout.general.colors.paths,
             language_manager=language_manager,
         )
         self._converter_success_dialog: ConverterSuccessDialog = ConverterSuccessDialog(

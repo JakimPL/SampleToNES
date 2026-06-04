@@ -2,6 +2,7 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
@@ -18,6 +19,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_TEXT_STATUS,
     TAG_MAIN_PANEL,
 )
+from sampletones_application.layout.general import PathColors
 from sampletones_application.layout.main import ConverterLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -35,7 +37,7 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIConverterPanel(GUIPanel):
-    def __init__(self, *, layout: ConverterLayout, language_manager: LanguageManager) -> None:
+    def __init__(self, *, layout: ConverterLayout, path_colors: PathColors, language_manager: LanguageManager) -> None:
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
@@ -45,6 +47,8 @@ class GUIConverterPanel(GUIPanel):
         self.on_load_requested: Optional[VoidCallback] = None
 
         self._layout = layout
+        self._path_colors = path_colors
+        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
         self._lbl_section = language_manager[
             TextKey(
                 Page.MAIN,
@@ -200,6 +204,9 @@ class GUIConverterPanel(GUIPanel):
             prefix=self._msg_input,
             tag=TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
             parent=TAG_MAIN_CONVERTER_GROUP,
+            color=self._path_colors.default,
+            hover_color=self._path_colors.hover,
+            status_message=self._msg_path,
             font=Font.REGULAR_SMALL,
         )
         self.output_path_text = GUIPathText(
@@ -207,6 +214,9 @@ class GUIConverterPanel(GUIPanel):
             prefix=self._msg_output,
             tag=TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
             parent=TAG_MAIN_CONVERTER_GROUP,
+            color=self._path_colors.default,
+            hover_color=self._path_colors.hover,
+            status_message=self._msg_path,
             font=Font.REGULAR_SMALL,
         )
 

@@ -27,6 +27,14 @@ fonts:
   size_small: 19
   size_large: 26
   scale: 1
+  ranges:
+    - [0x0100, 0x024F]
+    - [0x1E00, 0x1EFF]
+    - [0x2000, 0x206F]
+    - [0x2C60, 0x2C7F]
+    - [0xA720, 0xA7FF]
+  icon_chars:
+    - 0x2605
 
 dialogs:
   default:

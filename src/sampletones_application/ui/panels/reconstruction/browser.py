@@ -47,7 +47,7 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
 
 
 class GUIBrowserPanel(GUITreePanel):
@@ -61,6 +61,8 @@ class GUIBrowserPanel(GUITreePanel):
         scheduling: SchedulingBehavior,
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
+        favorite_color: ColorRGBA,
+        node_color: ColorRGBA,
     ) -> None:
         self.browser_logic = browser_logic
         self._tree_behavior = tree_behavior
@@ -125,6 +127,9 @@ class GUIBrowserPanel(GUITreePanel):
                     TreeElements.SEARCH,
                 )
             ],
+            language_manager=language_manager,
+            favorite_color=favorite_color,
+            node_color=node_color,
         )
 
     def create_panel(self) -> None:

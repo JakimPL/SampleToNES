@@ -50,7 +50,7 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import MessageCallback
 
 
@@ -66,6 +66,8 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        favorite_color: ColorRGBA,
+        node_color: ColorRGBA,
     ) -> None:
         self.library_logic = library_logic
         self._dialogs = dialogs
@@ -187,6 +189,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     TreeElements.SEARCH,
                 )
             ],
+            language_manager=language_manager,
+            favorite_color=favorite_color,
+            node_color=node_color,
         )
 
         self.library_logic.configure_lock(self.lock, self.unlock, lambda: self.locked)

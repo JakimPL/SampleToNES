@@ -14,7 +14,7 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_shared.types.application import ColorRGB, Sender
+from sampletones_shared.types.application import Color, Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -31,10 +31,11 @@ class GUIPathText(CallbackMixin):
         tag: str,
         path: Optional[Path],
         parent: str,
+        color: Color,
+        hover_color: Color,
+        status_message: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
-        color: Optional[ColorRGB] = None,
-        hover_color: Optional[ColorRGB] = None,
     ) -> None:
         self.tag = tag
         self.path = path or Path()
@@ -44,8 +45,9 @@ class GUIPathText(CallbackMixin):
         self.tooltip: Optional[Sender] = None
 
         self.font = font
-        self.color = color or (100, 150, 255)
-        self.hover_color = hover_color or (150, 200, 255)
+        self.color = color
+        self.hover_color = hover_color
+        self._status_message = status_message
 
         self.parent = parent
         self.label_tag = f"{tag}{SUF_LABEL}"
@@ -92,7 +94,7 @@ class GUIPathText(CallbackMixin):
     def _on_hover(self) -> None:
         if dpg.does_item_exist(self.tag):
             if dpg.is_item_hovered(self.tag):
-                GUIStatusBar.set("Click to open path in file explorer.")
+                GUIStatusBar.set(self._status_message)
                 dpg.configure_item(self.tag, color=self.hover_color)
                 FrameCallbackManager.set_frame_callback(
                     self._on_hover,

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import traceback
-from typing import Dict, Optional
+from typing import Dict
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import DialogElements
+from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
@@ -28,7 +28,7 @@ class GUITraceback:
         self,
         parent: str,
         exception: Exception,
-        language_manager: Optional[LanguageManager] = None,
+        language_manager: LanguageManager,
         theme: Theme = TracebackTheme(),
         button_theme: Theme = DefaultTheme(),
     ) -> None:
@@ -42,17 +42,22 @@ class GUITraceback:
             ),
         )
 
-        if language_manager is not None:
-            self._lbl_copied = language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.COPIED,
-                )
-            ]
-        else:
-            self._lbl_copied = "Copied!"
+        self._lbl_copy = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.TRACEBACK,
+                TextType.LABEL,
+                TracebackElements.COPY,
+            )
+        ]
+        self._lbl_copied = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.LABEL,
+                DialogElements.COPIED,
+            )
+        ]
 
         self.theme = theme
         traceback_text_tag = f"{self._tag}{SUF_TEXT}"
@@ -73,10 +78,10 @@ class GUITraceback:
 
             GUIButton(
                 tag=traceback_copy_tag,
-                label="Copy to clipboard",
+                label=self._lbl_copy,
                 callback=lambda: copy_to_clipboard(
                     self._text,
-                    "Copy to clipboard",
+                    self._lbl_copy,
                     traceback_copy_tag,
                     copied_label=self._lbl_copied,
                 ),

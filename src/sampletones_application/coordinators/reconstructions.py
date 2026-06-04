@@ -247,6 +247,8 @@ class ReconstructionsTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.reconstructions,
             language_manager=language_manager,
+            favorite_color=layout.general.colors.favorites.default,
+            node_color=layout.general.colors.paths.hover,
         )
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,

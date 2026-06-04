@@ -3,6 +3,7 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
@@ -22,6 +23,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
     TAG_MAIN_PANEL_SETTINGS,
 )
+from sampletones_application.layout.general import PathColors
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -47,6 +49,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         file_dialog_height: int,
         max_workers_minimum: int,
         language_manager: LanguageManager,
+        path_colors: PathColors,
     ) -> None:
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
         self.on_library_path_memorized: Optional[Callable[[Path], None]] = None
@@ -60,6 +63,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._file_dialog_width = file_dialog_width
         self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
+        self._path_colors = path_colors
+        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
 
         self._item_handler_tag = f"{TAG_MAIN_ADVANCED_PANEL}{SUF_HANDLER_REGISTRY}"
 
@@ -200,6 +205,9 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 tag=TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
                 parent=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
                 path=self._library_directory,
+                color=self._path_colors.default,
+                hover_color=self._path_colors.hover,
+                status_message=self._msg_path,
                 font=Font.REGULAR_SMALL,
             )
 
@@ -222,6 +230,9 @@ class GUIAdvancedSettingsPanel(GUIPanel):
                 tag=TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
                 parent=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
                 path=self._output_directory,
+                color=self._path_colors.default,
+                hover_color=self._path_colors.hover,
+                status_message=self._msg_path,
                 font=Font.REGULAR_SMALL,
             )
 

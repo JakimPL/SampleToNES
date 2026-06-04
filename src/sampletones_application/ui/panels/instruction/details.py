@@ -29,6 +29,7 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
+from sampletones_application.layout.general import TableColors, TablesLayout
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -65,6 +66,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self,
         *,
         layout: InstructionsLayout,
+        table_colors: TableColors,
+        table_layout: TablesLayout,
         language_manager: LanguageManager,
     ) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
@@ -73,6 +76,8 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.parameters_table: GUITable
 
         self._layout = layout
+        self._table_colors = table_colors
+        self._table_layout = table_layout
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
         self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
 
@@ -229,6 +234,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 tag=TAG_INSTRUCTIONS_DETAILS_TABLE_GENERAL,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
                 rows=tuple(),
+                label_column_width=self._table_layout.label_width,
+                label_color=self._table_colors.label,
+                value_color=self._table_colors.value,
                 before=TAG_INSTRUCTIONS_DETAILS_HEADER_PARAMETERS,
             )
 
@@ -243,6 +251,9 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 tag=TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
                 parent=TAG_INSTRUCTIONS_DETAILS_GROUP_TABLES,
                 rows=tuple(),
+                label_column_width=self._table_layout.label_width,
+                label_color=self._table_colors.label,
+                value_color=self._table_colors.value,
             )
 
             FontRegistry.bind_to_item(

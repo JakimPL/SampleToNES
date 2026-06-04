@@ -90,6 +90,8 @@ class InstructionsTabCoordinator:
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
             dialogs=dialogs,
+            favorite_color=layout.general.colors.favorites.default,
+            node_color=layout.general.colors.paths.hover,
         )
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
@@ -109,6 +111,8 @@ class InstructionsTabCoordinator:
         )
         self._instruction_details_panel = GUIInstructionDetailsPanel(
             layout=layout.instructions,
+            table_colors=layout.general.colors.tables,
+            table_layout=layout.general.tables,
             language_manager=language_manager,
         )
 

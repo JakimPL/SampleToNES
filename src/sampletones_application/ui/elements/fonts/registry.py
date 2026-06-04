@@ -23,10 +23,12 @@ from sampletones_shared.types.application import Sender
 
 
 class FontRegistry:
+    _LAYOUT: FontsLayout
     _REGISTRY: Dict[Font, FontData] = {}
 
     @classmethod
     def setup(cls, layout: FontsLayout) -> None:
+        cls._LAYOUT = layout
         cls._REGISTRY = {
             Font.REGULAR: FontData(
                 TAG_GLOBAL_FONT_REGULAR,
@@ -89,13 +91,10 @@ class FontRegistry:
                     font_data.size,
                     tag=font_data.tag,
                 )
-                dpg.add_font_range(0x0100, 0x024F, parent=font_data.tag)
-                dpg.add_font_range(0x1E00, 0x1EFF, parent=font_data.tag)
-                dpg.add_font_range(0x2000, 0x206F, parent=font_data.tag)
-                dpg.add_font_range(0x2C60, 0x2C7F, parent=font_data.tag)
-                dpg.add_font_range(0xA720, 0xA7FF, parent=font_data.tag)
+                for start, end in cls._LAYOUT.ranges:
+                    dpg.add_font_range(start, end, parent=font_data.tag)
 
-            dpg.add_font_chars([0x2605], parent=TAG_GLOBAL_FONT_ICON)
+            dpg.add_font_chars(list(cls._LAYOUT.icon_chars), parent=TAG_GLOBAL_FONT_ICON)
             dpg.bind_font(TAG_GLOBAL_FONT_REGULAR)
 
         dpg.set_global_font_scale(scale)

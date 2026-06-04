@@ -50,7 +50,7 @@ from sampletones_core.structures.tree import (
     traverse,
 )
 from sampletones_shared.logger import logger
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGBA, Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
 
@@ -66,6 +66,8 @@ class GUIExplorerPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        favorite_color: ColorRGBA,
+        node_color: ColorRGBA,
     ) -> None:
         self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
@@ -208,6 +210,9 @@ class GUIExplorerPanel(GUITreePanel):
                     TreeElements.FILTER,
                 )
             ],
+            language_manager=language_manager,
+            favorite_color=favorite_color,
+            node_color=node_color,
         )
 
     def create_panel(self) -> None:

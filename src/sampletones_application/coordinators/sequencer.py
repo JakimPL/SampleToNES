@@ -64,6 +64,8 @@ class SequencerTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.sequencer,
             language_manager=language_manager,
+            favorite_color=layout.general.colors.favorites.default,
+            node_color=layout.general.colors.paths.hover,
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(config_manager)
         self._sequencer_player_logic = PlayerLogic(audio_device_manager)

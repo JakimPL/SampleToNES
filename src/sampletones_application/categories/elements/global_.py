@@ -75,6 +75,7 @@ class StatusElements(AbstractElement):
     PATH = "path"
     NODE_RECONSTRUCTION_NO_AUTOPLAY = "node_reconstruction_no_autoplay"
     NODE_RECONSTRUCTION = "node_reconstruction"
+    NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
     INPUT = "input"
     NODE_DIRECTORY = "node_directory"
