@@ -3,6 +3,10 @@ from typing import Any, Callable, Optional, Tuple
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.elements.global_ import GraphElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_BAR_PLOT_HOVER_BAR,
     SUF_BAR_PLOT_MOUSE_HANDLER,
@@ -10,10 +14,6 @@ from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
 )
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.text.elements.global_ import GraphElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
 from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
@@ -55,7 +55,14 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if label:
             _label = label
         elif language_manager is not None:
-            _label = language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.BAR_DISPLAY)]
+            _label = language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.GRAPH,
+                    TextType.LABEL,
+                    GraphElements.BAR_DISPLAY,
+                )
+            ]
         else:
             _label = ""
 
@@ -102,7 +109,11 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             pan_button=dpg.mvMouseButton_Middle,
             zoom_rate=self.zoom_factor,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
+            dpg.add_plot_legend(
+                tag=self.legend_tag,
+                parent=self.plot_tag,
+                location=dpg.mvPlot_Location_NorthEast,
+            )
             dpg.add_plot_axis(
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,
@@ -155,7 +166,12 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         if layer is None:
             raise RuntimeError("No layers available to bind hover theme")
 
-        hover_color = (layer.color[0], layer.color[1], layer.color[2], self._hover_alpha)
+        hover_color = (
+            layer.color[0],
+            layer.color[1],
+            layer.color[2],
+            self._hover_alpha,
+        )
         with dpg.theme(tag=self.hover_theme_tag):
             with dpg.theme_component(dpg.mvBarSeries):
                 dpg.add_theme_color(

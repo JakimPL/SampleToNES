@@ -41,7 +41,9 @@ class FBInstructionsItem(object):
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from sampletones_schemas.instructions.FBInstructionData import FBInstructionData
+            from sampletones_schemas.instructions.FBInstructionData import (
+                FBInstructionData,
+            )
 
             obj = FBInstructionData()
             obj.Init(self._tab.Bytes, x)

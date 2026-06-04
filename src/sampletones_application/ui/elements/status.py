@@ -11,7 +11,11 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.status import StatusBarTheme
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item, dpg_is_item_hovered
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_is_item_hovered,
+)
 from sampletones_shared.meta import SingletonMeta
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback

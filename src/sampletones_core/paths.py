@@ -3,7 +3,10 @@ from typing import Final, Tuple
 
 from platformdirs import user_config_dir, user_data_dir, user_documents_path
 
-from sampletones_shared.constants.application import SAMPLETONES_GROUP, SAMPLETONES_NAME
+from sampletones_shared.constants.application import (
+    SAMPLETONES_GROUP,
+    SAMPLETONES_NAME,
+)
 
 # User paths
 USER_PATH_DOCUMENTS: Final[Path] = Path(user_documents_path()) / SAMPLETONES_NAME
@@ -51,3 +54,4 @@ FONT_MAIN: Final[str] = "RobotoMono-Regular.ttf"
 FONT_BOLD: Final[str] = "RobotoMono-Bold.ttf"
 FONT_ITALIC: Final[str] = "RobotoMono-Italic.ttf"
 FONT_BOLD_ITALIC: Final[str] = "RobotoMono-BoldItalic.ttf"
+FONT_ICON: Final[str] = "DejaVuSans.ttf"

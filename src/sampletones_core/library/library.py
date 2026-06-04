@@ -6,8 +6,8 @@ from typing import Dict, ItemsView, KeysView, Optional, Self, Union, ValuesView
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.paths import LIBRARY_DIRECTORY
 from sampletones_core.fft import Window
+from sampletones_core.paths import LIBRARY_DIRECTORY
 from sampletones_shared.logger import logger
 
 from .data import InstructionLibraryData

@@ -4,7 +4,11 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import MAX_VOLUME, MIXER_NOISE, NOISE_PERIODS
+from sampletones_core.constants.general import (
+    MAX_VOLUME,
+    MIXER_NOISE,
+    NOISE_PERIODS,
+)
 from sampletones_core.instructions import InstructionTypeUnion, NoiseInstruction
 from sampletones_core.timers import LFSRTimer
 from sampletones_shared.types.data import Initials

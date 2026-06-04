@@ -4,6 +4,18 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import (
+    DialogElements,
+    GlobalDialogTitleElements,
+    GlobalMessageElements,
+    TracebackElements,
+)
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionsDetailsElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_CANCEL,
     SUF_BUTTON_OK,
@@ -16,24 +28,19 @@ from sampletones_application.constants.general import (
     TAG_DIALOG_GLOBAL_FILE_NOT_FOUND,
     TAG_DIALOG_GLOBAL_PATH_MESSAGE,
 )
-from sampletones_application.constants.reconstructions import TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED
-from sampletones_application.layout.general import GeneralLayout
-from sampletones_application.text.elements.global_ import (
-    DialogElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
-    TracebackElements,
+from sampletones_application.constants.reconstructions import (
+    TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED,
 )
-from sampletones_application.text.elements.reconstructions import ReconstructionsDetailsElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
+from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.ui.elements.trace import GUITraceback
 from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.callbacks.frame import FrameCallbackManager
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+)
 from sampletones_shared.types.callback import Callback
 
 
@@ -106,16 +113,36 @@ class DialogsRenderer:
         self._lbl_cancel = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CANCEL)]
         self._lbl_save = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.SAVE)]
         self._lbl_traceback_show = language_manager[
-            TextKey(Page.GLOBAL, Panel.TRACEBACK, TextType.LABEL, TracebackElements.SHOW)
+            TextKey(
+                Page.GLOBAL,
+                Panel.TRACEBACK,
+                TextType.LABEL,
+                TracebackElements.SHOW,
+            )
         ]
         self._lbl_traceback_hide = language_manager[
-            TextKey(Page.GLOBAL, Panel.TRACEBACK, TextType.LABEL, TracebackElements.HIDE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.TRACEBACK,
+                TextType.LABEL,
+                TracebackElements.HIDE,
+            )
         ]
         self._ttl_error = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.ERROR)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.ERROR,
+            )
         ]
         self._ttl_file_not_found = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.FILE_NOT_FOUND)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.FILE_NOT_FOUND,
+            )
         ]
         self._ttl_reconstruction_not_loaded = language_manager[
             TextKey(
@@ -126,7 +153,12 @@ class DialogsRenderer:
             )
         ]
         self._msg_reconstruction_no_data = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.RECONSTRUCTION_NO_DATA)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.RECONSTRUCTION_NO_DATA,
+            )
         ]
 
     def show_modal(
@@ -206,7 +238,7 @@ class DialogsRenderer:
                     traceback.toggle_visibility()
                     dpg_configure_item(
                         show_button_tag,
-                        label=self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide,
+                        label=(self._lbl_traceback_show if not traceback.visible else self._lbl_traceback_hide),
                     )
 
                 GUIButton(
@@ -231,7 +263,12 @@ class DialogsRenderer:
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
-            dpg.add_text(str(filepath), parent=parent, color=self._col_path, wrap=self._error_wrap)
+            dpg.add_text(
+                str(filepath),
+                parent=parent,
+                color=self._col_path,
+                wrap=self._error_wrap,
+            )
 
         _show_modal_dialog(
             tag=tag,
@@ -277,8 +314,18 @@ class DialogsRenderer:
 
             @table_wrapper(columns=2)
             def buttons(_: None) -> None:
-                GUIButton(tag=ok_button_tag, label=ok_label, callback=_on_confirm, width=-1)
-                GUIButton(tag=cancel_button_tag, label=self._lbl_cancel, callback=_on_cancel, width=-1)
+                GUIButton(
+                    tag=ok_button_tag,
+                    label=ok_label,
+                    callback=_on_confirm,
+                    width=-1,
+                )
+                GUIButton(
+                    tag=cancel_button_tag,
+                    label=self._lbl_cancel,
+                    callback=_on_cancel,
+                    width=-1,
+                )
 
             buttons(None)
 
@@ -340,9 +387,24 @@ class DialogsRenderer:
 
             @table_wrapper(columns=3)
             def buttons(_: None) -> None:
-                GUIButton(tag=save_button_tag, label=self._lbl_save, callback=_on_save, width=-1)
-                GUIButton(tag=ok_button_tag, label=ok_label, callback=_on_confirm, width=-1)
-                GUIButton(tag=cancel_button_tag, label=self._lbl_cancel, callback=_on_cancel, width=-1)
+                GUIButton(
+                    tag=save_button_tag,
+                    label=self._lbl_save,
+                    callback=_on_save,
+                    width=-1,
+                )
+                GUIButton(
+                    tag=ok_button_tag,
+                    label=ok_label,
+                    callback=_on_confirm,
+                    width=-1,
+                )
+                GUIButton(
+                    tag=cancel_button_tag,
+                    label=self._lbl_cancel,
+                    callback=_on_cancel,
+                    width=-1,
+                )
 
             buttons(None)
 
@@ -364,7 +426,11 @@ class DialogsRenderer:
         tag = get_dialog_tag(TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED)
 
         def content(parent: str) -> None:
-            dpg.add_text(self._msg_reconstruction_no_data, parent=parent, wrap=self._error_wrap)
+            dpg.add_text(
+                self._msg_reconstruction_no_data,
+                parent=parent,
+                wrap=self._error_wrap,
+            )
 
         _show_modal_dialog(
             tag=tag,

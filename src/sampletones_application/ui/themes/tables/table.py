@@ -17,8 +17,15 @@ class TableTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [
-                    ThemeStyle(key=dpg.mvStyleVar_CellPadding, x=t.cell_padding[0], y=t.cell_padding[1]),
-                    ThemeStyle(key=dpg.mvStyleVar_FrameRounding, x=t.frame_rounding),
+                    ThemeStyle(
+                        key=dpg.mvStyleVar_CellPadding,
+                        x=t.cell_padding[0],
+                        y=t.cell_padding[1],
+                    ),
+                    ThemeStyle(
+                        key=dpg.mvStyleVar_FrameRounding,
+                        x=t.frame_rounding,
+                    ),
                 ],
             }
         )

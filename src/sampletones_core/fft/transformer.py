@@ -17,7 +17,9 @@ from sampletones_shared.types.array import (
     NumericClasses,
 )
 from sampletones_shared.utils.transformations.morpher import PowerMorpher
-from sampletones_shared.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.transformation import (
+    Transformation,
+)
 
 from .spectrum.method import SpectrumMethod
 from .spectrum.spectrum import calculate_spectrum
@@ -75,7 +77,12 @@ class FFTTransformer(BaseModel):
     )
 
     @classmethod
-    def from_gamma(cls, gamma: int, sample_rate: int, method: SpectrumMethod = SpectrumMethod.FFT) -> Self:
+    def from_gamma(
+        cls,
+        gamma: int,
+        sample_rate: int,
+        method: SpectrumMethod = SpectrumMethod.FFT,
+    ) -> Self:
         """
         Create an FFTTransformer from a gamma parameter, and sample rate.
 
@@ -311,7 +318,7 @@ class FFTTransformer(BaseModel):
             raise ValueError("All Histogram features must have the same edges")
 
         features: List[Histogram] = [
-            self.forward(Histogram.from_constant(feature, edges)) if isinstance(feature, NumericClasses) else feature
+            (self.forward(Histogram.from_constant(feature, edges)) if isinstance(feature, NumericClasses) else feature)
             for feature in features_or_scalars
         ]
 
@@ -366,7 +373,11 @@ class FFTTransformer(BaseModel):
             TypeError: If any of the features is neither a Histogram nor a numeric scalar.
         """
         feature1, feature2 = self.to_features((feature_or_scalar1, feature_or_scalar2))
-        return self.apply(lambda feature1, feature2: np.abs(feature1 - feature2), feature1, feature2)
+        return self.apply(
+            lambda feature1, feature2: np.abs(feature1 - feature2),
+            feature1,
+            feature2,
+        )
 
     def multiply(self, *features_or_scalars: Union[Numeric, Histogram]) -> Histogram:
         """

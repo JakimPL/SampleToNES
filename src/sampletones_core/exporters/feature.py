@@ -88,5 +88,11 @@ class Features(BaseModel):
                 hi_pitch=self.hi_pitch,
                 duty_cycle=self.duty_cycle,
             )
-        except (FileNotFoundError, IOError, OSError, PermissionError, IsADirectoryError) as exception:
+        except (
+            FileNotFoundError,
+            IOError,
+            OSError,
+            PermissionError,
+            IsADirectoryError,
+        ) as exception:
             raise IOError(f"Failed to save features to '{filepath}': {exception}") from exception

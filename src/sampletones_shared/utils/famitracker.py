@@ -46,7 +46,12 @@ def write_fti(
             (arpeggio, arpeggio_loop, arpeggio_release, arpeggio_setting),
             (pitch, pitch_loop, pitch_release, pitch_setting),
             (hi_pitch, hi_pitch_loop, hi_pitch_release, hi_pitch_setting),
-            (duty_cycle, duty_cycle_loop, duty_cycle_release, duty_cycle_setting),
+            (
+                duty_cycle,
+                duty_cycle_loop,
+                duty_cycle_release,
+                duty_cycle_setting,
+            ),
         ]
 
         sequence_count_2a03 = 5

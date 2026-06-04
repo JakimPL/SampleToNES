@@ -5,8 +5,15 @@ from typing import Type
 from pydantic import Field
 
 from sampletones_core.constants.enums import InstructionClassName
-from sampletones_core.constants.general import MAX_PERIOD, MAX_VOLUME, NOISE_PERIODS
-from sampletones_core.data import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.constants.general import (
+    MAX_PERIOD,
+    MAX_VOLUME,
+    NOISE_PERIODS,
+)
+from sampletones_core.data import (
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 
 from .instruction import Instruction
 

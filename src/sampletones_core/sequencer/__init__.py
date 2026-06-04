@@ -1,4 +1,9 @@
-from .display import display_id, display_pitch, display_transpose, display_volume
+from .display import (
+    display_id,
+    display_pitch,
+    display_transpose,
+    display_volume,
+)
 from .rows.generator import GeneratorRow
 from .rows.sample import SampleRow
 from .sequence import Sequence

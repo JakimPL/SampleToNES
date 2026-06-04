@@ -109,7 +109,11 @@ class TestStereoToMono(BaseTestSuite):
         audio: Any
 
     test_cases = [
-        TestCase(label="already_mono", audio=np.array([1.0, 2.0, 3.0]), expected=np.array([1.0, 2.0, 3.0])),
+        TestCase(
+            label="already_mono",
+            audio=np.array([1.0, 2.0, 3.0]),
+            expected=np.array([1.0, 2.0, 3.0]),
+        ),
         TestCase(
             label="stereo",
             audio=np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]),
@@ -299,7 +303,12 @@ class TestInterpolate(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_interpolate(self, test_case: TestCase) -> None:
-        if expect_error(interpolate, test_case.expected, test_case.data, test_case.target_length):
+        if expect_error(
+            interpolate,
+            test_case.expected,
+            test_case.data,
+            test_case.target_length,
+        ):
             return
 
         assert isinstance(test_case.expected, np.ndarray)
@@ -319,13 +328,19 @@ class TestMinmaxDecimate(BaseTestSuite):
             label="divisible_six_elements_three_buckets",
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
             num_buckets=3,
-            expected=(np.array([1.0, 1.0, 3.0, 3.0, 5.0, 5.0]), np.array([2.0, 1.5, 4.0, 3.5, 6.0, 5.5])),
+            expected=(
+                np.array([1.0, 1.0, 3.0, 3.0, 5.0, 5.0]),
+                np.array([2.0, 1.5, 4.0, 3.5, 6.0, 5.5]),
+            ),
         ),
         TestCase(
             label="divisible_four_elements_two_buckets",
             data=np.array([-5.0, -2.0, 3.0, 7.0]),
             num_buckets=2,
-            expected=(np.array([-5.0, -5.0, 3.0, 3.0]), np.array([-2.0, -3.5, 7.0, 5.0])),
+            expected=(
+                np.array([-5.0, -5.0, 3.0, 3.0]),
+                np.array([-2.0, -3.5, 7.0, 5.0]),
+            ),
         ),
         TestCase(
             label="divisible_four_elements_one_bucket",
@@ -337,25 +352,37 @@ class TestMinmaxDecimate(BaseTestSuite):
             label="non_divisible_seven_elements_three_buckets",
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             num_buckets=3,
-            expected=(np.array([1.0, 1.0, 4.0, 4.0, 7.0, 7.0]), np.array([3.0, 2.0, 6.0, 5.0, 7.0, 7.0])),
+            expected=(
+                np.array([1.0, 1.0, 4.0, 4.0, 7.0, 7.0]),
+                np.array([3.0, 2.0, 6.0, 5.0, 7.0, 7.0]),
+            ),
         ),
         TestCase(
             label="non_divisible_five_elements_two_buckets",
             data=np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
             num_buckets=2,
-            expected=(np.array([10.0, 10.0, 40.0, 40.0]), np.array([30.0, 20.0, 50.0, 45.0])),
+            expected=(
+                np.array([10.0, 10.0, 40.0, 40.0]),
+                np.array([30.0, 20.0, 50.0, 45.0]),
+            ),
         ),
         TestCase(
             label="non_divisible_five_elements_two_buckets_negatives",
             data=np.array([-10.0, -5.0, 0.0, 5.0, 10.0]),
             num_buckets=2,
-            expected=(np.array([-10.0, -10.0, 5.0, 5.0]), np.array([0.0, -5.0, 10.0, 7.5])),
+            expected=(
+                np.array([-10.0, -10.0, 5.0, 5.0]),
+                np.array([0.0, -5.0, 10.0, 7.5]),
+            ),
         ),
         TestCase(
             label="constant_values_divisible",
             data=np.array([5.0, 5.0, 5.0, 5.0]),
             num_buckets=2,
-            expected=(np.array([5.0, 5.0, 5.0, 5.0]), np.array([5.0, 5.0, 5.0, 5.0])),
+            expected=(
+                np.array([5.0, 5.0, 5.0, 5.0]),
+                np.array([5.0, 5.0, 5.0, 5.0]),
+            ),
         ),
         TestCase(
             label="single_value_one_bucket",
@@ -367,7 +394,10 @@ class TestMinmaxDecimate(BaseTestSuite):
             label="empty_array_zero_case",
             data=np.array([]),
             num_buckets=5,
-            expected=(np.array([], dtype=np.float32), np.array([], dtype=np.float32)),
+            expected=(
+                np.array([], dtype=np.float32),
+                np.array([], dtype=np.float32),
+            ),
         ),
         TestCase(
             label="more_buckets_than_samples_non_divisible",
@@ -440,7 +470,12 @@ class TestMinmaxDecimate(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_minmax_decimate(self, test_case: TestCase) -> None:
-        if expect_error(minmax_decimate, test_case.expected, test_case.data, test_case.num_buckets):
+        if expect_error(
+            minmax_decimate,
+            test_case.expected,
+            test_case.data,
+            test_case.num_buckets,
+        ):
             return
 
         assert isinstance(test_case.expected, tuple)

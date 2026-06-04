@@ -5,7 +5,10 @@ from typing import Any, Optional, Type, Union
 
 import pytest
 
-from sampletones_shared.utils.common import first_key_for_value, next_power_of_two
+from sampletones_shared.utils.common import (
+    first_key_for_value,
+    next_power_of_two,
+)
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
@@ -37,7 +40,11 @@ class TestNextPowerOfTwo(BaseTestSuite):
         TestCase(input_value=-1, expected=ValueError, label="negative_one"),
         TestCase(input_value=-5, expected=ValueError, label="negative_five"),
         TestCase(input_value=-100, expected=ValueError, label="negative_large"),
-        TestCase(input_value=(1 << 64), expected=OverflowError, label="too_large_overflow"),
+        TestCase(
+            input_value=(1 << 64),
+            expected=OverflowError,
+            label="too_large_overflow",
+        ),
     ]
 
     @pytest.mark.parametrize(

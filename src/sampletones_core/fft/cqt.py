@@ -3,7 +3,10 @@ from typing import Optional
 import librosa
 import numpy as np
 
-from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.constants.spectrum import (
+    BINS_PER_OCTAVE,
+    CQT_CUTOFF_FREQUENCY,
+)
 
 from .utils import calculate_n_bins, rectangle_window
 

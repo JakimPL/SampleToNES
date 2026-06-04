@@ -1,6 +1,10 @@
 import math
 
-from sampletones_shared.types.array import ArrayOrNumeric, ArrayOrScalarClasses, get_array_module
+from sampletones_shared.types.array import (
+    ArrayOrNumeric,
+    ArrayOrScalarClasses,
+    get_array_module,
+)
 
 
 def assert_array_equal(result: ArrayOrNumeric, expected: ArrayOrNumeric) -> None:

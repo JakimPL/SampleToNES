@@ -2,7 +2,9 @@ from typing import Union
 
 import pytest
 
-from sampletones_core.structures.collection.bidirectional import BidirectionalHashMap
+from sampletones_core.structures.collection.bidirectional import (
+    BidirectionalHashMap,
+)
 from tests.sampletones.dummy import CollisionObject, ValueObject
 
 
@@ -653,7 +655,10 @@ class TestEdgeCases:
         bidirectional = BidirectionalHashMap[Union[int, float, bool]]()
         bidirectional["zero_int"] = 0
 
-        with pytest.raises(ValueError, match="Value False is already mapped to the key zero_int"):
+        with pytest.raises(
+            ValueError,
+            match="Value False is already mapped to the key zero_int",
+        ):
             bidirectional["false_bool"] = False
 
         with pytest.raises(ValueError, match="Value 0.0 is already mapped to the key zero_int"):

@@ -22,7 +22,11 @@ STOP_TIMEOUT = 2
 
 
 class TaskProcessor(ABC, CallbackMixin, Generic[T]):
-    def __init__(self, max_workers: Optional[int] = None, logger: LoggerProtocol = default_logger) -> None:
+    def __init__(
+        self,
+        max_workers: Optional[int] = None,
+        logger: LoggerProtocol = default_logger,
+    ) -> None:
         self.max_workers: int = max_workers or MAX_WORKERS
         self.pool: Optional[ProcessPool] = None
         self.future: Optional[ProcessMapFuture] = None

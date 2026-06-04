@@ -10,10 +10,22 @@ _DEFAULT_FULLSCREEN: Final = False
 
 
 class WindowState(BaseModel):
-    width: int = Field(default=_DEFAULT_WIDTH, description="The width of the main application window.")
-    height: int = Field(default=_DEFAULT_HEIGHT, description="The height of the main application window.")
-    x: int = Field(default=_DEFAULT_POSITION_X, description="The x-coordinate of the main application window.")
-    y: int = Field(default=_DEFAULT_POSITION_Y, description="The y-coordinate of the main application window.")
+    width: int = Field(
+        default=_DEFAULT_WIDTH,
+        description="The width of the main application window.",
+    )
+    height: int = Field(
+        default=_DEFAULT_HEIGHT,
+        description="The height of the main application window.",
+    )
+    x: int = Field(
+        default=_DEFAULT_POSITION_X,
+        description="The x-coordinate of the main application window.",
+    )
+    y: int = Field(
+        default=_DEFAULT_POSITION_Y,
+        description="The y-coordinate of the main application window.",
+    )
     fullscreen: bool = Field(
         default=_DEFAULT_FULLSCREEN,
         description="Whether the main application window is fullscreen.",

@@ -92,7 +92,13 @@ class TestJsonFileOperations:
             assert loaded == data
 
     def test_save_and_load_json_list(self) -> None:
-        data: List[Union[int, str, Dict[str, str]]] = [1, 2, 3, "test", {"key": "value"}]
+        data: List[Union[int, str, Dict[str, str]]] = [
+            1,
+            2,
+            3,
+            "test",
+            {"key": "value"},
+        ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.json"
@@ -293,7 +299,16 @@ class TestArraySerialization:
         assert deserialized.shape == (2, 3, 4)
 
     def test_serialize_different_dtypes(self) -> None:
-        dtypes = [np.int8, np.int16, np.int32, np.int64, np.uint8, np.float16, np.float32, np.float64]
+        dtypes = [
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.uint8,
+            np.float16,
+            np.float32,
+            np.float64,
+        ]
 
         for dtype in dtypes:
             array = np.array([1, 2, 3], dtype=dtype)

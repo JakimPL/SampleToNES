@@ -7,7 +7,11 @@ from sampletones_core.audio import load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import FragmentedAudio, Window
-from sampletones_core.generators import MIXER_LEVELS, GeneratorUnion, get_generators_by_names
+from sampletones_core.generators import (
+    MIXER_LEVELS,
+    GeneratorUnion,
+    get_generators_by_names,
+)
 from sampletones_core.library import InstructionLibrary, InstructionLibraryData
 from sampletones_shared.exceptions import NoLibraryDataError
 from sampletones_shared.types.path import Pathlike

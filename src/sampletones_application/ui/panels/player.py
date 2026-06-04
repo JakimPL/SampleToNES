@@ -2,6 +2,10 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import PlayerElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.player import (
     SUF_PLAYER_CONTROLS_GROUP,
     SUF_PLAYER_ERROR_POPUP,
@@ -13,14 +17,14 @@ from sampletones_application.constants.player import (
 )
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.global_ import PlayerElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_label, dpg_set_value
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_set_item_label,
+    dpg_set_value,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_application.view_model.shared.player import PlayerViewModel
 from sampletones_shared.exceptions import PlaybackError
@@ -58,19 +62,44 @@ class GUIAudioPlayerPanel(GUIPanel):
         self._lbl_resume = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.RESUME)]
         self._lbl_stop = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.STOP)]
         self._lbl_position = language_manager[
-            TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.POSITION_PREFIX)
+            TextKey(
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.LABEL,
+                PlayerElements.POSITION_PREFIX,
+            )
         ]
         self._lbl_samples = language_manager[
-            TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.SAMPLES_SUFFIX)
+            TextKey(
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.LABEL,
+                PlayerElements.SAMPLES_SUFFIX,
+            )
         ]
         self._msg_no_audio = language_manager[
-            TextKey(Page.GLOBAL, Panel.PLAYER, TextType.MESSAGE, PlayerElements.NO_AUDIO_LOADED)
+            TextKey(
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.MESSAGE,
+                PlayerElements.NO_AUDIO_LOADED,
+            )
         ]
         self._msg_playback_error = language_manager[
-            TextKey(Page.GLOBAL, Panel.PLAYER, TextType.MESSAGE, PlayerElements.AUDIO_PLAYBACK_ERROR)
+            TextKey(
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.MESSAGE,
+                PlayerElements.AUDIO_PLAYBACK_ERROR,
+            )
         ]
         self._ttl_no_audio = language_manager[
-            TextKey(Page.GLOBAL, Panel.PLAYER, TextType.TITLE, PlayerElements.NO_AUDIO_DIALOG_TITLE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.PLAYER,
+                TextType.TITLE,
+                PlayerElements.NO_AUDIO_DIALOG_TITLE,
+            )
         ]
 
         super().__init__(
@@ -136,7 +165,10 @@ class GUIAudioPlayerPanel(GUIPanel):
             return
 
         dpg_configure_item(self.play_button_tag, enabled=True)
-        dpg_configure_item(self.pause_button_tag, enabled=viewmodel.is_playing or viewmodel.is_paused)
+        dpg_configure_item(
+            self.pause_button_tag,
+            enabled=viewmodel.is_playing or viewmodel.is_paused,
+        )
         dpg_configure_item(self.stop_button_tag, enabled=True)
 
         if viewmodel.is_paused:

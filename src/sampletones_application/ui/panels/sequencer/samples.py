@@ -1,16 +1,21 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_PANEL_RIGHT, TAG_TAB_GLOBAL_SEQUENCER
+from sampletones_application.categories.elements.sequencer import (
+    SequencerInstrumentsElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import (
+    SUF_PANEL_RIGHT,
+    TAG_TAB_GLOBAL_SEQUENCER,
+)
 from sampletones_application.constants.sequencer import (
     TAG_PANEL_SEQUENCER_SAMPLES,
     TAG_TABLE_SEQUENCER_SAMPLES,
     TAG_WINDOW_SEQUENCER_SAMPLES,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.text.elements.sequencer import SequencerInstrumentsElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -20,13 +25,28 @@ class GUISequencerSamplesPanel(GUIPanel):
     def __init__(self, *, layout: SequencerLayout, language_manager: LanguageManager) -> None:
         self._layout = layout
         self._lbl_instruments = language_manager[
-            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.INSTRUMENTS_TEXT)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.INSTRUMENTS,
+                TextType.LABEL,
+                SequencerInstrumentsElements.INSTRUMENTS_TEXT,
+            )
         ]
         self._lbl_column_id = language_manager[
-            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.COLUMN_ID)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.INSTRUMENTS,
+                TextType.LABEL,
+                SequencerInstrumentsElements.COLUMN_ID,
+            )
         ]
         self._lbl_column_name = language_manager[
-            TextKey(Page.SEQUENCER, Panel.INSTRUMENTS, TextType.LABEL, SequencerInstrumentsElements.COLUMN_NAME)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.INSTRUMENTS,
+                TextType.LABEL,
+                SequencerInstrumentsElements.COLUMN_NAME,
+            )
         ]
 
         super().__init__(

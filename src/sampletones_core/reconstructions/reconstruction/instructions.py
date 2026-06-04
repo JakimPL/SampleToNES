@@ -5,7 +5,11 @@ from typing import List, Type
 from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 from sampletones_core.instructions import InstructionData, InstructionUnion
 
 

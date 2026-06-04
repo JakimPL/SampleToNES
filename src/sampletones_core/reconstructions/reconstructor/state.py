@@ -32,7 +32,11 @@ class ReconstructionState(BaseModel):
             approximations={name: [] for name in generator_names},
         )
 
-    def append(self, fragment_approximation: ApproximationData, approximation: np.ndarray) -> None:
+    def append(
+        self,
+        fragment_approximation: ApproximationData,
+        approximation: np.ndarray,
+    ) -> None:
         name = fragment_approximation.generator_name
         self.instructions[name].append(fragment_approximation.instruction)
         self.approximations[name].append(approximation)

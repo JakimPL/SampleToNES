@@ -2,8 +2,10 @@ from typing import Annotated
 
 from pydantic import BeforeValidator
 
+from sampletones_shared.types.application import ColorRGBA
 
-def parse_hex_color(value: str) -> tuple[int, int, int, int]:
+
+def parse_hex_color(value: str) -> ColorRGBA:
     """Parse a hex color string to an RGBA tuple.
 
     Accepts ``#rrggbb`` (opaque, alpha defaults to 255) or ``#rrggbbaa``
@@ -39,12 +41,10 @@ def parse_hex_color(value: str) -> tuple[int, int, int, int]:
     return (r, g, b, a)
 
 
-def _rgba_validator(value: object) -> tuple[int, int, int, int]:
+def _rgba_validator(value: object) -> ColorRGBA:
     if isinstance(value, str):
         return parse_hex_color(value)
     raise ValueError(f"Expected a hex color string (e.g. '#rrggbb'), got {type(value).__name__}: {value!r}")
 
 
-# Pydantic-compatible RGBA field type.  Accepts '#rrggbb' / '#rrggbbaa' strings
-# and stores them as (r, g, b, a) integer tuples.
-RGBA = Annotated[tuple[int, int, int, int], BeforeValidator(_rgba_validator)]
+RGBA = Annotated[ColorRGBA, BeforeValidator(_rgba_validator)]

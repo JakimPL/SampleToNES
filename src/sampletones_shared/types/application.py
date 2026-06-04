@@ -1,4 +1,6 @@
 from typing import Tuple, Union
 
 Sender = Union[int, str]
-Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
+ColorRGB = Tuple[int, int, int]
+ColorRGBA = Tuple[int, int, int, int]
+Color = Union[ColorRGB, ColorRGBA]

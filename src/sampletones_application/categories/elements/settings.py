@@ -1,4 +1,4 @@
-from sampletones_application.text.abstract import AbstractElement
+from sampletones_application.categories.abstract import AbstractElement
 
 
 class AudioSettingsElements(AbstractElement):

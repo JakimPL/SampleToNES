@@ -3,8 +3,9 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import TAG_HANDLER_GLOBAL_FOCUS
+from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.keys import Modifier
-from sampletones_application.utils.shortcuts.shortcut import Shortcut, ShortcutId
+from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
@@ -17,7 +18,12 @@ class ShortcutManager:
         self._handler_registry: Optional[int] = None
         self._focus_handler_tag = TAG_HANDLER_GLOBAL_FOCUS
 
-    def register(self, shortcut_id: ShortcutId, shortcut: Shortcut, callback: Callback) -> None:
+    def register(
+        self,
+        shortcut_id: ShortcutId,
+        shortcut: Shortcut,
+        callback: Callback,
+    ) -> None:
         self._shortcuts[shortcut_id] = (shortcut, callback)
 
     def enable(self) -> None:
@@ -45,7 +51,10 @@ class ShortcutManager:
         with dpg.handler_registry() as self._handler_registry:
             for shortcut, callback in self._shortcuts.values():
 
-                def handler(shortcut: Shortcut, callback: Callback) -> Callable[[Sender, Any, Any], None]:
+                def handler(
+                    shortcut: Shortcut,
+                    callback: Callback,
+                ) -> Callable[[Sender, Any, Any], None]:
                     def inner(sender: Sender, app_data: Any, user_data: Any) -> None:
                         self._handle_key(shortcut, callback)
 

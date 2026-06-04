@@ -3,18 +3,21 @@ from typing import Any, Dict, Optional
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.elements.global_ import GraphElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
 )
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.text.elements.global_ import GraphElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.utils.dpg import dpg_bind_item_theme, dpg_delete_children
+from sampletones_application.utils.dpg import (
+    dpg_bind_item_theme,
+    dpg_delete_children,
+)
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
 from sampletones_core.constants.general import MIN_FREQUENCY
 from sampletones_core.library import InstructionLibraryFragment
@@ -40,22 +43,49 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self._layout = layout
 
         self._lbl_axis_x = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_X_AXIS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.SPECTRUM_X_AXIS,
+            )
         ]
         self._lbl_axis_frequency = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_FREQUENCY_AXIS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.SPECTRUM_FREQUENCY_AXIS,
+            )
         ]
         self._lbl_spectrum_name = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_NAME)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.SPECTRUM_NAME,
+            )
         ]
         self._msg_navigation = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.MESSAGE, GraphElements.SPECTRUM_NAVIGATION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.MESSAGE,
+                GraphElements.SPECTRUM_NAVIGATION,
+            )
         ]
 
         _label = (
             label
             if label
-            else language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.SPECTRUM_DISPLAY)]
+            else language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.GRAPH,
+                    TextType.LABEL,
+                    GraphElements.SPECTRUM_DISPLAY,
+                )
+            ]
         )
 
         self.spectrum: Optional[np.ndarray] = None

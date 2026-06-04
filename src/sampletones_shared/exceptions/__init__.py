@@ -20,7 +20,11 @@ from .reconstruction import (
     ReconstructionError,
 )
 from .structures import IncompleteHistogramRebinningWarning
-from .validation import DeserializationError, InvalidMetadataError, SerializationError
+from .validation import (
+    DeserializationError,
+    InvalidMetadataError,
+    SerializationError,
+)
 from .window import WindowError, WindowNotAvailableError
 
 __all__ = [

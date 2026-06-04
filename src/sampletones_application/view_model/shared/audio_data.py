@@ -39,7 +39,10 @@ class AudioData:
 
     @classmethod
     def empty(cls, sample_rate: int) -> AudioData:
-        return cls(sample=np.array([], dtype=np.float32), sample_rate=sample_rate)
+        return cls(
+            sample=np.array([], dtype=np.float32),
+            sample_rate=sample_rate,
+        )
 
     def is_loaded(self) -> bool:
         return len(self.sample) > 0

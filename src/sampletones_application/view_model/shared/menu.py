@@ -1,9 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 
-class MenuBarViewModel(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
+class MenuBarViewModel(BaseModel, frozen=True):
     reconstruction_loaded: bool
     play_label: str
     play_or_pause_enabled: bool

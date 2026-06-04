@@ -9,7 +9,11 @@ from sampletones_application.config.updates import (
     GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
+from sampletones_application.paths import (
+    CONFIG_PATH,
+    LIBRARY_DIRECTORY,
+    OUTPUT_DIRECTORY,
+)
 from sampletones_application.utils.dialogs import DialogsRenderer
 
 _MSG_INVALID_ERROR: Final = "Invalid configuration file."
@@ -46,9 +50,17 @@ class ConfigManager:
                 self.load_default_config()
                 logger.error(f"Config file not found: {config_path}")
                 self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
-            except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
+            except (
+                IOError,
+                IsADirectoryError,
+                PermissionError,
+                OSError,
+            ) as exception:
                 self.load_default_config()
-                logger.error_with_traceback(exception, f"File error while loading config from {config_path}")
+                logger.error_with_traceback(
+                    exception,
+                    f"File error while loading config from {config_path}",
+                )
                 self._dialogs.show_error(exception, _MSG_LOAD_ERROR)
             except ValidationError as exception:
                 self.load_default_config()
@@ -70,8 +82,16 @@ class ConfigManager:
         try:
             self.config_path.parent.mkdir(parents=True, exist_ok=True)
             self.config.save(self.config_path)
-        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
-            logger.error_with_traceback(exception, f"File error while saving config from {self.config_path}")
+        except (
+            IOError,
+            IsADirectoryError,
+            PermissionError,
+            OSError,
+        ) as exception:
+            logger.error_with_traceback(
+                exception,
+                f"File error while saving config from {self.config_path}",
+            )
             self._dialogs.show_error(exception, _MSG_SAVE_ERROR)
         except Exception as exception:  # TODO: specify exception type
             logger.error_with_traceback(exception, f"Failed to save config to {self.config_path}")
@@ -99,9 +119,16 @@ class ConfigManager:
 
     def apply_generation_settings(self, update: GenerationSettingsUpdate) -> None:
         new_generation = self.config.generation.model_copy(
-            update={"mixer": update.mixer, "generators": update.generators}
+            update={
+                "mixer": update.mixer,
+                "generators": update.generators,
+            }
         )
-        self.config = self.config.model_copy(update={"generation": new_generation})
+        self.config = self.config.model_copy(
+            update={
+                "generation": new_generation,
+            }
+        )
         self.window = Window.from_config(self.config)
         self.update_gui()
 

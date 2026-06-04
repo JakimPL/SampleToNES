@@ -4,7 +4,12 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import DUTY_CYCLES, MAX_VOLUME, MIN_PITCH, MIXER_PULSE
+from sampletones_core.constants.general import (
+    DUTY_CYCLES,
+    MAX_VOLUME,
+    MIN_PITCH,
+    MIXER_PULSE,
+)
 from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials

@@ -27,6 +27,12 @@ class LastPaths(BaseModel):
         description="The last used WAV export file path.",
     )
 
-    @field_serializer("library", "reconstruction", "config", "instrument", "audio")
+    @field_serializer(
+        "library",
+        "reconstruction",
+        "config",
+        "instrument",
+        "audio",
+    )
     def serialize_paths(self, path: Path) -> str:
         return str(path)

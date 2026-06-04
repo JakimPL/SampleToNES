@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -14,11 +14,15 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dpg import dpg_delete_item, dpg_set_value
 from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_shared.types.application import Sender
+from sampletones_shared.types.application import ColorRGB, Sender
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.callbacks import CallbackMixin
-from sampletones_shared.utils.system.paths import open_path_in_explorer, shorten_path, to_path
+from sampletones_shared.utils.system.paths import (
+    open_path_in_explorer,
+    shorten_path,
+    to_path,
+)
 
 
 class GUIPathText(CallbackMixin):
@@ -29,8 +33,8 @@ class GUIPathText(CallbackMixin):
         parent: str,
         prefix: Optional[str] = None,
         font: Optional[Font] = None,
-        color: Optional[Tuple[int, int, int]] = None,
-        hover_color: Optional[Tuple[int, int, int]] = None,
+        color: Optional[ColorRGB] = None,
+        hover_color: Optional[ColorRGB] = None,
     ) -> None:
         self.tag = tag
         self.path = path or Path()

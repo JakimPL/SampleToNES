@@ -3,6 +3,17 @@ from typing import Any, Callable, List, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import (
+    ContextElements,
+    GlobalTemplateElements,
+)
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionPanelElements,
+    ReconstructionsDetailsElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     TAG_TAB_GLOBAL_RECONSTRUCTIONS,
@@ -22,14 +33,6 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.global_ import ContextElements, GlobalTemplateElements
-from sampletones_application.text.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsDetailsElements,
-)
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -41,11 +44,15 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_application.view_model.reconstruction.data import ReconstructionData
-from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
+from sampletones_application.view_model.reconstruction.data import (
+    ReconstructionData,
+)
+from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionViewModel,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
-from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
+from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, VoidCallback
 
@@ -183,20 +190,52 @@ class GUIReconstructionPanel(GUIPanel):
             )
         ]
         self._lbl_pulse_1 = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_1)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_1,
+            )
         ]
         self._lbl_pulse_2 = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_2)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_2,
+            )
         ]
         self._lbl_triangle = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.TRIANGLE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.TRIANGLE,
+            )
         ]
-        self._lbl_noise = language_manager[TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.NOISE)]
+        self._lbl_noise = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.NOISE,
+            )
+        ]
         self._val_text_on = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.ON)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TEMPLATE,
+                GlobalTemplateElements.ON,
+            )
         ]
         self._val_text_off = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.OFF)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TEMPLATE,
+                GlobalTemplateElements.OFF,
+            )
         ]
         self._language_manager = language_manager
 
@@ -223,16 +262,28 @@ class GUIReconstructionPanel(GUIPanel):
         if not viewmodel.audio_source_enabled:
             dpg_set_value(radio_tag, self._lbl_reconstruction_radio)
 
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=viewmodel.buttons_enabled)
         dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO, enabled=viewmodel.buttons_enabled
+            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            enabled=viewmodel.buttons_enabled,
+        )
+        dpg_configure_item(
+            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            enabled=viewmodel.buttons_enabled,
         )
 
-    def load_waveform_data(self, reconstruction_data: ReconstructionData, generators: List[GeneratorName]) -> None:
+    def load_waveform_data(
+        self,
+        reconstruction_data: ReconstructionData,
+        generators: List[GeneratorName],
+    ) -> None:
         self._frame_length = reconstruction_data.reconstruction.config.frame_length
         self.waveform_display.load_reconstruction_data(reconstruction_data, generators)
 
-    def update_waveform_data(self, reconstruction_data: ReconstructionData, generators: List[GeneratorName]) -> None:
+    def update_waveform_data(
+        self,
+        reconstruction_data: ReconstructionData,
+        generators: List[GeneratorName],
+    ) -> None:
         self.waveform_display.update_reconstruction_data(reconstruction_data, generators)
 
     def update_audio_data(self, audio_data: Optional[AudioData]) -> None:
@@ -340,7 +391,10 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_tooltips()
 
         dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=False)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO, enabled=False)
+        dpg_configure_item(
+            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            enabled=False,
+        )
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(

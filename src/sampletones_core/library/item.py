@@ -6,8 +6,16 @@ from typing import Any, Generic, Self, Tuple, Type
 from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import InstructionClassName
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
-from sampletones_core.instructions import INSTRUCTION_CLASS_MAP, InstructionData, InstructionT
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
+from sampletones_core.instructions import (
+    INSTRUCTION_CLASS_MAP,
+    InstructionData,
+    InstructionT,
+)
 from sampletones_shared.exceptions import InstructionTypeMismatchError
 from sampletones_shared.types.data import SerializedData
 

@@ -2,6 +2,14 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import (
+    ContextElements,
+    StatusElements,
+)
+from sampletones_application.categories.elements.main import ReconstructorElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import GenerationSettingsUpdate
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
@@ -9,11 +17,6 @@ from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
     TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
 )
-from sampletones_application.text.elements.global_ import ContextElements, StatusElements
-from sampletones_application.text.elements.main import ReconstructorElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -21,7 +24,9 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.utils.widgets import clamp_widget_value
-from sampletones_application.view_model.main.reconstructor import ReconstructorPanelViewModel
+from sampletones_application.view_model.main.reconstructor import (
+    ReconstructorPanelViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_MIXER
 from sampletones_shared.types.application import Sender
@@ -42,29 +47,76 @@ class GUIReconstructorPanel(GUIPanel):
         self._item_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
 
         self._lbl_section_settings = language_manager[
-            TextKey(Page.MAIN, Panel.RECONSTRUCTOR, TextType.LABEL, ReconstructorElements.SECTION_SETTINGS)
+            TextKey(
+                Page.MAIN,
+                Panel.RECONSTRUCTOR,
+                TextType.LABEL,
+                ReconstructorElements.SECTION_SETTINGS,
+            )
         ]
         self._lbl_section_generators = language_manager[
-            TextKey(Page.MAIN, Panel.RECONSTRUCTOR, TextType.LABEL, ReconstructorElements.SECTION_GENERATORS)
+            TextKey(
+                Page.MAIN,
+                Panel.RECONSTRUCTOR,
+                TextType.LABEL,
+                ReconstructorElements.SECTION_GENERATORS,
+            )
         ]
         self._lbl_mixer = language_manager[
-            TextKey(Page.MAIN, Panel.RECONSTRUCTOR, TextType.LABEL, ReconstructorElements.SLIDER_MIXER)
+            TextKey(
+                Page.MAIN,
+                Panel.RECONSTRUCTOR,
+                TextType.LABEL,
+                ReconstructorElements.SLIDER_MIXER,
+            )
         ]
         self._tooltip_mixer = language_manager[
-            TextKey(Page.MAIN, Panel.RECONSTRUCTOR, TextType.TOOLTIP, ReconstructorElements.TOOLTIP_MIXER)
+            TextKey(
+                Page.MAIN,
+                Panel.RECONSTRUCTOR,
+                TextType.TOOLTIP,
+                ReconstructorElements.TOOLTIP_MIXER,
+            )
         ]
         self._lbl_triangle = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.TRIANGLE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.TRIANGLE,
+            )
         ]
         self._lbl_pulse_1 = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_1)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_1,
+            )
         ]
         self._lbl_pulse_2 = language_manager[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.PULSE_2)
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.PULSE_2,
+            )
         ]
-        self._lbl_noise = language_manager[TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.NOISE)]
+        self._lbl_noise = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.CONTEXT,
+                TextType.LABEL,
+                ContextElements.NOISE,
+            )
+        ]
         self._msg_status_input = language_manager[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+            TextKey(
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.INPUT,
+            )
         ]
 
         super().__init__(

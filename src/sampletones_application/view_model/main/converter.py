@@ -38,4 +38,8 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def is_done(self) -> bool:
-        return self.phase in (ConversionPhase.COMPLETED, ConversionPhase.CANCELLED, ConversionPhase.FAILED)
+        return self.phase in (
+            ConversionPhase.COMPLETED,
+            ConversionPhase.CANCELLED,
+            ConversionPhase.FAILED,
+        )

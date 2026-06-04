@@ -2,6 +2,11 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.main import ExplorerElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
@@ -17,13 +22,11 @@ from sampletones_application.constants.main import (
     TAG_TREE_MAIN_EXPLORER,
     TAG_WINDOW_MAIN_EXPLORER_TREE,
 )
-from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    TreeBehavior,
+)
 from sampletones_application.logic.main.explorer import ExplorerLogic
-from sampletones_application.text.elements.global_ import TreeElements
-from sampletones_application.text.elements.main import ExplorerElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -31,12 +34,21 @@ from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_children,
+)
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
+from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants import paths
-from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.structures.tree import (
+    FileSystemNode,
+    NodeType,
+    TreeNode,
+    TreeTraversal,
+    traverse,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
@@ -63,43 +75,108 @@ class GUIExplorerPanel(GUITreePanel):
         self._dialogs = dialogs
 
         self._lbl_section = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.SECTION)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.SECTION,
+            )
         ]
         self._lbl_refresh = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.REFRESH_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.REFRESH_BUTTON,
+            )
         ]
         self._lbl_collapse_all = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.COLLAPSE_ALL_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.COLLAPSE_ALL_BUTTON,
+            )
         ]
         self._lbl_ctx_load_reconstruction = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION,
+            )
         ]
         self._lbl_ctx_load_library = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_LOAD_LIBRARY)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_LOAD_LIBRARY,
+            )
         ]
         self._lbl_ctx_reconstruct_file = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_RECONSTRUCT_FILE)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_RECONSTRUCT_FILE,
+            )
         ]
         self._lbl_ctx_reconstruct_directory = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY,
+            )
         ]
         self._lbl_ctx_set_library = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY,
+            )
         ]
         self._lbl_ctx_set_output = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.LABEL, ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.LABEL,
+                ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
+            )
         ]
         self._msg_converter_running = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.CONVERTER_RUNNING_MSG)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.MESSAGE,
+                ExplorerElements.CONVERTER_RUNNING_MSG,
+            )
         ]
         self._msg_status_audio_no_autoplay = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.MESSAGE,
+                ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY,
+            )
         ]
         self._msg_status_audio = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.MESSAGE, ExplorerElements.STATUS_NODE_AUDIO)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.MESSAGE,
+                ExplorerElements.STATUS_NODE_AUDIO,
+            )
         ]
         self._ttl_converter_running = language_manager[
-            TextKey(Page.MAIN, Panel.EXPLORER, TextType.TITLE, ExplorerElements.CONVERTER_RUNNING_DIALOG)
+            TextKey(
+                Page.MAIN,
+                Panel.EXPLORER,
+                TextType.TITLE,
+                ExplorerElements.CONVERTER_RUNNING_DIALOG,
+            )
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -123,7 +200,14 @@ class GUIExplorerPanel(GUITreePanel):
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
-            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.FILTER)],
+            search_label=language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.BROWSER,
+                    TextType.LABEL,
+                    TreeElements.FILTER,
+                )
+            ],
         )
 
     def create_panel(self) -> None:
@@ -287,7 +371,9 @@ class GUIExplorerPanel(GUITreePanel):
 
         state.parent = node_tag
 
-    def _create_status_bar_message_function_for_file_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_file_node(
+        self,
+    ) -> MessageCallback:
         reconstruction_message_function = self._create_status_bar_message_function_for_reconstruction_node()
         library_message_function = self._create_status_bar_message_function_for_library_node()
         audio_message_function = self._create_status_bar_message_function_for_audio_node()
@@ -364,7 +450,9 @@ class GUIExplorerPanel(GUITreePanel):
 
         return None
 
-    def _create_status_bar_message_function_for_audio_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_audio_node(
+        self,
+    ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self.session_manager.autoplay:
                 return self._msg_status_audio

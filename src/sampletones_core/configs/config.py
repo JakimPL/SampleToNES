@@ -6,9 +6,13 @@ from typing import List, Self, Type
 from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.paths import CONFIG_PATH
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 from sampletones_core.data.metadata import Metadata
+from sampletones_core.paths import CONFIG_PATH
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_json, save_json
 from sampletones_shared.utils.system.paths import to_path

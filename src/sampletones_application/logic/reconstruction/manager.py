@@ -65,7 +65,11 @@ class ReconstructionManager(CallbackMixin):
         self._current_features = None
         self._reconstruction_hash = ""
         self._coefficient = 1.0
-        CallbackQueue.add(self.call, self.on_reconstruction_closed, priority=self._scheduling.priority_schedule)
+        CallbackQueue.add(
+            self.call,
+            self.on_reconstruction_closed,
+            priority=self._scheduling.priority_schedule,
+        )
 
     def locate_original_audio(self) -> None:
         original_audio_path = self.audio_filepath

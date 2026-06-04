@@ -1,8 +1,21 @@
 from typing import Dict, Final
 
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName, LibraryGeneratorName
-from sampletones_core.constants.general import MIXER_NOISE, MIXER_PULSE, MIXER_TRIANGLE
-from sampletones_core.instructions import InstructionTypeUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.constants.enums import (
+    GeneratorClassName,
+    GeneratorName,
+    LibraryGeneratorName,
+)
+from sampletones_core.constants.general import (
+    MIXER_NOISE,
+    MIXER_PULSE,
+    MIXER_TRIANGLE,
+)
+from sampletones_core.instructions import (
+    InstructionTypeUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 
 from .noise import NoiseGenerator
 from .pulse import PulseGenerator

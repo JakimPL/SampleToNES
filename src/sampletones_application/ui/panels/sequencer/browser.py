@@ -2,8 +2,18 @@ from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerBrowserElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
-from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_SEQUENCER
+from sampletones_application.constants.general import (
+    SUF_PANEL_LEFT,
+    TAG_TAB_GLOBAL_SEQUENCER,
+)
 from sampletones_application.constants.sequencer import (
     TAG_BUTTON_SEQUENCER_BROWSER_REFRESH_RECONSTRUCTIONS,
     TAG_GROUP_SEQUENCER_BROWSER_CONTROLS,
@@ -12,13 +22,13 @@ from sampletones_application.constants.sequencer import (
     TAG_TREE_SEQUENCER_BROWSER,
     TAG_WINDOW_SEQUENCER_BROWSER_TREE,
 )
-from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
-from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
-from sampletones_application.text.elements.global_ import TreeElements
-from sampletones_application.text.elements.sequencer import SequencerBrowserElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    TreeBehavior,
+)
+from sampletones_application.logic.sequencer.browser import (
+    SequencerBrowserLogic,
+)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -29,7 +39,13 @@ from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.structures.tree import (
+    FileSystemNode,
+    NodeType,
+    TreeNode,
+    TreeTraversal,
+    traverse,
+)
 from sampletones_shared.types.application import Sender
 
 
@@ -48,10 +64,20 @@ class GUISequencerBrowserPanel(GUITreePanel):
         self.sequencer_browser_logic = sequencer_browser_logic
         self._tree_behavior = tree_behavior
         self._lbl_refresh = language_manager[
-            TextKey(Page.SEQUENCER, Panel.BROWSER, TextType.LABEL, SequencerBrowserElements.REFRESH_BUTTON)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.BROWSER,
+                TextType.LABEL,
+                SequencerBrowserElements.REFRESH_BUTTON,
+            )
         ]
         self._lbl_reconstructions = language_manager[
-            TextKey(Page.SEQUENCER, Panel.BROWSER, TextType.LABEL, SequencerBrowserElements.RECONSTRUCTIONS_TREE)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.BROWSER,
+                TextType.LABEL,
+                SequencerBrowserElements.RECONSTRUCTIONS_TREE,
+            )
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -65,7 +91,14 @@ class GUISequencerBrowserPanel(GUITreePanel):
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
-            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
+            search_label=language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.BROWSER,
+                    TextType.LABEL,
+                    TreeElements.SEARCH,
+                )
+            ],
         )
 
     def create_panel(self) -> None:

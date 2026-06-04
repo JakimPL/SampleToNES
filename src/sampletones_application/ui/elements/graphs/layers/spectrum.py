@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Generator, Tuple
+from typing import Any, Final, Generator, Tuple
 
 import numpy as np
 
@@ -10,7 +10,7 @@ from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.application import Color
 
-_DEFAULT_MAX_DISPLAY_BINS: int = 128
+_DEFAULT_MAX_DISPLAY_BINS: Final[int] = 128
 
 
 @dataclass(frozen=True)

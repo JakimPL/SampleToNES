@@ -51,7 +51,10 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
             for instruction in generator.get_possible_instructions()
         ]
 
-        num_workers = max(self.max_workers, (len(self.instructions) + BATCH_SIZE - 1) // BATCH_SIZE)
+        num_workers = max(
+            self.max_workers,
+            (len(self.instructions) + BATCH_SIZE - 1) // BATCH_SIZE,
+        )
         self.batches = [self.instructions[i::num_workers] for i in range(num_workers)]
 
         tasks = [(batch, self.config, self.window) for batch in self.batches if batch]
@@ -61,7 +64,13 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
     def _get_task_function(
         self,
     ) -> Callable[
-        [Tuple[List[Tuple[GeneratorClassName, InstructionUnion]], Config, Window]],
+        [
+            Tuple[
+                List[Tuple[GeneratorClassName, InstructionUnion]],
+                Config,
+                Window,
+            ]
+        ],
         List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]],
     ]:
         return generate_instruction_batch

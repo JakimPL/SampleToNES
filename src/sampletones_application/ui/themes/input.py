@@ -17,7 +17,10 @@ class InvalidInputTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvInputText): [
-                    ThemeColor(key=dpg.mvThemeCol_FrameBg, color=c.backgrounds.input_invalid),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_FrameBg,
+                        color=c.backgrounds.input_invalid,
+                    ),
                 ],
             }
         )

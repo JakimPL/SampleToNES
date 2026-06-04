@@ -2,9 +2,19 @@ from typing import Type
 
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.general import MAX_PITCH, MAX_WORKERS, MIN_PITCH, NORMALIZE, QUANTIZE
-from sampletones_core.constants.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.constants.general import (
+    MAX_PITCH,
+    MAX_WORKERS,
+    MIN_PITCH,
+    NORMALIZE,
+    QUANTIZE,
+)
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
+from sampletones_core.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
 
 
 class GeneralConfig(DataModel):

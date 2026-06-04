@@ -3,11 +3,26 @@ from __future__ import annotations
 import warnings
 from functools import cached_property, reduce
 from types import ModuleType
-from typing import Dict, Generator, Iterator, List, Optional, Self, Tuple, Type, Union, overload
+from typing import (
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Self,
+    Tuple,
+    Type,
+    Union,
+    overload,
+)
 
 from pydantic import ConfigDict, field_serializer, model_validator
 
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 from sampletones_shared.array import xp
 from sampletones_shared.exceptions import IncompleteHistogramRebinningWarning
 from sampletones_shared.types.array import (
@@ -23,7 +38,11 @@ from sampletones_shared.types.array import (
     get_array_module,
 )
 from sampletones_shared.types.data import SerializedData
-from sampletones_shared.utils.arrays import cast_to_float, is_increasing, isfinite
+from sampletones_shared.utils.arrays import (
+    cast_to_float,
+    is_increasing,
+    isfinite,
+)
 from sampletones_shared.utils.serialization import serialize_array
 
 from .interval import Interval
@@ -818,7 +837,10 @@ class Histogram(DataModel):
 
         if isinstance(other, Histogram):
             rebinned_self, rebinned_other = Histogram.refine(self, other)
-            return self.__class__(edges=rebinned_self.edges, values=rebinned_self.values + rebinned_other.values)
+            return self.__class__(
+                edges=rebinned_self.edges,
+                values=rebinned_self.values + rebinned_other.values,
+            )
 
         if isinstance(other, ArrayClasses):
             self._validate_array_lengths(other)

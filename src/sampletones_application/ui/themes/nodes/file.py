@@ -22,7 +22,10 @@ class NoContentFileNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.text.disabled),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.text.disabled,
+                    ),
                 ],
             }
         )
@@ -37,7 +40,10 @@ class ReconstructionFileNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.files.reconstruction),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.files.reconstruction,
+                    ),
                 ],
             }
         )
@@ -52,7 +58,10 @@ class LibraryFileNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.files.library),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.files.library,
+                    ),
                 ],
             }
         )
@@ -67,7 +76,10 @@ class WaveFileNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.files.wave),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.files.wave,
+                    ),
                 ],
             }
         )
@@ -82,7 +94,10 @@ class NotExpandedDirectoryNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.files.directory_not_expanded),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.files.directory_not_expanded,
+                    ),
                 ],
             }
         )

@@ -4,8 +4,15 @@ import numpy as np
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.constants.general import MIN_PITCH, MIXER_TRIANGLE, TRIANGLE_OFFSET
-from sampletones_core.instructions import InstructionTypeUnion, TriangleInstruction
+from sampletones_core.constants.general import (
+    MIN_PITCH,
+    MIXER_TRIANGLE,
+    TRIANGLE_OFFSET,
+)
+from sampletones_core.instructions import (
+    InstructionTypeUnion,
+    TriangleInstruction,
+)
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 

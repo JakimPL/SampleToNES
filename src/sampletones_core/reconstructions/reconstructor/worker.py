@@ -6,10 +6,20 @@ import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName, InstructionClassName
+from sampletones_core.constants.enums import (
+    GeneratorClassName,
+    GeneratorName,
+    InstructionClassName,
+)
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
-from sampletones_core.generators import GeneratorUnion, get_generator_by_instruction
-from sampletones_core.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
+from sampletones_core.generators import (
+    GeneratorUnion,
+    get_generator_by_instruction,
+)
+from sampletones_core.instructions import (
+    INSTRUCTION_CLASS_MAP,
+    InstructionUnion,
+)
 from sampletones_core.library import InstructionLibraryData
 from sampletones_shared.array import CUPY_AVAILABLE, xp
 
@@ -19,7 +29,11 @@ from .approximation import ApproximationData
 GetCachedApproximationsInstructionsArgument = Tuple[Tuple[InstructionClassName, bytes], ...]
 GetCachedApproximationsGeneratorsArgument = Tuple[GeneratorUnion, ...]
 GetCachedApproximationsCallback = Callable[
-    [GetCachedApproximationsInstructionsArgument, GetCachedApproximationsGeneratorsArgument], Fragment
+    [
+        GetCachedApproximationsInstructionsArgument,
+        GetCachedApproximationsGeneratorsArgument,
+    ],
+    Fragment,
 ]
 
 
@@ -56,7 +70,10 @@ class ReconstructorWorker:
                     )
                 )
                 approximations: List[Fragment] = []
-                for instruction_class_name, serialized_instruction in serialized_instructions:
+                for (
+                    instruction_class_name,
+                    serialized_instruction,
+                ) in serialized_instructions:
                     instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
                     instruction = instruction_class.deserialize(serialized_instruction)
                     generator = get_generator_by_instruction(instruction, remaining_generator_classes)
@@ -67,7 +84,11 @@ class ReconstructorWorker:
 
             return _cached
 
-        object.__setattr__(self, "_get_cached_approximations", _build_get_cached_approximations())
+        object.__setattr__(
+            self,
+            "_get_cached_approximations",
+            _build_get_cached_approximations(),
+        )
 
     def get_remaining_generators(self) -> Dict[GeneratorName, GeneratorUnion]:
         return dict(self.generators.items())

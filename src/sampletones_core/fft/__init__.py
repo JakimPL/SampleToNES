@@ -1,5 +1,15 @@
-from .cqt import calculate_cqt, calculate_cqt_frequencies, convert_midpoints_to_edges, normalize_cqt_energy
-from .fft import a_weighting, calculate_fft, calculate_fft_frequencies, calculate_weights
+from .cqt import (
+    calculate_cqt,
+    calculate_cqt_frequencies,
+    convert_midpoints_to_edges,
+    normalize_cqt_energy,
+)
+from .fft import (
+    a_weighting,
+    calculate_fft,
+    calculate_fft_frequencies,
+    calculate_weights,
+)
 from .fragment.audio import FragmentedAudio
 from .fragment.fragment import Fragment
 from .transformer import FFTTransformer

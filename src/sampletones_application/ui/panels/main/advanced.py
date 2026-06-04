@@ -3,6 +3,10 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.main import AdvancedElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import AdvancedSettingsUpdate
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
@@ -18,10 +22,6 @@ from sampletones_application.constants.main import (
     TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
     TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
 )
-from sampletones_application.text.elements.main import AdvancedElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -67,25 +67,60 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         self._lbl_section = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.LABEL, AdvancedElements.SECTION)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.LABEL,
+                AdvancedElements.SECTION,
+            )
         ]
         self._lbl_select_library = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.LABEL, AdvancedElements.SELECT_LIBRARY_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.LABEL,
+                AdvancedElements.SELECT_LIBRARY_DIRECTORY,
+            )
         ]
         self._lbl_select_output = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.LABEL, AdvancedElements.SELECT_OUTPUT_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.LABEL,
+                AdvancedElements.SELECT_OUTPUT_DIRECTORY,
+            )
         ]
         self._lbl_max_workers = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.LABEL, AdvancedElements.INPUT_MAX_WORKERS)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.LABEL,
+                AdvancedElements.INPUT_MAX_WORKERS,
+            )
         ]
         self._tooltip_max_workers = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.TOOLTIP, AdvancedElements.TOOLTIP_MAX_WORKERS)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.TOOLTIP,
+                AdvancedElements.TOOLTIP_MAX_WORKERS,
+            )
         ]
         self._ttl_library_dialog = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.TITLE, AdvancedElements.SELECT_LIBRARY_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.TITLE,
+                AdvancedElements.SELECT_LIBRARY_DIRECTORY,
+            )
         ]
         self._ttl_output_dialog = language_manager[
-            TextKey(Page.MAIN, Panel.ADVANCED, TextType.TITLE, AdvancedElements.SELECT_OUTPUT_DIRECTORY)
+            TextKey(
+                Page.MAIN,
+                Panel.ADVANCED,
+                TextType.TITLE,
+                AdvancedElements.SELECT_OUTPUT_DIRECTORY,
+            )
         ]
 
         super().__init__(
@@ -141,7 +176,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             width=self._input_width,
         )
 
-        dpg.bind_item_handler_registry(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, self._item_handler_tag)
+        dpg.bind_item_handler_registry(
+            TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            self._item_handler_tag,
+        )
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(
@@ -188,7 +226,10 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             )
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, self._tooltip_max_workers)
+        show_tooltip(
+            TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            self._tooltip_max_workers,
+        )
 
     def _select_library_directory_dialog(self) -> None:
         with dpg.file_dialog(

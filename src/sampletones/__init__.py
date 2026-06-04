@@ -6,8 +6,18 @@ if TYPE_CHECKING:
     from sampletones_core.constants.application import SAMPLETONES_VERSION as __version__
     from sampletones_core.constants.enums import GeneratorName
     from sampletones_core.fft import Window
-    from sampletones_core.generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
-    from sampletones_core.instructions import Instruction, NoiseInstruction, PulseInstruction, TriangleInstruction
+    from sampletones_core.generators import (
+        Generator,
+        NoiseGenerator,
+        PulseGenerator,
+        TriangleGenerator,
+    )
+    from sampletones_core.instructions import (
+        Instruction,
+        NoiseInstruction,
+        PulseInstruction,
+        TriangleInstruction,
+    )
     from sampletones_core.library import InstructionLibrary
     from sampletones_core.reconstructions import Reconstruction, Reconstructor
 
@@ -33,11 +43,21 @@ def __getattr__(name: str) -> Any:
 
         return Window
 
-    if name in ("Generator", "NoiseGenerator", "PulseGenerator", "TriangleGenerator"):
+    if name in (
+        "Generator",
+        "NoiseGenerator",
+        "PulseGenerator",
+        "TriangleGenerator",
+    ):
         module = importlib.import_module("sampletones_core.generators")
         return getattr(module, name)
 
-    if name in ("Instruction", "NoiseInstruction", "PulseInstruction", "TriangleInstruction"):
+    if name in (
+        "Instruction",
+        "NoiseInstruction",
+        "PulseInstruction",
+        "TriangleInstruction",
+    ):
         module = importlib.import_module("sampletones_core.instructions")
         return getattr(module, name)
 

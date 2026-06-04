@@ -3,8 +3,18 @@ from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionsBrowserElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
-from sampletones_application.constants.general import SUF_PANEL_LEFT, TAG_TAB_GLOBAL_RECONSTRUCTIONS
+from sampletones_application.constants.general import (
+    SUF_PANEL_LEFT,
+    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+)
 from sampletones_application.constants.reconstructions import (
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
     TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
@@ -15,13 +25,11 @@ from sampletones_application.constants.reconstructions import (
     TAG_TREE_RECONSTRUCTIONS_BROWSER,
     TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
 )
-from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    TreeBehavior,
+)
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
-from sampletones_application.text.elements.global_ import TreeElements
-from sampletones_application.text.elements.reconstructions import ReconstructionsBrowserElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -32,7 +40,13 @@ from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.structures.tree import (
+    FileSystemNode,
+    NodeType,
+    TreeNode,
+    TreeTraversal,
+    traverse,
+)
 from sampletones_shared.types.application import Sender
 
 
@@ -68,7 +82,12 @@ class GUIBrowserPanel(GUITreePanel):
             )
         ]
         self._lbl_refresh = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.LABEL, ReconstructionsBrowserElements.REFRESH_BUTTON)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.LABEL,
+                ReconstructionsBrowserElements.REFRESH_BUTTON,
+            )
         ]
         self._lbl_context_load = language_manager[
             TextKey(
@@ -80,7 +99,10 @@ class GUIBrowserPanel(GUITreePanel):
         ]
         self._lbl_reconstructions = language_manager[
             TextKey(
-                Page.RECONSTRUCTIONS, Panel.BROWSER, TextType.LABEL, ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.LABEL,
+                ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE,
             )
         ]
 
@@ -95,7 +117,14 @@ class GUIBrowserPanel(GUITreePanel):
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
-            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
+            search_label=language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.BROWSER,
+                    TextType.LABEL,
+                    TreeElements.SEARCH,
+                )
+            ],
         )
 
     def create_panel(self) -> None:
@@ -329,4 +358,7 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _load_reconstruction(self, node: FileSystemNode) -> None:
         self.logic.cancel_autoplay()
-        self.call(self.browser_logic.load_reconstruction_with_confirmation, node.filepath)
+        self.call(
+            self.browser_logic.load_reconstruction_with_confirmation,
+            node.filepath,
+        )

@@ -2,6 +2,11 @@ from pathlib import Path
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import MenuElements
+from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
@@ -17,11 +22,6 @@ from sampletones_application.logic.instruction.details import InstructionDetails
 from sampletones_application.logic.instruction.library import LibraryLogic
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.global_ import MenuElements
-from sampletones_application.text.elements.instructions import InstructionsLibraryElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.instruction.details import GUIInstructionDetailsPanel
 from sampletones_application.ui.panels.instruction.instruction import GUIInstructionPanel
 from sampletones_application.ui.panels.instruction.library import GUIInstructionsLibraryPanel
@@ -56,7 +56,12 @@ class InstructionsTabCoordinator:
         self._dialogs = dialogs
 
         self._tab_label = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_INSTRUCTIONS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.TAB_INSTRUCTIONS,
+            )
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
@@ -64,11 +69,18 @@ class InstructionsTabCoordinator:
         self._right_height = layout.general.panels.right.height
         self._msg_display_error = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_DISPLAY_ERROR
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_DISPLAY_ERROR,
             )
         ]
 
-        self._library_logic = LibraryLogic(config_manager, library_manager, language_manager=language_manager)
+        self._library_logic = LibraryLogic(
+            config_manager,
+            library_manager,
+            language_manager=language_manager,
+        )
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
             session_manager,
@@ -79,7 +91,10 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
             dialogs=dialogs,
         )
-        self._instruction_player_logic = PlayerLogic(audio_device_manager, on_audio_state_changed)
+        self._instruction_player_logic = PlayerLogic(
+            audio_device_manager,
+            on_audio_state_changed,
+        )
         self._instruction_panel = GUIInstructionPanel(
             self._instruction_player_logic,
             layout=layout.graphs,

@@ -3,6 +3,18 @@ from typing import Any, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import (
+    DialogElements,
+    GlobalDialogTitleElements,
+    GlobalMessageElements,
+)
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionPanelElements,
+    ReconstructionsBrowserElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
@@ -13,30 +25,35 @@ from sampletones_application.constants.general import (
     TAG_TABS_GLOBAL,
     TAG_WINDOW_GLOBAL_MAIN,
 )
-from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
+from sampletones_application.coordinators.instructions import (
+    InstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol, PlaybackRouter
-from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
-from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_application.coordinators.playback import (
+    AudioPlayerPanelProtocol,
+    PlaybackRouter,
+)
+from sampletones_application.coordinators.reconstructions import (
+    ReconstructionsTabCoordinator,
+)
+from sampletones_application.coordinators.sequencer import (
+    SequencerTabCoordinator,
+)
 from sampletones_application.layout import LayoutConfig, load_layout_config
-from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
-from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
+from sampletones_application.logic.reconstruction.browser_manager import (
+    BrowserManager,
+)
+from sampletones_application.logic.reconstruction.manager import (
+    ReconstructionManager,
+)
 from sampletones_application.logic.reconstruction.regenerator import Regenerator
-from sampletones_application.logic.reconstruction.session import ReconstructionSession
-from sampletones_application.paths import BEHAVIOR_DIR, LANG_EN, LAYOUT_DIR
-from sampletones_application.text.elements.global_ import (
-    DialogElements,
-    GlobalDialogTitleElements,
-    GlobalMessageElements,
+from sampletones_application.logic.reconstruction.session import (
+    ReconstructionSession,
 )
-from sampletones_application.text.elements.reconstructions import (
-    ReconstructionPanelElements,
-    ReconstructionsBrowserElements,
-)
-from sampletones_application.text.hierarchy import Page, Panel, Tab, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -44,11 +61,16 @@ from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.converter import ConverterTheme
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.fps import FPSTimerTheme
-from sampletones_application.ui.themes.graphs.indicator import IndicatorGraphTheme
+from sampletones_application.ui.themes.graphs.indicator import (
+    IndicatorGraphTheme,
+)
 from sampletones_application.ui.themes.graphs.overlay import OverlayGraphTheme
 from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
 from sampletones_application.ui.themes.input import InvalidInputTheme
-from sampletones_application.ui.themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from sampletones_application.ui.themes.nodes.favorite import (
+    FavoriteChildNodeTheme,
+    FavoriteNodeTheme,
+)
 from sampletones_application.ui.themes.nodes.file import (
     LibraryFileNodeTheme,
     NoContentFileNodeTheme,
@@ -63,7 +85,9 @@ from sampletones_application.ui.themes.nodes.library import (
     LibraryLibraryNodeTheme,
 )
 from sampletones_application.ui.themes.status import StatusBarTheme
-from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme
+from sampletones_application.ui.themes.tables.initial_pitch import (
+    InitialPitchTableTheme,
+)
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.ui.themes.tables.table import TableTheme
 from sampletones_application.ui.themes.trace import TracebackTheme
@@ -72,13 +96,18 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
+from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.keys import Modifier
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.shortcuts.shortcut import Shortcut, ShortcutId
+from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.paths import EXT_FILE_JSON, EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
+from sampletones_core.paths import (
+    EXT_FILE_JSON,
+    EXT_FILE_RECONSTRUCTION,
+    EXT_FILES_AUDIO,
+)
 from sampletones_core.sequencer import Sequencer
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
@@ -88,7 +117,7 @@ from sampletones_shared.types.callback import Callback
 
 class Application:
     def __init__(self, config_path: Optional[Path] = None) -> None:
-        self.layout: LayoutConfig = load_layout_config(LAYOUT_DIR, BEHAVIOR_DIR)
+        self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
         self.dialogs: DialogsRenderer = DialogsRenderer(
             layout=self.layout.general, language_manager=self.language_manager
@@ -99,9 +128,17 @@ class Application:
         self.session_manager = SessionManager()
         self.shortcut_manager: ShortcutManager = ShortcutManager()
 
-        self.library_manager = InstructionsLibraryManager(self.config_manager, language_manager=self.language_manager)
-        self.browser_manager = BrowserManager(self.config_manager, language_manager=self.language_manager)
-        self.reconstruction_manager = ReconstructionManager(scheduling=self.layout.behavior.scheduling)
+        self.library_manager = InstructionsLibraryManager(
+            self.config_manager,
+            language_manager=self.language_manager,
+        )
+        self.browser_manager = BrowserManager(
+            self.config_manager,
+            language_manager=self.language_manager,
+        )
+        self.reconstruction_manager = ReconstructionManager(
+            scheduling=self.layout.behavior.scheduling,
+        )
         self.regenerator: Regenerator = Regenerator(
             self.reconstruction_manager,
             scheduling=self.layout.behavior.scheduling,
@@ -115,14 +152,18 @@ class Application:
             layout=self.layout.settings,
             language_manager=self.language_manager,
         )
-        self.status_bar = GUIStatusBar(display_time=self.layout.behavior.ui.status_bar_display_time)
+        self.status_bar = GUIStatusBar(
+            display_time=self.layout.behavior.ui.status_bar_display_time,
+        )
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
         self._reconstruction_session = ReconstructionSession()
 
         self._menu_bar = MenuBar(
-            shortcut_manager=self.shortcut_manager, fps_theme=self.fps_theme, language_manager=self.language_manager
+            shortcut_manager=self.shortcut_manager,
+            fps_theme=self.fps_theme,
+            language_manager=self.language_manager,
         )
 
         self._viewport_manager = ViewportManager(
@@ -388,7 +429,12 @@ class Application:
     def _create_main_window(self) -> None:
         with dpg.window(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.MAIN_WINDOW)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.MAIN_WINDOW,
+                )
             ],
             tag=TAG_WINDOW_GLOBAL_MAIN,
         ):
@@ -467,7 +513,12 @@ class Application:
 
         with dpg.file_dialog(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.SAVE_RECONSTRUCTION)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
+                )
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -481,7 +532,12 @@ class Application:
     def _save_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.SAVE_CONFIG)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.SAVE_CONFIG,
+                )
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -511,7 +567,12 @@ class Application:
             self.dialogs.show_error(
                 exception,
                 self.language_manager[
-                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.CONFIG_SAVE_FAILED)
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.CONFIG_SAVE_FAILED,
+                    )
                 ],
             )
 
@@ -532,7 +593,12 @@ class Application:
                     )
                 ],
                 self.language_manager[
-                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCTION_SAVED)
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.TITLE,
+                        GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
+                    )
                 ],
             )
         except Exception as exception:  # TODO: specify exception type
@@ -541,7 +607,10 @@ class Application:
                 exception,
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
                     )
                 ],
             )
@@ -551,7 +620,12 @@ class Application:
     def _load_config_dialog(self) -> None:
         with dpg.file_dialog(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.LOAD_CONFIG)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.LOAD_CONFIG,
+                )
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -602,7 +676,12 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
         with dpg.file_dialog(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCT_FILE)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.RECONSTRUCT_FILE,
+                )
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -611,8 +690,14 @@ class Application:
             default_path=str(self.session_manager.get_reconstruction_path()),
         ):
             all_file_extensions = ",".join(EXT_FILES_AUDIO)
+            key = TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.ALL_AUDIO_FORMATS,
+            )
             dpg.add_file_extension(
-                f"{self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.ALL_AUDIO_FORMATS)]}{{{all_file_extensions}}}",
+                f"{self.language_manager[key]}{{{all_file_extensions}}}",
                 color=(0, 255, 255, 255),
             )
             for extension in EXT_FILES_AUDIO:
@@ -626,7 +711,12 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
         dpg.add_file_dialog(
             label=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
+                )
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -665,18 +755,29 @@ class Application:
             self._show_save_confirmation_dialog(
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.TITLE,
+                        GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION,
                     )
                 ],
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION,
                     )
                 ],
                 on_confirm=load_reconstruction,
                 on_save=self._save_reconstruction,
                 ok_label=self.language_manager[
-                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.DISCARD)
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.LABEL,
+                        DialogElements.DISCARD,
+                    )
                 ],
             )
         else:
@@ -689,7 +790,12 @@ class Application:
         self.dialogs.show_modal(
             tag=TAG_DIALOG_GLOBAL_CONFIG_STATUS,
             title=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.CONFIG_STATUS)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.CONFIG_STATUS,
+                )
             ],
             content=content,
         )
@@ -774,7 +880,12 @@ class Application:
         self.dialogs.show_error(
             exception,
             self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.AUDIO_PLAYBACK_ERROR)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.AUDIO_PLAYBACK_ERROR,
+                )
             ],
         )
 
@@ -808,13 +919,21 @@ class Application:
                 ],
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION,
                     )
                 ],
                 on_confirm=self._close_reconstruction,
                 on_save=self._save_reconstruction,
                 ok_label=self.language_manager[
-                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CLOSE)
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.LABEL,
+                        DialogElements.CLOSE,
+                    )
                 ],
             )
         else:
@@ -833,7 +952,12 @@ class Application:
             self._reconstruction_session.name,
             self._reconstruction_session.unsaved_changes,
             title=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.MAIN_WINDOW)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.MAIN_WINDOW,
+                )
             ],
         )
         self._update_menu()
@@ -912,7 +1036,12 @@ class Application:
         self.dialogs.show_confirmation(
             tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
             title=self.language_manager[
-                TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.EXIT_CONFIRMATION)
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.EXIT_CONFIRMATION,
+                )
             ],
             message=message,
             on_confirm=self._exit_application,
@@ -940,25 +1069,50 @@ class Application:
         if self._is_reconstruction_unsaved():
             self._show_save_confirmation_dialog(
                 self.language_manager[
-                    TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TITLE, GlobalDialogTitleElements.EXIT_CONFIRMATION)
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.TITLE,
+                        GlobalDialogTitleElements.EXIT_CONFIRMATION,
+                    )
                 ],
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION,
                     )
                 ],
                 on_save=self._save_reconstruction,
                 on_confirm=self._exit_application,
-                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
+                ok_label=self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.LABEL,
+                        DialogElements.EXIT,
+                    )
+                ],
             )
         elif self._is_converter_running():
             self._show_confirmation_dialog(
                 self.language_manager[
                     TextKey(
-                        Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.MESSAGE,
+                        GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS,
                     )
                 ],
-                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
+                ok_label=self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.LABEL,
+                        DialogElements.EXIT,
+                    )
+                ],
             )
         elif self._is_library_generating():
             self._show_confirmation_dialog(
@@ -970,7 +1124,14 @@ class Application:
                         GlobalMessageElements.EXIT_LIBRARY_GENERATION_IN_PROGRESS,
                     )
                 ],
-                ok_label=self.language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.EXIT)],
+                ok_label=self.language_manager[
+                    TextKey(
+                        Page.GLOBAL,
+                        Panel.DIALOG,
+                        TextType.LABEL,
+                        DialogElements.EXIT,
+                    )
+                ],
             )
         else:
             self._exit_application()
@@ -1004,7 +1165,10 @@ class Application:
 
     def _post_frame(self) -> None:
         CallbackQueue.notify_frame()
-        CallbackQueue.add(self._update_status, priority=self.layout.behavior.scheduling.priority_update_status)
+        CallbackQueue.add(
+            self._update_status,
+            priority=self.layout.behavior.scheduling.priority_update_status,
+        )
 
     def run(self) -> None:
         try:

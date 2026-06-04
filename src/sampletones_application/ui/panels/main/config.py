@@ -2,7 +2,15 @@ from typing import Any, Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.config.updates import AudioSettingsUpdate, LibrarySettingsUpdate
+from sampletones_application.categories.elements.global_ import StatusElements
+from sampletones_application.categories.elements.main import ConfigPanelElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.config.updates import (
+    AudioSettingsUpdate,
+    LibrarySettingsUpdate,
+)
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE,
@@ -13,11 +21,6 @@ from sampletones_application.constants.main import (
     TAG_PANEL_MAIN_CONFIG,
     TAG_PANEL_MAIN_CONFIG_CELL,
 )
-from sampletones_application.text.elements.global_ import StatusElements
-from sampletones_application.text.elements.main import ConfigPanelElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -50,43 +53,108 @@ class GUIConfigPanel(GUIPanel):
         self._item_handler_tag = f"{TAG_PANEL_MAIN_CONFIG}{SUF_HANDLER_REGISTRY}"
 
         self._lbl_section = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.SECTION)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.SECTION,
+            )
         ]
         self._lbl_section_library = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.SECTION_LIBRARY)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.SECTION_LIBRARY,
+            )
         ]
         self._lbl_normalize = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.CHECKBOX_NORMALIZE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.CHECKBOX_NORMALIZE,
+            )
         ]
         self._lbl_quantize = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.CHECKBOX_QUANTIZE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.CHECKBOX_QUANTIZE,
+            )
         ]
         self._lbl_sample_rate = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.INPUT_SAMPLE_RATE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.INPUT_SAMPLE_RATE,
+            )
         ]
         self._lbl_change_rate = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.INPUT_CHANGE_RATE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.INPUT_CHANGE_RATE,
+            )
         ]
         self._lbl_gamma = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.LABEL, ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.LABEL,
+                ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA,
+            )
         ]
         self._tooltip_normalize = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_NORMALIZE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.TOOLTIP,
+                ConfigPanelElements.TOOLTIP_NORMALIZE,
+            )
         ]
         self._tooltip_quantize = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_QUANTIZE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.TOOLTIP,
+                ConfigPanelElements.TOOLTIP_QUANTIZE,
+            )
         ]
         self._tooltip_sample_rate = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_SAMPLE_RATE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.TOOLTIP,
+                ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
+            )
         ]
         self._tooltip_change_rate = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_CHANGE_RATE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.TOOLTIP,
+                ConfigPanelElements.TOOLTIP_CHANGE_RATE,
+            )
         ]
         self._tooltip_gamma = language_manager[
-            TextKey(Page.MAIN, Panel.CONFIG_PANEL, TextType.TOOLTIP, ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA)
+            TextKey(
+                Page.MAIN,
+                Panel.CONFIG_PANEL,
+                TextType.TOOLTIP,
+                ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA,
+            )
         ]
         self._msg_status_input = language_manager[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+            TextKey(
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.INPUT,
+            )
         ]
 
         super().__init__(
@@ -199,4 +267,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.set_value(TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE, viewmodel.quantize)
         dpg.set_value(TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE, viewmodel.sample_rate)
         dpg.set_value(TAG_INPUT_MAIN_CONFIG_CHANGE_RATE, viewmodel.change_rate)
-        dpg.set_value(TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA, viewmodel.transformation_gamma)
+        dpg.set_value(
+            TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA,
+            viewmodel.transformation_gamma,
+        )

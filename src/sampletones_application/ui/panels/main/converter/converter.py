@@ -2,6 +2,10 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.main import ConverterElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
     TAG_BUTTON_MAIN_CONVERTER_CANCEL,
     TAG_BUTTON_MAIN_CONVERTER_CONVERT,
@@ -15,17 +19,17 @@ from sampletones_application.constants.main import (
     TAG_TEXT_MAIN_CONVERTER_STATUS,
 )
 from sampletones_application.layout.main import ConverterLayout
-from sampletones_application.text.elements.main import ConverterElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.path import GUIPathText
 from sampletones_application.utils.align import table_wrapper
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_item_callback, dpg_set_value
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_set_item_callback,
+    dpg_set_value,
+)
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_shared.types.callback import VoidCallback
 
@@ -42,31 +46,76 @@ class GUIConverterPanel(GUIPanel):
 
         self._layout = layout
         self._lbl_section = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.SECTION)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.SECTION,
+            )
         ]
         self._lbl_cancel_button = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CANCEL_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.CANCEL_BUTTON,
+            )
         ]
         self._lbl_load_button = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.LOAD_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.LOAD_BUTTON,
+            )
         ]
         self._lbl_convert_button = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CONVERT_SAMPLE_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.CONVERT_SAMPLE_BUTTON,
+            )
         ]
         self._lbl_close_button = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CLOSE_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.CLOSE_BUTTON,
+            )
         ]
         self._lbl_convert_directory_button = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.LABEL, ConverterElements.CONVERT_DIRECTORY_BUTTON)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.LABEL,
+                ConverterElements.CONVERT_DIRECTORY_BUTTON,
+            )
         ]
         self._msg_input = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_INPUT_LABEL)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_INPUT_LABEL,
+            )
         ]
         self._msg_output = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_OUTPUT_LABEL)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_OUTPUT_LABEL,
+            )
         ]
         self._msg_waiting = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_WAITING)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_WAITING,
+            )
         ]
 
         super().__init__(
@@ -109,13 +158,25 @@ class GUIConverterPanel(GUIPanel):
             label=_convert_label,
             enabled=viewmodel.convert_button_enabled,
         )
-        dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=viewmodel.load_button_enabled)
-        dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_CANCEL, label=_cancel_label)
+        dpg_configure_item(
+            TAG_BUTTON_MAIN_CONVERTER_LOAD,
+            enabled=viewmodel.load_button_enabled,
+        )
+        dpg_configure_item(
+            TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+            label=_cancel_label,
+        )
 
         if viewmodel.is_done:
-            dpg_set_item_callback(TAG_BUTTON_MAIN_CONVERTER_CANCEL, self._on_close_clicked)
+            dpg_set_item_callback(
+                TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+                self._on_close_clicked,
+            )
         else:
-            dpg_set_item_callback(TAG_BUTTON_MAIN_CONVERTER_CANCEL, self._on_cancel_clicked)
+            dpg_set_item_callback(
+                TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+                self._on_cancel_clicked,
+            )
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(self._lbl_section)

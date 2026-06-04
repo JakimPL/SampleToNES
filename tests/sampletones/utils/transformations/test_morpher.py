@@ -8,7 +8,9 @@ from pydantic import ValidationError
 
 from sampletones_shared.utils.transformations.functions import identity
 from sampletones_shared.utils.transformations.morpher import PowerMorpher
-from sampletones_shared.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.transformation import (
+    Transformation,
+)
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

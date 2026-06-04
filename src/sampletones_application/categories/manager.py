@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sampletones_application.text.key import TextKey
+from sampletones_application.categories.key import TextKey
 from sampletones_shared.utils.serialization import load_yaml
 
 
@@ -13,6 +13,7 @@ class LanguageManager:
         raw = load_yaml(path)
         if not isinstance(raw, dict):
             raise TypeError(f"Language file must contain a mapping, got {type(raw)}")
+
         self._data = {str(key): str(value) for key, value in raw.items()}
 
     def __getitem__(self, key: TextKey) -> str:

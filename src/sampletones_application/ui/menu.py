@@ -1,5 +1,12 @@
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import (
+    GlobalTemplateElements,
+    MenuElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
     TAG_MENU_ITEM_PLAYBACK_PLAY,
@@ -17,14 +24,10 @@ from sampletones_application.constants.general import (
     TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_TEXT_GLOBAL_MENU_FPS,
 )
-from sampletones_application.text.elements.global_ import GlobalTemplateElements, MenuElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.themes.fps import FPSTimerTheme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
+from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.shortcuts.shortcut import ShortcutId
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 
 
@@ -40,71 +43,188 @@ class MenuBar:
         self._fps_theme = fps_theme
 
         self._lbl_group_general = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.GROUP_GENERAL)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.GROUP_GENERAL,
+            )
         ]
         self._lbl_group_configuration = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.GROUP_CONFIGURATION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.GROUP_CONFIGURATION,
+            )
         ]
         self._lbl_group_reconstruction = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.GROUP_RECONSTRUCTION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.GROUP_RECONSTRUCTION,
+            )
         ]
         self._lbl_group_playback = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.GROUP_PLAYBACK)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.GROUP_PLAYBACK,
+            )
         ]
         self._lbl_group_view = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.GROUP_VIEW)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.GROUP_VIEW,
+            )
         ]
         self._lbl_item_audio_settings = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_AUDIO_SETTINGS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_AUDIO_SETTINGS,
+            )
         ]
-        self._lbl_item_exit = language_manager[TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_EXIT)]
+        self._lbl_item_exit = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_EXIT,
+            )
+        ]
         self._lbl_item_config_save = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_CONFIG_SAVE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_CONFIG_SAVE,
+            )
         ]
         self._lbl_item_config_load = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_CONFIG_LOAD)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_CONFIG_LOAD,
+            )
         ]
         self._lbl_item_reconstruct_file = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_FILE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+            )
         ]
         self._lbl_item_reconstruct_directory = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+            )
         ]
         self._lbl_item_reconstruction_save = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_SAVE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_SAVE,
+            )
         ]
         self._lbl_item_reconstruction_save_as = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_SAVE_AS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_SAVE_AS,
+            )
         ]
         self._lbl_item_reconstruction_load = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_LOAD)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_LOAD,
+            )
         ]
         self._lbl_item_reconstruction_close = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_CLOSE)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_CLOSE,
+            )
         ]
         self._lbl_item_export_wav = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_EXPORT_WAV)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_EXPORT_WAV,
+            )
         ]
         self._lbl_item_export_ftis = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_RECONSTRUCTION_EXPORT_FTIS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_RECONSTRUCTION_EXPORT_FTIS,
+            )
         ]
         self._lbl_item_play_from_start = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY_FROM_START)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_PLAYBACK_PLAY_FROM_START,
+            )
         ]
         self._lbl_item_stop = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_STOP)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_PLAYBACK_STOP,
+            )
         ]
         self._lbl_item_autoplay = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_AUTOPLAY)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_PLAYBACK_AUTOPLAY,
+            )
         ]
         self._lbl_item_fullscreen = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_VIEW_FULLSCREEN)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_VIEW_FULLSCREEN,
+            )
         ]
         self._lbl_item_show_advanced_settings = language_manager[
-            TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_VIEW_SHOW_ADVANCED_SETTINGS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+            )
         ]
         self._tpl_fps = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.FPS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TEMPLATE,
+                GlobalTemplateElements.FPS,
+            )
         ]
 
     def create(self, state: MenuBarViewModel) -> None:
@@ -226,21 +346,54 @@ class MenuBar:
             self._fps_theme.bind_to_item(TAG_TEXT_GLOBAL_MENU_FPS)
 
     def update(self, state: MenuBarViewModel) -> None:
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV, enabled=state.reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS, enabled=state.reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_CLOSE, enabled=state.reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE, enabled=state.reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS, enabled=state.reconstruction_loaded)
-        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START, enabled=state.play_or_pause_enabled)
+        dpg_configure_item(
+            TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+            enabled=state.reconstruction_loaded,
+        )
+        dpg_configure_item(
+            TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+            enabled=state.reconstruction_loaded,
+        )
+        dpg_configure_item(
+            TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+            enabled=state.reconstruction_loaded,
+        )
+        dpg_configure_item(
+            TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+            enabled=state.reconstruction_loaded,
+        )
+        dpg_configure_item(
+            TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+            enabled=state.reconstruction_loaded,
+        )
+        dpg_configure_item(
+            TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+            enabled=state.play_or_pause_enabled,
+        )
         dpg_configure_item(
             TAG_MENU_ITEM_PLAYBACK_PLAY,
             label=state.play_label,
             enabled=state.play_or_pause_enabled,
         )
-        dpg_configure_item(TAG_MENU_ITEM_PLAYBACK_STOP, enabled=state.stop_enabled)
-        dpg_set_value(TAG_MENU_ITEM_PLAYBACK_AUTOPLAY, state.autoplay)
-        dpg_set_value(TAG_MENU_ITEM_VIEW_FULLSCREEN, state.fullscreen)
-        dpg_set_value(TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS, state.advanced_settings)
+        dpg_configure_item(
+            TAG_MENU_ITEM_PLAYBACK_STOP,
+            enabled=state.stop_enabled,
+        )
+        dpg_set_value(
+            TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
+            state.autoplay,
+        )
+        dpg_set_value(
+            TAG_MENU_ITEM_VIEW_FULLSCREEN,
+            state.fullscreen,
+        )
+        dpg_set_value(
+            TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+            state.advanced_settings,
+        )
 
     def update_fps(self, fps: float) -> None:
-        dpg_configure_item(TAG_TEXT_GLOBAL_MENU_FPS, label=self._tpl_fps.format(fps=fps))
+        dpg_configure_item(
+            TAG_TEXT_GLOBAL_MENU_FPS,
+            label=self._tpl_fps.format(fps=fps),
+        )

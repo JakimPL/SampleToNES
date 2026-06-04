@@ -163,7 +163,13 @@ class TestCall(BaseTestSuite):
     def test_call(self, test_case: TestCase) -> None:
         instance = TestableCallbackClass()
 
-        if expect_error(instance.call, test_case.expected, test_case.callback, *test_case.args, **test_case.kwargs):
+        if expect_error(
+            instance.call,
+            test_case.expected,
+            test_case.callback,
+            *test_case.args,
+            **test_case.kwargs,
+        ):
             return
 
         result = instance.call(test_case.callback, *test_case.args, **test_case.kwargs)
@@ -202,79 +208,151 @@ class TestSetCallbacks(BaseTestSuite):
 
     test_cases = [
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": lambda: 1},
             expected={"on_event": lambda: 1, "on_data": None, "on_error": None},
             label="set_single_callback",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2},
-            expected={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": None},
+            expected={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": None,
+            },
             label="set_multiple_callbacks",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
-            set_kwargs={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
-            expected={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
+            set_kwargs={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
+            expected={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             label="set_all_callbacks",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": lambda: "old",
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": lambda: "new"},
-            expected={"on_event": lambda: "new", "on_data": None, "on_error": None},
+            expected={
+                "on_event": lambda: "new",
+                "on_data": None,
+                "on_error": None,
+            },
             label="override_existing_callback",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": None},
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="set_none_does_not_change",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": lambda: "old",
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": None},
-            expected={"on_event": lambda: "old", "on_data": None, "on_error": None},
+            expected={
+                "on_event": lambda: "old",
+                "on_data": None,
+                "on_error": None,
+            },
             label="set_none_preserves_existing",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": 42},
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="non_callable_int_not_set",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": "not_callable"},
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="non_callable_string_not_set",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": [1, 2, 3]},
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="non_callable_list_not_set",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": lambda: 1, "on_data": None, "on_error": 42},
             expected={"on_event": lambda: 1, "on_data": None, "on_error": None},
             label="mixed_valid_none_and_invalid",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={},
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="empty_kwargs_no_change",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"non_existent": lambda: 1},
             expected=AttributeError,
             label="non_existent_attribute_raises",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             set_kwargs={"on_event": lambda: 1, "invalid_attr": lambda: 2},
             expected=AttributeError,
             label="one_valid_one_invalid_raises",
@@ -317,61 +395,117 @@ class TestResetCallbacks(BaseTestSuite):
 
     test_cases = [
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event",),
-            expected={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            expected={
+                "on_event": None,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             label="reset_single_callback",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event", "on_data"),
             expected={"on_event": None, "on_data": None, "on_error": lambda: 3},
             label="reset_multiple_callbacks",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event", "on_data", "on_error"),
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="reset_all_callbacks",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event",),
-            expected={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            expected={
+                "on_event": None,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             label="reset_already_none_callback",
         ),
         TestCase(
-            initial_callbacks={"on_event": None, "on_data": None, "on_error": None},
+            initial_callbacks={
+                "on_event": None,
+                "on_data": None,
+                "on_error": None,
+            },
             reset_names=("on_event", "on_data", "on_error"),
             expected={"on_event": None, "on_data": None, "on_error": None},
             label="reset_all_none_callbacks",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=(),
-            expected={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            expected={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             label="reset_empty_names_no_change",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event", "on_event"),
-            expected={"on_event": None, "on_data": lambda: 2, "on_error": lambda: 3},
+            expected={
+                "on_event": None,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             label="reset_duplicate_names",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("non_existent",),
             expected=AttributeError,
             label="reset_non_existent_attribute_raises",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("on_event", "invalid_callback"),
             expected=AttributeError,
             label="reset_one_valid_one_invalid_raises",
         ),
         TestCase(
-            initial_callbacks={"on_event": lambda: 1, "on_data": lambda: 2, "on_error": lambda: 3},
+            initial_callbacks={
+                "on_event": lambda: 1,
+                "on_data": lambda: 2,
+                "on_error": lambda: 3,
+            },
             reset_names=("invalid1", "invalid2"),
             expected=AttributeError,
             label="reset_multiple_invalid_raises",

@@ -56,7 +56,12 @@ class ViewportManager:
         assert color is not None, "Background color is not defined in the main theme"
         dpg.set_viewport_clear_color(list(color))
 
-    def update_title(self, name: Optional[str], has_unsaved_changes: bool, title: str = "SampleToNES") -> None:
+    def update_title(
+        self,
+        name: Optional[str],
+        has_unsaved_changes: bool,
+        title: str = "SampleToNES",
+    ) -> None:
         if not name:
             base_name = title
         else:
@@ -109,8 +114,16 @@ class ViewportManager:
             window_width = min(window_width, screen_w)
             window_height = min(window_height, screen_h)
 
-            window_x = max(0, screen_x, min(window_x, screen_x + screen_w - window_width))
-            window_y = max(0, screen_y, min(window_y, screen_y + screen_h - window_height))
+            window_x = max(
+                0,
+                screen_x,
+                min(window_x, screen_x + screen_w - window_width),
+            )
+            window_y = max(
+                0,
+                screen_y,
+                min(window_y, screen_y + screen_h - window_height),
+            )
         else:
             window_x = max(0, window_x)
             window_y = max(0, window_y)

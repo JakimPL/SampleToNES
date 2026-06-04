@@ -6,7 +6,10 @@ from pydantic import Field
 
 from sampletones_core.constants.enums import InstructionClassName
 from sampletones_core.constants.general import MAX_PITCH, MIN_PITCH, PITCH_RANGE
-from sampletones_core.data import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 from sampletones_core.utils.frequencies import pitch_to_name
 
 from .instruction import Instruction

@@ -1,5 +1,9 @@
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import MenuElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
@@ -14,10 +18,6 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.global_ import MenuElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
@@ -39,13 +39,23 @@ class SequencerTabCoordinator:
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
     ) -> None:
-        self._tab_label = language_manager[TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_SEQUENCER)]
+        self._tab_label = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.TAB_SEQUENCER,
+            )
+        ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
         self._instruments_width = layout.sequencer.instruments_panel_width
         self._right_height = layout.general.panels.right.height
 
-        self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(config_manager, browser_manager)
+        self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
+            config_manager,
+            browser_manager,
+        )
         self._sequencer_browser_panel: GUISequencerBrowserPanel = GUISequencerBrowserPanel(
             self._sequencer_browser_logic,
             session_manager,

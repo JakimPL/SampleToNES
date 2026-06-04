@@ -2,9 +2,16 @@ from typing import Dict, List
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.instructions import INSTRUCTION_CLASS_MAP, InstructionUnion
+from sampletones_core.instructions import (
+    INSTRUCTION_CLASS_MAP,
+    InstructionUnion,
+)
 
-from .maps import GENERATOR_CLASS_MAP, GENERATOR_CLASSES, INSTRUCTION_TO_GENERATOR_MAP
+from .maps import (
+    GENERATOR_CLASS_MAP,
+    GENERATOR_CLASSES,
+    INSTRUCTION_TO_GENERATOR_MAP,
+)
 from .types import GeneratorUnion
 
 
@@ -20,7 +27,9 @@ def get_generators_by_names(
     return {name: GENERATOR_CLASSES[name](config, name) for name in names}
 
 
-def get_generators_map(config: Config) -> Dict[GeneratorClassName, GeneratorUnion]:
+def get_generators_map(
+    config: Config,
+) -> Dict[GeneratorClassName, GeneratorUnion]:
     return {name: generator_class(config, name) for name, generator_class in GENERATOR_CLASS_MAP.items()}
 
 

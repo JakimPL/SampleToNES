@@ -19,10 +19,16 @@ class FavoriteNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.favorites.default),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.favorites.default,
+                    ),
                 ],
                 ThemeParameter(item_type=dpg.mvSelectable): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.favorites.default),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.favorites.default,
+                    ),
                 ],
             }
         )
@@ -37,10 +43,16 @@ class FavoriteChildNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.favorites.child),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.favorites.child,
+                    ),
                 ],
                 ThemeParameter(item_type=dpg.mvSelectable): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.favorites.child),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.favorites.child,
+                    ),
                 ],
             }
         )

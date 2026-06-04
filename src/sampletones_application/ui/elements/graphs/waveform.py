@@ -3,21 +3,25 @@ from typing import Any, List, Optional, Tuple, Union
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.elements.global_ import GraphElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
 )
 from sampletones_application.layout.graphs import GraphsLayout
-from sampletones_application.text.elements.global_ import GraphElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.array import ArrayLayer
-from sampletones_application.ui.elements.graphs.layers.instruction import InstructionLayer
+from sampletones_application.ui.elements.graphs.layers.instruction import (
+    InstructionLayer,
+)
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.themes.graphs.indicator import IndicatorGraphTheme
+from sampletones_application.ui.themes.graphs.indicator import (
+    IndicatorGraphTheme,
+)
 from sampletones_application.ui.themes.graphs.overlay import OverlayGraphTheme
 from sampletones_application.utils.dpg import (
     dpg_bind_item_theme,
@@ -25,7 +29,9 @@ from sampletones_application.utils.dpg import (
     dpg_delete_children,
     dpg_delete_item,
 )
-from sampletones_application.view_model.reconstruction.data import ReconstructionData
+from sampletones_application.view_model.reconstruction.data import (
+    ReconstructionData,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_shared.types.application import Sender
@@ -50,28 +56,65 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._layout = layout
 
         self._lbl_waveform_original = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_ORIGINAL)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_ORIGINAL,
+            )
         ]
         self._lbl_waveform_reconstruction = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_RECONSTRUCTION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_RECONSTRUCTION,
+            )
         ]
         self._lbl_axis_time = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_TIME_AXIS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_TIME_AXIS,
+            )
         ]
         self._lbl_axis_amplitude = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_AMPLITUDE_AXIS)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_AMPLITUDE_AXIS,
+            )
         ]
         self._lbl_sample_name = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_SAMPLE_NAME)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_SAMPLE_NAME,
+            )
         ]
         self._msg_navigation = language_manager[
-            TextKey(Page.GLOBAL, Panel.GRAPH, TextType.MESSAGE, GraphElements.WAVEFORM_NAVIGATION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.MESSAGE,
+                GraphElements.WAVEFORM_NAVIGATION,
+            )
         ]
 
         _label = (
             label
             if label
-            else language_manager[TextKey(Page.GLOBAL, Panel.GRAPH, TextType.LABEL, GraphElements.WAVEFORM_DISPLAY)]
+            else language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.GRAPH,
+                    TextType.LABEL,
+                    GraphElements.WAVEFORM_DISPLAY,
+                )
+            ]
         )
 
         self.reconstruction_autoscale = True
@@ -129,7 +172,11 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             pan_button=dpg.mvMouseButton_Left,
             zoom_rate=self.zoom_factor,
         ):
-            dpg.add_plot_legend(tag=self.legend_tag, parent=self.plot_tag, location=dpg.mvPlot_Location_NorthEast)
+            dpg.add_plot_legend(
+                tag=self.legend_tag,
+                parent=self.plot_tag,
+                location=dpg.mvPlot_Location_NorthEast,
+            )
             dpg.add_plot_axis(
                 dpg.mvXAxis,
                 tag=self.x_axis_tag,

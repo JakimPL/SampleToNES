@@ -36,12 +36,21 @@ class ApplicationConfigManager:
         try:
             APPLICATION_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
             save_yaml_atomic(APPLICATION_CONFIG_PATH, self.config.model_dump())
-        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
+        except (
+            IOError,
+            IsADirectoryError,
+            PermissionError,
+            OSError,
+        ) as exception:
             logger.error_with_traceback(
-                exception, f"File error while saving application config to {APPLICATION_CONFIG_PATH}"
+                exception,
+                f"File error while saving application config to {APPLICATION_CONFIG_PATH}",
             )
         except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to save application config to {APPLICATION_CONFIG_PATH}")
+            logger.error_with_traceback(
+                exception,
+                f"Failed to save application config to {APPLICATION_CONFIG_PATH}",
+            )
 
     def set_window_state(
         self,

@@ -26,7 +26,12 @@ class LFSRTTables:
 
 
 class LFSRTimer(Timer):
-    def __init__(self, sample_rate: int, change_rate: int, reset_phase: bool = RESET_PHASE) -> None:
+    def __init__(
+        self,
+        sample_rate: int,
+        change_rate: int,
+        reset_phase: bool = RESET_PHASE,
+    ) -> None:
         super().__init__(sample_rate, change_rate, reset_phase)
 
         self._clocks_per_sample: float = 0.0
@@ -94,7 +99,10 @@ class LFSRTimer(Timer):
 
         mask = pairs[:, 1] > pairs[:, 0]
         nonzero_pairs = pairs[mask]
-        means = np.array([np.mean(cumsum_table[start:end]) for start, end in nonzero_pairs], dtype=np.float32)
+        means = np.array(
+            [np.mean(cumsum_table[start:end]) for start, end in nonzero_pairs],
+            dtype=np.float32,
+        )
 
         differences[mask] = np.diff(np.concatenate([[0], means]))
         frame = 2.0 * np.cumsum(differences) - 1.0

@@ -89,7 +89,11 @@ def AddLibraryDataVersion(builder, libraryDataVersion):
 
 
 def FBMetadataAddReconstructionDataVersion(builder, reconstructionDataVersion):
-    builder.PrependUOffsetTRelativeSlot(3, flatbuffers.number_types.UOffsetTFlags.py_type(reconstructionDataVersion), 0)
+    builder.PrependUOffsetTRelativeSlot(
+        3,
+        flatbuffers.number_types.UOffsetTFlags.py_type(reconstructionDataVersion),
+        0,
+    )
 
 
 def AddReconstructionDataVersion(builder, reconstructionDataVersion):

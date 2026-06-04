@@ -1,15 +1,14 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
+from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.text.elements.instructions import InstructionsLibraryElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName
-from sampletones_core.constants.paths import EXT_FILE_LIBRARY
 from sampletones_core.fft import Window
 from sampletones_core.instructions import Instruction
 from sampletones_core.instructions.types import InstructionUnion
@@ -23,7 +22,14 @@ from sampletones_core.library import (
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
 from sampletones_core.parallelization import TaskProgress, TaskStatus
-from sampletones_core.structures.tree import GeneratorNode, LibraryNode, NodeType, Tree, TreeNode
+from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_core.structures.tree import (
+    GeneratorNode,
+    LibraryNode,
+    NodeType,
+    Tree,
+    TreeNode,
+)
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
@@ -35,10 +41,20 @@ OnGenerationErrorCallback = Callable[[Exception], None]
 
 
 class InstructionsLibraryManager(CallbackMixin):
-    def __init__(self, config_manager: ConfigManager, *, language_manager: LanguageManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        *,
+        language_manager: LanguageManager,
+    ) -> None:
         self._config_manager = config_manager
         self._libraries_node_label = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.LIBRARIES_NODE)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.LIBRARIES_NODE,
+            )
         ]
         library_directory = config_manager.get_library_directory()
         self._library = InstructionLibrary(directory=str(library_directory))

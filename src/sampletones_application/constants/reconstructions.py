@@ -1,56 +1,143 @@
-from sampletones_application.text.hierarchy import Page, Panel, Widget
-from sampletones_application.text.key import TagName
+from sampletones_application.categories.hierarchy import Page, Panel, Widget
+from sampletones_application.categories.key import TagName
 
-TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED = TagName(Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.DIALOG, "not_loaded")
-TAG_PANEL_RECONSTRUCTIONS_BROWSER = TagName(Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.PANEL, "browser")
-TAG_TREE_RECONSTRUCTIONS_BROWSER = TagName(Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.TREE, "browser")
-TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE = TagName(Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.GROUP, "tree")
-TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE = TagName(Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.WINDOW, "tree")
-TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS = TagName(Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.GROUP, "controls")
+TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.DIALOG,
+    "not_loaded",
+)
+TAG_PANEL_RECONSTRUCTIONS_BROWSER = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.PANEL,
+    "browser",
+)
+TAG_TREE_RECONSTRUCTIONS_BROWSER = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.TREE,
+    "browser",
+)
+TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.GROUP,
+    "tree",
+)
+TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.WINDOW,
+    "tree",
+)
+TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.GROUP,
+    "controls",
+)
 TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS = TagName(
-    Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.BUTTON, "refresh_reconstructions"
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.BUTTON,
+    "refresh_reconstructions",
 )
 TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE = TagName(
-    Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.BUTTON, "reconstruct_file"
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.BUTTON,
+    "reconstruct_file",
 )
 TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY = TagName(
-    Page.RECONSTRUCTIONS, Panel.BROWSER, Widget.BUTTON, "reconstruct_directory"
+    Page.RECONSTRUCTIONS,
+    Panel.BROWSER,
+    Widget.BUTTON,
+    "reconstruct_directory",
 )
 TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.PANEL, "reconstruction"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.PANEL,
+    "reconstruction",
 )
 TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_PLAYER = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.PANEL, "reconstruction_player"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.PANEL,
+    "reconstruction_player",
 )
 TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.PANEL, "reconstruction_waveform"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.PANEL,
+    "reconstruction_waveform",
 )
 TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.GROUP, "generators"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.GROUP,
+    "generators",
 )
 TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.GROUP, "audio_source"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.GROUP,
+    "audio_source",
 )
 TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.BUTTON, "export_wav"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.BUTTON,
+    "export_wav",
 )
 TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.BUTTON, "locate_original_audio"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.BUTTON,
+    "locate_original_audio",
 )
-TAG_PANEL_RECONSTRUCTIONS_DETAILS = TagName(Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.PANEL, "details")
-TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS = TagName(Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.TABS, "bar")
-TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS = TagName(Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.TEXT, "generators")
+TAG_PANEL_RECONSTRUCTIONS_DETAILS = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.PANEL,
+    "details",
+)
+TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.TABS,
+    "bar",
+)
+TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.TEXT,
+    "generators",
+)
 TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI = TagName(
-    Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.BUTTON, "export_fti"
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.BUTTON,
+    "export_fti",
 )
 TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS = TagName(
-    Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.BUTTON, "export_ftis"
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.BUTTON,
+    "export_ftis",
 )
 TAG_THEME_TABLE_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH = TagName(
-    Page.RECONSTRUCTIONS, Panel.DETAILS, Widget.THEME, "initial_pitch_table"
+    Page.RECONSTRUCTIONS,
+    Panel.DETAILS,
+    Widget.THEME,
+    "initial_pitch_table",
 )
 TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING = TagName(
-    Page.RECONSTRUCTIONS, Panel.RECONSTRUCTION, Widget.DIALOG, "audio_missing"
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.DIALOG,
+    "audio_missing",
 )
 
 SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO = "_audio"

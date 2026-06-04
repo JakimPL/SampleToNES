@@ -1,5 +1,13 @@
 import functools
-from typing import Any, Callable, Concatenate, Optional, ParamSpec, TypeVar, cast
+from typing import (
+    Any,
+    Callable,
+    Concatenate,
+    Optional,
+    ParamSpec,
+    TypeVar,
+    cast,
+)
 
 import dearpygui.dearpygui as dpg
 
@@ -13,7 +21,10 @@ R = TypeVar("R")
 
 def dpg_wrapper(
     button_function: Optional[Callback] = None,
-) -> Callable[[Callable[Concatenate[Sender, P], Optional[R]]], Callable[Concatenate[Sender, P], Optional[R]]]:
+) -> Callable[
+    [Callable[Concatenate[Sender, P], Optional[R]]],
+    Callable[Concatenate[Sender, P], Optional[R]],
+]:
     def decorator(
         function: Callable[Concatenate[Sender, P], Optional[R]],
     ) -> Callable[Concatenate[Sender, P], Optional[R]]:

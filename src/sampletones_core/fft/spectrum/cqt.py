@@ -3,10 +3,18 @@ from typing import Optional
 import numpy as np
 
 from sampletones_core.audio import validate_audio_array
-from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.constants.spectrum import (
+    BINS_PER_OCTAVE,
+    CQT_CUTOFF_FREQUENCY,
+)
 from sampletones_core.structures.histogram import Histogram
 
-from ..cqt import calculate_cqt, calculate_cqt_frequencies, convert_midpoints_to_edges, normalize_cqt_energy
+from ..cqt import (
+    calculate_cqt,
+    calculate_cqt_frequencies,
+    convert_midpoints_to_edges,
+    normalize_cqt_energy,
+)
 from ..utils import calculate_n_bins
 
 

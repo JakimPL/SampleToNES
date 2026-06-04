@@ -13,7 +13,11 @@ from sampletones_core.constants.general import (
     SPECTRAL_LOSS_WEIGHT,
     TEMPORAL_LOSS_WEIGHT,
 )
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 
 
 class CalculationConfig(DataModel):

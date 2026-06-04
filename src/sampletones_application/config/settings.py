@@ -4,7 +4,11 @@ from typing import Dict
 
 from pydantic import BaseModel, ConfigDict
 
-from sampletones_core.audio import AudioDevice, AudioDeviceManager, CurrentDevice
+from sampletones_core.audio import (
+    AudioDevice,
+    AudioDeviceManager,
+    CurrentDevice,
+)
 
 
 class AudioSettingsData(BaseModel):

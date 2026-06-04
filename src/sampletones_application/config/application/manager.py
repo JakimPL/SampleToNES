@@ -2,9 +2,13 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.config.application.config import ApplicationConfig
-from sampletones_application.config.application.config_manager import ApplicationConfigManager
+from sampletones_application.config.application.config_manager import (
+    ApplicationConfigManager,
+)
 from sampletones_application.config.application.state import ApplicationState
-from sampletones_application.config.application.state_manager import ApplicationStateManager
+from sampletones_application.config.application.state_manager import (
+    ApplicationStateManager,
+)
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 
@@ -22,7 +26,14 @@ class SessionManager:
     def state(self) -> ApplicationState:
         return self._state_manager.state
 
-    def set_window_state(self, fullscreen: bool, x: int, y: int, width: int, height: int) -> None:
+    def set_window_state(
+        self,
+        fullscreen: bool,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> None:
         self._config_manager.set_window_state(fullscreen, x, y, width, height)
 
     def set_current_tab(self, tab: str) -> None:

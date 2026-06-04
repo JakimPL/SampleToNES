@@ -20,7 +20,10 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.default import DefaultTheme
-from sampletones_application.ui.themes.nodes.favorite import FavoriteChildNodeTheme, FavoriteNodeTheme
+from sampletones_application.ui.themes.nodes.favorite import (
+    FavoriteChildNodeTheme,
+    FavoriteNodeTheme,
+)
 from sampletones_application.ui.themes.nodes.file import (
     LibraryFileNodeTheme,
     NoContentFileNodeTheme,
@@ -38,11 +41,20 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dpg import dpg_delete_children, dpg_get_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants import paths
-from sampletones_core.structures.tree import FileSystemNode, NodeType, Tree, TreeNode
+from sampletones_core.structures.tree import (
+    FileSystemNode,
+    NodeType,
+    Tree,
+    TreeNode,
+)
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback, MessageCallback, PathCallback
+from sampletones_shared.types.callback import (
+    Callback,
+    MessageCallback,
+    PathCallback,
+)
 from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
@@ -298,7 +310,9 @@ class GUITreePanel(GUIPanel):
     ) -> MessageCallback:
         return GUIStatusBar.create_message_function(message_or_function)
 
-    def _create_status_bar_message_function_for_reconstruction_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_reconstruction_node(
+        self,
+    ) -> MessageCallback:
         def message_function(*args: Any, **kwargs: Any) -> str:
             if self.logic.autoplay_enabled:
                 return (
@@ -310,12 +324,16 @@ class GUITreePanel(GUIPanel):
 
         return self._create_status_bar_message_function(message_function)
 
-    def _create_status_bar_message_function_for_library_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_library_node(
+        self,
+    ) -> MessageCallback:
         return self._create_status_bar_message_function(
             "Double-click to open instructions library. Right-click to open context menu."
         )
 
-    def _create_status_bar_message_function_for_directory_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_directory_node(
+        self,
+    ) -> MessageCallback:
         def message_function(*args: Any, user_data: Tuple[FileSystemNode, str], **kwargs: Any) -> str:
             _, node_tag = user_data
             expand_or_collapse = "collapse" if dpg_get_value(node_tag) else "expand"

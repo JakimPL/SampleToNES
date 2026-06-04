@@ -21,7 +21,10 @@ class LibraryLibraryNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.library),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.library,
+                    ),
                 ],
             }
         )
@@ -36,7 +39,10 @@ class LibraryGeneratorNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.generator),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.generator,
+                    ),
                 ],
             }
         )
@@ -51,7 +57,10 @@ class LibraryGroupNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTreeNode): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.group),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.group,
+                    ),
                 ],
             }
         )
@@ -66,7 +75,10 @@ class LibraryInstructionNodeTheme(Theme):
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvSelectable): [
-                    ThemeColor(key=dpg.mvThemeCol_Text, color=layout.colors.instruction),
+                    ThemeColor(
+                        key=dpg.mvThemeCol_Text,
+                        color=layout.colors.instruction,
+                    ),
                 ],
             }
         )

@@ -122,7 +122,8 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
             return True
         except Exception as exception:
             logger.error_with_traceback(
-                exception, f"Error executing callback {getattr(callback, '__name__', str(callback))}"
+                exception,
+                f"Error executing callback {getattr(callback, '__name__', str(callback))}",
             )
             return False
 

@@ -18,7 +18,12 @@ OnRegenerationFinished = Callable[[ReconstructionData], None]
 
 
 class Regenerator(CallbackMixin):
-    def __init__(self, reconstruction_manager: ReconstructionManager, *, scheduling: SchedulingBehavior) -> None:
+    def __init__(
+        self,
+        reconstruction_manager: ReconstructionManager,
+        *,
+        scheduling: SchedulingBehavior,
+    ) -> None:
         self.reconstruction_manager = reconstruction_manager
         self._scheduling = scheduling
 
@@ -40,19 +45,32 @@ class Regenerator(CallbackMixin):
         generator_class = exporter_class.get_generator_type()
         features[feature_key] = data
 
-        instructions = cast(List[InstructionUnion], exporter_class.from_features(features))
+        instructions = cast(
+            List[InstructionUnion],
+            exporter_class.from_features(features),
+        )
         generator = generator_class(config, generator_name)
         audio = self._generate_generator_audio(generator, instructions)
 
-        self.reconstruction_data.reconstruction.update_generator_data(generator_name, instructions, audio)
-        CallbackQueue.add(self.call, self.on_regeneration_finished, priority=self._scheduling.priority_schedule)
+        self.reconstruction_data.reconstruction.update_generator_data(
+            generator_name,
+            instructions,
+            audio,
+        )
+        CallbackQueue.add(
+            self.call,
+            self.on_regeneration_finished,
+            priority=self._scheduling.priority_schedule,
+        )
 
     def _generate_generator_audio(
         self,
         generator: GeneratorUnion,
         instructions: List[InstructionUnion],
     ) -> np.ndarray:
-        return np.concatenate([generator(instruction, save=True) for instruction in instructions])  # type: ignore
+        return np.concatenate(
+            [generator(instruction, save=True) for instruction in instructions],  # type: ignore[arg-type]
+        )
 
     @property
     def reconstruction_data(self) -> Optional[ReconstructionData]:

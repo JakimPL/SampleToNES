@@ -106,7 +106,11 @@ def load_audio(
         audio = normalize_audio(audio)
 
     target_sample_rate = target_sample_rate or sample_rate
-    audio = resample(audio, original_sample_rate=sample_rate, target_sample_rate=target_sample_rate)
+    audio = resample(
+        audio,
+        original_sample_rate=sample_rate,
+        target_sample_rate=target_sample_rate,
+    )
 
     if quantize:
         audio = quantize_audio(audio, levels=QUANTIZATION_LEVELS)

@@ -8,9 +8,17 @@ import pytest
 
 from sampletones_core.fft.transformer import FFTTransformer
 from sampletones_core.structures.histogram import Histogram
-from sampletones_shared.types.array import Array, ArrayClasses, MultaryTransformation, Numeric, NumericClasses
+from sampletones_shared.types.array import (
+    Array,
+    ArrayClasses,
+    MultaryTransformation,
+    Numeric,
+    NumericClasses,
+)
 from sampletones_shared.utils.transformations.morpher import PowerMorpher
-from sampletones_shared.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.transformation import (
+    Transformation,
+)
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.sampletones.functions import compare_functions
@@ -208,10 +216,12 @@ class TestCalculateSpectrum(BaseTestSuite):
             sample_rate=44100,
             fft_size=8,
             mock_spectrum=Histogram(
-                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32), values=np.array([50.0, 100.0], dtype=np.float32)
+                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32),
+                values=np.array([50.0, 100.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32), values=np.array([50.0, 100.0], dtype=np.float32)
+                edges=np.array([0.0, 500.0, 1000.0], dtype=np.float32),
+                values=np.array([50.0, 100.0], dtype=np.float32),
             ),
             label="valid_spectrum_custom_fft_size",
         ),
@@ -249,7 +259,10 @@ class TestCalculateSpectrum(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_calculate_spectrum(self, test_case: TestCase, transformer_identity: FFTTransformer) -> None:
-        with patch("sampletones_core.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
+        with patch(
+            "sampletones_core.fft.transformer.calculate_spectrum",
+            return_value=test_case.mock_spectrum,
+        ):
             if not expect_error(
                 transformer_identity.calculate_spectrum,
                 test_case.expected,
@@ -364,7 +377,10 @@ class TestCalculateFeature(BaseTestSuite):
     def test_calculate_feature(self, test_case: TestCase, request: pytest.FixtureRequest) -> None:
         transformer = test_case.transformer.get_fixture(request)
 
-        with patch("sampletones_core.fft.transformer.calculate_spectrum", return_value=test_case.mock_spectrum):
+        with patch(
+            "sampletones_core.fft.transformer.calculate_spectrum",
+            return_value=test_case.mock_spectrum,
+        ):
             if not expect_error(
                 transformer.calculate_feature,
                 test_case.expected,
@@ -707,7 +723,8 @@ class TestApply(BaseTestSuite):
                 ),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32), values=np.array([500.0, 500.0], dtype=np.float32)
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                values=np.array([500.0, 500.0], dtype=np.float32),
             ),
             label="square_binary_add",
         ),
@@ -847,7 +864,8 @@ class TestReduce(BaseTestSuite):
                 ),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32), values=np.array([500.0, 500.0], dtype=np.float32)
+                edges=np.array([0.0, 100.0, 200.0], dtype=np.float32),
+                values=np.array([500.0, 500.0], dtype=np.float32),
             ),
             label="square_add_two_arrays",
         ),

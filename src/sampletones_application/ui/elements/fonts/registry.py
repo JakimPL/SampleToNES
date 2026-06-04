@@ -28,23 +28,67 @@ class FontRegistry:
     @classmethod
     def setup(cls, layout: FontsLayout) -> None:
         cls._REGISTRY = {
-            Font.REGULAR: FontData(TAG_FONT_GLOBAL_REGULAR, layout.size, FontResource.REGULAR),
-            Font.REGULAR_SMALL: FontData(TAG_FONT_GLOBAL_REGULAR_SMALL, layout.size_small, FontResource.REGULAR),
-            Font.REGULAR_LARGE: FontData(TAG_FONT_GLOBAL_REGULAR_LARGE, layout.size_large, FontResource.REGULAR),
-            Font.ITALIC: FontData(TAG_FONT_GLOBAL_ITALIC, layout.size, FontResource.ITALIC),
-            Font.ITALIC_SMALL: FontData(TAG_FONT_GLOBAL_ITALIC_SMALL, layout.size_small, FontResource.ITALIC),
-            Font.ITALIC_LARGE: FontData(TAG_FONT_GLOBAL_ITALIC_LARGE, layout.size_large, FontResource.ITALIC),
-            Font.BOLD: FontData(TAG_FONT_GLOBAL_BOLD, layout.size, FontResource.BOLD),
-            Font.BOLD_SMALL: FontData(TAG_FONT_GLOBAL_BOLD_SMALL, layout.size_small, FontResource.BOLD),
-            Font.BOLD_LARGE: FontData(TAG_FONT_GLOBAL_BOLD_LARGE, layout.size_large, FontResource.BOLD),
-            Font.ICON: FontData(TAG_FONT_GLOBAL_ICON, layout.size_small, FontResource.ICON),
+            Font.REGULAR: FontData(
+                TAG_FONT_GLOBAL_REGULAR,
+                layout.size,
+                FontResource.REGULAR,
+            ),
+            Font.REGULAR_SMALL: FontData(
+                TAG_FONT_GLOBAL_REGULAR_SMALL,
+                layout.size_small,
+                FontResource.REGULAR,
+            ),
+            Font.REGULAR_LARGE: FontData(
+                TAG_FONT_GLOBAL_REGULAR_LARGE,
+                layout.size_large,
+                FontResource.REGULAR,
+            ),
+            Font.ITALIC: FontData(
+                TAG_FONT_GLOBAL_ITALIC,
+                layout.size,
+                FontResource.ITALIC,
+            ),
+            Font.ITALIC_SMALL: FontData(
+                TAG_FONT_GLOBAL_ITALIC_SMALL,
+                layout.size_small,
+                FontResource.ITALIC,
+            ),
+            Font.ITALIC_LARGE: FontData(
+                TAG_FONT_GLOBAL_ITALIC_LARGE,
+                layout.size_large,
+                FontResource.ITALIC,
+            ),
+            Font.BOLD: FontData(
+                TAG_FONT_GLOBAL_BOLD,
+                layout.size,
+                FontResource.BOLD,
+            ),
+            Font.BOLD_SMALL: FontData(
+                TAG_FONT_GLOBAL_BOLD_SMALL,
+                layout.size_small,
+                FontResource.BOLD,
+            ),
+            Font.BOLD_LARGE: FontData(
+                TAG_FONT_GLOBAL_BOLD_LARGE,
+                layout.size_large,
+                FontResource.BOLD,
+            ),
+            Font.ICON: FontData(
+                TAG_FONT_GLOBAL_ICON,
+                layout.size_small,
+                FontResource.ICON,
+            ),
         }
 
     @classmethod
     def register_fonts(cls, scale: int = 1) -> None:
         with dpg.font_registry():
             for font_data in cls._REGISTRY.values():
-                dpg.add_font(get_font_path(font_data.font_resource), font_data.size, tag=font_data.tag)
+                dpg.add_font(
+                    get_font_path(font_data.font_resource),
+                    font_data.size,
+                    tag=font_data.tag,
+                )
                 dpg.add_font_range(0x0100, 0x024F, parent=font_data.tag)
                 dpg.add_font_range(0x1E00, 0x1EFF, parent=font_data.tag)
                 dpg.add_font_range(0x2000, 0x206F, parent=font_data.tag)

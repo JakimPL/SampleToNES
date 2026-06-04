@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from typing import List, NamedTuple, Optional, Self
 
-from sampletones_shared.types.array import Array, ArrayClasses, Float, get_array_module
+from sampletones_shared.types.array import (
+    Array,
+    ArrayClasses,
+    Float,
+    get_array_module,
+)
 from sampletones_shared.utils.arrays import is_increasing
 
 

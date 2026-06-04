@@ -71,7 +71,8 @@ class FBReconstruction(object):
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(
-                flatbuffers.number_types.Float32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4)
+                flatbuffers.number_types.Float32Flags,
+                a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4),
             )
         return 0
 
@@ -101,7 +102,9 @@ class FBReconstruction(object):
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from sampletones_schemas.reconstruction.FBApproximationsItem import FBApproximationsItem
+            from sampletones_schemas.reconstruction.FBApproximationsItem import (
+                FBApproximationsItem,
+            )
 
             obj = FBApproximationsItem()
             obj.Init(self._tab.Bytes, x)
@@ -127,7 +130,9 @@ class FBReconstruction(object):
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from sampletones_schemas.reconstruction.FBInstructionsItem import FBInstructionsItem
+            from sampletones_schemas.reconstruction.FBInstructionsItem import (
+                FBInstructionsItem,
+            )
 
             obj = FBInstructionsItem()
             obj.Init(self._tab.Bytes, x)

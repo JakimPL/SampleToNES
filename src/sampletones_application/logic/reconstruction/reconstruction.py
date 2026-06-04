@@ -8,7 +8,7 @@ from sampletones_application.view_model.reconstruction.reconstruction import Rec
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import write_wave
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
-from sampletones_core.constants.paths import EXT_FILE_INSTRUMENT
+from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -67,7 +67,11 @@ class ReconstructionPanelLogic(CallbackMixin):
                 buttons_enabled=True,
             ),
         )
-        self.call(self.on_waveform_load_changed, reconstruction_data, self._selected_generators)
+        self.call(
+            self.on_waveform_load_changed,
+            reconstruction_data,
+            self._selected_generators,
+        )
         self._emit_audio_data()
 
     def update_reconstruction(self) -> None:
@@ -75,7 +79,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         if not reconstruction_data:
             return
 
-        self.call(self.on_waveform_update_changed, reconstruction_data, self._selected_generators)
+        self.call(
+            self.on_waveform_update_changed,
+            reconstruction_data,
+            self._selected_generators,
+        )
         if self._current_audio_source != AudioSourceType.ORIGINAL:
             self._emit_audio_data()
 
@@ -133,7 +141,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         default_filename = to_path(reconstruction.audio_filepath).stem
         default_path = str(self._session_manager.get_instrument_path())
 
-        self.call(self.on_open_export_instruments_dialog, default_filename, default_path)
+        self.call(
+            self.on_open_export_instruments_dialog,
+            default_filename,
+            default_path,
+        )
 
     def request_export_wav_dialog(self) -> None:
         reconstruction_data = self._reconstruction_data
@@ -160,7 +172,13 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.save_instrument_feature(filepath, instrument_name, generator_name)
             logger.info(f"Exported instrument feature to FTI: {logger.format_path(filepath)}")
             self.call(self.on_export_instrument_success, filepath)
-        except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
+        except (
+            FileNotFoundError,
+            IOError,
+            IsADirectoryError,
+            PermissionError,
+            OSError,
+        ) as exception:
             logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
             self.call(self.on_export_instrument_error, exception)
         except Exception as exception:  # TODO: narrow down exception types
@@ -178,7 +196,13 @@ class ReconstructionPanelLogic(CallbackMixin):
             self.save_instrument_features(directory)
             logger.info(f"Exported instrument features to FTI: {logger.format_path(directory)}")
             self.call(self.on_export_instruments_success, directory)
-        except (FileNotFoundError, IOError, IsADirectoryError, PermissionError, OSError) as exception:
+        except (
+            FileNotFoundError,
+            IOError,
+            IsADirectoryError,
+            PermissionError,
+            OSError,
+        ) as exception:
             logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
             self.call(self.on_export_instruments_error, exception)
         except Exception as exception:  # TODO: narrow exception type

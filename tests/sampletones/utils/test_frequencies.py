@@ -4,7 +4,13 @@ from typing import Any, Type, Union
 import numpy as np
 import pytest
 
-from sampletones_core.constants.general import LIMIT_MAX_PITCH, LIMIT_MIN_PITCH, MAX_PERIOD, MAX_PITCH, MIN_PITCH
+from sampletones_core.constants.general import (
+    LIMIT_MAX_PITCH,
+    LIMIT_MIN_PITCH,
+    MAX_PERIOD,
+    MAX_PITCH,
+    MIN_PITCH,
+)
 from sampletones_core.utils.frequencies import (
     clamp_period,
     clamp_pitch,
@@ -233,7 +239,14 @@ class TestIsPitchValid:
         for pitch in valid_pitches:
             assert is_pitch_valid(pitch), pitch
 
-        invalid_pitches = (0, LIMIT_MIN_PITCH, MIN_PITCH - 1, MAX_PITCH + 1, LIMIT_MAX_PITCH, 128)
+        invalid_pitches = (
+            0,
+            LIMIT_MIN_PITCH,
+            MIN_PITCH - 1,
+            MAX_PITCH + 1,
+            LIMIT_MAX_PITCH,
+            128,
+        )
         for pitch in invalid_pitches:
             assert not is_pitch_valid(pitch), pitch
 
@@ -950,7 +963,12 @@ class TestPitchToName(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_pitch_to_name(self, test_case: TestCase) -> None:
-        if expect_error(pitch_to_name, test_case.expected, test_case.pitch, test_case.transpose):
+        if expect_error(
+            pitch_to_name,
+            test_case.expected,
+            test_case.pitch,
+            test_case.transpose,
+        ):
             return
 
         result = pitch_to_name(test_case.pitch, test_case.transpose)
@@ -1236,7 +1254,13 @@ class TestClampPitch(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_clamp_pitch(self, test_case: TestCase) -> None:
-        if expect_error(clamp_pitch, test_case.expected, test_case.pitch, test_case.min_pitch, test_case.max_pitch):
+        if expect_error(
+            clamp_pitch,
+            test_case.expected,
+            test_case.pitch,
+            test_case.min_pitch,
+            test_case.max_pitch,
+        ):
             return
 
         result = clamp_pitch(test_case.pitch, test_case.min_pitch, test_case.max_pitch)

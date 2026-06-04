@@ -2,6 +2,13 @@ from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import StatusElements
+from sampletones_application.categories.elements.sequencer import (
+    SequencerGridElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_CENTER,
@@ -22,11 +29,6 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.global_ import StatusElements
-from sampletones_application.text.elements.sequencer import SequencerGridElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -69,43 +71,108 @@ class GUISequencerGridPanel(GUIPanel):
         self.pattern_theme = PatternTableTheme()
 
         self._lbl_module_options = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.MODULE_OPTIONS)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.MODULE_OPTIONS,
+            )
         ]
         self._lbl_nes_frequency = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.NES_FREQUENCY)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.NES_FREQUENCY,
+            )
         ]
         self._lbl_tempo = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.TEMPO)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.TEMPO,
+            )
         ]
         self._lbl_speed = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.SPEED)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.SPEED,
+            )
         ]
         self._lbl_export_module = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.EXPORT_MODULE_BUTTON)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.EXPORT_MODULE_BUTTON,
+            )
         ]
         self._lbl_tracker = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.TRACKER_TEXT)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.TRACKER_TEXT,
+            )
         ]
         self._lbl_col_row = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_ROW)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_ROW,
+            )
         ]
         self._lbl_col_sample = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_SAMPLE)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_SAMPLE,
+            )
         ]
         self._lbl_col_pulse_1 = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_PULSE_1)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_PULSE_1,
+            )
         ]
         self._lbl_col_pulse_2 = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_PULSE_2)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_PULSE_2,
+            )
         ]
         self._lbl_col_triangle = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_TRIANGLE)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_TRIANGLE,
+            )
         ]
         self._lbl_col_noise = language_manager[
-            TextKey(Page.SEQUENCER, Panel.GRID, TextType.LABEL, SequencerGridElements.COLUMN_NOISE)
+            TextKey(
+                Page.SEQUENCER,
+                Panel.GRID,
+                TextType.LABEL,
+                SequencerGridElements.COLUMN_NOISE,
+            )
         ]
         self._msg_status_input = language_manager[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+            TextKey(
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.INPUT,
+            )
         ]
 
         super().__init__(

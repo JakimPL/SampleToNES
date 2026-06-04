@@ -9,7 +9,9 @@ from pydantic import ValidationError
 from sampletones_core.array import CUPY_AVAILABLE, xp
 from sampletones_core.structures.histogram.histogram import Histogram
 from sampletones_core.structures.histogram.interval import Interval
-from sampletones_shared.exceptions.structures import IncompleteHistogramRebinningWarning
+from sampletones_shared.exceptions.structures import (
+    IncompleteHistogramRebinningWarning,
+)
 from sampletones_shared.types.array import Array, Float, Numeric
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error, expect_warning
@@ -32,7 +34,8 @@ class TestInit(BaseTestSuite):
             edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
             values=np.array([1.0, 2.0], dtype=np.float64),
             expected=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             label="basic_float64_array",
         ),
@@ -40,7 +43,8 @@ class TestInit(BaseTestSuite):
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
             values=np.array([2.0, 6.0], dtype=np.float32),
             expected=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32), values=np.array([2.0, 6.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
+                values=np.array([2.0, 6.0], dtype=np.float32),
             ),
             label="basic_float32_array",
         ),
@@ -57,7 +61,8 @@ class TestInit(BaseTestSuite):
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
             values=np.float32(3.0),
             expected=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32), values=np.array([3.0, 9.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
+                values=np.array([3.0, 9.0], dtype=np.float32),
             ),
             label="constant_density_float32",
         ),
@@ -65,20 +70,27 @@ class TestInit(BaseTestSuite):
             edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
             values=np.float64(3.0),
             expected=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64), values=np.array([3.0, 9.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
+                values=np.array([3.0, 9.0], dtype=np.float64),
             ),
             label="constant_density_float64",
         ),
         TestCase(
             edges=np.array([0, 1, 2], dtype=np.int64),
             values=np.array([1, 2], dtype=np.int64),
-            expected=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            expected=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             label="integer_int64",
         ),
         TestCase(
             edges=np.array([0, 1, 4], dtype=np.int32),
             values=np.array([2, 6], dtype=np.int32),
-            expected=Histogram(edges=np.array([0, 1, 4], dtype=np.int32), values=np.array([2, 6], dtype=np.int32)),
+            expected=Histogram(
+                edges=np.array([0, 1, 4], dtype=np.int32),
+                values=np.array([2, 6], dtype=np.int32),
+            ),
             label="integer_int32",
         ),
         TestCase(
@@ -163,26 +175,36 @@ class TestInit(BaseTestSuite):
         TestCase(
             edges=Interval(0.0, 5.0),
             values=np.array([10.0], dtype=np.float32),
-            expected=Histogram(edges=np.array([0.0, 5.0]), values=np.array([10.0], dtype=np.float32)),
+            expected=Histogram(
+                edges=np.array([0.0, 5.0]),
+                values=np.array([10.0], dtype=np.float32),
+            ),
             label="interval_with_array_values",
         ),
         TestCase(
             edges=Interval(np.float32(0.0), np.float32(5.0)),
             values=np.float32(3.0),
-            expected=Histogram(edges=np.array([0.0, 5.0], dtype=np.float32), values=np.array([15.0], dtype=np.float32)),
+            expected=Histogram(
+                edges=np.array([0.0, 5.0], dtype=np.float32),
+                values=np.array([15.0], dtype=np.float32),
+            ),
             label="interval_with_constant_density_float32",
         ),
         TestCase(
             edges=Interval(2.0, 8.0),
             values=np.array([12.0], dtype=np.float64),
-            expected=Histogram(edges=np.array([2.0, 8.0], dtype=np.float64), values=np.array([12.0], dtype=np.float64)),
+            expected=Histogram(
+                edges=np.array([2.0, 8.0], dtype=np.float64),
+                values=np.array([12.0], dtype=np.float64),
+            ),
             label="interval_with_array_values_float64",
         ),
         TestCase(
             edges=Interval(-5.0, 5.0),
             values=np.float64(2.0),
             expected=Histogram(
-                edges=np.array([-5.0, 5.0], dtype=np.float64), values=np.array([20.0], dtype=np.float64)
+                edges=np.array([-5.0, 5.0], dtype=np.float64),
+                values=np.array([20.0], dtype=np.float64),
             ),
             label="interval_with_constant_density_float64",
         ),
@@ -264,7 +286,11 @@ class TestInit(BaseTestSuite):
     )
     def test_init(self, test_case: TestCase) -> None:
         if not expect_error(
-            Histogram, test_case.expected, edges=test_case.edges, values=test_case.values, match=test_case.match
+            Histogram,
+            test_case.expected,
+            edges=test_case.edges,
+            values=test_case.values,
+            match=test_case.match,
         ):
             assert isinstance(test_case.expected, Histogram)
             histogram = Histogram(edges=test_case.edges, values=test_case.values)
@@ -294,9 +320,18 @@ class TestValidateHistogramEdges(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([1.0, 2.0, 3.0])),
-                Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([4.0, 5.0, 6.0])),
-                Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([7.0, 8.0, 9.0])),
+                Histogram(
+                    edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                    values=np.array([1.0, 2.0, 3.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                    values=np.array([4.0, 5.0, 6.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                    values=np.array([7.0, 8.0, 9.0]),
+                ),
             ),
             equal_edges=True,
             expected=None,
@@ -323,7 +358,10 @@ class TestValidateHistogramEdges(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([1.0, 2.0, 3.0])),
+                Histogram(
+                    edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                    values=np.array([1.0, 2.0, 3.0]),
+                ),
                 Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([4.0, 5.0])),
             ),
             equal_edges=True,
@@ -343,7 +381,10 @@ class TestValidateHistogramEdges(BaseTestSuite):
         TestCase(
             histograms=(
                 Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
-                Histogram(edges=np.array([1.0, 2.0, 3.0, 4.0]), values=np.array([3.0, 4.0, 5.0])),
+                Histogram(
+                    edges=np.array([1.0, 2.0, 3.0, 4.0]),
+                    values=np.array([3.0, 4.0, 5.0]),
+                ),
                 Histogram(edges=np.array([0.5, 1.5, 2.5]), values=np.array([6.0, 7.0])),
             ),
             equal_edges=False,
@@ -364,8 +405,14 @@ class TestValidateHistogramEdges(BaseTestSuite):
             [
                 TestCase(
                     histograms=(
-                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([1.0, 2.0])),
-                        Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([3.0, 4.0])),
+                        Histogram(
+                            edges=np.array([0.0, 1.0, 2.0]),
+                            values=np.array([1.0, 2.0]),
+                        ),
+                        Histogram(
+                            edges=xp.array([0.0, 1.0, 2.0]),
+                            values=xp.array([3.0, 4.0]),
+                        ),
                     ),
                     equal_edges=True,
                     expected=TypeError,
@@ -374,9 +421,18 @@ class TestValidateHistogramEdges(BaseTestSuite):
                 ),
                 TestCase(
                     histograms=(
-                        Histogram(edges=xp.array([0.0, 1.0, 2.0]), values=xp.array([1.0, 2.0])),
-                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([3.0, 4.0])),
-                        Histogram(edges=np.array([0.0, 1.0, 2.0]), values=np.array([5.0, 6.0])),
+                        Histogram(
+                            edges=xp.array([0.0, 1.0, 2.0]),
+                            values=xp.array([1.0, 2.0]),
+                        ),
+                        Histogram(
+                            edges=np.array([0.0, 1.0, 2.0]),
+                            values=np.array([3.0, 4.0]),
+                        ),
+                        Histogram(
+                            edges=np.array([0.0, 1.0, 2.0]),
+                            values=np.array([5.0, 6.0]),
+                        ),
                     ),
                     equal_edges=False,
                     expected=TypeError,
@@ -417,8 +473,15 @@ class TestValidateArrayLengths(BaseTestSuite):
             label="matching_lengths_two_arrays",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([1.0, 2.0, 3.0])),
-            arrays=(np.array([4.0, 5.0, 6.0]), np.array([7.0, 8.0, 9.0]), np.array([10.0, 11.0, 12.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                values=np.array([1.0, 2.0, 3.0]),
+            ),
+            arrays=(
+                np.array([4.0, 5.0, 6.0]),
+                np.array([7.0, 8.0, 9.0]),
+                np.array([10.0, 11.0, 12.0]),
+            ),
             expected=None,
             label="matching_lengths_three_arrays",
         ),
@@ -430,14 +493,20 @@ class TestValidateArrayLengths(BaseTestSuite):
             label="mismatched_length_single_array_raises",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([1.0, 2.0, 3.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                values=np.array([1.0, 2.0, 3.0]),
+            ),
             arrays=(np.array([4.0, 5.0, 6.0]), np.array([7.0, 8.0])),
             expected=ValueError,
             match="Array length 2 must match values length 3",
             label="mismatched_length_second_array_raises",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]), values=np.array([1.0, 2.0, 3.0, 4.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]),
+                values=np.array([1.0, 2.0, 3.0, 4.0]),
+            ),
             arrays=(np.array([5.0]), np.array([6.0, 7.0, 8.0, 9.0])),
             expected=ValueError,
             match="Array length 1 must match values length 4",
@@ -818,95 +887,133 @@ class TestEquality(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             expected=True,
             description="equal_float64",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             expected=True,
             description="equal_float32",
         ),
         TestCase(
-            histogram1=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
-            histogram2=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram1=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
+            histogram2=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             expected=True,
             description="equal_int64",
         ),
         TestCase(
-            histogram1=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
-            histogram2=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram1=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
+            histogram2=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             expected=True,
             description="equal_int32",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 3.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 3.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             expected=False,
             description="different_edges",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 3.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 3.0], dtype=np.float64),
             ),
             expected=False,
             description="different_values",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             expected=True,
             description="float32_vs_float64",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             histogram2=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             expected=True,
             description="float64_vs_float32",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
-            histogram2=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram2=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             expected=True,
             description="float32_vs_int64",
         ),
         TestCase(
             histogram1=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
-            histogram2=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram2=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             expected=True,
             description="float64_vs_int32",
         ),
         TestCase(
-            histogram1=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
-            histogram2=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram1=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
+            histogram2=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             expected=True,
             description="int64_vs_int32",
         ),
@@ -949,19 +1056,27 @@ class TestCopy(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
         ),
     ]
 
@@ -1001,19 +1116,27 @@ class TestHash(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
         ),
     ]
 
@@ -1023,7 +1146,10 @@ class TestHash(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_hash_equal_histograms(self, test_case: TestCase) -> None:
-        histogram2 = Histogram(edges=test_case.histogram.edges.copy(), values=test_case.histogram.values.copy())
+        histogram2 = Histogram(
+            edges=test_case.histogram.edges.copy(),
+            values=test_case.histogram.values.copy(),
+        )
         assert hash(test_case.histogram) == hash(histogram2)
 
     @pytest.mark.parametrize(
@@ -1057,17 +1183,24 @@ class TestLen(BaseTestSuite):
             expected=3,
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0], dtype=np.float32), values=np.array([5.0], dtype=np.float32)),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0], dtype=np.float32),
+                values=np.array([5.0], dtype=np.float32),
+            ),
             expected=1,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0, 1, 2, 3, 4], dtype=np.int64), values=np.array([1, 2, 3, 4], dtype=np.int64)
+                edges=np.array([0, 1, 2, 3, 4], dtype=np.int64),
+                values=np.array([1, 2, 3, 4], dtype=np.int64),
             ),
             expected=4,
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([5, 10], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([5, 10], dtype=np.int32),
+            ),
             expected=2,
         ),
     ]
@@ -1101,68 +1234,91 @@ class TestInterval(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 3.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 3.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             index=0,
             expected=Interval(0.0, 1.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 3.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 3.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             index=1,
             expected=Interval(1.0, 3.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 4], dtype=np.int64), values=np.array([2, 6], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 4], dtype=np.int64),
+                values=np.array([2, 6], dtype=np.int64),
+            ),
             index=0,
             expected=Interval(0, 1),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 10], dtype=np.int32), values=np.array([10, 15], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 10], dtype=np.int32),
+                values=np.array([10, 15], dtype=np.int32),
+            ),
             index=1,
             expected=Interval(5, 10),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             index=-1,
             expected=Interval(1.0, 2.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             index=-2,
             expected=Interval(0.0, 1.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 4], dtype=np.int64), values=np.array([2, 6], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 4], dtype=np.int64),
+                values=np.array([2, 6], dtype=np.int64),
+            ),
             index=-1,
             expected=Interval(1, 4),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 10], dtype=np.int32), values=np.array([10, 15], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 10], dtype=np.int32),
+                values=np.array([10, 15], dtype=np.int32),
+            ),
             index=-2,
             expected=Interval(0, 5),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             index=2,
             expected=IndexError,
             match="out of bounds",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             index=5,
             expected=IndexError,
             match="out of bounds",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             index=-3,
             expected=IndexError,
             match="out of bounds",
@@ -1175,7 +1331,12 @@ class TestInterval(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_interval(self, test_case: TestCase) -> None:
-        if not expect_error(test_case.histogram.interval, test_case.expected, test_case.index, match=test_case.match):
+        if not expect_error(
+            test_case.histogram.interval,
+            test_case.expected,
+            test_case.index,
+            match=test_case.match,
+        ):
             interval = test_case.histogram.interval(test_case.index)
             assert interval == test_case.expected
 
@@ -1206,18 +1367,25 @@ class TestWidth(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             index=1,
             expected=np.float32(3.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 5], dtype=np.int64), values=np.array([2, 8], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 5], dtype=np.int64),
+                values=np.array([2, 8], dtype=np.int64),
+            ),
             index=0,
             expected=np.int64(1),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 2, 7], dtype=np.int32), values=np.array([4, 10], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 2, 7], dtype=np.int32),
+                values=np.array([4, 10], dtype=np.int32),
+            ),
             index=1,
             expected=np.int32(5),
         ),
@@ -1231,37 +1399,51 @@ class TestWidth(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             index=-2,
             expected=np.float32(1.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 5], dtype=np.int64), values=np.array([2, 8], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 5], dtype=np.int64),
+                values=np.array([2, 8], dtype=np.int64),
+            ),
             index=-1,
             expected=np.int64(4),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 2, 7], dtype=np.int32), values=np.array([4, 10], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 2, 7], dtype=np.int32),
+                values=np.array([4, 10], dtype=np.int32),
+            ),
             index=-2,
             expected=np.int32(2),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             index=2,
             expected=IndexError,
             match="out of (range|bounds)",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             index=5,
             expected=IndexError,
             match="out of (range|bounds)",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             index=-3,
             expected=IndexError,
             match="out of (range|bounds)",
@@ -1274,7 +1456,12 @@ class TestWidth(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_width(self, test_case: TestCase) -> None:
-        if not expect_error(test_case.histogram.width, test_case.expected, test_case.index, match=test_case.match):
+        if not expect_error(
+            test_case.histogram.width,
+            test_case.expected,
+            test_case.index,
+            match=test_case.match,
+        ):
             width = test_case.histogram.width(test_case.index)
             assert width == test_case.expected
             assert isinstance(width, type(test_case.expected))
@@ -1303,68 +1490,91 @@ class TestDensity(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64), values=np.array([2.0, 6.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
+                values=np.array([2.0, 6.0], dtype=np.float64),
             ),
             index=0,
             expected=np.float64(2.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32), values=np.array([4.0, 9.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32),
+                values=np.array([4.0, 9.0], dtype=np.float32),
             ),
             index=1,
             expected=np.float32(3.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 2, 6], dtype=np.int64), values=np.array([4, 12], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 2, 6], dtype=np.int64),
+                values=np.array([4, 12], dtype=np.int64),
+            ),
             index=0,
             expected=np.float64(2.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 10], dtype=np.int32), values=np.array([10, 15], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 10], dtype=np.int32),
+                values=np.array([10, 15], dtype=np.int32),
+            ),
             index=1,
             expected=np.float64(3.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64), values=np.array([2.0, 6.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
+                values=np.array([2.0, 6.0], dtype=np.float64),
             ),
             index=-1,
             expected=np.float64(2.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32), values=np.array([4.0, 9.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32),
+                values=np.array([4.0, 9.0], dtype=np.float32),
             ),
             index=-2,
             expected=np.float32(2.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 2, 6], dtype=np.int64), values=np.array([4, 12], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 2, 6], dtype=np.int64),
+                values=np.array([4, 12], dtype=np.int64),
+            ),
             index=-1,
             expected=np.float64(3.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 10], dtype=np.int32), values=np.array([10, 15], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 10], dtype=np.int32),
+                values=np.array([10, 15], dtype=np.int32),
+            ),
             index=-2,
             expected=np.float64(2.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             index=2,
             expected=IndexError,
             match="out of (range|bounds)",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int64), values=np.array([1, 2], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int64),
+                values=np.array([1, 2], dtype=np.int64),
+            ),
             index=5,
             expected=IndexError,
             match="out of (range|bounds)",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 2], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 2], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             index=-3,
             expected=IndexError,
             match="out of (range|bounds)",
@@ -1377,7 +1587,12 @@ class TestDensity(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_density(self, test_case: TestCase) -> None:
-        if not expect_error(test_case.histogram.density, test_case.expected, test_case.index, match=test_case.match):
+        if not expect_error(
+            test_case.histogram.density,
+            test_case.expected,
+            test_case.index,
+            match=test_case.match,
+        ):
             density = test_case.histogram.density(test_case.index)
             assert density == test_case.expected
             assert isinstance(density, type(test_case.expected))
@@ -1399,22 +1614,30 @@ class TestDensities(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64), values=np.array([2.0, 6.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 4.0], dtype=np.float64),
+                values=np.array([2.0, 6.0], dtype=np.float64),
             ),
             expected=np.array([2.0, 2.0]),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32), values=np.array([4.0, 9.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32),
+                values=np.array([4.0, 9.0], dtype=np.float32),
             ),
             expected=np.array([2.0, 3.0]),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 2, 6], dtype=np.int64), values=np.array([4, 12], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 2, 6], dtype=np.int64),
+                values=np.array([4, 12], dtype=np.int64),
+            ),
             expected=np.array([2.0, 3.0]),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 10], dtype=np.int32), values=np.array([10, 15], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 10], dtype=np.int32),
+                values=np.array([10, 15], dtype=np.int32),
+            ),
             expected=np.array([2.0, 3.0]),
         ),
     ]
@@ -1448,16 +1671,23 @@ class TestWidths(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32), values=np.array([4.0, 9.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 5.0], dtype=np.float32),
+                values=np.array([4.0, 9.0], dtype=np.float32),
             ),
             expected=np.array([2.0, 3.0], dtype=np.float32),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 1, 5], dtype=np.int64), values=np.array([2, 8], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 1, 5], dtype=np.int64),
+                values=np.array([2, 8], dtype=np.int64),
+            ),
             expected=np.array([1, 4], dtype=np.int64),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 3, 10], dtype=np.int32), values=np.array([6, 14], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 3, 10], dtype=np.int32),
+                values=np.array([6, 14], dtype=np.int32),
+            ),
             expected=np.array([3, 7], dtype=np.int32),
         ),
     ]
@@ -1484,22 +1714,30 @@ class TestRange(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             expected=Interval(0.0, 2.0),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([-5.0, 0.0, 5.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+                edges=np.array([-5.0, 0.0, 5.0], dtype=np.float32),
+                values=np.array([1.0, 2.0], dtype=np.float32),
             ),
             expected=Interval(-5.0, 5.0),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 10, 20], dtype=np.int64), values=np.array([5, 10], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([0, 10, 20], dtype=np.int64),
+                values=np.array([5, 10], dtype=np.int64),
+            ),
             expected=Interval(0, 20),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([-10, 0, 10], dtype=np.int32), values=np.array([5, 5], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([-10, 0, 10], dtype=np.int32),
+                values=np.array([5, 5], dtype=np.int32),
+            ),
             expected=Interval(-10, 10),
         ),
     ]
@@ -1533,27 +1771,36 @@ class TestTotal(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0.0, 2.5, 7.0], dtype=np.float32), values=np.array([5.0, 10.5], dtype=np.float32)
+                edges=np.array([0.0, 2.5, 7.0], dtype=np.float32),
+                values=np.array([5.0, 10.5], dtype=np.float32),
             ),
             expected=np.float32(15.5),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([0, 3, 8, 15], dtype=np.int64), values=np.array([6, 20, 14], dtype=np.int64)
+                edges=np.array([0, 3, 8, 15], dtype=np.int64),
+                values=np.array([6, 20, 14], dtype=np.int64),
             ),
             expected=np.int64(40),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0, 5, 12], dtype=np.int32), values=np.array([15, 28], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([0, 5, 12], dtype=np.int32),
+                values=np.array([15, 28], dtype=np.int32),
+            ),
             expected=np.int32(43),
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 2.0], dtype=np.float64), values=np.array([7.5], dtype=np.float64)),
+            histogram=Histogram(
+                edges=np.array([0.0, 2.0], dtype=np.float64),
+                values=np.array([7.5], dtype=np.float64),
+            ),
             expected=np.float64(7.5),
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([-5.0, 3.5], dtype=np.float32), values=np.array([12.25], dtype=np.float32)
+                edges=np.array([-5.0, 3.5], dtype=np.float32),
+                values=np.array([12.25], dtype=np.float32),
             ),
             expected=np.float32(12.25),
         ),
@@ -1600,7 +1847,8 @@ class TestFromConstant:
 class TestAstype:
     def test_astype_float32_to_float64(self) -> None:
         histogram = Histogram(
-            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32), values=np.array([1.0, 2.0], dtype=np.float32)
+            edges=np.array([0.0, 1.0, 2.0], dtype=np.float32),
+            values=np.array([1.0, 2.0], dtype=np.float32),
         )
         converted = histogram.astype(np.float64)
         assert converted.edges.dtype == np.float64
@@ -1608,7 +1856,8 @@ class TestAstype:
 
     def test_astype_float64_to_float32(self) -> None:
         histogram = Histogram(
-            edges=np.array([0.0, 1.0, 2.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+            edges=np.array([0.0, 1.0, 2.0], dtype=np.float64),
+            values=np.array([1.0, 2.0], dtype=np.float64),
         )
         converted = histogram.astype(np.float32)
         assert converted.edges.dtype == np.float32
@@ -1637,7 +1886,10 @@ class TestToCupy(BaseTestSuite):
             label="cupy_histogram_remains_cupy",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]), values=np.array([2.0, 4.0, 6.0, 8.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]),
+                values=np.array([2.0, 4.0, 6.0, 8.0]),
+            ),
             expected_edges=xp.array([0.0, 1.0, 2.0, 3.0, 4.0]),
             expected=xp.array([2.0, 4.0, 6.0, 8.0]),
             label="larger_numpy_histogram_converts_to_cupy",
@@ -1743,7 +1995,8 @@ class TestRebin(BaseTestSuite):
             ),
             new_bins=np.array([2.0, 4.0, 7.0], dtype=np.float64),
             expected=Histogram(
-                edges=np.array([2.0, 4.0, 7.0], dtype=np.float64), values=np.array([7.0, 11.0], dtype=np.float64)
+                edges=np.array([2.0, 4.0, 7.0], dtype=np.float64),
+                values=np.array([7.0, 11.0], dtype=np.float64),
             ),
             description="coarser_binning_float64",
         ),
@@ -1754,27 +2007,32 @@ class TestRebin(BaseTestSuite):
             ),
             new_bins=np.array([1.0, 5.0, 9.0], dtype=np.float32),
             expected=Histogram(
-                edges=np.array([1.0, 5.0, 9.0], dtype=np.float32), values=np.array([12.0, 15.0], dtype=np.float32)
+                edges=np.array([1.0, 5.0, 9.0], dtype=np.float32),
+                values=np.array([12.0, 15.0], dtype=np.float32),
             ),
             description="coarser_binning_float32",
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5, 7, 10, 15], dtype=np.int64), values=np.array([4, 6, 10], dtype=np.int64)
+                edges=np.array([5, 7, 10, 15], dtype=np.int64),
+                values=np.array([4, 6, 10], dtype=np.int64),
             ),
             new_bins=np.array([5, 10, 15], dtype=np.int64),
             expected=Histogram(
-                edges=np.array([5.0, 10.0, 15.0], dtype=np.float64), values=np.array([10.0, 10.0], dtype=np.float64)
+                edges=np.array([5.0, 10.0, 15.0], dtype=np.float64),
+                values=np.array([10.0, 10.0], dtype=np.float64),
             ),
             description="coarser_binning_int64",
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([3, 6, 10, 15], dtype=np.int32), values=np.array([9, 12, 15], dtype=np.int32)
+                edges=np.array([3, 6, 10, 15], dtype=np.int32),
+                values=np.array([9, 12, 15], dtype=np.int32),
             ),
             new_bins=np.array([3, 10, 15], dtype=np.int32),
             expected=Histogram(
-                edges=np.array([3.0, 10.0, 15.0], dtype=np.float64), values=np.array([21.0, 15.0], dtype=np.float64)
+                edges=np.array([3.0, 10.0, 15.0], dtype=np.float64),
+                values=np.array([21.0, 15.0], dtype=np.float64),
             ),
             description="coarser_binning_int32",
         ),
@@ -1792,7 +2050,8 @@ class TestRebin(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([2.0, 4.0, 7.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                edges=np.array([2.0, 4.0, 7.0], dtype=np.float32),
+                values=np.array([8.0, 12.0], dtype=np.float32),
             ),
             new_bins=np.array([2.0, 3.0, 5.0, 7.0], dtype=np.float32),
             expected=Histogram(
@@ -1802,7 +2061,10 @@ class TestRebin(BaseTestSuite):
             description="finer_binning_float32",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([5, 7, 10], dtype=np.int64), values=np.array([6, 9], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([5, 7, 10], dtype=np.int64),
+                values=np.array([6, 9], dtype=np.int64),
+            ),
             new_bins=np.array([5.0, 6.5, 8.5, 10.0], dtype=np.float32),
             expected=Histogram(
                 edges=np.array([5.0, 6.5, 8.5, 10.0], dtype=np.float64),
@@ -1817,7 +2079,8 @@ class TestRebin(BaseTestSuite):
             ),
             new_bins=Interval(2.0, 10.0),
             expected=Histogram(
-                edges=np.array([2.0, 10.0], dtype=np.float64), values=np.array([27.0], dtype=np.float64)
+                edges=np.array([2.0, 10.0], dtype=np.float64),
+                values=np.array([27.0], dtype=np.float64),
             ),
             description="single_bin_interval_exact_range_float64",
         ),
@@ -1828,7 +2091,8 @@ class TestRebin(BaseTestSuite):
             ),
             new_bins=Interval(np.float32(3.0), np.float32(11.0)),
             expected=Histogram(
-                edges=np.array([3.0, 11.0], dtype=np.float32), values=np.array([19.0], dtype=np.float32)
+                edges=np.array([3.0, 11.0], dtype=np.float32),
+                values=np.array([19.0], dtype=np.float32),
             ),
             description="single_bin_interval_exact_range_float32",
         ),
@@ -1838,39 +2102,48 @@ class TestRebin(BaseTestSuite):
                 values=np.array([6.0, 9.0, 12.0], dtype=np.float64),
             ),
             new_bins=Interval(np.float64(4.0), np.float64(7.0)),
-            expected=Histogram(edges=np.array([4.0, 7.0], dtype=np.float64), values=np.array([9.0], dtype=np.float64)),
+            expected=Histogram(
+                edges=np.array([4.0, 7.0], dtype=np.float64),
+                values=np.array([9.0], dtype=np.float64),
+            ),
             description="single_bin_interval_inside_range_float64",
             expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32), values=np.array([6.0, 14.0], dtype=np.float32)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32),
+                values=np.array([6.0, 14.0], dtype=np.float32),
             ),
             new_bins=Interval(np.float32(7.0), np.float32(11.0)),
             expected=Histogram(
-                edges=np.array([7.0, 11.0], dtype=np.float32), values=np.array([12.5], dtype=np.float32)
+                edges=np.array([7.0, 11.0], dtype=np.float32),
+                values=np.array([12.5], dtype=np.float32),
             ),
             description="single_bin_interval_inside_range_float32",
             expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64), values=np.array([6.0, 14.0], dtype=np.float64)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                values=np.array([6.0, 14.0], dtype=np.float64),
             ),
             new_bins=Interval(8.0, 15.0),
             expected=Histogram(
-                edges=np.array([8.0, 15.0], dtype=np.float64), values=np.array([14.0], dtype=np.float64)
+                edges=np.array([8.0, 15.0], dtype=np.float64),
+                values=np.array([14.0], dtype=np.float64),
             ),
             description="single_bin_interval_overlapping_float64",
             expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([4.0, 7.0, 10.0], dtype=np.float32), values=np.array([9.0, 12.0], dtype=np.float32)
+                edges=np.array([4.0, 7.0, 10.0], dtype=np.float32),
+                values=np.array([9.0, 12.0], dtype=np.float32),
             ),
             new_bins=Interval(np.float32(12.0), np.float32(20.0)),
             expected=Histogram(
-                edges=np.array([12.0, 20.0], dtype=np.float32), values=np.array([0.0], dtype=np.float32)
+                edges=np.array([12.0, 20.0], dtype=np.float32),
+                values=np.array([0.0], dtype=np.float32),
             ),
             description="single_bin_interval_disjoint_float32",
             expect_warning=True,
@@ -1900,38 +2173,50 @@ class TestRebin(BaseTestSuite):
             description="rebin_to_itself_float32",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([5, 8, 12], dtype=np.int32), values=np.array([6, 14], dtype=np.int32)),
-            new_bins=Histogram(edges=np.array([5, 8, 12], dtype=np.int32), values=np.array([1, 2], dtype=np.int32)),
+            histogram=Histogram(
+                edges=np.array([5, 8, 12], dtype=np.int32),
+                values=np.array([6, 14], dtype=np.int32),
+            ),
+            new_bins=Histogram(
+                edges=np.array([5, 8, 12], dtype=np.int32),
+                values=np.array([1, 2], dtype=np.int32),
+            ),
             expected=Histogram(
-                edges=np.array([5, 8, 12], dtype=np.float64), values=np.array([6, 14], dtype=np.float64)
+                edges=np.array([5, 8, 12], dtype=np.float64),
+                values=np.array([6, 14], dtype=np.float64),
             ),
             description="rebin_to_itself_int32",
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64), values=np.array([6.0, 14.0], dtype=np.float64)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                values=np.array([6.0, 14.0], dtype=np.float64),
             ),
             new_bins=np.array([15.0, 18.0, 22.0], dtype=np.float64),
             expected=Histogram(
-                edges=np.array([15.0, 18.0, 22.0], dtype=np.float64), values=np.array([0.0, 0.0], dtype=np.float64)
+                edges=np.array([15.0, 18.0, 22.0], dtype=np.float64),
+                values=np.array([0.0, 0.0], dtype=np.float64),
             ),
             description="disjoint_bins_above_range",
             expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([10.0, 15.0, 20.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                edges=np.array([10.0, 15.0, 20.0], dtype=np.float32),
+                values=np.array([8.0, 12.0], dtype=np.float32),
             ),
             new_bins=np.array([2.0, 5.0, 8.0], dtype=np.float32),
             expected=Histogram(
-                edges=np.array([2.0, 5.0, 8.0], dtype=np.float32), values=np.array([0.0, 0.0], dtype=np.float32)
+                edges=np.array([2.0, 5.0, 8.0], dtype=np.float32),
+                values=np.array([0.0, 0.0], dtype=np.float32),
             ),
             description="disjoint_bins_below_range",
             expect_warning=True,
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64), values=np.array([6.0, 14.0], dtype=np.float64)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                values=np.array([6.0, 14.0], dtype=np.float64),
             ),
             new_bins=np.array([3.0, 7.0, 10.0, 15.0], dtype=np.float64),
             expected=Histogram(
@@ -1942,7 +2227,8 @@ class TestRebin(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([4.0, 7.0, 10.0], dtype=np.float32), values=np.array([9.0, 12.0], dtype=np.float32)
+                edges=np.array([4.0, 7.0, 10.0], dtype=np.float32),
+                values=np.array([9.0, 12.0], dtype=np.float32),
             ),
             new_bins=np.array([2.0, 5.0, 8.0, 12.0], dtype=np.float32),
             expected=Histogram(
@@ -1952,7 +2238,10 @@ class TestRebin(BaseTestSuite):
             description="extended_range_both_sides_float32",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([5, 10, 15], dtype=np.int64), values=np.array([10, 20], dtype=np.int64)),
+            histogram=Histogram(
+                edges=np.array([5, 10, 15], dtype=np.int64),
+                values=np.array([10, 20], dtype=np.int64),
+            ),
             new_bins=np.array([3.0, 8.0, 13.0, 18.0], dtype=np.float32),
             expected=Histogram(
                 edges=np.array([3.0, 8.0, 13.0, 18.0], dtype=np.float64),
@@ -1966,10 +2255,12 @@ class TestRebin(BaseTestSuite):
                 values=np.array([6.0, 9.0, 12.0], dtype=np.float64),
             ),
             new_bins=Histogram(
-                edges=np.array([25.0, 30.0, 36.0], dtype=np.float64), values=np.array([1.0, 2.0], dtype=np.float64)
+                edges=np.array([25.0, 30.0, 36.0], dtype=np.float64),
+                values=np.array([1.0, 2.0], dtype=np.float64),
             ),
             expected=Histogram(
-                edges=np.array([25.0, 30.0, 36.0], dtype=np.float64), values=np.array([0.0, 0.0], dtype=np.float64)
+                edges=np.array([25.0, 30.0, 36.0], dtype=np.float64),
+                values=np.array([0.0, 0.0], dtype=np.float64),
             ),
             description="rebin_with_disjoint_histogram_float64",
             expect_warning=True,
@@ -1980,10 +2271,12 @@ class TestRebin(BaseTestSuite):
                 values=np.array([8.0, 12.0, 16.0], dtype=np.float32),
             ),
             new_bins=Histogram(
-                edges=np.array([5.0, 7.0, 13.0], dtype=np.float32), values=np.array([3.0, 5.0], dtype=np.float32)
+                edges=np.array([5.0, 7.0, 13.0], dtype=np.float32),
+                values=np.array([3.0, 5.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([5.0, 7.0, 13.0], dtype=np.float32), values=np.array([6.0, 22.0], dtype=np.float32)
+                edges=np.array([5.0, 7.0, 13.0], dtype=np.float32),
+                values=np.array([6.0, 22.0], dtype=np.float32),
             ),
             description="rebin_with_histogram_float32",
             expect_warning=True,
@@ -2036,13 +2329,19 @@ class TestStaticRebin(BaseTestSuite):
             label="valid_rebin_combines_two_bins",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]), values=np.array([1.0, 2.0, 3.0, 4.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0, 4.0]),
+                values=np.array([1.0, 2.0, 3.0, 4.0]),
+            ),
             target_bins=np.array([0.0, 2.0, 4.0]),
             expected=Histogram(edges=np.array([0.0, 2.0, 4.0]), values=np.array([3.0, 7.0])),
             label="valid_rebin_combines_multiple_bins",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([5.0, 10.0, 15.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                values=np.array([5.0, 10.0, 15.0]),
+            ),
             target_bins=np.array([0.0, 3.0]),
             expected=Histogram(edges=np.array([0.0, 3.0]), values=np.array([30.0])),
             label="valid_rebin_combines_all_bins",
@@ -2068,7 +2367,10 @@ class TestStaticRebin(BaseTestSuite):
             label="not_strictly_increasing_raises",
         ),
         TestCase(
-            histogram=Histogram(edges=np.array([0.0, 1.0, 2.0, 3.0]), values=np.array([2.0, 4.0, 6.0])),
+            histogram=Histogram(
+                edges=np.array([0.0, 1.0, 2.0, 3.0]),
+                values=np.array([2.0, 4.0, 6.0]),
+            ),
             target_bins=np.array([0.0, 1.0, 1.0, 3.0]),
             expected=ValueError,
             match="strictly increasing",
@@ -2105,7 +2407,8 @@ class TestValidateOverlap(BaseTestSuite):
     test_cases = [
         TestCase(
             histogram=Histogram(
-                edges=np.array([2.0, 5.0, 8.0], dtype=np.float64), values=np.array([6.0, 12.0], dtype=np.float64)
+                edges=np.array([2.0, 5.0, 8.0], dtype=np.float64),
+                values=np.array([6.0, 12.0], dtype=np.float64),
             ),
             new_edges=np.array([2.0, 5.0, 8.0], dtype=np.float64),
             expect_warning=False,
@@ -2113,7 +2416,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([3.0, 5.0, 7.0], dtype=np.float32), values=np.array([4.0, 8.0], dtype=np.float32)
+                edges=np.array([3.0, 5.0, 7.0], dtype=np.float32),
+                values=np.array([4.0, 8.0], dtype=np.float32),
             ),
             new_edges=np.array([3.0, 5.0, 7.0], dtype=np.float32),
             expect_warning=False,
@@ -2121,7 +2425,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([3.0, 6.0, 10.0], dtype=np.float64), values=np.array([9.0, 12.0], dtype=np.float64)
+                edges=np.array([3.0, 6.0, 10.0], dtype=np.float64),
+                values=np.array([9.0, 12.0], dtype=np.float64),
             ),
             new_edges=np.array([1.0, 4.0, 7.0, 12.0], dtype=np.float64),
             expect_warning=False,
@@ -2129,7 +2434,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32), values=np.array([6.0, 14.0], dtype=np.float32)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32),
+                values=np.array([6.0, 14.0], dtype=np.float32),
             ),
             new_edges=np.array([3.0, 6.0, 9.0, 15.0], dtype=np.float32),
             expect_warning=False,
@@ -2146,7 +2452,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([2.0, 5.0, 8.0], dtype=np.float64), values=np.array([6.0, 12.0], dtype=np.float64)
+                edges=np.array([2.0, 5.0, 8.0], dtype=np.float64),
+                values=np.array([6.0, 12.0], dtype=np.float64),
             ),
             new_edges=np.array([3.0, 6.0], dtype=np.float64),
             expect_warning=True,
@@ -2154,7 +2461,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([1.0, 5.0, 10.0], dtype=np.float32), values=np.array([8.0, 14.0], dtype=np.float32)
+                edges=np.array([1.0, 5.0, 10.0], dtype=np.float32),
+                values=np.array([8.0, 14.0], dtype=np.float32),
             ),
             new_edges=np.array([3.0, 7.0], dtype=np.float32),
             expect_warning=True,
@@ -2162,7 +2470,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64), values=np.array([6.0, 14.0], dtype=np.float64)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                values=np.array([6.0, 14.0], dtype=np.float64),
             ),
             new_edges=np.array([3.0, 7.0, 10.0], dtype=np.float64),
             expect_warning=True,
@@ -2170,7 +2479,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32), values=np.array([6.0, 14.0], dtype=np.float32)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float32),
+                values=np.array([6.0, 14.0], dtype=np.float32),
             ),
             new_edges=np.array([7.0, 10.0, 15.0], dtype=np.float32),
             expect_warning=True,
@@ -2178,7 +2488,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([3.0, 6.0, 10.0], dtype=np.float64), values=np.array([9.0, 12.0], dtype=np.float64)
+                edges=np.array([3.0, 6.0, 10.0], dtype=np.float64),
+                values=np.array([9.0, 12.0], dtype=np.float64),
             ),
             new_edges=np.array([1.0, 4.0, 8.0, 12.0], dtype=np.float64),
             expect_warning=False,
@@ -2186,7 +2497,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64), values=np.array([6.0, 14.0], dtype=np.float64)
+                edges=np.array([5.0, 8.0, 12.0], dtype=np.float64),
+                values=np.array([6.0, 14.0], dtype=np.float64),
             ),
             new_edges=np.array([15.0, 18.0, 22.0], dtype=np.float64),
             expect_warning=True,
@@ -2194,7 +2506,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([10.0, 15.0, 20.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                edges=np.array([10.0, 15.0, 20.0], dtype=np.float32),
+                values=np.array([8.0, 12.0], dtype=np.float32),
             ),
             new_edges=np.array([2.0, 5.0, 8.0], dtype=np.float32),
             expect_warning=True,
@@ -2202,7 +2515,8 @@ class TestValidateOverlap(BaseTestSuite):
         ),
         TestCase(
             histogram=Histogram(
-                edges=np.array([5.0, 10.0, 15.0], dtype=np.float64), values=np.array([8.0, 12.0], dtype=np.float64)
+                edges=np.array([5.0, 10.0, 15.0], dtype=np.float64),
+                values=np.array([8.0, 12.0], dtype=np.float64),
             ),
             new_edges=np.array([20.0, 25.0, 30.0], dtype=np.float64),
             expect_warning=True,
@@ -2243,7 +2557,10 @@ class TestRefine(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([1, 3, 7, 12], dtype=np.int32), values=np.array([5, 8, 3], dtype=np.int32)),
+                Histogram(
+                    edges=np.array([1, 3, 7, 12], dtype=np.int32),
+                    values=np.array([5, 8, 3], dtype=np.int32),
+                ),
             ),
             expected=np.array([1.0, 3.0, 7.0, 12.0], dtype=np.float64),
             label="single_histogram_int32_casted_to_float64",
@@ -2260,8 +2577,14 @@ class TestRefine(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64), values=np.array([12.0, 34.0, 56.0])),
-                Histogram(edges=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64), values=np.array([78.0, 90.0, 12.0])),
+                Histogram(
+                    edges=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64),
+                    values=np.array([12.0, 34.0, 56.0]),
+                ),
+                Histogram(
+                    edges=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64),
+                    values=np.array([78.0, 90.0, 12.0]),
+                ),
             ),
             expected=np.array([1.5, 4.2, 8.9, 15.3], dtype=np.float64),
             label="two_histograms_same_edges",
@@ -2269,7 +2592,8 @@ class TestRefine(BaseTestSuite):
         TestCase(
             histograms=(
                 Histogram(
-                    edges=np.array([0.0, 5.0, 10.0], dtype=np.float32), values=np.array([3.0, 7.0], dtype=np.float32)
+                    edges=np.array([0.0, 5.0, 10.0], dtype=np.float32),
+                    values=np.array([3.0, 7.0], dtype=np.float32),
                 ),
                 Histogram(
                     edges=np.array([0.0, 2.5, 5.0, 7.5, 10.0], dtype=np.float32),
@@ -2286,7 +2610,8 @@ class TestRefine(BaseTestSuite):
                     values=np.array([10.0, 20.0, 30.0, 40.0], dtype=np.float64),
                 ),
                 Histogram(
-                    edges=np.array([3.0, 5.0, 8.0], dtype=np.float64), values=np.array([15.0, 25.0], dtype=np.float64)
+                    edges=np.array([3.0, 5.0, 8.0], dtype=np.float64),
+                    values=np.array([15.0, 25.0], dtype=np.float64),
                 ),
             ),
             expected=np.array([1.0, 3.0, 5.0, 8.0, 12.0], dtype=np.float64),
@@ -2298,24 +2623,37 @@ class TestRefine(BaseTestSuite):
                     edges=np.array([0.0, 2.0, 5.0, 9.0, 15.0], dtype=np.float32),
                     values=np.array([5, 10, 15, 20], dtype=np.int8),
                 ),
-                Histogram(edges=np.array([2.0, 5.0, 9.0], dtype=np.float32), values=np.array([8, 12], dtype=np.int8)),
+                Histogram(
+                    edges=np.array([2.0, 5.0, 9.0], dtype=np.float32),
+                    values=np.array([8, 12], dtype=np.int8),
+                ),
             ),
             expected=np.array([0.0, 2.0, 5.0, 9.0, 15.0], dtype=np.float32),
             label="two_histograms_subset_without_endpoints",
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([0.0, 3.0, 6.0], dtype=np.float64), values=np.array([12.0, 24.0])),
-                Histogram(edges=np.array([0.0, 2.0, 4.0, 6.0], dtype=np.float64), values=np.array([8.0, 16.0, 32.0])),
+                Histogram(
+                    edges=np.array([0.0, 3.0, 6.0], dtype=np.float64),
+                    values=np.array([12.0, 24.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 4.0, 6.0], dtype=np.float64),
+                    values=np.array([8.0, 16.0, 32.0]),
+                ),
             ),
             expected=np.array([0.0, 2.0, 3.0, 4.0, 6.0], dtype=np.float64),
             label="two_histograms_same_support_different_bins",
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([1.0, 4.0, 7.0, 11.0], dtype=np.float32), values=np.array([5.0, 10.0, 15.0])),
                 Histogram(
-                    edges=np.array([4.0, 8.0, 11.0, 15.0], dtype=np.float32), values=np.array([20.0, 25.0, 30.0])
+                    edges=np.array([1.0, 4.0, 7.0, 11.0], dtype=np.float32),
+                    values=np.array([5.0, 10.0, 15.0]),
+                ),
+                Histogram(
+                    edges=np.array([4.0, 8.0, 11.0, 15.0], dtype=np.float32),
+                    values=np.array([20.0, 25.0, 30.0]),
                 ),
             ),
             expected=np.array([1.0, 4.0, 7.0, 8.0, 11.0, 15.0], dtype=np.float64),  # because values are float64
@@ -2323,8 +2661,14 @@ class TestRefine(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([0.0, 3.5, 7.2], dtype=np.float64), values=np.array([12.0, 18.0])),
-                Histogram(edges=np.array([2.1, 5.8, 6.9], dtype=np.float64), values=np.array([9.0, 15.0])),
+                Histogram(
+                    edges=np.array([0.0, 3.5, 7.2], dtype=np.float64),
+                    values=np.array([12.0, 18.0]),
+                ),
+                Histogram(
+                    edges=np.array([2.1, 5.8, 6.9], dtype=np.float64),
+                    values=np.array([9.0, 15.0]),
+                ),
             ),
             expected=np.array([0.0, 2.1, 3.5, 5.8, 6.9, 7.2], dtype=np.float64),
             label="overlapping_histograms_without_edge_points_overlapping",
@@ -2332,7 +2676,8 @@ class TestRefine(BaseTestSuite):
         TestCase(
             histograms=(
                 Histogram(
-                    edges=np.array([1.0, 3.0, 5.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                    edges=np.array([1.0, 3.0, 5.0], dtype=np.float32),
+                    values=np.array([8.0, 12.0], dtype=np.float32),
                 ),
                 Histogram(
                     edges=np.array([10.0, 15.0, 20.0], dtype=np.float32),
@@ -2344,19 +2689,40 @@ class TestRefine(BaseTestSuite):
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([0.0, 2.5, 5.0], dtype=np.float64), values=np.array([10.0, 20.0])),
-                Histogram(edges=np.array([1.0, 3.0, 5.0], dtype=np.float64), values=np.array([15.0, 25.0])),
-                Histogram(edges=np.array([0.0, 1.5, 4.0, 5.0], dtype=np.float64), values=np.array([5.0, 12.0, 18.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.5, 5.0], dtype=np.float64),
+                    values=np.array([10.0, 20.0]),
+                ),
+                Histogram(
+                    edges=np.array([1.0, 3.0, 5.0], dtype=np.float64),
+                    values=np.array([15.0, 25.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 1.5, 4.0, 5.0], dtype=np.float64),
+                    values=np.array([5.0, 12.0, 18.0]),
+                ),
             ),
             expected=np.array([0.0, 1.0, 1.5, 2.5, 3.0, 4.0, 5.0], dtype=np.float64),
             label="three_histograms",
         ),
         TestCase(
             histograms=(
-                Histogram(edges=np.array([10.0, 20.0, 35.0, 50.0]), values=np.array([8.0, 16.0, 24.0])),
-                Histogram(edges=np.array([10.0, 15.0, 25.0, 35.0, 50.0]), values=np.array([4.0, 8.0, 12.0, 16.0])),
-                Histogram(edges=np.array([10.0, 30.0, 40.0, 50.0]), values=np.array([20.0, 30.0, 40.0])),
-                Histogram(edges=np.array([15.0, 25.0, 35.0, 45.0, 50.0]), values=np.array([5.0, 10.0, 15.0, 20.0])),
+                Histogram(
+                    edges=np.array([10.0, 20.0, 35.0, 50.0]),
+                    values=np.array([8.0, 16.0, 24.0]),
+                ),
+                Histogram(
+                    edges=np.array([10.0, 15.0, 25.0, 35.0, 50.0]),
+                    values=np.array([4.0, 8.0, 12.0, 16.0]),
+                ),
+                Histogram(
+                    edges=np.array([10.0, 30.0, 40.0, 50.0]),
+                    values=np.array([20.0, 30.0, 40.0]),
+                ),
+                Histogram(
+                    edges=np.array([15.0, 25.0, 35.0, 45.0, 50.0]),
+                    values=np.array([5.0, 10.0, 15.0, 20.0]),
+                ),
             ),
             expected=np.array([10.0, 15.0, 20.0, 25.0, 30.0, 35.0, 40.0, 45.0, 50.0]),
             label="four_histograms",
@@ -2413,7 +2779,12 @@ class TestApply(BaseTestSuite):
         ),
         TestCase(
             function=np.log,
-            histograms=(Histogram(edges=np.array([0.0, 1.0, 4.0]), values=np.array([np.e, 3 * np.e])),),
+            histograms=(
+                Histogram(
+                    edges=np.array([0.0, 1.0, 4.0]),
+                    values=np.array([np.e, 3 * np.e]),
+                ),
+            ),
             expected=np.array([1.0, 1.0]),
             label="single_histogram_log",
         ),
@@ -2436,10 +2807,12 @@ class TestApply(BaseTestSuite):
             function=lambda d1, d2: d1 * d2,
             histograms=(
                 Histogram(
-                    edges=np.array([0.0, 2.0, 8.0], dtype=np.float32), values=np.array([4.0, 12.0], dtype=np.float32)
+                    edges=np.array([0.0, 2.0, 8.0], dtype=np.float32),
+                    values=np.array([4.0, 12.0], dtype=np.float32),
                 ),
                 Histogram(
-                    edges=np.array([0.0, 2.0, 8.0], dtype=np.float32), values=np.array([6.0, 18.0], dtype=np.float32)
+                    edges=np.array([0.0, 2.0, 8.0], dtype=np.float32),
+                    values=np.array([6.0, 18.0], dtype=np.float32),
                 ),
             ),
             expected=np.array([6.0, 6.0], dtype=np.float32),
@@ -2449,8 +2822,14 @@ class TestApply(BaseTestSuite):
             function=lambda d1, d2, d3: d1 + d2 + d3,
             histograms=(
                 Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([2.0, 6.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([4.0, 12.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([6.0, 18.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([4.0, 12.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([6.0, 18.0]),
+                ),
             ),
             expected=np.array([6.0, 6.0]),
             label="three_histograms_add",
@@ -2458,10 +2837,16 @@ class TestApply(BaseTestSuite):
         TestCase(
             function=lambda d1, d2, d3, d4: d1 * d2 * d3 * d4,
             histograms=(
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([4.0, 12.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([4.0, 12.0]),
+                ),
                 Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([2.0, 6.0])),
                 Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([6.0, 6.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([2.0, 12.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([2.0, 12.0]),
+                ),
             ),
             expected=np.array([6.0, 4.0]),
             label="four_histograms_multiply",
@@ -2515,11 +2900,13 @@ class TestApplyWith(BaseTestSuite):
         TestCase(
             function=lambda d1, d2: d1 + d2,
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([4.0, 16.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([4.0, 16.0], dtype=np.float32),
             ),
             other_histograms=(
                 Histogram(
-                    edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([6.0, 24.0], dtype=np.float32)
+                    edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                    values=np.array([6.0, 24.0], dtype=np.float32),
                 ),
             ),
             expected=np.array([5.0, 5.0], dtype=np.float32),
@@ -2529,8 +2916,14 @@ class TestApplyWith(BaseTestSuite):
             function=lambda d1, d2, d3: d1 + d2 - d3,
             histogram=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([20.0, 24.0])),
             other_histograms=(
-                Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([12.0, 16.0])),
-                Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([8.0, 12.0])),
+                Histogram(
+                    edges=np.array([0.0, 4.0, 8.0]),
+                    values=np.array([12.0, 16.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 4.0, 8.0]),
+                    values=np.array([8.0, 12.0]),
+                ),
             ),
             expected=np.array([6.0, 7.0]),
             label="three_histograms_combined",
@@ -2538,7 +2931,12 @@ class TestApplyWith(BaseTestSuite):
         TestCase(
             function=lambda d1, d2: d1 / d2,
             histogram=Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([12.0, 36.0])),
-            other_histograms=(Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([4.0, 12.0])),),
+            other_histograms=(
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([4.0, 12.0]),
+                ),
+            ),
             expected=np.array([3.0, 3.0]),
             label="divide_two_histograms",
         ),
@@ -2616,13 +3014,16 @@ class TestReduce(BaseTestSuite):
             function=np.multiply,
             histograms=(
                 Histogram(
-                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                    values=np.array([8.0, 12.0], dtype=np.float32),
                 ),
                 Histogram(
-                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([12.0, 8.0], dtype=np.float32)
+                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                    values=np.array([12.0, 8.0], dtype=np.float32),
                 ),
                 Histogram(
-                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                    edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                    values=np.array([8.0, 12.0], dtype=np.float32),
                 ),
             ),
             expected=np.array([12.0, 18.0], dtype=np.float32),
@@ -2631,10 +3032,22 @@ class TestReduce(BaseTestSuite):
         TestCase(
             function=np.add,
             histograms=(
-                Histogram(edges=np.array([0.0, 2.0, 10.0]), values=np.array([2.0, 8.0])),
-                Histogram(edges=np.array([0.0, 2.0, 10.0]), values=np.array([4.0, 16.0])),
-                Histogram(edges=np.array([0.0, 2.0, 10.0]), values=np.array([6.0, 24.0])),
-                Histogram(edges=np.array([0.0, 2.0, 10.0]), values=np.array([8.0, 32.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 10.0]),
+                    values=np.array([2.0, 8.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 10.0]),
+                    values=np.array([4.0, 16.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 10.0]),
+                    values=np.array([6.0, 24.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 10.0]),
+                    values=np.array([8.0, 32.0]),
+                ),
             ),
             expected=np.array([10.0, 10.0]),
             label="four_histograms_add",
@@ -2642,9 +3055,18 @@ class TestReduce(BaseTestSuite):
         TestCase(
             function=np.maximum,
             histograms=(
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([4.0, 10.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([6.0, 12.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([2.0, 18.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([4.0, 10.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([6.0, 12.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([2.0, 18.0]),
+                ),
             ),
             expected=np.array([3.0, 3.0]),
             label="three_histograms_maximum",
@@ -2698,11 +3120,13 @@ class TestReduceWith(BaseTestSuite):
         TestCase(
             function=np.add,
             histogram=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([2.0, 8.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([2.0, 8.0], dtype=np.float32),
             ),
             other_histograms=(
                 Histogram(
-                    edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([6.0, 24.0], dtype=np.float32)
+                    edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                    values=np.array([6.0, 24.0], dtype=np.float32),
                 ),
             ),
             expected=np.array([4.0, 4.0], dtype=np.float32),
@@ -2712,8 +3136,14 @@ class TestReduceWith(BaseTestSuite):
             function=np.add,
             histogram=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([4.0, 8.0])),
             other_histograms=(
-                Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([8.0, 12.0])),
-                Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([12.0, 16.0])),
+                Histogram(
+                    edges=np.array([0.0, 4.0, 8.0]),
+                    values=np.array([8.0, 12.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 4.0, 8.0]),
+                    values=np.array([12.0, 16.0]),
+                ),
             ),
             expected=np.array([6.0, 9.0]),
             label="add_three_histograms",
@@ -2722,8 +3152,14 @@ class TestReduceWith(BaseTestSuite):
             function=np.minimum,
             histogram=Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([10.0, 18.0])),
             other_histograms=(
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([6.0, 24.0])),
-                Histogram(edges=np.array([0.0, 2.0, 8.0]), values=np.array([8.0, 12.0])),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([6.0, 24.0]),
+                ),
+                Histogram(
+                    edges=np.array([0.0, 2.0, 8.0]),
+                    values=np.array([8.0, 12.0]),
+                ),
             ),
             expected=np.array([3.0, 2.0]),
             label="minimum_three_histograms",
@@ -2771,16 +3207,26 @@ class TestAddition(BaseTestSuite):
             label="two_histograms_same_edges",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 8.0, 12.0]), values=np.array([9.0, 15.0, 16.0])),
-            right=Histogram(edges=np.array([0.0, 3.0, 6.0, 10.0]), values=np.array([6.0, 12.0, 20.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 8.0, 12.0]),
+                values=np.array([9.0, 15.0, 16.0]),
+            ),
+            right=Histogram(
+                edges=np.array([0.0, 3.0, 6.0, 10.0]),
+                values=np.array([6.0, 12.0, 20.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), values=np.array([15.0, 21.0, 16.0, 18.0, 8.0])
+                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]),
+                values=np.array([15.0, 21.0, 16.0, 18.0, 8.0]),
             ),
             label="two_histograms_overlapping_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 10.0]), values=np.array([8.0, 18.0])),
-            right=Histogram(edges=np.array([2.0, 6.0, 8.0, 12.0]), values=np.array([8.0, 10.0, 16.0])),
+            right=Histogram(
+                edges=np.array([2.0, 6.0, 8.0, 12.0]),
+                values=np.array([8.0, 10.0, 16.0]),
+            ),
             expected=Histogram(
                 edges=np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]),
                 values=np.array([4.0, 8.0, 10.0, 16.0, 14.0, 8.0]),
@@ -2789,21 +3235,28 @@ class TestAddition(BaseTestSuite):
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([8.0, 16.0])),
-            right=Histogram(edges=np.array([10.0, 15.0, 20.0]), values=np.array([10.0, 25.0])),
+            right=Histogram(
+                edges=np.array([10.0, 15.0, 20.0]),
+                values=np.array([10.0, 25.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), values=np.array([8.0, 16.0, 0.0, 10.0, 25.0])
+                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]),
+                values=np.array([8.0, 16.0, 0.0, 10.0, 25.0]),
             ),
             label="two_histograms_disjoint",
         ),
         TestCase(
             left=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([4.0, 16.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([4.0, 16.0], dtype=np.float32),
             ),
             right=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([6.0, 24.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([6.0, 24.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([10.0, 40.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([10.0, 40.0], dtype=np.float32),
             ),
             label="two_histograms_float32",
         ),
@@ -2865,7 +3318,11 @@ class TestAddition(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_addition(self, test_case: TestCase) -> None:
-        if not expect_error(lambda: test_case.left + test_case.right, test_case.expected, match=test_case.match):
+        if not expect_error(
+            lambda: test_case.left + test_case.right,
+            test_case.expected,
+            match=test_case.match,
+        ):
             result = test_case.left + test_case.right
             assert isinstance(test_case.expected, Histogram)
             assert isinstance(result, Histogram)
@@ -2889,38 +3346,56 @@ class TestSubtraction(BaseTestSuite):
             label="two_histograms_same_edges",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 8.0, 12.0]), values=np.array([15.0, 20.0, 24.0])),
-            right=Histogram(edges=np.array([0.0, 3.0, 6.0, 10.0]), values=np.array([9.0, 12.0, 16.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 8.0, 12.0]),
+                values=np.array([15.0, 20.0, 24.0]),
+            ),
+            right=Histogram(
+                edges=np.array([0.0, 3.0, 6.0, 10.0]),
+                values=np.array([9.0, 12.0, 16.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), values=np.array([6.0, 0.0, 0.0, 4.0, 12.0])
+                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]),
+                values=np.array([6.0, 0.0, 0.0, 4.0, 12.0]),
             ),
             label="two_histograms_overlapping_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 10.0]), values=np.array([12.0, 24.0])),
-            right=Histogram(edges=np.array([2.0, 6.0, 8.0, 12.0]), values=np.array([8.0, 10.0, 16.0])),
+            right=Histogram(
+                edges=np.array([2.0, 6.0, 8.0, 12.0]),
+                values=np.array([8.0, 10.0, 16.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]), values=np.array([6.0, 2.0, 4.0, -2.0, 0.0, -8.0])
+                edges=np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]),
+                values=np.array([6.0, 2.0, 4.0, -2.0, 0.0, -8.0]),
             ),
             label="two_histograms_overlapping_no_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([8.0, 16.0])),
-            right=Histogram(edges=np.array([10.0, 15.0, 20.0]), values=np.array([10.0, 25.0])),
+            right=Histogram(
+                edges=np.array([10.0, 15.0, 20.0]),
+                values=np.array([10.0, 25.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), values=np.array([8.0, 16.0, 0.0, -10.0, -25.0])
+                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]),
+                values=np.array([8.0, 16.0, 0.0, -10.0, -25.0]),
             ),
             label="two_histograms_disjoint",
         ),
         TestCase(
             left=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([16.0, 20.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([16.0, 20.0], dtype=np.float32),
             ),
             right=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([8.0, 12.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 8.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([8.0, 8.0], dtype=np.float32),
             ),
             label="two_histograms_float32",
         ),
@@ -2962,7 +3437,11 @@ class TestSubtraction(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_subtraction(self, test_case: TestCase) -> None:
-        if not expect_error(lambda: test_case.left - test_case.right, test_case.expected, match=test_case.match):
+        if not expect_error(
+            lambda: test_case.left - test_case.right,
+            test_case.expected,
+            match=test_case.match,
+        ):
             result = test_case.left - test_case.right
             assert isinstance(test_case.expected, Histogram)
             assert isinstance(result, Histogram)
@@ -2986,16 +3465,26 @@ class TestMultiplication(BaseTestSuite):
             label="two_histograms_same_edges",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 8.0, 12.0]), values=np.array([6.0, 10.0, 16.0])),
-            right=Histogram(edges=np.array([0.0, 3.0, 6.0, 10.0]), values=np.array([4.0, 12.0, 20.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 8.0, 12.0]),
+                values=np.array([6.0, 10.0, 16.0]),
+            ),
+            right=Histogram(
+                edges=np.array([0.0, 3.0, 6.0, 10.0]),
+                values=np.array([4.0, 12.0, 20.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), values=np.array([8.0, 24.0, 20.0, 40.0, 0.0])
+                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]),
+                values=np.array([8.0, 24.0, 20.0, 40.0, 0.0]),
             ),
             label="two_histograms_overlapping_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 10.0]), values=np.array([8.0, 18.0])),
-            right=Histogram(edges=np.array([2.0, 6.0, 8.0, 12.0]), values=np.array([8.0, 10.0, 16.0])),
+            right=Histogram(
+                edges=np.array([2.0, 6.0, 8.0, 12.0]),
+                values=np.array([8.0, 10.0, 16.0]),
+            ),
             expected=Histogram(
                 edges=np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0]),
                 values=np.array([0.0, 8.0, 12.0, 30.0, 24.0, 0.0]),
@@ -3004,21 +3493,28 @@ class TestMultiplication(BaseTestSuite):
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([8.0, 16.0])),
-            right=Histogram(edges=np.array([10.0, 15.0, 20.0]), values=np.array([10.0, 25.0])),
+            right=Histogram(
+                edges=np.array([10.0, 15.0, 20.0]),
+                values=np.array([10.0, 25.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]), values=np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+                edges=np.array([0.0, 4.0, 8.0, 10.0, 15.0, 20.0]),
+                values=np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
             ),
             label="two_histograms_disjoint",
         ),
         TestCase(
             left=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 12.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([8.0, 12.0], dtype=np.float32),
             ),
             right=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([12.0, 8.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([12.0, 8.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([24.0, 24.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([24.0, 24.0], dtype=np.float32),
             ),
             label="two_histograms_float32",
         ),
@@ -3080,7 +3576,11 @@ class TestMultiplication(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_multiplication(self, test_case: TestCase) -> None:
-        if not expect_error(lambda: test_case.left * test_case.right, test_case.expected, match=test_case.match):
+        if not expect_error(
+            lambda: test_case.left * test_case.right,
+            test_case.expected,
+            match=test_case.match,
+        ):
             result = test_case.left * test_case.right
             assert isinstance(test_case.expected, Histogram)
             assert isinstance(result, Histogram)
@@ -3110,42 +3610,62 @@ class TestDivision(BaseTestSuite):
             label="histogram_divided_by_histogram_same_edges",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 8.0, 10.0]), values=np.array([18.0, 30.0, 48.0])),
-            right=Histogram(edges=np.array([0.0, 3.0, 6.0, 12.0]), values=np.array([6.0, 12.0, 20.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 8.0, 10.0]),
+                values=np.array([18.0, 30.0, 48.0]),
+            ),
+            right=Histogram(
+                edges=np.array([0.0, 3.0, 6.0, 12.0]),
+                values=np.array([6.0, 12.0, 20.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]), values=np.array([9.0, 4.5, 3.6, 14.4, 0.0])
+                edges=np.array([0.0, 3.0, 6.0, 8.0, 10.0, 12.0]),
+                values=np.array([9.0, 4.5, 3.6, 14.4, 0.0]),
             ),
             label="histogram_divided_by_histogram_containing_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([2.0, 3.0, 4.0]), values=np.array([16.0, 36.0])),
-            right=Histogram(edges=np.array([0.0, 6.0, 8.0, 12.0]), values=np.array([8.0, 10.0, 16.0])),
+            right=Histogram(
+                edges=np.array([0.0, 6.0, 8.0, 12.0]),
+                values=np.array([8.0, 10.0, 16.0]),
+            ),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]), values=np.array([0.0, 12.0, 27.0, 0.0, 0.0, 0.0])
+                edges=np.array([0.0, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0]),
+                values=np.array([0.0, 12.0, 27.0, 0.0, 0.0, 0.0]),
             ),
             label="histogram_divided_by_histogram_containing_no_common_edges",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 10.0]), values=np.array([16.0, 36.0])),
-            right=Histogram(edges=np.array([2.0, 6.0, 8.0, 12.0]), values=np.array([8.0, 10.0, 16.0])),
+            right=Histogram(
+                edges=np.array([2.0, 6.0, 8.0, 12.0]),
+                values=np.array([8.0, 10.0, 16.0]),
+            ),
             expected=ZeroDivisionError,
             label="histogram_divided_by_histogram_partially_overlapping",
         ),
         TestCase(
             left=Histogram(edges=np.array([0.0, 4.0, 8.0]), values=np.array([16.0, 24.0])),
-            right=Histogram(edges=np.array([10.0, 15.0, 20.0]), values=np.array([10.0, 25.0])),
+            right=Histogram(
+                edges=np.array([10.0, 15.0, 20.0]),
+                values=np.array([10.0, 25.0]),
+            ),
             expected=ZeroDivisionError,
             label="histogram_divided_by_disjoint_histogram",
         ),
         TestCase(
             left=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([24.0, 16.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([24.0, 16.0], dtype=np.float32),
             ),
             right=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([8.0, 16.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([8.0, 16.0], dtype=np.float32),
             ),
             expected=Histogram(
-                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32), values=np.array([12.0, 4.0], dtype=np.float32)
+                edges=np.array([0.0, 4.0, 8.0], dtype=np.float32),
+                values=np.array([12.0, 4.0], dtype=np.float32),
             ),
             label="histogram_divided_by_histogram_float32",
         ),
@@ -3214,7 +3734,11 @@ class TestDivision(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_division(self, test_case: TestCase) -> None:
-        if not expect_error(lambda: test_case.left / test_case.right, test_case.expected, match=test_case.match):
+        if not expect_error(
+            lambda: test_case.left / test_case.right,
+            test_case.expected,
+            match=test_case.match,
+        ):
             result = test_case.left / test_case.right
             assert isinstance(test_case.expected, Histogram)
             assert isinstance(result, Histogram)
@@ -3263,11 +3787,13 @@ class TestPower(BaseTestSuite):
         ),
         TestCase(
             left=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([8.0, 24.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([8.0, 24.0], dtype=np.float32),
             ),
             right=2,
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32), values=np.array([32.0, 72.0], dtype=np.float32)
+                edges=np.array([0.0, 2.0, 10.0], dtype=np.float32),
+                values=np.array([32.0, 72.0], dtype=np.float32),
             ),
             label="histogram_power_square_float32",
         ),
@@ -3286,7 +3812,10 @@ class TestPower(BaseTestSuite):
         TestCase(
             left=np.array([2.0, 50.0]),
             right=Histogram(edges=np.array([-1.0, 0.0, 2.0]), values=np.array([4.0, -4.0])),
-            expected=Histogram(edges=np.array([-1.0, 0.0, 2.0]), values=np.array([16.0, 0.0032])),
+            expected=Histogram(
+                edges=np.array([-1.0, 0.0, 2.0]),
+                values=np.array([16.0, 0.0032]),
+            ),
             label="array_power_histogram",
         ),
         TestCase(
@@ -3317,23 +3846,34 @@ class TestPower(BaseTestSuite):
             label="invalid_type_rpow_error",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([4.0, 8.0, 12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([4.0, 8.0, 12.0]),
+            ),
             right=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([2.0, 3.0])),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]), values=np.array([2.0, 4.0, 5.656854249492381, 4.0])
+                edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]),
+                values=np.array([2.0, 4.0, 5.656854249492381, 4.0]),
             ),
             label="exponent_range_strictly_contained_in_base_range",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([4.0, 8.0, 12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([4.0, 8.0, 12.0]),
+            ),
             right=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([-2.0, -3.0])),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]), values=np.array([2.0, 1.0, 0.7071067811865476, 4.0])
+                edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]),
+                values=np.array([2.0, 1.0, 0.7071067811865476, 4.0]),
             ),
             label="exponent_range_strictly_contained_in_base_range_negative_exponents",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([4.0, 0.0, 12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([4.0, 0.0, 12.0]),
+            ),
             right=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([2.0, -3.0])),
             expected=ZeroDivisionError,
             match="Zero densities cannot be raised to negative powers",
@@ -3341,43 +3881,83 @@ class TestPower(BaseTestSuite):
         ),
         TestCase(
             left=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([3.0, 5.0])),
-            right=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([2.0, 4.0, 3.0])),
-            expected=Histogram(edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]), values=np.array([0.0, 3.0, 5.0, 0.0])),
+            right=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([2.0, 4.0, 3.0]),
+            ),
+            expected=Histogram(
+                edges=np.array([0.0, 2.0, 4.0, 6.0, 10.0]),
+                values=np.array([0.0, 3.0, 5.0, 0.0]),
+            ),
             label="base_range_strictly_contained_in_exponent_range",
         ),
         TestCase(
             left=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([3.0, 5.0])),
-            right=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([-2.0, -4.0, -3.0])),
+            right=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([-2.0, -4.0, -3.0]),
+            ),
             expected=ZeroDivisionError,
             match="Zero densities cannot be raised to negative powers",
             label="base_range_strictly_contained_in_exponent_range_negative_exponents",
         ),
         TestCase(
             left=Histogram(edges=np.array([2.0, 4.0, 6.0]), values=np.array([0.0, 5.0])),
-            right=Histogram(edges=np.array([0.0, 2.0, 6.0, 10.0]), values=np.array([2.0, -4.0, 3.0])),
+            right=Histogram(
+                edges=np.array([0.0, 2.0, 6.0, 10.0]),
+                values=np.array([2.0, -4.0, 3.0]),
+            ),
             expected=ZeroDivisionError,
             match="Zero densities cannot be raised to negative powers",
             label="base_range_strictly_contained_in_exponent_range_zero_density_negative_exponent",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 7.0, 10.0]), values=np.array([6.0, 8.0, 10.0])),
-            right=Histogram(edges=np.array([2.0, 5.0, 8.0, 12.0]), values=np.array([3.0, 6.0, 12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 7.0, 10.0]),
+                values=np.array([6.0, 8.0, 10.0]),
+            ),
+            right=Histogram(
+                edges=np.array([2.0, 5.0, 8.0, 12.0]),
+                values=np.array([3.0, 6.0, 12.0]),
+            ),
             expected=Histogram(
                 edges=np.array([0.0, 2.0, 3.0, 5.0, 7.0, 8.0, 10.0, 12.0]),
-                values=np.array([2.0, 2.0, 4.0, 8.0, 11.11111111111111, 74.07407407407408, 0.0]),
+                values=np.array(
+                    [
+                        2.0,
+                        2.0,
+                        4.0,
+                        8.0,
+                        11.11111111111111,
+                        74.07407407407408,
+                        0.0,
+                    ]
+                ),
             ),
             label="base_and_exponent_overlap_partially",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 7.0, 10.0]), values=np.array([6.0, 8.0, 10.0])),
-            right=Histogram(edges=np.array([2.0, 5.0, 8.0, 12.0]), values=np.array([-3.0, -6.0, -12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 7.0, 10.0]),
+                values=np.array([6.0, 8.0, 10.0]),
+            ),
+            right=Histogram(
+                edges=np.array([2.0, 5.0, 8.0, 12.0]),
+                values=np.array([-3.0, -6.0, -12.0]),
+            ),
             expected=ZeroDivisionError,
             match="Zero densities cannot be raised to negative powers",
             label="base_and_exponent_overlap_partially_negative_exponents",
         ),
         TestCase(
-            left=Histogram(edges=np.array([0.0, 3.0, 7.0, 10.0]), values=np.array([6.0, 0.0, 10.0])),
-            right=Histogram(edges=np.array([2.0, 5.0, 8.0, 12.0]), values=np.array([3.0, -6.0, 12.0])),
+            left=Histogram(
+                edges=np.array([0.0, 3.0, 7.0, 10.0]),
+                values=np.array([6.0, 0.0, 10.0]),
+            ),
+            right=Histogram(
+                edges=np.array([2.0, 5.0, 8.0, 12.0]),
+                values=np.array([3.0, -6.0, 12.0]),
+            ),
             expected=ZeroDivisionError,
             match="Zero densities cannot be raised to negative powers",
             label="base_and_exponent_overlap_partially_zero_density_negative_exponent",
@@ -3386,7 +3966,8 @@ class TestPower(BaseTestSuite):
             left=Histogram(edges=np.array([0.0, 2.0, 5.0]), values=np.array([4.0, 6.0])),
             right=Histogram(edges=np.array([6.0, 8.0, 10.0]), values=np.array([2.0, 3.0])),
             expected=Histogram(
-                edges=np.array([0.0, 2.0, 5.0, 6.0, 8.0, 10.0]), values=np.array([2.0, 3.0, 1.0, 0.0, 0.0])
+                edges=np.array([0.0, 2.0, 5.0, 6.0, 8.0, 10.0]),
+                values=np.array([2.0, 3.0, 1.0, 0.0, 0.0]),
             ),
             label="base_and_exponent_disjoint_ranges",
         ),
@@ -3412,7 +3993,11 @@ class TestPower(BaseTestSuite):
         ids=lambda test_case: test_case.label,
     )
     def test_power(self, test_case: TestCase) -> None:
-        if not expect_error(lambda: test_case.left**test_case.right, test_case.expected, match=test_case.match):
+        if not expect_error(
+            lambda: test_case.left**test_case.right,
+            test_case.expected,
+            match=test_case.match,
+        ):
             result = test_case.left**test_case.right
             assert isinstance(test_case.expected, Histogram)
             assert isinstance(result, Histogram)

@@ -490,7 +490,11 @@ class BidirectionalHashMap(Generic[ValueT]):
         del self._forward[string]
         return string
 
-    def remap(self, old_key_or_value: Union[str, ValueT], new_key_or_value: Union[str, ValueT]) -> None:
+    def remap(
+        self,
+        old_key_or_value: Union[str, ValueT],
+        new_key_or_value: Union[str, ValueT],
+    ) -> None:
         """
         Remaps an existing key or value to a new key or value in the appropriate direction.
 

@@ -5,7 +5,11 @@ import numpy as np
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import NUM_PERIODS
 from sampletones_core.generators import GeneratorTypeUnion, NoiseGenerator
-from sampletones_core.instructions import InstructionFields, InstructionTypeUnion, NoiseInstruction
+from sampletones_core.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    NoiseInstruction,
+)
 from sampletones_core.types.feature import FeatureMap
 
 from .exporter import Exporter

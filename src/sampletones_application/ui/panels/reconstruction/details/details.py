@@ -3,6 +3,16 @@ from typing import Any, Callable, Dict, Optional, Tuple, cast
 import dearpygui.dearpygui as dpg
 import numpy as np
 
+from sampletones_application.categories.elements.global_ import (
+    DialogElements,
+    GlobalMessageElements,
+)
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionsDetailsElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
     SUF_DECREMENT,
@@ -33,11 +43,6 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
-from sampletones_application.text.elements.global_ import DialogElements, GlobalMessageElements
-from sampletones_application.text.elements.reconstructions import ReconstructionsDetailsElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -52,13 +57,23 @@ from sampletones_application.ui.panels.reconstruction.details.config import (
 )
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.input import InvalidInputTheme
-from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme
+from sampletones_application.ui.themes.tables.initial_pitch import (
+    InitialPitchTableTheme,
+)
 from sampletones_application.utils.clipboard import copy_to_clipboard
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item, dpg_set_value
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_item,
+    dpg_set_value,
+)
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
-from sampletones_application.view_model.reconstruction.feature import FeatureData
+from sampletones_application.view_model.reconstruction.details import (
+    ReconstructionDetailsViewModel,
+)
+from sampletones_application.view_model.reconstruction.feature import (
+    FeatureData,
+)
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.utils.frequencies import (
@@ -126,25 +141,51 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         ]
         self._lbl_export_fti = language_manager[
             TextKey(
-                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.EXPORT_FTI_BUTTON
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.EXPORT_FTI_BUTTON,
             )
         ]
         self._lbl_export_ftis = language_manager[
             TextKey(
-                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON,
             )
         ]
         self._lbl_copy = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.COPY_BUTTON)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.COPY_BUTTON,
+            )
         ]
         self._lbl_generators = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.GENERATORS_TEXT)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.GENERATORS_TEXT,
+            )
         ]
         self._lbl_initial_period = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.INITIAL_PERIOD)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.INITIAL_PERIOD,
+            )
         ]
         self._lbl_initial_pitch = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.LABEL, ReconstructionsDetailsElements.INITIAL_PITCH)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                ReconstructionsDetailsElements.INITIAL_PITCH,
+            )
         ]
         self._msg_input_pitch = language_manager[
             TextKey(
@@ -163,11 +204,19 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             )
         ]
         self._msg_bar = language_manager[
-            TextKey(Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.STATUS_BAR)
+            TextKey(
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_BAR,
+            )
         ]
         self._msg_sequence = language_manager[
             TextKey(
-                Page.RECONSTRUCTIONS, Panel.DETAILS, TextType.MESSAGE, ReconstructionsDetailsElements.STATUS_SEQUENCE
+                Page.RECONSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.MESSAGE,
+                ReconstructionsDetailsElements.STATUS_SEQUENCE,
             )
         ]
         self._msg_copy_sequence = language_manager[
@@ -385,7 +434,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(self.export_button_separator_tag, show=is_loaded)
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS, show=is_loaded, enabled=is_loaded)
+        dpg_configure_item(
+            TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
+            show=is_loaded,
+            enabled=is_loaded,
+        )
         dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=is_loaded)
 
         for generator_name in GeneratorName.items():
@@ -574,7 +627,13 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         if not is_decrement and not is_increment:
             return
 
-        self.call(self.on_hold_tick, is_decrement, is_increment, dpg.get_delta_time(), generator_name)
+        self.call(
+            self.on_hold_tick,
+            is_decrement,
+            is_increment,
+            dpg.get_delta_time(),
+            generator_name,
+        )
 
     def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self.call(self.on_hold_ended)
@@ -627,7 +686,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         user_data: Tuple[GeneratorName, str, str],
     ) -> None:
         generator_name, _, value_tag = user_data
-        self.call(self.on_pitch_input, generator_name, app_data, int(dpg.get_value(value_tag)))
+        self.call(
+            self.on_pitch_input,
+            generator_name,
+            app_data,
+            int(dpg.get_value(value_tag)),
+        )
 
     def _create_feature_display(
         self,

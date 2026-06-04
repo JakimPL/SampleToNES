@@ -5,10 +5,17 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from sampletones_core.structures.collection.bidirectional import BidirectionalHashMap
+from sampletones_core.structures.collection.bidirectional import (
+    BidirectionalHashMap,
+)
 from sampletones_core.structures.collection.indexed import IndexedCollection
 from sampletones_shared.types.data import ModelHashable
-from tests.sampletones.dummy import NonSerializableModel, SimpleModel, ValueFrozenModel, ValueObject
+from tests.sampletones.dummy import (
+    NonSerializableModel,
+    SimpleModel,
+    ValueFrozenModel,
+    ValueObject,
+)
 
 HashableT = TypeVar("HashableT", bound=ModelHashable)
 
@@ -132,7 +139,9 @@ class TestGetItem:
         with pytest.raises(IndexError, match="out of bounds"):
             _ = collection[5]
 
-    def test_getitem_negative_index_out_of_bounds_raises_index_error(self) -> None:
+    def test_getitem_negative_index_out_of_bounds_raises_index_error(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]([42])
         with pytest.raises(IndexError, match="out of bounds"):
             _ = collection[-2]
@@ -206,7 +215,9 @@ class TestSetItem:
         assert len(collection) == 2
         assert collection[0] is True
 
-    def test_setitem_integers_item_exists_elsewhere_raises_value_error(self) -> None:
+    def test_setitem_integers_item_exists_elsewhere_raises_value_error(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]([1, 2, 3])
         with pytest.raises(ValueError, match="already exists"):
             collection[0] = 2
@@ -387,7 +398,9 @@ class TestContains:
         del collection[0]
         assert item not in collection
 
-    def test_contains_with_hash_collision_different_items_same_hash(self) -> None:
+    def test_contains_with_hash_collision_different_items_same_hash(
+        self,
+    ) -> None:
         item1 = "first"
         collection = IndexedCollection[str]([item1])
 
@@ -621,15 +634,27 @@ class TestEq:
             }
         )
         collection1 = IndexedCollection[str]()
-        collection1._items = {"hash_a": "item1", "hash_b": "item2", "hash_c": "item3"}
+        collection1._items = {
+            "hash_a": "item1",
+            "hash_b": "item2",
+            "hash_c": "item3",
+        }
         collection1._order = common_order
 
         collection2 = IndexedCollection[str]()
-        collection2._items = {"hash_b": "different2", "hash_c": "different3", "hash_a": "different1"}
+        collection2._items = {
+            "hash_b": "different2",
+            "hash_c": "different3",
+            "hash_a": "different1",
+        }
         collection2._order = common_order.copy()
 
         collection3 = IndexedCollection[str]()
-        collection3._items = {"hash_c": "other3", "hash_b": "other2", "hash_a": "other1"}
+        collection3._items = {
+            "hash_c": "other3",
+            "hash_b": "other2",
+            "hash_a": "other1",
+        }
         collection3._order = BidirectionalHashMap(
             {key: value for key, value in reversed(list(common_order.items_forward()))}
         )
@@ -1161,14 +1186,18 @@ class TestGetHash:
         with pytest.raises(TypeError):
             collection.get_hash(3.14)
 
-    def test_get_hash_using_existing_hash_string_returns_same_hash(self) -> None:
+    def test_get_hash_using_existing_hash_string_returns_same_hash(
+        self,
+    ) -> None:
         items = ["first", "second", "third"]
         collection = IndexedCollection[str](items)
         hash_second = IndexedCollection.hash("second")
         result = collection.get_hash(hash_second)
         assert result == hash_second
 
-    def test_get_hash_using_nonexistent_hash_string_raises_key_error(self) -> None:
+    def test_get_hash_using_nonexistent_hash_string_raises_key_error(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]([10, 20, 30])
         fake_hash = "fake_hash"
         with pytest.raises(KeyError, match="not found"):
@@ -1252,11 +1281,15 @@ class TestVerifyIntegrity:
         assert item_keys == order_keys
         assert order_values == expected_values
 
-    def test_items_and_order_same_keys_and_sequential_values_integers(self) -> None:
+    def test_items_and_order_same_keys_and_sequential_values_integers(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]([1, 2, 3, 4, 5])
         self.verify_integrity(collection)
 
-    def test_items_and_order_same_keys_and_sequential_values_strings(self) -> None:
+    def test_items_and_order_same_keys_and_sequential_values_strings(
+        self,
+    ) -> None:
         collection = IndexedCollection[str](["a", "b", "c", "d", "e"])
         self.verify_integrity(collection)
 
@@ -1309,7 +1342,9 @@ class TestVerifyIntegrity:
 
 
 class TestScenarios:
-    def test_build_collection_integers_with_insertions_at_various_positions(self) -> None:
+    def test_build_collection_integers_with_insertions_at_various_positions(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]()
         collection.insert(0, 100)
         collection.insert(1, 300)
@@ -1421,7 +1456,9 @@ class TestScenarios:
 
 
 class TestHashAccess:
-    def test_setitem_integers_by_nonexistent_hash_raises_key_error(self) -> None:
+    def test_setitem_integers_by_nonexistent_hash_raises_key_error(
+        self,
+    ) -> None:
         collection = IndexedCollection[int]([1])
         with pytest.raises(KeyError):
             collection["nonexistent_hash"] = 2
@@ -1435,7 +1472,9 @@ class TestHashAccess:
         assert list(collection) == ["a", "new", "c"]
         assert "b" not in collection
 
-    def test_setitem_floats_by_hash_removes_old_hash_adds_new_hash(self) -> None:
+    def test_setitem_floats_by_hash_removes_old_hash_adds_new_hash(
+        self,
+    ) -> None:
         collection = IndexedCollection[float]([1.1, 2.2])
         old_hash = IndexedCollection.hash(1.1)
         new_hash = IndexedCollection.hash(3.3)

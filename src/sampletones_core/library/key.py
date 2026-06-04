@@ -6,15 +6,20 @@ from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.configs.config import Config
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA
-from sampletones_core.constants.paths import EXT_FILE_LIBRARY
 from sampletones_core.fft import Window
+from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.utils.serialization import hash_model
 
 
 class InstructionLibraryKey(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    sample_rate: int = Field(..., ge=MIN_SAMPLE_RATE, le=MAX_SAMPLE_RATE, description="Sample rate of the audio")
+    sample_rate: int = Field(
+        ...,
+        ge=MIN_SAMPLE_RATE,
+        le=MAX_SAMPLE_RATE,
+        description="Sample rate of the audio",
+    )
     frame_length: int = Field(..., ge=1, description="Length of a single frame")
     window_size: int = Field(..., ge=1, description="Size of the FFT window")
     transformation_gamma: int = Field(

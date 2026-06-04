@@ -5,7 +5,11 @@ from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class SequencerBrowserLogic(CallbackMixin):
-    def __init__(self, config_manager: ConfigManager, browser_manager: BrowserManager) -> None:
+    def __init__(
+        self,
+        config_manager: ConfigManager,
+        browser_manager: BrowserManager,
+    ) -> None:
         self._config_manager = config_manager
         self._browser_manager = browser_manager
 

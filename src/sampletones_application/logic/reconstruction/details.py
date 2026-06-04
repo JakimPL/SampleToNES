@@ -21,7 +21,10 @@ from sampletones_core.utils.frequencies import (
 )
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-OnReconstructionInstrumentUpdatedCallback = Callable[[GeneratorName, Features, FeatureKey, FeatureValue], None]
+OnReconstructionInstrumentUpdatedCallback = Callable[
+    [GeneratorName, Features, FeatureKey, FeatureValue],
+    None,
+]
 
 
 class ReconstructionDetailsLogic(CallbackMixin):
@@ -69,7 +72,10 @@ class ReconstructionDetailsLogic(CallbackMixin):
 
             generator_features = feature_data.get_generator_features(generator_name)
             if generator_features is not None:
-                self._current_pitches[generator_name] = cast(int, generator_features[FeatureKey.INITIAL_PITCH])
+                self._current_pitches[generator_name] = cast(
+                    int,
+                    generator_features[FeatureKey.INITIAL_PITCH],
+                )
 
         self.call(
             self.on_view_changed,
@@ -81,7 +87,12 @@ class ReconstructionDetailsLogic(CallbackMixin):
         )
         self.call(self.on_feature_data_changed, feature_data)
 
-    def handle_pitch_input(self, generator_name: GeneratorName, text: str, current_raw_value: int) -> None:
+    def handle_pitch_input(
+        self,
+        generator_name: GeneratorName,
+        text: str,
+        current_raw_value: int,
+    ) -> None:
         new_pitch = self._parse_pitch_text(generator_name, text, current_raw_value)
         self._current_pitches[generator_name] = new_pitch
         self.call(self.on_pitch_changed, generator_name, new_pitch)
@@ -120,7 +131,11 @@ class ReconstructionDetailsLogic(CallbackMixin):
         delta_time: float,
         generator_name: GeneratorName,
     ) -> None:
-        direction = self._update_hold_timer(is_decrement, is_increment, delta_time)
+        direction = self._update_hold_timer(
+            is_decrement,
+            is_increment,
+            delta_time,
+        )
         if direction is not None:
             self.handle_pitch_step(generator_name, direction)
 
@@ -156,7 +171,12 @@ class ReconstructionDetailsLogic(CallbackMixin):
             )
         )
 
-    def _update_hold_timer(self, is_decrement: bool, is_increment: bool, delta_time: float) -> Optional[int]:
+    def _update_hold_timer(
+        self,
+        is_decrement: bool,
+        is_increment: bool,
+        delta_time: float,
+    ) -> Optional[int]:
         if not is_decrement and not is_increment:
             return None
 
@@ -173,7 +193,12 @@ class ReconstructionDetailsLogic(CallbackMixin):
         self._hold_timer = self._pitch_change_delay
         return direction
 
-    def _parse_pitch_text(self, generator_name: GeneratorName, text: str, current_raw_value: int) -> int:
+    def _parse_pitch_text(
+        self,
+        generator_name: GeneratorName,
+        text: str,
+        current_raw_value: int,
+    ) -> int:
         try:
             value = int(text)
             if generator_name == GeneratorName.NOISE:

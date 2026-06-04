@@ -4,7 +4,11 @@ from typing import Any, Tuple, Type, Union
 import numpy as np
 import pytest
 
-from sampletones_core.audio.validation import validate_audio_array, validate_buffer_size, validate_sample_rate
+from sampletones_core.audio.validation import (
+    validate_audio_array,
+    validate_buffer_size,
+    validate_sample_rate,
+)
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase

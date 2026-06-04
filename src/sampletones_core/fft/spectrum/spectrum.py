@@ -2,7 +2,10 @@ from typing import Optional, Union
 
 import numpy as np
 
-from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.constants.spectrum import (
+    BINS_PER_OCTAVE,
+    CQT_CUTOFF_FREQUENCY,
+)
 from sampletones_core.structures.histogram import Histogram
 
 from .cqt import calculate_cqt_spectrum

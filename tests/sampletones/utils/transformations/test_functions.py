@@ -7,7 +7,13 @@ import numpy as np
 import pytest
 
 from sampletones_core.array import xp
-from sampletones_shared.utils.transformations.functions import energy, exp, identity, power, power_inverse
+from sampletones_shared.utils.transformations.functions import (
+    energy,
+    exp,
+    identity,
+    power,
+    power_inverse,
+)
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error, expect_warning
 from tests.suite.base import BaseTestSuite
@@ -808,7 +814,10 @@ class TestPowerInverse(BaseTestSuite):
         TestCase(
             value=np.array([8.0, 27.0, 64.0], dtype=np.float32),
             a=2.5,
-            expected=np.array([8.0 ** (1 / 2.5), 27.0 ** (1 / 2.5), 64.0 ** (1 / 2.5)], dtype=np.float32),
+            expected=np.array(
+                [8.0 ** (1 / 2.5), 27.0 ** (1 / 2.5), 64.0 ** (1 / 2.5)],
+                dtype=np.float32,
+            ),
             label="numpy_array_float32",
         ),
         TestCase(
@@ -828,5 +837,10 @@ class TestPowerInverse(BaseTestSuite):
         if expect_error(power_inverse, test_case.expected, test_case.value, test_case.a):
             return
 
-        result = expect_warning(power_inverse, test_case.expected_warning, test_case.value, test_case.a)
+        result = expect_warning(
+            power_inverse,
+            test_case.expected_warning,
+            test_case.value,
+            test_case.a,
+        )
         assert_array_equal(result, test_case.expected)

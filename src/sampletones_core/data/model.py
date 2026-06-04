@@ -3,7 +3,18 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Self, Type, TypeVar, Union, get_args, get_origin
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Self,
+    Type,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import numpy as np
 from flatbuffers.builder import Builder
@@ -11,14 +22,30 @@ from flatbuffers.table import Table
 from pydantic import BaseModel
 
 from sampletones_shared.array import CUPY_AVAILABLE, xp
-from sampletones_shared.exceptions import DeserializationError, SerializationError
-from sampletones_shared.types.array import Array, ArrayClasses, Numeric, NumericClasses
+from sampletones_shared.exceptions import (
+    DeserializationError,
+    SerializationError,
+)
+from sampletones_shared.types.array import (
+    Array,
+    ArrayClasses,
+    Numeric,
+    NumericClasses,
+)
 from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.serialization import load_binary, save_binary, snake_to_camel
+from sampletones_shared.utils.serialization import (
+    load_binary,
+    save_binary,
+    snake_to_camel,
+)
 
-from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol, FlatBufferUnionProtocol
+from .scheme import (
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+    FlatBufferUnionProtocol,
+)
 
 FLOAT32_SIZE = 4
 
@@ -129,7 +156,18 @@ class DataModel(BaseModel, ABC):
                 raise DeserializationError(f"Field '{field_name}' has no annotation")
 
             value: Union[
-                TypeVar, DataModel, bool, int, float, Array, np.ndarray, xp.ndarray, List[Any], str, Path, None
+                TypeVar,
+                DataModel,
+                bool,
+                int,
+                float,
+                Array,
+                np.ndarray,
+                xp.ndarray,
+                List[Any],
+                str,
+                Path,
+                None,
             ]
             if annotation in (Array, *ArrayClasses):
                 value = cls._deserialize_numpy_array(fb_object, field_name)

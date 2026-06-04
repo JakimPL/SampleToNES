@@ -1,10 +1,10 @@
 from typing import Any, List, Optional, Tuple, Union
 
-from sampletones_application.text.elements.global_ import DialogElements
-from sampletones_application.text.elements.instructions import InstructionsDetailsElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
+from sampletones_application.categories.elements.global_ import DialogElements
+from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.view_model.instruction.cell import TableCell
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.table_data import InstructionTableData
@@ -14,43 +14,115 @@ from sampletones_shared.utils.serialization import hash_model
 
 
 class InstructionTableLogic:
-    def __init__(self, *, language_manager: LanguageManager, float_precision: int) -> None:
+    def __init__(
+        self,
+        *,
+        language_manager: LanguageManager,
+        float_precision: int,
+    ) -> None:
         self._float_precision = float_precision
         self._lbl_change_rate = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_CHANGE_RATE)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_CHANGE_RATE,
+            )
         ]
         self._lbl_generator = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_GENERATOR)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_GENERATOR,
+            )
         ]
         self._lbl_frequency = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_FREQUENCY)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_FREQUENCY,
+            )
         ]
         self._lbl_sample_length = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_SAMPLE_LENGTH)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_SAMPLE_LENGTH,
+            )
         ]
         self._lbl_samples = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_SAMPLES_SUFFIX)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_SAMPLES_SUFFIX,
+            )
         ]
         self._lbl_name = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_NAME)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_NAME,
+            )
         ]
         self._lbl_no_frequency = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.CELL_NO_FREQUENCY)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.CELL_NO_FREQUENCY,
+            )
         ]
-        self._lbl_yes = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.YES)]
-        self._lbl_no = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.NO)]
+        self._lbl_yes = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.LABEL,
+                DialogElements.YES,
+            )
+        ]
+        self._lbl_no = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.LABEL,
+                DialogElements.NO,
+            )
+        ]
         self._tpl_frequency = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.FREQUENCY_TEMPLATE)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TEMPLATE,
+                InstructionsDetailsElements.FREQUENCY_TEMPLATE,
+            )
         ]
         self._tpl_pitch = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.PITCH_TEMPLATE)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TEMPLATE,
+                InstructionsDetailsElements.PITCH_TEMPLATE,
+            )
         ]
         self._tpl_period = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.PERIOD_TEMPLATE)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TEMPLATE,
+                InstructionsDetailsElements.PERIOD_TEMPLATE,
+            )
         ]
         self._tpl_duty_cycle = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.DETAILS, TextType.TEMPLATE, InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.TEMPLATE,
+                InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE,
             )
         ]
 
@@ -80,8 +152,18 @@ class InstructionTableLogic:
         rows: List[TableCell] = []
         if self.current_data.fragment:
             fragment = self.current_data.fragment
-            rows.append(TableCell(label=self._lbl_change_rate, value=str(self._current_change_rate)))
-            rows.append(TableCell(label=self._lbl_generator, value=fragment.generator_class))
+            rows.append(
+                TableCell(
+                    label=self._lbl_change_rate,
+                    value=str(self._current_change_rate),
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=self._lbl_generator,
+                    value=fragment.generator_class,
+                )
+            )
             rows.append(
                 TableCell(
                     label=self._lbl_frequency,
@@ -95,9 +177,24 @@ class InstructionTableLogic:
                 )
             )
         else:
-            rows.append(TableCell(label=self._lbl_generator, value=self.current_data.generator_class_name))
-            rows.append(TableCell(label=self._lbl_name, value=self.current_data.instruction.name))
-            rows.append(TableCell(label=self._lbl_frequency, value=self._lbl_no_frequency))
+            rows.append(
+                TableCell(
+                    label=self._lbl_generator,
+                    value=self.current_data.generator_class_name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=self._lbl_name,
+                    value=self.current_data.instruction.name,
+                )
+            )
+            rows.append(
+                TableCell(
+                    label=self._lbl_frequency,
+                    value=self._lbl_no_frequency,
+                )
+            )
 
         return rows
 
@@ -109,7 +206,10 @@ class InstructionTableLogic:
         instruction = self.current_data.instruction
 
         for field_name, field_value in instruction.model_dump().items():
-            formatted_value = self._format_parameter_value(field_name, field_value)
+            formatted_value = self._format_parameter_value(
+                field_name,
+                field_value,
+            )
             rows.append(TableCell(label=field_name, value=formatted_value))
 
         return rows

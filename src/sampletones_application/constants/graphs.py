@@ -1,10 +1,25 @@
+from sampletones_application.categories.hierarchy import Page, Panel, Widget
+from sampletones_application.categories.key import TagName
 from sampletones_application.constants.general import SUF_BUTTON
-from sampletones_application.text.hierarchy import Page, Panel, Widget
-from sampletones_application.text.key import TagName
 
-TAG_THEME_GRAPH_INDICATOR = TagName(Page.GLOBAL, Panel.GRAPH, Widget.THEME, "indicator")
-TAG_THEME_GRAPH_ZERO_LINE = TagName(Page.GLOBAL, Panel.GRAPH, Widget.THEME, "zero_line")
-TAG_THEME_GRAPH_OVERLAY = TagName(Page.GLOBAL, Panel.GRAPH, Widget.THEME, "overlay")
+TAG_THEME_GRAPH_INDICATOR = TagName(
+    Page.GLOBAL,
+    Panel.GRAPH,
+    Widget.THEME,
+    "indicator",
+)
+TAG_THEME_GRAPH_ZERO_LINE = TagName(
+    Page.GLOBAL,
+    Panel.GRAPH,
+    Widget.THEME,
+    "zero_line",
+)
+TAG_THEME_GRAPH_OVERLAY = TagName(
+    Page.GLOBAL,
+    Panel.GRAPH,
+    Widget.THEME,
+    "overlay",
+)
 
 SUF_GRAPH_PLOT = "_plot"
 SUF_GRAPH_X_AXIS = "_x_axis"

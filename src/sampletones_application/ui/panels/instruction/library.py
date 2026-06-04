@@ -3,6 +3,11 @@ from typing import Any, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
@@ -20,13 +25,11 @@ from sampletones_application.constants.instructions import (
     TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
 )
 from sampletones_application.constants.main import TAG_PANEL_MAIN_CONVERTER
-from sampletones_application.layout.behavior import SchedulingBehavior, TreeBehavior
+from sampletones_application.layout.behavior import (
+    SchedulingBehavior,
+    TreeBehavior,
+)
 from sampletones_application.logic.instruction.library import LibraryLogic
-from sampletones_application.text.elements.global_ import TreeElements
-from sampletones_application.text.elements.instructions import InstructionsLibraryElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -39,7 +42,14 @@ from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.structures.tree import GeneratorNode, LibraryNode, NodeType, TreeNode, TreeTraversal, traverse
+from sampletones_core.structures.tree import (
+    GeneratorNode,
+    LibraryNode,
+    NodeType,
+    TreeNode,
+    TreeTraversal,
+    traverse,
+)
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback
 
@@ -63,29 +73,51 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         self._lbl_generate = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
             )
         ]
         self._lbl_refresh = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON,
             )
         ]
         self._lbl_libraries = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.LIBRARIES_TEXT)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.LIBRARIES_TEXT,
+            )
         ]
         self._lbl_available_libraries = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT,
             )
         ]
         self._lbl_ctx_load_generator = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR,
             )
         ]
         self._lbl_ctx_load_library = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
+            )
         ]
         self._msg_generation_cancelled = language_manager[
             TextKey(
@@ -113,15 +145,26 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         ]
         self._msg_status_node_generator = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_NODE_GENERATOR
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_NODE_GENERATOR,
             )
         ]
         self._msg_status_node_library = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_NODE_LIBRARY)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_NODE_LIBRARY,
+            )
         ]
         self._ttl_generation_status = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.TITLE, InstructionsLibraryElements.GENERATION_STATUS_DIALOG
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.TITLE,
+                InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
             )
         ]
 
@@ -136,7 +179,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
-            search_label=language_manager[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.SEARCH)],
+            search_label=language_manager[
+                TextKey(
+                    Page.GLOBAL,
+                    Panel.BROWSER,
+                    TextType.LABEL,
+                    TreeElements.SEARCH,
+                )
+            ],
         )
 
         self.library_logic.configure_lock(self.lock, self.unlock, lambda: self.locked)
@@ -257,11 +307,20 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             show=viewmodel.progress_visible,
             overlay=viewmodel.progress_overlay,
         )
-        dpg_set_value(TAG_PROGRESS_INSTRUCTIONS_LIBRARY, viewmodel.progress_value)
+        dpg_set_value(
+            TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
+            viewmodel.progress_value,
+        )
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE, enabled=enabled)
-        dpg_configure_item(TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS, enabled=enabled)
+        dpg_configure_item(
+            TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE,
+            enabled=enabled,
+        )
+        dpg_configure_item(
+            TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
+            enabled=enabled,
+        )
 
     @concurrent(wait=False, method_bound=True)
     def _rebuild_tree(self) -> None:
@@ -312,7 +371,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         state.parent = node_tag
 
-    def _create_status_bar_message_function_for_instructions_node(self) -> MessageCallback:
+    def _create_status_bar_message_function_for_instructions_node(
+        self,
+    ) -> MessageCallback:
         def message_function(*args: Any, user_data: Tuple[TreeNode, str], **kwargs: Any) -> str:
             node, _ = user_data
             match node.node_type:

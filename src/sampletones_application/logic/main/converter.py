@@ -2,19 +2,29 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
+from sampletones_application.categories.elements.global_ import GlobalTemplateElements
+from sampletones_application.categories.elements.main import ConverterElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.text.elements.global_ import GlobalTemplateElements
-from sampletones_application.text.elements.main import ConverterElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.progress import SystemProgress
-from sampletones_application.view_model.main.converter import ConversionPhase, ConverterViewModel
+from sampletones_application.view_model.main.converter import (
+    ConversionPhase,
+    ConverterViewModel,
+)
 from sampletones_core.configs import Config
-from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
-from sampletones_core.reconstructions.converter import ReconstructionConverter, get_output_path
+from sampletones_core.parallelization import (
+    ETAEstimator,
+    TaskProgress,
+    TaskStatus,
+)
+from sampletones_core.reconstructions.converter import (
+    ReconstructionConverter,
+    get_output_path,
+)
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -33,31 +43,76 @@ class ConverterLogic(CallbackMixin):
         self._config_manager = config_manager
         self._scheduling = scheduling
         self._msg_idle = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_IDLE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_IDLE,
+            )
         ]
         self._msg_waiting = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_WAITING)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_WAITING,
+            )
         ]
         self._msg_cancelling = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_CANCELLING)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_CANCELLING,
+            )
         ]
         self._msg_generating_library = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_GENERATING_LIBRARY)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_GENERATING_LIBRARY,
+            )
         ]
         self._msg_completed = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_RECONSTRUCTION_COMPLETED)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_RECONSTRUCTION_COMPLETED,
+            )
         ]
         self._msg_error = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_ERROR)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_ERROR,
+            )
         ]
         self._msg_cancelled = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_CANCELLED)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_CANCELLED,
+            )
         ]
         self._tpl_progress = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.TEMPLATE, ConverterElements.PROGRESS_TEMPLATE)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.TEMPLATE,
+                ConverterElements.PROGRESS_TEMPLATE,
+            )
         ]
         self._tpl_eta = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.TIME_ESTIMATION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TEMPLATE,
+                GlobalTemplateElements.TIME_ESTIMATION,
+            )
         ]
         self._converter: Optional[ReconstructionConverter] = None
         self._eta_estimator: Optional[ETAEstimator] = None
@@ -236,7 +291,11 @@ class ConverterLogic(CallbackMixin):
             match task_status:
                 case TaskStatus.CANCELLING:
                     self._phase = ConversionPhase.CANCELLING
-                    self._emit_view_model(self._msg_cancelling, task_progress.get_progress(), "0%")
+                    self._emit_view_model(
+                        self._msg_cancelling,
+                        task_progress.get_progress(),
+                        "0%",
+                    )
                 case TaskStatus.RUNNING:
                     self._handle_running_update(task_progress)
                 case _:
@@ -249,14 +308,22 @@ class ConverterLogic(CallbackMixin):
         self._system_progress.set(task_progress.completed, task_progress.total)
         eta_string = self._eta_estimator.update(task_progress.completed)
         percent_string = self._eta_estimator.get_percent_string()
-        status_text = self._tpl_progress.format(self._converter.completed_files, self._converter.total_files)
+        status_text = self._tpl_progress.format(
+            self._converter.completed_files,
+            self._converter.total_files,
+        )
 
         if eta_string:
             status_text += self._tpl_eta.format(eta_string=eta_string)
 
         current_item = task_progress.current_item
         display_input_path = to_path(current_item) if current_item is not None else self._input_path
-        self._emit_view_model(status_text, task_progress.get_progress(), percent_string, input_path=display_input_path)
+        self._emit_view_model(
+            status_text,
+            task_progress.get_progress(),
+            percent_string,
+            input_path=display_input_path,
+        )
 
     def _emit_view_model(
         self,
@@ -273,7 +340,7 @@ class ConverterLogic(CallbackMixin):
             status_text=status_text,
             progress=progress,
             progress_overlay=progress_overlay,
-            input_path=input_path if input_path is not None else self._input_path,
+            input_path=(input_path if input_path is not None else self._input_path),
             output_path=display_output,
             is_file=self._is_file,
         )

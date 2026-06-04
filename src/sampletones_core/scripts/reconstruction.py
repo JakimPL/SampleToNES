@@ -7,7 +7,10 @@ from sampletones_core.configs import Config
 from sampletones_core.library import InstructionLibrary
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.reconstructions import Reconstructor
-from sampletones_core.reconstructions.converter import ReconstructionConverter, get_output_path
+from sampletones_core.reconstructions.converter import (
+    ReconstructionConverter,
+    get_output_path,
+)
 from sampletones_core.reconstructions.converter import reconstruct_file as _reconstruct_file
 from sampletones_shared.logger import logger, null_logger
 
@@ -67,7 +70,11 @@ def reconstruct_directory(input_path: Path, config: Config, output_path: Optiona
         if task_progress.current_item:
             progress_bar.set_description(f"{input_path.name}: {task_progress.current_item}")
 
-        if task_status in (TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED):
+        if task_status in (
+            TaskStatus.COMPLETED,
+            TaskStatus.CANCELLED,
+            TaskStatus.FAILED,
+        ):
             progress_bar.close()
 
     def on_cancelled() -> None:

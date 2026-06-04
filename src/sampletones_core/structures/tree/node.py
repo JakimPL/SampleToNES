@@ -37,7 +37,12 @@ class FileSystemNode(TreeNode):
         self.filepath = filepath
 
     def copy(self, parent: Optional[TreeNode] = None) -> FileSystemNode:
-        return FileSystemNode(self.name, filepath=self.filepath, node_type=self.node_type, parent=parent)
+        return FileSystemNode(
+            self.name,
+            filepath=self.filepath,
+            node_type=self.node_type,
+            parent=parent,
+        )
 
 
 class LibraryNode(TreeNode):
@@ -52,7 +57,12 @@ class LibraryNode(TreeNode):
         self.library_key = library_key
 
     def copy(self, parent: Optional[TreeNode] = None) -> LibraryNode:
-        return LibraryNode(self.name, node_type=self.node_type, library_key=self.library_key, parent=parent)
+        return LibraryNode(
+            self.name,
+            node_type=self.node_type,
+            library_key=self.library_key,
+            parent=parent,
+        )
 
 
 class GeneratorNode(TreeNode):

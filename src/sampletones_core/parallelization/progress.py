@@ -6,7 +6,11 @@ ESTIMATION_MEASUREMENTS_SAMPLES = 0.05
 
 
 class ETAEstimator:
-    def __init__(self, total: int, ems: Union[float, int] = ESTIMATION_MEASUREMENTS_SAMPLES) -> None:
+    def __init__(
+        self,
+        total: int,
+        ems: Union[float, int] = ESTIMATION_MEASUREMENTS_SAMPLES,
+    ) -> None:
         self._total = total
         self._ems = self._get_estimation_measurements_samples(ems)
         self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=self._ems)

@@ -4,8 +4,17 @@ from typing import Any, Dict, ItemsView, KeysView, Optional, Tuple, ValuesView
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.ui.themes.items import ThemeDictionary, ThemeItems, ThemeValues
-from sampletones_application.ui.themes.style import ThemeColor, ThemeParameter, ThemeStyle, ThemeValue
+from sampletones_application.ui.themes.items import (
+    ThemeDictionary,
+    ThemeItems,
+    ThemeValues,
+)
+from sampletones_application.ui.themes.style import (
+    ThemeColor,
+    ThemeParameter,
+    ThemeStyle,
+    ThemeValue,
+)
 from sampletones_shared.types.application import Color
 from sampletones_shared.types.callback import Callback
 
@@ -37,7 +46,10 @@ class Theme:
         key: int,
         enabled_state: bool = True,
     ) -> Optional[ThemeValue]:
-        parameter = ThemeParameter(item_type=item_type, enabled_state=enabled_state)
+        parameter = ThemeParameter(
+            item_type=item_type,
+            enabled_state=enabled_state,
+        )
         if (parameter, key) not in cls._dictionary:
             return None
 
@@ -105,13 +117,25 @@ class Theme:
         dictionary: ThemeDictionary = {}
         with dpg.theme(tag=cls.tag):
             for parameter, items in cls.items():
-                with dpg.theme_component(parameter.item_type, enabled_state=parameter.enabled_state):
+                with dpg.theme_component(
+                    parameter.item_type,
+                    enabled_state=parameter.enabled_state,
+                ):
                     for item in items:
                         dictionary[parameter, item.key] = item
                         if isinstance(item, ThemeColor):
-                            dpg.add_theme_color(item.key, item.color, category=item.category)
+                            dpg.add_theme_color(
+                                item.key,
+                                item.color,
+                                category=item.category,
+                            )
                         elif isinstance(item, ThemeStyle):
-                            dpg.add_theme_style(item.key, item.x, item.y, category=item.category)
+                            dpg.add_theme_style(
+                                item.key,
+                                item.x,
+                                item.y,
+                                category=item.category,
+                            )
 
         cls._dictionary = dictionary
 

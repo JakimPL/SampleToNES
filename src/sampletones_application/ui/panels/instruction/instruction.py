@@ -2,7 +2,14 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_PANEL_CENTER, TAG_TAB_GLOBAL_INSTRUCTIONS
+from sampletones_application.categories.elements.instructions import InstructionPanelElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import (
+    SUF_PANEL_CENTER,
+    TAG_TAB_GLOBAL_INSTRUCTIONS,
+)
 from sampletones_application.constants.instructions import (
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
@@ -14,10 +21,6 @@ from sampletones_application.constants.instructions import (
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.text.elements.instructions import InstructionPanelElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.graphs.spectrum import GUISpectrumGraph
 from sampletones_application.ui.elements.graphs.waveform import GUIWaveformGraph
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -54,10 +57,20 @@ class GUIInstructionPanel(GUIPanel):
         self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
 
         self._lbl_waveform = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.INSTRUCTION, TextType.LABEL, InstructionPanelElements.WAVEFORM_LABEL)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.INSTRUCTION,
+                TextType.LABEL,
+                InstructionPanelElements.WAVEFORM_LABEL,
+            )
         ]
         self._lbl_spectrum = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.INSTRUCTION, TextType.LABEL, InstructionPanelElements.SPECTRUM_LABEL)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.INSTRUCTION,
+                TextType.LABEL,
+                InstructionPanelElements.SPECTRUM_LABEL,
+            )
         ]
 
         self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
@@ -135,7 +148,11 @@ class GUIInstructionPanel(GUIPanel):
         self.call(self.on_instruction_config_changed, config)
         try:
             self.waveform_display.load_library_fragment(fragment)
-            self.spectrum_display.load_library_fragment(fragment, config.sample_rate, config.window_size)
+            self.spectrum_display.load_library_fragment(
+                fragment,
+                config.sample_rate,
+                config.window_size,
+            )
         except Exception as exception:
             logger.error_with_traceback(exception, "Error while plotting library data")
             raise LibraryDisplayError("Could not display library data") from exception

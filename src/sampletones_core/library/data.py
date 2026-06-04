@@ -8,7 +8,12 @@ from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol, Metadata
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+    Metadata,
+)
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.constants.application import (
@@ -48,7 +53,10 @@ class InstructionLibraryData(DataModel):
     @cached_property
     def subdata(
         self,
-    ) -> Dict[GeneratorClassName, Dict[InstructionUnion, InstructionLibraryFragment[Any]]]:
+    ) -> Dict[
+        GeneratorClassName,
+        Dict[InstructionUnion, InstructionLibraryFragment[Any]],
+    ]:
         subdata = {}
         for generator_class_name in GeneratorClassName:
             subdata[generator_class_name] = {

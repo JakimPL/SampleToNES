@@ -22,7 +22,10 @@ from sampletones_core.exporters import (
     ExporterUnion,
     Features,
 )
-from sampletones_core.instructions import InstructionUnion, get_instruction_by_type
+from sampletones_core.instructions import (
+    InstructionUnion,
+    get_instruction_by_type,
+)
 from sampletones_shared.constants.application import (
     SAMPLETONES_NAME,
     SAMPLETONES_RECONSTRUCTION_DATA_VERSION,
@@ -32,7 +35,9 @@ from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
 )
-from sampletones_shared.exceptions.reconstruction import InvalidReconstructionValuesError
+from sampletones_shared.exceptions.reconstruction import (
+    InvalidReconstructionValuesError,
+)
 from sampletones_shared.logger import logger
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
@@ -118,7 +123,13 @@ class Reconstruction(DataModel):
         )
 
     @classmethod
-    def from_state(cls, state: ReconstructionState, config: Config, coefficient: float, path: Path) -> Optional[Self]:
+    def from_state(
+        cls,
+        state: ReconstructionState,
+        config: Config,
+        coefficient: float,
+        path: Path,
+    ) -> Optional[Self]:
         if any(len(approximation) == 0 for approximation in state.approximations.values()):
             logger.warning(f"Reconstruction for file: {path} is empty")
             return None

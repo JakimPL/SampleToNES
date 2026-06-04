@@ -32,7 +32,9 @@ class FBConfig(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from sampletones_schemas.configs.FBGeneralConfig import FBGeneralConfig
+            from sampletones_schemas.configs.FBGeneralConfig import (
+                FBGeneralConfig,
+            )
 
             obj = FBGeneralConfig()
             obj.Init(self._tab.Bytes, x)
@@ -44,7 +46,9 @@ class FBConfig(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from sampletones_schemas.configs.FBInstructionsLibraryConfig import FBInstructionsLibraryConfig
+            from sampletones_schemas.configs.FBInstructionsLibraryConfig import (
+                FBInstructionsLibraryConfig,
+            )
 
             obj = FBInstructionsLibraryConfig()
             obj.Init(self._tab.Bytes, x)
@@ -56,7 +60,9 @@ class FBConfig(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(8))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from sampletones_schemas.configs.FBGenerationConfig import FBGenerationConfig
+            from sampletones_schemas.configs.FBGenerationConfig import (
+                FBGenerationConfig,
+            )
 
             obj = FBGenerationConfig()
             obj.Init(self._tab.Bytes, x)

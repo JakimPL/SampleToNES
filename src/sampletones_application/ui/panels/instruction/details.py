@@ -2,6 +2,11 @@ from typing import Any, Callable, List, Optional, Union
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import StatusElements
+from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
@@ -25,29 +30,43 @@ from sampletones_application.constants.instructions import (
     TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
 )
 from sampletones_application.layout.instructions import InstructionsLayout
-from sampletones_application.text.elements.global_ import StatusElements
-from sampletones_application.text.elements.instructions import InstructionsDetailsElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.utils.dpg import (
+    dpg_configure_item,
+    dpg_delete_children,
+)
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel
 from sampletones_application.view_model.instruction.table_data import InstructionTableData
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.constants.general import MAX_DUTY_CYCLE, MAX_PERIOD, MAX_PITCH, MAX_VOLUME, MIN_PITCH
-from sampletones_core.instructions import InstructionUnion, NoiseInstruction, PulseInstruction, TriangleInstruction
+from sampletones_core.constants.general import (
+    MAX_DUTY_CYCLE,
+    MAX_PERIOD,
+    MAX_PITCH,
+    MAX_VOLUME,
+    MIN_PITCH,
+)
+from sampletones_core.instructions import (
+    InstructionUnion,
+    NoiseInstruction,
+    PulseInstruction,
+    TriangleInstruction,
+)
 from sampletones_shared.types.application import Sender
 from sampletones_shared.utils.arrays import clamp
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
-    def __init__(self, *, layout: InstructionsLayout, language_manager: LanguageManager) -> None:
+    def __init__(
+        self,
+        *,
+        layout: InstructionsLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self.on_instruction_parameter_changed: Optional[Callable[[InstructionUnion], None]] = None
 
         self.general_table: GUITable
@@ -58,19 +77,44 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
 
         self._lbl_section = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.DETAILS_TEXT)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.DETAILS_TEXT,
+            )
         ]
         self._lbl_parameters = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.PARAMETERS_TEXT)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.PARAMETERS_TEXT,
+            )
         ]
         self._lbl_general = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.GENERAL_TEXT)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.GENERAL_TEXT,
+            )
         ]
         self._lbl_window_pulse_pitch = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_PULSE_PITCH)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_PULSE_PITCH,
+            )
         ]
         self._lbl_window_pulse_volume = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_PULSE_VOLUME)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_PULSE_VOLUME,
+            )
         ]
         self._lbl_window_pulse_duty_cycle = language_manager[
             TextKey(
@@ -81,16 +125,36 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
         ]
         self._lbl_window_noise_period = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_PERIOD)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_NOISE_PERIOD,
+            )
         ]
         self._lbl_window_noise_volume = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_VOLUME)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_NOISE_VOLUME,
+            )
         ]
         self._lbl_window_noise_short = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_NOISE_SHORT)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_NOISE_SHORT,
+            )
         ]
         self._lbl_window_triangle_pitch = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.DETAILS, TextType.LABEL, InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.DETAILS,
+                TextType.LABEL,
+                InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH,
+            )
         ]
         self._msg_no_instruction = language_manager[
             TextKey(
@@ -101,7 +165,12 @@ class GUIInstructionDetailsPanel(GUIPanel):
             )
         ]
         self._msg_status_input = language_manager[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.INPUT)
+            TextKey(
+                Page.GLOBAL,
+                Panel.STATUS,
+                TextType.MESSAGE,
+                StatusElements.INPUT,
+            )
         ]
 
         super().__init__(
@@ -176,8 +245,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 rows=tuple(),
             )
 
-            FontRegistry.bind_to_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, Font.BOLD)
-            FontRegistry.bind_to_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, Font.BOLD)
+            FontRegistry.bind_to_item(
+                TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL,
+                Font.BOLD,
+            )
+            FontRegistry.bind_to_item(
+                TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
+                Font.BOLD,
+            )
 
     def update_view(self, viewmodel: InstructionDetailsPanelViewModel) -> None:
         self._current_viewmodel = viewmodel
@@ -186,14 +261,26 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
         if table_data is None:
-            dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=True)
-            dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, show=False)
-            dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, show=False)
+            dpg_configure_item(
+                TAG_TEXT_INSTRUCTIONS_DETAILS_INFO,
+                show=True,
+            )
+            dpg_configure_item(
+                TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL,
+                show=False,
+            )
+            dpg_configure_item(
+                TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
+                show=False,
+            )
             return
 
         dpg_configure_item(TAG_TEXT_INSTRUCTIONS_DETAILS_INFO, show=False)
         dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_GENERAL, show=True)
-        dpg_configure_item(TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS, show=table_data.has_parameters)
+        dpg_configure_item(
+            TAG_HEADER_INSTRUCTIONS_DETAILS_PARAMETERS,
+            show=table_data.has_parameters,
+        )
 
         self.parameters_table.update_rows(table_data.parameter_rows)
         self.general_table.update_rows(table_data.general_rows)

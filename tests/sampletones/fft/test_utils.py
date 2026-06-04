@@ -4,7 +4,11 @@ from typing import Any, Optional, Tuple, Type, Union
 import numpy as np
 import pytest
 
-from sampletones_core.fft.utils import calculate_n_bins, rectangle_window, to_log_even_bands
+from sampletones_core.fft.utils import (
+    calculate_n_bins,
+    rectangle_window,
+    to_log_even_bands,
+)
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase, BaseRegularTestCase
@@ -92,7 +96,11 @@ class TestCalculateNBins(BaseTestSuite):
             test_case.bins_per_octave,
             match=test_case.match,
         ):
-            result = calculate_n_bins(test_case.sample_rate, test_case.cutoff, test_case.bins_per_octave)
+            result = calculate_n_bins(
+                test_case.sample_rate,
+                test_case.cutoff,
+                test_case.bins_per_octave,
+            )
             assert result == test_case.expected
             assert isinstance(result, int)
 

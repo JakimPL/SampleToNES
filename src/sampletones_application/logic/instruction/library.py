@@ -2,20 +2,40 @@ import threading
 from pathlib import Path
 from typing import Callable, Optional
 
+from sampletones_application.categories.elements.global_ import (
+    GlobalMessageElements,
+    GlobalTemplateElements,
+)
+from sampletones_application.categories.elements.instructions import (
+    InstructionsLibraryElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
-from sampletones_application.text.elements.global_ import GlobalMessageElements, GlobalTemplateElements
-from sampletones_application.text.elements.instructions import InstructionsLibraryElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
-from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
+from sampletones_application.view_model.instruction.library import (
+    LibraryPanelViewModel,
+)
 from sampletones_core.constants.enums import LibraryGeneratorName
-from sampletones_core.generators import GENERATOR_CLASS_MAP, GENERATOR_TO_INSTRUCTION_MAP, LIBRARY_GENERATOR_CLASS_MAP
+from sampletones_core.generators import (
+    GENERATOR_CLASS_MAP,
+    GENERATOR_TO_INSTRUCTION_MAP,
+    LIBRARY_GENERATOR_CLASS_MAP,
+)
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.library import InstructionLibraryKey, get_display_name_from_key
+from sampletones_core.library import (
+    InstructionLibraryKey,
+    get_display_name_from_key,
+)
 from sampletones_core.library.utils import create_key_from_filename
-from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
+from sampletones_core.parallelization import (
+    ETAEstimator,
+    TaskProgress,
+    TaskStatus,
+)
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
@@ -65,29 +85,52 @@ class LibraryLogic(CallbackMixin):
         self.on_load_file_not_found: Optional[Callable[[Path, str], None]] = None
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
-        # Pre-fetch language strings
         self._lbl_generate_library = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
             )
         ]
         self._lbl_regenerate_library = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.LABEL, InstructionsLibraryElements.REGENERATE_LIBRARY_BUTTON
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.LABEL,
+                InstructionsLibraryElements.REGENERATE_LIBRARY_BUTTON,
             )
         ]
         self._msg_invalid_metadata_error = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.INVALID_METADATA_ERROR)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.INVALID_METADATA_ERROR,
+            )
         ]
         self._msg_generating = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_GENERATING)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_GENERATING,
+            )
         ]
         self._msg_generation_saving = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_SAVING)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_SAVING,
+            )
         ]
         self._msg_generation_failed = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_GENERATION_FAILED
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_GENERATION_FAILED,
             )
         ]
         self._msg_window_not_available = language_manager[
@@ -99,10 +142,20 @@ class LibraryLogic(CallbackMixin):
             )
         ]
         self._msg_load_error = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_LOAD_ERROR)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_LOAD_ERROR,
+            )
         ]
         self._msg_invalid_data_error = language_manager[
-            TextKey(Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_INVALID_DATA)
+            TextKey(
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_INVALID_DATA,
+            )
         ]
         self._msg_invalid_data_values_error = language_manager[
             TextKey(
@@ -122,16 +175,27 @@ class LibraryLogic(CallbackMixin):
         ]
         self._msg_file_not_found = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_FILE_NOT_FOUND
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_FILE_NOT_FOUND,
             )
         ]
         self._msg_file_load_error = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.MESSAGE, InstructionsLibraryElements.STATUS_FILE_LOAD_ERROR
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.MESSAGE,
+                InstructionsLibraryElements.STATUS_FILE_LOAD_ERROR,
             )
         ]
         self._tpl_time_estimation = language_manager[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.TIME_ESTIMATION)
+            TextKey(
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TEMPLATE,
+                GlobalTemplateElements.TIME_ESTIMATION,
+            )
         ]
         self._tpl_generation_progress = language_manager[
             TextKey(
@@ -159,12 +223,18 @@ class LibraryLogic(CallbackMixin):
         ]
         self._tpl_library_exists = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.TEMPLATE, InstructionsLibraryElements.LIBRARY_EXISTS_TEMPLATE
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.TEMPLATE,
+                InstructionsLibraryElements.LIBRARY_EXISTS_TEMPLATE,
             )
         ]
         self._tpl_library_loaded = language_manager[
             TextKey(
-                Page.INSTRUCTIONS, Panel.LIBRARY, TextType.TEMPLATE, InstructionsLibraryElements.LIBRARY_LOADED_TEMPLATE
+                Page.INSTRUCTIONS,
+                Panel.LIBRARY,
+                TextType.TEMPLATE,
+                InstructionsLibraryElements.LIBRARY_LOADED_TEMPLATE,
             )
         ]
 
@@ -338,15 +408,30 @@ class LibraryLogic(CallbackMixin):
                 self._library_manager.get_path(library_key),
                 self._msg_file_not_found,
             )
-        except (IOError, IsADirectoryError, PermissionError, OSError) as exception:
+        except (
+            IOError,
+            IsADirectoryError,
+            PermissionError,
+            OSError,
+        ) as exception:
             logger.error_with_traceback(exception, f"Error loading library file for key {library_key}")
             self.call(self.on_load_error, exception, self._msg_file_load_error)
         except InvalidMetadataError as exception:
-            logger.error_with_traceback(exception, f"Invalid metadata in library file for key {library_key}")
+            logger.error_with_traceback(
+                exception,
+                f"Invalid metadata in library file for key {library_key}",
+            )
             self.call(self.on_load_error, exception, self._msg_invalid_metadata_error)
         except InvalidLibraryDataValuesError as exception:
-            logger.error_with_traceback(exception, f"Library data contains invalid values for key {library_key}")
-            self.call(self.on_load_error, exception, self._msg_invalid_data_values_error)
+            logger.error_with_traceback(
+                exception,
+                f"Library data contains invalid values for key {library_key}",
+            )
+            self.call(
+                self.on_load_error,
+                exception,
+                self._msg_invalid_data_values_error,
+            )
         except InvalidLibraryDataError as exception:
             logger.error_with_traceback(exception, f"Invalid library data file for {library_key}")
             self.call(self.on_load_error, exception, self._msg_invalid_data_error)
@@ -365,7 +450,10 @@ class LibraryLogic(CallbackMixin):
                 ),
             )
         except DeserializationError as exception:
-            logger.error_with_traceback(exception, f"Deserialization error loading library for key {library_key}")
+            logger.error_with_traceback(
+                exception,
+                f"Deserialization error loading library for key {library_key}",
+            )
             self.call(self.on_load_error, exception, self._msg_deserialization_error)
         except Exception as exception:  # TODO: narrow down exception types
             logger.error_with_traceback(exception, f"Error loading library for key {library_key}")
@@ -427,7 +515,11 @@ class LibraryLogic(CallbackMixin):
         try:
             self._progress_visible = False
             self._generate_button_visible = True
-            self._set_current_library(self._config_manager.key, load_if_needed=True, apply_config=False)
+            self._set_current_library(
+                self._config_manager.key,
+                load_if_needed=True,
+                apply_config=False,
+            )
             self.refresh_libraries()
             self._library_manager.cleanup_creator()
         finally:

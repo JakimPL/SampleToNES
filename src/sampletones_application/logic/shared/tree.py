@@ -4,8 +4,8 @@ from typing import Callable, Optional
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.utils.callbacks.queue import CallbackQueue
+from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants import paths
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 from sampletones_shared.exceptions.reconstruction import LoadReconstructionError
@@ -81,12 +81,18 @@ class TreeLogic(CallbackMixin):
                 case paths.EXT_FILE_RECONSTRUCTION:
                     try:
                         reconstruction = Reconstruction.load(node.filepath)
-                        self._audio_device_manager.play(reconstruction.approximation, update=False)
+                        self._audio_device_manager.play(
+                            reconstruction.approximation,
+                            update=False,
+                        )
                     except Exception as exception:
                         logger.error(f"Failed to autoplay reconstruction file: {exception}")
                         raise LoadReconstructionError("Failed to load reconstruction for autoplay") from exception
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self._audio_device_manager.play_file(node.filepath, update=False)
+                    self._audio_device_manager.play_file(
+                        node.filepath,
+                        update=False,
+                    )
 
     def is_node_favorite(self, node: TreeNode) -> bool:
         if not isinstance(node, FileSystemNode):

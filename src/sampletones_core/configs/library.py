@@ -3,7 +3,11 @@ from typing import Type
 import numpy as np
 from pydantic import ConfigDict, Field
 
-from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.audio import (
+    DEFAULT_SAMPLE_RATE,
+    MAX_SAMPLE_RATE,
+    MIN_SAMPLE_RATE,
+)
 from sampletones_core.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
@@ -14,7 +18,11 @@ from sampletones_core.constants.general import (
     MIN_FREQUENCY,
     TRANSFORMATION_GAMMA,
 )
-from sampletones_core.data import DataModel, FlatBufferBuilderProtocol, FlatBufferReaderProtocol
+from sampletones_core.data import (
+    DataModel,
+    FlatBufferBuilderProtocol,
+    FlatBufferReaderProtocol,
+)
 
 
 class InstructionsLibraryConfig(DataModel):

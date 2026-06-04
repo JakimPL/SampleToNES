@@ -9,7 +9,12 @@ from sampletones_shared.logger import logger as default_logger
 
 from ..reconstructor.reconstructor import Reconstructor
 from .conversion import reconstruct_file
-from .paths import filter_files, get_audio_files, get_output_path, get_relative_path
+from .paths import (
+    filter_files,
+    get_audio_files,
+    get_output_path,
+    get_relative_path,
+)
 
 
 class ReconstructionConverter(TaskProcessor[Path]):
@@ -57,7 +62,9 @@ class ReconstructionConverter(TaskProcessor[Path]):
 
         return arguments
 
-    def _get_task_function(self) -> Callable[[Tuple[Reconstructor, Path, Path]], Path]:
+    def _get_task_function(
+        self,
+    ) -> Callable[[Tuple[Reconstructor, Path, Path]], Path]:
         return reconstruct_file
 
     def _process_results(self, results: List[Path]) -> Path:

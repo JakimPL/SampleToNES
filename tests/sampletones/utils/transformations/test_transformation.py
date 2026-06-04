@@ -6,8 +6,14 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pytest
 
-from sampletones_shared.utils.transformations.functions import exp, identity, power
-from sampletones_shared.utils.transformations.transformation import Transformation
+from sampletones_shared.utils.transformations.functions import (
+    exp,
+    identity,
+    power,
+)
+from sampletones_shared.utils.transformations.transformation import (
+    Transformation,
+)
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
@@ -293,7 +299,11 @@ class TestTransformationExp(BaseTestSuite):
         ReduceTestCase(
             transformation=exp_transformation,
             operation=np.add,
-            inputs=(np.array([2.0, 3.0]), np.array([4.0, 5.0]), np.array([6.0, 7.0])),
+            inputs=(
+                np.array([2.0, 3.0]),
+                np.array([4.0, 5.0]),
+                np.array([6.0, 7.0]),
+            ),
             expected=np.array([48.0, 105.0]),
             label="exp_reduce_add_three_arrays",
         ),
@@ -413,7 +423,11 @@ class TestTransformationPower(BaseTestSuite):
         ReduceTestCase(
             transformation=square_transformation,
             operation=np.add,
-            inputs=(np.array([1.0, 4.0]), np.array([4.0, 9.0]), np.array([9.0, 16.0])),
+            inputs=(
+                np.array([1.0, 4.0]),
+                np.array([4.0, 9.0]),
+                np.array([9.0, 16.0]),
+            ),
             expected=(np.sqrt(np.array([1.0, 4.0])) + np.sqrt(np.array([4.0, 9.0])) + np.sqrt(np.array([9.0, 16.0])))
             ** 2,
             label="square_reduce_add_three_arrays",
@@ -509,7 +523,10 @@ class TestTransformationReduce(BaseTestSuite):
         TestCase(
             transformation=identity_transformation,
             operation=np.multiply,
-            inputs=(np.array([2.0, 3.0], dtype=np.float32), np.array([4.0, 5.0], dtype=np.float64)),
+            inputs=(
+                np.array([2.0, 3.0], dtype=np.float32),
+                np.array([4.0, 5.0], dtype=np.float64),
+            ),
             expected=np.array([8.0, 15.0]),
             label="identity_reduce_multiply_two_arrays",
         ),
@@ -623,7 +640,11 @@ class TestTransformationArithmeticMethods(BaseTestSuite):
         TestCase(
             transformation=identity_transformation,
             method_name="multiply",
-            inputs=(np.array([2.0, 3.0]), np.array([4.0, 5.0]), np.array([6.0, 7.0])),
+            inputs=(
+                np.array([2.0, 3.0]),
+                np.array([4.0, 5.0]),
+                np.array([6.0, 7.0]),
+            ),
             expected=np.array([48.0, 105.0]),
             label="identity_multiply_three_arrays",
         ),

@@ -3,7 +3,10 @@ from typing import Optional
 import numpy as np
 
 from sampletones_core.audio import validate_audio_array
-from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
+from sampletones_core.constants.spectrum import (
+    BINS_PER_OCTAVE,
+    CQT_CUTOFF_FREQUENCY,
+)
 from sampletones_core.structures.histogram import Histogram
 
 from ..fft import calculate_fft, calculate_fft_frequencies

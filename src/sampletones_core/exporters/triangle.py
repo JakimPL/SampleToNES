@@ -5,7 +5,11 @@ import numpy as np
 from sampletones_core.constants.enums import FeatureKey
 from sampletones_core.constants.general import MAX_VOLUME, MIN_PITCH
 from sampletones_core.generators import GeneratorTypeUnion, TriangleGenerator
-from sampletones_core.instructions import InstructionFields, InstructionTypeUnion, TriangleInstruction
+from sampletones_core.instructions import (
+    InstructionFields,
+    InstructionTypeUnion,
+    TriangleInstruction,
+)
 from sampletones_core.types.feature import FeatureMap
 from sampletones_core.utils.frequencies import is_pitch_valid
 

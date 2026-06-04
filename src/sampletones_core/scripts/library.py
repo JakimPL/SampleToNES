@@ -32,7 +32,9 @@ def generate_library(config: Config) -> None:
         progress_bar.disable = False
         logger.info(f"Starting library generation for key {key}")
 
-    def on_completed(result: Tuple[InstructionLibraryKey, InstructionLibraryData]) -> None:
+    def on_completed(
+        result: Tuple[InstructionLibraryKey, InstructionLibraryData],
+    ) -> None:
         key, library_data = result
         library.save_data(key, library_data)
         logger.info("Library successfully generated")
@@ -48,7 +50,11 @@ def generate_library(config: Config) -> None:
         if delta > 0:
             progress_bar.update(delta)
 
-        if task_status in (TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.FAILED):
+        if task_status in (
+            TaskStatus.COMPLETED,
+            TaskStatus.CANCELLED,
+            TaskStatus.FAILED,
+        ):
             progress_bar.close()
 
     def on_cancelled() -> None:

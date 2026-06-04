@@ -426,7 +426,10 @@ class TestGetDirectory:
             assert result.is_dir()
 
     def test_get_directory_with_integer_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'int'>"):
+        with pytest.raises(
+            TypeError,
+            match="Expected path to be str or Path, got <class 'int'>",
+        ):
             get_directory(123)
 
     def test_get_directory_with_nonexistent_path(self) -> None:
@@ -616,7 +619,10 @@ class TestOpenFileInExplorerLinux(BaseTestSuite):
             mock_open_dir.assert_called_once_with(path)
         else:
             mock_run.side_effect = [
-                MagicMock(returncode=test_case.mime_returncode, stdout=f"{test_case.desktop_file}\n"),
+                MagicMock(
+                    returncode=test_case.mime_returncode,
+                    stdout=f"{test_case.desktop_file}\n",
+                ),
                 MagicMock(returncode=test_case.command_returncode),
             ]
 
@@ -737,5 +743,8 @@ class TestOpenPathInExplorer(BaseTestSuite):
             mock_run.assert_called_once_with(["xdg-open", tmpdir], check=False)
 
     def test_with_integer_raises_type_error(self) -> None:
-        with pytest.raises(TypeError, match="Expected path to be str or Path, got <class 'int'>"):
+        with pytest.raises(
+            TypeError,
+            match="Expected path to be str or Path, got <class 'int'>",
+        ):
             open_path_in_explorer(42)

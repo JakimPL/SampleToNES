@@ -3,6 +3,11 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import MenuElements
+from sampletones_application.categories.elements.main import ConverterElements
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TextKey
+from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
@@ -15,11 +20,6 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
-from sampletones_application.text.elements.global_ import MenuElements
-from sampletones_application.text.elements.main import ConverterElements
-from sampletones_application.text.hierarchy import Page, Panel, TextType
-from sampletones_application.text.key import TextKey
-from sampletones_application.text.manager import LanguageManager
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
@@ -63,17 +63,39 @@ class MainTabCoordinator:
         self._on_load_library = on_load_library
         self._is_generation_in_progress = is_generation_in_progress
 
-        self._tab_label = language_manager[TextKey(Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.TAB_MAIN)]
+        self._tab_label = language_manager[
+            TextKey(
+                Page.GLOBAL,
+                Panel.MENU,
+                TextType.LABEL,
+                MenuElements.TAB_MAIN,
+            )
+        ]
         self._explorer_width = layout.main.explorer.width
         self._explorer_height = layout.main.explorer.height
         _msg_converter_error = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_ERROR)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_ERROR,
+            )
         ]
         _msg_no_files = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.MESSAGE, ConverterElements.STATUS_NO_FILES)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.MESSAGE,
+                ConverterElements.STATUS_NO_FILES,
+            )
         ]
         _title_progress = language_manager[
-            TextKey(Page.MAIN, Panel.CONVERTER, TextType.TITLE, ConverterElements.PROGRESS_DIALOG)
+            TextKey(
+                Page.MAIN,
+                Panel.CONVERTER,
+                TextType.TITLE,
+                ConverterElements.PROGRESS_DIALOG,
+            )
         ]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)
@@ -170,7 +192,9 @@ class MainTabCoordinator:
         self._converter_logic.on_success = self._converter_success_dialog.show
         self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
         self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
-            self._converter_panel.tag, _msg_no_files, _title_progress
+            self._converter_panel.tag,
+            _msg_no_files,
+            _title_progress,
         )
         self._converter_logic.is_library_loaded = library_manager.is_library_loaded
 
