@@ -7,6 +7,7 @@
 
 ### Navigation
 
+* Interface scale
 * Tree navigation using keys
 * Waveform LOD for zooming
 * About panel
