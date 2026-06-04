@@ -4,6 +4,7 @@ from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.fft import FFTTransformer, Window
 from sampletones_core.generators import GeneratorUnion, get_generators_map
+from sampletones_core.generators.maps import GENERATOR_CLASS_MAP
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryFragment
 
@@ -48,3 +49,18 @@ def generate_instruction_batch(
 
     generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(config)
     return generate_instructions(instructions_batch, config.library, window, generators)
+
+
+def generate_single_instruction_task(
+    task: Tuple[Tuple[GeneratorClassName, InstructionUnion], Config, Window],
+) -> Tuple[InstructionUnion, InstructionLibraryFragment[Any]]:
+    (generator_class_name, instruction), config, window = task
+    generator = GENERATOR_CLASS_MAP[generator_class_name](config, generator_class_name)
+    transformer = FFTTransformer.from_gamma(config.library.transformation_gamma, config.library.sample_rate)
+    fragment: InstructionLibraryFragment[Any] = InstructionLibraryFragment.create(
+        generator,
+        instruction,
+        window,
+        transformer=transformer,
+    )
+    return instruction, fragment

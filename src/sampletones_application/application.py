@@ -243,7 +243,11 @@ class Application:
             stop=self._stop,
             toggle_autoplay=self._shell.toggle_autoplay,
         )
-        self._shell.setup(bindings, on_close=self._on_close, on_tab_changed=self._on_tab_changed)
+        self._shell.setup(
+            bindings,
+            on_close=self._on_close,
+            on_tab_changed=self._on_tab_changed,
+        )
         self._set_callbacks()
         self._main_tab.emit_initial_view()
         self.config_manager.update_gui()
