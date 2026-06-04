@@ -13,12 +13,7 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
-from sampletones_application.constants.general import (
-    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-    TAG_GLOBAL_STATUS_WINDOW,
-    TAG_GLOBAL_TABS,
-    TAG_GLOBAL_WINDOW_MAIN,
-)
+from sampletones_application.constants.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
@@ -35,7 +30,7 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
 from sampletones_application.services import ConversionService, ExportService, RegenerationService
-from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
@@ -44,19 +39,13 @@ from sampletones_application.ui.themes.fps import FPSTimerTheme
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
-from sampletones_application.utils.shortcuts.ids import ShortcutId
-from sampletones_application.utils.shortcuts.keys import Modifier
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.shortcuts.shortcut import Shortcut
-from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.sequencer import Sequencer
-from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -83,13 +72,13 @@ class Application:
             self.config_manager,
             language_manager=self.language_manager,
         )
-        self.reconstruction_manager = ReconstructionManager(
-            scheduling=self.layout.behavior.scheduling,
-        )
+        self.reconstruction_manager = ReconstructionManager(scheduling=self.layout.behavior.scheduling)
+
         _priority = self.layout.behavior.scheduling.priority_schedule
         self.conversion_service: ConversionService = ConversionService(priority=_priority)
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
+
         self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
@@ -205,6 +194,25 @@ class Application:
             layout=self.layout,
         )
 
+        self._shell = ApplicationShell(
+            self.session_manager,
+            self.language_manager,
+            self.shortcut_manager,
+            self.layout,
+            self.theme,
+            self._viewport_manager,
+            self._menu_bar,
+            self.status_bar,
+            self.fps_timer,
+            self.audio_settings_window,
+            self._reconstruction_coordinator,
+            self._playback_router,
+            main_tab=self._main_tab,
+            reconstructions_tab=self._reconstructions_tab,
+            sequencer_tab=self._sequencer_tab,
+            instructions_tab=self._instructions_tab,
+        )
+
         self._setup_gui()
         self._load_settings()
 
@@ -215,225 +223,46 @@ class Application:
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _setup_gui(self) -> None:
-        dpg.create_context()
-        self._set_fonts()
-        self._register_shortcuts()
-        self._set_default_theme()
-        self._viewport_manager.create_viewport()
-        self._setup_dearpygui()
+        bindings = ShortcutBindings(
+            save_reconstruction=self._reconstruction_coordinator.save,
+            save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
+            load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+            close_reconstruction=self._reconstruction_coordinator.close_with_confirmation,
+            save_config=self._config_coordinator.save_dialog,
+            load_config=self._config_coordinator.load_dialog,
+            audio_settings=self._shell.open_audio_settings,
+            exit=self._on_close,
+            reconstruct_file=self._reconstruct_file_dialog,
+            reconstruct_directory=self._reconstruct_directory_dialog,
+            export_wav=self._export_reconstruction_wav_dialog,
+            export_ftis=self._export_reconstruction_ftis_dialog,
+            toggle_fullscreen=self._shell.toggle_fullscreen,
+            toggle_advanced_settings=self._shell.toggle_advanced_settings,
+            play=self._play,
+            play_from_start=self._play_from_start,
+            stop=self._stop,
+            toggle_autoplay=self._shell.toggle_autoplay,
+        )
+        self._shell.setup(bindings, on_close=self._on_close, on_tab_changed=self._on_tab_changed)
         self._set_callbacks()
-        self._setup_handlers()
-        self._create_main_window()
         self._main_tab.emit_initial_view()
         self.config_manager.update_gui()
         self._update_menu()
-        self._restore_current_items()
-        self._start_callback_worker()
-        dpg.set_exit_callback(self._on_close)
-
-    def _start_callback_worker(self) -> None:
-        CallbackQueue.start()
-
-    def _setup_dearpygui(self) -> None:
-        dpg.setup_dearpygui()
-        dpg.show_viewport()
-        dpg.render_dearpygui_frame()
-
-    def _set_fonts(self) -> None:
-        FontRegistry.register_fonts(self.layout.general.fonts.scale)
-
-    def _set_default_theme(self) -> None:
-        self.theme.bind()
-
-    def _register_shortcuts(self) -> None:
-        self.shortcut_manager.register(
-            ShortcutId.SAVE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
-            self._reconstruction_coordinator.save,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.SAVE_RECONSTRUCTION_AS,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
-            self._reconstruction_coordinator.save_as_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.LOAD_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
-            self._reconstruction_coordinator.load_with_confirmation,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
-            self._reconstruction_coordinator.close_with_confirmation,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.SAVE_CONFIGURATION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
-            self._config_coordinator.save_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
-            self._config_coordinator.load_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.AUDIO_SETTINGS,
-            Shortcut(dpg.mvKey_A, (Modifier.CTRL,)),
-            self._open_audio_settings,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.EXIT,
-            Shortcut(dpg.mvKey_F4, (Modifier.ALT,)),
-            self._on_close,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.RECONSTRUCT_FILE,
-            Shortcut(dpg.mvKey_R, (Modifier.CTRL,)),
-            self._reconstruct_file_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.RECONSTRUCT_DIRECTORY,
-            Shortcut(dpg.mvKey_R, (Modifier.CTRL, Modifier.SHIFT)),
-            self._reconstruct_directory_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-            Shortcut(dpg.mvKey_E, (Modifier.CTRL,)),
-            self._export_reconstruction_wav_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-            Shortcut(dpg.mvKey_I, (Modifier.CTRL,)),
-            self._export_reconstruction_ftis_dialog,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.TOGGLE_FULLSCREEN,
-            Shortcut(dpg.mvKey_F11),
-            self._toggle_fullscreen,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-            Shortcut(dpg.mvKey_A, (Modifier.CTRL, Modifier.SHIFT)),
-            self._toggle_advanced_settings,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.PLAY,
-            Shortcut(dpg.mvKey_Spacebar),
-            self._play,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.PLAY_FROM_START,
-            Shortcut(dpg.mvKey_Spacebar, (Modifier.SHIFT,)),
-            self._play_from_start,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.STOP,
-            Shortcut(dpg.mvKey_Spacebar, (Modifier.CTRL,)),
-            self._stop,
-        )
-        self.shortcut_manager.register(
-            ShortcutId.TOGGLE_AUTOPLAY,
-            Shortcut(dpg.mvKey_P, (Modifier.CTRL,)),
-            self._toggle_autoplay,
-        )
-
-        self.shortcut_manager.bind_all()
+        self._shell.restore_current_items(self.reconstruction_manager)
 
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self._update_menu)
-
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
-
         self._main_tab.converter_logic.on_load_file = self._on_converted_reconstruction_loaded
         self._main_tab.converter_logic.on_load_directory = self._reconstructions_tab.refresh_browser
         self._main_tab.converter_logic.on_cancelled = self._reconstructions_tab.refresh_browser
         self._main_tab.converter_logic.generate_library = self._instructions_tab.ensure_library_loaded
 
-    def _setup_handlers(self) -> None:
-        self.shortcut_manager.setup_focus_handler()
-
-    def _create_main_window(self) -> None:
-        with dpg.window(
-            label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.MAIN_WINDOW,
-                )
-            ],
-            tag=TAG_GLOBAL_WINDOW_MAIN,
-        ):
-            self._create_menu_bar()
-            self._create_tabs()
-            self._create_status_bar()
-
-        dpg.set_primary_window(TAG_GLOBAL_WINDOW_MAIN, True)
-
-    def _create_menu_bar(self) -> None:
-        self._menu_bar.create(self._build_menu_bar_viewmodel())
-
-    def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
-        return MenuBarViewModel(
-            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
-            play_label=self._playback_router.play_label,
-            play_or_pause_enabled=self._playback_router.is_play_enabled,
-            stop_enabled=self._playback_router.is_stop_enabled,
-            autoplay=self.session_manager.autoplay,
-            fullscreen=self.session_manager.fullscreen,
-            advanced_settings=self.session_manager.advanced_settings,
-        )
-
-    def _update_menu(self) -> None:
-        self._main_tab.sync_advanced_settings_visibility()
-        self._menu_bar.update(self._build_menu_bar_viewmodel())
-
-    def _create_tabs(self) -> None:
-        with dpg.child_window(
-            height=-self.layout.general.status_bar.height,
-            border=False,
-        ):
-            with dpg.tab_bar(
-                tag=TAG_GLOBAL_TABS,
-                callback=self._on_tab_changed,
-            ):
-                self._main_tab.create_tab()
-                self._reconstructions_tab.create_tab()
-                self._sequencer_tab.create_tab()
-                self._instructions_tab.create_tab()
-
-    def _create_status_bar(self) -> None:
-        with dpg.child_window(
-            tag=TAG_GLOBAL_STATUS_WINDOW,
-            parent=TAG_GLOBAL_WINDOW_MAIN,
-            width=-1,
-            height=-1,
-            indent=0,
-            border=False,
-            menubar=True,
-        ):
-            self.status_bar.create()
-
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
 
-    def _restore_current_items(self) -> None:
-        current_tab = self.session_manager.load_current_tab()
-        if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
-            dpg.set_value(TAG_GLOBAL_TABS, current_tab)
-
-        current_reconstruction = self.session_manager.current_reconstruction
-        if current_reconstruction is not None:
-            if current_reconstruction.exists():
-                try:
-                    self.reconstruction_manager.load_reconstruction(current_reconstruction)
-                except LoadReconstructionError:
-                    self.session_manager.set_current_reconstruction(None)
-            else:
-                self.session_manager.set_current_reconstruction(None)
-
-    def _open_audio_settings(self) -> None:
-        self.audio_settings_window.show()
+    def _update_menu(self) -> None:
+        self._shell.update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
         if self._main_tab.is_converter_running():
@@ -564,27 +393,15 @@ class Application:
         self._update_menu()
 
     def _set_current_tab(self, tab_tag: str) -> None:
-        dpg_set_value(TAG_GLOBAL_TABS, tab_tag)
-        self.session_manager.set_current_tab(tab_tag)
-
-    def _get_current_tab(self) -> str:
-        current_tab = dpg.get_value(TAG_GLOBAL_TABS)
-        alias: str = dpg.get_item_alias(current_tab)
-        return alias
+        self._shell.set_current_tab(tab_tag)
 
     def _get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
-        match self._get_current_tab():
-            case Tab.RECONSTRUCTIONS:
-                return self._reconstructions_tab.player_panel
-            case Tab.INSTRUCTIONS:
-                return self._instructions_tab.player_panel
-            case _:
-                return None
+        return self._shell.get_current_player()
 
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
-        self.session_manager.set_current_tab(self._get_current_tab())
+        self.session_manager.set_current_tab(self._shell.get_current_tab())
         self.session_manager.save_config()
 
     def _play_from_start(self) -> None:
@@ -598,36 +415,6 @@ class Application:
     def _stop(self) -> None:
         self._playback_router.stop()
         self._update_menu()
-
-    def _toggle_fullscreen(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._viewport_manager.toggle_fullscreen()
-
-    def _toggle_autoplay(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self.session_manager.toggle_autoplay()
-        self._update_menu()
-
-    def _toggle_advanced_settings(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._main_tab.toggle_advanced_settings()
-        self._update_menu()
-
-    def _update_fps(self, delta_time: float) -> None:
-        fps = self.fps_timer.update(delta_time)
-        self._menu_bar.update_fps(fps)
 
     def _show_confirmation_dialog(
         self,
@@ -708,11 +495,8 @@ class Application:
 
     def _update_status(self) -> None:
         delta_time = dpg.get_delta_time()
-        self._update_fps(delta_time)
-        self._update_status_bar(delta_time)
-
-    def _update_status_bar(self, delta_time: float) -> None:
-        self.status_bar.update(delta_time=delta_time)
+        self._shell.update_fps(delta_time)
+        self._shell.update_status_bar(delta_time)
 
     def frame(self) -> None:
         dpg.render_dearpygui_frame()
