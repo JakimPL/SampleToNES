@@ -20,6 +20,7 @@ from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
+from sampletones_application.services.conversion import ConversionService
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
@@ -44,6 +45,7 @@ class MainTabCoordinator:
         audio_device_manager: AudioDeviceManager,
         shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
+        conversion_service: ConversionService,
         on_reconstruct_file: PathCallback,
         on_reconstruct_directory: PathCallback,
         on_load_reconstruction: Callable[[Optional[Path]], None],
@@ -150,6 +152,7 @@ class MainTabCoordinator:
         )
         self._converter_logic: ConverterLogic = ConverterLogic(
             config_manager,
+            conversion_service,
             scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
         )

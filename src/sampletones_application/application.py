@@ -49,11 +49,18 @@ from sampletones_application.logic.reconstruction.browser_manager import (
 from sampletones_application.logic.reconstruction.manager import (
     ReconstructionManager,
 )
-from sampletones_application.logic.reconstruction.regenerator import Regenerator
 from sampletones_application.logic.reconstruction.session import (
     ReconstructionSession,
 )
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
+from sampletones_application.services import (
+    ConversionService,
+    ExportService,
+    RegenerationResult,
+    RegenerationService,
+    ServiceError,
+    ServiceSuccess,
+)
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -103,12 +110,15 @@ from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import Features
 from sampletones_core.paths import (
     EXT_FILE_JSON,
     EXT_FILE_RECONSTRUCTION,
     EXT_FILES_AUDIO,
 )
 from sampletones_core.sequencer import Sequencer
+from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
@@ -139,10 +149,10 @@ class Application:
         self.reconstruction_manager = ReconstructionManager(
             scheduling=self.layout.behavior.scheduling,
         )
-        self.regenerator: Regenerator = Regenerator(
-            self.reconstruction_manager,
-            scheduling=self.layout.behavior.scheduling,
-        )
+        _priority = self.layout.behavior.scheduling.priority_schedule
+        self.conversion_service: ConversionService = ConversionService(priority=_priority)
+        self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
+        self.export_service: ExportService = ExportService(priority=_priority)
         self.sequencer: Sequencer = Sequencer()
 
         self.fps_timer: FPSTimer = FPSTimer()
@@ -179,6 +189,7 @@ class Application:
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
+            conversion_service=self.conversion_service,
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
             on_load_reconstruction=self._load_reconstruction_with_confirmation,
@@ -196,12 +207,13 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
+            export_service=self.export_service,
             on_load_reconstruction_with_confirmation=self._load_reconstruction_with_confirmation,
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
-            on_reconstruction_instrument_updated=self.regenerator.regenerate,
+            on_reconstruction_instrument_updated=self._regenerate_reconstruction_instrument,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -416,7 +428,7 @@ class Application:
             on_reconstruction_loaded=self._on_reconstruction_loaded,
             on_reconstruction_closed=self._on_reconstruction_closed,
         )
-        self.regenerator.set_callbacks(on_regeneration_finished=self._on_reconstruction_updated)
+        self.regeneration_service.subscribe(self._on_regeneration_result)
 
         self._main_tab.converter_logic.on_load_file = self._on_converted_reconstruction_loaded
         self._main_tab.converter_logic.on_load_directory = self._reconstructions_tab.refresh_browser
@@ -893,6 +905,25 @@ class Application:
     def _handle_load_reconstruction(self, filepath: Path) -> None:
         self.session_manager.set_reconstruction_path(filepath.parent)
         self._reconstructions_tab.load_reconstruction(filepath)
+
+    def _regenerate_reconstruction_instrument(
+        self,
+        generator_name: GeneratorName,
+        features: Features,
+        feature_key: FeatureKey,
+        data: FeatureValue,
+    ) -> None:
+        reconstruction_data = self.reconstruction_manager.current_reconstruction
+        if reconstruction_data is not None:
+            self.regeneration_service.start(reconstruction_data, generator_name, features, feature_key, data)
+
+    def _on_regeneration_result(self, result: RegenerationResult) -> None:
+        match result:
+            case ServiceSuccess():
+                self._on_reconstruction_updated()
+            case ServiceError(exception=exc):
+                logger.error_with_traceback(exc, "Regeneration failed")
+                self.dialogs.show_error(exc)
 
     def _on_reconstruction_updated(self) -> None:
         self._reconstructions_tab.update_reconstruction()

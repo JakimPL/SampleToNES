@@ -3,10 +3,10 @@ from typing import Callable, FrozenSet, List, Optional
 
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.services.export import ExportService
 from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_core.audio import write_wave
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
@@ -20,9 +20,11 @@ class ReconstructionPanelLogic(CallbackMixin):
         self,
         session_manager: SessionManager,
         reconstruction_manager: ReconstructionManager,
+        export_service: ExportService,
     ) -> None:
         self._session_manager = session_manager
         self._reconstruction_manager = reconstruction_manager
+        self._export_service = export_service
 
         self._current_audio_source: AudioSourceType = AudioSourceType.RECONSTRUCTION
         self._selected_generators: List[GeneratorName] = []
@@ -37,13 +39,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_open_export_instrument_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_instruments_dialog: Optional[Callable[[str, str], None]] = None
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
-
-        self.on_export_instrument_success: Optional[Callable[[Path], None]] = None
-        self.on_export_instrument_error: Optional[Callable[[Exception], None]] = None
-        self.on_export_instruments_success: Optional[Callable[[Path], None]] = None
-        self.on_export_instruments_error: Optional[Callable[[Exception], None]] = None
-        self.on_export_wav_success: Optional[Callable[[Path], None]] = None
-        self.on_export_wav_error: Optional[Callable[[Exception], None]] = None
 
         self.on_locate_audio_missing: Optional[VoidCallback] = None
         self.on_locate_audio_not_found: Optional[Callable[[Path], None]] = None
@@ -166,50 +161,28 @@ class ReconstructionPanelLogic(CallbackMixin):
 
         generator_name = self._pending_generator_name
         instrument_name = self._get_instrument_name(generator_name)
+        feature = self._reconstruction_data.feature_data[generator_name]
         self._pending_generator_name = None
 
-        try:
-            self.save_instrument_feature(filepath, instrument_name, generator_name)
-            logger.info(f"Exported instrument feature to FTI: {logger.format_path(filepath)}")
-            self.call(self.on_export_instrument_success, filepath)
-        except (
-            FileNotFoundError,
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
-            logger.error_with_traceback(exception, f"File error while saving instrument: {filepath}")
-            self.call(self.on_export_instrument_error, exception)
-        except Exception as exception:  # TODO: narrow down exception types
-            logger.error_with_traceback(exception, f"Failed to export instrument: {filepath}")
-            self.call(self.on_export_instrument_error, exception)
-
         self._session_manager.set_instrument_path(filepath.parent)
+        self._export_service.export_instrument(filepath, instrument_name, feature)
 
     def handle_export_instruments_confirmed(self, directory: Path) -> None:
-        if not self._reconstruction_data:
+        reconstruction_data = self._reconstruction_data
+        if not reconstruction_data:
             logger.warning("No reconstruction data available for FTIs export")
             return
 
-        try:
-            self.save_instrument_features(directory)
-            logger.info(f"Exported instrument features to FTI: {logger.format_path(directory)}")
-            self.call(self.on_export_instruments_success, directory)
-        except (
-            FileNotFoundError,
-            IOError,
-            IsADirectoryError,
-            PermissionError,
-            OSError,
-        ) as exception:
-            logger.error_with_traceback(exception, f"File error while saving instruments: {directory}")
-            self.call(self.on_export_instruments_error, exception)
-        except Exception as exception:  # TODO: narrow exception type
-            logger.error_with_traceback(exception, f"Failed to export instruments: {directory}")
-            self.call(self.on_export_instruments_error, exception)
-
+        exports = [
+            (
+                directory / f"{self._get_instrument_name(gen_name)}{EXT_FILE_INSTRUMENT}",
+                self._get_instrument_name(gen_name),
+                feature,
+            )
+            for gen_name, feature in reconstruction_data.feature_data.generators.items()
+        ]
         self._session_manager.set_instrument_path(directory.parent)
+        self._export_service.export_instruments(directory, exports)
 
     def handle_export_wav_confirmed(self, filepath: Path) -> None:
         reconstruction_data = self._reconstruction_data
@@ -217,18 +190,10 @@ class ReconstructionPanelLogic(CallbackMixin):
             logger.warning("No reconstruction data available for WAV export")
             return
 
-        partial_approximation = reconstruction_data.get_partials(self._selected_generators)
+        audio_snapshot = reconstruction_data.get_partials(self._selected_generators)
         sample_rate = reconstruction_data.reconstruction.config.sample_rate
-
-        try:
-            write_wave(filepath, sample_rate, partial_approximation)
-            logger.info(f"Exported reconstruction to WAV: {logger.format_path(filepath)}")
-            self.call(self.on_export_wav_success, filepath)
-        except Exception as exception:  # TODO: narrow exception type
-            logger.error_with_traceback(exception, f"Failed to export reconstruction to WAV: {filepath}")
-            self.call(self.on_export_wav_error, exception)
-
         self._session_manager.set_audio_path(filepath)
+        self._export_service.export_wav(filepath, sample_rate, audio_snapshot)
 
     def handle_locate_original_audio(self) -> None:
         path = self._reconstruction_manager.audio_filepath
@@ -241,30 +206,6 @@ class ReconstructionPanelLogic(CallbackMixin):
         except FileNotFoundError:
             logger.warning(f"Original audio file could not be found: '{path}'")
             self.call(self.on_locate_audio_not_found, path)
-
-    def save_instrument_features(self, directory: Path) -> None:
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting all FTI instruments")
-
-        directory.mkdir(parents=True, exist_ok=True)
-        for generator_name in reconstruction_data.feature_data.generators.keys():
-            instrument_name = self._get_instrument_name(generator_name)
-            filepath = directory / f"{instrument_name}{EXT_FILE_INSTRUMENT}"
-            self.save_instrument_feature(filepath, instrument_name, generator_name)
-
-    def save_instrument_feature(
-        self,
-        filepath: Path,
-        instrument_name: str,
-        generator_name: GeneratorName,
-    ) -> None:
-        reconstruction_data = self._reconstruction_data
-        if not reconstruction_data:
-            raise AssertionError("Expected reconstruction data to be loaded before exporting an FTI instrument")
-
-        feature = reconstruction_data.feature_data[generator_name]
-        feature.save(filepath, instrument_name)
 
     def _get_instrument_name(self, generator_name: Optional[GeneratorName] = None) -> str:
         reconstruction_data = self._reconstruction_data

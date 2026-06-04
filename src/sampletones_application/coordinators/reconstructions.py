@@ -36,6 +36,7 @@ from sampletones_application.logic.reconstruction.details import (
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
@@ -62,6 +63,7 @@ class ReconstructionsTabCoordinator:
         shortcut_manager: ShortcutManager,
         reconstruction_manager: ReconstructionManager,
         browser_manager: BrowserManager,
+        export_service: ExportService,
         on_load_reconstruction_with_confirmation: Callable[[Optional[Path]], None],
         on_reconstruction_loaded: VoidCallback,
         on_reconstruct_file: VoidCallback,
@@ -89,7 +91,6 @@ class ReconstructionsTabCoordinator:
         self._details_width = layout.general.panels.reconstructions_details.width
         self._right_height = layout.general.panels.right.height
 
-        # Pre-fetch messages used in callbacks and load_reconstruction
         self._msg_file_not_found = language_manager[
             TextKey(
                 Page.RECONSTRUCTIONS,
@@ -266,6 +267,7 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_panel_logic: ReconstructionPanelLogic = ReconstructionPanelLogic(
             session_manager,
             reconstruction_manager,
+            export_service,
         )
         self._reconstruction_details_panel: GUIReconstructionDetailsPanel = GUIReconstructionDetailsPanel(
             shortcut_manager,
@@ -315,32 +317,6 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_panel.open_export_instruments_dialog
         )
         self._reconstruction_panel_logic.on_open_export_wav_dialog = self._reconstruction_panel.open_export_wav_dialog
-        self._reconstruction_panel_logic.on_export_instrument_success = lambda filepath: dialogs.show_message_with_path(
-            _ttl_export_status,
-            _msg_export_fti_success,
-            filepath,
-        )
-        self._reconstruction_panel_logic.on_export_instrument_error = lambda exception: dialogs.show_error(
-            exception, _msg_export_fti_failed
-        )
-        self._reconstruction_panel_logic.on_export_instruments_success = (
-            lambda filepath: dialogs.show_message_with_path(
-                _ttl_export_status,
-                _msg_export_ftis_success,
-                filepath,
-            )
-        )
-        self._reconstruction_panel_logic.on_export_instruments_error = lambda exception: dialogs.show_error(
-            exception, _msg_export_ftis_failed
-        )
-        self._reconstruction_panel_logic.on_export_wav_success = lambda filepath: dialogs.show_message_with_path(
-            _ttl_export_wav,
-            _msg_export_wav_success,
-            filepath,
-        )
-        self._reconstruction_panel_logic.on_export_wav_error = lambda exception: dialogs.show_error(
-            exception, _msg_export_wav_failed
-        )
         self._reconstruction_panel_logic.on_locate_audio_missing = lambda: dialogs.show_info(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING,
             _msg_audio_missing,
@@ -348,6 +324,20 @@ class ReconstructionsTabCoordinator:
         )
         self._reconstruction_panel_logic.on_locate_audio_not_found = lambda path: dialogs.show_file_not_found(
             path, _msg_locate_audio_failed
+        )
+
+        export_service.subscribe(
+            lambda result: self._on_export_result(
+                result,
+                ttl_export_status=_ttl_export_status,
+                ttl_export_wav=_ttl_export_wav,
+                msg_export_fti_success=_msg_export_fti_success,
+                msg_export_fti_failed=_msg_export_fti_failed,
+                msg_export_ftis_success=_msg_export_ftis_success,
+                msg_export_ftis_failed=_msg_export_ftis_failed,
+                msg_export_wav_success=_msg_export_wav_success,
+                msg_export_wav_failed=_msg_export_wav_failed,
+            )
         )
 
         self._reconstruction_details_logic.on_view_changed = self._reconstruction_details_panel.update_view
@@ -374,6 +364,33 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_details_panel.on_raw_data_changed = (
             self._reconstruction_details_logic.handle_raw_data_changed
         )
+
+    def _on_export_result(
+        self,
+        result: ExportResult,
+        *,
+        ttl_export_status: str,
+        ttl_export_wav: str,
+        msg_export_fti_success: str,
+        msg_export_fti_failed: str,
+        msg_export_ftis_success: str,
+        msg_export_ftis_failed: str,
+        msg_export_wav_success: str,
+        msg_export_wav_failed: str,
+    ) -> None:
+        match result:
+            case ExportSuccess(kind=ExportKind.WAV, filepath=fp):
+                self._dialogs.show_message_with_path(ttl_export_wav, msg_export_wav_success, fp)
+            case ExportSuccess(kind=ExportKind.INSTRUMENT, filepath=fp):
+                self._dialogs.show_message_with_path(ttl_export_status, msg_export_fti_success, fp)
+            case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp):
+                self._dialogs.show_message_with_path(ttl_export_status, msg_export_ftis_success, fp)
+            case ExportError(kind=ExportKind.WAV, exception=exc):
+                self._dialogs.show_error(exc, msg_export_wav_failed)
+            case ExportError(kind=ExportKind.INSTRUMENT, exception=exc):
+                self._dialogs.show_error(exc, msg_export_fti_failed)
+            case ExportError(kind=ExportKind.INSTRUMENTS, exception=exc):
+                self._dialogs.show_error(exc, msg_export_ftis_failed)
 
     def create_tab(self) -> None:
         with dpg.tab(
@@ -496,7 +513,7 @@ class ReconstructionsTabCoordinator:
                 f"Deserialization error while loading reconstruction from {filepath}",
             )
             self._dialogs.show_error(exception, self._msg_deserialization_error)
-        except Exception as exception:  # TODO: narrow
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error_with_traceback(
                 exception,
                 f"Unexpected error while loading reconstruction data from {filepath}",

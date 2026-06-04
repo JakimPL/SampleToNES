@@ -1,4 +1,3 @@
-import threading
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -9,6 +8,14 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.services.conversion import ConversionResult, ConversionService
+from sampletones_application.services.result import (
+    ServiceCancelled,
+    ServiceError,
+    ServiceProgress,
+    ServiceStarted,
+    ServiceSuccess,
+)
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.progress import SystemProgress
 from sampletones_application.view_model.main.converter import (
@@ -16,15 +23,8 @@ from sampletones_application.view_model.main.converter import (
     ConverterViewModel,
 )
 from sampletones_core.configs import Config
-from sampletones_core.parallelization import (
-    ETAEstimator,
-    TaskProgress,
-    TaskStatus,
-)
-from sampletones_core.reconstructions.converter import (
-    ReconstructionConverter,
-    get_output_path,
-)
+from sampletones_core.parallelization import ETAEstimator
+from sampletones_core.reconstructions.converter import get_output_path
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import PathCallback, VoidCallback
@@ -36,11 +36,13 @@ class ConverterLogic(CallbackMixin):
     def __init__(
         self,
         config_manager: ConfigManager,
+        conversion_service: ConversionService,
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
     ) -> None:
         self._config_manager = config_manager
+        self._service = conversion_service
         self._scheduling = scheduling
         self._msg_idle = language_manager[
             TextKey(
@@ -114,15 +116,14 @@ class ConverterLogic(CallbackMixin):
                 GlobalTemplateElements.TIME_ESTIMATION,
             )
         ]
-        self._converter: Optional[ReconstructionConverter] = None
         self._eta_estimator: Optional[ETAEstimator] = None
-        self._config: Optional[Config] = None
-        self._status_lock = threading.Lock()
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
         self._output_path: Optional[Path] = None
         self._is_file: bool = True
         self._system_progress = SystemProgress()
+
+        self._service.subscribe(self._on_service_result)
 
         self.on_view_changed: Optional[Callable[[ConverterViewModel], None]] = None
         self.on_success: Optional[VoidCallback] = None
@@ -135,9 +136,7 @@ class ConverterLogic(CallbackMixin):
         self.is_library_loaded: Optional[Callable[[], bool]] = None
 
     def is_running(self) -> bool:
-        return self._converter is not None and (
-            self._converter.is_running() or self._converter.status == TaskStatus.PENDING
-        )
+        return self._service.is_running()
 
     def emit_initial_view(self) -> None:
         self._emit_view_model(self._msg_idle, 0.0, "0%")
@@ -159,28 +158,23 @@ class ConverterLogic(CallbackMixin):
             logger.warning("Conversion is already in progress")
             return
 
-        self._config = self._config_manager.config.model_copy()
         self._phase = ConversionPhase.WAITING
         self._emit_view_model(self._msg_waiting, 0.0, "0%")
         self.call(self.generate_library)
         self._wait_for_library_and_start()
 
     def cancel(self) -> None:
-        if self._converter and self._converter.is_running():
+        if self._service.is_running():
             self._phase = ConversionPhase.CANCELLING
             self._emit_view_model(self._msg_cancelling, 0.0, "0%")
             self._system_progress.error()
-            self._converter.cancel()
+            self._service.cancel()
 
     def close(self) -> None:
         try:
-            if self._converter and self._converter.is_running():
-                self._converter.cancel()
-            if self._converter:
-                self._converter.cleanup()
+            self._service.cleanup()
         finally:
             self._system_progress.clear()
-            self._converter = None
             self._eta_estimator = None
             self._phase = ConversionPhase.IDLE
             self._emit_view_model(self._msg_idle, 0.0, "0%")
@@ -195,15 +189,53 @@ class ConverterLogic(CallbackMixin):
         self.close()
 
     def cleanup(self) -> None:
-        if self._converter is not None and self._converter.is_running():
-            self._converter.cancel()
-
-        if self._converter is not None:
-            self._converter.cleanup()
-
+        self._service.cleanup()
         self._system_progress.clear()
-        self._converter = None
         self._eta_estimator = None
+
+    def _on_service_result(self, result: ConversionResult) -> None:
+        match result:
+            case ServiceStarted(total=total):
+                self._eta_estimator = ETAEstimator(total=total)
+                self._system_progress.start(total)
+            case ServiceProgress() as progress:
+                self._handle_progress_result(progress)
+            case ServiceSuccess(value=output_path):
+                self._on_conversion_complete(output_path)
+            case ServiceError(exception=exc):
+                self._on_conversion_error(exc)
+            case ServiceCancelled():
+                self._on_cancellation_complete()
+
+    def _handle_progress_result(self, progress: ServiceProgress[Path]) -> None:
+        if self._phase == ConversionPhase.CANCELLING:
+            total = max(progress.total, 1)
+            self._emit_view_model(
+                self._msg_cancelling,
+                progress.completed / total,
+                "0%",
+            )
+            return
+
+        self._phase = ConversionPhase.RUNNING
+        self._system_progress.set(progress.completed, progress.total)
+        assert self._eta_estimator is not None, "ETA estimator not initialized"
+        eta_string = self._eta_estimator.update(progress.completed)
+        percent_string = self._eta_estimator.get_percent_string()
+        status_text = self._tpl_progress.format(progress.completed, progress.total)
+
+        if eta_string:
+            status_text += self._tpl_eta.format(eta_string=eta_string)
+
+        display_input_path = (
+            to_path(str(progress.current_item)) if progress.current_item is not None else self._input_path
+        )
+        self._emit_view_model(
+            status_text,
+            progress.completed / max(progress.total, 1),
+            percent_string,
+            input_path=display_input_path,
+        )
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
@@ -218,7 +250,7 @@ class ConverterLogic(CallbackMixin):
             logger.error("Invalid path")
             self.call(self.on_error, exception)
             return False
-        except Exception as exception:  # TODO: narrow down exception types
+        except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.error("Failed to determine output path")
             self.call(self.on_error, exception)
             return False
@@ -237,27 +269,9 @@ class ConverterLogic(CallbackMixin):
 
     def _start_conversion(self) -> None:
         assert self._input_path is not None, "Input path is not set"
-        assert self._config is not None, "Config is not set"
-        self._converter = ReconstructionConverter(
-            config=self._config,
-            input_path=self._input_path,
-            is_file=self._is_file,
-        )
-        self._converter.set_callbacks(
-            on_start=self._on_start,
-            on_completed=self._on_conversion_complete,
-            on_error=self._on_conversion_error,
-            on_cancelled=self._on_cancellation_complete,
-            on_progress=self._update_status,
-        )
-        self._converter.start()
+        config = self._config_manager.config.model_copy()
+        self._service.start(config, self._input_path)
         self._system_progress.initialize()
-
-    def _on_start(self) -> None:
-        assert self._converter is not None, "Converter is not initialized"
-        tasks = self._converter.total_tasks
-        self._eta_estimator = ETAEstimator(total=tasks)
-        self._system_progress.start(tasks)
 
     def _on_conversion_complete(self, output_path: Path) -> None:
         if output_path.exists():
@@ -285,45 +299,6 @@ class ConverterLogic(CallbackMixin):
             delay=self._scheduling.delay_cancel,
         )
         self.call(self.on_cancelled)
-
-    def _update_status(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
-        with self._status_lock:
-            match task_status:
-                case TaskStatus.CANCELLING:
-                    self._phase = ConversionPhase.CANCELLING
-                    self._emit_view_model(
-                        self._msg_cancelling,
-                        task_progress.get_progress(),
-                        "0%",
-                    )
-                case TaskStatus.RUNNING:
-                    self._handle_running_update(task_progress)
-                case _:
-                    pass
-
-    def _handle_running_update(self, task_progress: TaskProgress) -> None:
-        assert self._converter is not None, "Converter is not initialized"
-        assert self._eta_estimator is not None, "ETA Estimator is not initialized"
-        self._phase = ConversionPhase.RUNNING
-        self._system_progress.set(task_progress.completed, task_progress.total)
-        eta_string = self._eta_estimator.update(task_progress.completed)
-        percent_string = self._eta_estimator.get_percent_string()
-        status_text = self._tpl_progress.format(
-            self._converter.completed_files,
-            self._converter.total_files,
-        )
-
-        if eta_string:
-            status_text += self._tpl_eta.format(eta_string=eta_string)
-
-        current_item = task_progress.current_item
-        display_input_path = to_path(current_item) if current_item is not None else self._input_path
-        self._emit_view_model(
-            status_text,
-            task_progress.get_progress(),
-            percent_string,
-            input_path=display_input_path,
-        )
 
     def _emit_view_model(
         self,
