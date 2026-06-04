@@ -63,5 +63,5 @@ class RegenerationService(ServiceBase[RegenerationResult]):
                 audio,
             )
             self._emit(ServiceSuccess(value=reconstruction_data))
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            self._emit(ServiceError(exception=exc))
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            self._emit(ServiceError(exception=exception))

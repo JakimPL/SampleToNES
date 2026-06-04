@@ -5,6 +5,7 @@ from sampletones_application.services.regeneration import RegenerationResult, Re
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
+    ServiceIntermediate,
     ServiceProgress,
     ServiceStarted,
     ServiceSuccess,
@@ -23,6 +24,7 @@ __all__ = [
     "ServiceBase",
     "ServiceCancelled",
     "ServiceError",
+    "ServiceIntermediate",
     "ServiceProgress",
     "ServiceStarted",
     "ServiceSuccess",

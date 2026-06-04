@@ -30,8 +30,8 @@ def parse_hex_color(value: str) -> ColorRGBA:
 
     try:
         int(hex_part, 16)
-    except ValueError as exc:
-        raise ValueError(f"Color contains non-hex characters: {value!r}") from exc
+    except ValueError as exception:
+        raise ValueError(f"Color contains non-hex characters: {value!r}") from exception
 
     r = int(hex_part[0:2], 16)
     g = int(hex_part[2:4], 16)

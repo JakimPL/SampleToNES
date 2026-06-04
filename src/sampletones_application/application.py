@@ -921,9 +921,9 @@ class Application:
         match result:
             case ServiceSuccess():
                 self._on_reconstruction_updated()
-            case ServiceError(exception=exc):
-                logger.error_with_traceback(exc, "Regeneration failed")
-                self.dialogs.show_error(exc)
+            case ServiceError(exception=exception):
+                logger.error_with_traceback(exception, "Regeneration failed")
+                self.dialogs.show_error(exception)
 
     def _on_reconstruction_updated(self) -> None:
         self._reconstructions_tab.update_reconstruction()

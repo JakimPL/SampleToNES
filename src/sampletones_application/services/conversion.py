@@ -7,6 +7,7 @@ from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
+    ServiceIntermediate,
     ServiceProgress,
     ServiceStarted,
     ServiceSuccess,
@@ -21,6 +22,7 @@ from sampletones_shared.utils.system.paths import to_path
 ConversionResult = Union[
     ServiceStarted,
     ServiceProgress[Path],
+    ServiceIntermediate[TaskProgress],
     ServiceSuccess[Path],
     ServiceError,
     ServiceCancelled,
@@ -100,3 +102,6 @@ class ConversionService(ServiceBase[ConversionResult]):
 
     def _on_cancelled(self) -> None:
         self._emit(ServiceCancelled())
+
+    def forward_library_progress(self, _status: TaskStatus, progress: TaskProgress) -> None:
+        self._emit(ServiceIntermediate(data=progress))

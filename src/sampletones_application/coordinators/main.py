@@ -204,6 +204,7 @@ class MainTabCoordinator:
             _title_progress,
         )
         self._converter_logic.is_library_loaded = library_manager.is_library_loaded
+        library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
         self._converter_panel.on_cancel_requested = self._converter_logic.cancel

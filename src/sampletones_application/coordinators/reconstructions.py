@@ -385,12 +385,12 @@ class ReconstructionsTabCoordinator:
                 self._dialogs.show_message_with_path(ttl_export_status, msg_export_fti_success, fp)
             case ExportSuccess(kind=ExportKind.INSTRUMENTS, filepath=fp):
                 self._dialogs.show_message_with_path(ttl_export_status, msg_export_ftis_success, fp)
-            case ExportError(kind=ExportKind.WAV, exception=exc):
-                self._dialogs.show_error(exc, msg_export_wav_failed)
-            case ExportError(kind=ExportKind.INSTRUMENT, exception=exc):
-                self._dialogs.show_error(exc, msg_export_fti_failed)
-            case ExportError(kind=ExportKind.INSTRUMENTS, exception=exc):
-                self._dialogs.show_error(exc, msg_export_ftis_failed)
+            case ExportError(kind=ExportKind.WAV, exception=exception):
+                self._dialogs.show_error(exception, msg_export_wav_failed)
+            case ExportError(kind=ExportKind.INSTRUMENT, exception=exception):
+                self._dialogs.show_error(exception, msg_export_fti_failed)
+            case ExportError(kind=ExportKind.INSTRUMENTS, exception=exception):
+                self._dialogs.show_error(exception, msg_export_ftis_failed)
 
     def create_tab(self) -> None:
         with dpg.tab(

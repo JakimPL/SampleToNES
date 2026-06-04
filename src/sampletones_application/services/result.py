@@ -32,3 +32,8 @@ class ServiceError:
 @dataclass(frozen=True)
 class ServiceCancelled:
     pass
+
+
+@dataclass(frozen=True)
+class ServiceIntermediate(Generic[T]):
+    data: T

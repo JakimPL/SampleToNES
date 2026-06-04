@@ -67,6 +67,7 @@ class InstructionsLibraryManager(CallbackMixin):
         self.on_generation_start: Optional[VoidCallback] = None
         self.on_generation_completed: Optional[VoidCallback] = None
         self.on_generation_progress: Optional[OnGenerationProgressCallback] = None
+        self.on_generation_progress_extra: Optional[OnGenerationProgressCallback] = None
         self.on_generation_error: Optional[OnGenerationErrorCallback] = None
         self.on_generation_cancelled: Optional[VoidCallback] = None
 
@@ -173,12 +174,22 @@ class InstructionsLibraryManager(CallbackMixin):
 
     def generate_library(self, config: Config, window: Window) -> None:
         self._creator = InstructionsLibraryCreator(config, window)
+
+        _primary = self.on_generation_progress
+        _extra = self.on_generation_progress_extra
+
+        def _on_progress(status: TaskStatus, progress: TaskProgress) -> None:
+            if _primary:
+                _primary(status, progress)
+            if _extra:
+                _extra(status, progress)
+
         self._creator.set_callbacks(
             on_start=self.on_generation_start,
             on_completed=self._complete_generation,
             on_error=self.on_generation_error,
             on_cancelled=self.on_generation_cancelled,
-            on_progress=self.on_generation_progress,
+            on_progress=_on_progress,
         )
 
         self._creator.start()

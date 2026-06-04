@@ -12,6 +12,7 @@ from sampletones_application.services.conversion import ConversionResult, Conver
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
+    ServiceIntermediate,
     ServiceProgress,
     ServiceStarted,
     ServiceSuccess,
@@ -23,7 +24,7 @@ from sampletones_application.view_model.main.converter import (
     ConverterViewModel,
 )
 from sampletones_core.configs import Config
-from sampletones_core.parallelization import ETAEstimator
+from sampletones_core.parallelization import ETAEstimator, TaskProgress
 from sampletones_core.reconstructions.converter import get_output_path
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
@@ -200,10 +201,12 @@ class ConverterLogic(CallbackMixin):
                 self._system_progress.start(total)
             case ServiceProgress() as progress:
                 self._handle_progress_result(progress)
+            case ServiceIntermediate(data=progress):
+                self._handle_library_progress(progress)
             case ServiceSuccess(value=output_path):
                 self._on_conversion_complete(output_path)
-            case ServiceError(exception=exc):
-                self._on_conversion_error(exc)
+            case ServiceError(exception=exception):
+                self._on_conversion_error(exception)
             case ServiceCancelled():
                 self._on_cancellation_complete()
 
@@ -236,6 +239,13 @@ class ConverterLogic(CallbackMixin):
             percent_string,
             input_path=display_input_path,
         )
+
+    def _handle_library_progress(self, progress: TaskProgress) -> None:
+        if self._phase != ConversionPhase.WAITING:
+            return
+        total = max(progress.total, 1)
+        fraction = progress.completed / total
+        self._emit_view_model(self._msg_generating_library, fraction, f"{int(fraction * 100)}%")
 
     def _assign_paths(self, input_path: Path, config: Config) -> bool:
         try:
