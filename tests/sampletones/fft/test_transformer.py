@@ -28,24 +28,19 @@ from tests.suite.case import BaseRegularTestCase
 
 @pytest.fixture
 def transformer_identity() -> FFTTransformer:
-    """FFTTransformer with gamma=50 (identity transformation, a=1.0)."""
     return FFTTransformer.from_gamma(gamma=50, sample_rate=44100)
 
 
 @pytest.fixture
 def transformer_square() -> FFTTransformer:
-    """FFTTransformer with gamma=25 (a=0.5, sqrt transformation)."""
     return FFTTransformer.from_gamma(gamma=25, sample_rate=44100)
 
 
 class TransformerFixture(StrEnum):
-    """Enum for selecting transformer fixtures."""
-
     IDENTITY = "identity"
     SQUARE = "square"
 
     def get_fixture(self, request: pytest.FixtureRequest) -> FFTTransformer:
-        """Get the transformer fixture."""
         return request.getfixturevalue(f"transformer_{self.value}")
 
 

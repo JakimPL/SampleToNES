@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from sampletones_application.services.conversion import ConversionService
 from sampletones_core.configs import Config
 

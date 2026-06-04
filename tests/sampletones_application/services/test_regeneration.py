@@ -11,13 +11,11 @@ from sampletones_application.services.result import ServiceCancelled, ServiceErr
 from sampletones_application.utils.thread import SingleThreadExecutor
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 
-# Captured at import time, before any test fixture patches SingleThreadExecutor.execute.
 _real_executor_execute = SingleThreadExecutor.execute
 
 
 @pytest.fixture
 def synthesis_mocks():
-    """Mock all external synthesis dependencies for RegenerationService._run()."""
     mock_instruction = MagicMock()
     mock_exporter = MagicMock()
     mock_generator_class = MagicMock()
@@ -248,9 +246,6 @@ class TestRegenerationServiceCancellationConstraints:
         reconstruction_data.config = MagicMock()
         reconstruction_data.reconstruction = MagicMock()
 
-        # Call the real execute function directly on the instance to bypass the
-        # synchronous_executor fixture's class-level patch.  This spawns a real
-        # background thread regardless of any patch on SingleThreadExecutor.execute.
         def run() -> None:
             service._run(reconstruction_data, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1)
 
@@ -326,8 +321,6 @@ class TestRegenerationServiceHangingTask:
             task_started.set()
             block.wait(timeout=5.0)
 
-        # Call the real execute function directly on the instance to bypass any
-        # class-level patch from synchronous_executor.
         _real_executor_execute(service._executor, hanging, wait=False)
         task_started.wait(timeout=1.0)
 

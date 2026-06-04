@@ -1,19 +1,11 @@
-"""Tests for CallbackQueue delivery guarantees.
-
-These tests use the REAL queue (not the synchronous_queue fixture from conftest)
-because they specifically verify threading behaviour and the conditions under
-which callbacks are or are not delivered.
-"""
-
 import threading
-from typing import Any, List
+from typing import List
 from unittest.mock import patch
 
 import pytest
 
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 
-# Captured at module import time, before synchronous_queue patches CallbackQueue.add.
 _real_queue_add = CallbackQueue.add
 
 

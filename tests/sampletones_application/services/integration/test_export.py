@@ -1,15 +1,12 @@
 from typing import Any, List
 
 import numpy as np
-import pytest
 
 from sampletones_application.services.export import ExportError, ExportKind, ExportService, ExportSuccess
 from sampletones_core.audio import read_wave
 
 
 class TestExportWavIntegration:
-    """ExportService.export_wav() with real write_wave and real filesystem."""
-
     def test_wav_file_is_created_on_disk(self, tmp_path, default_config) -> None:
         export_service = ExportService()
         results: List[Any] = []
@@ -57,8 +54,6 @@ class TestExportWavIntegration:
 
 
 class TestExportInstrumentIntegration:
-    """ExportService.export_instrument() with real Features.save() and real filesystem."""
-
     def test_fti_file_is_created_on_disk(self, tmp_path, pulse_features) -> None:
         export_service = ExportService()
         results: List[Any] = []
@@ -95,8 +90,6 @@ class TestExportInstrumentIntegration:
 
 
 class TestExportInstrumentsIntegration:
-    """ExportService.export_instruments() with real Features.save() and real filesystem."""
-
     def test_all_fti_files_are_created_on_disk(self, tmp_path, pulse_features) -> None:
         export_service = ExportService()
         results: List[Any] = []
