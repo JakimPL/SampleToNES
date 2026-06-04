@@ -1,7 +1,12 @@
 from pathlib import Path
+from typing import Tuple, Union, overload
 
+from sampletones_application.categories.abstract import AbstractElement
+from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_shared.utils.serialization import load_yaml
+
+TextKeyTuple = Tuple[Page, Panel, TextType, AbstractElement]
 
 
 class LanguageManager:
@@ -16,5 +21,11 @@ class LanguageManager:
 
         self._data = {str(key): str(value) for key, value in raw.items()}
 
-    def __getitem__(self, key: TextKey) -> str:
+    @overload
+    def __getitem__(self, key: TextKey) -> str: ...
+    @overload
+    def __getitem__(self, key: TextKeyTuple) -> str: ...
+    def __getitem__(self, key: Union[TextKey, TextKeyTuple]) -> str:
+        if not isinstance(key, TextKey):
+            key = TextKey(*key)
         return self._data[key.compose()]
