@@ -1,61 +1,82 @@
-TAG_WINDOW_GLOBAL_MAIN = "window_global_main"
-TAG_TABS_GLOBAL = "tabs_global"
-TAG_FONT_GLOBAL_BOLD = "font_global_bold"
-TAG_FONT_GLOBAL_BOLD_SMALL = "font_global_bold_small"
-TAG_FONT_GLOBAL_BOLD_LARGE = "font_global_bold_large"
-TAG_FONT_GLOBAL_ITALIC = "font_global_italic"
-TAG_FONT_GLOBAL_ITALIC_SMALL = "font_global_italic_small"
-TAG_FONT_GLOBAL_ITALIC_LARGE = "font_global_italic_large"
-TAG_FONT_GLOBAL_REGULAR = "font_global_regular"
-TAG_FONT_GLOBAL_REGULAR_SMALL = "font_global_regular_small"
-TAG_FONT_GLOBAL_REGULAR_LARGE = "font_global_regular_large"
-TAG_FONT_GLOBAL_ICON = "font_global_icon"
-TAG_THEME_GLOBAL_DEFAULT = "theme_global_default"
-TAG_THEME_GLOBAL_CONVERTER = "theme_global_converter"
-TAG_THEME_GLOBAL_TABLE = "theme_global_table"
-TAG_THEME_GLOBAL_FAVORITE = "theme_global_favorite"
-TAG_THEME_GLOBAL_FAVORITE_CHILD = "theme_global_favorite_child"
-TAG_THEME_GLOBAL_FILE_NO_CONTENT = "theme_global_file_no_content"
-TAG_THEME_GLOBAL_FILE_RECONSTRUCTION = "theme_global_file_reconstruction"
-TAG_THEME_GLOBAL_FILE_LIBRARY = "theme_global_file_library"
-TAG_THEME_GLOBAL_FILE_WAVE = "theme_global_file_wave"
-TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY = "theme_global_file_not_expanded_directory"
-TAG_THEME_GLOBAL_INPUT_INVALID = "theme_global_input_invalid"
-TAG_THEME_GLOBAL_MENU_FPS = "theme_global_menu_fps"
-TAG_THEME_GLOBAL_STATUS = "theme_global_status"
-TAG_THEME_GLOBAL_TRACEBACK = "theme_global_traceback"
-TAG_BUTTON_GLOBAL_OK = "button_global_ok"
-TAG_DIALOG_GLOBAL_CONFIG_STATUS = "dialog_global_config_status"
-TAG_DIALOG_GLOBAL_RECONSTRUCTION_STATUS = "dialog_global_reconstruction_status"
-TAG_DIALOG_GLOBAL_FILE_NOT_FOUND = "dialog_global_file_not_found"
-TAG_DIALOG_GLOBAL_ERROR = "dialog_global_error"
-TAG_DIALOG_GLOBAL_PATH_MESSAGE = "dialog_global_path_message"
-TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION = "dialog_global_exit_confirmation"
-TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED = "dialog_global_reconstruction_saved"
-TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION = "dialog_global_close_unsaved_reconstruction"
-TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION = "dialog_global_load_unsaved_reconstruction"
-TAG_MENU_ITEM_RECONSTRUCTION_SAVE = "menu_item_reconstruction_save"
-TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS = "menu_item_reconstruction_save_as"
-TAG_MENU_ITEM_RECONSTRUCTION_LOAD = "menu_item_reconstruction_load"
-TAG_MENU_ITEM_RECONSTRUCTION_CLOSE = "menu_item_reconstruction_close"
-TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV = "menu_item_reconstruction_export_to_wav"
-TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS = "menu_item_reconstruction_export_to_ftis"
-TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "menu_item_reconstruction_reconstruct_file"
-TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "menu_item_reconstruction_reconstruct_directory"
-TAG_MENU_ITEM_VIEW_FULLSCREEN = "menu_item_view_fullscreen"
-TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS = "menu_item_view_show_advanced_settings"
-TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START = "menu_item_playback_play_from_start"
-TAG_MENU_ITEM_PLAYBACK_PLAY = "menu_item_playback_play"
-TAG_MENU_ITEM_PLAYBACK_STOP = "menu_item_playback_stop"
-TAG_MENU_ITEM_PLAYBACK_AUTOPLAY = "menu_item_playback_autoplay"
-TAG_TEXT_GLOBAL_MENU_FPS = "text_global_menu_fps"
-TAG_STATUS_BAR_GLOBAL = "status_bar_global"
-TAG_STATUS_WINDOW_GLOBAL = "status_window_global"
-TAG_TAB_GLOBAL_MAIN = "tab_global_main"
-TAG_TAB_GLOBAL_INSTRUCTIONS = "tab_global_instructions"
-TAG_TAB_GLOBAL_RECONSTRUCTIONS = "tab_global_reconstructions"
-TAG_TAB_GLOBAL_SEQUENCER = "tab_global_sequencer"
-TAG_HANDLER_GLOBAL_FOCUS = "handler_global_focus"
+from sampletones_application.text.hierarchy import Page, Panel, Widget
+from sampletones_application.text.key import TagName
+
+TAG_WINDOW_GLOBAL_MAIN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.WINDOW, "main")
+TAG_TABS_GLOBAL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TABS, "")
+TAG_FONT_GLOBAL_BOLD = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "bold")
+TAG_FONT_GLOBAL_BOLD_SMALL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "bold_small")
+TAG_FONT_GLOBAL_BOLD_LARGE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "bold_large")
+TAG_FONT_GLOBAL_ITALIC = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "italic")
+TAG_FONT_GLOBAL_ITALIC_SMALL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "italic_small")
+TAG_FONT_GLOBAL_ITALIC_LARGE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "italic_large")
+TAG_FONT_GLOBAL_REGULAR = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "regular")
+TAG_FONT_GLOBAL_REGULAR_SMALL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "regular_small")
+TAG_FONT_GLOBAL_REGULAR_LARGE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "regular_large")
+TAG_FONT_GLOBAL_ICON = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.FONT, "icon")
+TAG_THEME_GLOBAL_DEFAULT = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "default")
+TAG_THEME_GLOBAL_CONVERTER = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "converter")
+TAG_THEME_GLOBAL_TABLE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "table")
+TAG_THEME_GLOBAL_FAVORITE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "favorite")
+TAG_THEME_GLOBAL_FAVORITE_CHILD = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "favorite_child")
+TAG_THEME_GLOBAL_FILE_NO_CONTENT = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "file_no_content")
+TAG_THEME_GLOBAL_FILE_RECONSTRUCTION = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "file_reconstruction")
+TAG_THEME_GLOBAL_FILE_LIBRARY = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "file_library")
+TAG_THEME_GLOBAL_FILE_WAVE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "file_wave")
+TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "file_not_expanded_directory"
+)
+TAG_THEME_GLOBAL_INPUT_INVALID = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "input_invalid")
+TAG_THEME_GLOBAL_MENU_FPS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "menu_fps")
+TAG_THEME_GLOBAL_STATUS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "status")
+TAG_THEME_GLOBAL_TRACEBACK = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.THEME, "traceback")
+TAG_BUTTON_GLOBAL_OK = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.BUTTON, "ok")
+TAG_DIALOG_GLOBAL_CONFIG_STATUS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "config_status")
+TAG_DIALOG_GLOBAL_RECONSTRUCTION_STATUS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "reconstruction_status")
+TAG_DIALOG_GLOBAL_FILE_NOT_FOUND = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "file_not_found")
+TAG_DIALOG_GLOBAL_ERROR = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "error")
+TAG_DIALOG_GLOBAL_PATH_MESSAGE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "path_message")
+TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "exit_confirmation")
+TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "reconstruction_saved")
+TAG_DIALOG_GLOBAL_CLOSE_UNSAVED_RECONSTRUCTION = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "close_unsaved_reconstruction"
+)
+TAG_DIALOG_GLOBAL_LOAD_UNSAVED_RECONSTRUCTION = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.DIALOG, "load_unsaved_reconstruction"
+)
+TAG_MENU_ITEM_RECONSTRUCTION_SAVE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_save")
+TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_save_as")
+TAG_MENU_ITEM_RECONSTRUCTION_LOAD = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_load")
+TAG_MENU_ITEM_RECONSTRUCTION_CLOSE = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_close")
+TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_export_to_wav"
+)
+TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_export_to_ftis"
+)
+TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_reconstruct_file"
+)
+TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_reconstruction_reconstruct_directory"
+)
+TAG_MENU_ITEM_VIEW_FULLSCREEN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_view_fullscreen")
+TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_view_show_advanced_settings"
+)
+TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START = TagName(
+    Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_playback_play_from_start"
+)
+TAG_MENU_ITEM_PLAYBACK_PLAY = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_playback_play")
+TAG_MENU_ITEM_PLAYBACK_STOP = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_playback_stop")
+TAG_MENU_ITEM_PLAYBACK_AUTOPLAY = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.MENU, "item_playback_autoplay")
+TAG_TEXT_GLOBAL_MENU_FPS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TEXT, "menu_fps")
+TAG_STATUS_BAR_GLOBAL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.STATUS, "bar")
+TAG_STATUS_WINDOW_GLOBAL = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.STATUS, "window")
+TAG_TAB_GLOBAL_MAIN = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TAB, "main")
+TAG_TAB_GLOBAL_INSTRUCTIONS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TAB, "instructions")
+TAG_TAB_GLOBAL_RECONSTRUCTIONS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TAB, "reconstructions")
+TAG_TAB_GLOBAL_SEQUENCER = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.TAB, "sequencer")
+TAG_HANDLER_GLOBAL_FOCUS = TagName(Page.GLOBAL, Panel.IMPLICIT, Widget.HANDLER, "focus")
 
 SUF_BUTTON = "_button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}_copy"

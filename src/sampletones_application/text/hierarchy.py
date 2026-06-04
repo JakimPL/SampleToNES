@@ -11,6 +11,31 @@ class TextType(StrEnum):
     TOOLTIP = "tooltip"
 
 
+class Widget(StrEnum):
+    BUTTON = "button"
+    CHECKBOX = "checkbox"
+    COMBO = "combo"
+    DIALOG = "dialog"
+    FONT = "font"
+    GROUP = "group"
+    HANDLER = "handler"
+    HEADER = "header"
+    INPUT = "input"
+    MENU = "menu"
+    PANEL = "panel"
+    PATH = "path"
+    PROGRESS = "progress"
+    SLIDER = "slider"
+    STATUS = "status"
+    TAB = "tab"
+    TABLE = "table"
+    TABS = "tabs"
+    TEXT = "text"
+    THEME = "theme"
+    TREE = "tree"
+    WINDOW = "window"
+
+
 class Page(StrEnum):
     GLOBAL = "global"
     MAIN = "main"
@@ -29,6 +54,9 @@ class Tab(StrEnum):
 
 
 class Panel(StrEnum):
+    # Implicit panel (no panel in tag hierarchy, omitted from string representation)
+    IMPLICIT = ""
+
     # Global cross-page panels
     MENU = "menu"
     DIALOG = "dialog"
@@ -36,6 +64,9 @@ class Panel(StrEnum):
     CONTEXT = "context"
     STATUS = "status"
     GRAPH = "graph"
+
+    # Page-level container/main panel
+    MAIN = "main"
 
     # Shared per-page panels (used under multiple Pages)
     PLAYER = "player"
