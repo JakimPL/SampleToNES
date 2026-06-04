@@ -8,12 +8,12 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
-    TAG_TAB_GLOBAL_SEQUENCER,
+    TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_PANEL_SEQUENCER_SAMPLES,
-    TAG_TABLE_SEQUENCER_SAMPLES,
-    TAG_WINDOW_SEQUENCER_SAMPLES,
+    TAG_SEQUENCER_INSTRUMENTS_PANEL,
+    TAG_SEQUENCER_INSTRUMENTS_TABLE,
+    TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
@@ -50,8 +50,8 @@ class GUISequencerSamplesPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_PANEL_SEQUENCER_SAMPLES,
-            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_RIGHT}",
+            tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",
             width=-1,
             height=-1,
         )
@@ -74,13 +74,13 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _create_samples_table(self) -> None:
         dpg.add_separator()
         with dpg.child_window(
-            tag=TAG_WINDOW_SEQUENCER_SAMPLES,
+            tag=TAG_SEQUENCER_INSTRUMENTS_WINDOW,
             border=False,
             width=-1,
             height=-1,
         ):
             with dpg.table(
-                tag=TAG_TABLE_SEQUENCER_SAMPLES,
+                tag=TAG_SEQUENCER_INSTRUMENTS_TABLE,
                 width=-1,
                 height=-1,
                 header_row=True,

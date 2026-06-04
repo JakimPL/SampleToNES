@@ -12,15 +12,15 @@ from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
 )
 from sampletones_application.constants.main import (
-    TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
-    TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
-    TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
-    TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
-    TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
-    TAG_PANEL_MAIN_ADVANCED,
-    TAG_PANEL_MAIN_SETTINGS,
-    TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-    TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
+    TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
+    TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
+    TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
+    TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
+    TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
+    TAG_MAIN_ADVANCED_PANEL,
+    TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
+    TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
+    TAG_MAIN_PANEL_SETTINGS,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -61,7 +61,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
 
-        self._item_handler_tag = f"{TAG_PANEL_MAIN_ADVANCED}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = f"{TAG_MAIN_ADVANCED_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self.library_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
@@ -124,8 +124,8 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_PANEL_MAIN_ADVANCED,
-            parent=TAG_PANEL_MAIN_SETTINGS,
+            tag=TAG_MAIN_ADVANCED_PANEL,
+            parent=TAG_MAIN_PANEL_SETTINGS,
             height=panel_height,
         )
 
@@ -151,7 +151,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
             output_directory=self._output_directory,
         )
@@ -171,63 +171,63 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         dpg.add_input_int(
             label=self._lbl_max_workers,
             default_value=self._max_workers,
-            tag=TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            tag=TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
             min_value=self._max_workers_minimum,
             width=self._input_width,
         )
 
         dpg.bind_item_handler_registry(
-            TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
             self._item_handler_tag,
         )
 
     def _create_library_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+            tag=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY,
-                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+                tag=TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
+                parent=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
                 label=self._lbl_select_library,
                 width=-1,
                 callback=self._select_library_directory_dialog,
             )
 
             self.library_path_text = GUIPathText(
-                tag=TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY,
-                parent=TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY,
+                tag=TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
+                parent=TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
                 path=self._library_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_output_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
+            tag=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
         ):
             GUIButton(
-                tag=TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY,
+                tag=TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
                 label=self._lbl_select_output,
-                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
+                parent=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
                 width=-1,
                 callback=self._select_output_directory_dialog,
             )
 
             self.output_path_text = GUIPathText(
-                tag=TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY,
-                parent=TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY,
+                tag=TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
+                parent=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
                 path=self._output_directory,
                 font=Font.REGULAR_SMALL,
             )
 
     def _create_tooltips(self) -> None:
         show_tooltip(
-            TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS,
+            TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
             self._tooltip_max_workers,
         )
 
@@ -250,7 +250,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def change_library_directory(self, directory_path: Path) -> None:
         self._library_directory = directory_path
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
             output_directory=self._output_directory,
         )
@@ -279,7 +279,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def change_output_directory(self, directory_path: Path) -> None:
         self._output_directory = directory_path
         advanced_update = AdvancedSettingsUpdate(
-            max_workers=int(clamp_widget_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS)),
+            max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
             output_directory=self._output_directory,
         )
@@ -293,7 +293,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
     def update_view(self, viewmodel: AdvancedSettingsPanelViewModel) -> None:
         self._library_directory = viewmodel.library_directory
         self._output_directory = viewmodel.output_directory
-        dpg.set_value(TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS, viewmodel.max_workers)
+        dpg.set_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS, viewmodel.max_workers)
 
         if self.output_path_text:
             self.output_path_text.set_path(viewmodel.output_directory)

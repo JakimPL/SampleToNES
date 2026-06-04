@@ -12,15 +12,15 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
-    TAG_TAB_GLOBAL_SEQUENCER,
+    TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_BUTTON_SEQUENCER_BROWSER_REFRESH_RECONSTRUCTIONS,
-    TAG_GROUP_SEQUENCER_BROWSER_CONTROLS,
-    TAG_GROUP_SEQUENCER_BROWSER_TREE,
-    TAG_PANEL_SEQUENCER_BROWSER,
-    TAG_TREE_SEQUENCER_BROWSER,
-    TAG_WINDOW_SEQUENCER_BROWSER_TREE,
+    TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+    TAG_SEQUENCER_BROWSER_GROUP_CONTROLS,
+    TAG_SEQUENCER_BROWSER_GROUP_TREE,
+    TAG_SEQUENCER_BROWSER_PANEL,
+    TAG_SEQUENCER_BROWSER_TREE,
+    TAG_SEQUENCER_BROWSER_WINDOW_TREE,
 )
 from sampletones_application.layout.behavior import (
     SchedulingBehavior,
@@ -84,9 +84,9 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
         super().__init__(
             tree=self.sequencer_browser_logic.tree,
-            tag=TAG_PANEL_SEQUENCER_BROWSER,
-            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_LEFT}",
-            tree_tag=TAG_TREE_SEQUENCER_BROWSER,
+            tag=TAG_SEQUENCER_BROWSER_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_SEQUENCER_BROWSER_TREE,
             session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
@@ -141,9 +141,9 @@ class GUISequencerBrowserPanel(GUITreePanel):
 
     def _create_buttons(self) -> None:
         dpg.add_separator()
-        with dpg.group(tag=TAG_GROUP_SEQUENCER_BROWSER_CONTROLS):
+        with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_CONTROLS):
             GUIButton(
-                tag=TAG_BUTTON_SEQUENCER_BROWSER_REFRESH_RECONSTRUCTIONS,
+                tag=TAG_SEQUENCER_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self._rebuild_tree,
@@ -152,8 +152,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
     def _create_tree_window(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_WINDOW_SEQUENCER_BROWSER_TREE):
-            with dpg.group(tag=TAG_GROUP_SEQUENCER_BROWSER_TREE):
+        with dpg.child_window(tag=TAG_SEQUENCER_BROWSER_WINDOW_TREE):
+            with dpg.group(tag=TAG_SEQUENCER_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,
                     tag=self.tree_tag,
@@ -223,8 +223,8 @@ class GUISequencerBrowserPanel(GUITreePanel):
         state.parent = node_tag
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_GROUP_SEQUENCER_BROWSER_TREE, enabled=enabled)
-        dpg_configure_item(TAG_GROUP_SEQUENCER_BROWSER_CONTROLS, enabled=enabled)
+        dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_TREE, enabled=enabled)
+        dpg_configure_item(TAG_SEQUENCER_BROWSER_GROUP_CONTROLS, enabled=enabled)
 
     def _on_directory_node_clicked(
         self,

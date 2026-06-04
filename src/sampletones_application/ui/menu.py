@@ -8,21 +8,21 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
-    TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
-    TAG_MENU_ITEM_PLAYBACK_PLAY,
-    TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
-    TAG_MENU_ITEM_PLAYBACK_STOP,
-    TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
-    TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
-    TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
-    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
-    TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
-    TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
-    TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
-    TAG_MENU_ITEM_VIEW_FULLSCREEN,
-    TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
-    TAG_TEXT_GLOBAL_MENU_FPS,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+    TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOAD,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
+    TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+    TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
+    TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+    TAG_GLOBAL_TEXT_MENU_FPS,
 )
 from sampletones_application.ui.themes.fps import FPSTimerTheme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
@@ -242,49 +242,49 @@ class MenuBar:
             with dpg.menu(label=self._lbl_group_reconstruction):
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
                     label=self._lbl_item_reconstruction_save,
                     enabled=state.reconstruction_loaded,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_RECONSTRUCTION_AS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
                     label=self._lbl_item_reconstruction_save_as,
                     enabled=state.reconstruction_loaded,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.CLOSE_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
                     label=self._lbl_item_reconstruction_close,
                     enabled=state.reconstruction_loaded,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.LOAD_RECONSTRUCTION,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_LOAD,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_LOAD,
                     label=self._lbl_item_reconstruction_load,
                     enabled=not state.reconstruction_loaded,
                 )
                 dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_FILE,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_FILE,
                     label=self._lbl_item_reconstruct_file,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.RECONSTRUCT_DIRECTORY,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY,
                     label=self._lbl_item_reconstruct_directory,
                 )
                 dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_WAV,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
                     label=self._lbl_item_export_wav,
                     enabled=state.reconstruction_loaded,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.EXPORT_RECONSTRUCTION_FTIS,
-                    tag=TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+                    tag=TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
                     label=self._lbl_item_export_ftis,
                     enabled=state.reconstruction_loaded,
                 )
@@ -300,100 +300,100 @@ class MenuBar:
             with dpg.menu(label=self._lbl_group_playback):
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.PLAY,
-                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY,
+                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
                     label=state.play_label,
                     enabled=state.play_or_pause_enabled,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.PLAY_FROM_START,
-                    tag=TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
                     label=self._lbl_item_play_from_start,
                     enabled=state.play_or_pause_enabled,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.STOP,
-                    tag=TAG_MENU_ITEM_PLAYBACK_STOP,
+                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
                     label=self._lbl_item_stop,
                     enabled=state.stop_enabled,
                 )
                 dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_AUTOPLAY,
-                    tag=TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
+                    tag=TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
                     label=self._lbl_item_autoplay,
                     check=True,
                 )
             with dpg.menu(label=self._lbl_group_view):
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_ADVANCED_SETTINGS,
-                    tag=TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+                    tag=TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
                     label=self._lbl_item_show_advanced_settings,
                     check=True,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.TOGGLE_FULLSCREEN,
-                    tag=TAG_MENU_ITEM_VIEW_FULLSCREEN,
+                    tag=TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
                     label=self._lbl_item_fullscreen,
                     check=True,
                 )
 
             dpg.add_button(
                 label=self._tpl_fps.format(fps=0),
-                tag=TAG_TEXT_GLOBAL_MENU_FPS,
+                tag=TAG_GLOBAL_TEXT_MENU_FPS,
                 width=-1,
                 enabled=False,
             )
-            self._fps_theme.bind_to_item(TAG_TEXT_GLOBAL_MENU_FPS)
+            self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
 
     def update(self, state: MenuBarViewModel) -> None:
         dpg_configure_item(
-            TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
             enabled=state.reconstruction_loaded,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
             enabled=state.reconstruction_loaded,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_RECONSTRUCTION_CLOSE,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
             enabled=state.reconstruction_loaded,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_RECONSTRUCTION_SAVE,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE,
             enabled=state.reconstruction_loaded,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
+            TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE_AS,
             enabled=state.reconstruction_loaded,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
             enabled=state.play_or_pause_enabled,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_PLAYBACK_PLAY,
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
             label=state.play_label,
             enabled=state.play_or_pause_enabled,
         )
         dpg_configure_item(
-            TAG_MENU_ITEM_PLAYBACK_STOP,
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
             enabled=state.stop_enabled,
         )
         dpg_set_value(
-            TAG_MENU_ITEM_PLAYBACK_AUTOPLAY,
+            TAG_GLOBAL_MENU_ITEM_PLAYBACK_AUTOPLAY,
             state.autoplay,
         )
         dpg_set_value(
-            TAG_MENU_ITEM_VIEW_FULLSCREEN,
+            TAG_GLOBAL_MENU_ITEM_VIEW_FULLSCREEN,
             state.fullscreen,
         )
         dpg_set_value(
-            TAG_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
+            TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
             state.advanced_settings,
         )
 
     def update_fps(self, fps: float) -> None:
         dpg_configure_item(
-            TAG_TEXT_GLOBAL_MENU_FPS,
+            TAG_GLOBAL_TEXT_MENU_FPS,
             label=self._tpl_fps.format(fps=fps),
         )

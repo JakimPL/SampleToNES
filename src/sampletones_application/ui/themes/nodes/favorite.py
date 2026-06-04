@@ -1,8 +1,8 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    TAG_THEME_GLOBAL_FAVORITE,
-    TAG_THEME_GLOBAL_FAVORITE_CHILD,
+    TAG_GLOBAL_THEME_FAVORITE,
+    TAG_GLOBAL_THEME_FAVORITE_CHILD,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
@@ -11,7 +11,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class FavoriteNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FAVORITE
+    tag: str = TAG_GLOBAL_THEME_FAVORITE
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -35,7 +35,7 @@ class FavoriteNodeTheme(Theme):
 
 
 class FavoriteChildNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FAVORITE_CHILD
+    tag: str = TAG_GLOBAL_THEME_FAVORITE_CHILD
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

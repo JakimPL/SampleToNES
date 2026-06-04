@@ -11,20 +11,20 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
-    TAG_TAB_GLOBAL_INSTRUCTIONS,
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
-    TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
-    TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
-    TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
-    TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE,
-    TAG_PANEL_INSTRUCTIONS_LIBRARY,
-    TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
-    TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS,
-    TAG_TREE_INSTRUCTIONS_LIBRARY,
-    TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
+    TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
+    TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
+    TAG_INSTRUCTIONS_LIBRARY_PANEL,
+    TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
+    TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS,
+    TAG_INSTRUCTIONS_LIBRARY_TREE,
+    TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
 )
-from sampletones_application.constants.main import TAG_PANEL_MAIN_CONVERTER
+from sampletones_application.constants.main import TAG_MAIN_CONVERTER_PANEL
 from sampletones_application.layout.behavior import (
     SchedulingBehavior,
     TreeBehavior,
@@ -172,9 +172,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         super().__init__(
             self.library_logic.tree,
-            tag=TAG_PANEL_INSTRUCTIONS_LIBRARY,
-            parent=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_LEFT}",
-            tree_tag=TAG_TREE_INSTRUCTIONS_LIBRARY,
+            tag=TAG_INSTRUCTIONS_LIBRARY_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_INSTRUCTIONS_LIBRARY_TREE,
             session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
@@ -238,25 +238,25 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_status(self) -> None:
         dpg.add_separator()
-        text = dpg.add_text("", tag=TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS)
+        text = dpg.add_text("", tag=TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS)
         FontRegistry.bind_to_item(text, Font.REGULAR_SMALL)
 
     def _create_library_controls(self) -> None:
-        with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS):
+        with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS):
             dpg.add_progress_bar(
-                tag=TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
+                tag=TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
                 show=False,
                 width=-1,
                 default_value=0.0,
             )
             GUIButton(
-                tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_REFRESH_LIBRARIES,
+                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self.refresh,
             )
             GUIButton(
-                tag=TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
                 label=self._lbl_generate,
                 width=-1,
                 callback=self.generate_library,
@@ -267,11 +267,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg.add_separator()
         self.create_search(self.tag)
         with dpg.child_window(
-            tag=TAG_WINDOW_INSTRUCTIONS_LIBRARY_TREE,
+            tag=TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
             width=-1,
             height=-1,
         ):
-            with dpg.group(tag=TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE):
+            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_available_libraries,
                     tag=self.tree_tag,
@@ -295,30 +295,30 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.library_logic.load_library_file(filepath)
 
     def update_view(self, viewmodel: LibraryPanelViewModel) -> None:
-        dpg_set_value(TAG_TEXT_INSTRUCTIONS_LIBRARY_STATUS, viewmodel.status_text)
+        dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, viewmodel.status_text)
         dpg_configure_item(
-            TAG_BUTTON_INSTRUCTIONS_LIBRARY_GENERATE_LIBRARY,
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             label=viewmodel.generate_button_label,
             enabled=viewmodel.generate_button_enabled,
             show=viewmodel.generate_button_visible,
         )
         dpg_configure_item(
-            TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
+            TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
             show=viewmodel.progress_visible,
             overlay=viewmodel.progress_overlay,
         )
         dpg_set_value(
-            TAG_PROGRESS_INSTRUCTIONS_LIBRARY,
+            TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
             viewmodel.progress_value,
         )
 
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(
-            TAG_GROUP_INSTRUCTIONS_LIBRARY_TREE,
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
             enabled=enabled,
         )
         dpg_configure_item(
-            TAG_GROUP_INSTRUCTIONS_LIBRARY_CONTROLS,
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
             enabled=enabled,
         )
 
@@ -487,7 +487,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.library_logic.load_generator(user_data.generator_name)
 
     def _on_generation_completed_dialog(self) -> None:
-        if not dpg.get_item_configuration(TAG_PANEL_MAIN_CONVERTER)["show"]:
+        if not dpg.get_item_configuration(TAG_MAIN_CONVERTER_PANEL)["show"]:
             self._dialogs.show_info(
                 self.tag,
                 self._msg_generation_success,

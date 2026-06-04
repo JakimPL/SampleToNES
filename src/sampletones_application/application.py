@@ -18,12 +18,12 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
-    TAG_DIALOG_GLOBAL_CONFIG_STATUS,
-    TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
-    TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
-    TAG_STATUS_WINDOW_GLOBAL,
-    TAG_TABS_GLOBAL,
-    TAG_WINDOW_GLOBAL_MAIN,
+    TAG_GLOBAL_DIALOG_CONFIG_STATUS,
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
+    TAG_GLOBAL_STATUS_WINDOW,
+    TAG_GLOBAL_TABS,
+    TAG_GLOBAL_WINDOW_MAIN,
 )
 from sampletones_application.coordinators.instructions import (
     InstructionsTabCoordinator,
@@ -436,13 +436,13 @@ class Application:
                     GlobalDialogTitleElements.MAIN_WINDOW,
                 )
             ],
-            tag=TAG_WINDOW_GLOBAL_MAIN,
+            tag=TAG_GLOBAL_WINDOW_MAIN,
         ):
             self._create_menu_bar()
             self._create_tabs()
             self._create_status_bar()
 
-        dpg.set_primary_window(TAG_WINDOW_GLOBAL_MAIN, True)
+        dpg.set_primary_window(TAG_GLOBAL_WINDOW_MAIN, True)
 
     def _create_menu_bar(self) -> None:
         self._menu_bar.create(self._build_menu_bar_viewmodel())
@@ -468,7 +468,7 @@ class Application:
             border=False,
         ):
             with dpg.tab_bar(
-                tag=TAG_TABS_GLOBAL,
+                tag=TAG_GLOBAL_TABS,
                 callback=self._on_tab_changed,
             ):
                 self._main_tab.create_tab()
@@ -478,8 +478,8 @@ class Application:
 
     def _create_status_bar(self) -> None:
         with dpg.child_window(
-            tag=TAG_STATUS_WINDOW_GLOBAL,
-            parent=TAG_WINDOW_GLOBAL_MAIN,
+            tag=TAG_GLOBAL_STATUS_WINDOW,
+            parent=TAG_GLOBAL_WINDOW_MAIN,
             width=-1,
             height=-1,
             indent=0,
@@ -494,7 +494,7 @@ class Application:
     def _restore_current_items(self) -> None:
         current_tab = self.session_manager.load_current_tab()
         if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
-            dpg.set_value(TAG_TABS_GLOBAL, current_tab)
+            dpg.set_value(TAG_GLOBAL_TABS, current_tab)
 
         current_reconstruction = self.session_manager.current_reconstruction
         if current_reconstruction is not None:
@@ -583,7 +583,7 @@ class Application:
         try:
             self._save_reconstruction(filepath)
             self.dialogs.show_info(
-                TAG_DIALOG_GLOBAL_RECONSTRUCTION_SAVED,
+                TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
                 self.language_manager[
                     TextKey(
                         Page.GLOBAL,
@@ -788,7 +788,7 @@ class Application:
             dpg.add_text(message, parent=parent)
 
         self.dialogs.show_modal(
-            tag=TAG_DIALOG_GLOBAL_CONFIG_STATUS,
+            tag=TAG_GLOBAL_DIALOG_CONFIG_STATUS,
             title=self.language_manager[
                 TextKey(
                     Page.GLOBAL,
@@ -963,11 +963,11 @@ class Application:
         self._update_menu()
 
     def _set_current_tab(self, tab_tag: str) -> None:
-        dpg_set_value(TAG_TABS_GLOBAL, tab_tag)
+        dpg_set_value(TAG_GLOBAL_TABS, tab_tag)
         self.session_manager.set_current_tab(tab_tag)
 
     def _get_current_tab(self) -> str:
-        current_tab = dpg.get_value(TAG_TABS_GLOBAL)
+        current_tab = dpg.get_value(TAG_GLOBAL_TABS)
         alias: str = dpg.get_item_alias(current_tab)
         return alias
 
@@ -1034,7 +1034,7 @@ class Application:
         ok_label: str,
     ) -> None:
         self.dialogs.show_confirmation(
-            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             title=self.language_manager[
                 TextKey(
                     Page.GLOBAL,
@@ -1057,7 +1057,7 @@ class Application:
         ok_label: str,
     ) -> None:
         self.dialogs.show_save_confirmation(
-            tag=TAG_DIALOG_GLOBAL_EXIT_CONFIRMATION,
+            tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             title=title,
             message=message,
             on_save=on_save,

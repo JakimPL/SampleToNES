@@ -24,12 +24,12 @@ from sampletones_application.constants.general import (
     SUF_GROUP,
     SUF_INFO_DIALOG,
     SUF_PATH_TEXT,
-    TAG_DIALOG_GLOBAL_ERROR,
-    TAG_DIALOG_GLOBAL_FILE_NOT_FOUND,
-    TAG_DIALOG_GLOBAL_PATH_MESSAGE,
+    TAG_GLOBAL_DIALOG_ERROR,
+    TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
+    TAG_GLOBAL_DIALOG_PATH_MESSAGE,
 )
 from sampletones_application.constants.reconstructions import (
-    TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
@@ -198,7 +198,7 @@ class DialogsRenderer:
         )
 
     def show_error(self, exception: Exception, message: Optional[str] = None) -> None:
-        tag = get_dialog_tag(TAG_DIALOG_GLOBAL_ERROR)
+        tag = get_dialog_tag(TAG_GLOBAL_DIALOG_ERROR)
 
         with dpg.window(
             label=self._ttl_error,
@@ -259,7 +259,7 @@ class DialogsRenderer:
         FrameCallbackManager.set_frame_callback(lambda: center_item(tag, self._error_width, self._error_height))
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
-        tag = get_dialog_tag(TAG_DIALOG_GLOBAL_FILE_NOT_FOUND)
+        tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._error_wrap)
@@ -423,7 +423,7 @@ class DialogsRenderer:
         )
 
     def show_reconstruction_not_loaded(self) -> None:
-        tag = get_dialog_tag(TAG_DIALOG_RECONSTRUCTIONS_NOT_LOADED)
+        tag = get_dialog_tag(TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED)
 
         def content(parent: str) -> None:
             dpg.add_text(
@@ -443,7 +443,7 @@ class DialogsRenderer:
         )
 
     def show_message_with_path(self, title: str, message: str, path: Path) -> None:
-        tag = get_dialog_tag(TAG_DIALOG_GLOBAL_PATH_MESSAGE)
+        tag = get_dialog_tag(TAG_GLOBAL_DIALOG_PATH_MESSAGE)
 
         def content(parent: str) -> None:
             group_tag = f"{parent}{SUF_GROUP}"

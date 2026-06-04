@@ -3,16 +3,16 @@ from typing import Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    TAG_FONT_GLOBAL_BOLD,
-    TAG_FONT_GLOBAL_BOLD_LARGE,
-    TAG_FONT_GLOBAL_BOLD_SMALL,
-    TAG_FONT_GLOBAL_ICON,
-    TAG_FONT_GLOBAL_ITALIC,
-    TAG_FONT_GLOBAL_ITALIC_LARGE,
-    TAG_FONT_GLOBAL_ITALIC_SMALL,
-    TAG_FONT_GLOBAL_REGULAR,
-    TAG_FONT_GLOBAL_REGULAR_LARGE,
-    TAG_FONT_GLOBAL_REGULAR_SMALL,
+    TAG_GLOBAL_FONT_BOLD,
+    TAG_GLOBAL_FONT_BOLD_LARGE,
+    TAG_GLOBAL_FONT_BOLD_SMALL,
+    TAG_GLOBAL_FONT_ICON,
+    TAG_GLOBAL_FONT_ITALIC,
+    TAG_GLOBAL_FONT_ITALIC_LARGE,
+    TAG_GLOBAL_FONT_ITALIC_SMALL,
+    TAG_GLOBAL_FONT_REGULAR,
+    TAG_GLOBAL_FONT_REGULAR_LARGE,
+    TAG_GLOBAL_FONT_REGULAR_SMALL,
 )
 from sampletones_application.layout.general import FontsLayout
 from sampletones_application.ui.elements.fonts.data import FontData
@@ -29,52 +29,52 @@ class FontRegistry:
     def setup(cls, layout: FontsLayout) -> None:
         cls._REGISTRY = {
             Font.REGULAR: FontData(
-                TAG_FONT_GLOBAL_REGULAR,
+                TAG_GLOBAL_FONT_REGULAR,
                 layout.size,
                 FontResource.REGULAR,
             ),
             Font.REGULAR_SMALL: FontData(
-                TAG_FONT_GLOBAL_REGULAR_SMALL,
+                TAG_GLOBAL_FONT_REGULAR_SMALL,
                 layout.size_small,
                 FontResource.REGULAR,
             ),
             Font.REGULAR_LARGE: FontData(
-                TAG_FONT_GLOBAL_REGULAR_LARGE,
+                TAG_GLOBAL_FONT_REGULAR_LARGE,
                 layout.size_large,
                 FontResource.REGULAR,
             ),
             Font.ITALIC: FontData(
-                TAG_FONT_GLOBAL_ITALIC,
+                TAG_GLOBAL_FONT_ITALIC,
                 layout.size,
                 FontResource.ITALIC,
             ),
             Font.ITALIC_SMALL: FontData(
-                TAG_FONT_GLOBAL_ITALIC_SMALL,
+                TAG_GLOBAL_FONT_ITALIC_SMALL,
                 layout.size_small,
                 FontResource.ITALIC,
             ),
             Font.ITALIC_LARGE: FontData(
-                TAG_FONT_GLOBAL_ITALIC_LARGE,
+                TAG_GLOBAL_FONT_ITALIC_LARGE,
                 layout.size_large,
                 FontResource.ITALIC,
             ),
             Font.BOLD: FontData(
-                TAG_FONT_GLOBAL_BOLD,
+                TAG_GLOBAL_FONT_BOLD,
                 layout.size,
                 FontResource.BOLD,
             ),
             Font.BOLD_SMALL: FontData(
-                TAG_FONT_GLOBAL_BOLD_SMALL,
+                TAG_GLOBAL_FONT_BOLD_SMALL,
                 layout.size_small,
                 FontResource.BOLD,
             ),
             Font.BOLD_LARGE: FontData(
-                TAG_FONT_GLOBAL_BOLD_LARGE,
+                TAG_GLOBAL_FONT_BOLD_LARGE,
                 layout.size_large,
                 FontResource.BOLD,
             ),
             Font.ICON: FontData(
-                TAG_FONT_GLOBAL_ICON,
+                TAG_GLOBAL_FONT_ICON,
                 layout.size_small,
                 FontResource.ICON,
             ),
@@ -95,8 +95,8 @@ class FontRegistry:
                 dpg.add_font_range(0x2C60, 0x2C7F, parent=font_data.tag)
                 dpg.add_font_range(0xA720, 0xA7FF, parent=font_data.tag)
 
-            dpg.add_font_chars([0x2605], parent=TAG_FONT_GLOBAL_ICON)
-            dpg.bind_font(TAG_FONT_GLOBAL_REGULAR)
+            dpg.add_font_chars([0x2605], parent=TAG_GLOBAL_FONT_ICON)
+            dpg.bind_font(TAG_GLOBAL_FONT_REGULAR)
 
         dpg.set_global_font_scale(scale)
 

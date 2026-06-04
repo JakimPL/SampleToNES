@@ -16,19 +16,19 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
-    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
 )
 from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
-    TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
-    TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
-    TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
-    TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
-    TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
-    TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_PLAYER,
-    TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
@@ -89,8 +89,8 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_export_wav_confirmed: Optional[Callable[[Path], None]] = None
         self.on_locate_original_audio_requested: Optional[VoidCallback] = None
 
-        self.audio_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
-        self.plot_tag = f"{TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
+        self.audio_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"
+        self.plot_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW}"
         self.autoscale_tag = f"{self.plot_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
 
         self._lbl_audio_source = language_manager[
@@ -240,8 +240,8 @@ class GUIReconstructionPanel(GUIPanel):
         self._language_manager = language_manager
 
         super().__init__(
-            tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION,
-            parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:
@@ -263,11 +263,11 @@ class GUIReconstructionPanel(GUIPanel):
             dpg_set_value(radio_tag, self._lbl_reconstruction_radio)
 
         dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
             enabled=viewmodel.buttons_enabled,
         )
         dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
             enabled=viewmodel.buttons_enabled,
         )
 
@@ -390,15 +390,15 @@ class GUIReconstructionPanel(GUIPanel):
             self._create_generator_checkboxes()
             self._create_tooltips()
 
-        dpg_configure_item(TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV, enabled=False)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV, enabled=False)
         dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
             enabled=False,
         )
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_PLAYER,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
             parent=self.parent,
             player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,
@@ -410,7 +410,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_audio_source_radio_buttons(self) -> None:
         dpg.add_text(self._lbl_audio_source)
         with dpg.group(
-            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_SOURCE,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE,
             parent=self.audio_tag,
             horizontal=True,
         ):
@@ -431,7 +431,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_locate_original_audio_button(self) -> None:
         GUIButton(
             label=self._lbl_locate_audio,
-            tag=TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_LOCATE_ORIGINAL_AUDIO,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
             parent=self.audio_tag,
             callback=self._handle_locate_original_audio_button_click,
             width=-1,
@@ -441,7 +441,7 @@ class GUIReconstructionPanel(GUIPanel):
     def _create_export_wav_button(self) -> None:
         GUIButton(
             label=self._lbl_export_wav,
-            tag=TAG_BUTTON_RECONSTRUCTIONS_RECONSTRUCTION_EXPORT_WAV,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
             parent=self.audio_tag,
             callback=self._handle_export_wav_button_click,
             width=-1,
@@ -460,7 +460,7 @@ class GUIReconstructionPanel(GUIPanel):
 
     def _create_waveform_display(self) -> None:
         self.waveform_display = GUIWaveformGraph(
-            tag=TAG_PANEL_RECONSTRUCTIONS_RECONSTRUCTION_WAVEFORM,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
             parent=self.plot_tag,
             layout=self._layout_graphs,
             language_manager=self._language_manager,
@@ -476,7 +476,7 @@ class GUIReconstructionPanel(GUIPanel):
         }
 
         with dpg.group(
-            tag=TAG_GROUP_RECONSTRUCTIONS_RECONSTRUCTION_GENERATORS,
+            tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_GENERATORS,
             parent=self.plot_tag,
             horizontal=True,
         ):

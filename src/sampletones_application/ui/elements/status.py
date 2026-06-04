@@ -6,8 +6,8 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
     SUF_HANDLER_STATUS,
-    TAG_STATUS_BAR_GLOBAL,
-    TAG_STATUS_WINDOW_GLOBAL,
+    TAG_GLOBAL_STATUS_BAR,
+    TAG_GLOBAL_STATUS_WINDOW,
 )
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.themes.status import StatusBarTheme
@@ -24,8 +24,8 @@ from sampletones_shared.types.callback import MessageCallback
 class GUIStatusBar(metaclass=SingletonMeta):
     def __init__(
         self,
-        tag: str = TAG_STATUS_BAR_GLOBAL,
-        parent: str = TAG_STATUS_WINDOW_GLOBAL,
+        tag: str = TAG_GLOBAL_STATUS_BAR,
+        parent: str = TAG_GLOBAL_STATUS_WINDOW,
         display_time: float = 2.0,
     ) -> None:
         self.tag = tag
@@ -47,7 +47,7 @@ class GUIStatusBar(metaclass=SingletonMeta):
                 indent=0,
             )
 
-        self.theme.bind_to_item(TAG_STATUS_WINDOW_GLOBAL)
+        self.theme.bind_to_item(TAG_GLOBAL_STATUS_WINDOW)
 
     @classmethod
     def get_message(

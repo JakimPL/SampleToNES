@@ -23,7 +23,16 @@ class TextKey(NamedTuple):
 
 
 class TagName(str):
-    """Structured tag identifier that inherits from str for seamless dpg integration."""
+    """Structured tag identifier that inherits from str for seamless dpg integration.
+
+    String value format: page[.panel].widget[.element]
+    Inherits from str so dpg accepts it directly as a tag parameter.
+    """
+
+    page: Page
+    panel: Panel
+    widget: Widget
+    element: str
 
     def __new__(
         cls,
@@ -32,16 +41,14 @@ class TagName(str):
         widget: Widget,
         element: str,
     ) -> TagName:
-        parts = [str(widget), str(page)]
+        panel_str = _PANEL_SHORT_NAMES.get(panel, str(panel))
+        parts = [str(page)]
         if panel != Panel.IMPLICIT:
-            panel_str = _PANEL_SHORT_NAMES.get(panel, str(panel))
             parts.append(panel_str)
-
-        if element and element != str(panel):
-            parts.append(str(element))
-
-        tag_str = "_".join(parts)
-        instance: TagName = super().__new__(cls, tag_str)
+        parts.append(str(widget))
+        if element and element != panel_str:
+            parts.append(element)
+        instance: TagName = super().__new__(cls, ".".join(parts))
         instance.page = page
         instance.panel = panel
         instance.widget = widget

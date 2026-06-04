@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
-from sampletones_application.constants.general import TAG_TAB_GLOBAL_MAIN
+from sampletones_application.constants.general import TAG_GLOBAL_TAB_MAIN
 
 
 class ApplicationState(BaseModel):
@@ -14,7 +14,7 @@ class ApplicationState(BaseModel):
     """
 
     current_tab: str = Field(
-        default=TAG_TAB_GLOBAL_MAIN,
+        default=TAG_GLOBAL_TAB_MAIN,
         description="The currently selected tab.",
     )
     current_reconstruction: Optional[Path] = Field(

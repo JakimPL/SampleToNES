@@ -10,17 +10,17 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
-    TAG_TAB_GLOBAL_MAIN,
+    TAG_GLOBAL_TAB_MAIN,
 )
 from sampletones_application.constants.main import (
-    TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
-    TAG_BUTTON_MAIN_EXPLORER_REFRESH,
-    TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
-    TAG_GROUP_MAIN_EXPLORER_CONTROLS,
-    TAG_GROUP_MAIN_EXPLORER_TREE,
-    TAG_PANEL_MAIN_EXPLORER,
-    TAG_TREE_MAIN_EXPLORER,
-    TAG_WINDOW_MAIN_EXPLORER_TREE,
+    TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
+    TAG_MAIN_EXPLORER_BUTTON_REFRESH,
+    TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
+    TAG_MAIN_EXPLORER_GROUP_CONTROLS,
+    TAG_MAIN_EXPLORER_GROUP_TREE,
+    TAG_MAIN_EXPLORER_PANEL,
+    TAG_MAIN_EXPLORER_TREE,
+    TAG_MAIN_EXPLORER_WINDOW_TREE,
 )
 from sampletones_application.layout.behavior import (
     SchedulingBehavior,
@@ -193,9 +193,9 @@ class GUIExplorerPanel(GUITreePanel):
 
         super().__init__(
             tree=self.explorer_logic.tree,
-            tag=TAG_PANEL_MAIN_EXPLORER,
-            parent=f"{TAG_TAB_GLOBAL_MAIN}{SUF_PANEL_LEFT}",
-            tree_tag=TAG_TREE_MAIN_EXPLORER,
+            tag=TAG_MAIN_EXPLORER_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_MAIN}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_MAIN_EXPLORER_TREE,
             session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
@@ -250,16 +250,16 @@ class GUIExplorerPanel(GUITreePanel):
 
     def _create_buttons(self) -> None:
         dpg.add_separator()
-        with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_CONTROLS):
+        with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_CONTROLS):
             GUIButton(
-                tag=TAG_BUTTON_MAIN_EXPLORER_REFRESH,
+                tag=TAG_MAIN_EXPLORER_BUTTON_REFRESH,
                 label=self._lbl_refresh,
                 parent=self.tag,
                 width=-1,
                 callback=self.refresh,
             )
             GUIButton(
-                tag=TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL,
+                tag=TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL,
                 label=self._lbl_collapse_all,
                 parent=self.tag,
                 width=-1,
@@ -269,8 +269,8 @@ class GUIExplorerPanel(GUITreePanel):
     def _create_tree_window(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_WINDOW_MAIN_EXPLORER_TREE):
-            with dpg.group(tag=TAG_GROUP_MAIN_EXPLORER_TREE):
+        with dpg.child_window(tag=TAG_MAIN_EXPLORER_WINDOW_TREE):
+            with dpg.group(tag=TAG_MAIN_EXPLORER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_section,
                     tag=self.tree_tag,
@@ -486,8 +486,8 @@ class GUIExplorerPanel(GUITreePanel):
         return True
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_TREE, enabled=enabled)
-        dpg_configure_item(TAG_GROUP_MAIN_EXPLORER_CONTROLS, enabled=enabled)
+        dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_TREE, enabled=enabled)
+        dpg_configure_item(TAG_MAIN_EXPLORER_GROUP_CONTROLS, enabled=enabled)
 
     def _reconstruct_file(self, node: FileSystemNode) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
@@ -597,7 +597,7 @@ class GUIExplorerPanel(GUITreePanel):
         if is_running:
             logger.warning("Conversion is already running. Wait or cancel the current operation.")
             self._dialogs.show_info(
-                tag=TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING,
+                tag=TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING,
                 message=self._msg_converter_running,
                 title=self._ttl_converter_running,
             )

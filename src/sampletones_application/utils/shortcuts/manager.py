@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_HANDLER_GLOBAL_FOCUS
+from sampletones_application.constants.general import TAG_GLOBAL_HANDLER_FOCUS
 from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.keys import Modifier
 from sampletones_application.utils.shortcuts.shortcut import Shortcut
@@ -16,7 +16,7 @@ class ShortcutManager:
         self._enabled: bool = True
 
         self._handler_registry: Optional[int] = None
-        self._focus_handler_tag = TAG_HANDLER_GLOBAL_FOCUS
+        self._focus_handler_tag = TAG_GLOBAL_HANDLER_FOCUS
 
     def register(
         self,

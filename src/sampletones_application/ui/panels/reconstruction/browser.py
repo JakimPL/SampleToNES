@@ -13,17 +13,17 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     SUF_PANEL_LEFT,
-    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
 )
 from sampletones_application.constants.reconstructions import (
-    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
-    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
-    TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
-    TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS,
-    TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE,
-    TAG_PANEL_RECONSTRUCTIONS_BROWSER,
-    TAG_TREE_RECONSTRUCTIONS_BROWSER,
-    TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE,
+    TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+    TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
+    TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
+    TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
+    TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
+    TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+    TAG_RECONSTRUCTIONS_BROWSER_TREE,
+    TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
 )
 from sampletones_application.layout.behavior import (
     SchedulingBehavior,
@@ -110,9 +110,9 @@ class GUIBrowserPanel(GUITreePanel):
 
         super().__init__(
             tree=self.browser_logic.tree,
-            tag=TAG_PANEL_RECONSTRUCTIONS_BROWSER,
-            parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
-            tree_tag=TAG_TREE_RECONSTRUCTIONS_BROWSER,
+            tag=TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+            tree_tag=TAG_RECONSTRUCTIONS_BROWSER_TREE,
             session_manager=session_manager,
             audio_device_manager=audio_device_manager,
             shortcut_manager=shortcut_manager,
@@ -167,22 +167,22 @@ class GUIBrowserPanel(GUITreePanel):
 
     def _create_buttons(self) -> None:
         dpg.add_separator()
-        with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS):
+        with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS):
             GUIButton(
-                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_REFRESH_RECONSTRUCTIONS,
+                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
                 label=self._lbl_refresh,
                 width=-1,
                 callback=self._rebuild_tree,
             )
             GUIButton(
-                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_FILE,
+                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
                 label=self._lbl_reconstruct_file,
                 width=-1,
                 callback=self._reconstruct_file,
                 font=Font.BOLD,
             )
             GUIButton(
-                tag=TAG_BUTTON_RECONSTRUCTIONS_BROWSER_RECONSTRUCT_DIRECTORY,
+                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
                 label=self._lbl_reconstruct_directory,
                 width=-1,
                 callback=self._reconstruct_directory,
@@ -192,8 +192,8 @@ class GUIBrowserPanel(GUITreePanel):
     def _create_tree_window(self) -> None:
         dpg.add_separator()
         self.create_search(self.tag)
-        with dpg.child_window(tag=TAG_WINDOW_RECONSTRUCTIONS_BROWSER_TREE):
-            with dpg.group(tag=TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE):
+        with dpg.child_window(tag=TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE):
+            with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE):
                 with dpg.tree_node(
                     label=self._lbl_reconstructions,
                     tag=self.tree_tag,
@@ -263,8 +263,8 @@ class GUIBrowserPanel(GUITreePanel):
         state.parent = node_tag
 
     def _set_tree_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_TREE, enabled=enabled)
-        dpg_configure_item(TAG_GROUP_RECONSTRUCTIONS_BROWSER_CONTROLS, enabled=enabled)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE, enabled=enabled)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS, enabled=enabled)
 
     def _reconstruct_file(self) -> None:
         self.call(self.browser_logic.on_reconstruct_file)

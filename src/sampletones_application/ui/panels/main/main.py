@@ -1,10 +1,10 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.main import (
-    TAG_PANEL_MAIN,
-    TAG_PANEL_MAIN_CONFIG_CELL,
-    TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-    TAG_PANEL_MAIN_SETTINGS,
+    TAG_MAIN_CONFIG_PANEL_CONFIG_CELL,
+    TAG_MAIN_PANEL,
+    TAG_MAIN_PANEL_SETTINGS,
+    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
 )
 from sampletones_application.layout.main import MainLayout
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -37,8 +37,8 @@ class GUIMainPanel(GUIPanel):
         self._layout = layout
 
         super().__init__(
-            tag=TAG_PANEL_MAIN,
-            parent=TAG_PANEL_MAIN_SETTINGS,
+            tag=TAG_MAIN_PANEL,
+            parent=TAG_MAIN_PANEL_SETTINGS,
         )
 
     def create_panel(self) -> None:
@@ -48,7 +48,7 @@ class GUIMainPanel(GUIPanel):
             border=False,
         ):
             with dpg.child_window(
-                tag=TAG_PANEL_MAIN_SETTINGS,
+                tag=TAG_MAIN_PANEL_SETTINGS,
                 parent=self.tag,
                 width=-1,
                 height=-self._layout.converter.height - 8,
@@ -70,9 +70,9 @@ class GUIMainPanel(GUIPanel):
             dpg.add_table_column()
             dpg.add_table_column()
             with dpg.table_row():
-                with dpg.table_cell(tag=TAG_PANEL_MAIN_CONFIG_CELL):
+                with dpg.table_cell(tag=TAG_MAIN_CONFIG_PANEL_CONFIG_CELL):
                     self.config_panel.create_panel()
-                with dpg.table_cell(tag=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL):
+                with dpg.table_cell(tag=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL):
                     self.reconstructor_panel.create_panel()
 
     def _create_advanced_settings(self) -> None:

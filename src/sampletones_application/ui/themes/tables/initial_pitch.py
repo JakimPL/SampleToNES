@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.reconstructions import TAG_THEME_TABLE_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH
+from sampletones_application.constants.reconstructions import TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import ThemeParameter, ThemeStyle
@@ -8,7 +8,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class InitialPitchTableTheme(Theme):
-    tag: str = TAG_THEME_TABLE_RECONSTRUCTIONS_DETAILS_INITIAL_PITCH
+    tag: str = TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

@@ -7,16 +7,16 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
-    TAG_BUTTON_MAIN_CONVERTER_CANCEL,
-    TAG_BUTTON_MAIN_CONVERTER_CONVERT,
-    TAG_BUTTON_MAIN_CONVERTER_LOAD,
-    TAG_GROUP_MAIN_CONVERTER,
-    TAG_PANEL_MAIN,
-    TAG_PANEL_MAIN_CONVERTER,
-    TAG_PATH_MAIN_CONVERTER_INPUT_PATH,
-    TAG_PROGRESS_MAIN_CONVERTER,
-    TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
-    TAG_TEXT_MAIN_CONVERTER_STATUS,
+    TAG_MAIN_CONVERTER_BUTTON_CANCEL,
+    TAG_MAIN_CONVERTER_BUTTON_CONVERT,
+    TAG_MAIN_CONVERTER_BUTTON_LOAD,
+    TAG_MAIN_CONVERTER_GROUP,
+    TAG_MAIN_CONVERTER_PANEL,
+    TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
+    TAG_MAIN_CONVERTER_PROGRESS,
+    TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
+    TAG_MAIN_CONVERTER_TEXT_STATUS,
+    TAG_MAIN_PANEL,
 )
 from sampletones_application.layout.main import ConverterLayout
 from sampletones_application.ui.elements.button import GUIButton
@@ -119,8 +119,8 @@ class GUIConverterPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_PANEL_MAIN_CONVERTER,
-            parent=TAG_PANEL_MAIN,
+            tag=TAG_MAIN_CONVERTER_PANEL,
+            parent=TAG_MAIN_PANEL,
             height=layout.height,
         )
 
@@ -138,10 +138,10 @@ class GUIConverterPanel(GUIPanel):
             self._create_conversion_status()
 
     def update_view(self, viewmodel: ConverterViewModel) -> None:
-        dpg.configure_item(TAG_GROUP_MAIN_CONVERTER, show=viewmodel.subpanel_visible)
-        dpg_set_value(TAG_TEXT_MAIN_CONVERTER_STATUS, viewmodel.status_text)
-        dpg_set_value(TAG_PROGRESS_MAIN_CONVERTER, viewmodel.progress)
-        dpg_configure_item(TAG_PROGRESS_MAIN_CONVERTER, overlay=viewmodel.progress_overlay)
+        dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=viewmodel.subpanel_visible)
+        dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, viewmodel.status_text)
+        dpg_set_value(TAG_MAIN_CONVERTER_PROGRESS, viewmodel.progress)
+        dpg_configure_item(TAG_MAIN_CONVERTER_PROGRESS, overlay=viewmodel.progress_overlay)
 
         if self.input_path_text is not None and viewmodel.input_path is not None:
             self.input_path_text.set_path(viewmodel.input_path)
@@ -154,27 +154,27 @@ class GUIConverterPanel(GUIPanel):
             f"{_base_convert}: {viewmodel.input_path.name}" if viewmodel.input_path is not None else _base_convert
         )
         dpg_configure_item(
-            TAG_BUTTON_MAIN_CONVERTER_CONVERT,
+            TAG_MAIN_CONVERTER_BUTTON_CONVERT,
             label=_convert_label,
             enabled=viewmodel.convert_button_enabled,
         )
         dpg_configure_item(
-            TAG_BUTTON_MAIN_CONVERTER_LOAD,
+            TAG_MAIN_CONVERTER_BUTTON_LOAD,
             enabled=viewmodel.load_button_enabled,
         )
         dpg_configure_item(
-            TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+            TAG_MAIN_CONVERTER_BUTTON_CANCEL,
             label=_cancel_label,
         )
 
         if viewmodel.is_done:
             dpg_set_item_callback(
-                TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+                TAG_MAIN_CONVERTER_BUTTON_CANCEL,
                 self._on_close_clicked,
             )
         else:
             dpg_set_item_callback(
-                TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+                TAG_MAIN_CONVERTER_BUTTON_CANCEL,
                 self._on_cancel_clicked,
             )
 
@@ -186,7 +186,7 @@ class GUIConverterPanel(GUIPanel):
         dpg.add_separator()
         GUIButton(
             label=self._lbl_convert_button,
-            tag=TAG_BUTTON_MAIN_CONVERTER_CONVERT,
+            tag=TAG_MAIN_CONVERTER_BUTTON_CONVERT,
             width=self._layout.width,
             height=self._layout.button_height,
             font=Font.BOLD_LARGE,
@@ -198,33 +198,33 @@ class GUIConverterPanel(GUIPanel):
         self.input_path_text = GUIPathText(
             path=None,
             prefix=self._msg_input,
-            tag=TAG_PATH_MAIN_CONVERTER_INPUT_PATH,
-            parent=TAG_GROUP_MAIN_CONVERTER,
+            tag=TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
+            parent=TAG_MAIN_CONVERTER_GROUP,
             font=Font.REGULAR_SMALL,
         )
         self.output_path_text = GUIPathText(
             path=None,
             prefix=self._msg_output,
-            tag=TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH,
-            parent=TAG_GROUP_MAIN_CONVERTER,
+            tag=TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
+            parent=TAG_MAIN_CONVERTER_GROUP,
             font=Font.REGULAR_SMALL,
         )
 
     def _create_conversion_status(self) -> None:
         with dpg.group(
-            tag=TAG_GROUP_MAIN_CONVERTER,
+            tag=TAG_MAIN_CONVERTER_GROUP,
             parent=self.tag,
             show=False,
         ):
             dpg.add_separator()
             dpg.add_text(
                 self._msg_waiting,
-                tag=TAG_TEXT_MAIN_CONVERTER_STATUS,
-                parent=TAG_GROUP_MAIN_CONVERTER,
+                tag=TAG_MAIN_CONVERTER_TEXT_STATUS,
+                parent=TAG_MAIN_CONVERTER_GROUP,
             )
             dpg.add_progress_bar(
-                tag=TAG_PROGRESS_MAIN_CONVERTER,
-                parent=TAG_GROUP_MAIN_CONVERTER,
+                tag=TAG_MAIN_CONVERTER_PROGRESS,
+                parent=TAG_MAIN_CONVERTER_GROUP,
                 default_value=0.0,
                 width=-1,
                 overlay="0%",
@@ -236,14 +236,14 @@ class GUIConverterPanel(GUIPanel):
     def _add_buttons(self) -> None:
         GUIButton(
             label=self._lbl_load_button,
-            tag=TAG_BUTTON_MAIN_CONVERTER_LOAD,
+            tag=TAG_MAIN_CONVERTER_BUTTON_LOAD,
             width=self._layout.width,
             callback=self._on_load_clicked,
             enabled=False,
         )
         GUIButton(
             label=self._lbl_cancel_button,
-            tag=TAG_BUTTON_MAIN_CONVERTER_CANCEL,
+            tag=TAG_MAIN_CONVERTER_BUTTON_CANCEL,
             width=self._layout.width,
             callback=self._on_cancel_clicked,
         )
@@ -258,5 +258,5 @@ class GUIConverterPanel(GUIPanel):
         self.call(self.on_close_requested)
 
     def _on_load_clicked(self) -> None:
-        dpg_configure_item(TAG_BUTTON_MAIN_CONVERTER_LOAD, enabled=False)
+        dpg_configure_item(TAG_MAIN_CONVERTER_BUTTON_LOAD, enabled=False)
         self.call(self.on_load_requested)

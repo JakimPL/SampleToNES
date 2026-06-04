@@ -1,233 +1,233 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 
-TAG_PANEL_MAIN = TagName(
+TAG_MAIN_PANEL = TagName(
     Page.MAIN,
-    Panel.MAIN,
+    Panel.IMPLICIT,
     Widget.PANEL,
-    "main",
+    "",
 )
-TAG_PANEL_MAIN_SETTINGS = TagName(
+TAG_MAIN_PANEL_SETTINGS = TagName(
     Page.MAIN,
-    Panel.MAIN,
+    Panel.IMPLICIT,
     Widget.PANEL,
     "settings",
 )
-TAG_PANEL_MAIN_CONFIG_CELL = TagName(
+TAG_MAIN_CONFIG_PANEL_CONFIG_CELL = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.PANEL,
     "config_cell",
 )
-TAG_PANEL_MAIN_RECONSTRUCTOR_CELL = TagName(
+TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,
     Widget.PANEL,
     "reconstructor_cell",
 )
-TAG_TREE_MAIN_EXPLORER = TagName(
+TAG_MAIN_EXPLORER_TREE = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.TREE,
     "explorer",
 )
-TAG_PANEL_MAIN_EXPLORER = TagName(
+TAG_MAIN_EXPLORER_PANEL = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.PANEL,
     "explorer",
 )
-TAG_WINDOW_MAIN_EXPLORER_TREE = TagName(
+TAG_MAIN_EXPLORER_WINDOW_TREE = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.WINDOW,
     "tree",
 )
-TAG_GROUP_MAIN_EXPLORER_TREE = TagName(
+TAG_MAIN_EXPLORER_GROUP_TREE = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.GROUP,
     "tree",
 )
-TAG_GROUP_MAIN_EXPLORER_CONTROLS = TagName(
+TAG_MAIN_EXPLORER_GROUP_CONTROLS = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.GROUP,
     "controls",
 )
-TAG_DIALOG_MAIN_EXPLORER_CONVERTER_RUNNING = TagName(
+TAG_MAIN_EXPLORER_DIALOG_CONVERTER_RUNNING = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.DIALOG,
     "converter_running",
 )
-TAG_BUTTON_MAIN_EXPLORER_REFRESH = TagName(
+TAG_MAIN_EXPLORER_BUTTON_REFRESH = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.BUTTON,
     "refresh",
 )
-TAG_BUTTON_MAIN_EXPLORER_COLLAPSE_ALL = TagName(
+TAG_MAIN_EXPLORER_BUTTON_COLLAPSE_ALL = TagName(
     Page.MAIN,
     Panel.EXPLORER,
     Widget.BUTTON,
     "collapse_all",
 )
-TAG_PANEL_MAIN_CONFIG = TagName(
+TAG_MAIN_CONFIG_PANEL = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.PANEL,
     "config",
 )
-TAG_CHECKBOX_MAIN_CONFIG_NORMALIZE = TagName(
+TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.CHECKBOX,
     "normalize",
 )
-TAG_CHECKBOX_MAIN_CONFIG_QUANTIZE = TagName(
+TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.CHECKBOX,
     "quantize",
 )
-TAG_INPUT_MAIN_CONFIG_SAMPLE_RATE = TagName(
+TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.INPUT,
     "sample_rate",
 )
-TAG_INPUT_MAIN_CONFIG_CHANGE_RATE = TagName(
+TAG_MAIN_CONFIG_INPUT_CHANGE_RATE = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.INPUT,
     "change_rate",
 )
-TAG_INPUT_MAIN_CONFIG_TRANSFORMATION_GAMMA = TagName(
+TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.INPUT,
     "transformation_gamma",
 )
-TAG_PANEL_MAIN_RECONSTRUCTOR = TagName(
+TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,
     Widget.PANEL,
     "reconstructor",
 )
-TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER = TagName(
+TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,
     Widget.SLIDER,
     "mixer",
 )
-TAG_PANEL_MAIN_ADVANCED = TagName(
+TAG_MAIN_ADVANCED_PANEL = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.PANEL,
     "advanced",
 )
-TAG_INPUT_MAIN_ADVANCED_MAX_WORKERS = TagName(
+TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.INPUT,
     "max_workers",
 )
-TAG_GROUP_MAIN_ADVANCED_LIBRARY_DIRECTORY = TagName(
+TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.GROUP,
     "library_directory",
 )
-TAG_PATH_MAIN_ADVANCED_LIBRARY_DIRECTORY_DISPLAY = TagName(
+TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.PATH,
     "library_directory_display",
 )
-TAG_GROUP_MAIN_ADVANCED_OUTPUT_DIRECTORY = TagName(
+TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.GROUP,
     "output_directory",
 )
-TAG_PATH_MAIN_ADVANCED_OUTPUT_DIRECTORY_DISPLAY = TagName(
+TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.PATH,
     "output_directory_display",
 )
-TAG_BUTTON_MAIN_ADVANCED_SELECT_LIBRARY_DIRECTORY = TagName(
+TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.BUTTON,
     "select_library_directory",
 )
-TAG_BUTTON_MAIN_ADVANCED_SELECT_OUTPUT_DIRECTORY = TagName(
+TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.BUTTON,
     "select_output_directory",
 )
-TAG_PROGRESS_MAIN_CONVERTER = TagName(
+TAG_MAIN_CONVERTER_PROGRESS = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.PROGRESS,
     "converter",
 )
-TAG_TEXT_MAIN_CONVERTER_STATUS = TagName(
+TAG_MAIN_CONVERTER_TEXT_STATUS = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TEXT,
     "status",
 )
-TAG_PANEL_MAIN_CONVERTER = TagName(
+TAG_MAIN_CONVERTER_PANEL = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.PANEL,
     "converter",
 )
-TAG_GROUP_MAIN_CONVERTER = TagName(
+TAG_MAIN_CONVERTER_GROUP = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.GROUP,
     "converter",
 )
-TAG_PATH_MAIN_CONVERTER_INPUT_PATH = TagName(
+TAG_MAIN_CONVERTER_PATH_INPUT_PATH = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.PATH,
     "input_path",
 )
-TAG_TEXT_MAIN_CONVERTER_OUTPUT_PATH = TagName(
+TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.TEXT,
     "output_path",
 )
-TAG_BUTTON_MAIN_CONVERTER_LOAD = TagName(
+TAG_MAIN_CONVERTER_BUTTON_LOAD = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.BUTTON,
     "load",
 )
-TAG_BUTTON_MAIN_CONVERTER_CANCEL = TagName(
+TAG_MAIN_CONVERTER_BUTTON_CANCEL = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.BUTTON,
     "cancel",
 )
-TAG_DIALOG_MAIN_CONVERTER_SUCCESS = TagName(
+TAG_MAIN_CONVERTER_DIALOG_SUCCESS = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.DIALOG,
     "success",
 )
-TAG_BUTTON_MAIN_CONVERTER_CONVERT = TagName(
+TAG_MAIN_CONVERTER_BUTTON_CONVERT = TagName(
     Page.MAIN,
     Panel.CONVERTER,
     Widget.BUTTON,
     "convert",
 )
 
-SUF_MAIN_EXPLORER_NODE_DUMMY = "_node_dummy"
+SUF_MAIN_EXPLORER_NODE_DUMMY = ".node_dummy"

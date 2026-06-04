@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.graphs import TAG_THEME_GRAPH_ZERO_LINE
+from sampletones_application.constants.graphs import TAG_GLOBAL_GRAPH_THEME_ZERO_LINE
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class ZeroLineGraphTheme(Theme):
-    tag: str = TAG_THEME_GRAPH_ZERO_LINE
+    tag: str = TAG_GLOBAL_GRAPH_THEME_ZERO_LINE
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

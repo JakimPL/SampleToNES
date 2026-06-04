@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_THEME_GLOBAL_MENU_FPS
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_MENU_FPS
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class FPSTimerTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_MENU_FPS
+    tag: str = TAG_GLOBAL_THEME_MENU_FPS
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

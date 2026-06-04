@@ -21,10 +21,10 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
-    TAG_TABS_GLOBAL,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TABS,
 )
-from sampletones_application.constants.reconstructions import TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING
+from sampletones_application.constants.reconstructions import TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.reconstruction.browser import BrowserLogic
@@ -340,7 +340,7 @@ class ReconstructionsTabCoordinator:
             exception, _msg_export_wav_failed
         )
         self._reconstruction_panel_logic.on_locate_audio_missing = lambda: dialogs.show_info(
-            TAG_DIALOG_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO_MISSING,
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_AUDIO_MISSING,
             _msg_audio_missing,
             _ttl_audio_missing,
         )
@@ -375,12 +375,12 @@ class ReconstructionsTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
-            parent=TAG_TABS_GLOBAL,
+            tag=TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+            parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
             with dpg.table(
-                parent=TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+                parent=TAG_GLOBAL_TAB_RECONSTRUCTIONS,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -391,7 +391,7 @@ class ReconstructionsTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_LEFT}",
                         width=self._left_width,
                         height=self._left_height,
                         no_scrollbar=True,
@@ -400,13 +400,13 @@ class ReconstructionsTabCoordinator:
                         self._browser_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._reconstruction_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
                         width=self._details_width,
                         height=self._right_height,
                         no_scrollbar=True,

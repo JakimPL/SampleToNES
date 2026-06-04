@@ -8,15 +8,15 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
-    TAG_TAB_GLOBAL_INSTRUCTIONS,
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW,
     SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW,
-    TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
-    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
-    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
-    TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
+    TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
@@ -73,12 +73,12 @@ class GUIInstructionPanel(GUIPanel):
             )
         ]
 
-        self.waveform_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
-        self.spectrum_tag = f"{TAG_PANEL_INSTRUCTIONS_INSTRUCTION}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
+        self.waveform_tag = f"{TAG_INSTRUCTIONS_INSTRUCTION_PANEL}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"
+        self.spectrum_tag = f"{TAG_INSTRUCTIONS_INSTRUCTION_PANEL}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTIONS_SPECTRUM_WINDOW}"
 
         super().__init__(
-            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION,
-            parent=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:
@@ -96,7 +96,7 @@ class GUIInstructionPanel(GUIPanel):
             border=False,
         ):
             self.waveform_display = GUIWaveformGraph(
-                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_WAVEFORM,
+                tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_WAVEFORM,
                 parent=self.waveform_tag,
                 layout=self._layout,
                 language_manager=self._language_manager,
@@ -113,7 +113,7 @@ class GUIInstructionPanel(GUIPanel):
             border=False,
         ):
             self.spectrum_display = GUISpectrumGraph(
-                tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_SPECTRUM,
+                tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_SPECTRUM,
                 parent=self.spectrum_tag,
                 layout=self._layout,
                 language_manager=self._language_manager,
@@ -122,7 +122,7 @@ class GUIInstructionPanel(GUIPanel):
 
     def _create_player_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_PANEL_INSTRUCTIONS_INSTRUCTION_PLAYER,
+            tag=TAG_INSTRUCTIONS_INSTRUCTION_PANEL_PLAYER,
             parent=self.parent,
             player_logic=self._player_logic,
             on_position_changed=self._on_player_position_changed,

@@ -12,18 +12,18 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_CENTER,
-    TAG_TAB_GLOBAL_SEQUENCER,
+    TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_BUTTON_SEQUENCER_GRID_EXPORT_MODULE,
-    TAG_GROUP_SEQUENCER_GRID_MODULE_OPTIONS,
-    TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY,
-    TAG_INPUT_SEQUENCER_GRID_SPEED,
-    TAG_INPUT_SEQUENCER_GRID_TEMPO,
-    TAG_PANEL_SEQUENCER_GRID,
-    TAG_PANEL_SEQUENCER_GRID_PLAYER,
-    TAG_TABLE_SEQUENCER_GRID_TRACKER,
-    TAG_WINDOW_SEQUENCER_GRID_TRACKER,
+    TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
+    TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS,
+    TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
+    TAG_SEQUENCER_GRID_INPUT_SPEED,
+    TAG_SEQUENCER_GRID_INPUT_TEMPO,
+    TAG_SEQUENCER_GRID_PANEL,
+    TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_GRID_TABLE_TRACKER,
+    TAG_SEQUENCER_GRID_WINDOW_TRACKER,
 )
 from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.sequencer import SequencerLayout
@@ -64,7 +64,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         self.player_panel: GUIAudioPlayerPanel
 
-        self._item_handler_tag = f"{TAG_PANEL_SEQUENCER_GRID}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
         self._rows: Dict[Optional[int], Sender] = {}
         self._highlighted_row: Optional[int] = None
 
@@ -176,8 +176,8 @@ class GUISequencerGridPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_PANEL_SEQUENCER_GRID,
-            parent=f"{TAG_TAB_GLOBAL_SEQUENCER}{SUF_PANEL_CENTER}",
+            tag=TAG_SEQUENCER_GRID_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
         )
 
     def create_panel(self) -> None:
@@ -201,8 +201,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _create_audio_panel(self) -> None:
         self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_PANEL_SEQUENCER_GRID_PLAYER,
-            parent=TAG_PANEL_SEQUENCER_GRID,
+            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
+            parent=TAG_SEQUENCER_GRID_PANEL,
             player_logic=self._player_logic,
             layout=self._layout_player,
             language_manager=self._language_manager,
@@ -214,11 +214,11 @@ class GUISequencerGridPanel(GUIPanel):
         section_text = dpg.add_text(self._lbl_module_options)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
-        with dpg.group(tag=TAG_GROUP_SEQUENCER_GRID_MODULE_OPTIONS):
+        with dpg.group(tag=TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS):
             dpg.add_input_int(
                 label=self._lbl_nes_frequency,
                 default_value=self.sequencer_grid_logic.change_rate,
-                tag=TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY,
+                tag=TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
                 min_value=MIN_CHANGE_RATE,
                 max_value=MAX_CHANGE_RATE,
                 width=self._input_width,
@@ -226,7 +226,7 @@ class GUISequencerGridPanel(GUIPanel):
             dpg.add_input_int(
                 label=self._lbl_tempo,
                 default_value=self._layout.tempo.default,
-                tag=TAG_INPUT_SEQUENCER_GRID_TEMPO,
+                tag=TAG_SEQUENCER_GRID_INPUT_TEMPO,
                 min_value=self._layout.tempo.min,
                 max_value=self._layout.tempo.max,
                 width=self._input_width,
@@ -234,20 +234,20 @@ class GUISequencerGridPanel(GUIPanel):
             dpg.add_input_int(
                 label=self._lbl_speed,
                 default_value=self._layout.speed.default,
-                tag=TAG_INPUT_SEQUENCER_GRID_SPEED,
+                tag=TAG_SEQUENCER_GRID_INPUT_SPEED,
                 min_value=self._layout.speed.min,
                 max_value=self._layout.speed.max,
                 width=self._input_width,
             )
 
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_NES_FREQUENCY, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_TEMPO, self._msg_status_input)
-        GUIStatusBar.bind_to_item(TAG_INPUT_SEQUENCER_GRID_SPEED, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_SEQUENCER_GRID_INPUT_TEMPO, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_SEQUENCER_GRID_INPUT_SPEED, self._msg_status_input)
 
     def _create_export_button(self) -> None:
         dpg.add_separator()
         GUIButton(
-            tag=TAG_BUTTON_SEQUENCER_GRID_EXPORT_MODULE,
+            tag=TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
             label=self._lbl_export_module,
             width=-1,
             font=Font.BOLD,
@@ -259,12 +259,12 @@ class GUISequencerGridPanel(GUIPanel):
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
         with dpg.child_window(
-            tag=TAG_WINDOW_SEQUENCER_GRID_TRACKER,
+            tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
             width=0,
             height=-1,
         ):
             with dpg.table(
-                tag=TAG_TABLE_SEQUENCER_GRID_TRACKER,
+                tag=TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 width=0,
                 header_row=True,
                 resizable=False,
@@ -332,7 +332,7 @@ class GUISequencerGridPanel(GUIPanel):
                                 generator_text = dpg.add_selectable(label="... .")
                                 FontRegistry.bind_to_item(generator_text, Font.REGULAR_SMALL)
 
-        self.pattern_theme.bind_to_item(TAG_TABLE_SEQUENCER_GRID_TRACKER)
+        self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
 
     def _on_item_hovered(self, sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):
@@ -353,7 +353,7 @@ class GUISequencerGridPanel(GUIPanel):
             return
 
         dpg.highlight_table_row(
-            TAG_TABLE_SEQUENCER_GRID_TRACKER,
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
             color=self._layout.colors.pattern_highlight,
         )
@@ -363,7 +363,7 @@ class GUISequencerGridPanel(GUIPanel):
             return
 
         dpg.unhighlight_table_row(
-            TAG_TABLE_SEQUENCER_GRID_TRACKER,
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
         )
         self._highlighted_row = None

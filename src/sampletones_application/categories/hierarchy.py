@@ -65,9 +65,6 @@ class Panel(StrEnum):
     STATUS = "status"
     GRAPH = "graph"
 
-    # Page-level container/main panel
-    MAIN = "main"
-
     # Shared per-page panels (used under multiple Pages)
     PLAYER = "player"
     BROWSER = "browser"

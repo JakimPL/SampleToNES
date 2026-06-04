@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.sequencer import TAG_THEME_TABLE_PATTERN
+from sampletones_application.constants.sequencer import TAG_SEQUENCER_THEME_TABLE_PATTERN
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.themes.items import ThemeItems
@@ -13,7 +13,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class PatternTableTheme(Theme):
-    tag: str = TAG_THEME_TABLE_PATTERN
+    tag: str = TAG_SEQUENCER_THEME_TABLE_PATTERN
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

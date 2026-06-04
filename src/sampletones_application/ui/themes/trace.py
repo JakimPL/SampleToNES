@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_THEME_GLOBAL_TRACEBACK
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_TRACEBACK
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import ThemeColor, ThemeParameter
@@ -8,7 +8,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class TracebackTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_TRACEBACK
+    tag: str = TAG_GLOBAL_THEME_TRACEBACK
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

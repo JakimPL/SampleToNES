@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_THEME_GLOBAL_STATUS
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_STATUS
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class StatusBarTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_STATUS
+    tag: str = TAG_GLOBAL_THEME_STATUS
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

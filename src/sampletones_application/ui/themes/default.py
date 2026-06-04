@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import TAG_THEME_GLOBAL_DEFAULT
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class DefaultTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_DEFAULT
+    tag: str = TAG_GLOBAL_THEME_DEFAULT
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

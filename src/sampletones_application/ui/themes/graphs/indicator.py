@@ -1,6 +1,6 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.graphs import TAG_THEME_GRAPH_INDICATOR
+from sampletones_application.constants.graphs import TAG_GLOBAL_GRAPH_THEME_INDICATOR
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -12,7 +12,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class IndicatorGraphTheme(Theme):
-    tag: str = TAG_THEME_GRAPH_INDICATOR
+    tag: str = TAG_GLOBAL_GRAPH_THEME_INDICATOR
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

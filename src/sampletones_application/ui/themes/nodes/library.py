@@ -1,10 +1,10 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.instructions import (
-    TAG_THEME_INSTRUCTIONS_LIBRARY_GENERATOR,
-    TAG_THEME_INSTRUCTIONS_LIBRARY_GROUP,
-    TAG_THEME_INSTRUCTIONS_LIBRARY_INSTRUCTION,
-    TAG_THEME_INSTRUCTIONS_LIBRARY_LIBRARY,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY,
 )
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.themes.items import ThemeItems
@@ -13,7 +13,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class LibraryLibraryNodeTheme(Theme):
-    tag: str = TAG_THEME_INSTRUCTIONS_LIBRARY_LIBRARY
+    tag: str = TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -31,7 +31,7 @@ class LibraryLibraryNodeTheme(Theme):
 
 
 class LibraryGeneratorNodeTheme(Theme):
-    tag: str = TAG_THEME_INSTRUCTIONS_LIBRARY_GENERATOR
+    tag: str = TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -49,7 +49,7 @@ class LibraryGeneratorNodeTheme(Theme):
 
 
 class LibraryGroupNodeTheme(Theme):
-    tag: str = TAG_THEME_INSTRUCTIONS_LIBRARY_GROUP
+    tag: str = TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -67,7 +67,7 @@ class LibraryGroupNodeTheme(Theme):
 
 
 class LibraryInstructionNodeTheme(Theme):
-    tag: str = TAG_THEME_INSTRUCTIONS_LIBRARY_INSTRUCTION
+    tag: str = TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

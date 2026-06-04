@@ -1,11 +1,11 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.general import (
-    TAG_THEME_GLOBAL_FILE_LIBRARY,
-    TAG_THEME_GLOBAL_FILE_NO_CONTENT,
-    TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY,
-    TAG_THEME_GLOBAL_FILE_RECONSTRUCTION,
-    TAG_THEME_GLOBAL_FILE_WAVE,
+    TAG_GLOBAL_THEME_FILE_LIBRARY,
+    TAG_GLOBAL_THEME_FILE_NO_CONTENT,
+    TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY,
+    TAG_GLOBAL_THEME_FILE_RECONSTRUCTION,
+    TAG_GLOBAL_THEME_FILE_WAVE,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.themes.items import ThemeItems
@@ -14,7 +14,7 @@ from sampletones_application.ui.themes.theme import Theme
 
 
 class NoContentFileNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FILE_NO_CONTENT
+    tag: str = TAG_GLOBAL_THEME_FILE_NO_CONTENT
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -32,7 +32,7 @@ class NoContentFileNodeTheme(Theme):
 
 
 class ReconstructionFileNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FILE_RECONSTRUCTION
+    tag: str = TAG_GLOBAL_THEME_FILE_RECONSTRUCTION
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -50,7 +50,7 @@ class ReconstructionFileNodeTheme(Theme):
 
 
 class LibraryFileNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FILE_LIBRARY
+    tag: str = TAG_GLOBAL_THEME_FILE_LIBRARY
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -68,7 +68,7 @@ class LibraryFileNodeTheme(Theme):
 
 
 class WaveFileNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FILE_WAVE
+    tag: str = TAG_GLOBAL_THEME_FILE_WAVE
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
@@ -86,7 +86,7 @@ class WaveFileNodeTheme(Theme):
 
 
 class NotExpandedDirectoryNodeTheme(Theme):
-    tag: str = TAG_THEME_GLOBAL_FILE_NOT_EXPANDED_DIRECTORY
+    tag: str = TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY
     _theme: ThemeItems = ThemeItems()
 
     @classmethod

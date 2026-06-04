@@ -13,8 +13,8 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
-    TAG_TAB_GLOBAL_INSTRUCTIONS,
-    TAG_TABS_GLOBAL,
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_TABS,
 )
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
@@ -137,12 +137,12 @@ class InstructionsTabCoordinator:
 
     def create_tab(self) -> None:
         with dpg.tab(
-            tag=TAG_TAB_GLOBAL_INSTRUCTIONS,
-            parent=TAG_TABS_GLOBAL,
+            tag=TAG_GLOBAL_TAB_INSTRUCTIONS,
+            parent=TAG_GLOBAL_TABS,
             label=self._tab_label,
         ):
             with dpg.table(
-                parent=TAG_TAB_GLOBAL_INSTRUCTIONS,
+                parent=TAG_GLOBAL_TAB_INSTRUCTIONS,
                 header_row=False,
                 resizable=False,
                 policy=dpg.mvTable_SizingStretchProp,
@@ -153,7 +153,7 @@ class InstructionsTabCoordinator:
 
                 with dpg.table_row():
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_LEFT}",
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_LEFT}",
                         width=self._left_width,
                         height=self._left_height,
                         no_scrollbar=True,
@@ -162,13 +162,13 @@ class InstructionsTabCoordinator:
                         self._library_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_CENTER}",
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_CENTER}",
                         no_scroll_with_mouse=True,
                     ):
                         self._instruction_panel.create_panel()
 
                     with dpg.child_window(
-                        tag=f"{TAG_TAB_GLOBAL_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
+                        tag=f"{TAG_GLOBAL_TAB_INSTRUCTIONS}{SUF_PANEL_RIGHT}",
                         width=self._details_width,
                         height=self._right_height,
                         no_scrollbar=True,

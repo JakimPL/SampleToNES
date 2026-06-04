@@ -13,9 +13,9 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import GenerationSettingsUpdate
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
-    TAG_PANEL_MAIN_RECONSTRUCTOR,
-    TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
-    TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+    TAG_MAIN_RECONSTRUCTOR_PANEL,
+    TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
+    TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -44,7 +44,7 @@ class GUIReconstructorPanel(GUIPanel):
         self._view = initial_view
         self._input_width = input_width
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
-        self._item_handler_tag = f"{TAG_PANEL_MAIN_RECONSTRUCTOR}{SUF_HANDLER_REGISTRY}"
+        self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._lbl_section_settings = language_manager[
             TextKey(
@@ -120,8 +120,8 @@ class GUIReconstructorPanel(GUIPanel):
         ]
 
         super().__init__(
-            tag=TAG_PANEL_MAIN_RECONSTRUCTOR,
-            parent=TAG_PANEL_MAIN_RECONSTRUCTOR_CELL,
+            tag=TAG_MAIN_RECONSTRUCTOR_PANEL,
+            parent=TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
             height=panel_height,
         )
 
@@ -182,30 +182,30 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_separator()
         dpg.add_slider_float(
             label=self._lbl_mixer,
-            tag=TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER,
+            tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER,
             min_value=0.0,
             max_value=MAX_MIXER,
             default_value=self._view.mixer,
             width=self._input_width,
         )
 
-        dpg.bind_item_handler_registry(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._item_handler_tag)
-        GUIStatusBar.bind_to_item(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._msg_status_input)
+        dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._item_handler_tag)
+        GUIStatusBar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, self._tooltip_mixer)
+        show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._tooltip_mixer)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         generators = [generator for generator in GeneratorName if dpg.get_value(f"gen_{generator.value}")]
         generation_update = GenerationSettingsUpdate(
-            mixer=float(clamp_widget_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER)),
+            mixer=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER)),
             generators=generators,
         )
         self.call(self.on_generation_settings_changed, generation_update)
 
     def update_view(self, viewmodel: ReconstructorPanelViewModel) -> None:
         self._view = viewmodel
-        dpg.set_value(TAG_SLIDER_MAIN_RECONSTRUCTOR_MIXER, viewmodel.mixer)
+        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, viewmodel.mixer)
         for generator in GeneratorName:
             tag = f"gen_{generator.value}"
             dpg_set_value(tag, generator in viewmodel.generators)

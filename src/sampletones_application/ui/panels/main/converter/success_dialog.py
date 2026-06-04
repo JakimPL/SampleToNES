@@ -5,7 +5,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
-    TAG_DIALOG_MAIN_CONVERTER_SUCCESS,
+    TAG_MAIN_CONVERTER_DIALOG_SUCCESS,
 )
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_delete_item
@@ -40,9 +40,9 @@ class ConverterSuccessDialog:
         def content(parent: str) -> None:
             dpg.add_text(self._msg_success, parent=parent)
 
-        dpg_delete_item(TAG_DIALOG_MAIN_CONVERTER_SUCCESS)
+        dpg_delete_item(TAG_MAIN_CONVERTER_DIALOG_SUCCESS)
         self._dialogs.show_modal(
-            tag=TAG_DIALOG_MAIN_CONVERTER_SUCCESS,
+            tag=TAG_MAIN_CONVERTER_DIALOG_SUCCESS,
             title=self._ttl_progress,
             content=content,
         )

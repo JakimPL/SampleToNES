@@ -24,7 +24,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
     SUF_TABLE,
     SUF_TEXT,
-    TAG_TAB_GLOBAL_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
 )
 from sampletones_application.constants.graphs import (
     SUF_GRAPH,
@@ -34,11 +34,11 @@ from sampletones_application.constants.reconstructions import (
     SUF_RECONSTRUCTIONS_DETAILS_WINDOW,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR,
-    TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI,
-    TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
-    TAG_PANEL_RECONSTRUCTIONS_DETAILS,
-    TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS,
-    TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI,
+    TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
+    TAG_RECONSTRUCTIONS_DETAILS_PANEL,
+    TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR,
+    TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
@@ -105,10 +105,10 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
 
-        self.tab_bar_tag = TAG_TAB_BAR_RECONSTRUCTIONS_DETAILS
+        self.tab_bar_tag = TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
         self.export_button_separator_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_SEPARATOR}"
-        self.mouse_item_handler_tag = f"{TAG_PANEL_RECONSTRUCTIONS_DETAILS}{SUF_HANDLER_REGISTRY}"
+        self.mouse_item_handler_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._graphs: Dict[str, GUIBarGraph] = {}
         self._layout_general = layout_general
@@ -246,8 +246,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._lbl_copied = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.COPIED)]
 
         super().__init__(
-            tag=TAG_PANEL_RECONSTRUCTIONS_DETAILS,
-            parent=f"{TAG_TAB_GLOBAL_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
+            tag=TAG_RECONSTRUCTIONS_DETAILS_PANEL,
+            parent=f"{TAG_GLOBAL_TAB_RECONSTRUCTIONS}{SUF_PANEL_RIGHT}",
         )
 
     def create_panel(self) -> None:
@@ -271,7 +271,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
     def _create_export_button(self) -> None:
         dpg.add_separator()
         GUIButton(
-            tag=TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
+            tag=TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
             label=self._lbl_export_ftis,
             width=-1,
             callback=self._export_instruments,
@@ -291,7 +291,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         dpg.add_text(
             self._lbl_generators,
-            tag=TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS,
+            tag=TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
             parent=self.tag,
             show=False,
         )
@@ -342,7 +342,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=False,
         ):
             self.generator_plots[generator_name] = {}
-            button_tag = f"{TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTI}_{tab_tag}"
+            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI}_{tab_tag}"
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,
@@ -435,11 +435,11 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
         dpg_configure_item(
-            TAG_BUTTON_RECONSTRUCTIONS_DETAILS_EXPORT_FTIS,
+            TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTIS,
             show=is_loaded,
             enabled=is_loaded,
         )
-        dpg_configure_item(TAG_TEXT_RECONSTRUCTIONS_DETAILS_GENERATORS, show=is_loaded)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS, show=is_loaded)
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
