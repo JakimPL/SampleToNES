@@ -16,23 +16,38 @@ class ETAEstimator:
         self._samples_window: Deque[Tuple[float, int]] = deque(maxlen=self._ems)
         self._processed_items: int = 0
 
-    def update(self, completed_items: int) -> str:
+    def update(self, completed_items: int) -> Optional[float]:
         now = monotonic()
         self._processed_items = completed_items
         self._samples_window.append((now, completed_items))
 
         if completed_items >= self._total:
-            return "0s"
+            return 0.0
         if len(self._samples_window) < 2:
-            return "?"
+            return None
 
-        eta_seconds = self._estimate_remaining_seconds(completed_items, now)
-        if eta_seconds is None:
+        return self._estimate_remaining_seconds(completed_items, now)
+
+    @classmethod
+    def format_duration(cls, seconds: Optional[float]) -> str:
+        if seconds is None:
             return "?"
-        if eta_seconds <= 0:
+        if seconds <= 0:
             return "0s"
 
-        return self._format_duration(eta_seconds)
+        secs = int(seconds)
+        if secs <= 0:
+            return "0s"
+
+        minutes, seconds_remaining = divmod(secs, 60)
+        hours, minutes = divmod(minutes, 60)
+
+        if hours:
+            return f"{hours}h {minutes:02d}m {seconds_remaining:02d}s"
+        if minutes:
+            return f"{minutes}m {seconds_remaining:02d}s"
+
+        return f"{seconds_remaining}s"
 
     def get_percent_string(self) -> str:
         if self._total == 0:

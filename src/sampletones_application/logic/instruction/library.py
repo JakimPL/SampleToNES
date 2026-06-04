@@ -485,7 +485,8 @@ class LibraryLogic(CallbackMixin):
         assert self._eta_estimator is not None, "ETA Estimator is not initialized"
 
         self._progress_value = task_progress.get_progress()
-        eta_string = self._eta_estimator.update(creator.completed_instructions)
+        eta_seconds = self._eta_estimator.update(creator.completed_instructions)
+        eta_string = ETAEstimator.format_duration(eta_seconds)
         self._progress_overlay = self._eta_estimator.get_percent_string()
 
         status_text = self._tpl_generation_progress.format(

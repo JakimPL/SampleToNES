@@ -13,7 +13,7 @@ from sampletones_application.services.result import (
     ServiceSuccess,
 )
 from sampletones_core.configs import Config
-from sampletones_core.parallelization import TaskProgress, TaskStatus
+from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones_core.reconstructions.converter import ReconstructionConverter
 from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
@@ -33,6 +33,7 @@ class ConversionService(ServiceBase[ConversionResult]):
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
         self._converter: Optional[ReconstructionConverter] = None
+        self._eta_estimator: Optional[ETAEstimator] = None
 
     def start(self, config: Config, input_path: Path) -> None:
         if self._converter is not None and self._converter.is_running():
@@ -64,6 +65,7 @@ class ConversionService(ServiceBase[ConversionResult]):
                 self._converter.cancel()
             self._converter.cleanup()
             self._converter = None
+        self._eta_estimator = None
 
     def is_running(self) -> bool:
         return self._converter is not None and (
@@ -72,7 +74,9 @@ class ConversionService(ServiceBase[ConversionResult]):
 
     def _on_start(self) -> None:
         assert self._converter is not None
-        self._emit(ServiceStarted(total=self._converter.total_tasks))
+        total = self._converter.total_tasks
+        self._eta_estimator = ETAEstimator(total=total)
+        self._emit(ServiceStarted(total=total))
 
     def _on_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         current_item: Optional[Path] = None
@@ -81,11 +85,13 @@ class ConversionService(ServiceBase[ConversionResult]):
 
         match task_status:
             case TaskStatus.RUNNING | TaskStatus.CANCELLING:
+                eta_seconds = self._eta_estimator.update(task_progress.completed) if self._eta_estimator else None
                 self._emit(
                     ServiceProgress(
                         completed=task_progress.completed,
                         total=task_progress.total,
                         current_item=current_item,
+                        eta_seconds=eta_seconds,
                     )
                 )
             case _:

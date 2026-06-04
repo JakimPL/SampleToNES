@@ -5,7 +5,7 @@ from typing import List, cast
 import numpy as np
 
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.result import ServiceError, ServiceSuccess
+from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
 from sampletones_application.utils.thread import SingleThreadExecutor
 from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -13,13 +13,14 @@ from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion
 from sampletones_core.types.feature import FeatureValue
 
-RegenerationResult = ServiceSuccess[ReconstructionData] | ServiceError
+RegenerationResult = ServiceSuccess[ReconstructionData] | ServiceError | ServiceCancelled
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
     def __init__(self, priority: int = 0) -> None:
         super().__init__(priority)
         self._executor = SingleThreadExecutor()
+        self._cancelled: bool = False
 
     def start(
         self,
@@ -29,10 +30,16 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         feature_key: FeatureKey,
         data: FeatureValue,
     ) -> bool:
+        if self._cancelled:
+            return False
+
         def task() -> None:
             self._run(reconstruction_data, generator_name, features, feature_key, data)
 
         return self._executor.execute(task, wait=False)
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def _run(
         self,
@@ -42,6 +49,9 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         feature_key: FeatureKey,
         data: FeatureValue,
     ) -> None:
+        if self._cancelled:
+            self._emit(ServiceCancelled())
+            return
         try:
             config = reconstruction_data.config
             exporter_class = GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]

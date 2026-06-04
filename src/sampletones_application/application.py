@@ -58,6 +58,7 @@ from sampletones_application.services import (
     ExportService,
     RegenerationResult,
     RegenerationService,
+    ServiceCancelled,
     ServiceError,
     ServiceSuccess,
 )
@@ -924,6 +925,8 @@ class Application:
             case ServiceError(exception=exception):
                 logger.error_with_traceback(exception, "Regeneration failed")
                 self.dialogs.show_error(exception)
+            case ServiceCancelled():
+                logger.info("Regeneration cancelled")
 
     def _on_reconstruction_updated(self) -> None:
         self._reconstructions_tab.update_reconstruction()

@@ -117,7 +117,6 @@ class ConverterLogic(CallbackMixin):
                 GlobalTemplateElements.TIME_ESTIMATION,
             )
         ]
-        self._eta_estimator: Optional[ETAEstimator] = None
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
         self._output_path: Optional[Path] = None
@@ -176,7 +175,6 @@ class ConverterLogic(CallbackMixin):
             self._service.cleanup()
         finally:
             self._system_progress.clear()
-            self._eta_estimator = None
             self._phase = ConversionPhase.IDLE
             self._emit_view_model(self._msg_idle, 0.0, "0%")
 
@@ -192,12 +190,10 @@ class ConverterLogic(CallbackMixin):
     def cleanup(self) -> None:
         self._service.cleanup()
         self._system_progress.clear()
-        self._eta_estimator = None
 
     def _on_service_result(self, result: ConversionResult) -> None:
         match result:
             case ServiceStarted(total=total):
-                self._eta_estimator = ETAEstimator(total=total)
                 self._system_progress.start(total)
             case ServiceProgress() as progress:
                 self._handle_progress_result(progress)
@@ -222,9 +218,9 @@ class ConverterLogic(CallbackMixin):
 
         self._phase = ConversionPhase.RUNNING
         self._system_progress.set(progress.completed, progress.total)
-        assert self._eta_estimator is not None, "ETA estimator not initialized"
-        eta_string = self._eta_estimator.update(progress.completed)
-        percent_string = self._eta_estimator.get_percent_string()
+        eta_string = ETAEstimator.format_duration(progress.eta_seconds)
+        total = max(progress.total, 1)
+        percent_string = f"{min(100, int(progress.completed * 100 / total))}%"
         status_text = self._tpl_progress.format(progress.completed, progress.total)
 
         if eta_string:
@@ -235,7 +231,7 @@ class ConverterLogic(CallbackMixin):
         )
         self._emit_view_model(
             status_text,
-            progress.completed / max(progress.total, 1),
+            progress.completed / total,
             percent_string,
             input_path=display_input_path,
         )
