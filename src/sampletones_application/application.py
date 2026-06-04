@@ -25,33 +25,19 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_WINDOW_MAIN,
 )
-from sampletones_application.coordinators.instructions import (
-    InstructionsTabCoordinator,
-)
+from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import (
     AudioPlayerPanelProtocol,
     PlaybackRouter,
 )
-from sampletones_application.coordinators.reconstructions import (
-    ReconstructionsTabCoordinator,
-)
-from sampletones_application.coordinators.sequencer import (
-    SequencerTabCoordinator,
-)
+from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
-from sampletones_application.logic.instruction.library_manager import (
-    InstructionsLibraryManager,
-)
-from sampletones_application.logic.reconstruction.browser_manager import (
-    BrowserManager,
-)
-from sampletones_application.logic.reconstruction.manager import (
-    ReconstructionManager,
-)
-from sampletones_application.logic.reconstruction.session import (
-    ReconstructionSession,
-)
+from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_application.logic.reconstruction.manager import ReconstructionManager
+from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
 from sampletones_application.services import (
     ConversionService,
@@ -66,39 +52,9 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
-from sampletones_application.ui.themes.converter import ConverterTheme
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.ui.themes.fps import FPSTimerTheme
-from sampletones_application.ui.themes.graphs.indicator import (
-    IndicatorGraphTheme,
-)
-from sampletones_application.ui.themes.graphs.overlay import OverlayGraphTheme
-from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
-from sampletones_application.ui.themes.input import InvalidInputTheme
-from sampletones_application.ui.themes.nodes.favorite import (
-    FavoriteChildNodeTheme,
-    FavoriteNodeTheme,
-)
-from sampletones_application.ui.themes.nodes.file import (
-    LibraryFileNodeTheme,
-    NoContentFileNodeTheme,
-    NotExpandedDirectoryNodeTheme,
-    ReconstructionFileNodeTheme,
-    WaveFileNodeTheme,
-)
-from sampletones_application.ui.themes.nodes.library import (
-    LibraryGeneratorNodeTheme,
-    LibraryGroupNodeTheme,
-    LibraryInstructionNodeTheme,
-    LibraryLibraryNodeTheme,
-)
-from sampletones_application.ui.themes.status import StatusBarTheme
-from sampletones_application.ui.themes.tables.initial_pitch import (
-    InitialPitchTableTheme,
-)
-from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
-from sampletones_application.ui.themes.tables.table import TableTheme
-from sampletones_application.ui.themes.trace import TracebackTheme
+from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_set_value
@@ -131,9 +87,10 @@ class Application:
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)
         self.dialogs: DialogsRenderer = DialogsRenderer(
-            layout=self.layout.general, language_manager=self.language_manager
+            layout=self.layout.general,
+            language_manager=self.language_manager,
         )
-        self._setup_themes()
+        setup_themes(self.layout)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
         self.session_manager = SessionManager()
@@ -258,43 +215,6 @@ class Application:
         buffer_size = self.session_manager.current_buffer_size
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
-
-    def _setup_themes(self) -> None:
-        general = self.layout.general
-        graphs = self.layout.graphs
-        instructions = self.layout.instructions
-        reconstructions = self.layout.reconstructions
-        sequencer = self.layout.sequencer
-
-        FontRegistry.setup(general.fonts)
-
-        DefaultTheme.setup(general)
-        StatusBarTheme.setup(general)
-        FPSTimerTheme.setup(general)
-        ConverterTheme.setup(general)
-        InvalidInputTheme.setup(general)
-        TracebackTheme.setup(general)
-        TableTheme.setup(general)
-
-        FavoriteNodeTheme.setup(general)
-        FavoriteChildNodeTheme.setup(general)
-        NoContentFileNodeTheme.setup(general)
-        ReconstructionFileNodeTheme.setup(general)
-        LibraryFileNodeTheme.setup(general)
-        WaveFileNodeTheme.setup(general)
-        NotExpandedDirectoryNodeTheme.setup(general)
-
-        LibraryLibraryNodeTheme.setup(instructions)
-        LibraryGeneratorNodeTheme.setup(instructions)
-        LibraryGroupNodeTheme.setup(instructions)
-        LibraryInstructionNodeTheme.setup(instructions)
-
-        IndicatorGraphTheme.setup(graphs)
-        OverlayGraphTheme.setup(graphs)
-        ZeroLineGraphTheme.setup(graphs)
-
-        InitialPitchTableTheme.setup(reconstructions)
-        PatternTableTheme.setup(general, sequencer)
 
     def _setup_gui(self) -> None:
         dpg.create_context()
