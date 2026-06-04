@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
-from sampletones_application.categories.elements.reconstructions import ReconstructionsBrowserElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
@@ -16,7 +15,6 @@ from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-    TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
     TAG_GLOBAL_STATUS_WINDOW,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_WINDOW_MAIN,
@@ -28,23 +26,15 @@ from sampletones_application.coordinators.playback import (
     AudioPlayerPanelProtocol,
     PlaybackRouter,
 )
+from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
-from sampletones_application.services import (
-    ConversionService,
-    ExportService,
-    RegenerationResult,
-    RegenerationService,
-    ServiceCancelled,
-    ServiceError,
-    ServiceSuccess,
-)
+from sampletones_application.services import ConversionService, ExportService, RegenerationService
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -64,15 +54,11 @@ from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_core.constants.enums import FeatureKey, GeneratorName
-from sampletones_core.exporters import Features
-from sampletones_core.paths import EXT_FILE_RECONSTRUCTION, EXT_FILES_AUDIO
+from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.sequencer import Sequencer
-from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback
 
 
 class Application:
@@ -119,8 +105,6 @@ class Application:
         self.theme = DefaultTheme()
         self.fps_theme = FPSTimerTheme()
 
-        self._reconstruction_session = ReconstructionSession()
-
         self._menu_bar = MenuBar(
             shortcut_manager=self.shortcut_manager,
             fps_theme=self.fps_theme,
@@ -134,6 +118,19 @@ class Application:
             on_fullscreen_state_changed=self._update_menu,
         )
 
+        self._reconstruction_coordinator = ReconstructionCoordinator(
+            self.reconstruction_manager,
+            self.session_manager,
+            self.regeneration_service,
+            self.config_manager,
+            self.audio_device_manager,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            layout=self.layout,
+            on_tab_switch=self._set_current_tab,
+            on_session_state_changed=self._on_reconstruction_state_changed,
+        )
+
         self._main_tab = MainTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -143,7 +140,7 @@ class Application:
             conversion_service=self.conversion_service,
             on_reconstruct_file=self._reconstruct_file,
             on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._load_reconstruction_with_confirmation,
+            on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
             on_load_library=self._load_library,
             is_generation_in_progress=self._is_generation_in_progress,
             layout=self.layout,
@@ -159,16 +156,18 @@ class Application:
             reconstruction_manager=self.reconstruction_manager,
             browser_manager=self.browser_manager,
             export_service=self.export_service,
-            on_load_reconstruction_with_confirmation=self._load_reconstruction_with_confirmation,
-            on_reconstruction_loaded=self._on_reconstruction_loaded,
+            on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
+            on_reconstruction_loaded=self._reconstruction_coordinator._on_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
-            on_reconstruction_instrument_updated=self._regenerate_reconstruction_instrument,
+            on_reconstruction_instrument_updated=self._reconstruction_coordinator.regenerate_instrument,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
         )
+
+        self._reconstruction_coordinator.set_reconstructions_tab(self._reconstructions_tab)
 
         self._instructions_tab = InstructionsTabCoordinator(
             config_manager=self.config_manager,
@@ -205,8 +204,6 @@ class Application:
             language_manager=self.language_manager,
             layout=self.layout,
         )
-
-        self._reconstruction_session.on_state_changed = self._on_reconstruction_state_changed
 
         self._setup_gui()
         self._load_settings()
@@ -252,22 +249,22 @@ class Application:
         self.shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
-            self._save_reconstruction,
+            self._reconstruction_coordinator.save,
         )
         self.shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION_AS,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
-            self._save_reconstruction_as_dialog,
+            self._reconstruction_coordinator.save_as_dialog,
         )
         self.shortcut_manager.register(
             ShortcutId.LOAD_RECONSTRUCTION,
             Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
-            self._load_reconstruction_with_confirmation,
+            self._reconstruction_coordinator.load_with_confirmation,
         )
         self.shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
             Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
-            self._close_reconstruction_with_confirmation,
+            self._reconstruction_coordinator.close_with_confirmation,
         )
         self.shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
@@ -346,11 +343,6 @@ class Application:
         self.config_manager.add_config_change_callback(self._update_menu)
 
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
-        self.reconstruction_manager.set_callbacks(
-            on_reconstruction_loaded=self._on_reconstruction_loaded,
-            on_reconstruction_closed=self._on_reconstruction_closed,
-        )
-        self.regeneration_service.subscribe(self._on_regeneration_result)
 
         self._main_tab.converter_logic.on_load_file = self._on_converted_reconstruction_loaded
         self._main_tab.converter_logic.on_load_directory = self._reconstructions_tab.refresh_browser
@@ -383,7 +375,7 @@ class Application:
 
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
-            reconstruction_loaded=self._is_reconstruction_loaded(),
+            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
             play_label=self._playback_router.play_label,
             play_or_pause_enabled=self._playback_router.is_play_enabled,
             stop_enabled=self._playback_router.is_stop_enabled,
@@ -439,68 +431,6 @@ class Application:
                     self.session_manager.set_current_reconstruction(None)
             else:
                 self.session_manager.set_current_reconstruction(None)
-
-    def _save_reconstruction_as_dialog(self) -> None:
-        filepath = self.reconstruction_manager.filepath
-        if filepath is None:
-            return
-
-        with dpg.file_dialog(
-            label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
-                )
-            ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_save_reconstruction_as,
-            file_count=1,
-            default_filename=filepath.name,
-            default_path=str(filepath.parent),
-        ):
-            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
-
-    @file_dialog_handler
-    def _handle_save_reconstruction_as(self, filepath: Path) -> None:
-        try:
-            self._save_reconstruction(filepath)
-            self.dialogs.show_info(
-                TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
-                    )
-                ],
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
-                    )
-                ],
-            )
-        except Exception as exception:  # TODO: specify exception type
-            logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
-            self.dialogs.show_error(
-                exception,
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
-                    )
-                ],
-            )
-
-        self.session_manager.set_reconstruction_path(filepath)
 
     def _open_audio_settings(self) -> None:
         self.audio_settings_window.show()
@@ -563,84 +493,16 @@ class Application:
             show=True,
         )
 
-    def _load_reconstruction_dialog(self) -> None:
-        with dpg.file_dialog(
-            label=self.language_manager[
-                TextKey(
-                    Page.RECONSTRUCTIONS,
-                    Panel.BROWSER,
-                    TextType.TITLE,
-                    ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
-                )
-            ],
-            width=self.layout.general.dialogs.file.width,
-            height=self.layout.general.dialogs.file.height,
-            callback=self._handle_load_reconstruction,
-            file_count=1,
-            default_path=str(self.session_manager.get_reconstruction_path()),
-        ):
-            dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
-
-    def _load_reconstruction_with_confirmation(self, filepath: Optional[Path] = None) -> None:
-        def load_reconstruction() -> None:
-            if filepath is None:
-                self._load_reconstruction_dialog()
-            else:
-                self._reconstructions_tab.load_reconstruction(filepath)
-
-        if self._is_reconstruction_unsaved():
-            self._show_save_confirmation_dialog(
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION,
-                    )
-                ],
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION,
-                    )
-                ],
-                on_confirm=load_reconstruction,
-                on_save=self._save_reconstruction,
-                ok_label=self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.DISCARD,
-                    )
-                ],
-            )
-        else:
-            load_reconstruction()
-
     def _is_generation_in_progress(self) -> bool:
         return self._main_tab.is_converter_running() or self._instructions_tab.is_library_generating()
 
     def _export_reconstruction_wav_dialog(self) -> None:
-        if self._check_if_reconstruction_loaded():
+        if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_wav_dialog()
 
     def _export_reconstruction_ftis_dialog(self) -> None:
-        if self._check_if_reconstruction_loaded():
+        if self._reconstruction_coordinator.check_loaded():
             self._reconstructions_tab.request_export_instruments_dialog()
-
-    def _check_if_reconstruction_loaded(self) -> bool:
-        if not self._is_reconstruction_loaded():
-            logger.warning("No reconstruction loaded; cannot proceed")
-            self.dialogs.show_reconstruction_not_loaded()
-            return False
-
-        return True
-
-    def _is_reconstruction_loaded(self) -> bool:
-        return self.reconstruction_manager.is_reconstruction_loaded()
 
     def _reconstruct_file(self, filepath: Path) -> None:
         self._main_tab.set_input_path(filepath, convert=True)
@@ -668,33 +530,6 @@ class Application:
     def _handle_reconstruct_directory(self, directory_path: Path) -> None:
         self._reconstruct_directory(directory_path)
 
-    def _on_reconstruction_loaded(self) -> None:
-        reconstruction_data = self.reconstruction_manager.current_reconstruction
-        if reconstruction_data is None:
-            raise RuntimeError("No reconstruction is loaded after loading process")
-
-        self.audio_device_manager.stop()
-        if not reconstruction_data.reconstruction.audio_filepath.exists():
-            self.dialogs.show_file_not_found(
-                reconstruction_data.reconstruction.audio_filepath,
-                self.language_manager[
-                    TextKey(
-                        Page.RECONSTRUCTIONS,
-                        Panel.BROWSER,
-                        TextType.MESSAGE,
-                        ReconstructionsBrowserElements.AUDIO_FILE_NOT_FOUND,
-                    )
-                ],
-            )
-
-        filepath = reconstruction_data.filepath
-        self.config_manager.load_library_and_generation_config(reconstruction_data.config)
-        self._reconstructions_tab.display_reconstruction()
-        self.session_manager.set_current_reconstruction(filepath)
-
-        self._set_current_tab(Tab.RECONSTRUCTIONS)
-        self._reconstruction_session.mark_loaded(filepath.stem)
-
     def _on_playback_error(self, exception: Exception) -> None:
         logger.error_with_traceback(exception, "Playback error occurred")
         self.dialogs.show_error(
@@ -709,89 +544,14 @@ class Application:
             ],
         )
 
-    @file_dialog_handler
-    def _handle_load_reconstruction(self, filepath: Path) -> None:
-        self.session_manager.set_reconstruction_path(filepath.parent)
-        self._reconstructions_tab.load_reconstruction(filepath)
-
-    def _regenerate_reconstruction_instrument(
-        self,
-        generator_name: GeneratorName,
-        features: Features,
-        feature_key: FeatureKey,
-        data: FeatureValue,
-    ) -> None:
-        reconstruction_data = self.reconstruction_manager.current_reconstruction
-        if reconstruction_data is not None:
-            self.regeneration_service.start(reconstruction_data, generator_name, features, feature_key, data)
-
-    def _on_regeneration_result(self, result: RegenerationResult) -> None:
-        match result:
-            case ServiceSuccess():
-                self._on_reconstruction_updated()
-            case ServiceError(exception=exception):
-                logger.error_with_traceback(exception, "Regeneration failed")
-                self.dialogs.show_error(exception)
-            case ServiceCancelled():
-                logger.info("Regeneration cancelled")
-
-    def _on_reconstruction_updated(self) -> None:
-        self._reconstructions_tab.update_reconstruction()
-        self._reconstruction_session.mark_updated()
-
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstructions_tab.refresh_browser()
-        self._load_reconstruction_with_confirmation(filepath)
-
-    def _save_reconstruction(self, filepath: Optional[Path] = None) -> None:
-        self.reconstruction_manager.save_reconstruction(filepath)
-        self._reconstruction_session.mark_saved(filepath.stem if filepath is not None else None)
-
-    def _close_reconstruction_with_confirmation(self) -> None:
-        if self._is_reconstruction_unsaved():
-            self._show_save_confirmation_dialog(
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                    )
-                ],
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                    )
-                ],
-                on_confirm=self._close_reconstruction,
-                on_save=self._save_reconstruction,
-                ok_label=self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.CLOSE,
-                    )
-                ],
-            )
-        else:
-            self._close_reconstruction()
-
-    def _close_reconstruction(self) -> None:
-        self.reconstruction_manager.close_reconstruction()
-
-    def _on_reconstruction_closed(self) -> None:
-        self._reconstructions_tab.close_reconstruction()
-        self.session_manager.set_current_reconstruction(None)
-        self._reconstruction_session.mark_closed()
+        self._reconstruction_coordinator.load_with_confirmation(filepath)
 
     def _on_reconstruction_state_changed(self) -> None:
         self._viewport_manager.update_title(
-            self._reconstruction_session.name,
-            self._reconstruction_session.unsaved_changes,
+            self._reconstruction_coordinator.reconstruction_name,
+            self._reconstruction_coordinator.is_unsaved(),
             title=self.language_manager[
                 TextKey(
                     Page.GLOBAL,
@@ -889,53 +649,9 @@ class Application:
             ok_label=ok_label,
         )
 
-    def _show_save_confirmation_dialog(
-        self,
-        title: str,
-        message: str,
-        on_save: Callback,
-        on_confirm: Callback,
-        ok_label: str,
-    ) -> None:
-        self.dialogs.show_save_confirmation(
-            tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
-            title=title,
-            message=message,
-            on_save=on_save,
-            on_confirm=on_confirm,
-            ok_label=ok_label,
-        )
-
     def _on_close(self) -> None:
-        if self._is_reconstruction_unsaved():
-            self._show_save_confirmation_dialog(
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.EXIT_CONFIRMATION,
-                    )
-                ],
-                self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION,
-                    )
-                ],
-                on_save=self._save_reconstruction,
-                on_confirm=self._exit_application,
-                ok_label=self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.EXIT,
-                    )
-                ],
-            )
+        if self._reconstruction_coordinator.is_unsaved():
+            self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
         elif self._is_converter_running():
             self._show_confirmation_dialog(
                 self.language_manager[
@@ -982,9 +698,6 @@ class Application:
 
     def _is_library_generating(self) -> bool:
         return self._instructions_tab.is_library_generating()
-
-    def _is_reconstruction_unsaved(self) -> bool:
-        return self._reconstruction_session.unsaved_changes
 
     def _exit_application(self) -> None:
         CallbackQueue.stop()
