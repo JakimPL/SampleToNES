@@ -1,80 +1,72 @@
 import importlib
-from typing import TYPE_CHECKING, Any, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any, List
 
 if TYPE_CHECKING:
-    from .configs import Config
-    from .constants.application import SAMPLETONES_VERSION as __version__
-    from .constants.enums import GeneratorName
-    from .fft import Window
-    from .generators import Generator, NoiseGenerator, PulseGenerator, TriangleGenerator
-    from .instructions import (
+    from sampletones_core.configs import Config
+    from sampletones_core.constants.application import SAMPLETONES_VERSION as __version__
+    from sampletones_core.constants.enums import GeneratorName
+    from sampletones_core.fft import Window
+    from sampletones_core.generators import (
+        Generator,
+        NoiseGenerator,
+        PulseGenerator,
+        TriangleGenerator,
+    )
+    from sampletones_core.instructions import (
         Instruction,
         NoiseInstruction,
         PulseInstruction,
         TriangleInstruction,
     )
-    from .library import InstructionLibrary
-    from .reconstructions import Reconstruction, Reconstructor
-
-
-CUPY_AVAILABLE = False  # pylint: disable=invalid-name
-try:
-    import cupy as xp
-
-    CUPY_AVAILABLE = True  # pylint: disable=invalid-name
-except (ImportError, ModuleNotFoundError):
-    import warnings
-
-    from sampletones.exceptions import CuPyNotInstalledWarning
-    from sampletones.utils.logger import logger
-
-    def _format_warning_no_location(
-        message: Union[Warning, str], category: Type[Warning], filename: str, lineno: int, line: Optional[str] = None
-    ) -> str:
-        return f"{category.__name__}: {message}\n"
-
-    warnings.formatwarning = _format_warning_no_location
-    warnings.warn("CuPy is not available, falling back to NumPy.", CuPyNotInstalledWarning)
-    logger.warning("CuPy is not available, falling back to NumPy.")
-
-    import numpy as xp
+    from sampletones_core.library import InstructionLibrary
+    from sampletones_core.reconstructions import Reconstruction, Reconstructor
 
 
 def __getattr__(name: str) -> Any:
     if name == "Config":
-        from .configs import Config
+        from sampletones_core.configs import Config
 
         return Config
 
     if name == "__version__":
-        from .constants.application import SAMPLETONES_VERSION
+        from sampletones_core.constants.application import SAMPLETONES_VERSION
 
         return SAMPLETONES_VERSION
 
     if name == "GeneratorName":
-        from .constants.enums import GeneratorName
+        from sampletones_core.constants.enums import GeneratorName
 
         return GeneratorName
 
     if name == "Window":
-        from .fft import Window
+        from sampletones_core.fft import Window
 
         return Window
 
-    if name in ("Generator", "NoiseGenerator", "PulseGenerator", "TriangleGenerator"):
-        module = importlib.import_module(".generators", __package__)
+    if name in (
+        "Generator",
+        "NoiseGenerator",
+        "PulseGenerator",
+        "TriangleGenerator",
+    ):
+        module = importlib.import_module("sampletones_core.generators")
         return getattr(module, name)
 
-    if name in ("Instruction", "NoiseInstruction", "PulseInstruction", "TriangleInstruction"):
-        module = importlib.import_module(".instructions", __package__)
+    if name in (
+        "Instruction",
+        "NoiseInstruction",
+        "PulseInstruction",
+        "TriangleInstruction",
+    ):
+        module = importlib.import_module("sampletones_core.instructions")
         return getattr(module, name)
 
     if name in ("Reconstruction", "Reconstructor"):
-        module = importlib.import_module(".reconstruction", __package__)
+        module = importlib.import_module("sampletones_core.reconstructions")
         return getattr(module, name)
 
     if name == "InstructionLibrary":
-        from .library import InstructionLibrary
+        from sampletones_core.library import InstructionLibrary
 
         return InstructionLibrary
 
@@ -97,8 +89,6 @@ __all__ = [
     "NoiseInstruction",
     "GeneratorName",
     "__version__",
-    "xp",
-    "CUPY_AVAILABLE",
 ]
 
 

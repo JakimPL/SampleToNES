@@ -1,12 +1,12 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         types: [text]
 
   - repo: https://github.com/timothycrosley/isort
-    rev: 6.0.1
+    rev: 8.0.0
     hooks:
       - id: isort
         language_version: python3
@@ -15,14 +15,24 @@ repos:
           "-l", "120"
         ]
 
-  - repo: https://github.com/ambv/black
-    rev: 25.1.0
+  - repo: https://github.com/psf/black
+    rev: 26.1.0
     hooks:
       - id: black
         language_version: python3
         args: [
           "--line-length", "120"
         ]
+
+  - repo: local
+    hooks:
+      - id: logic-boundary
+        name: logic boundary
+        entry: python scripts/check_logic_boundary.py
+        language: system
+        types: [python]
+        files: ^src/sampletones_application/(logic|view_model)/
+        verbose: true
 
   - repo: local
     hooks:
@@ -33,7 +43,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^(src/schemas/|tests/)
+        exclude: ^(src/sampletones_schemas/|tests/)
 
   - repo: local
     hooks:
@@ -44,7 +54,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^(src/schemas/|tests/)
+        exclude: ^(src/sampletones_schemas/|tests/)
 
   - repo: local
     hooks:

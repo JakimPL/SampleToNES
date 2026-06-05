@@ -1,0 +1,11 @@
+include "instructions/instruction.fbs";
+include "library/fragment.fbs";
+
+namespace sampletones_schemas.library;
+
+table FBInstructionsLibraryItem {
+    instruction_data: sampletones_schemas.instructions.FBInstructionData;
+    fragment: FBInstructionsLibraryFragment;
+}
+
+root_type FBInstructionsLibraryItem;

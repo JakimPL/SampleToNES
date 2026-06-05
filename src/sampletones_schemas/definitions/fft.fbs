@@ -1,0 +1,11 @@
+include "configs/library.fbs";
+
+namespace sampletones_schemas.fft;
+
+table FBWindow {
+    config: sampletones_schemas.configs.FBInstructionsLibraryConfig;
+    on: bool = true;
+    custom_size: int = 0;
+}
+
+root_type FBWindow;

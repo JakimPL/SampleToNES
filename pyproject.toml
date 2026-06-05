@@ -8,17 +8,17 @@ authors = [{ name = "Jakim / Stage Magician" }]
 
 dependencies = [
     "anytree==2.13.0",
-    "dearpygui==2.1.1",
+    "dearpygui==2.2",
     "flatbuffers==25.12.19",
     "librosa==0.11.0",
     "numpy==2.3.4",
-    "pebble==5.1.3",
+    "pebble==5.2.0",
     "pydantic==2.12.5",
     "pyaudio==0.2.14",
-    "rich==14.2.0",
-    "scipy==1.17.0",
+    "rich==14.3.3",
+    "scipy==1.17.1",
     "screeninfo==0.8.1",
-    "tqdm==4.67.1",
+    "tqdm==4.67.3",
     "pytaskbar; platform_system == 'Windows'",
     "pywin32; platform_system == 'Windows'",
     "PyYAML==6.0.3",
@@ -29,12 +29,16 @@ sampletones = "sampletones.__main__:main"
 
 [project.optional-dependencies]
 dev = [
+    "black==26.1.0",
+    "isort==8.0.1",
     "mypy==1.19.1",
     "pre-commit==4.5.1",
-    "pylint==4.0.3",
+    "pylint==4.0.5",
     "pylint-pydantic==0.4.1",
     "pytest==9.0.2",
     "pytest-cov==7.0.0",
+    "pytest-xdist==3.8.0",
+    "types-PyYAML",
 ]
 gpu = ["cupy==13.6.0"]
 
@@ -43,10 +47,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sampletones", "src/schemas"]
-
-[tool.hatch.build]
-include = ["assets/icons/*", "assets/fonts/*"]
+packages = [
+    "src/sampletones",
+    "src/sampletones_application",
+    "src/sampletones_assets",
+    "src/sampletones_core",
+    "src/sampletones_schemas",
+    "src/sampletones_shared",
+]
 
 [tool.black]
 line-length = 120
@@ -55,20 +63,35 @@ target-version = ["py312"]
 [tool.isort]
 profile = "black"
 line_length = 120
-known_first_party = ["sampletones", "schemas"]
+known_first_party = [
+    "sampletones",
+    "sampletones_application",
+    "sampletones_assets",
+    "sampletones_core",
+    "sampletones_schemas",
+    "sampletones_shared",
+]
 
 [tool.pytest.ini_options]
 addopts = """
 --import-mode=importlib
 """
 
+[tool.coverage.run]
+source = ["sampletones_core", "sampletones_shared"]
+
 [tool.coverage.report]
 show_missing = true
 
 [tool.mypy]
 python_version = "3.12"
-files = "src/sampletones"
-exclude = ["src/schemas", "tests"]
+files = [
+    "src/sampletones",
+    "src/sampletones_application",
+    "src/sampletones_core",
+    "src/sampletones_shared",
+]
+exclude = ["src/sampletones_schemas", "tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true

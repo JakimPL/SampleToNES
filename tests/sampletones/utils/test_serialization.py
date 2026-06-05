@@ -5,7 +5,7 @@ from typing import Dict, List, Union
 import numpy as np
 import pytest
 
-from sampletones.utils.serialization import (
+from sampletones_shared.utils.serialization import (
     HASH_LENGTH,
     calculate_hash,
     deserialize_array,
@@ -92,7 +92,13 @@ class TestJsonFileOperations:
             assert loaded == data
 
     def test_save_and_load_json_list(self) -> None:
-        data: List[Union[int, str, Dict[str, str]]] = [1, 2, 3, "test", {"key": "value"}]
+        data: List[Union[int, str, Dict[str, str]]] = [
+            1,
+            2,
+            3,
+            "test",
+            {"key": "value"},
+        ]
 
         with tempfile.TemporaryDirectory() as tmpdir:
             filepath = Path(tmpdir) / "test.json"
@@ -293,7 +299,16 @@ class TestArraySerialization:
         assert deserialized.shape == (2, 3, 4)
 
     def test_serialize_different_dtypes(self) -> None:
-        dtypes = [np.int8, np.int16, np.int32, np.int64, np.uint8, np.float16, np.float32, np.float64]
+        dtypes = [
+            np.int8,
+            np.int16,
+            np.int32,
+            np.int64,
+            np.uint8,
+            np.float16,
+            np.float32,
+            np.float64,
+        ]
 
         for dtype in dtypes:
             array = np.array([1, 2, 3], dtype=dtype)
@@ -361,7 +376,7 @@ class TestCalculateHash:
         assert hash1 != hash3
         assert isinstance(hash1, str)
 
-    def test_hash_bool_different_representations(self) -> None:
+    def test_hash_null_different_representations(self) -> None:
         hash_false = calculate_hash(False)
         hash_zero = calculate_hash(0)
         hash_float_zero = calculate_hash(0.0)
@@ -371,8 +386,8 @@ class TestCalculateHash:
 
         assert hash_false == hash_zero
         assert hash_false == hash_float_zero
-        assert hash_false == hash_empty_string
         assert hash_false == hash_null_bytes
+        assert hash_false == hash_empty_string
         assert hash_false != hash_none
 
     def test_hash_base_model(self) -> None:

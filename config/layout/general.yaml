@@ -1,0 +1,109 @@
+window:
+  width: 1280
+  height: 800
+  position_x: 200
+  position_y: 200
+  fullscreen: false
+
+panels:
+  left:
+    width: 360
+    height: -1
+  right:
+    width: 460
+    height: -1
+  instructions_details:
+    width: 360
+  reconstructions_details:
+    width: 420
+
+status_bar:
+  height: 32
+  frame_rounding: 0
+  frame_padding: [0, 0]
+
+fonts:
+  size: 22
+  size_small: 19
+  size_large: 26
+  scale: 1
+  ranges:
+    - [0x0100, 0x024F]
+    - [0x1E00, 0x1EFF]
+    - [0x2000, 0x206F]
+    - [0x2C60, 0x2C7F]
+    - [0xA720, 0xA7FF]
+  icon_chars:
+    - 0x2605
+
+dialogs:
+  default:
+    width: 420
+    height: 100
+  error:
+    width: 600
+    height: 120
+  file:
+    width: 720
+    height: 400
+  confirmation:
+    height: 130
+  traceback:
+    width: 0
+    height: 400
+
+inputs:
+  default_width: -180
+  search_width: -80
+
+buttons:
+  copy_width: 80
+  search_width: -1
+  int_width: 30
+  frame_rounding: 6
+  frame_padding: [10, 4]
+
+tables:
+  label_width: 130
+  cell_padding: [8, 4]
+  frame_rounding: 4
+
+menu:
+  fps_text_offset: 10
+
+colors:
+  text:
+    white: "#ffffff"
+    default: "#dcdcdc"
+    disabled: "#828282"
+    error: "#ff6464"
+    traceback: "#c0c0c0"
+  files:
+    wave: "#64c8ff"
+    library: "#96ff96"
+    reconstruction: "#b4b4ff"
+    directory_not_expanded: "#b4b4b4"
+  favorites:
+    default: "#ffd76e"
+    child: "#e7dbb7"
+  buttons:
+    default: "#363648"
+    active: "#5a5a78"
+    hovered: "#48486c"
+    light: "#404060"
+  backgrounds:
+    default: "#242424"
+    dark: "#1c1c1c"
+    light: "#2c2c2c"
+    menu: "#323232"
+    input_invalid: "#c0202064"
+  tables:
+    header: "#2d3241"
+    row: "#1e2028"
+    row_alternative: "#262834"
+    border: "#3c4155"
+    label: "#8ca0c8"
+    value: "#c8cddc"
+  paths:
+    default: "#6496ff"
+    hover: "#96c8ff"
