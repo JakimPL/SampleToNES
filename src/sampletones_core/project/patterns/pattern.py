@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import List, Optional
 from uuid import uuid4
 
+from pydantic import BaseModel, Field
+
 from .row import Row
 
 
-class Pattern:
+class Pattern(BaseModel):
     """A reusable block of rows belonging to a single channel.
 
     Mutable so its rows and name can be edited in place, but its identity is
@@ -16,10 +18,9 @@ class Pattern:
     this stable ``id``, never the collection position.
     """
 
-    def __init__(self, rows: List[Row], name: Optional[str] = None) -> None:
-        self.id: str = uuid4().hex
-        self.name: Optional[str] = name
-        self.rows: List[Row] = rows
+    id: str = Field(default_factory=lambda: uuid4().hex, description="Stable identifier.")
+    name: Optional[str] = Field(default=None, description="Optional human-readable name.")
+    rows: List[Row] = Field(..., description="Tracker lines, in order.")
 
     @classmethod
     def empty(cls, length: int, name: Optional[str] = None) -> Pattern:

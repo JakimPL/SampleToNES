@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from ..display import display_id, display_transpose, display_volume
+from ...project.patterns.display import display_id, display_transpose, display_volume
 from .row import Row
 
 

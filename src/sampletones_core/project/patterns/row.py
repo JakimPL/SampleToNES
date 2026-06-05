@@ -8,8 +8,7 @@ from sampletones_core.constants.general import (
     MIN_PITCH,
     MIN_VOLUME,
 )
-
-from .subinstrument import SubInstrument
+from sampletones_core.project.instruments.subinstrument import SubInstrument
 
 
 class Row(BaseModel):
@@ -25,7 +24,7 @@ class Row(BaseModel):
         default=None,
         description="Referenced channel-slice.",
     )
-    pitch: Optional[int] = Field(
+    transpose: Optional[int] = Field(
         default=None,
         ge=MIN_PITCH,
         le=MAX_PITCH,
@@ -37,3 +36,9 @@ class Row(BaseModel):
         le=MAX_VOLUME,
         description="Volume column, or None for an empty cell.",
     )
+
+    # def __str__(self) -> str:
+    #     sample_id = display_id(self.subinstrument.instrument_id if self.subinstrument else None)
+    #     volume = display_volume(self.volume)
+    #     transpose = display_transpose(self.transpose)
+    #     return f"{sample_id} {volume} {transpose}"

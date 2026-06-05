@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import (
+    Any,
     Dict,
     Generic,
     Iterable,
@@ -9,8 +10,12 @@ from typing import (
     Optional,
     TypeVar,
     Union,
+    get_args,
     overload,
 )
+
+from pydantic import GetCoreSchemaHandler
+from pydantic_core import core_schema
 
 from sampletones_shared.types.data import ModelHashable
 
@@ -103,6 +108,32 @@ class IndexedCollection(Generic[T]):
         self._order: BidirectionalHashMap[int] = BidirectionalHashMap()
         if collection:
             self.extend(collection)
+
+    @classmethod
+    def __get_pydantic_core_schema__(cls, source_type: Any, handler: GetCoreSchemaHandler) -> core_schema.CoreSchema:
+        """
+        Integrates the collection with Pydantic as an ordered list of its items.
+
+        The collection carries no persistable state beyond its ordered items (its
+        hash map is derived), so it serializes to ``list(self)`` and rebuilds via
+        ``cls(items)``. The item type is read from the generic argument, so any
+        ``IndexedCollection[T]`` field validates and serializes each item through
+        ``T``'s own schema.
+        """
+        arguments = get_args(source_type)
+        item_type: Any = arguments[0] if arguments else Any
+        items_schema = core_schema.list_schema(handler.generate_schema(item_type))
+        from_items = core_schema.no_info_after_validator_function(cls, items_schema)
+
+        return core_schema.json_or_python_schema(
+            json_schema=from_items,
+            python_schema=core_schema.union_schema([core_schema.is_instance_schema(cls), from_items]),
+            serialization=core_schema.plain_serializer_function_ser_schema(
+                list,
+                return_schema=items_schema,
+                when_used="always",
+            ),
+        )
 
     @overload
     def __getitem__(self, key: int) -> T: ...

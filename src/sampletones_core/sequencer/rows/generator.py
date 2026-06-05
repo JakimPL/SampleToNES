@@ -3,7 +3,7 @@ from typing import Optional
 
 from sampletones_core.constants.enums import GeneratorName
 
-from ..display import display_id, display_pitch, display_volume
+from ...project.patterns.display import display_id, display_pitch, display_volume
 from .row import Row
 
 

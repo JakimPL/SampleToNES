@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from sampletones_core.data import Metadata
-from sampletones_core.sequencer.instrument import Instrument
+from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.structures import IndexedCollection
 from sampletones_shared.constants.project import DEFAULT_PROJECT_AUTHOR, DEFAULT_PROJECT_COMMENT, DEFAULT_PROJECT_TITLE
 

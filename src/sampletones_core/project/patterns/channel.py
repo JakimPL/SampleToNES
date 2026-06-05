@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from typing import List
 
+from pydantic import BaseModel, Field
+
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.structures import IndexedCollection
 
 from .pattern import Pattern
 
 
-class Channel:
+class Channel(BaseModel):
     """One NES channel track.
 
     Owns a private pool of patterns, reusable within the channel and an order
@@ -17,15 +19,9 @@ class Channel:
     The same pattern id may appear multiple times in the order.
     """
 
-    def __init__(
-        self,
-        generator: GeneratorName,
-        patterns: IndexedCollection[Pattern],
-        order: List[str],
-    ) -> None:
-        self.generator: GeneratorName = generator
-        self.patterns: IndexedCollection[Pattern] = patterns
-        self.order: List[str] = order
+    generator: GeneratorName = Field(..., description="The NES channel this track drives.")
+    patterns: IndexedCollection[Pattern] = Field(..., description="Reusable pattern pool.")
+    order: List[str] = Field(..., description="Sequence of pattern ids forming the arrangement.")
 
     @classmethod
     def empty(cls, generator: GeneratorName, rows_per_pattern: int) -> Channel:

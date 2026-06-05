@@ -1,10 +1,10 @@
-from .display import (
+from ..project.instruments.instrument import Instrument
+from ..project.patterns.display import (
     display_id,
     display_pitch,
     display_transpose,
     display_volume,
 )
-from .instrument import Instrument
 from .rows.generator import GeneratorRow
 from .rows.sample import SampleRow
 from .sequence import Sequence
