@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
@@ -43,48 +42,38 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
         self._layout = layout
 
         self._lbl_axis_x = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.SPECTRUM_X_AXIS,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.SPECTRUM_X_AXIS,
         ]
         self._lbl_axis_frequency = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.SPECTRUM_FREQUENCY_AXIS,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.SPECTRUM_FREQUENCY_AXIS,
         ]
         self._lbl_spectrum_name = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.SPECTRUM_NAME,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.SPECTRUM_NAME,
         ]
         self._msg_navigation = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.MESSAGE,
-                GraphElements.SPECTRUM_NAVIGATION,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.MESSAGE,
+            GraphElements.SPECTRUM_NAVIGATION,
         ]
 
         _label = (
             label
             if label
             else language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.GRAPH,
-                    TextType.LABEL,
-                    GraphElements.SPECTRUM_DISPLAY,
-                )
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.SPECTRUM_DISPLAY,
             ]
         )
 

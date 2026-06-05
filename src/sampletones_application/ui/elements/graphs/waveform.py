@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
@@ -56,64 +55,50 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self._layout = layout
 
         self._lbl_waveform_original = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_ORIGINAL,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.WAVEFORM_ORIGINAL,
         ]
         self._lbl_waveform_reconstruction = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_RECONSTRUCTION,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.WAVEFORM_RECONSTRUCTION,
         ]
         self._lbl_axis_time = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_TIME_AXIS,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.WAVEFORM_TIME_AXIS,
         ]
         self._lbl_axis_amplitude = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_AMPLITUDE_AXIS,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.WAVEFORM_AMPLITUDE_AXIS,
         ]
         self._lbl_sample_name = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.LABEL,
-                GraphElements.WAVEFORM_SAMPLE_NAME,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.LABEL,
+            GraphElements.WAVEFORM_SAMPLE_NAME,
         ]
         self._msg_navigation = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.GRAPH,
-                TextType.MESSAGE,
-                GraphElements.WAVEFORM_NAVIGATION,
-            )
+            Page.GLOBAL,
+            Panel.GRAPH,
+            TextType.MESSAGE,
+            GraphElements.WAVEFORM_NAVIGATION,
         ]
 
         _label = (
             label
             if label
             else language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.GRAPH,
-                    TextType.LABEL,
-                    GraphElements.WAVEFORM_DISPLAY,
-                )
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.WAVEFORM_DISPLAY,
             ]
         )
 

@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import PlayerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.player import (
     SUF_PLAYER_CONTROLS_GROUP,
@@ -57,49 +56,59 @@ class GUIAudioPlayerPanel(GUIPanel):
 
         self._dialogs = dialogs
         self._layout = layout
-        self._lbl_play = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PLAY)]
-        self._lbl_pause = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.PAUSE)]
-        self._lbl_resume = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.RESUME)]
-        self._lbl_stop = language_manager[TextKey(Page.GLOBAL, Panel.PLAYER, TextType.LABEL, PlayerElements.STOP)]
+        self._lbl_play = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PLAY,
+        ]
+        self._lbl_pause = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.PAUSE,
+        ]
+        self._lbl_resume = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.RESUME,
+        ]
+        self._lbl_stop = language_manager[
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.STOP,
+        ]
         self._lbl_position = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.LABEL,
-                PlayerElements.POSITION_PREFIX,
-            )
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.POSITION_PREFIX,
         ]
         self._lbl_samples = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.LABEL,
-                PlayerElements.SAMPLES_SUFFIX,
-            )
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.LABEL,
+            PlayerElements.SAMPLES_SUFFIX,
         ]
         self._msg_no_audio = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.NO_AUDIO_LOADED,
-            )
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.MESSAGE,
+            PlayerElements.NO_AUDIO_LOADED,
         ]
         self._msg_playback_error = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.MESSAGE,
-                PlayerElements.AUDIO_PLAYBACK_ERROR,
-            )
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.MESSAGE,
+            PlayerElements.AUDIO_PLAYBACK_ERROR,
         ]
         self._ttl_no_audio = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.PLAYER,
-                TextType.TITLE,
-                PlayerElements.NO_AUDIO_DIALOG_TITLE,
-            )
+            Page.GLOBAL,
+            Panel.PLAYER,
+            TextType.TITLE,
+            PlayerElements.NO_AUDIO_DIALOG_TITLE,
         ]
 
         super().__init__(

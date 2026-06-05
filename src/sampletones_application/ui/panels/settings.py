@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import GlobalDialogTitleElements
 from sampletones_application.categories.elements.settings import AudioSettingsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.settings import AudioSettingsData
 from sampletones_application.constants.settings import (
@@ -59,60 +58,46 @@ class GUIAudioSettingsWindow(GUIWindow):
         self._current_buffer_size: str = ""
 
         self._ttl_main_window = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.MAIN_WINDOW,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.MAIN_WINDOW,
         ]
         self._ttl_audio = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.TITLE,
-                AudioSettingsElements.WINDOW_TITLE,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.TITLE,
+            AudioSettingsElements.WINDOW_TITLE,
         ]
         self._lbl_output_device = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.LABEL,
-                AudioSettingsElements.OUTPUT_DEVICE,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.OUTPUT_DEVICE,
         ]
         self._lbl_sample_rate = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.LABEL,
-                AudioSettingsElements.SAMPLE_RATE,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.SAMPLE_RATE,
         ]
         self._lbl_buffer_size = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.LABEL,
-                AudioSettingsElements.BUFFER_SIZE,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.BUFFER_SIZE,
         ]
         self._lbl_apply_button = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.LABEL,
-                AudioSettingsElements.APPLY_BUTTON,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.APPLY_BUTTON,
         ]
         self._lbl_refresh_button = language_manager[
-            TextKey(
-                Page.SETTINGS,
-                Panel.AUDIO,
-                TextType.LABEL,
-                AudioSettingsElements.REFRESH_DEVICES_BUTTON,
-            )
+            Page.SETTINGS,
+            Panel.AUDIO,
+            TextType.LABEL,
+            AudioSettingsElements.REFRESH_DEVICES_BUTTON,
         ]
 
         super().__init__(

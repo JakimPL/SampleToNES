@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -56,24 +55,20 @@ class InstructionsTabCoordinator:
         self._dialogs = dialogs
 
         self._tab_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.TAB_INSTRUCTIONS,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.TAB_INSTRUCTIONS,
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
         self._details_width = layout.general.panels.instructions_details.width
         self._right_height = layout.general.panels.right.height
         self._msg_display_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_DISPLAY_ERROR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_DISPLAY_ERROR,
         ]
 
         self._library_logic = LibraryLogic(

@@ -3,7 +3,6 @@ from typing import Any, List, Optional, Tuple, Union
 from sampletones_application.categories.elements.global_ import DialogElements
 from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.view_model.instruction.cell import TableCell
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -22,108 +21,82 @@ class InstructionTableLogic:
     ) -> None:
         self._float_precision = float_precision
         self._lbl_change_rate = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_CHANGE_RATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_CHANGE_RATE,
         ]
         self._lbl_generator = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_GENERATOR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_GENERATOR,
         ]
         self._lbl_frequency = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_FREQUENCY,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_FREQUENCY,
         ]
         self._lbl_sample_length = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_SAMPLE_LENGTH,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_SAMPLE_LENGTH,
         ]
         self._lbl_samples = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_SAMPLES_SUFFIX,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_SAMPLES_SUFFIX,
         ]
         self._lbl_name = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_NAME,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_NAME,
         ]
         self._lbl_no_frequency = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.CELL_NO_FREQUENCY,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.CELL_NO_FREQUENCY,
         ]
         self._lbl_yes = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.LABEL,
-                DialogElements.YES,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.YES,
         ]
         self._lbl_no = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.LABEL,
-                DialogElements.NO,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.NO,
         ]
         self._tpl_frequency = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TEMPLATE,
-                InstructionsDetailsElements.FREQUENCY_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            InstructionsDetailsElements.FREQUENCY_TEMPLATE,
         ]
         self._tpl_pitch = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TEMPLATE,
-                InstructionsDetailsElements.PITCH_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            InstructionsDetailsElements.PITCH_TEMPLATE,
         ]
         self._tpl_period = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TEMPLATE,
-                InstructionsDetailsElements.PERIOD_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            InstructionsDetailsElements.PERIOD_TEMPLATE,
         ]
         self._tpl_duty_cycle = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TEMPLATE,
-                InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            InstructionsDetailsElements.DUTY_CYCLE_TEMPLATE,
         ]
 
         self._current_data: Optional[InstructionPanelData] = None

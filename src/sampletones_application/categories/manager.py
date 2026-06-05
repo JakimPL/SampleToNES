@@ -28,4 +28,5 @@ class LanguageManager:
     def __getitem__(self, key: Union[TextKey, TextKeyTuple]) -> str:
         if not isinstance(key, TextKey):
             key = TextKey(*key)
+
         return self._data[key.compose()]

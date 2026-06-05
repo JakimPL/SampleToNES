@@ -3,7 +3,6 @@ from typing import Dict, List, Optional
 
 from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_core.paths import (
@@ -31,12 +30,10 @@ class ExplorerManager:
         self.tree = Tree()
         self.config_manager = config_manager
         self._root_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.ROOT,
-            )
+            Page.GLOBAL,
+            Panel.BROWSER,
+            TextType.LABEL,
+            TreeElements.ROOT,
         ]
 
         self._expanded_directories: Dict[Path, bool] = {}

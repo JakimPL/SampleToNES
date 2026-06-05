@@ -15,7 +15,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_CANCEL,
@@ -109,58 +108,66 @@ class DialogsRenderer:
         self._col_text_error = layout.colors.text.error
         self._col_path = layout.colors.paths.default
         self._col_path_hover = layout.colors.paths.hover
-        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
 
-        self._lbl_ok = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.OK)]
-        self._lbl_cancel = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.CANCEL)]
-        self._lbl_save = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.SAVE)]
+        self._msg_path = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.PATH,
+        ]
+        self._lbl_ok = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.OK,
+        ]
+        self._lbl_cancel = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.CANCEL,
+        ]
+        self._lbl_save = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.SAVE,
+        ]
         self._lbl_traceback_show = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.TRACEBACK,
-                TextType.LABEL,
-                TracebackElements.SHOW,
-            )
+            Page.GLOBAL,
+            Panel.TRACEBACK,
+            TextType.LABEL,
+            TracebackElements.SHOW,
         ]
         self._lbl_traceback_hide = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.TRACEBACK,
-                TextType.LABEL,
-                TracebackElements.HIDE,
-            )
+            Page.GLOBAL,
+            Panel.TRACEBACK,
+            TextType.LABEL,
+            TracebackElements.HIDE,
         ]
         self._ttl_error = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.ERROR,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.ERROR,
         ]
         self._ttl_file_not_found = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TITLE,
-                GlobalDialogTitleElements.FILE_NOT_FOUND,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.FILE_NOT_FOUND,
         ]
         self._ttl_reconstruction_not_loaded = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TITLE,
-                ReconstructionsDetailsElements.NOT_LOADED_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.NOT_LOADED_DIALOG,
         ]
         self._msg_reconstruction_no_data = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.RECONSTRUCTION_NO_DATA,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.RECONSTRUCTION_NO_DATA,
         ]
 
     def show_modal(

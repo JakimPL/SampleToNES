@@ -3,7 +3,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -49,12 +48,10 @@ class InstructionsLibraryManager(CallbackMixin):
     ) -> None:
         self._config_manager = config_manager
         self._libraries_node_label = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.LIBRARIES_NODE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.LIBRARIES_NODE,
         ]
         library_directory = config_manager.get_library_directory()
         self._library = InstructionLibrary(directory=str(library_directory))

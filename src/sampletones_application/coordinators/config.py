@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.elements.reconstructions import ReconstructionPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -39,12 +38,10 @@ class ConfigCoordinator:
     def save_dialog(self) -> None:
         with dpg.file_dialog(
             label=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.SAVE_CONFIG,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.SAVE_CONFIG,
             ],
             width=self._layout.general.dialogs.file.width,
             height=self._layout.general.dialogs.file.height,
@@ -61,12 +58,10 @@ class ConfigCoordinator:
             self._config_manager.save_config_to_file(filepath)
             self._show_status_dialog(
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.CONFIGURATION_SAVED_SUCCESSFULLY,
                 ]
             )
         except Exception as exception:  # TODO: specify exception type
@@ -74,12 +69,10 @@ class ConfigCoordinator:
             self._dialogs.show_error(
                 exception,
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIG_SAVE_FAILED,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.CONFIG_SAVE_FAILED,
                 ],
             )
 
@@ -88,12 +81,10 @@ class ConfigCoordinator:
     def load_dialog(self) -> None:
         with dpg.file_dialog(
             label=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.LOAD_CONFIG,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.LOAD_CONFIG,
             ],
             width=self._layout.general.dialogs.file.width,
             height=self._layout.general.dialogs.file.height,
@@ -109,12 +100,10 @@ class ConfigCoordinator:
             self._config_manager.load_config_from_file(filepath)
             self._show_status_dialog(
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.CONFIGURATION_LOADED_SUCCESSFULLY,
                 ]
             )
         except Exception as exception:  # TODO: specify exception type
@@ -122,12 +111,10 @@ class ConfigCoordinator:
             self._dialogs.show_error(
                 exception,
                 self._language_manager[
-                    TextKey(
-                        Page.RECONSTRUCTIONS,
-                        Panel.RECONSTRUCTION,
-                        TextType.MESSAGE,
-                        ReconstructionPanelElements.EXPORT_WAV_FAILED,
-                    )
+                    Page.RECONSTRUCTIONS,
+                    Panel.RECONSTRUCTION,
+                    TextType.MESSAGE,
+                    ReconstructionPanelElements.EXPORT_WAV_FAILED,
                 ],
             )
 
@@ -140,12 +127,10 @@ class ConfigCoordinator:
         self._dialogs.show_modal(
             tag=TAG_GLOBAL_DIALOG_CONFIG_STATUS,
             title=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.CONFIG_STATUS,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.CONFIG_STATUS,
             ],
             content=content,
         )

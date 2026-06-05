@@ -7,7 +7,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import DialogElements, TracebackElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
@@ -43,20 +42,16 @@ class GUITraceback:
         )
 
         self._lbl_copy = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.TRACEBACK,
-                TextType.LABEL,
-                TracebackElements.COPY,
-            )
+            Page.GLOBAL,
+            Panel.TRACEBACK,
+            TextType.LABEL,
+            TracebackElements.COPY,
         ]
         self._lbl_copied = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.LABEL,
-                DialogElements.COPIED,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.COPIED,
         ]
 
         self.theme = theme

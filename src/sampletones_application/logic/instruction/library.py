@@ -10,7 +10,6 @@ from sampletones_application.categories.elements.instructions import (
     InstructionsLibraryElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.logic.instruction.library_manager import (
@@ -86,156 +85,118 @@ class LibraryLogic(CallbackMixin):
         self.on_load_error: Optional[Callable[[Exception, str], None]] = None
 
         self._lbl_generate_library = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
         ]
         self._lbl_regenerate_library = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.REGENERATE_LIBRARY_BUTTON,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.REGENERATE_LIBRARY_BUTTON,
         ]
         self._msg_invalid_metadata_error = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.INVALID_METADATA_ERROR,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.INVALID_METADATA_ERROR,
         ]
         self._msg_generating = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_GENERATING,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATING,
         ]
         self._msg_generation_saving = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_SAVING,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_SAVING,
         ]
         self._msg_generation_failed = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_GENERATION_FAILED,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_FAILED,
         ]
         self._msg_window_not_available = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_WINDOW_NOT_AVAILABLE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_WINDOW_NOT_AVAILABLE,
         ]
         self._msg_load_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_LOAD_ERROR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_LOAD_ERROR,
         ]
         self._msg_invalid_data_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_INVALID_DATA,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_INVALID_DATA,
         ]
         self._msg_invalid_data_values_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_INVALID_DATA_VALUES,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_INVALID_DATA_VALUES,
         ]
         self._msg_deserialization_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_DESERIALIZATION_ERROR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_DESERIALIZATION_ERROR,
         ]
         self._msg_file_not_found = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_FILE_NOT_FOUND,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_FILE_NOT_FOUND,
         ]
         self._msg_file_load_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_FILE_LOAD_ERROR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_FILE_LOAD_ERROR,
         ]
         self._tpl_time_estimation = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TEMPLATE,
-                GlobalTemplateElements.TIME_ESTIMATION,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.TIME_ESTIMATION,
         ]
         self._tpl_generation_progress = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TEMPLATE,
-                InstructionsLibraryElements.GENERATION_PROGRESS_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TEMPLATE,
+            InstructionsLibraryElements.GENERATION_PROGRESS_TEMPLATE,
         ]
         self._tpl_incompatible_version_error = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TEMPLATE,
-                InstructionsLibraryElements.INCOMPATIBLE_VERSION_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TEMPLATE,
+            InstructionsLibraryElements.INCOMPATIBLE_VERSION_TEMPLATE,
         ]
         self._tpl_not_exists = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TEMPLATE,
-                InstructionsLibraryElements.LIBRARY_NOT_EXISTS_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TEMPLATE,
+            InstructionsLibraryElements.LIBRARY_NOT_EXISTS_TEMPLATE,
         ]
         self._tpl_library_exists = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TEMPLATE,
-                InstructionsLibraryElements.LIBRARY_EXISTS_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TEMPLATE,
+            InstructionsLibraryElements.LIBRARY_EXISTS_TEMPLATE,
         ]
         self._tpl_library_loaded = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TEMPLATE,
-                InstructionsLibraryElements.LIBRARY_LOADED_TEMPLATE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TEMPLATE,
+            InstructionsLibraryElements.LIBRARY_LOADED_TEMPLATE,
         ]
 
         self._library_manager.set_callbacks(

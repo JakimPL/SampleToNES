@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
@@ -82,100 +81,76 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
 
         self._lbl_section = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.DETAILS_TEXT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.DETAILS_TEXT,
         ]
         self._lbl_parameters = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.PARAMETERS_TEXT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.PARAMETERS_TEXT,
         ]
         self._lbl_general = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.GENERAL_TEXT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.GENERAL_TEXT,
         ]
         self._lbl_window_pulse_pitch = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_PULSE_PITCH,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_PULSE_PITCH,
         ]
         self._lbl_window_pulse_volume = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_PULSE_VOLUME,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_PULSE_VOLUME,
         ]
         self._lbl_window_pulse_duty_cycle = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_PULSE_DUTY_CYCLE,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_PULSE_DUTY_CYCLE,
         ]
         self._lbl_window_noise_period = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_NOISE_PERIOD,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_NOISE_PERIOD,
         ]
         self._lbl_window_noise_volume = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_NOISE_VOLUME,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_NOISE_VOLUME,
         ]
         self._lbl_window_noise_short = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_NOISE_SHORT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_NOISE_SHORT,
         ]
         self._lbl_window_triangle_pitch = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            InstructionsDetailsElements.WINDOW_TRIANGLE_PITCH,
         ]
         self._msg_no_instruction = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                InstructionsDetailsElements.NO_INSTRUCTION_SELECTED,
-            )
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            InstructionsDetailsElements.NO_INSTRUCTION_SELECTED,
         ]
         self._msg_status_input = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.STATUS,
-                TextType.MESSAGE,
-                StatusElements.INPUT,
-            )
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.INPUT,
         ]
 
         super().__init__(

@@ -2,7 +2,6 @@ from typing import Callable, Optional, Protocol
 
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 
 
@@ -29,28 +28,22 @@ class PlaybackRouter:
     ) -> None:
         self._current_player_fn = current_player_fn
         self._lbl_pause = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.ITEM_PLAYBACK_PAUSE,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PLAYBACK_PAUSE,
         ]
         self._lbl_play = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.ITEM_PLAYBACK_PLAY,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PLAYBACK_PLAY,
         ]
         self._lbl_resume = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.ITEM_PLAYBACK_RESUME,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PLAYBACK_RESUME,
         ]
 
     def play(self) -> None:

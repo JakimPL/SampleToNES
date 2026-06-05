@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_BUTTON_CANCEL,
@@ -37,7 +36,13 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class GUIConverterPanel(GUIPanel):
-    def __init__(self, *, layout: ConverterLayout, path_colors: PathColors, language_manager: LanguageManager) -> None:
+    def __init__(
+        self,
+        *,
+        layout: ConverterLayout,
+        path_colors: PathColors,
+        language_manager: LanguageManager,
+    ) -> None:
         self.input_path_text: Optional[GUIPathText] = None
         self.output_path_text: Optional[GUIPathText] = None
 
@@ -48,78 +53,65 @@ class GUIConverterPanel(GUIPanel):
 
         self._layout = layout
         self._path_colors = path_colors
-        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
+        self._msg_path = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.PATH,
+        ]
         self._lbl_section = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.SECTION,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.SECTION,
         ]
         self._lbl_cancel_button = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.CANCEL_BUTTON,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CANCEL_BUTTON,
         ]
         self._lbl_load_button = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.LOAD_BUTTON,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.LOAD_BUTTON,
         ]
         self._lbl_convert_button = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.CONVERT_SAMPLE_BUTTON,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_SAMPLE_BUTTON,
         ]
         self._lbl_close_button = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.CLOSE_BUTTON,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CLOSE_BUTTON,
         ]
         self._lbl_convert_directory_button = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.LABEL,
-                ConverterElements.CONVERT_DIRECTORY_BUTTON,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.LABEL,
+            ConverterElements.CONVERT_DIRECTORY_BUTTON,
         ]
         self._msg_input = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_INPUT_LABEL,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_INPUT_LABEL,
         ]
         self._msg_output = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_OUTPUT_LABEL,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_OUTPUT_LABEL,
         ]
         self._msg_waiting = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_WAITING,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_WAITING,
         ]
 
         super().__init__(

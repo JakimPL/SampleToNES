@@ -10,7 +10,6 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.elements.reconstructions import ReconstructionsBrowserElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -110,12 +109,10 @@ class ReconstructionCoordinator:
 
         with dpg.file_dialog(
             label=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.SAVE_RECONSTRUCTION,
             ],
             width=self._layout.general.dialogs.file.width,
             height=self._layout.general.dialogs.file.height,
@@ -133,20 +130,16 @@ class ReconstructionCoordinator:
             self._dialogs.show_info(
                 TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.RECONSTRUCTION_SAVED_SUCCESSFULLY,
                 ],
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
                 ],
             )
         except Exception as exception:  # TODO: specify exception type
@@ -154,12 +147,10 @@ class ReconstructionCoordinator:
             self._dialogs.show_error(
                 exception,
                 self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.RECONSTRUCTION_SAVE_FAILED,
                 ],
             )
 
@@ -168,12 +159,10 @@ class ReconstructionCoordinator:
     def _load_dialog(self) -> None:
         with dpg.file_dialog(
             label=self._language_manager[
-                TextKey(
-                    Page.RECONSTRUCTIONS,
-                    Panel.BROWSER,
-                    TextType.TITLE,
-                    ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
-                )
+                Page.RECONSTRUCTIONS,
+                Panel.BROWSER,
+                TextType.TITLE,
+                ReconstructionsBrowserElements.LOAD_RECONSTRUCTION_DIALOG,
             ],
             width=self._layout.general.dialogs.file.width,
             height=self._layout.general.dialogs.file.height,
@@ -193,30 +182,24 @@ class ReconstructionCoordinator:
         if self.is_unsaved():
             self._show_save_confirmation(
                 title=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.LOAD_UNSAVED_RECONSTRUCTION,
                 ],
                 message=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.LOAD_UNSAVED_RECONSTRUCTION,
                 ],
                 on_save=self.save,
                 on_confirm=load_reconstruction,
                 ok_label=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.DISCARD,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.LABEL,
+                    DialogElements.DISCARD,
                 ],
             )
         else:
@@ -225,30 +208,24 @@ class ReconstructionCoordinator:
     def show_exit_save_confirmation(self, on_confirm: Callback) -> None:
         self._show_save_confirmation(
             title=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.EXIT_CONFIRMATION,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.EXIT_CONFIRMATION,
             ],
             message=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.EXIT_UNSAVED_RECONSTRUCTION,
             ],
             on_save=self.save,
             on_confirm=on_confirm,
             ok_label=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.LABEL,
-                    DialogElements.EXIT,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.LABEL,
+                DialogElements.EXIT,
             ],
         )
 
@@ -265,30 +242,24 @@ class ReconstructionCoordinator:
         if self.is_unsaved():
             self._show_save_confirmation(
                 title=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.TITLE,
-                        GlobalDialogTitleElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.TITLE,
+                    GlobalDialogTitleElements.CLOSE_UNSAVED_RECONSTRUCTION,
                 ],
                 message=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.CLOSE_UNSAVED_RECONSTRUCTION,
                 ],
                 on_confirm=self._close,
                 on_save=self.save,
                 ok_label=self._language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.CLOSE,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.LABEL,
+                    DialogElements.CLOSE,
                 ],
             )
         else:
@@ -318,12 +289,10 @@ class ReconstructionCoordinator:
             self._dialogs.show_file_not_found(
                 reconstruction_data.reconstruction.audio_filepath,
                 self._language_manager[
-                    TextKey(
-                        Page.RECONSTRUCTIONS,
-                        Panel.BROWSER,
-                        TextType.MESSAGE,
-                        ReconstructionsBrowserElements.AUDIO_FILE_NOT_FOUND,
-                    )
+                    Page.RECONSTRUCTIONS,
+                    Panel.BROWSER,
+                    TextType.MESSAGE,
+                    ReconstructionsBrowserElements.AUDIO_FILE_NOT_FOUND,
                 ],
             )
 

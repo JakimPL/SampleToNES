@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.elements.main import ReconstructorElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import GenerationSettingsUpdate
 from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
@@ -47,76 +46,58 @@ class GUIReconstructorPanel(GUIPanel):
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._lbl_section_settings = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.RECONSTRUCTOR,
-                TextType.LABEL,
-                ReconstructorElements.SECTION_SETTINGS,
-            )
+            Page.MAIN,
+            Panel.RECONSTRUCTOR,
+            TextType.LABEL,
+            ReconstructorElements.SECTION_SETTINGS,
         ]
         self._lbl_section_generators = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.RECONSTRUCTOR,
-                TextType.LABEL,
-                ReconstructorElements.SECTION_GENERATORS,
-            )
+            Page.MAIN,
+            Panel.RECONSTRUCTOR,
+            TextType.LABEL,
+            ReconstructorElements.SECTION_GENERATORS,
         ]
         self._lbl_mixer = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.RECONSTRUCTOR,
-                TextType.LABEL,
-                ReconstructorElements.SLIDER_MIXER,
-            )
+            Page.MAIN,
+            Panel.RECONSTRUCTOR,
+            TextType.LABEL,
+            ReconstructorElements.SLIDER_MIXER,
         ]
         self._tooltip_mixer = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.RECONSTRUCTOR,
-                TextType.TOOLTIP,
-                ReconstructorElements.TOOLTIP_MIXER,
-            )
+            Page.MAIN,
+            Panel.RECONSTRUCTOR,
+            TextType.TOOLTIP,
+            ReconstructorElements.TOOLTIP_MIXER,
         ]
         self._lbl_triangle = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.TRIANGLE,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.TRIANGLE,
         ]
         self._lbl_pulse_1 = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_1,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PULSE_1,
         ]
         self._lbl_pulse_2 = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_2,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PULSE_2,
         ]
         self._lbl_noise = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.NOISE,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.NOISE,
         ]
         self._msg_status_input = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.STATUS,
-                TextType.MESSAGE,
-                StatusElements.INPUT,
-            )
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.INPUT,
         ]
 
         super().__init__(

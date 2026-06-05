@@ -276,12 +276,10 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
         with dpg.file_dialog(
             label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.RECONSTRUCT_FILE,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.RECONSTRUCT_FILE,
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -311,12 +309,10 @@ class Application:
         self._instructions_tab.ensure_library_loaded()
         dpg.add_file_dialog(
             label=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.RECONSTRUCT_DIRECTORY,
             ],
             width=self.layout.general.dialogs.file.width,
             height=self.layout.general.dialogs.file.height,
@@ -368,12 +364,10 @@ class Application:
         self.dialogs.show_error(
             exception,
             self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.MESSAGE,
-                    GlobalMessageElements.AUDIO_PLAYBACK_ERROR,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.MESSAGE,
+                GlobalMessageElements.AUDIO_PLAYBACK_ERROR,
             ],
         )
 
@@ -386,12 +380,10 @@ class Application:
             self._reconstruction_coordinator.reconstruction_name,
             self._reconstruction_coordinator.is_unsaved(),
             title=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.MAIN_WINDOW,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.MAIN_WINDOW,
             ],
         )
         self._update_menu()
@@ -428,12 +420,10 @@ class Application:
         self.dialogs.show_confirmation(
             tag=TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
             title=self.language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.EXIT_CONFIRMATION,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.EXIT_CONFIRMATION,
             ],
             message=message,
             on_confirm=self._exit_application,
@@ -446,39 +436,31 @@ class Application:
         elif self._is_converter_running():
             self._show_confirmation_dialog(
                 self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.EXIT_CONVERSION_IN_PROGRESS,
                 ],
                 ok_label=self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.EXIT,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.LABEL,
+                    DialogElements.EXIT,
                 ],
             )
         elif self._is_library_generating():
             self._show_confirmation_dialog(
                 self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.MESSAGE,
-                        GlobalMessageElements.EXIT_LIBRARY_GENERATION_IN_PROGRESS,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.MESSAGE,
+                    GlobalMessageElements.EXIT_LIBRARY_GENERATION_IN_PROGRESS,
                 ],
                 ok_label=self.language_manager[
-                    TextKey(
-                        Page.GLOBAL,
-                        Panel.DIALOG,
-                        TextType.LABEL,
-                        DialogElements.EXIT,
-                    )
+                    Page.GLOBAL,
+                    Panel.DIALOG,
+                    TextType.LABEL,
+                    DialogElements.EXIT,
                 ],
             )
         else:

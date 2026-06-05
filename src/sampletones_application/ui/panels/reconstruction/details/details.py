@@ -11,7 +11,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
@@ -132,118 +131,95 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
         self._lbl_section = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.RECONSTRUCTION_DETAILS,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.RECONSTRUCTION_DETAILS,
         ]
         self._lbl_export_fti = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.EXPORT_FTI_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.EXPORT_FTI_BUTTON,
         ]
         self._lbl_export_ftis = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.EXPORT_FTIS_BUTTON,
         ]
         self._lbl_copy = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.COPY_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.COPY_BUTTON,
         ]
         self._lbl_generators = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.GENERATORS_TEXT,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.GENERATORS_TEXT,
         ]
         self._lbl_initial_period = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.INITIAL_PERIOD,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.INITIAL_PERIOD,
         ]
         self._lbl_initial_pitch = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.LABEL,
-                ReconstructionsDetailsElements.INITIAL_PITCH,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.LABEL,
+            ReconstructionsDetailsElements.INITIAL_PITCH,
         ]
         self._msg_input_pitch = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_INPUT_PITCH,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_INPUT_PITCH,
         ]
         self._msg_input_period = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_INPUT_PERIOD,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_INPUT_PERIOD,
         ]
         self._msg_bar = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_BAR,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_BAR,
         ]
         self._msg_sequence = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_SEQUENCE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_SEQUENCE,
         ]
         self._msg_copy_sequence = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_COPY_SEQUENCE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_COPY_SEQUENCE,
         ]
         self._tpl_pitch_tooltip = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TEMPLATE,
-                ReconstructionsDetailsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            ReconstructionsDetailsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
         ]
         self._msg_reconstruction_no_data = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.RECONSTRUCTION_NO_DATA,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.RECONSTRUCTION_NO_DATA,
         ]
-        self._lbl_copied = language_manager[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.LABEL, DialogElements.COPIED)]
+        self._lbl_copied = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.COPIED,
+        ]
 
         super().__init__(
             tag=TAG_RECONSTRUCTIONS_DETAILS_PANEL,

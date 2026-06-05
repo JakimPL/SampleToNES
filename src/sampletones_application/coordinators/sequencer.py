@@ -2,7 +2,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -40,12 +39,10 @@ class SequencerTabCoordinator:
         dialogs: DialogsRenderer,
     ) -> None:
         self._tab_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.TAB_SEQUENCER,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.TAB_SEQUENCER,
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height

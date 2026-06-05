@@ -8,7 +8,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsBrowserElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -68,44 +67,34 @@ class GUIBrowserPanel(GUITreePanel):
         self._tree_behavior = tree_behavior
 
         self._lbl_reconstruct_file = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.LABEL,
-                ReconstructionsBrowserElements.RECONSTRUCT_FILE_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.RECONSTRUCT_FILE_BUTTON,
         ]
         self._lbl_reconstruct_directory = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.LABEL,
-                ReconstructionsBrowserElements.RECONSTRUCT_DIRECTORY_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.RECONSTRUCT_DIRECTORY_BUTTON,
         ]
         self._lbl_refresh = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.LABEL,
-                ReconstructionsBrowserElements.REFRESH_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.REFRESH_BUTTON,
         ]
         self._lbl_context_load = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.LABEL,
-                ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.CONTEXT_LOAD_RECONSTRUCTION,
         ]
         self._lbl_reconstructions = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.LABEL,
-                ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.LABEL,
+            ReconstructionsBrowserElements.RECONSTRUCTIONS_TREE,
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -120,12 +109,10 @@ class GUIBrowserPanel(GUITreePanel):
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.BROWSER,
-                    TextType.LABEL,
-                    TreeElements.SEARCH,
-                )
+                Page.GLOBAL,
+                Panel.BROWSER,
+                TextType.LABEL,
+                TreeElements.SEARCH,
             ],
             language_manager=language_manager,
             favorite_color=favorite_color,

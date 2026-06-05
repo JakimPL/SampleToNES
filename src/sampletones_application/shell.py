@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import GlobalDialogTitleElements
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -226,12 +225,10 @@ class ApplicationShell:
     def _create_main_window(self, on_tab_changed: Callback) -> None:
         with dpg.window(
             label=self._language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.DIALOG,
-                    TextType.TITLE,
-                    GlobalDialogTitleElements.MAIN_WINDOW,
-                )
+                Page.GLOBAL,
+                Panel.DIALOG,
+                TextType.TITLE,
+                GlobalDialogTitleElements.MAIN_WINDOW,
             ],
             tag=TAG_GLOBAL_WINDOW_MAIN,
         ):

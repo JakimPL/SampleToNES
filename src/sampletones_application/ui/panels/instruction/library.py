@@ -6,7 +6,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -74,100 +73,76 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._tree_behavior = tree_behavior
 
         self._lbl_generate = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
         ]
         self._lbl_refresh = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON,
         ]
         self._lbl_libraries = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.LIBRARIES_TEXT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.LIBRARIES_TEXT,
         ]
         self._lbl_available_libraries = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.AVAILABLE_LIBRARIES_TEXT,
         ]
         self._lbl_ctx_load_generator = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.CONTEXT_LOAD_GENERATOR,
         ]
         self._lbl_ctx_load_library = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.LABEL,
-                InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.CONTEXT_LOAD_LIBRARY,
         ]
         self._msg_generation_cancelled = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_CANCELLED,
         ]
         self._msg_generation_failed = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_GENERATION_FAILED,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_FAILED,
         ]
         self._msg_generation_success = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_GENERATION_SUCCESS,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_GENERATION_SUCCESS,
         ]
         self._msg_status_node_generator = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_NODE_GENERATOR,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_NODE_GENERATOR,
         ]
         self._msg_status_node_library = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.MESSAGE,
-                InstructionsLibraryElements.STATUS_NODE_LIBRARY,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.STATUS_NODE_LIBRARY,
         ]
         self._ttl_generation_status = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.LIBRARY,
-                TextType.TITLE,
-                InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
-            )
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TITLE,
+            InstructionsLibraryElements.GENERATION_STATUS_DIALOG,
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -182,12 +157,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.BROWSER,
-                    TextType.LABEL,
-                    TreeElements.SEARCH,
-                )
+                Page.GLOBAL,
+                Panel.BROWSER,
+                TextType.LABEL,
+                TreeElements.SEARCH,
             ],
             language_manager=language_manager,
             favorite_color=favorite_color,

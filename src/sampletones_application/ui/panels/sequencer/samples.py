@@ -1,10 +1,7 @@
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.sequencer import (
-    SequencerInstrumentsElements,
-)
+from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_RIGHT,
@@ -22,31 +19,30 @@ from sampletones_application.ui.elements.panel import GUIPanel
 
 
 class GUISequencerSamplesPanel(GUIPanel):
-    def __init__(self, *, layout: SequencerLayout, language_manager: LanguageManager) -> None:
+    def __init__(
+        self,
+        *,
+        layout: SequencerLayout,
+        language_manager: LanguageManager,
+    ) -> None:
         self._layout = layout
         self._lbl_instruments = language_manager[
-            TextKey(
-                Page.SEQUENCER,
-                Panel.INSTRUMENTS,
-                TextType.LABEL,
-                SequencerInstrumentsElements.INSTRUMENTS_TEXT,
-            )
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.INSTRUMENTS_TEXT,
         ]
         self._lbl_column_id = language_manager[
-            TextKey(
-                Page.SEQUENCER,
-                Panel.INSTRUMENTS,
-                TextType.LABEL,
-                SequencerInstrumentsElements.COLUMN_ID,
-            )
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.COLUMN_ID,
         ]
         self._lbl_column_name = language_manager[
-            TextKey(
-                Page.SEQUENCER,
-                Panel.INSTRUMENTS,
-                TextType.LABEL,
-                SequencerInstrumentsElements.COLUMN_NAME,
-            )
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.COLUMN_NAME,
         ]
 
         super().__init__(

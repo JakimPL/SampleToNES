@@ -5,7 +5,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
 from sampletones_core.constants.enums import FeatureKey
@@ -28,44 +27,34 @@ def make_feature_plot_configs(
     language_manager: LanguageManager,
 ) -> Dict[FeatureKey, FeaturePlotConfig]:
     lbl_volume = language_manager[
-        TextKey(
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.VOLUME_LABEL,
-        )
+        Page.RECONSTRUCTIONS,
+        Panel.DETAILS,
+        TextType.LABEL,
+        ReconstructionsDetailsElements.VOLUME_LABEL,
     ]
     lbl_arpeggio = language_manager[
-        TextKey(
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.ARPEGGIO_LABEL,
-        )
+        Page.RECONSTRUCTIONS,
+        Panel.DETAILS,
+        TextType.LABEL,
+        ReconstructionsDetailsElements.ARPEGGIO_LABEL,
     ]
     lbl_pitch = language_manager[
-        TextKey(
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.PITCH_LABEL,
-        )
+        Page.RECONSTRUCTIONS,
+        Panel.DETAILS,
+        TextType.LABEL,
+        ReconstructionsDetailsElements.PITCH_LABEL,
     ]
     lbl_hi_pitch = language_manager[
-        TextKey(
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.HI_PITCH_LABEL,
-        )
+        Page.RECONSTRUCTIONS,
+        Panel.DETAILS,
+        TextType.LABEL,
+        ReconstructionsDetailsElements.HI_PITCH_LABEL,
     ]
     lbl_duty_cycle = language_manager[
-        TextKey(
-            Page.RECONSTRUCTIONS,
-            Panel.DETAILS,
-            TextType.LABEL,
-            ReconstructionsDetailsElements.DUTY_CYCLE_LABEL,
-        )
+        Page.RECONSTRUCTIONS,
+        Panel.DETAILS,
+        TextType.LABEL,
+        ReconstructionsDetailsElements.DUTY_CYCLE_LABEL,
     ]
 
     return {

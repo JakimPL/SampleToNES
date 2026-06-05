@@ -4,7 +4,6 @@ from typing import Callable, Optional
 from sampletones_application.categories.elements.global_ import GlobalTemplateElements
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
@@ -46,77 +45,60 @@ class ConverterLogic(CallbackMixin):
         self._service = conversion_service
         self._scheduling = scheduling
         self._msg_idle = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_IDLE,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_IDLE,
         ]
         self._msg_waiting = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_WAITING,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_WAITING,
         ]
         self._msg_cancelling = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_CANCELLING,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_CANCELLING,
         ]
         self._msg_generating_library = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_GENERATING_LIBRARY,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_GENERATING_LIBRARY,
         ]
         self._msg_completed = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_RECONSTRUCTION_COMPLETED,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_RECONSTRUCTION_COMPLETED,
         ]
         self._msg_error = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_ERROR,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_ERROR,
         ]
         self._msg_cancelled = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_CANCELLED,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_CANCELLED,
         ]
         self._tpl_progress = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.TEMPLATE,
-                ConverterElements.PROGRESS_TEMPLATE,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TEMPLATE,
+            ConverterElements.PROGRESS_TEMPLATE,
         ]
         self._tpl_eta = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TEMPLATE,
-                GlobalTemplateElements.TIME_ESTIMATION,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.TIME_ESTIMATION,
         ]
+
         self._phase: ConversionPhase = ConversionPhase.IDLE
         self._input_path: Optional[Path] = None
         self._output_path: Optional[Path] = None

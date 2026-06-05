@@ -12,7 +12,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -94,148 +93,112 @@ class GUIReconstructionPanel(GUIPanel):
         self.autoscale_tag = f"{self.plot_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE}"
 
         self._lbl_audio_source = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.AUDIO_SOURCE_LABEL,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.AUDIO_SOURCE_LABEL,
         ]
         self._lbl_autoscale = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.AUTOSCALE_CHECKBOX,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.AUTOSCALE_CHECKBOX,
         ]
         self._lbl_export_wav = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.EXPORT_WAV_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.EXPORT_WAV_BUTTON,
         ]
         self._lbl_locate_audio = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.LOCATE_AUDIO_BUTTON,
         ]
         self._lbl_original_audio = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.ORIGINAL_AUDIO_RADIO,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.ORIGINAL_AUDIO_RADIO,
         ]
         self._lbl_reconstruction_radio = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.RECONSTRUCTION_RADIO,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.RECONSTRUCTION_RADIO,
         ]
         self._lbl_waveform = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.LABEL,
-                ReconstructionPanelElements.WAVEFORM_LABEL,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.LABEL,
+            ReconstructionPanelElements.WAVEFORM_LABEL,
         ]
         self._tooltip_autoscale = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.TOOLTIP,
-                ReconstructionPanelElements.AUTOSCALE_TOOLTIP,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.TOOLTIP,
+            ReconstructionPanelElements.AUTOSCALE_TOOLTIP,
         ]
         self._msg_generator_toggle = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_GENERATOR_TOGGLE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_GENERATOR_TOGGLE,
         ]
         self._msg_generator_not_available = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.STATUS_GENERATOR_NOT_AVAILABLE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.STATUS_GENERATOR_NOT_AVAILABLE,
         ]
         self._ttl_export_wav = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TITLE,
-                ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
         ]
         self._ttl_export_fti = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TITLE,
-                ReconstructionsDetailsElements.EXPORT_FTI_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.EXPORT_FTI_DIALOG,
         ]
         self._lbl_pulse_1 = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_1,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PULSE_1,
         ]
         self._lbl_pulse_2 = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.PULSE_2,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PULSE_2,
         ]
         self._lbl_triangle = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.TRIANGLE,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.TRIANGLE,
         ]
         self._lbl_noise = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.CONTEXT,
-                TextType.LABEL,
-                ContextElements.NOISE,
-            )
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.NOISE,
         ]
         self._val_text_on = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TEMPLATE,
-                GlobalTemplateElements.ON,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.ON,
         ]
         self._val_text_off = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.TEMPLATE,
-                GlobalTemplateElements.OFF,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.OFF,
         ]
         self._language_manager = language_manager
 

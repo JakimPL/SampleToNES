@@ -7,7 +7,6 @@ from sampletones_application.categories.elements.sequencer import (
     SequencerBrowserElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -66,20 +65,16 @@ class GUISequencerBrowserPanel(GUITreePanel):
         self.sequencer_browser_logic = sequencer_browser_logic
         self._tree_behavior = tree_behavior
         self._lbl_refresh = language_manager[
-            TextKey(
-                Page.SEQUENCER,
-                Panel.BROWSER,
-                TextType.LABEL,
-                SequencerBrowserElements.REFRESH_BUTTON,
-            )
+            Page.SEQUENCER,
+            Panel.BROWSER,
+            TextType.LABEL,
+            SequencerBrowserElements.REFRESH_BUTTON,
         ]
         self._lbl_reconstructions = language_manager[
-            TextKey(
-                Page.SEQUENCER,
-                Panel.BROWSER,
-                TextType.LABEL,
-                SequencerBrowserElements.RECONSTRUCTIONS_TREE,
-            )
+            Page.SEQUENCER,
+            Panel.BROWSER,
+            TextType.LABEL,
+            SequencerBrowserElements.RECONSTRUCTIONS_TREE,
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -94,12 +89,10 @@ class GUISequencerBrowserPanel(GUITreePanel):
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.BROWSER,
-                    TextType.LABEL,
-                    TreeElements.SEARCH,
-                )
+                Page.GLOBAL,
+                Panel.BROWSER,
+                TextType.LABEL,
+                TreeElements.SEARCH,
             ],
             language_manager=language_manager,
             favorite_color=favorite_color,

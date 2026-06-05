@@ -2,7 +2,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_DIALOG_SUCCESS,
@@ -20,20 +19,16 @@ class ConverterSuccessDialog:
     ) -> None:
         self._dialogs = dialogs
         self._msg_success = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_SUCCESS,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_SUCCESS,
         ]
         self._ttl_progress = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.TITLE,
-                ConverterElements.PROGRESS_DIALOG,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TITLE,
+            ConverterElements.PROGRESS_DIALOG,
         ]
 
     def show(self) -> None:

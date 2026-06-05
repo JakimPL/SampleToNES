@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.elements.main import ExplorerElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -77,108 +76,82 @@ class GUIExplorerPanel(GUITreePanel):
         self._dialogs = dialogs
 
         self._lbl_section = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.SECTION,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.SECTION,
         ]
         self._lbl_refresh = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.REFRESH_BUTTON,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.REFRESH_BUTTON,
         ]
         self._lbl_collapse_all = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.COLLAPSE_ALL_BUTTON,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.COLLAPSE_ALL_BUTTON,
         ]
         self._lbl_ctx_load_reconstruction = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_LOAD_RECONSTRUCTION,
         ]
         self._lbl_ctx_load_library = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_LOAD_LIBRARY,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_LOAD_LIBRARY,
         ]
         self._lbl_ctx_reconstruct_file = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_RECONSTRUCT_FILE,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_RECONSTRUCT_FILE,
         ]
         self._lbl_ctx_reconstruct_directory = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_RECONSTRUCT_DIRECTORY,
         ]
         self._lbl_ctx_set_library = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_SET_LIBRARY_DIRECTORY,
         ]
         self._lbl_ctx_set_output = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.LABEL,
-                ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.LABEL,
+            ExplorerElements.CONTEXT_SET_OUTPUT_DIRECTORY,
         ]
         self._msg_converter_running = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.MESSAGE,
-                ExplorerElements.CONVERTER_RUNNING_MSG,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.CONVERTER_RUNNING_MSG,
         ]
         self._msg_status_audio_no_autoplay = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.MESSAGE,
-                ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_NODE_AUDIO_NO_AUTOPLAY,
         ]
         self._msg_status_audio = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.MESSAGE,
-                ExplorerElements.STATUS_NODE_AUDIO,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.MESSAGE,
+            ExplorerElements.STATUS_NODE_AUDIO,
         ]
         self._ttl_converter_running = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.EXPLORER,
-                TextType.TITLE,
-                ExplorerElements.CONVERTER_RUNNING_DIALOG,
-            )
+            Page.MAIN,
+            Panel.EXPLORER,
+            TextType.TITLE,
+            ExplorerElements.CONVERTER_RUNNING_DIALOG,
         ]
 
         self._node_handlers: Dict[NodeType, NodeHandler]
@@ -203,12 +176,10 @@ class GUIExplorerPanel(GUITreePanel):
             shortcut_manager=shortcut_manager,
             scheduling=scheduling,
             search_label=language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.BROWSER,
-                    TextType.LABEL,
-                    TreeElements.FILTER,
-                )
+                Page.GLOBAL,
+                Panel.BROWSER,
+                TextType.LABEL,
+                TreeElements.FILTER,
             ],
             language_manager=language_manager,
             favorite_color=favorite_color,

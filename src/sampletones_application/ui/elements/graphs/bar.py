@@ -5,7 +5,6 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_BAR_PLOT_HOVER_BAR,
@@ -56,12 +55,10 @@ class GUIBarGraph(GUIGraph[BarLayer]):
             _label = label
         elif language_manager is not None:
             _label = language_manager[
-                TextKey(
-                    Page.GLOBAL,
-                    Panel.GRAPH,
-                    TextType.LABEL,
-                    GraphElements.BAR_DISPLAY,
-                )
+                Page.GLOBAL,
+                Panel.GRAPH,
+                TextType.LABEL,
+                GraphElements.BAR_DISPLAY,
             ]
         else:
             _label = ""

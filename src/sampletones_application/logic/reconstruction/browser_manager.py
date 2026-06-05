@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.manager import ConfigManager
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
@@ -25,12 +24,10 @@ class BrowserManager:
         self.config_manager = config_manager
         self.output_directory = config_manager.get_output_directory()
         self._root_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.BROWSER,
-                TextType.LABEL,
-                TreeElements.ROOT,
-            )
+            Page.GLOBAL,
+            Panel.BROWSER,
+            TextType.LABEL,
+            TreeElements.ROOT,
         ]
 
         self.tree = Tree()

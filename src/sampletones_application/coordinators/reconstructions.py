@@ -13,7 +13,6 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -79,12 +78,10 @@ class ReconstructionsTabCoordinator:
         self._dialogs = dialogs
 
         self._tab_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.TAB_RECONSTRUCTIONS,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.TAB_RECONSTRUCTIONS,
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
@@ -92,148 +89,112 @@ class ReconstructionsTabCoordinator:
         self._right_height = layout.general.panels.right.height
 
         self._msg_file_not_found = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.MESSAGE,
-                ReconstructionsBrowserElements.FILE_NOT_FOUND,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.FILE_NOT_FOUND,
         ]
         self._msg_load_error = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.MESSAGE,
-                ReconstructionsBrowserElements.LOAD_ERROR,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.LOAD_ERROR,
         ]
         self._msg_invalid_metadata = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.DIALOG,
-                TextType.MESSAGE,
-                GlobalMessageElements.INVALID_METADATA_ERROR,
-            )
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.INVALID_METADATA_ERROR,
         ]
         self._msg_invalid_values = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.MESSAGE,
-                ReconstructionsBrowserElements.INVALID_VALUES,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.INVALID_VALUES,
         ]
         self._msg_invalid_file = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.MESSAGE,
-                ReconstructionsBrowserElements.INVALID_FILE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.INVALID_FILE,
         ]
         self._msg_deserialization_error = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.MESSAGE,
-                ReconstructionsBrowserElements.DESERIALIZATION_ERROR,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.MESSAGE,
+            ReconstructionsBrowserElements.DESERIALIZATION_ERROR,
         ]
         self._tpl_incompatible_version = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.BROWSER,
-                TextType.TEMPLATE,
-                ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.TEMPLATE,
+            ReconstructionsBrowserElements.INCOMPATIBLE_VERSION_TEMPLATE,
         ]
         _ttl_export_status = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TITLE,
-                ReconstructionsDetailsElements.EXPORT_STATUS_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.EXPORT_STATUS_DIALOG,
         ]
         _msg_export_fti_success = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.EXPORT_FTI_SUCCESS,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.EXPORT_FTI_SUCCESS,
         ]
         _msg_export_fti_failed = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.EXPORT_FTI_FAILED,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.EXPORT_FTI_FAILED,
         ]
         _msg_export_ftis_success = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.EXPORT_FTIS_SUCCESS,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.EXPORT_FTIS_SUCCESS,
         ]
         _msg_export_ftis_failed = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.MESSAGE,
-                ReconstructionsDetailsElements.EXPORT_FTIS_FAILED,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            ReconstructionsDetailsElements.EXPORT_FTIS_FAILED,
         ]
         _ttl_export_wav = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.DETAILS,
-                TextType.TITLE,
-                ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TITLE,
+            ReconstructionsDetailsElements.EXPORT_WAV_DIALOG,
         ]
         _msg_export_wav_success = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.EXPORT_WAV_SUCCESS,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.MESSAGE,
+            ReconstructionPanelElements.EXPORT_WAV_SUCCESS,
         ]
         _msg_export_wav_failed = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.EXPORT_WAV_FAILED,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.MESSAGE,
+            ReconstructionPanelElements.EXPORT_WAV_FAILED,
         ]
         _msg_audio_missing = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.AUDIO_MISSING,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.MESSAGE,
+            ReconstructionPanelElements.AUDIO_MISSING,
         ]
         _ttl_audio_missing = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.TITLE,
-                ReconstructionPanelElements.AUDIO_MISSING_DIALOG,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.TITLE,
+            ReconstructionPanelElements.AUDIO_MISSING_DIALOG,
         ]
         _msg_locate_audio_failed = language_manager[
-            TextKey(
-                Page.RECONSTRUCTIONS,
-                Panel.RECONSTRUCTION,
-                TextType.MESSAGE,
-                ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
-            )
+            Page.RECONSTRUCTIONS,
+            Panel.RECONSTRUCTION,
+            TextType.MESSAGE,
+            ReconstructionPanelElements.LOCATE_AUDIO_FAILED,
         ]
 
         self._browser_logic: BrowserLogic = BrowserLogic(

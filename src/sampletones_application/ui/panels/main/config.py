@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import ConfigPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import (
     AudioSettingsUpdate,
@@ -53,108 +52,82 @@ class GUIConfigPanel(GUIPanel):
         self._item_handler_tag = f"{TAG_MAIN_CONFIG_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self._lbl_section = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.SECTION,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.SECTION,
         ]
         self._lbl_section_library = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.SECTION_LIBRARY,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.SECTION_LIBRARY,
         ]
         self._lbl_normalize = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.CHECKBOX_NORMALIZE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.CHECKBOX_NORMALIZE,
         ]
         self._lbl_quantize = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.CHECKBOX_QUANTIZE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.CHECKBOX_QUANTIZE,
         ]
         self._lbl_sample_rate = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.INPUT_SAMPLE_RATE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.INPUT_SAMPLE_RATE,
         ]
         self._lbl_change_rate = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.INPUT_CHANGE_RATE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.INPUT_CHANGE_RATE,
         ]
         self._lbl_gamma = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.LABEL,
-                ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.SLIDER_TRANSFORMATION_GAMMA,
         ]
         self._tooltip_normalize = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.TOOLTIP,
-                ConfigPanelElements.TOOLTIP_NORMALIZE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_NORMALIZE,
         ]
         self._tooltip_quantize = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.TOOLTIP,
-                ConfigPanelElements.TOOLTIP_QUANTIZE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_QUANTIZE,
         ]
         self._tooltip_sample_rate = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.TOOLTIP,
-                ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
         ]
         self._tooltip_change_rate = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.TOOLTIP,
-                ConfigPanelElements.TOOLTIP_CHANGE_RATE,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_CHANGE_RATE,
         ]
         self._tooltip_gamma = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONFIG_PANEL,
-                TextType.TOOLTIP,
-                ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA,
-            )
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_TRANSFORMATION_GAMMA,
         ]
         self._msg_status_input = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.STATUS,
-                TextType.MESSAGE,
-                StatusElements.INPUT,
-            )
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.INPUT,
         ]
 
         super().__init__(

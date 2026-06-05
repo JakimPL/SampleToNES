@@ -4,7 +4,6 @@ import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.instructions import InstructionPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
@@ -57,20 +56,16 @@ class GUIInstructionPanel(GUIPanel):
         self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
 
         self._lbl_waveform = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.INSTRUCTION,
-                TextType.LABEL,
-                InstructionPanelElements.WAVEFORM_LABEL,
-            )
+            Page.INSTRUCTIONS,
+            Panel.INSTRUCTION,
+            TextType.LABEL,
+            InstructionPanelElements.WAVEFORM_LABEL,
         ]
         self._lbl_spectrum = language_manager[
-            TextKey(
-                Page.INSTRUCTIONS,
-                Panel.INSTRUCTION,
-                TextType.LABEL,
-                InstructionPanelElements.SPECTRUM_LABEL,
-            )
+            Page.INSTRUCTIONS,
+            Panel.INSTRUCTION,
+            TextType.LABEL,
+            InstructionPanelElements.SPECTRUM_LABEL,
         ]
 
         self.waveform_tag = f"{TAG_INSTRUCTIONS_INSTRUCTION_PANEL}{SUF_GRAPH_INSTRUCTIONS_INSTRUCTION_WAVEFORM_WINDOW}"

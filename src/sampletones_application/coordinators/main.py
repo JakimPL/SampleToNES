@@ -6,7 +6,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import MenuElements
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.config.manager import ConfigManager
@@ -66,38 +65,30 @@ class MainTabCoordinator:
         self._is_generation_in_progress = is_generation_in_progress
 
         self._tab_label = language_manager[
-            TextKey(
-                Page.GLOBAL,
-                Panel.MENU,
-                TextType.LABEL,
-                MenuElements.TAB_MAIN,
-            )
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.TAB_MAIN,
         ]
         self._explorer_width = layout.main.explorer.width
         self._explorer_height = layout.main.explorer.height
         _msg_converter_error = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_ERROR,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_ERROR,
         ]
         _msg_no_files = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.MESSAGE,
-                ConverterElements.STATUS_NO_FILES,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_NO_FILES,
         ]
         _title_progress = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.CONVERTER,
-                TextType.TITLE,
-                ConverterElements.PROGRESS_DIALOG,
-            )
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TITLE,
+            ConverterElements.PROGRESS_DIALOG,
         ]
 
         self._explorer_logic: ExplorerLogic = ExplorerLogic(config_manager, language_manager=language_manager)

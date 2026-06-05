@@ -6,7 +6,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.main import AdvancedElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import AdvancedSettingsUpdate
 from sampletones_application.constants.general import (
@@ -64,7 +63,12 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self._file_dialog_height = file_dialog_height
         self._max_workers_minimum = max_workers_minimum
         self._path_colors = path_colors
-        self._msg_path = language_manager[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.PATH)]
+        self._msg_path = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.PATH,
+        ]
 
         self._item_handler_tag = f"{TAG_MAIN_ADVANCED_PANEL}{SUF_HANDLER_REGISTRY}"
 
@@ -72,60 +76,46 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.output_path_text: Optional[GUIPathText] = None
 
         self._lbl_section = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.LABEL,
-                AdvancedElements.SECTION,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.LABEL,
+            AdvancedElements.SECTION,
         ]
         self._lbl_select_library = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.LABEL,
-                AdvancedElements.SELECT_LIBRARY_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.LABEL,
+            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
         ]
         self._lbl_select_output = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.LABEL,
-                AdvancedElements.SELECT_OUTPUT_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.LABEL,
+            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
         ]
         self._lbl_max_workers = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.LABEL,
-                AdvancedElements.INPUT_MAX_WORKERS,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.LABEL,
+            AdvancedElements.INPUT_MAX_WORKERS,
         ]
         self._tooltip_max_workers = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.TOOLTIP,
-                AdvancedElements.TOOLTIP_MAX_WORKERS,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.TOOLTIP,
+            AdvancedElements.TOOLTIP_MAX_WORKERS,
         ]
         self._ttl_library_dialog = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.TITLE,
-                AdvancedElements.SELECT_LIBRARY_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.TITLE,
+            AdvancedElements.SELECT_LIBRARY_DIRECTORY,
         ]
         self._ttl_output_dialog = language_manager[
-            TextKey(
-                Page.MAIN,
-                Panel.ADVANCED,
-                TextType.TITLE,
-                AdvancedElements.SELECT_OUTPUT_DIRECTORY,
-            )
+            Page.MAIN,
+            Panel.ADVANCED,
+            TextType.TITLE,
+            AdvancedElements.SELECT_OUTPUT_DIRECTORY,
         ]
 
         super().__init__(

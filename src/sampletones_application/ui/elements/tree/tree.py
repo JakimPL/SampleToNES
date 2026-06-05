@@ -12,7 +12,6 @@ from sampletones_application.categories.elements.global_ import (
     TreeElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
-from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -102,42 +101,102 @@ class GUITreePanel(GUIPanel):
         self._favorite_color = favorite_color
         self._node_color = node_color
 
-        lm = language_manager
-        self._lbl_clear_search = lm[TextKey(Page.GLOBAL, Panel.BROWSER, TextType.LABEL, TreeElements.CLEAR_SEARCH)]
-        self._msg_no_results = lm[
-            TextKey(Page.GLOBAL, Panel.DIALOG, TextType.MESSAGE, GlobalMessageElements.TREE_NO_RESULTS)
+        self._lbl_clear_search = language_manager[
+            Page.GLOBAL,
+            Panel.BROWSER,
+            TextType.LABEL,
+            TreeElements.CLEAR_SEARCH,
         ]
-        self._msg_tree_search = lm[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.TREE_SEARCH)]
-        self._msg_node_reconstruction = lm[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.NODE_RECONSTRUCTION)
+        self._msg_no_results = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.TREE_NO_RESULTS,
         ]
-        self._msg_node_reconstruction_no_autoplay = lm[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.NODE_RECONSTRUCTION_NO_AUTOPLAY)
+        self._msg_tree_search = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.TREE_SEARCH,
         ]
-        self._msg_node_library = lm[TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.NODE_LIBRARY)]
-        self._template_node_directory = lm[
-            TextKey(Page.GLOBAL, Panel.STATUS, TextType.MESSAGE, StatusElements.NODE_DIRECTORY)
+        self._msg_node_reconstruction = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.NODE_RECONSTRUCTION,
         ]
-        self._msg_expand = lm[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.EXPAND)]
-        self._msg_collapse = lm[TextKey(Page.GLOBAL, Panel.DIALOG, TextType.TEMPLATE, GlobalTemplateElements.COLLAPSE)]
-        self._lbl_ctx_copy_filename = lm[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.COPY_FILENAME)
+        self._msg_node_reconstruction_no_autoplay = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.NODE_RECONSTRUCTION_NO_AUTOPLAY,
         ]
-        self._lbl_ctx_copy_path = lm[TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.COPY_PATH)]
-        self._lbl_ctx_open_in_explorer = lm[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.OPEN_IN_EXPLORER)
+        self._msg_node_library = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.NODE_LIBRARY,
         ]
-        self._lbl_ctx_add_to_sequencer = lm[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.ADD_TO_SEQUENCER)
+        self._template_node_directory = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.NODE_DIRECTORY,
         ]
-        self._lbl_ctx_mark_as_favorite = lm[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.MARK_AS_FAVORITE)
+        self._msg_expand = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.EXPAND,
         ]
-        self._lbl_ctx_unmark_as_favorite = lm[
-            TextKey(Page.GLOBAL, Panel.CONTEXT, TextType.LABEL, ContextElements.UNMARK_AS_FAVORITE)
+        self._msg_collapse = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TEMPLATE,
+            GlobalTemplateElements.COLLAPSE,
+        ]
+        self._lbl_ctx_copy_filename = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.COPY_FILENAME,
+        ]
+        self._lbl_ctx_copy_path = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.COPY_PATH,
+        ]
+        self._lbl_ctx_open_in_explorer = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.OPEN_IN_EXPLORER,
+        ]
+        self._lbl_ctx_add_to_sequencer = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.ADD_TO_SEQUENCER,
+        ]
+        self._lbl_ctx_mark_as_favorite = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.MARK_AS_FAVORITE,
+        ]
+        self._lbl_ctx_unmark_as_favorite = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.UNMARK_AS_FAVORITE,
         ]
 
-        self.logic = TreeLogic(session_manager, audio_device_manager, scheduling=scheduling)
+        self.logic = TreeLogic(
+            session_manager,
+            audio_device_manager,
+            scheduling=scheduling,
+        )
         self.logic.on_lock_state_changed = self._set_tree_enabled
         self.logic.on_favorite_changed = self._update_favorite_indicator
         self.logic.on_search_update_needed = self._update_tree_visibility
