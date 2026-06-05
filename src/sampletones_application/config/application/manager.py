@@ -2,13 +2,9 @@ from pathlib import Path
 from typing import Optional, Set
 
 from sampletones_application.config.application.config import ApplicationConfig
-from sampletones_application.config.application.config_manager import (
-    ApplicationConfigManager,
-)
+from sampletones_application.config.application.config_manager import ApplicationConfigManager
 from sampletones_application.config.application.state import ApplicationState
-from sampletones_application.config.application.state_manager import (
-    ApplicationStateManager,
-)
+from sampletones_application.config.application.state_manager import ApplicationStateManager
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 
@@ -81,8 +77,21 @@ class SessionManager:
     def get_audio_path(self) -> Path:
         return self._config_manager.get_audio_path()
 
+    def set_project_path(self, path: Path) -> None:
+        self._config_manager.set_project_path(path)
+
+    def get_project_path(self) -> Path:
+        return self._config_manager.get_project_path()
+
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self._state_manager.set_current_reconstruction(path)
+
+    def set_current_project(self, path: Optional[Path]) -> None:
+        self._state_manager.set_current_project(path)
+
+    @property
+    def current_project(self) -> Optional[Path]:
+        return self._state_manager.current_project
 
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self._config_manager.set_current_audio_device(audio_device_manager)

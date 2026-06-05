@@ -6,6 +6,7 @@ from sampletones_core.paths import (
     CONFIG_PATH,
     LIBRARY_DIRECTORY,
     OUTPUT_DIRECTORY,
+    PROJECTS_DIRECTORY,
     USER_PATH_CONFIG,
 )
 
@@ -17,6 +18,7 @@ __all__ = [
     "CONFIG_PATH",
     "LIBRARY_DIRECTORY",
     "OUTPUT_DIRECTORY",
+    "PROJECTS_DIRECTORY",
     "CONFIG_DIRECTORY",
     "LAYOUT_DIRECTORY",
     "BEHAVIOR_DIRECTORY",

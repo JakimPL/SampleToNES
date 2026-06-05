@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, field_serializer
 
-from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY
+from sampletones_application.paths import CONFIG_PATH, LIBRARY_DIRECTORY, PROJECTS_DIRECTORY
 
 
 class LastPaths(BaseModel):
@@ -26,6 +26,10 @@ class LastPaths(BaseModel):
         default=Path.cwd(),
         description="The last used WAV export file path.",
     )
+    project: Path = Field(
+        default=PROJECTS_DIRECTORY,
+        description="The last used project directory path.",
+    )
 
     @field_serializer(
         "library",
@@ -33,6 +37,7 @@ class LastPaths(BaseModel):
         "config",
         "instrument",
         "audio",
+        "project",
     )
     def serialize_paths(self, path: Path) -> str:
         return str(path)

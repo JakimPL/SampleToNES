@@ -13,8 +13,8 @@ from sampletones_core.project import (
     Song,
     SubInstrument,
 )
-from sampletones_core.sequencer import Instrument
-from sampletones_core.structures import IndexedCollection
+from sampletones_core.project.instruments import Instrument
+from sampletones_core.structures import IdentifiedCollection
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
@@ -108,7 +108,7 @@ class TestReferenceIntegrity:
 
     def _build_pattern_context(self) -> PatternContext:
         patterns = [Pattern.empty(4, name=f"p{index}") for index in range(3)]
-        collection: IndexedCollection[Pattern] = IndexedCollection(patterns)
+        collection: IdentifiedCollection[Pattern] = IdentifiedCollection(patterns)
         channel = Channel(
             generator=GeneratorName.PULSE1,
             patterns=collection,

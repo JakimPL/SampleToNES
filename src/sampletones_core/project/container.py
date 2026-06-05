@@ -4,11 +4,11 @@ from typing import Dict
 
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.project.document import ProjectDocument
+from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.record import InstrumentRecord
 from sampletones_core.project.project import Project
 from sampletones_core.reconstructions import Reconstruction
-from sampletones_core.sequencer import Instrument
-from sampletones_core.structures import IndexedCollection
+from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
@@ -70,7 +70,7 @@ class ProjectContainer:
 
     @staticmethod
     def _build_project(document: ProjectDocument, reconstructions: Dict[str, Reconstruction]) -> Project:
-        instruments: IndexedCollection[Instrument] = IndexedCollection()
+        instruments: IdentifiedCollection[Instrument] = IdentifiedCollection()
         for record in document.instruments:
             reconstruction = reconstructions[record.reconstruction_id]
             instruments.append(ProjectContainer._restore_instrument(record, reconstruction))

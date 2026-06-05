@@ -62,6 +62,9 @@ class ApplicationStateManager:
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self.state.current_reconstruction = path
 
+    def set_current_project(self, path: Optional[Path]) -> None:
+        self.state.current_project = path
+
     @property
     def current_tab(self) -> str:
         return self.state.current_tab
@@ -69,6 +72,10 @@ class ApplicationStateManager:
     @property
     def current_reconstruction(self) -> Optional[Path]:
         return self.state.current_reconstruction
+
+    @property
+    def current_project(self) -> Optional[Path]:
+        return self.state.current_project
 
     @property
     def advanced_settings(self) -> bool:

@@ -26,6 +26,7 @@ from sampletones_application.coordinators.reconstructions import Reconstructions
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
@@ -45,7 +46,6 @@ from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.paths import EXT_FILES_AUDIO
-from sampletones_core.sequencer import Sequencer
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -79,7 +79,7 @@ class Application:
         self.regeneration_service: RegenerationService = RegenerationService(priority=_priority)
         self.export_service: ExportService = ExportService(priority=_priority)
 
-        self.sequencer: Sequencer = Sequencer()
+        self.project_manager: ProjectManager = ProjectManager()
 
         self.fps_timer: FPSTimer = FPSTimer()
 

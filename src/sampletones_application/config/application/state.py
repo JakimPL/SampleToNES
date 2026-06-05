@@ -21,6 +21,10 @@ class ApplicationState(BaseModel):
         default=None,
         description="The currently loaded reconstruction's path.",
     )
+    current_project: Optional[Path] = Field(
+        default=None,
+        description="The currently loaded project's path (None for a new, unsaved project).",
+    )
     advanced_settings: bool = Field(
         default=False,
         description="If advanced settings are shown in the config panel.",
@@ -30,8 +34,8 @@ class ApplicationState(BaseModel):
         description="If samples should autoplay when clicked.",
     )
 
-    @field_serializer("current_reconstruction")
-    def serialize_current_reconstruction(self, value: Optional[Path]) -> Optional[str]:
+    @field_serializer("current_reconstruction", "current_project")
+    def serialize_paths(self, value: Optional[Path]) -> Optional[str]:
         if value is None:
             return None
 

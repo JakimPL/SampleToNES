@@ -39,14 +39,14 @@ class TestSubInstrument:
 class TestRowDefaults:
     def test_empty_row(self) -> None:
         row = Row()
-        assert row.pitch is None
+        assert row.transpose is None
         assert row.subinstrument is None
         assert row.volume is None
 
     def test_is_frozen(self) -> None:
-        row = Row(pitch=60)
+        row = Row(transpose=60)
         with pytest.raises(ValidationError):
-            row.pitch = 61  # type: ignore[misc]
+            row.transpose = 61  # type: ignore[misc]
 
 
 class TestRowSerialization(BaseTestSuite):
@@ -56,12 +56,12 @@ class TestRowSerialization(BaseTestSuite):
 
         @property
         def label(self) -> str:
-            return f"pitch={self.expected.pitch}_sub={self.expected.subinstrument is not None}"
+            return f"transpose={self.expected.transpose}_sub={self.expected.subinstrument is not None}"
 
     test_cases = [
         TestCase(expected=Row()),
-        TestCase(expected=Row(pitch=60, volume=15)),
-        TestCase(expected=Row(pitch=48, subinstrument=_subinstrument(), volume=8)),
+        TestCase(expected=Row(transpose=60, volume=15)),
+        TestCase(expected=Row(transpose=48, subinstrument=_subinstrument(), volume=8)),
     ]
 
     @pytest.mark.parametrize(

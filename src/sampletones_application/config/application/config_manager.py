@@ -100,6 +100,12 @@ class ApplicationConfigManager:
     def get_audio_path(self) -> Path:
         return self.config.last_paths.audio
 
+    def set_project_path(self, path: Path) -> None:
+        self.config.last_paths.project = get_directory(path)
+
+    def get_project_path(self) -> Path:
+        return self.config.last_paths.project
+
     def set_current_audio_device(self, audio_device_manager: AudioDeviceManager) -> None:
         self.config.audio.set_audio_settings(audio_device_manager)
 

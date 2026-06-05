@@ -4,7 +4,7 @@ from typing import Optional
 
 from sampletones_core.data import Metadata
 from sampletones_core.project.instruments.instrument import Instrument
-from sampletones_core.structures import IndexedCollection
+from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import DEFAULT_PROJECT_AUTHOR, DEFAULT_PROJECT_COMMENT, DEFAULT_PROJECT_TITLE
 
 from .info import ProjectInfo
@@ -17,8 +17,8 @@ class Project:
 
     Owns the instruments (each embedding its own reconstruction) and the song
     arrangement. References inside the song point at instruments by their stable
-    ``id``; the :class:`IndexedCollection` provides reorder-safe positional and
-    identity access for the UI.
+    ``id``; the :class:`IdentifiedCollection` resolves those ids in O(1) while
+    also exposing reorder-safe positions for the UI.
     """
 
     def __init__(
@@ -26,13 +26,13 @@ class Project:
         metadata: Metadata,
         info: ProjectInfo,
         settings: ProjectSettings,
-        instruments: IndexedCollection[Instrument],
+        instruments: IdentifiedCollection[Instrument],
         song: Song,
     ) -> None:
         self.metadata: Metadata = metadata
         self.info: ProjectInfo = info
         self.settings: ProjectSettings = settings
-        self.instruments: IndexedCollection[Instrument] = instruments
+        self.instruments: IdentifiedCollection[Instrument] = instruments
         self.song: Song = song
 
     @classmethod
@@ -56,16 +56,12 @@ class Project:
             metadata=Metadata.default(),
             info=info,
             settings=settings,
-            instruments=IndexedCollection(),
+            instruments=IdentifiedCollection(),
             song=Song.empty(settings.rows_per_pattern),
         )
 
     def instrument(self, instrument_id: str) -> Optional[Instrument]:
-        for instrument in self.instruments:
-            if instrument.id == instrument_id:
-                return instrument
-
-        return None
+        return self.instruments.get(instrument_id)
 
     def __repr__(self) -> str:
         return f"Project(title={self.info.title!r}, instruments={len(self.instruments)})"

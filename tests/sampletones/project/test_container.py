@@ -10,7 +10,7 @@ from sampletones_core.project import (
     Row,
     SubInstrument,
 )
-from sampletones_core.sequencer import Instrument
+from sampletones_core.project.instruments import Instrument
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
@@ -30,7 +30,7 @@ def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
-        pitch=60,
+        transpose=60,
         subinstrument=SubInstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1),
         volume=15,
     )
@@ -62,7 +62,7 @@ class TestRoundTrip:
         first_pattern = channel.pattern(channel.order[0])
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
-        assert row.pitch == 60
+        assert row.transpose == 60
         assert row.subinstrument is not None
         assert row.subinstrument.instrument_id == loaded.instruments[0].id
 

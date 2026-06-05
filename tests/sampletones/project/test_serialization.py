@@ -6,13 +6,13 @@ from sampletones_core.project import (
     Song,
     SubInstrument,
 )
-from sampletones_core.structures import IndexedCollection
+from sampletones_core.structures import IdentifiedCollection
 
 
 def _pattern_with_subinstrument() -> Pattern:
     pattern = Pattern.empty(4, name="intro")
     pattern.rows[0] = Row(
-        pitch=60,
+        transpose=60,
         volume=15,
         subinstrument=SubInstrument(instrument_id="abc123", generator_name=GeneratorName.PULSE1),
     )
@@ -37,7 +37,7 @@ class TestChannelSerialization:
     def _channel(self) -> Channel:
         first = Pattern.empty(4, name="a")
         second = Pattern.empty(4, name="b")
-        patterns: IndexedCollection[Pattern] = IndexedCollection([first, second])
+        patterns: IdentifiedCollection[Pattern] = IdentifiedCollection([first, second])
         return Channel(
             generator=GeneratorName.PULSE1,
             patterns=patterns,
