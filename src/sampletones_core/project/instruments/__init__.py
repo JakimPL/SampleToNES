@@ -1,9 +1,9 @@
 from .instrument import Instrument
-from .record import InstrumentRecord
-from .subinstrument import SubInstrument
+from .record import SampleRecord
+from .sample import Sample
 
 __all__ = [
+    "Sample",
     "Instrument",
-    "SubInstrument",
-    "InstrumentRecord",
+    "SampleRecord",
 ]

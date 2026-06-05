@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from sampletones_core.data import Metadata
-from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import DEFAULT_PROJECT_AUTHOR, DEFAULT_PROJECT_COMMENT, DEFAULT_PROJECT_TITLE
 
@@ -15,8 +15,8 @@ from .song import Song
 class Project:
     """The top-level container for everything a user composes.
 
-    Owns the instruments (each embedding its own reconstruction) and the song
-    arrangement. References inside the song point at instruments by their stable
+    Owns the samples (each embedding its own reconstruction) and the song
+    arrangement. References inside the song point at samples by their stable
     ``id``; the :class:`IdentifiedCollection` resolves those ids in O(1) while
     also exposing reorder-safe positions for the UI.
     """
@@ -26,13 +26,13 @@ class Project:
         metadata: Metadata,
         info: ProjectInfo,
         settings: ProjectSettings,
-        instruments: IdentifiedCollection[Instrument],
+        samples: IdentifiedCollection[Sample],
         song: Song,
     ) -> None:
         self.metadata: Metadata = metadata
         self.info: ProjectInfo = info
         self.settings: ProjectSettings = settings
-        self.instruments: IdentifiedCollection[Instrument] = instruments
+        self.samples: IdentifiedCollection[Sample] = samples
         self.song: Song = song
 
     @classmethod
@@ -56,12 +56,12 @@ class Project:
             metadata=Metadata.default(),
             info=info,
             settings=settings,
-            instruments=IdentifiedCollection(),
+            samples=IdentifiedCollection(),
             song=Song.empty(settings.rows_per_pattern),
         )
 
-    def instrument(self, instrument_id: str) -> Optional[Instrument]:
-        return self.instruments.get(instrument_id)
+    def sample(self, sample_id: str) -> Optional[Sample]:
+        return self.samples.get(sample_id)
 
     def __repr__(self) -> str:
-        return f"Project(title={self.info.title!r}, instruments={len(self.instruments)})"
+        return f"Project(title={self.info.title!r}, samples={len(self.samples)})"

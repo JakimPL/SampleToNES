@@ -3,41 +3,87 @@ from unittest.mock import Mock
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project import Project
-from sampletones_core.project.instruments import Instrument, SubInstrument
-from sampletones_core.utils.display import display_instrument, display_subinstrument
+from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.utils.display import display_instrument, display_sample
 
 
-def _project_with_instruments(count: int) -> Tuple[Project, List[Instrument]]:
+def _project_with_samples(count: int) -> Tuple[Project, List[Sample]]:
     project = Project.create()
-    instruments = [Instrument(name=f"i{index}", reconstruction=Mock()) for index in range(count)]
-    project.instruments.extend(instruments)
-    return project, instruments
+    samples = [Sample(name=f"i{index}", reconstruction=Mock()) for index in range(count)]
+    project.samples.extend(samples)
+    return project, samples
 
 
-class TestDisplayInstrument:
+class TestDisplaySamples:
     def test_present_shows_index(self) -> None:
-        project, instruments = _project_with_instruments(3)
-        assert display_instrument(project.instruments, instruments[0].id) == "00"
-        assert display_instrument(project.instruments, instruments[2].id) == "02"
+        project, samples = _project_with_samples(3)
+        assert (
+            display_sample(
+                samples=project.samples,
+                sample_id=samples[0].id,
+            )
+            == "00"
+        )
+        assert (
+            display_sample(
+                samples=project.samples,
+                sample_id=samples[2].id,
+            )
+            == "02"
+        )
 
     def test_missing_and_none_are_placeholder(self) -> None:
-        project, _ = _project_with_instruments(1)
-        assert display_instrument(project.instruments, "missing") == ".."
-        assert display_instrument(project.instruments, None) == ".."
+        project, _ = _project_with_samples(1)
+        assert (
+            display_sample(
+                samples=project.samples,
+                sample_id="missing",
+            )
+            == ".."
+        )
+        assert (
+            display_sample(
+                samples=project.samples,
+                sample_id=None,
+            )
+            == ".."
+        )
 
     def test_index_follows_reorder(self) -> None:
-        project, instruments = _project_with_instruments(3)
-        first = instruments[0]
-        project.instruments.append(project.instruments.pop(0))
-        assert display_instrument(project.instruments, first.id) == "02"
+        project, samples = _project_with_samples(3)
+        first = samples[0]
+        project.samples.append(project.samples.pop(0))
+        assert (
+            display_sample(
+                samples=project.samples,
+                sample_id=first.id,
+            )
+            == "02"
+        )
 
 
 class TestDisplaySubinstrument:
     def test_resolves_referenced_instrument(self) -> None:
-        project, instruments = _project_with_instruments(2)
-        subinstrument = SubInstrument(instrument_id=instruments[1].id, generator_name=GeneratorName.PULSE1)
-        assert display_subinstrument(project.instruments, subinstrument) == "01"
+        project, samples = _project_with_samples(2)
+        instrument = Instrument(
+            sample_id=samples[1].id,
+            generator_name=GeneratorName.PULSE1,
+        )
+        assert (
+            display_instrument(
+                samples=project.samples,
+                instruments=instrument,
+            )
+            == "01"
+        )
 
     def test_none_is_placeholder(self) -> None:
-        project, _ = _project_with_instruments(1)
-        assert display_subinstrument(project.instruments, None) == ".."
+        project, _ = _project_with_samples(1)
+        assert (
+            display_instrument(
+                samples=project.samples,
+                instruments=None,
+            )
+            == ".."
+        )

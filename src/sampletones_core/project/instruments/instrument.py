@@ -1,19 +1,21 @@
-from uuid import uuid4
+from pydantic import BaseModel, ConfigDict, Field
 
-from sampletones_core.reconstructions import Reconstruction
+from sampletones_core.constants.enums import GeneratorName
 
 
-class Instrument:
-    def __init__(self, name: str, reconstruction: Reconstruction) -> None:
-        self.id: str = uuid4().hex
-        self.name: str = name
-        self.reconstruction: Reconstruction = reconstruction
+class Instrument(BaseModel):
+    """A reference to a single NES-channel slice of a sample's reconstruction.
 
-    def __hash__(self) -> int:
-        return hash(self.id)
+    A reconstruction may span up to four channels (two pulse, triangle, noise).
+    A subinstrument pins one of those channels for use on a tracker row. The
+    sample is referenced by its stable ``id`` (never by collection position),
+    so the reference survives reordering of the samples collection.
+    """
 
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Instrument) and self.id == other.id
+    model_config = ConfigDict(frozen=True)
 
-    def __repr__(self) -> str:
-        return f"Instrument(id={self.id!r}, name={self.name!r})"
+    sample_id: str = Field(..., description="Stable id of the referenced sample.")
+    generator_name: GeneratorName = Field(
+        ...,
+        description="Which reconstruction channel-slice to use.",
+    )

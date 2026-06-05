@@ -3,9 +3,7 @@ from typing import Dict, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.sequencer import (
-    SequencerGridElements,
-)
+from sampletones_application.categories.elements.sequencer import SequencerGridElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
@@ -317,6 +315,7 @@ class GUISequencerGridPanel(GUIPanel):
             highlighted_item = self._rows.get(self._highlighted_row)
             if highlighted_item is not None:
                 dpg.set_value(highlighted_item, False)
+
             self._highlighted_row = row_index
 
     def highlight_row(self, row_index: Optional[int] = None) -> None:

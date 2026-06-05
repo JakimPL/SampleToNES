@@ -1,34 +1,35 @@
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project import (
-    Channel,
-    Pattern,
-    Row,
-    Song,
-    SubInstrument,
-)
+from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.song import Song
 from sampletones_core.structures import IdentifiedCollection
 
 
-def _pattern_with_subinstrument() -> Pattern:
+def _pattern_with_instrument() -> Pattern:
     pattern = Pattern.empty(4, name="intro")
     pattern.rows[0] = Row(
-        transpose=60,
+        transpose=0,
         volume=15,
-        subinstrument=SubInstrument(instrument_id="abc123", generator_name=GeneratorName.PULSE1),
+        instrument=Instrument(
+            sample_id="abc123",
+            generator_name=GeneratorName.PULSE1,
+        ),
     )
     return pattern
 
 
 class TestPatternSerialization:
     def test_round_trip_preserves_id_name_rows(self) -> None:
-        pattern = _pattern_with_subinstrument()
+        pattern = _pattern_with_instrument()
         restored = Pattern.model_validate(pattern.model_dump())
         assert restored.id == pattern.id
         assert restored.name == pattern.name
         assert restored.rows == pattern.rows
 
     def test_dump_round_trips_identically(self) -> None:
-        pattern = _pattern_with_subinstrument()
+        pattern = _pattern_with_instrument()
         dump = pattern.model_dump()
         assert Pattern.model_validate(dump).model_dump() == dump
 

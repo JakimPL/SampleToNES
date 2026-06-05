@@ -3,14 +3,12 @@ import zipfile
 from pathlib import Path
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project import (
-    Pattern,
-    Project,
-    ProjectContainer,
-    Row,
-    SubInstrument,
-)
-from sampletones_core.project.instruments import Instrument
+from sampletones_core.project.container import ProjectContainer
+from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.project import Project
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
@@ -21,17 +19,20 @@ def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
     project = Project.create(title="Demo")
     project.settings.tempo = 128
 
-    first = Instrument(name="lead", reconstruction=reconstruction_factory())
+    first = Sample(name="lead", reconstruction=reconstruction_factory())
     second_reconstruction = first.reconstruction if shared else reconstruction_factory()
-    second = Instrument(name="bass", reconstruction=second_reconstruction)
-    project.instruments.extend([first, second])
+    second = Sample(name="bass", reconstruction=second_reconstruction)
+    project.samples.extend([first, second])
 
     channel = project.song[GeneratorName.PULSE1]
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
-        transpose=60,
-        subinstrument=SubInstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1),
+        transpose=0,
+        instrument=Instrument(
+            sample_id=first.id,
+            generator_name=GeneratorName.PULSE1,
+        ),
         volume=15,
     )
 
@@ -52,19 +53,17 @@ class TestRoundTrip:
         assert loaded.metadata == project.metadata
         assert loaded.info.title == project.info.title
         assert loaded.settings.tempo == 128
-        assert [instrument.id for instrument in loaded.instruments] == [
-            instrument.id for instrument in project.instruments
-        ]
-        assert [instrument.name for instrument in loaded.instruments] == ["lead", "bass"]
+        assert [sample.id for sample in loaded.samples] == [sample.id for sample in project.samples]
+        assert [sample.name for sample in loaded.samples] == ["lead", "bass"]
 
         channel = loaded.song[GeneratorName.PULSE1]
         assert channel.order == project.song[GeneratorName.PULSE1].order
         first_pattern = channel.pattern(channel.order[0])
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
-        assert row.transpose == 60
-        assert row.subinstrument is not None
-        assert row.subinstrument.instrument_id == loaded.instruments[0].id
+        assert row.transpose == 0
+        assert row.instrument is not None
+        assert row.instrument.sample_id == loaded.samples[0].id
 
     def test_references_resolve_after_load(self, tmp_path: Path, reconstruction_factory) -> None:
         project = _populated_project(reconstruction_factory)
@@ -74,8 +73,8 @@ class TestRoundTrip:
         loaded = ProjectContainer.load(path)
         channel = loaded.song[GeneratorName.PULSE1]
         row = channel.pattern(channel.order[0]).rows[0]
-        assert loaded.instrument(row.subinstrument.instrument_id) is loaded.instruments[0]
-        # the order references the same pattern twice; both resolve to one object
+        assert loaded.sample(row.instrument.sample_id) is loaded.samples[0]
+        # the order referenc`es the same pattern twice; both resolve to one object
         assert channel.pattern(channel.order[0]) is channel.pattern(channel.order[2])
 
 
@@ -124,7 +123,7 @@ class TestEmptyProject:
         ProjectContainer.save(project, path)
         loaded = ProjectContainer.load(path)
 
-        assert len(loaded.instruments) == 0
+        assert len(loaded.samples) == 0
         assert set(loaded.song.channels) == set(GeneratorName.items())
 
         with zipfile.ZipFile(path, "r") as archive:

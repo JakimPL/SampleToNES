@@ -1,6 +1,6 @@
 from .container import ProjectContainer
 from .info import ProjectInfo
-from .instruments.subinstrument import SubInstrument
+from .instruments.instrument import Instrument
 from .patterns.channel import Channel
 from .patterns.pattern import Pattern
 from .patterns.row import Row
@@ -17,5 +17,5 @@ __all__ = [
     "Channel",
     "Pattern",
     "Row",
-    "SubInstrument",
+    "Instrument",
 ]

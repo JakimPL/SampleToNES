@@ -3,12 +3,12 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.general import (
-    MAX_PITCH,
+    MAX_TRANSPOSE,
     MAX_VOLUME,
-    MIN_PITCH,
+    MIN_TRANSPOSE,
     MIN_VOLUME,
 )
-from sampletones_core.project.instruments.subinstrument import SubInstrument
+from sampletones_core.project.instruments.instrument import Instrument
 
 
 class Row(BaseModel):
@@ -20,14 +20,14 @@ class Row(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    subinstrument: Optional[SubInstrument] = Field(
+    instrument: Optional[Instrument] = Field(
         default=None,
         description="Referenced channel-slice.",
     )
     transpose: Optional[int] = Field(
         default=None,
-        ge=MIN_PITCH,
-        le=MAX_PITCH,
+        ge=MIN_TRANSPOSE,
+        le=MAX_TRANSPOSE,
         description="Note pitch, or None for an empty cell.",
     )
     volume: Optional[int] = Field(

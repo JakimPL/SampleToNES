@@ -1,10 +1,10 @@
-# Global constants
-
 from typing import Final, Tuple
+
+# NES limits
 
 DEFAULT_CHANGE_RATE: Final[int] = 60  # NTSC frame rate
 MIN_CHANGE_RATE: Final[int] = 15
-MAX_CHANGE_RATE: Final[int] = 600
+MAX_CHANGE_RATE: Final[int] = 300
 
 # Pitches and frequencies
 
@@ -34,6 +34,9 @@ NOTE_NAMES: Tuple[str, ...] = (
     "A#",
     "B-",
 )
+
+MIN_TRANSPOSE: Final[int] = -24
+MAX_TRANSPOSE: Final[int] = 36
 
 # Instruction parameters ranges
 

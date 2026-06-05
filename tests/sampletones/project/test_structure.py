@@ -5,21 +5,19 @@ from unittest.mock import Mock
 import pytest
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project import (
-    Channel,
-    Pattern,
-    Project,
-    Row,
-    Song,
-    SubInstrument,
-)
-from sampletones_core.project.instruments import Instrument
+from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.sample import Sample
+from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.patterns.pattern import Pattern
+from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.project import Project
+from sampletones_core.project.song import Song
 from sampletones_core.structures import IdentifiedCollection
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
-def _instrument(name: str) -> Instrument:
-    return Instrument(name=name, reconstruction=Mock())
+def _sample(name: str) -> Sample:
+    return Sample(name=name, reconstruction=Mock())
 
 
 class TestPattern:
@@ -77,15 +75,15 @@ class TestProject:
     def test_create(self) -> None:
         project = Project.create(title="Demo")
         assert project.info.title == "Demo"
-        assert len(project.instruments) == 0
+        assert len(project.samples) == 0
         assert set(project.song.channels) == set(GeneratorName.items())
 
     def test_instrument_resolution(self) -> None:
         project = Project.create()
-        instrument = _instrument("lead")
-        project.instruments.append(instrument)
-        assert project.instrument(instrument.id) is instrument
-        assert project.instrument("missing") is None
+        sample = _sample("lead")
+        project.samples.append(sample)
+        assert project.sample(sample.id) is sample
+        assert project.sample("missing") is None
 
 
 @dataclass
@@ -95,11 +93,11 @@ class PatternContext:
 
 
 @dataclass
-class InstrumentContext:
+class SampleContext:
     project: Project
+    sample: Sample
     instrument: Instrument
-    subinstrument: SubInstrument
-    resolved: Dict[str, Instrument] = field(default_factory=dict)
+    resolved: Dict[str, Sample] = field(default_factory=dict)
 
 
 class TestReferenceIntegrity:
@@ -142,31 +140,31 @@ class TestReferenceIntegrity:
         )
         scenario.run()
 
-    def _build_instrument_context(self) -> InstrumentContext:
+    def _build_instrument_context(self) -> SampleContext:
         project = Project.create()
-        first = _instrument("first")
-        second = _instrument("second")
-        project.instruments.extend([first, second])
-        subinstrument = SubInstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1)
-        return InstrumentContext(project=project, instrument=first, subinstrument=subinstrument)
+        first = _sample("first")
+        second = _sample("second")
+        project.samples.extend([first, second])
+        instrument = Instrument(sample_id=first.id, generator_name=GeneratorName.PULSE1)
+        return SampleContext(project=project, sample=first, instrument=instrument)
 
-    def test_subinstrument_survives_instrument_reorder(self) -> None:
-        def check_before(context: InstrumentContext) -> None:
-            assert context.project.instruments.index(context.instrument) == 0
-            context.resolved["before"] = context.project.instrument(context.subinstrument.instrument_id)
+    def test_instrument_survives_instrument_reorder(self) -> None:
+        def check_before(context: SampleContext) -> None:
+            assert context.project.samples.index(context.sample) == 0
+            context.resolved["before"] = context.project.sample(context.instrument.sample_id)
 
-        def reorder(context: InstrumentContext) -> None:
-            moved = context.project.instruments.pop(0)
-            context.project.instruments.append(moved)
-            assert context.project.instruments.index(context.instrument) == 1
+        def reorder(context: SampleContext) -> None:
+            moved = context.project.samples.pop(0)
+            context.project.samples.append(moved)
+            assert context.project.samples.index(context.sample) == 1
 
-        def check_after(context: InstrumentContext) -> None:
-            resolved = context.project.instrument(context.subinstrument.instrument_id)
-            assert resolved is context.instrument
+        def check_after(context: SampleContext) -> None:
+            resolved = context.project.sample(context.instrument.sample_id)
+            assert resolved is context.sample
             assert resolved is context.resolved["before"]
 
         scenario = BaseTestScenario(
-            label="subinstrument_reference_integrity",
+            label="instrument_reference_integrity",
             build=self._build_instrument_context,
             steps=[
                 ScenarioStep(label="check_before", action=check_before),

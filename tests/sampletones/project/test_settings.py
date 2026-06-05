@@ -7,7 +7,7 @@ from sampletones_core.constants.general import (
     MAX_CHANGE_RATE,
     MIN_CHANGE_RATE,
 )
-from sampletones_core.project import ProjectSettings
+from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.constants.project import (
     MAX_ROWS_PER_PATTERN,
     MAX_SPEED,

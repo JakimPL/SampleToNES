@@ -3,7 +3,7 @@ from datetime import timezone
 import pytest
 from pydantic import ValidationError
 
-from sampletones_core.project import ProjectInfo
+from sampletones_core.project.info import ProjectInfo
 
 
 class TestTimestamps:

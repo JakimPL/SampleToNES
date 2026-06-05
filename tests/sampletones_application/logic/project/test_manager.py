@@ -8,7 +8,7 @@ class TestProjectManager:
     def test_starts_with_a_clean_default_project(self) -> None:
         manager = ProjectManager()
         assert set(manager.current.song.channels) == set(GeneratorName.items())
-        assert len(manager.current.instruments) == 0
+        assert len(manager.current.samples) == 0
         assert manager.is_dirty is False
 
     def test_mark_updated_sets_dirty(self) -> None:
@@ -21,7 +21,7 @@ class TestProjectManager:
         manager.mark_updated()
         manager.new()
         assert manager.is_dirty is False
-        assert len(manager.current.instruments) == 0
+        assert len(manager.current.samples) == 0
 
     def test_save_load_round_trip(self, tmp_path: Path) -> None:
         manager = ProjectManager()
