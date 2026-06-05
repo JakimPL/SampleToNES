@@ -1,4 +1,5 @@
 from .channel import Channel
+from .container import ProjectContainer
 from .info import ProjectInfo
 from .pattern import Pattern
 from .project import Project
@@ -9,6 +10,7 @@ from .subinstrument import Subinstrument
 
 __all__ = [
     "Project",
+    "ProjectContainer",
     "ProjectInfo",
     "ProjectSettings",
     "Song",
