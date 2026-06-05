@@ -11,11 +11,10 @@ from .pattern import Pattern
 class Channel:
     """One NES channel track.
 
-    Owns a private pool of patterns (reusable within the channel, never shared
-    across channels) and an order list that arranges them into the song. The
-    order references patterns by their stable ``id``, so reordering the pool
-    never invalidates the arrangement. The same pattern id may appear multiple
-    times in the order (reuse).
+    Owns a private pool of patterns, reusable within the channel and an order
+    list that arranges them into the song. The order references patterns by
+    their ``id``, so reordering the pool never invalidates the arrangement.
+    The same pattern id may appear multiple times in the order.
     """
 
     def __init__(

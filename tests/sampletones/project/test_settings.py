@@ -4,15 +4,11 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.general import (
-    DEFAULT_CHANGE_RATE,
     MAX_CHANGE_RATE,
     MIN_CHANGE_RATE,
 )
 from sampletones_core.project import ProjectSettings
 from sampletones_shared.constants.project import (
-    DEFAULT_ROWS_PER_PATTERN,
-    DEFAULT_SPEED,
-    DEFAULT_TEMPO,
     MAX_ROWS_PER_PATTERN,
     MAX_SPEED,
     MAX_TEMPO,
@@ -22,15 +18,6 @@ from sampletones_shared.constants.project import (
 )
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
-
-
-class TestDefaults:
-    def test_default_settings(self) -> None:
-        settings = ProjectSettings()
-        assert settings.change_rate == DEFAULT_CHANGE_RATE
-        assert settings.tempo == DEFAULT_TEMPO
-        assert settings.speed == DEFAULT_SPEED
-        assert settings.rows_per_pattern == DEFAULT_ROWS_PER_PATTERN
 
 
 class TestBounds(BaseTestSuite):

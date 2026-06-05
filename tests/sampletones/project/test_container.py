@@ -8,13 +8,13 @@ from sampletones_core.project import (
     Project,
     ProjectContainer,
     Row,
-    Subinstrument,
+    SubInstrument,
 )
-from sampletones_core.project.container import (
+from sampletones_core.sequencer import Instrument
+from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
 )
-from sampletones_core.sequencer import Instrument
 
 
 def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
@@ -31,7 +31,7 @@ def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
     pattern.name = "intro"
     pattern.rows[0] = Row(
         pitch=60,
-        subinstrument=Subinstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1),
+        subinstrument=SubInstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1),
         volume=15,
     )
 
@@ -49,6 +49,7 @@ class TestRoundTrip:
         ProjectContainer.save(project, path)
         loaded = ProjectContainer.load(path)
 
+        assert loaded.metadata == project.metadata
         assert loaded.info.title == project.info.title
         assert loaded.settings.tempo == 128
         assert [instrument.id for instrument in loaded.instruments] == [

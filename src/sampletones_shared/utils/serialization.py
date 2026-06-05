@@ -4,7 +4,7 @@ import json
 from collections.abc import Hashable
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, Final, List, Union
 
 import numpy as np
 import yaml
@@ -14,8 +14,8 @@ from sampletones_shared.types.array import Array
 from sampletones_shared.types.data import ModelHashable, SerializedData
 from sampletones_shared.types.path import Pathlike
 
-JSON_INDENT = 2
-HASH_LENGTH = 32
+JSON_INDENT: Final[int] = 2
+HASH_LENGTH: Final[int] = 32
 
 
 def dump(data: Any) -> str:

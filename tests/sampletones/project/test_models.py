@@ -4,16 +4,16 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project import Row, Subinstrument
+from sampletones_core.project import Row, SubInstrument
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
 
 
-def _subinstrument() -> Subinstrument:
-    return Subinstrument(instrument_id="abc123", generator_name=GeneratorName.TRIANGLE)
+def _subinstrument() -> SubInstrument:
+    return SubInstrument(instrument_id="abc123", generator_name=GeneratorName.TRIANGLE)
 
 
-class TestSubinstrument:
+class TestSubInstrument:
     def test_is_frozen(self) -> None:
         subinstrument = _subinstrument()
         with pytest.raises(ValidationError):
@@ -26,13 +26,13 @@ class TestSubinstrument:
         assert hash(first) == hash(second)
 
     def test_distinct_slices_differ(self) -> None:
-        triangle = Subinstrument(instrument_id="abc", generator_name=GeneratorName.TRIANGLE)
-        noise = Subinstrument(instrument_id="abc", generator_name=GeneratorName.NOISE)
+        triangle = SubInstrument(instrument_id="abc", generator_name=GeneratorName.TRIANGLE)
+        noise = SubInstrument(instrument_id="abc", generator_name=GeneratorName.NOISE)
         assert triangle != noise
 
     def test_round_trip(self) -> None:
         subinstrument = _subinstrument()
-        restored = Subinstrument.model_validate(subinstrument.model_dump())
+        restored = SubInstrument.model_validate(subinstrument.model_dump())
         assert restored == subinstrument
 
 

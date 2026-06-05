@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.enums import GeneratorName
 
 
-class Subinstrument(BaseModel):
+class SubInstrument(BaseModel):
     """A reference to a single NES-channel slice of an instrument's reconstruction.
 
     A reconstruction may span up to four channels (two pulse, triangle, noise).

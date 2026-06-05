@@ -27,4 +27,5 @@ class TaskProgress(BaseModel):
     def get_progress(self) -> float:
         if self.total == 0:
             return 0.0
+
         return self.completed / self.total

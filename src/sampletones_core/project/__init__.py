@@ -1,12 +1,12 @@
-from .channel import Channel
 from .container import ProjectContainer
 from .info import ProjectInfo
-from .pattern import Pattern
+from .patterns.channel import Channel
+from .patterns.pattern import Pattern
+from .patterns.row import Row
+from .patterns.subinstrument import SubInstrument
 from .project import Project
-from .row import Row
 from .settings import ProjectSettings
 from .song import Song
-from .subinstrument import Subinstrument
 
 __all__ = [
     "Project",
@@ -17,5 +17,5 @@ __all__ = [
     "Channel",
     "Pattern",
     "Row",
-    "Subinstrument",
+    "SubInstrument",
 ]

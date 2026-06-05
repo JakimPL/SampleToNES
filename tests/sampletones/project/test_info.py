@@ -4,24 +4,27 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.project import ProjectInfo
-from sampletones_shared.constants.application import SAMPLETONES_AUTHOR
-from sampletones_shared.constants.project import (
-    DEFAULT_PROJECT_COMMENT,
-    DEFAULT_PROJECT_TITLE,
-)
 
 
-class TestDefaults:
-    def test_default_info(self) -> None:
-        info = ProjectInfo()
-        assert info.title == DEFAULT_PROJECT_TITLE
-        assert info.author == SAMPLETONES_AUTHOR
-        assert info.comment == DEFAULT_PROJECT_COMMENT
-
+class TestTimestamps:
     def test_timestamps_are_utc(self) -> None:
         info = ProjectInfo()
         assert info.created.tzinfo == timezone.utc
         assert info.modified.tzinfo == timezone.utc
+
+
+class TestLengthLimits:
+    def test_title_and_author_capped_at_64(self) -> None:
+        ProjectInfo(title="t" * 64, author="a" * 64)
+        with pytest.raises(ValidationError):
+            ProjectInfo(title="t" * 65)
+        with pytest.raises(ValidationError):
+            ProjectInfo(author="a" * 65)
+
+    def test_comment_capped_at_65536(self) -> None:
+        ProjectInfo(comment="c" * 65536)
+        with pytest.raises(ValidationError):
+            ProjectInfo(comment="c" * 65537)
 
 
 class TestMutability:

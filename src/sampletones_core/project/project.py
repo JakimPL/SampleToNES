@@ -5,6 +5,7 @@ from typing import Optional
 from sampletones_core.data import Metadata
 from sampletones_core.sequencer.instrument import Instrument
 from sampletones_core.structures import IndexedCollection
+from sampletones_shared.constants.project import DEFAULT_PROJECT_AUTHOR, DEFAULT_PROJECT_COMMENT, DEFAULT_PROJECT_TITLE
 
 from .info import ProjectInfo
 from .settings import ProjectSettings
@@ -35,9 +36,22 @@ class Project:
         self.song: Song = song
 
     @classmethod
-    def create(cls, title: str = "") -> Project:
-        settings = ProjectSettings()
-        info = ProjectInfo(title=title)
+    def create(
+        cls,
+        *,
+        title: str = DEFAULT_PROJECT_TITLE,
+        author: str = DEFAULT_PROJECT_AUTHOR,
+        comment: str = DEFAULT_PROJECT_COMMENT,
+        settings: Optional[ProjectSettings] = None,
+    ) -> Project:
+        if settings is None:
+            settings = ProjectSettings()
+
+        info = ProjectInfo(
+            title=title,
+            author=author,
+            comment=comment,
+        )
         return cls(
             metadata=Metadata.default(),
             info=info,

@@ -11,7 +11,7 @@ from sampletones_core.project import (
     Project,
     Row,
     Song,
-    Subinstrument,
+    SubInstrument,
 )
 from sampletones_core.sequencer import Instrument
 from sampletones_core.structures import IndexedCollection
@@ -98,7 +98,7 @@ class PatternContext:
 class InstrumentContext:
     project: Project
     instrument: Instrument
-    subinstrument: Subinstrument
+    subinstrument: SubInstrument
     resolved: Dict[str, Instrument] = field(default_factory=dict)
 
 
@@ -147,7 +147,7 @@ class TestReferenceIntegrity:
         first = _instrument("first")
         second = _instrument("second")
         project.instruments.extend([first, second])
-        subinstrument = Subinstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1)
+        subinstrument = SubInstrument(instrument_id=first.id, generator_name=GeneratorName.PULSE1)
         return InstrumentContext(project=project, instrument=first, subinstrument=subinstrument)
 
     def test_subinstrument_survives_instrument_reorder(self) -> None:

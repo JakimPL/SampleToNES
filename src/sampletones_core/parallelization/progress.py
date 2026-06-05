@@ -1,8 +1,8 @@
 from collections import deque
 from time import monotonic
-from typing import Deque, Optional, Tuple, Union
+from typing import Deque, Final, Optional, Tuple, Union
 
-ESTIMATION_MEASUREMENTS_SAMPLES = 0.05
+ESTIMATION_MEASUREMENTS_SAMPLES: Final[float] = 0.05
 
 
 class ETAEstimator:

@@ -4,7 +4,7 @@ from typing import Dict
 
 from sampletones_core.constants.enums import GeneratorName
 
-from .channel import Channel
+from .patterns.channel import Channel
 
 
 class Song:

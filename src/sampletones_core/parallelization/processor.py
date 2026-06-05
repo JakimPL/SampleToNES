@@ -2,23 +2,25 @@ import multiprocessing
 import threading
 from abc import ABC, abstractmethod
 from concurrent.futures._base import CancelledError
-from typing import Any, Callable, Generic, List, Optional, TypeVar, Union
+from typing import Any, Callable, Final, Generic, List, Optional, TypeVar, Union
 
 from pebble import ProcessMapFuture, ProcessPool
 
 from sampletones_core.constants.general import MAX_WORKERS
+from sampletones_core.parallelization.task import (
+    TaskProgress,
+    TaskStatus,
+)
 from sampletones_shared.logger import LoggerProtocol
 from sampletones_shared.logger import logger as default_logger
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 
-from .task import TaskProgress, TaskStatus
-
 T = TypeVar("T")
 
-TIMEOUT = 1
-CANCEL_TIMEOUT = 5
-STOP_TIMEOUT = 2
+TIMEOUT: Final[float] = 1.0
+CANCEL_TIMEOUT: Final[float] = 5.0
+STOP_TIMEOUT: Final[float] = 2.0
 
 
 class TaskProcessor(ABC, CallbackMixin, Generic[T]):
