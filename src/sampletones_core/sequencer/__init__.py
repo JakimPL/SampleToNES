@@ -4,6 +4,7 @@ from .display import (
     display_transpose,
     display_volume,
 )
+from .instrument import Instrument
 from .rows.generator import GeneratorRow
 from .rows.sample import SampleRow
 from .sequence import Sequence
@@ -13,6 +14,7 @@ from .types import RowT
 __all__ = [
     "Sequencer",
     "Sequence",
+    "Instrument",
     "GeneratorRow",
     "SampleRow",
     "display_pitch",
