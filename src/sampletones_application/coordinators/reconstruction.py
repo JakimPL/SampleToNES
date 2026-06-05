@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -17,6 +17,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
+from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
@@ -36,9 +37,6 @@ from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
-
-if TYPE_CHECKING:
-    from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 
 
 class ReconstructionCoordinator:
@@ -76,13 +74,14 @@ class ReconstructionCoordinator:
             on_reconstruction_closed=self._on_closed,
         )
 
-    def set_reconstructions_tab(self, tab: "ReconstructionsTabCoordinator") -> None:
+    def set_reconstructions_tab(self, tab: ReconstructionsTabCoordinator) -> None:
         self._reconstructions_tab = tab
 
     @property
-    def _tab(self) -> "ReconstructionsTabCoordinator":
+    def _tab(self) -> ReconstructionsTabCoordinator:
         if self._reconstructions_tab is None:
             raise RuntimeError("set_reconstructions_tab has not been called")
+
         return self._reconstructions_tab
 
     @property
@@ -100,6 +99,7 @@ class ReconstructionCoordinator:
             logger.warning("No reconstruction loaded; cannot proceed")
             self._dialogs.show_reconstruction_not_loaded()
             return False
+
         return True
 
     def save_as_dialog(self) -> None:

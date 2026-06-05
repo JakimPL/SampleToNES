@@ -26,6 +26,7 @@ from sampletones_application.coordinators.reconstructions import Reconstructions
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
@@ -45,7 +46,10 @@ from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import FeatureKey, GeneratorName
+from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
+from sampletones_core.types.feature import FeatureValue
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -80,6 +84,7 @@ class Application:
         self.export_service: ExportService = ExportService(priority=_priority)
 
         self.project_manager: ProjectManager = ProjectManager()
+        self.project_controller: ProjectController = ProjectController(self.project_manager)
 
         self.fps_timer: FPSTimer = FPSTimer()
 
@@ -150,7 +155,7 @@ class Application:
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
-            on_reconstruction_instrument_updated=self._reconstruction_coordinator.regenerate_instrument,
+            on_reconstruction_instrument_updated=self._regenerate_instrument,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -176,10 +181,12 @@ class Application:
             audio_device_manager=self.audio_device_manager,
             shortcut_manager=self.shortcut_manager,
             browser_manager=self.browser_manager,
+            project_controller=self.project_controller,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
         )
+        self._sequencer_tab.on_edit_sample_requested = self._edit_project_sample
 
         self._playback_router = PlaybackRouter(
             current_player_fn=self._get_current_player,
@@ -250,6 +257,7 @@ class Application:
         )
         self._set_callbacks()
         self._main_tab.emit_initial_view()
+        self._sequencer_tab.initialize()
         self.config_manager.update_gui()
         self._update_menu()
         self._shell.restore_current_items(self.reconstruction_manager)
@@ -374,6 +382,38 @@ class Application:
     def _on_converted_reconstruction_loaded(self, filepath: Path) -> None:
         self._reconstructions_tab.refresh_browser()
         self._reconstruction_coordinator.load_with_confirmation(filepath)
+
+    def _edit_project_sample(self, sample_id: str) -> None:
+        """Opens a project sample's reconstruction in the reconstruction tab.
+
+        The reconstruction manager wraps the sample's own reconstruction object,
+        so edits made in the tab mutate the sample in place (live-linked). The
+        existing reconstruction-loaded flow handles display and the tab switch.
+        """
+        sample = self.project_manager.current.sample(sample_id)
+        if sample is None:
+            logger.warning(f"Cannot edit unknown project sample: {sample_id}")
+            return
+
+        self.reconstruction_manager.load_reconstruction_object(sample.reconstruction)
+
+    def _regenerate_instrument(
+        self,
+        generator_name: GeneratorName,
+        features: Features,
+        feature_key: FeatureKey,
+        feature_value: FeatureValue,
+    ) -> None:
+        self._reconstruction_coordinator.regenerate_instrument(generator_name, features, feature_key, feature_value)
+        if self._editing_project_sample():
+            self.project_controller.mark_updated()
+
+    def _editing_project_sample(self) -> bool:
+        reconstruction = self.reconstruction_manager.reconstruction
+        if reconstruction is None:
+            return False
+
+        return any(sample.reconstruction is reconstruction for sample in self.project_manager.current.samples)
 
     def _on_reconstruction_state_changed(self) -> None:
         self._viewport_manager.update_title(

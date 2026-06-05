@@ -1,9 +1,12 @@
+from typing import Callable, Optional
+
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
+    SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_SEQUENCER,
 )
@@ -16,6 +19,8 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_shared.types.application import Sender
 
 
 class GUISequencerSamplesPanel(GUIPanel):
@@ -26,6 +31,9 @@ class GUISequencerSamplesPanel(GUIPanel):
         language_manager: LanguageManager,
     ) -> None:
         self._layout = layout
+        self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
+        self.on_sample_selected: Optional[Callable[[str], None]] = None
+        self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -62,6 +70,11 @@ class GUISequencerSamplesPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_samples_table()
+        self._create_row_handlers()
+
+    def _create_row_handlers(self) -> None:
+        with dpg.item_handler_registry(tag=self._row_handler_tag):
+            dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(self._lbl_instruments)
@@ -97,3 +110,27 @@ class GUISequencerSamplesPanel(GUIPanel):
                     label=self._lbl_column_name,
                     init_width_or_weight=self._layout.table_cells.instrument_name,
                 )
+
+    def update_view(self, view_model: SequencerSamplesViewModel) -> None:
+        dpg.delete_item(TAG_SEQUENCER_INSTRUMENTS_TABLE, children_only=True, slot=1)
+        for position, entry in enumerate(view_model.samples):
+            with dpg.table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE):
+                with dpg.table_cell():
+                    dpg.add_text(f"{position:02d}")
+                with dpg.table_cell():
+                    name_item = dpg.add_selectable(
+                        label=entry.name,
+                        user_data=entry.sample_id,
+                        callback=self._on_sample_selected,
+                    )
+                    FontRegistry.bind_to_item(name_item, Font.REGULAR_SMALL)
+                    dpg.bind_item_handler_registry(name_item, self._row_handler_tag)
+
+    def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: str) -> None:
+        self.call(self.on_sample_selected, user_data)
+
+    def _on_sample_double_clicked(self, sender: Sender, app_data: list[int]) -> None:
+        clicked_item = app_data[1]
+        sample_id = dpg.get_item_user_data(clicked_item)
+        if isinstance(sample_id, str):
+            self.call(self.on_sample_edit_requested, sample_id)

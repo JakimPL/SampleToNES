@@ -23,6 +23,29 @@ class ReconstructionData:
     @classmethod
     def load(cls, path: Path) -> Self:
         reconstruction = Reconstruction.load(path)
+        return cls._assemble(reconstruction, filepath=path)
+
+    @classmethod
+    def from_reconstruction(cls, reconstruction: Reconstruction) -> Self:
+        """Wraps an already in-memory reconstruction without reading from disk.
+
+        Used to live-link a project sample into the reconstruction tab: the tab
+        edits the very same object the sample holds, so changes propagate without
+        a save/reload. The ``filepath`` falls back to the source audio path since
+        a project sample has no standalone reconstruction file.
+        """
+        return cls._assemble(
+            reconstruction,
+            filepath=reconstruction.audio_filepath,
+        )
+
+    @classmethod
+    def _assemble(
+        cls,
+        reconstruction: Reconstruction,
+        *,
+        filepath: Path,
+    ) -> Self:
         audio_filepath = reconstruction.audio_filepath
         sample_rate = reconstruction.config.library.sample_rate
         normalize = reconstruction.config.general.normalize
@@ -52,7 +75,7 @@ class ReconstructionData:
             reconstruction=reconstruction,
             original_audio=original_audio,
             feature_data=feature_data,
-            filepath=path,
+            filepath=filepath,
         )
 
     def get_partials(self, generator_names: List[GeneratorName]) -> np.ndarray:
