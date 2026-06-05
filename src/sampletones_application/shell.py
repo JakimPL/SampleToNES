@@ -9,6 +9,10 @@ from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
     TAG_GLOBAL_STATUS_WINDOW,
+    TAG_GLOBAL_TAB_INSTRUCTIONS,
+    TAG_GLOBAL_TAB_MAIN,
+    TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
     TAG_GLOBAL_WINDOW_MAIN,
 )
@@ -37,6 +41,17 @@ from sampletones_application.viewport import ViewportManager
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
+
+# The DearPyGui tab items are created and persisted under their TAG_GLOBAL_TAB_*
+# tags, so the logical Tab enum must be translated to those tags before driving
+# the tab bar (and back when routing by the current tab).
+_TAB_TAGS: dict[str, str] = {
+    Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
+    Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    Tab.SEQUENCER: TAG_GLOBAL_TAB_SEQUENCER,
+    Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
+}
+_TAG_TABS: dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
 
 
 @dataclass(frozen=True)
@@ -300,9 +315,17 @@ class ApplicationShell:
     def open_audio_settings(self) -> None:
         self._audio_settings_window.show()
 
-    def set_current_tab(self, tab_tag: str) -> None:
-        dpg_set_value(TAG_GLOBAL_TABS, tab_tag)
-        self._session_manager.set_current_tab(tab_tag)
+    def set_current_tab(self, tab: str) -> None:
+        """Selects a tab from a :class:`Tab` value (or a raw tab tag).
+
+        Callers switch tabs with the logical :class:`Tab` enum, but the tab bar is
+        keyed by the ``TAG_GLOBAL_TAB_*`` tags, so the value is resolved through
+        the mapping. A value that is already a tab tag passes through unchanged,
+        keeping it compatible with the persisted session tag.
+        """
+        resolved = _TAB_TAGS.get(tab, tab)
+        dpg_set_value(TAG_GLOBAL_TABS, resolved)
+        self._session_manager.set_current_tab(resolved)
 
     def get_current_tab(self) -> str:
         current_tab = dpg.get_value(TAG_GLOBAL_TABS)
@@ -310,7 +333,7 @@ class ApplicationShell:
         return alias
 
     def get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
-        match self.get_current_tab():
+        match _TAG_TABS.get(self.get_current_tab()):
             case Tab.RECONSTRUCTIONS:
                 return self._reconstructions_tab.player_panel
             case Tab.INSTRUCTIONS:

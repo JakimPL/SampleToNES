@@ -34,7 +34,10 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.view_model.sequencer.grid import SequencerGridViewModel
+from sampletones_application.view_model.sequencer.grid import (
+    SequencerGridViewModel,
+    SequencerRowViewModel,
+)
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
@@ -329,33 +332,40 @@ class GUISequencerGridPanel(GUIPanel):
         self._rows = {}
 
         for row in view_model.rows:
-            with dpg.table_row(
-                parent=TAG_SEQUENCER_GRID_TABLE_TRACKER,
-                user_data=row.index,
-            ):
-                with dpg.table_cell():
-                    dpg.add_spacer(width=0)
-                with dpg.table_cell():
-                    selectable = dpg.add_selectable(
-                        label=f"{row.index:02d}",
-                        span_columns=True,
-                        user_data=row.index,
-                    )
-                    FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
-                    dpg.bind_item_handler_registry(
-                        selectable,
-                        self._item_handler_tag,
-                    )
-                    self._rows[row.index] = selectable
-                with dpg.table_cell():
-                    sample_text = dpg.add_selectable(label="")
-                    FontRegistry.bind_to_item(sample_text, Font.BOLD_SMALL)
-                for generator in GeneratorName.items():
-                    with dpg.table_cell():
-                        cell_text = dpg.add_selectable(
-                            label=row.cells[generator].label,
-                        )
-                        FontRegistry.bind_to_item(cell_text, Font.REGULAR_SMALL)
+            self._build_table_row(row)
+
+    def _build_table_row(self, row: SequencerRowViewModel) -> None:
+        """Builds one tracker row with explicit parents.
+
+        Every item passes an explicit ``parent`` instead of relying on ``with``
+        container blocks: the tree browser populates on a worker thread, and the
+        implicit DearPyGui container stack is process-global, so nested ``with``
+        blocks here would race with that concurrent building.
+        """
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_GRID_TABLE_TRACKER, user_data=row.index)
+
+        spacer_cell = dpg.add_table_cell(parent=row_id)
+        dpg.add_spacer(parent=spacer_cell, width=0)
+
+        number_cell = dpg.add_table_cell(parent=row_id)
+        selectable = dpg.add_selectable(
+            parent=number_cell,
+            label=f"{row.index:02d}",
+            span_columns=True,
+            user_data=row.index,
+        )
+        FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
+        dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
+        self._rows[row.index] = selectable
+
+        sample_cell = dpg.add_table_cell(parent=row_id)
+        sample_text = dpg.add_selectable(parent=sample_cell, label="")
+        FontRegistry.bind_to_item(sample_text, Font.BOLD_SMALL)
+
+        for generator in GeneratorName.items():
+            generator_cell = dpg.add_table_cell(parent=row_id)
+            cell_text = dpg.add_selectable(parent=generator_cell, label=row.cells[generator].label)
+            FontRegistry.bind_to_item(cell_text, Font.REGULAR_SMALL)
 
     def _on_change_rate_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_change_rate, app_data)

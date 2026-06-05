@@ -329,8 +329,8 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
             num_buckets=3,
             expected=(
-                np.array([1.0, 1.0, 3.0, 3.0, 5.0, 5.0]),
-                np.array([2.0, 1.5, 4.0, 3.5, 6.0, 5.5]),
+                np.array([0.0, 0.0, 2.0, 2.0, 4.0, 4.0]),
+                np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]),
             ),
         ),
         TestCase(
@@ -338,23 +338,23 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([-5.0, -2.0, 3.0, 7.0]),
             num_buckets=2,
             expected=(
-                np.array([-5.0, -5.0, 3.0, 3.0]),
-                np.array([-2.0, -3.5, 7.0, 5.0]),
+                np.array([0.0, 0.0, 2.0, 2.0]),
+                np.array([-5.0, -2.0, 3.0, 7.0]),
             ),
         ),
         TestCase(
             label="divisible_four_elements_one_bucket",
             data=np.array([1.0, 2.0, 3.0, 4.0]),
             num_buckets=1,
-            expected=(np.array([1.0, 1.0]), np.array([4.0, 2.5])),
+            expected=(np.array([0.0, 0.0]), np.array([1.0, 4.0])),
         ),
         TestCase(
             label="non_divisible_seven_elements_three_buckets",
             data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]),
             num_buckets=3,
             expected=(
-                np.array([1.0, 1.0, 4.0, 4.0, 7.0, 7.0]),
-                np.array([3.0, 2.0, 6.0, 5.0, 7.0, 7.0]),
+                np.array([0.0, 0.0, 2.0, 2.0, 4.0, 4.0]),
+                np.array([1.0, 2.0, 3.0, 4.0, 5.0, 7.0]),
             ),
         ),
         TestCase(
@@ -362,8 +362,8 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
             num_buckets=2,
             expected=(
-                np.array([10.0, 10.0, 40.0, 40.0]),
-                np.array([30.0, 20.0, 50.0, 45.0]),
+                np.array([0.0, 0.0, 2.0, 2.0]),
+                np.array([10.0, 20.0, 30.0, 50.0]),
             ),
         ),
         TestCase(
@@ -371,8 +371,26 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([-10.0, -5.0, 0.0, 5.0, 10.0]),
             num_buckets=2,
             expected=(
-                np.array([-10.0, -10.0, 5.0, 5.0]),
-                np.array([0.0, -5.0, 10.0, 7.5]),
+                np.array([0.0, 0.0, 2.0, 2.0]),
+                np.array([-10.0, -5.0, 0.0, 10.0]),
+            ),
+        ),
+        TestCase(
+            label="non_divisible_five_elements_four_buckets",
+            data=np.array([10.0, 20.0, 30.0, 40.0, 50.0]),
+            num_buckets=4,
+            expected=(
+                np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 3.0]),
+                np.array([10.0, 10.0, 20.0, 20.0, 30.0, 30.0, 40.0, 50.0]),
+            ),
+        ),
+        TestCase(
+            label="non_divisible_ten_elements_seven_buckets",
+            data=np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]),
+            num_buckets=7,
+            expected=(
+                np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0, 4.0, 4.0, 5.0, 5.0, 7.0, 7.0, 8.0, 8.0]),
+                np.array([1.0, 1.0, 2.0, 2.0, 3.0, 4.0, 5.0, 5.0, 6.0, 7.0, 8.0, 8.0, 9.0, 10.0]),
             ),
         ),
         TestCase(
@@ -380,7 +398,7 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([5.0, 5.0, 5.0, 5.0]),
             num_buckets=2,
             expected=(
-                np.array([5.0, 5.0, 5.0, 5.0]),
+                np.array([0.0, 0.0, 2.0, 2.0]),
                 np.array([5.0, 5.0, 5.0, 5.0]),
             ),
         ),
@@ -388,7 +406,7 @@ class TestMinmaxDecimate(BaseTestSuite):
             label="single_value_one_bucket",
             data=np.array([1.0]),
             num_buckets=1,
-            expected=(np.array([1.0, 1.0]), np.array([1.0, 1.0])),
+            expected=(np.array([0.0, 0.0]), np.array([1.0, 1.0])),
         ),
         TestCase(
             label="empty_array_zero_case",
@@ -404,7 +422,7 @@ class TestMinmaxDecimate(BaseTestSuite):
             data=np.array([1.0, 2.0, 3.0]),
             num_buckets=10,
             expected=(
-                np.array([1.0, 1.0, 2.0, 2.0, 3.0, 3.0]),
+                np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0]),
                 np.array([1.0, 1.0, 2.0, 2.0, 3.0, 3.0]),
             ),
         ),

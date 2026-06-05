@@ -11,6 +11,7 @@
 * Tree navigation using keys
 * Waveform LOD for zooming
 * About panel
+* Gray out reconstruction when in progress
 
 ### Workflow
 
@@ -23,8 +24,8 @@
 * Code documentation (docstrings)
 * Backward compatibility: library/reconstruction upgrade scheme
 * Improved library file managing
-* Heavy tasks offloaded to services (regeneration, library creation, reconstruction)
 
 ## Bugs
 
 * No error message while loading a corrupt library
+* Finished unclosed reconstruction prompts before exiting

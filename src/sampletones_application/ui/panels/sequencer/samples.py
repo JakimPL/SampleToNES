@@ -112,19 +112,28 @@ class GUISequencerSamplesPanel(GUIPanel):
                 )
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
+        """Rebuilds the samples table with explicit parents.
+
+        Items pass an explicit ``parent`` rather than nesting ``with`` blocks: the
+        browser tree builds on a worker thread and the DearPyGui container stack
+        is process-global, so ``with`` blocks here would race with it.
+        """
         dpg.delete_item(TAG_SEQUENCER_INSTRUMENTS_TABLE, children_only=True, slot=1)
         for position, entry in enumerate(view_model.samples):
-            with dpg.table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE):
-                with dpg.table_cell():
-                    dpg.add_text(f"{position:02d}")
-                with dpg.table_cell():
-                    name_item = dpg.add_selectable(
-                        label=entry.name,
-                        user_data=entry.sample_id,
-                        callback=self._on_sample_selected,
-                    )
-                    FontRegistry.bind_to_item(name_item, Font.REGULAR_SMALL)
-                    dpg.bind_item_handler_registry(name_item, self._row_handler_tag)
+            row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
+
+            position_cell = dpg.add_table_cell(parent=row_id)
+            dpg.add_text(f"{position:02d}", parent=position_cell)
+
+            name_cell = dpg.add_table_cell(parent=row_id)
+            name_item = dpg.add_selectable(
+                parent=name_cell,
+                label=entry.name,
+                user_data=entry.sample_id,
+                callback=self._on_sample_selected,
+            )
+            FontRegistry.bind_to_item(name_item, Font.REGULAR_SMALL)
+            dpg.bind_item_handler_registry(name_item, self._row_handler_tag)
 
     def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: str) -> None:
         self.call(self.on_sample_selected, user_data)

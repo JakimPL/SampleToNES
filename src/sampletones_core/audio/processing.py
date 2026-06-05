@@ -150,20 +150,18 @@ def minmax_decimate(audio: np.ndarray, num_buckets: int) -> Tuple[np.ndarray, np
 
     length = len(audio)
     num_buckets = min(num_buckets, length)
-    bucket_size = int(np.ceil(length / num_buckets))
 
     data = audio.astype(float)
-    starts = np.arange(num_buckets) * bucket_size
-    bucket_sizes = np.diff(np.append(starts, length))
+    starts = np.arange(num_buckets) * length // num_buckets
 
+    mins = np.minimum.reduceat(data, starts)
     maxs = np.maximum.reduceat(data, starts)
-    means = np.add.reduceat(data, starts) / bucket_sizes
 
     y_values = np.empty(num_buckets * 2, dtype=float)
-    y_values[0::2] = maxs
-    y_values[1::2] = means
+    y_values[0::2] = mins
+    y_values[1::2] = maxs
 
-    return np.repeat(data[starts], 2), y_values
+    return np.repeat(starts.astype(float), 2), y_values
 
 
 def normalize(audio: np.ndarray, nan_value: float = 0.0) -> np.ndarray:
