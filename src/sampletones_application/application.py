@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.global_ import (
     DialogElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
+    MenuElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.key import TextKey
@@ -231,8 +232,6 @@ class Application:
             sequencer_tab=self._sequencer_tab,
             instructions_tab=self._instructions_tab,
         )
-        self._shell.on_menu_state_changed = self._update_menu
-
         self._setup_gui()
         self._load_settings()
 
@@ -262,17 +261,17 @@ class Application:
             export_wav=self._export_reconstruction_wav_dialog,
             export_ftis=self._export_reconstruction_ftis_dialog,
             toggle_fullscreen=self._shell.toggle_fullscreen,
-            toggle_advanced_settings=self._shell.toggle_advanced_settings,
+            toggle_advanced_settings=self._toggle_advanced_settings,
             play=self._play,
             play_from_start=self._play_from_start,
             stop=self._stop,
-            toggle_autoplay=self._shell.toggle_autoplay,
+            toggle_autoplay=self._toggle_autoplay,
         )
         self._shell.setup(
             bindings,
             on_close=self._on_close,
             on_tab_changed=self._on_tab_changed,
-            build_initial_menu_state=self._build_menu_bar_viewmodel,
+            initial_menu_state=self._build_initial_menu_state(),
         )
         self._set_callbacks()
         self._main_tab.emit_initial_view()
@@ -292,6 +291,18 @@ class Application:
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
 
+    def _build_initial_menu_state(self) -> MenuBarViewModel:
+        return MenuBarViewModel(
+            project_open=self.project_manager.is_open,
+            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            play_label=self.language_manager[Page.GLOBAL, Panel.MENU, TextType.LABEL, MenuElements.ITEM_PLAYBACK_PLAY],
+            play_or_pause_enabled=False,
+            stop_enabled=False,
+            autoplay=self.session_manager.autoplay,
+            fullscreen=self.session_manager.fullscreen,
+            advanced_settings=self.session_manager.advanced_settings,
+        )
+
     def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
         return MenuBarViewModel(
             project_open=self.project_manager.is_open,
@@ -306,6 +317,24 @@ class Application:
 
     def _update_menu(self) -> None:
         self._shell.update_menu(self._build_menu_bar_viewmodel())
+
+    def _toggle_autoplay(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self.session_manager.toggle_autoplay()
+        self._update_menu()
+
+    def _toggle_advanced_settings(
+        self,
+        sender: Optional[Sender] = None,
+        app_data: Optional[Any] = None,
+        user_data: Optional[Any] = None,
+    ) -> None:
+        self._main_tab.toggle_advanced_settings()
+        self._update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
         if self._main_tab.is_converter_running():

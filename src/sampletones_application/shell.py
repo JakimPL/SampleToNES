@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -38,7 +38,7 @@ from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback, VoidCallback
+from sampletones_shared.types.callback import Callback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
@@ -109,7 +109,6 @@ class ApplicationShell:
         self._reconstructions_tab = reconstructions_tab
         self._sequencer_tab = sequencer_tab
         self._instructions_tab = instructions_tab
-        self.on_menu_state_changed: Optional[VoidCallback] = None
 
     def setup(
         self,
@@ -117,7 +116,7 @@ class ApplicationShell:
         *,
         on_close: Callback,
         on_tab_changed: Callback,
-        build_initial_menu_state: Callable[[], MenuBarViewModel],
+        initial_menu_state: MenuBarViewModel,
     ) -> None:
         dpg.create_context()
         self._set_fonts()
@@ -126,7 +125,7 @@ class ApplicationShell:
         self._viewport_manager.create_viewport()
         self._setup_dearpygui()
         self._setup_handlers()
-        self._create_main_window(on_tab_changed, build_initial_menu_state())
+        self._create_main_window(on_tab_changed, initial_menu_state)
         self._start_callback_worker()
         dpg.set_exit_callback(on_close)
 
@@ -376,23 +375,3 @@ class ApplicationShell:
         user_data: Optional[Any] = None,
     ) -> None:
         self._viewport_manager.toggle_fullscreen()
-
-    def toggle_autoplay(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._session_manager.toggle_autoplay()
-        if self.on_menu_state_changed is not None:
-            self.on_menu_state_changed()
-
-    def toggle_advanced_settings(
-        self,
-        sender: Optional[Sender] = None,
-        app_data: Optional[Any] = None,
-        user_data: Optional[Any] = None,
-    ) -> None:
-        self._main_tab.toggle_advanced_settings()
-        if self.on_menu_state_changed is not None:
-            self.on_menu_state_changed()
