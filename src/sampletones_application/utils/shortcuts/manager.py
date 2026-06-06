@@ -50,6 +50,8 @@ class ShortcutManager:
     def bind_all(self) -> None:
         with dpg.handler_registry() as self._handler_registry:
             for shortcut, callback in self._shortcuts.values():
+                if not shortcut.is_bindable:
+                    continue
 
                 def handler(
                     shortcut: Shortcut,

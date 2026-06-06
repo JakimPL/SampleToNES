@@ -54,7 +54,6 @@ class Tab(StrEnum):
 
 
 class Panel(StrEnum):
-    # Implicit panel (no panel in tag hierarchy, omitted from string representation)
     IMPLICIT = ""
 
     # Global cross-page panels

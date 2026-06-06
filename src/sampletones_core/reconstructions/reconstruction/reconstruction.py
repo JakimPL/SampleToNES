@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import struct
 from functools import cached_property
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Self, Type
@@ -213,7 +214,7 @@ class Reconstruction(DataModel):
 
         try:
             return cls.deserialize(binary, validation=cls.validate_metadata, fast=fast)
-        except (ValidationError, TypeError) as exception:
+        except (ValidationError, TypeError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
                 f"Failed to deserialize ReconstructionData from {Path(path)} due to validation error",
                 exception,

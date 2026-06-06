@@ -217,6 +217,48 @@ TAG_GLOBAL_DIALOG_LOAD_UNSAVED_RECONSTRUCTION = TagName(
     Widget.DIALOG,
     "load_unsaved_reconstruction",
 )
+TAG_GLOBAL_MENU_ITEM_PROJECT_NEW = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_new",
+)
+TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_open",
+)
+TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_save",
+)
+TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_save_as",
+)
+TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.MENU,
+    "item_project_close",
+)
+TAG_GLOBAL_DIALOG_PROJECT_SAVED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "project_saved",
+)
+TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "project_unsaved",
+)
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

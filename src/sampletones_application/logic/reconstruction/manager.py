@@ -69,6 +69,10 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction = self._current_reconstruction.reconstruction
         target_path = filepath or self._current_reconstruction.filepath
+        if target_path is None:
+            logger.warning("Reconstruction has no file path; use 'Save as' to choose one")
+            return
+
         reconstruction.save(target_path)
         logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Self
+from typing import List, Optional, Self
 
 import numpy as np
 
@@ -18,7 +18,7 @@ class ReconstructionData:
     reconstruction: Reconstruction
     original_audio: np.ndarray
     feature_data: FeatureData
-    filepath: Path
+    filepath: Optional[Path]
 
     @classmethod
     def load(cls, path: Path) -> Self:
@@ -27,16 +27,15 @@ class ReconstructionData:
 
     @classmethod
     def from_reconstruction(cls, reconstruction: Reconstruction) -> Self:
-        """Wraps an already in-memory reconstruction without reading from disk.
+        """Wraps an in-memory reconstruction for live-linked editing.
 
-        Used to live-link a project sample into the reconstruction tab: the tab
-        edits the very same object the sample holds, so changes propagate without
-        a save/reload. The ``filepath`` falls back to the source audio path since
-        a project sample has no standalone reconstruction file.
+        The reconstruction tab edits the very same object the project sample
+        holds, so changes propagate without a save/reload. Such a sample has no
+        standalone reconstruction file, hence ``filepath`` is ``None``.
         """
         return cls._assemble(
             reconstruction,
-            filepath=reconstruction.audio_filepath,
+            filepath=None,
         )
 
     @classmethod
@@ -44,7 +43,7 @@ class ReconstructionData:
         cls,
         reconstruction: Reconstruction,
         *,
-        filepath: Path,
+        filepath: Optional[Path],
     ) -> Self:
         audio_filepath = reconstruction.audio_filepath
         sample_rate = reconstruction.config.library.sample_rate

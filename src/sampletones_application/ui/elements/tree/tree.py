@@ -12,6 +12,7 @@ from sampletones_application.categories.elements.global_ import (
     TreeElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.application.manager import SessionManager
 from sampletones_application.constants.general import (
@@ -448,7 +449,7 @@ class GUITreePanel(GUIPanel):
 
     def _generate_node_tag(self, node: TreeNode) -> str:
         path_parts = [ancestor.name for ancestor in node.path]
-        tag = f"{self.tag}_node_{'_'.join(path_parts)}"
+        tag = f"{self.tag}{TAG_SEPARATOR}node_{'_'.join(path_parts)}"
         return tag.replace(" ", "_").lower()
 
     def _add_context_menu_text(self, node: TreeNode) -> None:

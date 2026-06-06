@@ -21,6 +21,7 @@ from sampletones_application.coordinators.playback import (
     AudioPlayerPanelProtocol,
     PlaybackRouter,
 )
+from sampletones_application.coordinators.project import ProjectCoordinator
 from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
@@ -110,6 +111,16 @@ class Application:
             self.theme,
             layout=self.layout.general,
             on_fullscreen_state_changed=self._update_menu,
+        )
+
+        self._project_coordinator = ProjectCoordinator(
+            self.project_controller,
+            self.project_manager,
+            self.session_manager,
+            dialogs=self.dialogs,
+            language_manager=self.language_manager,
+            layout=self.layout,
+            on_tab_switch=self._set_current_tab,
         )
 
         self._reconstruction_coordinator = ReconstructionCoordinator(
@@ -231,6 +242,11 @@ class Application:
 
     def _setup_gui(self) -> None:
         bindings = ShortcutBindings(
+            new_project=self._project_coordinator.new_with_confirmation,
+            open_project=self._project_coordinator.open_with_confirmation,
+            save_project=self._project_coordinator.save,
+            save_project_as=self._project_coordinator.save_as_dialog,
+            close_project=self._project_coordinator.close_with_confirmation,
             save_reconstruction=self._reconstruction_coordinator.save,
             save_reconstruction_as=self._reconstruction_coordinator.save_as_dialog,
             load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,

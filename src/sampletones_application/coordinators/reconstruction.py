@@ -301,7 +301,8 @@ class ReconstructionCoordinator:
         self._tab.display_reconstruction()
         self._session_manager.set_current_reconstruction(filepath)
         self._on_tab_switch(Tab.RECONSTRUCTIONS)
-        self._reconstruction_session.mark_loaded(filepath.stem)
+        name = filepath.stem if filepath is not None else reconstruction_data.reconstruction.audio_filepath.stem
+        self._reconstruction_session.mark_loaded(name)
 
     def _on_closed(self) -> None:
         self._tab.close_reconstruction()

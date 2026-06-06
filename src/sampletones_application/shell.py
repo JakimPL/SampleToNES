@@ -42,9 +42,6 @@ from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
-# The DearPyGui tab items are created and persisted under their TAG_GLOBAL_TAB_*
-# tags, so the logical Tab enum must be translated to those tags before driving
-# the tab bar (and back when routing by the current tab).
 _TAB_TAGS: dict[str, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
     Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTIONS,
@@ -56,6 +53,11 @@ _TAG_TABS: dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
 
 @dataclass(frozen=True)
 class ShortcutBindings:
+    new_project: Callback
+    open_project: Callback
+    save_project: Callback
+    save_project_as: Callback
+    close_project: Callback
     save_reconstruction: Callback
     save_reconstruction_as: Callback
     load_reconstruction: Callback
@@ -142,33 +144,58 @@ class ApplicationShell:
 
     def _register_shortcuts(self, bindings: ShortcutBindings) -> None:
         self._shortcut_manager.register(
-            ShortcutId.SAVE_RECONSTRUCTION,
+            ShortcutId.NEW_PROJECT,
+            Shortcut(dpg.mvKey_N, (Modifier.CTRL,)),
+            bindings.new_project,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.OPEN_PROJECT,
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            bindings.open_project,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.SAVE_PROJECT,
             Shortcut(dpg.mvKey_S, (Modifier.CTRL,)),
+            bindings.save_project,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.SAVE_PROJECT_AS,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            bindings.save_project_as,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.CLOSE_PROJECT,
+            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            bindings.close_project,
+        )
+        self._shortcut_manager.register(
+            ShortcutId.SAVE_RECONSTRUCTION,
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
             bindings.save_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_RECONSTRUCTION_AS,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.SHIFT)),
+            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT, Modifier.SHIFT)),
             bindings.save_reconstruction_as,
         )
         self._shortcut_manager.register(
             ShortcutId.LOAD_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
             bindings.load_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.CLOSE_RECONSTRUCTION,
-            Shortcut(dpg.mvKey_W, (Modifier.CTRL,)),
+            Shortcut(dpg.mvKey_W, (Modifier.CTRL, Modifier.ALT)),
             bindings.close_reconstruction,
         )
         self._shortcut_manager.register(
             ShortcutId.SAVE_CONFIGURATION,
-            Shortcut(dpg.mvKey_S, (Modifier.CTRL, Modifier.ALT)),
+            Shortcut(),
             bindings.save_config,
         )
         self._shortcut_manager.register(
             ShortcutId.LOAD_CONFIGURATION,
-            Shortcut(dpg.mvKey_O, (Modifier.CTRL, Modifier.ALT)),
+            Shortcut(),
             bindings.load_config,
         )
         self._shortcut_manager.register(

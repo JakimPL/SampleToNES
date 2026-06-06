@@ -11,6 +11,11 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_PLAY_FROM_START,
     TAG_GLOBAL_MENU_ITEM_PLAYBACK_STOP,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_NEW,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
+    TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_CLOSE,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_FTIS,
     TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
@@ -52,6 +57,42 @@ class MenuBar:
             Panel.MENU,
             TextType.LABEL,
             MenuElements.GROUP_CONFIGURATION,
+        ]
+        self._lbl_group_project = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.GROUP_PROJECT,
+        ]
+        self._lbl_item_project_new = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_NEW,
+        ]
+        self._lbl_item_project_open = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_OPEN,
+        ]
+        self._lbl_item_project_save = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_SAVE,
+        ]
+        self._lbl_item_project_save_as = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_SAVE_AS,
+        ]
+        self._lbl_item_project_close = language_manager[
+            Page.GLOBAL,
+            Panel.MENU,
+            TextType.LABEL,
+            MenuElements.ITEM_PROJECT_CLOSE,
         ]
         self._lbl_group_reconstruction = language_manager[
             Page.GLOBAL,
@@ -191,6 +232,34 @@ class MenuBar:
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.EXIT,
                     label=self._lbl_item_exit,
+                )
+            with dpg.menu(label=self._lbl_group_project):
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.NEW_PROJECT,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_NEW,
+                    label=self._lbl_item_project_new,
+                )
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.OPEN_PROJECT,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_OPEN,
+                    label=self._lbl_item_project_open,
+                )
+                dpg.add_separator()
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_PROJECT,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
+                    label=self._lbl_item_project_save,
+                )
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.SAVE_PROJECT_AS,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
+                    label=self._lbl_item_project_save_as,
+                )
+                dpg.add_separator()
+                self._shortcut_manager.add_menu_item(
+                    ShortcutId.CLOSE_PROJECT,
+                    tag=TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
+                    label=self._lbl_item_project_close,
                 )
             with dpg.menu(label=self._lbl_group_reconstruction):
                 self._shortcut_manager.add_menu_item(

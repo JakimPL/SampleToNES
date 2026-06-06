@@ -2,6 +2,11 @@ from enum import Enum
 
 
 class ShortcutId(Enum):
+    NEW_PROJECT = "NewProject"
+    OPEN_PROJECT = "OpenProject"
+    SAVE_PROJECT = "SaveProject"
+    SAVE_PROJECT_AS = "SaveProjectAs"
+    CLOSE_PROJECT = "CloseProject"
     SAVE_CONFIGURATION = "SaveConfiguration"
     LOAD_CONFIGURATION = "LoadConfiguration"
     AUDIO_SETTINGS = "AudioSettings"
