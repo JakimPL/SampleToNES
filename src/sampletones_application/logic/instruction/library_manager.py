@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.manager import ConfigManager
+from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import LibraryGeneratorName

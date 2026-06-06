@@ -11,7 +11,7 @@ from sampletones_application.categories.elements.global_ import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.application.manager import SessionManager
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,

@@ -6,7 +6,7 @@ from sampletones_application.categories.elements.global_ import GlobalDialogTitl
 from sampletones_application.categories.elements.settings import AudioSettingsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.settings import AudioSettingsData
+from sampletones_application.config.audio import AudioSettingsData
 from sampletones_application.constants.settings import (
     FMT_SETTINGS_AUDIO_HZ,
     TAG_SETTINGS_AUDIO_BUTTON_APPLY,

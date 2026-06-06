@@ -9,8 +9,8 @@ from sampletones_application.categories.elements.global_ import (
 from sampletones_application.categories.elements.reconstructions import ReconstructionPanelElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.application.manager import SessionManager
-from sampletones_application.config.manager import ConfigManager
+from sampletones_application.config.managers.config import ConfigManager
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import TAG_GLOBAL_DIALOG_CONFIG_STATUS
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.utils.dialogs import DialogsRenderer

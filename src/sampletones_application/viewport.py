@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 import dearpygui.dearpygui as dpg
 from screeninfo import Monitor, get_monitors
 
-from sampletones_application.config.application.manager import SessionManager
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from sampletones_application.config.manager import ConfigManager
+from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_core.project.instruments.sample import Sample

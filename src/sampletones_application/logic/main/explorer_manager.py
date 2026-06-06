@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 from sampletones_application.categories.elements.global_ import TreeElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.manager import ConfigManager
+from sampletones_application.config.managers.config import ConfigManager
 from sampletones_core.paths import (
     EXT_FILE_LIBRARY,
     EXT_FILE_RECONSTRUCTION,

@@ -15,19 +15,24 @@ from sampletones_application.paths import (
     OUTPUT_DIRECTORY,
 )
 from sampletones_application.utils.dialogs import DialogsRenderer
-
-_MSG_INVALID_ERROR: Final = "Invalid configuration file."
-_MSG_LOAD_ERROR: Final = "Error loading configuration."
-_MSG_SAVE_ERROR: Final = "Error saving configuration."
 from sampletones_core.configs import Config, GeneralConfig
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
+_MSG_INVALID_ERROR: Final = "Invalid configuration file."
+_MSG_LOAD_ERROR: Final = "Error loading configuration."
+_MSG_SAVE_ERROR: Final = "Error saving configuration."
+
 
 class ConfigManager:
-    def __init__(self, config_path: Optional[Path] = None, *, dialogs: DialogsRenderer) -> None:
+    def __init__(
+        self,
+        config_path: Optional[Path] = None,
+        *,
+        dialogs: DialogsRenderer,
+    ) -> None:
         self.config: Config
         self.window: Window
         self._dialogs = dialogs

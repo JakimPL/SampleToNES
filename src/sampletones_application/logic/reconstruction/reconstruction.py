@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Callable, FrozenSet, List, Optional
 
-from sampletones_application.config.application.manager import SessionManager
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.export import ExportService
 from sampletones_application.view_model.reconstruction.data import ReconstructionData

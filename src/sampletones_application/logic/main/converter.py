@@ -5,7 +5,7 @@ from sampletones_application.categories.elements.global_ import GlobalTemplateEl
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.manager import ConfigManager
+from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.services.conversion import ConversionResult, ConversionService
 from sampletones_application.services.result import (

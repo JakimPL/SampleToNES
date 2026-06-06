@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Optional, Set
 
-from sampletones_application.config.application.config import ApplicationConfig
-from sampletones_application.config.application.config_manager import ApplicationConfigManager
-from sampletones_application.config.application.state import ApplicationState
-from sampletones_application.config.application.state_manager import ApplicationStateManager
+from sampletones_application.config.managers.application import ApplicationConfigManager
+from sampletones_application.config.managers.state import ApplicationStateManager
+from sampletones_application.config.session.application.config import ApplicationConfig
+from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
 
@@ -30,7 +30,13 @@ class SessionManager:
         width: int,
         height: int,
     ) -> None:
-        self._config_manager.set_window_state(fullscreen, x, y, width, height)
+        self._state_manager.set_window_state(
+            fullscreen,
+            x,
+            y,
+            width,
+            height,
+        )
 
     def set_current_tab(self, tab: str) -> None:
         self._state_manager.set_current_tab(tab)
@@ -48,40 +54,40 @@ class SessionManager:
         return self._state_manager.load_current_tab()
 
     def set_config_path(self, path: Path) -> None:
-        self._config_manager.set_config_path(path)
+        self._state_manager.set_config_path(path)
 
     def get_config_path(self) -> Path:
-        return self._config_manager.get_config_path()
+        return self._state_manager.get_config_path()
 
     def set_library_path(self, path: Path) -> None:
-        self._config_manager.set_library_path(path)
+        self._state_manager.set_library_path(path)
 
     def get_library_path(self) -> Path:
-        return self._config_manager.get_library_path()
+        return self._state_manager.get_library_path()
 
     def set_instrument_path(self, path: Path) -> None:
-        self._config_manager.set_instrument_path(path)
+        self._state_manager.set_instrument_path(path)
 
     def get_instrument_path(self) -> Path:
-        return self._config_manager.get_instrument_path()
+        return self._state_manager.get_instrument_path()
 
     def set_reconstruction_path(self, path: Path) -> None:
-        self._config_manager.set_reconstruction_path(path)
+        self._state_manager.set_reconstruction_path(path)
 
     def get_reconstruction_path(self) -> Path:
-        return self._config_manager.get_reconstruction_path()
+        return self._state_manager.get_reconstruction_path()
 
     def set_audio_path(self, path: Path) -> None:
-        self._config_manager.set_audio_path(path)
+        self._state_manager.set_audio_path(path)
 
     def get_audio_path(self) -> Path:
-        return self._config_manager.get_audio_path()
+        return self._state_manager.get_audio_path()
 
     def set_project_path(self, path: Path) -> None:
-        self._config_manager.set_project_path(path)
+        self._state_manager.set_project_path(path)
 
     def get_project_path(self) -> Path:
-        return self._config_manager.get_project_path()
+        return self._state_manager.get_project_path()
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
         self._state_manager.set_current_reconstruction(path)
@@ -102,23 +108,23 @@ class SessionManager:
 
     @property
     def fullscreen(self) -> bool:
-        return self._config_manager.fullscreen
+        return self._state_manager.fullscreen
 
     @property
     def window_x(self) -> int:
-        return self._config_manager.window_x
+        return self._state_manager.window_x
 
     @property
     def window_y(self) -> int:
-        return self._config_manager.window_y
+        return self._state_manager.window_y
 
     @property
     def window_width(self) -> int:
-        return self._config_manager.window_width
+        return self._state_manager.window_width
 
     @property
     def window_height(self) -> int:
-        return self._config_manager.window_height
+        return self._state_manager.window_height
 
     @property
     def current_tab(self) -> str:

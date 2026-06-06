@@ -3,6 +3,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_serializer
 
+from sampletones_application.config.session.state.paths import LastPaths
+from sampletones_application.config.session.state.window import WindowState
 from sampletones_application.constants.general import TAG_GLOBAL_TAB_MAIN
 
 
@@ -13,6 +15,10 @@ class ApplicationState(BaseModel):
     ``ApplicationConfig`` which holds explicit user preferences.
     """
 
+    window: WindowState = Field(
+        default_factory=WindowState,
+        description="The state of the main application window.",
+    )
     current_tab: str = Field(
         default=TAG_GLOBAL_TAB_MAIN,
         description="The currently selected tab.",
@@ -32,6 +38,10 @@ class ApplicationState(BaseModel):
     autoplay: bool = Field(
         default=True,
         description="If samples should autoplay when clicked.",
+    )
+    last_paths: LastPaths = Field(
+        default_factory=LastPaths,
+        description="The last used file system paths.",
     )
 
     @field_serializer("current_reconstruction", "current_project")
