@@ -9,29 +9,13 @@ from sampletones_application.utils.dpg import dpg_delete_item
 
 
 class GUIWindow(GUIPanel):
-    """``GUIPanel`` variant for modal windows that are recreated on each appearance.
+    """
+    A ``GUIPanel`` whose widget tree is rebuilt on each appearance.
 
-    Unlike a regular panel (which is created once and toggled with
-    ``show=True/False``), a ``GUIWindow`` is fully deleted from DPG when hidden
-    and rebuilt from scratch when shown.  This is appropriate for dialogs and
-    pop-ups whose content depends on runtime context (e.g. a "Save as" dialog
-    pre-filled with the current filename).
-
-    Responsibilities:
-    - Delete the old widget tree on ``hide()`` (via ``dpg_delete_item``).
-    - Call ``prepare(*args, **kwargs)`` to set instance state that
-      ``create_panel()`` depends on, then rebuild the widget tree on ``show()``.
-    - Centre the window on screen after creation.
-
-    Governing principles:
-    - The two-step ``prepare`` → ``create_panel`` sequence replaces the
-      single-step ``create_panel`` of ``GUIPanel``.  Subclasses must implement
-      ``prepare`` to store any arguments needed by ``create_panel``.
-    - All other ``GUIPanel`` principles apply: no domain state, no direct
-      coordinator calls, DPG confined to ``create_panel()``.
-
-    Dependencies: ``center_item`` (from ``utils/dialogs``),
-    ``dpg_delete_item`` (from ``utils/dpg``).
+    Unlike a standard panel, it is fully deleted from DPG when hidden and
+    recreated when shown — appropriate when content depends on runtime context.
+    The ``prepare`` step captures arguments before the previous tree is torn
+    down.
     """
 
     def center(self) -> None:

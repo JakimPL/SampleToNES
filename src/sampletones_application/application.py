@@ -59,40 +59,18 @@ from sampletones_shared.types.application import Sender
 
 
 class Application:
-    """Composition root of the SampleToNES GUI application.
+    """
+    The composition root of the SampleToNES GUI application.
 
-    ``Application`` is the single object that creates every other major object,
-    wires all inter-component callbacks, and runs the DearPyGui event loop.
-    It is the composition root: nothing outside this class may construct
-    coordinators, managers, or services, and no component receives a dependency
-    it was not given here.
+    ``Application.__init__`` is the only place where components are created and
+    wired together — this concentration makes the dependency graph visible and
+    eliminates hidden coupling.
 
-    Responsibilities:
-    - Instantiate all managers (``ConfigManager``, ``SessionManager``,
-      ``ProjectManager``, ``ReconstructionManager``, …), services
-      (``ConversionService``, ``RegenerationService``, ``ExportService``), and
-      coordinators in the correct dependency order.
-    - Wire cross-coordinator callbacks that cannot be expressed as constructor
-      arguments (e.g. forwarding a converted reconstruction from the Main tab
-      to the Reconstructions tab, or detecting whether a project sample is
-      being edited).
-    - Drive the event loop (``run``): render each DPG frame, drain the
-      ``CallbackQueue``, and update the status bar.
-    - Persist session state (last tab, last reconstruction, audio device,
-      window geometry) on clean exit.
-
-    Governing principles:
-    - Contains no domain logic.  Every decision is delegated to a coordinator,
-      manager, or logic object.
-    - Private methods are either event listeners that forward to coordinators
-      (``_on_project_state_changed``, ``_on_close``) or helpers that coordinate
-      two objects that cannot reference each other directly
-      (``_reconstruct_file``, ``_editing_project_sample``).
-    - Does not call DPG directly except in ``_reconstruct_file_dialog`` and
-      ``_reconstruct_directory_dialog``, which open file dialogs.  These should
-      eventually be moved to a coordinator.
-
-    Dependencies: every class in ``sampletones_application``.
+    Responsibilities and principles of the ``Application class:
+    - It contains no domain logic.
+    - It forwards events between coordinators.
+    - It mediates mutual dependencies between them.
+    - It persists session state on exit.
     """
 
     def __init__(self, config_path: Optional[Path] = None) -> None:
@@ -253,16 +231,16 @@ class Application:
         )
 
         self._shell = ApplicationShell(
-            self.session_manager,
-            self.language_manager,
-            self.shortcut_manager,
-            self.layout,
-            self.theme,
-            self._viewport_manager,
-            self._menu_bar,
-            self.status_bar,
-            self.fps_timer,
-            self.audio_settings_window,
+            session_manager=self.session_manager,
+            language_manager=self.language_manager,
+            shortcut_manager=self.shortcut_manager,
+            layout=self.layout,
+            theme=self.theme,
+            viewport_manager=self._viewport_manager,
+            menu_bar=self._menu_bar,
+            status_bar=self.status_bar,
+            fps_timer=self.fps_timer,
+            audio_settings_window=self.audio_settings_window,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,

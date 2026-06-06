@@ -30,36 +30,13 @@ ConversionResult = Union[
 
 
 class ConversionService(ServiceBase[ConversionResult]):
-    """Async service that converts audio files to reconstructions.
+    """
+    Translates raw ``ReconstructionConverter`` callbacks into a uniform result stream.
 
-    Wraps :class:`~sampletones_core.reconstructions.converter.ReconstructionConverter`
-    (the core-library worker) and translates its callbacks into typed
-    ``ConversionResult`` variants emitted to all subscribers via
-    ``CallbackQueue``.
-
-    Responsibilities:
-    - Start a conversion job for a single file or directory (``start``).
-    - Cancel a running job (``cancel``).
-    - Clean up the underlying converter on application shutdown (``cleanup``).
-    - Forward library-generation progress emitted by ``InstructionsLibraryManager``
-      into the same result stream (``forward_library_progress``), so that the
-      converter panel can display both kinds of progress through a unified view.
-
-    Governing principles:
-    - Does not import from ``ui/``, ``view_model/``, ``coordinators/``, or
-      ``logic/``.
-    - All result delivery goes through ``ServiceBase._emit``, which routes
-      through ``CallbackQueue`` — never direct handler calls from the background
-      thread.
-    - ``start`` is idempotent when a job is already running: it logs a warning
-      and returns without starting a second job.
-
-    Result variants: ``ServiceStarted``, ``ServiceProgress[Path]``,
-    ``ServiceIntermediate[TaskProgress]`` (library generation progress),
-    ``ServiceSuccess[Path]`` (output path), ``ServiceError``, ``ServiceCancelled``.
-
-    Dependencies: ``ReconstructionConverter`` (core), ``ETAEstimator`` (core),
-    ``ServiceBase``, ``CallbackQueue``.
+    This normalises the impedance mismatch between the core converter's ad-hoc
+    callback interface and the subscriber model used throughout the application.
+    Library-generation progress is forwarded through the same stream so the
+    converter panel has a single unified view.
     """
 
     def __init__(self, priority: int = 0) -> None:

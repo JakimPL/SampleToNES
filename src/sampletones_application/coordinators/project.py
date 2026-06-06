@@ -30,32 +30,14 @@ from sampletones_shared.utils.system.paths import get_directory
 
 
 class ProjectCoordinator:
-    """Coordinator for project file I/O and save-confirmation dialogs.
+    """
+    The single owner of project document lifecycle from the user's perspective.
 
-    A project (sequencer song) is a persistent document with an open/dirty/saved
-    lifecycle.  ``ProjectCoordinator`` owns all user-facing operations on that
-    lifecycle: opening, saving, creating a new project, and closing — each with
-    the appropriate save-confirmation dialog when there are unsaved changes.
-
-    Responsibilities:
-    - Present save-confirmation dialogs before replacing or discarding an open
-      project (``new_project_with_confirmation``, ``open_with_confirmation``,
-      ``close_with_confirmation``, ``show_exit_save_confirmation``).
-    - Delegate actual I/O to ``ProjectController`` (mutations) and
-      ``SessionManager`` (path persistence).
-    - Switch to the Sequencer tab after loading or creating a project.
-    - Propagate session state changes to ``Application`` via
-      ``on_session_state_changed``.
-
-    Governing principles:
-    - Does not hold project state.  The truth lives in ``ProjectManager`` and
-      ``ProjectSession``.
-    - DPG calls are confined to file-dialog methods (``save_as_dialog``,
-      ``_open_dialog``) and callbacks decorated with ``@file_dialog_handler``.
-    - Does not import from ``application.py`` or ``shell.py``.
-
-    Dependencies: ``ProjectController``, ``ProjectManager``, ``SessionManager``,
-    ``DialogsRenderer``, ``LanguageManager``, ``LayoutConfig``.
+    - It governs higher-level document operations — opening, saving, creating,
+      closing — each with the appropriate save confirmation when unsaved changes
+      exist.
+    - It is the one place that knows when to ask the user "do you want to save?"
+      and what to do with the answer.
     """
 
     def __init__(

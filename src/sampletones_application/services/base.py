@@ -9,33 +9,15 @@ T = TypeVar("T")
 
 
 class ServiceBase(ABC, Generic[T]):
-    """Abstract base for asynchronous background workers.
+    """
+    The boundary between synchronous application logic and asynchronous computation.
 
-    Services wrap long-running core-library operations (file conversion,
-    waveform regeneration, WAV/FTIS export) and deliver their results to the
-    main thread safely.  They follow a subscriber pattern: interested parties
-    call ``subscribe(handler)`` before the operation starts, and when the
-    operation produces a result the service posts it to ``CallbackQueue`` rather
-    than calling the handler directly.
+    Two properties follow from this design:
 
-    Responsibilities:
-    - Manage a list of result handlers (``subscribe`` / ``unsubscribe``).
-    - Emit typed result values to all subscribers via ``_emit``, which always
-      routes through ``CallbackQueue`` at the configured priority.
-
-    Governing principles:
-    - Services do not import from ``ui/``, ``view_model/``, ``coordinators/``,
-      or ``logic/``.
-    - ``_emit`` must never call a handler directly from a background thread;
-      all delivery goes through ``CallbackQueue.add``.
-    - Result types form a tagged union (``ServiceStarted``, ``ServiceProgress``,
-      ``ServiceSuccess``, ``ServiceError``, ``ServiceCancelled``, and optionally
-      ``ServiceIntermediate``).  Subscribers use ``match`` to handle each case.
-
-    Subclasses implement the actual async operation (``start``, ``cancel``,
-    ``cleanup``) and call ``_emit`` from their internal callbacks.
-
-    Dependencies: ``CallbackQueue``.
+    - *Thread containment* — results are routed through ``CallbackQueue`` so
+      the thread boundary is fully contained and callers never reason about it.
+    - *Exhaustive result types* — result types form a tagged union; subscribers
+      handle each case with ``match``, making incomplete handling a type error.
     """
 
     def __init__(self, priority: int = 0) -> None:

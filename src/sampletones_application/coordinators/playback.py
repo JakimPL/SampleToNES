@@ -20,29 +20,13 @@ class AudioPlayerPanelProtocol(Protocol):
 
 
 class PlaybackRouter:
-    """Routes play/pause/stop commands to whichever tab currently has a player.
+    """
+    Routes global playback commands to whichever tab's player is currently active.
 
-    Multiple tabs (Reconstructions, Instructions, Sequencer) each own an audio
-    player panel.  Global keyboard shortcuts for playback (Space, Shift+Space,
-    Ctrl+Space) should operate on the active tab's player without knowing which
-    tab is active.  ``PlaybackRouter`` encapsulates that dispatch logic.
+    The active player is resolved lazily on each command, so keyboard shortcuts
+    work regardless of which tab is visible.
 
-    Responsibilities:
-    - Forward ``play``, ``play_from_start``, and ``stop`` to the currently
-      active player panel (resolved lazily via ``current_player_fn``).
-    - Compute the correct label for the play/pause menu item
-      (``play_label``: "Play", "Pause", or "Resume" depending on playback state).
-    - Compute ``is_play_enabled`` and ``is_stop_enabled`` for menu bar state.
-
-    Governing principles:
-    - Stateless: holds no playback state of its own.  All state is read
-      from the player panel resolved by ``current_player_fn`` on each call.
-    - Does not import from ``ui/`` or ``logic/`` directly; it communicates
-      with player panels through the ``AudioPlayerPanelProtocol`` structural
-      protocol, keeping the coupling minimal.
-    - Does not call DPG.
-
-    Dependencies: ``AudioPlayerPanelProtocol`` (Protocol), ``LanguageManager``.
+    It holds no playback state of its own.
     """
 
     def __init__(

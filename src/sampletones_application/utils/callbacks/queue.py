@@ -14,33 +14,16 @@ from sampletones_shared.types.callback import Callback, CallbackT
 
 
 class CallbackQueue(metaclass=NonInstantiableMeta):
-    """Thread-safe priority queue that delivers background results to the main thread.
+    """
+    The sole mechanism for delivering background-thread results to the main thread.
 
-    The application runs long-running operations (file conversion, waveform
-    regeneration, export) on background threads.  Those threads must never touch
-    DPG or mutate UI state directly.  ``CallbackQueue`` is the sole mechanism
-    for crossing the thread boundary: a background thread posts a callback with
-    ``add()``, and the main-thread event loop drains the queue each frame.
-
-    Responsibilities:
-    - Accept callbacks posted from any thread (``add``), attaching a priority
-      and an optional frame-delay.
-    - Process due callbacks on the main thread each frame (``process``), in
-      ascending priority order and then insertion order.
-    - Run a background worker thread that continuously processes any ready
-      callbacks (``start`` / ``stop``).
-    - Isolate individual callback failures so that one bad callback cannot
-      prevent subsequent ones from running.
-
-    Governing principles:
-    - Every service result must reach the logic layer through this queue, never
-      by calling a handler directly from the background thread.
-    - Priority values are integers where lower numbers run first.  Coordination
-      priorities are defined in ``LayoutConfig.behavior.scheduling``.
-    - The class is non-instantiable (``NonInstantiableMeta``); all state and
-      methods are class-level.
-
-    Dependencies: ``CallbackTask``, ``CallbackPriority``, ``threading``.
+    - Results are posted with a priority, and the main-thread event loop drains
+      the queue each frame — serialised, ordered, and isolated from the
+      rendering cycle.
+    - Individual failures are caught so that one bad callback cannot block
+      subsequent ones.
+    - Non-instantiable by design: it is a shared execution channel, not a
+      dependency to be injected.
     """
 
     _callbacks: List[CallbackTask] = []

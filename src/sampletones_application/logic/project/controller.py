@@ -15,37 +15,14 @@ from .manager import ProjectManager
 
 
 class ProjectController(CallbackMixin):
-    """Mutation façade over :class:`ProjectManager` with per-mutation callbacks.
+    """
+    The sole write surface for the current project.
 
-    Where ``ProjectManager`` is a passive data owner, ``ProjectController`` is
-    the active write surface: every mutation goes through a named method
-    (``set_title``, ``add_sample``, ``set_row``, …) which applies the change,
-    marks the project dirty, and fires the corresponding typed callback.
-
-    This lets the Sequencer UI (and any other subscriber) react precisely to
-    what changed rather than polling or receiving a single coarse "something
-    changed" signal.
-
-    Responsibilities:
-    - Expose granular mutation methods for all writable project fields.
-    - Call ``_touch()`` on every mutation (marks the project as modified and
-      notifies ``ProjectManager``).
-    - Emit the appropriate callback (``on_project_replaced``, ``on_info_changed``,
-      ``on_settings_changed``, ``on_samples_changed``, ``on_song_changed``) after
-      each mutation.
-    - Provide read-only convenience properties (``project``, ``is_open``,
-      ``is_dirty``) that delegate to the manager.
-
-    Governing principles:
-    - No I/O.  No DPG.  No imports from ``ui/``, ``view_model/``, or
-      ``coordinators/``.
-    - ``_emit`` skips ``None`` callbacks without logging; callback hooks are
-      optional and not all callers subscribe to all signals.
-    - ``mark_updated()`` is for external callers (e.g. ``Application``) that
-      need to mark the project dirty without making a specific mutation — for
-      example, when a project sample's reconstruction is edited in place.
-
-    Dependencies: ``ProjectManager``, ``CallbackMixin``.
+    - Every mutation is atomic: the domain change, the dirty-state notification,
+      and the observer signal always happen together.
+    - Each mutation kind fires a distinct callback so that subscribers can
+      respond precisely to what changed rather than polling or handling
+      a coarse "something changed" event.
     """
 
     def __init__(self, project_manager: ProjectManager) -> None:

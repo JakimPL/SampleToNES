@@ -1,35 +1,17 @@
 from typing import Any, Optional
 
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback
-
-from ..logger import logger
 
 
 class CallbackMixin:
-    """Safe optional-callback invocation for logic and manager classes.
+    """
+    The contract for outbound communication from logic and manager classes.
 
-    Logic objects, managers, and controllers communicate with the layers above
-    them exclusively through optional callback attributes (``on_x:
-    Optional[Callback] = None``).  This mixin provides the machinery to invoke
-    those hooks without callers having to guard for ``None`` everywhere, and to
-    set or reset them in bulk.
-
-    Responsibilities:
-    - Invoke an optional callback safely (``call``), logging a warning when the
-      hook is ``None`` rather than raising.
-    - Validate and set multiple hooks at once (``set_callbacks``).
-    - Reset hooks back to ``None`` by name (``reset_callbacks``).
-
-    Governing principles:
-    - A class that inherits this mixin must declare its callback attributes
-      explicitly (``on_x: Optional[Callback] = None``) so that
-      ``set_callbacks`` can validate their names.
-    - Logic must never call DPG, import from ``ui/``, or import from
-      ``coordinators/``.  Callbacks are the only outbound communication channel.
-
-    Used by: ``ProjectController``, ``ReconstructionManager``,
-    ``ConverterLogic``, ``ExplorerLogic``, ``GUIPanel``, and most other
-    objects that emit events to the layer above them.
+    A class that inherits it declares what events it produces, not who consumes
+    them: optional hook attributes are the sole channel outward.  ``call`` is
+    deliberately lenient about missing hooks — partial wiring during
+    construction is expected and logged rather than raised.
     """
 
     def call(self, callback: Optional[Callback], *args: Any, **kwargs: Any) -> Any:
