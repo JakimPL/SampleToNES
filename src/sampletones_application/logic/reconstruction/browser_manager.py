@@ -22,7 +22,7 @@ class BrowserManager:
         language_manager: LanguageManager,
     ) -> None:
         self.config_manager = config_manager
-        self.output_directory = config_manager.get_output_directory()
+        self.reconstructions_directory = config_manager.get_reconstructions_directory()
         self._root_label = language_manager[
             Page.GLOBAL,
             Panel.BROWSER,
@@ -32,12 +32,12 @@ class BrowserManager:
 
         self.tree = Tree()
 
-    def set_output_directory(self, directory: Path) -> None:
-        self.output_directory = directory
+    def set_reconstructions_directory(self, directory: Path) -> None:
+        self.reconstructions_directory = directory
         self.refresh_tree()
 
     def refresh_tree(self) -> None:
-        if not self.output_directory.exists() or not self.output_directory.is_dir():
+        if not self.reconstructions_directory.exists() or not self.reconstructions_directory.is_dir():
             self.tree.set_root(None)
             return
 
@@ -45,7 +45,7 @@ class BrowserManager:
             name=self._root_label,
             node_type=NodeType.ROOT,
         )
-        for path in sorted(self.output_directory.iterdir()):
+        for path in sorted(self.reconstructions_directory.iterdir()):
             self._build_tree(path, parent=container_root)
 
         self.tree.set_root(container_root)

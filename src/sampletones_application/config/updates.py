@@ -25,4 +25,4 @@ class GenerationSettingsUpdate(BaseModel, frozen=True):
 class AdvancedSettingsUpdate(BaseModel, frozen=True):
     max_workers: int
     library_directory: Path
-    output_directory: Path
+    reconstructions_directory: Path

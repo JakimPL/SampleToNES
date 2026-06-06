@@ -15,10 +15,10 @@ USER_PATH_CONFIG: Final[Path] = Path(user_config_dir(SAMPLETONES_NAME, SAMPLETON
 
 # Application paths
 LIBRARY_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "instructions"
-OUTPUT_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "reconstructions"
+RECONSTRUCTIONS_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "reconstructions"
 PROJECTS_DIRECTORY: Final[Path] = USER_PATH_DOCUMENTS / "projects"
 CONFIG_PATH: Final[Path] = USER_PATH_DOCUMENTS / "config.json"
-APPLICATION_CONFIG_PATH: Final[Path] = USER_PATH_CONFIG / "sampletones.yaml"
+APPLICATION_CONFIG_PATH: Final[Path] = USER_PATH_CONFIG / "config.yaml"
 
 # File extensions
 EXT_FILE_JSON: Final[str] = ".json"
@@ -57,3 +57,7 @@ FONT_BOLD: Final[str] = "RobotoMono-Bold.ttf"
 FONT_ITALIC: Final[str] = "RobotoMono-Italic.ttf"
 FONT_BOLD_ITALIC: Final[str] = "RobotoMono-BoldItalic.ttf"
 FONT_ICON: Final[str] = "DejaVuSans.ttf"
+
+PROJECTS_DIRECTORY.mkdir(parents=True, exist_ok=True)
+LIBRARY_DIRECTORY.mkdir(parents=True, exist_ok=True)
+RECONSTRUCTIONS_DIRECTORY.mkdir(parents=True, exist_ok=True)

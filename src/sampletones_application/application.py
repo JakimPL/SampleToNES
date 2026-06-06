@@ -242,7 +242,7 @@ class Application:
 
     def _setup_gui(self) -> None:
         bindings = ShortcutBindings(
-            new_project=self._project_coordinator.new_with_confirmation,
+            new_project=self._project_coordinator.new_project_with_confirmation,
             open_project=self._project_coordinator.open_with_confirmation,
             save_project=self._project_coordinator.save,
             save_project_as=self._project_coordinator.save_as_dialog,
@@ -400,12 +400,6 @@ class Application:
         self._reconstruction_coordinator.load_with_confirmation(filepath)
 
     def _edit_project_sample(self, sample_id: str) -> None:
-        """Opens a project sample's reconstruction in the reconstruction tab.
-
-        The reconstruction manager wraps the sample's own reconstruction object,
-        so edits made in the tab mutate the sample in place (live-linked). The
-        existing reconstruction-loaded flow handles display and the tab switch.
-        """
         sample = self.project_manager.current.sample(sample_id)
         if sample is None:
             logger.warning(f"Cannot edit unknown project sample: {sample_id}")

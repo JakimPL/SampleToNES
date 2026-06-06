@@ -15,7 +15,7 @@ from sampletones_application.constants.main import (
     TAG_MAIN_ADVANCED_BUTTON_SELECT_LIBRARY_DIRECTORY,
     TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
     TAG_MAIN_ADVANCED_GROUP_LIBRARY_DIRECTORY,
-    TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
+    TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
     TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS,
     TAG_MAIN_ADVANCED_PANEL,
     TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY,
@@ -56,7 +56,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         self.on_update_output_directory: Optional[VoidCallback] = None
 
         self._library_directory: Path = initial_view.library_directory
-        self._output_directory: Path = initial_view.output_directory
+        self._output_directory: Path = initial_view.reconstructions_directory
         self._max_workers: int = initial_view.max_workers
         self._input_width = input_width
         self._file_dialog_width = file_dialog_width
@@ -148,7 +148,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         advanced_update = AdvancedSettingsUpdate(
             max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
-            output_directory=self._output_directory,
+            reconstructions_directory=self._output_directory,
         )
         self.call(self.on_advanced_settings_changed, advanced_update)
 
@@ -203,7 +203,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def _create_output_directory_selection(self) -> None:
         with dpg.child_window(
-            tag=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
+            tag=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
             width=-1,
             height=-1,
             border=False,
@@ -211,14 +211,14 @@ class GUIAdvancedSettingsPanel(GUIPanel):
             GUIButton(
                 tag=TAG_MAIN_ADVANCED_BUTTON_SELECT_OUTPUT_DIRECTORY,
                 label=self._lbl_select_output,
-                parent=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
+                parent=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
                 width=-1,
                 callback=self._select_output_directory_dialog,
             )
 
             self.output_path_text = GUIPathText(
                 tag=TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY,
-                parent=TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY,
+                parent=TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY,
                 path=self._output_directory,
                 color=self._path_colors.default,
                 hover_color=self._path_colors.hover,
@@ -253,7 +253,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         advanced_update = AdvancedSettingsUpdate(
             max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
-            output_directory=self._output_directory,
+            reconstructions_directory=self._output_directory,
         )
         self.call(self.on_advanced_settings_changed, advanced_update)
 
@@ -275,14 +275,14 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     @file_dialog_handler
     def _handle_select_output_directory(self, directory_path: Path) -> None:
-        self.change_output_directory(directory_path)
+        self.change_reconstructions_directory(directory_path)
 
-    def change_output_directory(self, directory_path: Path) -> None:
+    def change_reconstructions_directory(self, directory_path: Path) -> None:
         self._output_directory = directory_path
         advanced_update = AdvancedSettingsUpdate(
             max_workers=int(clamp_widget_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS)),
             library_directory=self._library_directory,
-            output_directory=self._output_directory,
+            reconstructions_directory=self._output_directory,
         )
         self.call(self.on_advanced_settings_changed, advanced_update)
 
@@ -293,11 +293,11 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
     def update_view(self, viewmodel: AdvancedSettingsPanelViewModel) -> None:
         self._library_directory = viewmodel.library_directory
-        self._output_directory = viewmodel.output_directory
+        self._output_directory = viewmodel.reconstructions_directory
         dpg.set_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS, viewmodel.max_workers)
 
         if self.output_path_text:
-            self.output_path_text.set_path(viewmodel.output_directory)
+            self.output_path_text.set_path(viewmodel.reconstructions_directory)
 
         if self.library_path_text:
             self.library_path_text.set_path(viewmodel.library_directory)

@@ -145,11 +145,11 @@ TAG_MAIN_ADVANCED_PATH_LIBRARY_DIRECTORY_DISPLAY = TagName(
     Widget.PATH,
     "library_directory_display",
 )
-TAG_MAIN_ADVANCED_GROUP_OUTPUT_DIRECTORY = TagName(
+TAG_MAIN_ADVANCED_GROUP_RECONSTRUCTIONS_DIRECTORY = TagName(
     Page.MAIN,
     Panel.ADVANCED,
     Widget.GROUP,
-    "output_directory",
+    "reconstructions_directory",
 )
 TAG_MAIN_ADVANCED_PATH_OUTPUT_DIRECTORY_DISPLAY = TagName(
     Page.MAIN,

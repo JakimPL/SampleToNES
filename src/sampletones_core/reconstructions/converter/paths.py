@@ -41,7 +41,7 @@ def get_relative_path(
 
 def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_RECONSTRUCTION) -> Path:
     config_directory = generate_config_directory_name(config)
-    output_directory = to_path(config.general.output_directory) / config_directory
+    output_directory = to_path(config.general.reconstructions_directory) / config_directory
     if input_path.is_dir():
         return output_directory / input_path.name
     if input_path.is_file():

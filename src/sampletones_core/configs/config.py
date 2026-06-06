@@ -73,7 +73,7 @@ class Config(DataModel):
 
     @property
     def output_directory(self) -> Path:
-        return Path(self.general.output_directory)
+        return Path(self.general.reconstructions_directory)
 
     @property
     def mixer(self) -> float:

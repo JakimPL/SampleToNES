@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Set
 
 from sampletones_application.config.session.application.config import ApplicationConfig
-from sampletones_application.paths import APPLICATION_CONFIG_PATH
 from sampletones_core.audio import AudioDeviceManager, CurrentDevice
 from sampletones_core.constants.audio import BufferSize
+from sampletones_core.paths import APPLICATION_CONFIG_PATH
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.serialization import load_yaml, save_yaml_atomic
 from sampletones_shared.utils.system.paths import to_path

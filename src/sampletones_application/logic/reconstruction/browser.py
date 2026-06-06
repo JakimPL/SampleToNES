@@ -29,5 +29,5 @@ class BrowserLogic(CallbackMixin):
         return self._browser_manager.tree
 
     def refresh_tree(self) -> None:
-        output_directory = self._config_manager.get_output_directory()
-        self._browser_manager.set_output_directory(output_directory)
+        reconstructions_directory = self._config_manager.get_reconstructions_directory()
+        self._browser_manager.set_reconstructions_directory(reconstructions_directory)

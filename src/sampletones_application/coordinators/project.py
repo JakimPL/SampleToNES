@@ -22,20 +22,13 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_core.paths import EXT_FILE_PROJECT
+from sampletones_shared.constants.project import DEFAULT_PROJECT_FILENAME
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback
+from sampletones_shared.utils.system.paths import get_directory
 
 
 class ProjectCoordinator:
-    """Drives project file operations from the menu and keyboard shortcuts.
-
-    Mirrors :class:`ReconstructionCoordinator` for the project document: it owns
-    the new/open/save/save-as/close flow, guards unsaved changes, and routes every
-    mutation through the :class:`ProjectController`. The application always holds a
-    project (an empty one on startup), so these operations are always available;
-    "close" simply reverts to a fresh empty project.
-    """
-
     def __init__(
         self,
         project_controller: ProjectController,
@@ -59,7 +52,7 @@ class ProjectCoordinator:
     def is_unsaved(self) -> bool:
         return self._project_manager.is_dirty
 
-    def new_with_confirmation(self) -> None:
+    def new_project_with_confirmation(self) -> None:
         self._guard_unsaved(
             title=GlobalDialogTitleElements.NEW_UNSAVED_PROJECT,
             message=GlobalMessageElements.NEW_UNSAVED_PROJECT,
@@ -94,13 +87,17 @@ class ProjectCoordinator:
             self._save(filepath)
 
     def save_as_dialog(self) -> None:
+        path = self._session_manager.get_project_path()
+        filename = path.name if path.is_file() else DEFAULT_PROJECT_FILENAME
+        directory = get_directory(path)
         with dpg.file_dialog(
             label=self._title(GlobalDialogTitleElements.SAVE_PROJECT),
             width=self._layout.general.dialogs.file.width,
             height=self._layout.general.dialogs.file.height,
             callback=self._handle_save_as,
             file_count=1,
-            default_path=str(self._session_manager.get_project_path()),
+            default_filename=filename,
+            default_path=str(directory),
         ):
             dpg.add_file_extension(EXT_FILE_PROJECT)
 

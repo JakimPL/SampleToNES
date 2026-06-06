@@ -9,15 +9,12 @@ from sampletones_application.config.updates import (
     GenerationSettingsUpdate,
     LibrarySettingsUpdate,
 )
-from sampletones_application.paths import (
-    CONFIG_PATH,
-    LIBRARY_DIRECTORY,
-    OUTPUT_DIRECTORY,
-)
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_core.configs import Config, GeneralConfig
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.paths import CONFIG_PATH, LIBRARY_DIRECTORY
+from sampletones_shared.constants.project import RECONSTRUCTIONS_DIRECTORY
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 
@@ -38,7 +35,7 @@ class ConfigManager:
         self._dialogs = dialogs
 
         self.library_directory: Optional[Path] = None
-        self.output_directory: Optional[Path] = None
+        self.reconstructions_directory: Optional[Path] = None
         self.config_change_callbacks: List[VoidCallback] = []
         self.config_path: Path = config_path or Path(CONFIG_PATH)
 
@@ -142,20 +139,20 @@ class ConfigManager:
             update={
                 "max_workers": update.max_workers,
                 "library_directory": str(update.library_directory),
-                "output_directory": str(update.output_directory),
+                "reconstructions_directory": str(update.reconstructions_directory),
             }
         )
         self.config = self.config.model_copy(update={"general": new_general})
         self.window = Window.from_config(self.config)
         self.library_directory = update.library_directory
-        self.output_directory = update.output_directory
+        self.reconstructions_directory = update.reconstructions_directory
         self.update_gui()
 
     def get_library_directory(self) -> Path:
         return Path(self.config.general.library_directory if self.config else LIBRARY_DIRECTORY)
 
-    def get_output_directory(self) -> Path:
-        return Path(self.config.general.output_directory if self.config else OUTPUT_DIRECTORY)
+    def get_reconstructions_directory(self) -> Path:
+        return Path(self.config.general.reconstructions_directory if self.config else RECONSTRUCTIONS_DIRECTORY)
 
     @property
     def key(self) -> InstructionLibraryKey:
@@ -203,7 +200,7 @@ class ConfigManager:
         self.config = config
         self.window = Window.from_config(config)
         self.library_directory = Path(config.general.library_directory)
-        self.output_directory = Path(config.general.output_directory)
+        self.reconstructions_directory = Path(config.general.reconstructions_directory)
         self.update_gui()
 
     def save_config_to_file(self, filepath: Path) -> None:

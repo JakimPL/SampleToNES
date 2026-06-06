@@ -162,7 +162,7 @@ class GUIExplorerPanel(GUITreePanel):
         self.on_reconstruct_file: Optional[PathCallback] = None
         self.on_load_reconstruction: Optional[PathCallback] = None
         self.on_load_library: Optional[PathCallback] = None
-        self.on_set_as_output_directory: Optional[PathCallback] = None
+        self.on_set_as_reconstructions_directory: Optional[PathCallback] = None
         self.on_set_as_library_directory: Optional[PathCallback] = None
         self.is_converter_running: Optional[Callable[[], bool]] = None
 
@@ -594,7 +594,7 @@ class GUIExplorerPanel(GUITreePanel):
         self.call(self.on_reconstruct_directory, node.filepath)
 
     def _context_set_as_output_directory(self, node: FileSystemNode) -> None:
-        self.call(self.on_set_as_output_directory, node.filepath)
+        self.call(self.on_set_as_reconstructions_directory, node.filepath)
 
     def _context_set_as_library_directory(self, node: FileSystemNode) -> None:
         self.call(self.on_set_as_library_directory, node.filepath)

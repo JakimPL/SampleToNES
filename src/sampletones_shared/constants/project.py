@@ -8,6 +8,7 @@ RECONSTRUCTIONS_DIRECTORY: Final[str] = "reconstructions"
 DEFAULT_PROJECT_TITLE: Final[str] = ""
 DEFAULT_PROJECT_AUTHOR: Final[str] = ""
 DEFAULT_PROJECT_COMMENT: Final[str] = ""
+DEFAULT_PROJECT_FILENAME: Final[str] = "Untitled.stp"
 
 # Project info length limits
 MAX_PROJECT_TITLE_LENGTH: Final[int] = 64

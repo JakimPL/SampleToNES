@@ -131,7 +131,7 @@ class MainTabCoordinator:
             AdvancedSettingsPanelViewModel(
                 max_workers=_config.general.max_workers,
                 library_directory=config_manager.get_library_directory(),
-                output_directory=config_manager.get_output_directory(),
+                reconstructions_directory=config_manager.get_reconstructions_directory(),
             ),
             panel_height=layout.main.advanced.height,
             input_width=layout.general.inputs.default_width,
@@ -182,7 +182,7 @@ class MainTabCoordinator:
             on_load_reconstruction=on_load_reconstruction,
             on_load_library=on_load_library,
             on_set_as_library_directory=self._advanced_settings_panel.change_library_directory,
-            on_set_as_output_directory=self._advanced_settings_panel.change_output_directory,
+            on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
             is_converter_running=is_generation_in_progress,
         )
 
@@ -236,7 +236,7 @@ class MainTabCoordinator:
             AdvancedSettingsPanelViewModel(
                 max_workers=self._config_manager.config.general.max_workers,
                 library_directory=self._config_manager.get_library_directory(),
-                output_directory=self._config_manager.get_output_directory(),
+                reconstructions_directory=self._config_manager.get_reconstructions_directory(),
             )
         )
 

@@ -1,6 +1,6 @@
 from typing import Type
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.general import (
     MAX_PITCH,
@@ -14,7 +14,7 @@ from sampletones_core.data import (
     FlatBufferBuilderProtocol,
     FlatBufferReaderProtocol,
 )
-from sampletones_core.paths import LIBRARY_DIRECTORY, OUTPUT_DIRECTORY
+from sampletones_core.paths import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
 
 class GeneralConfig(DataModel):
@@ -27,7 +27,13 @@ class GeneralConfig(DataModel):
     max_workers: int = Field(default=MAX_WORKERS, ge=1)
 
     library_directory: str = Field(default=str(LIBRARY_DIRECTORY))
-    output_directory: str = Field(default=str(OUTPUT_DIRECTORY))
+    reconstructions_directory: str = Field(
+        default=str(RECONSTRUCTIONS_DIRECTORY),
+        validation_alias=AliasChoices(
+            "output_directory",
+            "reconstructions_directory",
+        ),
+    )
 
     @classmethod
     def buffer_builder(cls) -> FlatBufferBuilderProtocol:

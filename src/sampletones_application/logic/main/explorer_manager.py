@@ -236,5 +236,5 @@ class ExplorerManager:
         return [
             Path.cwd(),
             self.config_manager.get_library_directory(),
-            self.config_manager.get_output_directory(),
+            self.config_manager.get_reconstructions_directory(),
         ]

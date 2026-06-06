@@ -296,7 +296,7 @@ class ConverterLogic(CallbackMixin):
         input_path: Optional[Path] = None,
     ) -> None:
         display_output = (
-            self._output_path if self._output_path is not None else self._config_manager.get_output_directory()
+            self._output_path if self._output_path is not None else self._config_manager.get_reconstructions_directory()
         )
         viewmodel = ConverterViewModel(
             phase=self._phase,
