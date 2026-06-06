@@ -11,6 +11,7 @@ class DialogElements(AbstractElement):
     COPIED = "copied"
     YES = "yes"
     NO = "no"
+    UNTITLED = "untitled"
 
 
 class TracebackElements(AbstractElement):

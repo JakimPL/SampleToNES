@@ -15,6 +15,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
 )
+from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
@@ -174,3 +175,7 @@ class SequencerTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_samples_panel.create_panel()
+
+    @property
+    def player_panel(self) -> AudioPlayerPanelProtocol:
+        return self._sequencer_grid_panel.player_panel

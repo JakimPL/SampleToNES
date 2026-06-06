@@ -34,9 +34,17 @@ class ProjectManager:
     def is_dirty(self) -> bool:
         return self._session.unsaved_changes
 
+    @property
+    def is_open(self) -> bool:
+        return self._session.is_open
+
     def new(self) -> None:
         self._current = Project.create()
         self._session.mark_loaded("")
+
+    def close(self) -> None:
+        self._current = Project.create()
+        self._session.mark_closed()
 
     def load(self, path: Path) -> None:
         self._current = ProjectContainer.load(path)

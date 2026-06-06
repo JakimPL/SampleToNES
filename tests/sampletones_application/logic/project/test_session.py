@@ -6,6 +6,7 @@ class TestProjectSession:
         session = ProjectSession()
         assert session.name == ""
         assert session.unsaved_changes is False
+        assert session.is_open is False
 
     def test_mark_updated_then_saved(self) -> None:
         session = ProjectSession()
@@ -32,3 +33,31 @@ class TestProjectSession:
         session.mark_updated()
         session.mark_saved()
         assert calls == [1, 1]
+
+    def test_is_open_after_mark_loaded(self) -> None:
+        session = ProjectSession()
+        session.mark_loaded("demo")
+        assert session.is_open is True
+
+    def test_is_open_after_mark_loaded_empty_name(self) -> None:
+        session = ProjectSession()
+        session.mark_loaded("")
+        assert session.is_open is True
+
+    def test_is_open_false_after_mark_closed(self) -> None:
+        session = ProjectSession()
+        session.mark_loaded("demo")
+        session.mark_closed()
+        assert session.is_open is False
+
+    def test_is_open_unchanged_by_mark_updated(self) -> None:
+        session = ProjectSession()
+        session.mark_loaded("demo")
+        session.mark_updated()
+        assert session.is_open is True
+
+    def test_is_open_unchanged_by_mark_saved(self) -> None:
+        session = ProjectSession()
+        session.mark_loaded("demo")
+        session.mark_saved("demo2")
+        assert session.is_open is True

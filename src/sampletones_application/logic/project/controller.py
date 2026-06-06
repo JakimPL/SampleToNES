@@ -42,6 +42,10 @@ class ProjectController(CallbackMixin):
         self._project_manager.new()
         self._emit(self.on_project_replaced)
 
+    def close(self) -> None:
+        self._project_manager.close()
+        self._emit(self.on_project_replaced)
+
     def load(self, path: Path) -> None:
         self._project_manager.load(path)
         self._emit(self.on_project_replaced)

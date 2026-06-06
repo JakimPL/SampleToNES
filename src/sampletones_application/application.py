@@ -29,6 +29,7 @@ from sampletones_application.layout import LayoutConfig, load_layout_config
 from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
+from sampletones_application.logic.project.title import document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
@@ -121,6 +122,7 @@ class Application:
             language_manager=self.language_manager,
             layout=self.layout,
             on_tab_switch=self._set_current_tab,
+            on_session_state_changed=self._on_project_state_changed,
         )
 
         self._reconstruction_coordinator = ReconstructionCoordinator(
@@ -425,17 +427,36 @@ class Application:
 
         return any(sample.reconstruction is reconstruction for sample in self.project_manager.current.samples)
 
-    def _on_reconstruction_state_changed(self) -> None:
+    def _update_title(self) -> None:
+        untitled = self.language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.UNTITLED,
+        ]
+        composed = document_title(
+            self.project_manager.session,
+            self._reconstruction_coordinator.reconstruction_session,
+            untitled=untitled,
+            project_open=self.project_manager.is_open,
+            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+        )
         self._viewport_manager.update_title(
-            self._reconstruction_coordinator.reconstruction_name,
-            self._reconstruction_coordinator.is_unsaved(),
-            title=self.language_manager[
+            self.language_manager[
                 Page.GLOBAL,
                 Panel.DIALOG,
                 TextType.TITLE,
                 GlobalDialogTitleElements.MAIN_WINDOW,
             ],
+            composed,
         )
+
+    def _on_project_state_changed(self) -> None:
+        self._update_title()
+        self._update_menu()
+
+    def _on_reconstruction_state_changed(self) -> None:
+        self._update_title()
         self._update_menu()
 
     def _set_current_tab(self, tab: Tab) -> None:

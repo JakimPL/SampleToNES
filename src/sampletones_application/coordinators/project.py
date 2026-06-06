@@ -24,7 +24,7 @@ from sampletones_application.utils.file import file_dialog_handler
 from sampletones_core.paths import EXT_FILE_PROJECT
 from sampletones_shared.constants.project import DEFAULT_PROJECT_FILENAME
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_directory
 
 
@@ -39,6 +39,7 @@ class ProjectCoordinator:
         language_manager: LanguageManager,
         layout: LayoutConfig,
         on_tab_switch: Callback,
+        on_session_state_changed: VoidCallback,
     ) -> None:
         self._project_controller = project_controller
         self._project_manager = project_manager
@@ -47,6 +48,12 @@ class ProjectCoordinator:
         self._language_manager = language_manager
         self._layout = layout
         self._on_tab_switch = on_tab_switch
+        self._project_manager.session.on_state_changed = on_session_state_changed
+
+    @property
+    def project_name(self) -> Optional[str]:
+        name = self._project_manager.session.name
+        return name or None
 
     @property
     def is_unsaved(self) -> bool:
@@ -128,7 +135,7 @@ class ProjectCoordinator:
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _close(self) -> None:
-        self._project_controller.new()
+        self._project_controller.close()
         self._session_manager.set_current_project(None)
 
     def _load(self, filepath: Path) -> None:

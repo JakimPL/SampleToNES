@@ -115,7 +115,13 @@ class ApplicationShell:
         self._sequencer_tab = sequencer_tab
         self._instructions_tab = instructions_tab
 
-    def setup(self, bindings: ShortcutBindings, *, on_close: Callback, on_tab_changed: Callback) -> None:
+    def setup(
+        self,
+        bindings: ShortcutBindings,
+        *,
+        on_close: Callback,
+        on_tab_changed: Callback,
+    ) -> None:
         dpg.create_context()
         self._set_fonts()
         self._register_shortcuts(bindings)
@@ -368,6 +374,8 @@ class ApplicationShell:
                 return self._reconstructions_tab.player_panel
             case Tab.INSTRUCTIONS:
                 return self._instructions_tab.player_panel
+            case Tab.SEQUENCER:
+                return self._sequencer_tab.player_panel
             case _:
                 return None
 

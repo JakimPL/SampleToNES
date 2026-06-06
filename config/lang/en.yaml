@@ -10,6 +10,7 @@ global.dialog.label.cancel: "Cancel"
 global.dialog.label.copied: "Copied!"
 global.dialog.label.yes: "Yes"
 global.dialog.label.no: "No"
+global.dialog.label.untitled: "Untitled"
 
 # Global — Dialog titles
 global.dialog.title.main_window: "SampleToNES"

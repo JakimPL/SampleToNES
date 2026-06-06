@@ -4,20 +4,21 @@ from sampletones_shared.types.callback import VoidCallback
 
 
 class ProjectSession:
-    """Tracks the current project's name and unsaved-changes state.
-
-    Mirrors :class:`ReconstructionSession`. The project is the primary document;
-    the application shell combines this with the reconstruction session to compose
-    the window title and the exit/unsaved flow (see :mod:`title`).
-    """
-
     def __init__(self) -> None:
-        self.name: str = ""
+        self._name: Optional[str] = None
         self.unsaved_changes: bool = False
         self.on_state_changed: Optional[VoidCallback] = None
 
+    @property
+    def name(self) -> str:
+        return self._name or ""
+
+    @property
+    def is_open(self) -> bool:
+        return self._name is not None
+
     def mark_loaded(self, name: str) -> None:
-        self.name = name
+        self._name = name
         self.unsaved_changes = False
         self._notify()
 
@@ -27,13 +28,13 @@ class ProjectSession:
 
     def mark_saved(self, name: Optional[str] = None) -> None:
         if name is not None:
-            self.name = name
+            self._name = name
 
         self.unsaved_changes = False
         self._notify()
 
     def mark_closed(self) -> None:
-        self.name = ""
+        self._name = None
         self.unsaved_changes = False
         self._notify()
 

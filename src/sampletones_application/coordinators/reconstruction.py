@@ -85,6 +85,10 @@ class ReconstructionCoordinator:
         return self._reconstructions_tab
 
     @property
+    def reconstruction_session(self) -> ReconstructionSession:
+        return self._reconstruction_session
+
+    @property
     def reconstruction_name(self) -> Optional[str]:
         return self._reconstruction_session.name
 
