@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional, Set
 
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.managers.application import ApplicationConfigManager
 from sampletones_application.config.managers.state import ApplicationStateManager
 from sampletones_application.config.session.application.config import ApplicationConfig
@@ -38,7 +39,7 @@ class SessionManager:
             height,
         )
 
-    def set_current_tab(self, tab: str) -> None:
+    def set_current_tab(self, tab: Tab) -> None:
         self._state_manager.set_current_tab(tab)
 
     def toggle_show_advanced_settings(self) -> bool:
@@ -50,7 +51,7 @@ class SessionManager:
     def toggle_favorite(self, path: Path) -> None:
         self._config_manager.toggle_favorite(path)
 
-    def load_current_tab(self) -> str:
+    def load_current_tab(self) -> Tab:
         return self._state_manager.load_current_tab()
 
     def set_config_path(self, path: Path) -> None:

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Optional
 
+from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.config.session.state.state import ApplicationState
 from sampletones_application.paths import APPLICATION_STATE_PATH
 from sampletones_shared.logger import logger
@@ -28,7 +29,7 @@ class ApplicationStateManager:
     def save(self) -> None:
         try:
             APPLICATION_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            save_yaml_atomic(APPLICATION_STATE_PATH, self.state.model_dump())
+            save_yaml_atomic(APPLICATION_STATE_PATH, self.state.model_dump(mode="json"))
         except (
             IOError,
             IsADirectoryError,
@@ -80,8 +81,8 @@ class ApplicationStateManager:
     def window_height(self) -> int:
         return self.state.window.height
 
-    def set_current_tab(self, tab: str) -> None:
-        self.state.current_tab = tab
+    def set_current_tab(self, tab: Tab) -> None:
+        self.state.current.tab = tab
 
     def toggle_show_advanced_settings(self) -> bool:
         self.state.advanced_settings = not self.state.advanced_settings
@@ -91,14 +92,14 @@ class ApplicationStateManager:
         self.state.autoplay = not self.state.autoplay
         return self.state.autoplay
 
-    def load_current_tab(self) -> str:
-        return self.state.current_tab
+    def load_current_tab(self) -> Tab:
+        return self.state.current.tab
 
     def set_current_reconstruction(self, path: Optional[Path]) -> None:
-        self.state.current_reconstruction = path
+        self.state.current.reconstruction = path
 
     def set_current_project(self, path: Optional[Path]) -> None:
-        self.state.current_project = path
+        self.state.current.project = path
 
     def set_config_path(self, path: Path) -> None:
         self.state.last_paths.config = get_directory(path)
@@ -137,16 +138,16 @@ class ApplicationStateManager:
         return self.state.last_paths.project
 
     @property
-    def current_tab(self) -> str:
-        return self.state.current_tab
+    def current_tab(self) -> Tab:
+        return self.state.current.tab
 
     @property
     def current_reconstruction(self) -> Optional[Path]:
-        return self.state.current_reconstruction
+        return self.state.current.reconstruction
 
     @property
     def current_project(self) -> Optional[Path]:
-        return self.state.current_project
+        return self.state.current.project
 
     @property
     def advanced_settings(self) -> bool:

@@ -15,6 +15,7 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_CANCEL,
@@ -59,7 +60,7 @@ def center_item(tag: str, width: int, height: int) -> None:
 
 def get_dialog_tag(base_tag: str) -> str:
     dialog_hash = uuid.uuid4().hex
-    return f"{base_tag}_{dialog_hash}"
+    return f"{base_tag}{TAG_SEPARATOR}{dialog_hash}"
 
 
 def _show_modal_dialog(

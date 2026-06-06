@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -30,7 +30,6 @@ from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.default import DefaultTheme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
-from sampletones_application.utils.dpg import dpg_set_value
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.keys import Modifier
@@ -42,13 +41,13 @@ from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
-_TAB_TAGS: dict[str, str] = {
+_TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
     Tab.RECONSTRUCTIONS: TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     Tab.SEQUENCER: TAG_GLOBAL_TAB_SEQUENCER,
     Tab.INSTRUCTIONS: TAG_GLOBAL_TAB_INSTRUCTIONS,
 }
-_TAG_TABS: dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
+_TAG_TABS: Dict[str, Tab] = {tag: Tab(tab) for tab, tag in _TAB_TAGS.items()}
 
 
 @dataclass(frozen=True)
@@ -326,9 +325,10 @@ class ApplicationShell:
 
     def restore_current_items(self, reconstruction_manager: ReconstructionManager) -> None:
         current_tab = self._session_manager.load_current_tab()
-        if dpg.does_alias_exist(current_tab) and dpg.does_item_exist(current_tab):
-            dpg.set_value(TAG_GLOBAL_TABS, current_tab)
+        self.set_current_tab(current_tab)
+        self.load_current_reconstruction(reconstruction_manager)
 
+    def load_current_reconstruction(self, reconstruction_manager: ReconstructionManager) -> None:
         current_reconstruction = self._session_manager.current_reconstruction
         if current_reconstruction is not None:
             if current_reconstruction.exists():
@@ -342,22 +342,25 @@ class ApplicationShell:
     def open_audio_settings(self) -> None:
         self._audio_settings_window.show()
 
-    def set_current_tab(self, tab: str) -> None:
-        """Selects a tab from a :class:`Tab` value (or a raw tab tag).
+    def set_current_tab(self, tab: Tab) -> None:
+        try:
+            resolved = _TAB_TAGS[tab]
+        except KeyError as exception:
+            raise SystemError(f"Tab {tab} does not have a corresponding DearPyGui tag.") from exception
 
-        Callers switch tabs with the logical :class:`Tab` enum, but the tab bar is
-        keyed by the ``TAG_GLOBAL_TAB_*`` tags, so the value is resolved through
-        the mapping. A value that is already a tab tag passes through unchanged,
-        keeping it compatible with the persisted session tag.
-        """
-        resolved = _TAB_TAGS.get(tab, tab)
-        dpg_set_value(TAG_GLOBAL_TABS, resolved)
-        self._session_manager.set_current_tab(resolved)
+        dpg.set_value(TAG_GLOBAL_TABS, resolved)
+        self._session_manager.set_current_tab(tab)
 
-    def get_current_tab(self) -> str:
+    def get_current_tab(self) -> Tab:
         current_tab = dpg.get_value(TAG_GLOBAL_TABS)
         alias: str = dpg.get_item_alias(current_tab)
-        return alias
+        if alias is None:
+            return Tab.MAIN
+
+        try:
+            return _TAG_TABS[alias]
+        except KeyError as exception:
+            raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
     def get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
         match _TAG_TABS.get(self.get_current_tab()):

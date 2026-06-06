@@ -11,6 +11,7 @@ from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsDetailsElements,
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
@@ -276,22 +277,22 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self._create_tabs_for_generators()
 
     def _get_generator_tab_tag(self, generator_name: GeneratorName) -> str:
-        return f"{self.tab_bar_tag}_{generator_name}"
+        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}"
 
     def _get_window_tag(self, tab_tag: str) -> str:
         return f"{tab_tag}{SUF_RECONSTRUCTIONS_DETAILS_WINDOW}"
 
     def _get_feature_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
-        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GROUP}"
+        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GROUP}"
 
     def _get_feature_text_group_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
-        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH_RAW_DATA}"
+        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH_RAW_DATA}"
 
     def _get_feature_text_tag(self, text_group_tag: str) -> str:
         return f"{text_group_tag}{SUF_TEXT}"
 
     def _get_feature_plot_tag(self, generator_name: GeneratorName, feature_key: FeatureKey) -> str:
-        return f"{self.tab_bar_tag}_{generator_name}_{feature_key}{SUF_GRAPH}"
+        return f"{self.tab_bar_tag}{TAG_SEPARATOR}{generator_name}{TAG_SEPARATOR}{feature_key}{SUF_GRAPH}"
 
     def _setup_mouse_event_handler(self) -> None:
         with dpg.handler_registry(tag=self.mouse_item_handler_tag):
@@ -318,7 +319,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             show=False,
         ):
             self.generator_plots[generator_name] = {}
-            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI}_{tab_tag}"
+            button_tag = f"{TAG_RECONSTRUCTIONS_DETAILS_BUTTON_EXPORT_FTI}{TAG_SEPARATOR}{tab_tag}"
             GUIButton(
                 tag=button_tag,
                 parent=tab_tag,

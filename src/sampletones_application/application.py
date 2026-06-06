@@ -444,8 +444,8 @@ class Application:
         )
         self._update_menu()
 
-    def _set_current_tab(self, tab_tag: str) -> None:
-        self._shell.set_current_tab(tab_tag)
+    def _set_current_tab(self, tab: Tab) -> None:
+        self._shell.set_current_tab(tab)
 
     def _get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
         return self._shell.get_current_player()
@@ -453,7 +453,8 @@ class Application:
     def _persist_application_state(self) -> None:
         self.session_manager.set_current_audio_device(self.audio_device_manager)
         self._viewport_manager.save_window_state()
-        self.session_manager.set_current_tab(self._shell.get_current_tab())
+        current_tab = self._shell.get_current_tab()
+        self.session_manager.set_current_tab(current_tab)
         self.session_manager.save_config()
 
     def _play_from_start(self) -> None:

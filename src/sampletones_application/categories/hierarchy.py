@@ -47,10 +47,10 @@ class Page(StrEnum):
 
 
 class Tab(StrEnum):
-    MAIN = "tab_main"
-    RECONSTRUCTIONS = "tab_reconstructions"
-    SEQUENCER = "tab_sequencer"
-    INSTRUCTIONS = "tab_instructions"
+    MAIN = "main"
+    RECONSTRUCTIONS = "reconstructions"
+    SEQUENCER = "sequencer"
+    INSTRUCTIONS = "instructions"
 
 
 class Panel(StrEnum):

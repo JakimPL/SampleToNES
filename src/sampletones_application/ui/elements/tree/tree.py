@@ -246,7 +246,7 @@ class GUITreePanel(GUIPanel):
         GUIStatusBar.bind_to_item(self._search_input_tag, self._msg_tree_search)
 
     def _get_node_handler_tag(self, node_type: NodeType) -> str:
-        return f"{self.tag}_{node_type.value}{SUF_HANDLER_NODE}"
+        return f"{self.tag}{TAG_SEPARATOR}{node_type.value}{SUF_HANDLER_NODE}"
 
     def _add_node(
         self,

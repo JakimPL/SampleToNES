@@ -5,6 +5,7 @@ import numpy as np
 
 from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
@@ -341,7 +342,7 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
             return
 
         for layer in self.layers.values():
-            series_tag = f"{self.y_axis_tag}_{layer.name.replace(' ', '_')}".lower()
+            series_tag = f"{self.y_axis_tag}{TAG_SEPARATOR}{layer.name.replace(' ', '_')}".lower()
             theme_tag = f"{series_tag}{SUF_GRAPH_THEME}"
             if dpg.does_item_exist(series_tag):
                 dpg.configure_item(
