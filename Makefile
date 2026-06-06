@@ -30,6 +30,10 @@ help:
 
 setup:
 	uv sync --extra dev
+ifeq ($(UNAME_S),Windows)
+else
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/dependencies$(SCRIPT_EXT)
+endif
 
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv

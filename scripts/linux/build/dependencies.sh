@@ -2,7 +2,7 @@
 
 set -e
 
-echo "Install additional system dependencies? (y/n)"
+echo "Install additional system dependencies? (y/N)"
 read -r INSTALL_SYS_DEPS
 if [[ "$INSTALL_SYS_DEPS" == "y" || "$INSTALL_SYS_DEPS" == "Y" ]]; then
     sudo apt-get update

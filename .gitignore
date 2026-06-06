@@ -12,6 +12,7 @@ __pycache__/
 build/
 dist/
 wheels/
+!scripts/**/build/
 
 sampletones
 !src/sampletones

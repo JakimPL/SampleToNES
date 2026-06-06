@@ -47,7 +47,7 @@ for /r "%TARGET_DIR%" %%f in (*.py) do (
 	set PY_FILES=!PY_FILES! "%%f"
 )
 if defined PY_FILES (
-	pre-commit run --files %PY_FILES%
+	pre-commit run black --files %PY_FILES%
 )
 
 echo Generation finished.

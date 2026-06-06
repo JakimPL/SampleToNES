@@ -7,7 +7,7 @@ table FBGeneralConfig {
 	quantize: bool;
 	max_workers: int;
 	library_directory: string;
-	output_directory: string;
+	reconstructions_directory: string;
 }
 
 root_type FBGeneralConfig;

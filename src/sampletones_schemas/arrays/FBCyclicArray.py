@@ -33,8 +33,7 @@ class FBCyclicArray(object):
         if o != 0:
             a = self._tab.Vector(o)
             return self._tab.Get(
-                flatbuffers.number_types.Float32Flags,
-                a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4),
+                flatbuffers.number_types.Float32Flags, a + flatbuffers.number_types.UOffsetTFlags.py_type(j * 4)
             )
         return 0
 

@@ -70,7 +70,7 @@ class FBGeneralConfig(object):
         return None
 
     # FBGeneralConfig
-    def OutputDirectory(self):
+    def ReconstructionsDirectory(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(16))
         if o != 0:
             return self._tab.String(o + self._tab.Pos)
@@ -133,12 +133,12 @@ def AddLibraryDirectory(builder, libraryDirectory):
     return FBGeneralConfigAddLibraryDirectory(builder, libraryDirectory)
 
 
-def FBGeneralConfigAddOutputDirectory(builder, outputDirectory):
-    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(outputDirectory), 0)
+def FBGeneralConfigAddReconstructionsDirectory(builder, reconstructionsDirectory):
+    builder.PrependUOffsetTRelativeSlot(6, flatbuffers.number_types.UOffsetTFlags.py_type(reconstructionsDirectory), 0)
 
 
-def AddOutputDirectory(builder, outputDirectory):
-    return FBGeneralConfigAddOutputDirectory(builder, outputDirectory)
+def AddReconstructionsDirectory(builder, reconstructionsDirectory):
+    return FBGeneralConfigAddReconstructionsDirectory(builder, reconstructionsDirectory)
 
 
 def FBGeneralConfigEnd(builder):

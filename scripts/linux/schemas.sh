@@ -34,6 +34,6 @@ echo "Found ${#FBS_FILES[@]} .fbs files."
 flatc --python -I "$DEFINITIONS_DIR" -o "$TARGET_DIR" "${FBS_FILES[@]}"
 
 echo "Running pre-commit on generated files..."
-pre-commit run --files $(find "$TARGET_DIR" -type f -name '*.py' -print0 | xargs -0)
+pre-commit run black --files $(find "$TARGET_DIR" -type f -name '*.py' -print0 | xargs -0)
 
 echo "Generation finished."

@@ -44,9 +44,7 @@ class FBInstructionsLibraryData(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             x = self._tab.Indirect(o + self._tab.Pos)
-            from sampletones_schemas.configs.FBInstructionsLibraryConfig import (
-                FBInstructionsLibraryConfig,
-            )
+            from sampletones_schemas.configs.FBInstructionsLibraryConfig import FBInstructionsLibraryConfig
 
             obj = FBInstructionsLibraryConfig()
             obj.Init(self._tab.Bytes, x)
@@ -60,9 +58,7 @@ class FBInstructionsLibraryData(object):
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from sampletones_schemas.library.FBInstructionsLibraryItem import (
-                FBInstructionsLibraryItem,
-            )
+            from sampletones_schemas.library.FBInstructionsLibraryItem import FBInstructionsLibraryItem
 
             obj = FBInstructionsLibraryItem()
             obj.Init(self._tab.Bytes, x)
