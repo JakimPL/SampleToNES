@@ -84,7 +84,7 @@ class ReconstructionCoordinator:
         self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._regeneration_service.subscribe(self._on_regeneration_result)
         self._reconstruction_manager.set_callbacks(
-            on_reconstruction_loaded=self._on_loaded,
+            on_reconstruction_loaded=self.on_reconstruction_loaded,
             on_reconstruction_closed=self._on_closed,
         )
 
@@ -160,7 +160,7 @@ class ReconstructionCoordinator:
                     GlobalDialogTitleElements.RECONSTRUCTION_SAVED,
                 ],
             )
-        except Exception as exception:  # TODO: specify exception type
+        except OSError as exception:
             logger.error_with_traceback(exception, f"Failed to save reconstruction to {filepath}")
             self._dialogs.show_error(
                 exception,
@@ -296,7 +296,7 @@ class ReconstructionCoordinator:
         if reconstruction_data is not None:
             self._regeneration_service.start(reconstruction_data, generator_name, features, feature_key, data)
 
-    def _on_loaded(self) -> None:
+    def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is None:
             raise RuntimeError("No reconstruction is loaded after loading process")

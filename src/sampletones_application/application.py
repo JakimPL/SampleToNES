@@ -54,6 +54,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.types.feature import FeatureValue
+from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -154,23 +155,6 @@ class Application:
             on_session_state_changed=self._on_reconstruction_state_changed,
         )
 
-        self._main_tab = MainTabCoordinator(
-            config_manager=self.config_manager,
-            session_manager=self.session_manager,
-            audio_device_manager=self.audio_device_manager,
-            shortcut_manager=self.shortcut_manager,
-            library_manager=self.library_manager,
-            conversion_service=self.conversion_service,
-            on_reconstruct_file=self._reconstruct_file,
-            on_reconstruct_directory=self._reconstruct_directory,
-            on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
-            on_load_library=self._load_library,
-            is_generation_in_progress=self._is_generation_in_progress,
-            layout=self.layout,
-            language_manager=self.language_manager,
-            dialogs=self.dialogs,
-        )
-
         self._reconstructions_tab = ReconstructionsTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -180,7 +164,7 @@ class Application:
             browser_manager=self.browser_manager,
             export_service=self.export_service,
             on_load_reconstruction_with_confirmation=self._reconstruction_coordinator.load_with_confirmation,
-            on_reconstruction_loaded=self._reconstruction_coordinator._on_loaded,
+            on_reconstruction_loaded=self._reconstruction_coordinator.on_reconstruction_loaded,
             on_reconstruct_file=self._reconstruct_file_dialog,
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
@@ -204,6 +188,27 @@ class Application:
             dialogs=self.dialogs,
         )
 
+        self._main_tab = MainTabCoordinator(
+            config_manager=self.config_manager,
+            session_manager=self.session_manager,
+            audio_device_manager=self.audio_device_manager,
+            shortcut_manager=self.shortcut_manager,
+            library_manager=self.library_manager,
+            conversion_service=self.conversion_service,
+            on_reconstruct_file=self._reconstruct_file,
+            on_reconstruct_directory=self._reconstruct_directory,
+            on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
+            on_load_library=self._load_library,
+            is_generation_in_progress=self._is_generation_in_progress,
+            layout=self.layout,
+            language_manager=self.language_manager,
+            dialogs=self.dialogs,
+            on_load_file=self._on_converted_reconstruction_loaded,
+            on_load_directory=self._reconstructions_tab.refresh_browser,
+            on_cancelled=self._reconstructions_tab.refresh_browser,
+            on_generate_library=self._instructions_tab.ensure_library_loaded,
+        )
+
         self._sequencer_tab = SequencerTabCoordinator(
             config_manager=self.config_manager,
             session_manager=self.session_manager,
@@ -214,8 +219,8 @@ class Application:
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
+            on_edit_sample_requested=self._edit_project_sample,
         )
-        self._sequencer_tab.on_edit_sample_requested = self._edit_project_sample
 
         self._playback_router = PlaybackRouter(
             current_player_fn=self._get_current_player,
@@ -255,6 +260,12 @@ class Application:
         self.audio_device_manager.set_current_device(audio_device)
         self.audio_device_manager.set_buffer_size(buffer_size)
 
+    def _try_load_current_reconstruction(self, path: Path) -> None:
+        try:
+            self.reconstruction_manager.load_reconstruction(path)
+        except LoadReconstructionError:
+            self.session_manager.set_current_reconstruction(None)
+
     def _setup_gui(self) -> None:
         bindings = ShortcutBindings(
             new_project=self._project_coordinator.new_project_with_confirmation,
@@ -292,15 +303,11 @@ class Application:
         self._sequencer_tab.initialize()
         self.config_manager.update_gui()
         self._update_menu()
-        self._shell.restore_current_items(self.reconstruction_manager)
+        self._shell.restore_current_items(self._try_load_current_reconstruction)
 
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self._update_menu)
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
-        self._main_tab.converter_logic.on_load_file = self._on_converted_reconstruction_loaded
-        self._main_tab.converter_logic.on_load_directory = self._reconstructions_tab.refresh_browser
-        self._main_tab.converter_logic.on_cancelled = self._reconstructions_tab.refresh_browser
-        self._main_tab.converter_logic.generate_library = self._instructions_tab.ensure_library_loaded
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -605,7 +612,7 @@ class Application:
     def _exit_application(self) -> None:
         CallbackQueue.stop()
         self.audio_device_manager.stop()
-        self._main_tab.converter_logic.cleanup()
+        self._main_tab.cleanup()
 
         dpg.stop_dearpygui()
 
@@ -632,7 +639,7 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
-            self._main_tab.converter_logic.cleanup()
+            self._main_tab.cleanup()
             self.config_manager.save_config()
             self._persist_application_state()
             self.audio_device_manager.terminate()

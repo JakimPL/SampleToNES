@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
@@ -45,9 +45,10 @@ class SequencerTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        on_edit_sample_requested: Callable[[str], None],
     ) -> None:
         self._project_controller = project_controller
-        self.on_edit_sample_requested: Optional[Callable[[str], None]] = None
+        self._on_edit_sample_requested = on_edit_sample_requested
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -133,8 +134,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_logic.import_reconstruction(filepath)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
-        if self.on_edit_sample_requested is not None:
-            self.on_edit_sample_requested(sample_id)
+        self._on_edit_sample_requested(sample_id)
 
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")

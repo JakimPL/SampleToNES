@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -22,7 +23,6 @@ from sampletones_application.coordinators.playback import AudioPlayerPanelProtoc
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
-from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -36,7 +36,6 @@ from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
-from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
 
@@ -87,8 +86,6 @@ class ApplicationShell:
     - *Runtime* — tab router, shortcut dispatcher, and per-frame UI driver.
 
     The shell must remain free of domain state — it translates, not decides.
-    (``restore_current_items`` is a known violation; see
-    ``docs/bugs-and-todos.md § Architecture``.)
     """
 
     def __init__(
@@ -325,21 +322,19 @@ class ApplicationShell:
         ):
             self._status_bar.create()
 
-    def restore_current_items(self, reconstruction_manager: ReconstructionManager) -> None:
+    def restore_current_items(self, on_load_reconstruction: Callable[[Path], None]) -> None:
         current_tab = self._session_manager.load_current_tab()
         self.set_current_tab(current_tab)
-        self.load_current_reconstruction(reconstruction_manager)
+        self._restore_current_reconstruction(on_load_reconstruction)
 
-    def load_current_reconstruction(self, reconstruction_manager: ReconstructionManager) -> None:
+    def _restore_current_reconstruction(self, on_load_reconstruction: Callable[[Path], None]) -> None:
         current_reconstruction = self._session_manager.current_reconstruction
-        if current_reconstruction is not None:
-            if current_reconstruction.exists():
-                try:
-                    reconstruction_manager.load_reconstruction(current_reconstruction)
-                except LoadReconstructionError:
-                    self._session_manager.set_current_reconstruction(None)
-            else:
-                self._session_manager.set_current_reconstruction(None)
+        if current_reconstruction is None:
+            return
+        if current_reconstruction.exists():
+            on_load_reconstruction(current_reconstruction)
+        else:
+            self._session_manager.set_current_reconstruction(None)
 
     def open_audio_settings(self) -> None:
         self._audio_settings_window.show()
@@ -365,7 +360,7 @@ class ApplicationShell:
             raise SystemError(f"Current tab alias {alias} does not correspond to any known Tab.") from exception
 
     def get_current_player(self) -> Optional[AudioPlayerPanelProtocol]:
-        match _TAG_TABS.get(self.get_current_tab()):
+        match self.get_current_tab():
             case Tab.RECONSTRUCTIONS:
                 return self._reconstructions_tab.player_panel
             case Tab.INSTRUCTIONS:

@@ -33,7 +33,7 @@ from sampletones_application.view_model.main.advanced import AdvancedSettingsPan
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_application.view_model.main.reconstructor import ReconstructorPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
-from sampletones_shared.types.callback import PathCallback
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class MainTabCoordinator:
@@ -43,11 +43,10 @@ class MainTabCoordinator:
     The Main tab is the application's entry point for converting audio files
     into reconstructions.
 
-    - Intra-tab callback topology is established entirely in the constructor
+    - Intra-tab callback topology is established entirely in the constructor;
       after that the tab operates autonomously.
     - The public API is intent-level — callers express what they want,
-      not which component handles it. (The ``converter_logic`` property
-      is a known violation; see ``docs/bugs-and-todos.md § Architecture``.)
+      not which component handles it.
     """
 
     def __init__(
@@ -67,6 +66,10 @@ class MainTabCoordinator:
         layout: LayoutConfig,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
+        on_load_file: PathCallback,
+        on_load_directory: VoidCallback,
+        on_cancelled: VoidCallback,
+        on_generate_library: VoidCallback,
     ) -> None:
         self._config_manager = config_manager
         self._session_manager = session_manager
@@ -208,6 +211,10 @@ class MainTabCoordinator:
             _title_progress,
         )
         self._converter_logic.is_library_loaded = library_manager.is_library_loaded
+        self._converter_logic.on_load_file = on_load_file
+        self._converter_logic.on_load_directory = on_load_directory
+        self._converter_logic.on_cancelled = on_cancelled
+        self._converter_logic.generate_library = on_generate_library
         library_manager.on_generation_progress_extra = conversion_service.forward_library_progress
 
         self._converter_panel.on_convert_requested = self._converter_logic.start_conversion
@@ -302,6 +309,5 @@ class MainTabCoordinator:
     def emit_initial_view(self) -> None:
         self._converter_logic.emit_initial_view()
 
-    @property
-    def converter_logic(self) -> ConverterLogic:
-        return self._converter_logic
+    def cleanup(self) -> None:
+        self._converter_logic.cleanup()

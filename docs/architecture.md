@@ -181,7 +181,7 @@ There are two coordinator kinds:
 - A coordinator may call `dpg.*` only inside `create_tab()` and in file-dialog callbacks decorated with `@file_dialog_handler`.
 - A coordinator does not hold domain state. It delegates reads and writes to the managers and controllers it was given.
 - Callbacks received from `Application` as constructor parameters are stored as-is and forwarded; they are not re-wrapped.
-- A coordinator does not expose internal logic objects or panels as public attributes (the `converter_logic` property in `MainTabCoordinator` is a known violation).
+- A coordinator does not expose internal logic objects or panels as public attributes.
 
 **May import:** `ui/`, `view_model/`, `logic/`, `services/`, `utils/`, `categories/`, `layout/`, `config/`.
 **Must not import:** `application.py`, `shell.py`.
@@ -283,6 +283,48 @@ sequenceDiagram
     RCOO->>APP: on_session_state_changed()
     APP->>VPORT: update_title(...)
     APP->>MENU: update(MenuBarViewModel(...))
+```
+
+---
+
+## Error Handling Policy
+
+Each layer has a distinct role in the error-handling chain. The rule of thumb is: **errors propagate up until they reach a layer that can recover meaningfully and communicate the result to the user.**
+
+### Logic and manager classes — propagate, don't catch
+
+Logic classes and managers do not catch exceptions unless they can take a concrete recovery action in place (e.g. retrying with a fallback path). I/O errors (`OSError` and subclasses) from file operations propagate directly to the caller. Catching and repackaging an exception without recovery is forbidden by the coding guidelines.
+
+### Services — the only legitimate broad catch
+
+Services run tasks on background threads. If an unhandled exception escapes the worker, the thread dies silently and `CallbackQueue` never delivers the result. For this reason, `ServiceBase` subclasses must catch the exception at the outer boundary of the async task, wrap it in `ServiceError`, and emit it through `CallbackQueue`. This is the **only** place where catching non-specific exception types is permitted, and it must be limited to the top-level task wrapper, not buried in helper methods.
+
+### Coordinators — the recovery boundary
+
+Coordinators own the decision of what to do when an operation fails. They:
+
+- Catch **specific exception types** named by the domain or I/O layer (`OSError`, `LoadReconstructionError`, etc.).
+- Present failures to the user via `DialogsRenderer` rather than propagating them further.
+- Handle `ServiceError` results from the tagged union returned by async services.
+
+A coordinator must not catch `Exception` or use bare `except`. The correct exception type for every catch site must be identified; `# TODO: specify exception type` is a guideline violation.
+
+### UI layer — never catches
+
+Panels do not perform error handling. All error conditions arrive as data through coordinator-wired callbacks (`on_error: Optional[Callable[[Exception], None]]`). A panel may display an error state derived from a view model, but it never catches exceptions directly.
+
+### Summary
+
+```mermaid
+graph LR
+    LOGIC["Logic / Manager\n(propagate)"]
+    SVC["Service\n(wrap → ServiceError\nvia CallbackQueue)"]
+    COORD["Coordinator\n(catch specific types,\nshow dialog)"]
+    UI["UI Panel\n(never catches)"]
+
+    LOGIC -->|exception| COORD
+    SVC -->|ServiceError| COORD
+    COORD -->|on_error callback| UI
 ```
 
 ---
