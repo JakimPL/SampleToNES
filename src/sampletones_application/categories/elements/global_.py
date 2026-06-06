@@ -42,8 +42,6 @@ class ContextElements(AbstractElement):
 
 class MenuElements(AbstractElement):
     GROUP_GENERAL = "group_general"
-    ITEM_CONFIG_SAVE = "item_config_save"
-    ITEM_CONFIG_LOAD = "item_config_load"
     ITEM_AUDIO_SETTINGS = "item_audio_settings"
     ITEM_EXIT = "item_exit"
     GROUP_PROJECT = "group_project"
@@ -53,7 +51,6 @@ class MenuElements(AbstractElement):
     ITEM_PROJECT_SAVE_AS = "item_project_save_as"
     ITEM_PROJECT_CLOSE = "item_project_close"
     GROUP_RECONSTRUCTION = "group_reconstruction"
-    GROUP_CONFIGURATION = "group_configuration"
     ITEM_RECONSTRUCTION_RECONSTRUCT_FILE = "item_reconstruction_reconstruct_file"
     ITEM_RECONSTRUCTION_RECONSTRUCT_DIRECTORY = "item_reconstruction_reconstruct_directory"
     ITEM_RECONSTRUCTION_SAVE = "item_reconstruction_save"
@@ -62,6 +59,8 @@ class MenuElements(AbstractElement):
     ITEM_RECONSTRUCTION_CLOSE = "item_reconstruction_close"
     ITEM_RECONSTRUCTION_EXPORT_WAV = "item_reconstruction_export_wav"
     ITEM_RECONSTRUCTION_EXPORT_FTIS = "item_reconstruction_export_ftis"
+    ITEM_RECONSTRUCTION_SAVE_GENERATION_SETTINGS = "item_reconstruction_save_generation_settings"
+    ITEM_RECONSTRUCTION_LOAD_GENERATION_SETTINGS = "item_reconstruction_load_generation_settings"
     GROUP_PLAYBACK = "group_playback"
     ITEM_PLAYBACK_PLAY_FROM_START = "item_playback_play_from_start"
     ITEM_PLAYBACK_PLAY = "item_playback_play"

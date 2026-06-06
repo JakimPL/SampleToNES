@@ -52,12 +52,6 @@ class MenuBar:
             TextType.LABEL,
             MenuElements.GROUP_GENERAL,
         ]
-        self._lbl_group_configuration = language_manager[
-            Page.GLOBAL,
-            Panel.MENU,
-            TextType.LABEL,
-            MenuElements.GROUP_CONFIGURATION,
-        ]
         self._lbl_group_project = language_manager[
             Page.GLOBAL,
             Panel.MENU,
@@ -124,17 +118,17 @@ class MenuBar:
             TextType.LABEL,
             MenuElements.ITEM_EXIT,
         ]
-        self._lbl_item_config_save = language_manager[
+        self._lbl_item_reconstruction_save_generation_settings = language_manager[
             Page.GLOBAL,
             Panel.MENU,
             TextType.LABEL,
-            MenuElements.ITEM_CONFIG_SAVE,
+            MenuElements.ITEM_RECONSTRUCTION_SAVE_GENERATION_SETTINGS,
         ]
-        self._lbl_item_config_load = language_manager[
+        self._lbl_item_reconstruction_load_generation_settings = language_manager[
             Page.GLOBAL,
             Panel.MENU,
             TextType.LABEL,
-            MenuElements.ITEM_CONFIG_LOAD,
+            MenuElements.ITEM_RECONSTRUCTION_LOAD_GENERATION_SETTINGS,
         ]
         self._lbl_item_reconstruct_file = language_manager[
             Page.GLOBAL,
@@ -310,14 +304,14 @@ class MenuBar:
                     label=self._lbl_item_export_ftis,
                     enabled=state.reconstruction_loaded,
                 )
-            with dpg.menu(label=self._lbl_group_configuration):
+                dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
-                    ShortcutId.SAVE_CONFIGURATION,
-                    label=self._lbl_item_config_save,
+                    ShortcutId.SAVE_GENERATION_SETTINGS,
+                    label=self._lbl_item_reconstruction_save_generation_settings,
                 )
                 self._shortcut_manager.add_menu_item(
-                    ShortcutId.LOAD_CONFIGURATION,
-                    label=self._lbl_item_config_load,
+                    ShortcutId.LOAD_GENERATION_SETTINGS,
+                    label=self._lbl_item_reconstruction_load_generation_settings,
                 )
             with dpg.menu(label=self._lbl_group_playback):
                 self._shortcut_manager.add_menu_item(

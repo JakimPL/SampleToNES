@@ -194,12 +194,12 @@ class ApplicationShell:
             bindings.close_reconstruction,
         )
         self._shortcut_manager.register(
-            ShortcutId.SAVE_CONFIGURATION,
+            ShortcutId.SAVE_GENERATION_SETTINGS,
             Shortcut(),
             bindings.save_config,
         )
         self._shortcut_manager.register(
-            ShortcutId.LOAD_CONFIGURATION,
+            ShortcutId.LOAD_GENERATION_SETTINGS,
             Shortcut(),
             bindings.load_config,
         )

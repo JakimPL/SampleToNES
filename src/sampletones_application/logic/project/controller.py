@@ -15,16 +15,6 @@ from .manager import ProjectManager
 
 
 class ProjectController(CallbackMixin):
-    """Single entry point for every mutation of the current project.
-
-    Sequencer panels never edit the :class:`Project` graph directly. They call
-    this facade, which performs the domain edit, marks the project dirty through
-    the :class:`ProjectManager`, and emits one coarse change event per affected
-    area so panels can rebuild their view models. Centralising mutation keeps
-    dirty tracking and change notification consistent and gives future undo/redo
-    and rendering work a single seam.
-    """
-
     def __init__(self, project_manager: ProjectManager) -> None:
         self._project_manager = project_manager
 
@@ -54,12 +44,6 @@ class ProjectController(CallbackMixin):
         self._project_manager.save(path)
 
     def mark_updated(self) -> None:
-        """Flags the project dirty and refreshes the song view after an external edit.
-
-        Used when a project sample's reconstruction is mutated in place through
-        the reconstruction tab (live-linked editing): the sample graph itself did
-        not change, but its rendered content did.
-        """
         self._touch()
         self._emit(self.on_song_changed)
 
@@ -99,12 +83,6 @@ class ProjectController(CallbackMixin):
         self._emit(self.on_settings_changed)
 
     def set_rows_per_pattern(self, rows_per_pattern: int) -> None:
-        """Sets the default length for newly created patterns.
-
-        Existing patterns keep their current length; resizing them would
-        silently truncate or pad authored rows, so the new default applies only
-        to patterns created afterwards.
-        """
         self.project.settings.rows_per_pattern = rows_per_pattern
         self._touch()
         self._emit(self.on_settings_changed)
@@ -191,10 +169,10 @@ class ProjectController(CallbackMixin):
         self._emit(self.on_song_changed)
 
     def _purge_sample_references(self, sample_id: str) -> None:
-        """Clears the instrument of any row that still points at a removed sample.
+        """
+        Clears the instrument of any row that still points at a removed sample.
 
-        Rows reference samples by id; leaving the reference behind would make
-        ``Project.sample`` resolve to ``None`` during playback and rendering.
+        Rows reference samples by id.
         """
         for channel in self.project.song.channels.values():
             for pattern in channel.patterns:
