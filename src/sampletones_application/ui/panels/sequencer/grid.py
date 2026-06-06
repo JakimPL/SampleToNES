@@ -34,6 +34,7 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.utils.dialogs import DialogsRenderer
+from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -410,3 +411,12 @@ class GUISequencerGridPanel(GUIPanel):
             row_index,
         )
         self._highlighted_row = None
+
+    def set_enabled(self, enabled: bool) -> None:
+        for tag in (
+            TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
+            TAG_SEQUENCER_GRID_INPUT_TEMPO,
+            TAG_SEQUENCER_GRID_INPUT_SPEED,
+            TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
+        ):
+            dpg_configure_item(tag, enabled=enabled)

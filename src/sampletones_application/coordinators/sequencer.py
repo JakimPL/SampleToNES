@@ -124,8 +124,12 @@ class SequencerTabCoordinator:
     def refresh(self) -> None:
         self._sequencer_grid_logic.refresh()
         self._sequencer_samples_logic.push_samples()
+        self._sequencer_grid_panel.set_enabled(self._project_controller.is_open)
 
     def _import_reconstruction(self, filepath: Path) -> None:
+        if not self._project_controller.is_open:
+            return
+
         self._sequencer_browser_logic.import_reconstruction(filepath)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:

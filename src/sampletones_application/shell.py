@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -18,8 +18,7 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
-from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol, PlaybackRouter
-from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
+from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
@@ -28,7 +27,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
-from sampletones_application.ui.themes.default import DefaultTheme
+from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.ids import ShortcutId
@@ -39,7 +38,7 @@ from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, VoidCallback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
@@ -84,14 +83,12 @@ class ApplicationShell:
         language_manager: LanguageManager,
         shortcut_manager: ShortcutManager,
         layout: LayoutConfig,
-        theme: DefaultTheme,
+        theme: Theme,
         viewport_manager: ViewportManager,
         menu_bar: MenuBar,
         status_bar: GUIStatusBar,
         fps_timer: FPSTimer,
         audio_settings_window: GUIAudioSettingsWindow,
-        reconstruction_coordinator: ReconstructionCoordinator,
-        playback_router: PlaybackRouter,
         *,
         main_tab: MainTabCoordinator,
         reconstructions_tab: ReconstructionsTabCoordinator,
@@ -108,12 +105,11 @@ class ApplicationShell:
         self._status_bar = status_bar
         self._fps_timer = fps_timer
         self._audio_settings_window = audio_settings_window
-        self._reconstruction_coordinator = reconstruction_coordinator
-        self._playback_router = playback_router
         self._main_tab = main_tab
         self._reconstructions_tab = reconstructions_tab
         self._sequencer_tab = sequencer_tab
         self._instructions_tab = instructions_tab
+        self.on_menu_state_changed: Optional[VoidCallback] = None
 
     def setup(
         self,
@@ -121,6 +117,7 @@ class ApplicationShell:
         *,
         on_close: Callback,
         on_tab_changed: Callback,
+        build_initial_menu_state: Callable[[], MenuBarViewModel],
     ) -> None:
         dpg.create_context()
         self._set_fonts()
@@ -129,7 +126,7 @@ class ApplicationShell:
         self._viewport_manager.create_viewport()
         self._setup_dearpygui()
         self._setup_handlers()
-        self._create_main_window(on_tab_changed)
+        self._create_main_window(on_tab_changed, build_initial_menu_state())
         self._start_callback_worker()
         dpg.set_exit_callback(on_close)
 
@@ -269,7 +266,7 @@ class ApplicationShell:
     def _setup_handlers(self) -> None:
         self._shortcut_manager.setup_focus_handler()
 
-    def _create_main_window(self, on_tab_changed: Callback) -> None:
+    def _create_main_window(self, on_tab_changed: Callback, initial_menu_state: MenuBarViewModel) -> None:
         with dpg.window(
             label=self._language_manager[
                 Page.GLOBAL,
@@ -279,29 +276,15 @@ class ApplicationShell:
             ],
             tag=TAG_GLOBAL_WINDOW_MAIN,
         ):
-            self._create_menu_bar()
+            self._menu_bar.create(initial_menu_state)
             self._create_tabs(on_tab_changed)
             self._create_status_bar()
 
         dpg.set_primary_window(TAG_GLOBAL_WINDOW_MAIN, True)
 
-    def _create_menu_bar(self) -> None:
-        self._menu_bar.create(self._build_menu_bar_viewmodel())
-
-    def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
-        return MenuBarViewModel(
-            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
-            play_label=self._playback_router.play_label,
-            play_or_pause_enabled=self._playback_router.is_play_enabled,
-            stop_enabled=self._playback_router.is_stop_enabled,
-            autoplay=self._session_manager.autoplay,
-            fullscreen=self._session_manager.fullscreen,
-            advanced_settings=self._session_manager.advanced_settings,
-        )
-
-    def update_menu(self) -> None:
+    def update_menu(self, state: MenuBarViewModel) -> None:
         self._main_tab.sync_advanced_settings_visibility()
-        self._menu_bar.update(self._build_menu_bar_viewmodel())
+        self._menu_bar.update(state)
 
     def _create_tabs(self, on_tab_changed: Callback) -> None:
         with dpg.child_window(
@@ -401,7 +384,8 @@ class ApplicationShell:
         user_data: Optional[Any] = None,
     ) -> None:
         self._session_manager.toggle_autoplay()
-        self.update_menu()
+        if self.on_menu_state_changed is not None:
+            self.on_menu_state_changed()
 
     def toggle_advanced_settings(
         self,
@@ -410,4 +394,5 @@ class ApplicationShell:
         user_data: Optional[Any] = None,
     ) -> None:
         self._main_tab.toggle_advanced_settings()
-        self.update_menu()
+        if self.on_menu_state_changed is not None:
+            self.on_menu_state_changed()

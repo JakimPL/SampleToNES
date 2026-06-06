@@ -66,8 +66,7 @@ class ReconstructionCoordinator:
         self._on_tab_switch = on_tab_switch
         self._on_session_state_changed_callback = on_session_state_changed
 
-        self._reconstruction_session = ReconstructionSession()
-        self._reconstruction_session.on_state_changed = self._on_state_changed
+        self._reconstruction_manager.session.on_state_changed = self._on_state_changed
         self._regeneration_service.subscribe(self._on_regeneration_result)
         self._reconstruction_manager.set_callbacks(
             on_reconstruction_loaded=self._on_loaded,
@@ -86,17 +85,17 @@ class ReconstructionCoordinator:
 
     @property
     def reconstruction_session(self) -> ReconstructionSession:
-        return self._reconstruction_session
+        return self._reconstruction_manager.session
 
     @property
     def reconstruction_name(self) -> Optional[str]:
-        return self._reconstruction_session.name
+        return self._reconstruction_manager.session.name
 
     def is_loaded(self) -> bool:
-        return self._reconstruction_manager.is_reconstruction_loaded()
+        return self._reconstruction_manager.session.is_loaded
 
     def is_unsaved(self) -> bool:
-        return self._reconstruction_session.unsaved_changes
+        return self._reconstruction_manager.session.unsaved_changes
 
     def check_loaded(self) -> bool:
         if not self.is_loaded():
@@ -240,7 +239,6 @@ class ReconstructionCoordinator:
 
     def save(self, filepath: Optional[Path] = None) -> None:
         self._reconstruction_manager.save_reconstruction(filepath)
-        self._reconstruction_session.mark_saved(filepath.stem if filepath is not None else None)
 
     def close_with_confirmation(self) -> None:
         if self.is_unsaved():
@@ -305,17 +303,14 @@ class ReconstructionCoordinator:
         self._tab.display_reconstruction()
         self._session_manager.set_current_reconstruction(filepath)
         self._on_tab_switch(Tab.RECONSTRUCTIONS)
-        name = filepath.stem if filepath is not None else reconstruction_data.reconstruction.audio_filepath.stem
-        self._reconstruction_session.mark_loaded(name)
 
     def _on_closed(self) -> None:
         self._tab.close_reconstruction()
         self._session_manager.set_current_reconstruction(None)
-        self._reconstruction_session.mark_closed()
 
     def _on_updated(self) -> None:
         self._tab.update_reconstruction()
-        self._reconstruction_session.mark_updated()
+        self._reconstruction_manager.mark_updated()
 
     def _on_regeneration_result(self, result: RegenerationResult) -> None:
         match result:

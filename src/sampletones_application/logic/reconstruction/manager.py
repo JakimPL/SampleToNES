@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.logic.reconstruction.session import ReconstructionSession
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.feature import FeatureData
@@ -16,6 +17,7 @@ from sampletones_shared.utils.system.paths import open_path_in_explorer
 class ReconstructionManager(CallbackMixin):
     def __init__(self, *, scheduling: SchedulingBehavior) -> None:
         self._scheduling = scheduling
+        self._session: ReconstructionSession = ReconstructionSession()
         self._current_reconstruction: Optional[ReconstructionData] = None
         self._current_features: Optional[FeatureData] = None
         self._reconstruction_hash: str = ""
@@ -23,6 +25,10 @@ class ReconstructionManager(CallbackMixin):
 
         self.on_reconstruction_loaded: Optional[VoidCallback] = None
         self.on_reconstruction_closed: Optional[VoidCallback] = None
+
+    @property
+    def session(self) -> ReconstructionSession:
+        return self._session
 
     def load_reconstruction(self, filepath: Path) -> None:
         if filepath.is_dir():
@@ -33,6 +39,7 @@ class ReconstructionManager(CallbackMixin):
 
         self._load_reconstruction_data(filepath)
         self._load_reconstruction_features()
+        self._session.mark_loaded(filepath.stem)
         self.call(self.on_reconstruction_loaded)
 
     def load_reconstruction_object(self, reconstruction: Reconstruction) -> None:
@@ -45,6 +52,7 @@ class ReconstructionManager(CallbackMixin):
         self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction)
         self._coefficient = reconstruction.coefficient
         self._load_reconstruction_features()
+        self._session.mark_loaded(reconstruction.audio_filepath.stem)
         self.call(self.on_reconstruction_loaded)
 
     def _load_reconstruction_data(self, filepath: Path) -> None:
@@ -60,9 +68,6 @@ class ReconstructionManager(CallbackMixin):
         self._current_features = feature_data
         self._reconstruction_hash = hash_model(reconstruction)
 
-    def is_reconstruction_loaded(self) -> bool:
-        return self._current_reconstruction is not None
-
     def save_reconstruction(self, filepath: Optional[Path] = None) -> None:
         if not self._current_reconstruction:
             return
@@ -75,12 +80,17 @@ class ReconstructionManager(CallbackMixin):
 
         reconstruction.save(target_path)
         logger.info(f"Saved reconstruction to: {logger.format_path(target_path)}")
+        self._session.mark_saved(filepath.stem if filepath is not None else None)
+
+    def mark_updated(self) -> None:
+        self._session.mark_updated()
 
     def close_reconstruction(self) -> None:
         self._current_reconstruction = None
         self._current_features = None
         self._reconstruction_hash = ""
         self._coefficient = 1.0
+        self._session.mark_closed()
         CallbackQueue.add(
             self.call,
             self.on_reconstruction_closed,

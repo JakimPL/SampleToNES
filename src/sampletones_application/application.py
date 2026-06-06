@@ -46,6 +46,7 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.fps import FPSTimer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
@@ -225,13 +226,12 @@ class Application:
             self.status_bar,
             self.fps_timer,
             self.audio_settings_window,
-            self._reconstruction_coordinator,
-            self._playback_router,
             main_tab=self._main_tab,
             reconstructions_tab=self._reconstructions_tab,
             sequencer_tab=self._sequencer_tab,
             instructions_tab=self._instructions_tab,
         )
+        self._shell.on_menu_state_changed = self._update_menu
 
         self._setup_gui()
         self._load_settings()
@@ -272,6 +272,7 @@ class Application:
             bindings,
             on_close=self._on_close,
             on_tab_changed=self._on_tab_changed,
+            build_initial_menu_state=self._build_menu_bar_viewmodel,
         )
         self._set_callbacks()
         self._main_tab.emit_initial_view()
@@ -291,8 +292,20 @@ class Application:
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
 
+    def _build_menu_bar_viewmodel(self) -> MenuBarViewModel:
+        return MenuBarViewModel(
+            project_open=self.project_manager.is_open,
+            reconstruction_loaded=self._reconstruction_coordinator.is_loaded(),
+            play_label=self._playback_router.play_label,
+            play_or_pause_enabled=self._playback_router.is_play_enabled,
+            stop_enabled=self._playback_router.is_stop_enabled,
+            autoplay=self.session_manager.autoplay,
+            fullscreen=self.session_manager.fullscreen,
+            advanced_settings=self.session_manager.advanced_settings,
+        )
+
     def _update_menu(self) -> None:
-        self._shell.update_menu()
+        self._shell.update_menu(self._build_menu_bar_viewmodel())
 
     def _reconstruct_file_dialog(self) -> None:
         if self._main_tab.is_converter_running():
@@ -503,7 +516,9 @@ class Application:
         )
 
     def _on_close(self) -> None:
-        if self._reconstruction_coordinator.is_unsaved():
+        if self.project_manager.is_dirty:
+            self._project_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
+        elif self._reconstruction_coordinator.is_unsaved():
             self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
         elif self._is_converter_running():
             self._show_confirmation_dialog(

@@ -259,6 +259,12 @@ TAG_GLOBAL_DIALOG_PROJECT_UNSAVED = TagName(
     Widget.DIALOG,
     "project_unsaved",
 )
+TAG_GLOBAL_DIALOG_PROJECT_OPEN = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.DIALOG,
+    "project_open",
+)
 TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_SAVE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

@@ -9,6 +9,10 @@ class ReconstructionSession:
         self.unsaved_changes: bool = False
         self.on_state_changed: Optional[VoidCallback] = None
 
+    @property
+    def is_loaded(self) -> bool:
+        return bool(self.name)
+
     def mark_loaded(self, name: str) -> None:
         self.name = name
         self.unsaved_changes = False

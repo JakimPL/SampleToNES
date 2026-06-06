@@ -28,6 +28,14 @@ class ProjectController(CallbackMixin):
     def project(self) -> Project:
         return self._project_manager.current
 
+    @property
+    def is_open(self) -> bool:
+        return self._project_manager.is_open
+
+    @property
+    def is_dirty(self) -> bool:
+        return self._project_manager.is_dirty
+
     def new(self) -> None:
         self._project_manager.new()
         self._emit(self.on_project_replaced)

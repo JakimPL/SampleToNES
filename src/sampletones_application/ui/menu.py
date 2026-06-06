@@ -243,17 +243,20 @@ class MenuBar:
                     ShortcutId.SAVE_PROJECT,
                     tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
                     label=self._lbl_item_project_save,
+                    enabled=state.project_open,
                 )
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.SAVE_PROJECT_AS,
                     tag=TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
                     label=self._lbl_item_project_save_as,
+                    enabled=state.project_open,
                 )
                 dpg.add_separator()
                 self._shortcut_manager.add_menu_item(
                     ShortcutId.CLOSE_PROJECT,
                     tag=TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
                     label=self._lbl_item_project_close,
+                    enabled=state.project_open,
                 )
             with dpg.menu(label=self._lbl_group_reconstruction):
                 self._shortcut_manager.add_menu_item(
@@ -362,6 +365,18 @@ class MenuBar:
             self._fps_theme.bind_to_item(TAG_GLOBAL_TEXT_MENU_FPS)
 
     def update(self, state: MenuBarViewModel) -> None:
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PROJECT_SAVE_AS,
+            enabled=state.project_open,
+        )
+        dpg_configure_item(
+            TAG_GLOBAL_MENU_ITEM_PROJECT_CLOSE,
+            enabled=state.project_open,
+        )
         dpg_configure_item(
             TAG_GLOBAL_MENU_ITEM_RECONSTRUCTION_EXPORT_TO_WAV,
             enabled=state.reconstruction_loaded,

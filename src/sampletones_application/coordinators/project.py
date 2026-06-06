@@ -13,6 +13,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextT
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
+    TAG_GLOBAL_DIALOG_PROJECT_OPEN,
     TAG_GLOBAL_DIALOG_PROJECT_SAVED,
     TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
 )
@@ -57,12 +58,13 @@ class ProjectCoordinator:
 
     @property
     def is_unsaved(self) -> bool:
-        return self._project_manager.is_dirty
+        return self._project_controller.is_dirty
 
     def new_project_with_confirmation(self) -> None:
-        self._guard_unsaved(
+        self._guard_open(
             title=GlobalDialogTitleElements.NEW_UNSAVED_PROJECT,
             message=GlobalMessageElements.NEW_UNSAVED_PROJECT,
+            open_message=GlobalMessageElements.NEW_OPEN_PROJECT,
             on_confirm=self._new,
         )
 
@@ -73,17 +75,36 @@ class ProjectCoordinator:
             else:
                 self._load(filepath)
 
-        self._guard_unsaved(
+        self._guard_open(
             title=GlobalDialogTitleElements.OPEN_UNSAVED_PROJECT,
             message=GlobalMessageElements.OPEN_UNSAVED_PROJECT,
+            open_message=GlobalMessageElements.OPEN_OPEN_PROJECT,
             on_confirm=open_project,
         )
 
     def close_with_confirmation(self) -> None:
-        self._guard_unsaved(
-            title=GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT,
-            message=GlobalMessageElements.CLOSE_UNSAVED_PROJECT,
-            on_confirm=self._close,
+        if not self._project_controller.is_open:
+            return
+        if self.is_unsaved:
+            self._dialogs.show_save_confirmation(
+                tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
+                title=self._title(GlobalDialogTitleElements.CLOSE_UNSAVED_PROJECT),
+                message=self._message(GlobalMessageElements.CLOSE_UNSAVED_PROJECT),
+                on_save=self.save,
+                on_confirm=self._close,
+                ok_label=self._label(DialogElements.DISCARD),
+            )
+        else:
+            self._close()
+
+    def show_exit_save_confirmation(self, on_confirm: VoidCallback) -> None:
+        self._dialogs.show_save_confirmation(
+            tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
+            title=self._title(GlobalDialogTitleElements.EXIT_CONFIRMATION),
+            message=self._message(GlobalMessageElements.EXIT_UNSAVED_PROJECT),
+            on_save=self.save,
+            on_confirm=on_confirm,
+            ok_label=self._label(DialogElements.EXIT),
         )
 
     def save(self) -> None:
@@ -167,25 +188,35 @@ class ProjectCoordinator:
             self._title(GlobalDialogTitleElements.PROJECT_SAVED),
         )
 
-    def _guard_unsaved(
+    def _guard_open(
         self,
         *,
         title: AbstractElement,
         message: AbstractElement,
+        open_message: AbstractElement,
         on_confirm: Callback,
     ) -> None:
-        if not self.is_unsaved:
+        if not self._project_controller.is_open:
             on_confirm()
             return
 
-        self._dialogs.show_save_confirmation(
-            tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
-            title=self._title(title),
-            message=self._message(message),
-            on_save=self.save,
-            on_confirm=on_confirm,
-            ok_label=self._label(DialogElements.DISCARD),
-        )
+        if self.is_unsaved:
+            self._dialogs.show_save_confirmation(
+                tag=TAG_GLOBAL_DIALOG_PROJECT_UNSAVED,
+                title=self._title(title),
+                message=self._message(message),
+                on_save=self.save,
+                on_confirm=on_confirm,
+                ok_label=self._label(DialogElements.DISCARD),
+            )
+        else:
+            self._dialogs.show_confirmation(
+                tag=TAG_GLOBAL_DIALOG_PROJECT_OPEN,
+                title=self._title(title),
+                message=self._message(open_message),
+                on_confirm=on_confirm,
+                ok_label=self._label(DialogElements.DISCARD),
+            )
 
     def _title(self, element: AbstractElement) -> str:
         return self._language_manager[Page.GLOBAL, Panel.DIALOG, TextType.TITLE, element]

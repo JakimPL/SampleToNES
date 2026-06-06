@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 
 class MenuBarViewModel(BaseModel, frozen=True):
+    project_open: bool
     reconstruction_loaded: bool
     play_label: str
     play_or_pause_enabled: bool
