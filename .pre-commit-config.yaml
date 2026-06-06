@@ -26,12 +26,12 @@ repos:
 
   - repo: local
     hooks:
-      - id: logic-boundary
-        name: logic boundary
-        entry: python scripts/check_logic_boundary.py
+      - id: import-boundary
+        name: import boundary
+        entry: uv run scripts/check_import_boundary.py
         language: system
         types: [python]
-        files: ^src/sampletones_application/(logic|view_model)/
+        files: ^src/sampletones_application/(logic/|view_model/|shell\.py$)
         verbose: true
 
   - repo: local

@@ -4,7 +4,7 @@ from typing import List, Optional, Self
 
 import numpy as np
 
-from sampletones_application.view_model.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.audio import load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName

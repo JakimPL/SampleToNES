@@ -43,6 +43,9 @@ from sampletones_application.constants.reconstructions import (
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.reconstructions import ReconstructionsLayout
+from sampletones_application.logic.reconstruction.feature import (
+    FeatureData,
+)
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -70,9 +73,6 @@ from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.details import (
     ReconstructionDetailsViewModel,
-)
-from sampletones_application.view_model.reconstruction.feature import (
-    FeatureData,
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH

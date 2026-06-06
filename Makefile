@@ -19,7 +19,7 @@ endif
 help:
 	@echo "Available targets:"
 	@echo "  make setup       - Set up development environment (uv)"
-	@echo "  make pre_commit  - Install pre-commit hooks"
+	@echo "  make pre-commit  - Install pre-commit hooks"
 	@echo "  make build       - Compile standalone executable"
 	@echo "  make install     - Install Python package into build venv"
 	@echo "  make test        - Run unit tests with coverage"
@@ -52,6 +52,9 @@ pre-commit:
 
 test:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/tests$(SCRIPT_EXT)
+
+check-import-boundary:
+	uv run scripts/check_import_boundary.py --all
 
 lint:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/lint$(SCRIPT_EXT)

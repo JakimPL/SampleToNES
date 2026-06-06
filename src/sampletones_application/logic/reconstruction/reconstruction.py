@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import Callable, FrozenSet, List, Optional
 
 from sampletones_application.config.managers.session import SessionManager
+from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.export import ExportService
-from sampletones_application.view_model.reconstruction.data import ReconstructionData
 from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName

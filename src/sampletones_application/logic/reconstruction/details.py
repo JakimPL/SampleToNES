@@ -3,10 +3,10 @@ from typing import Callable, Dict, FrozenSet, Optional, cast
 import numpy as np
 
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.view_model.reconstruction.details import ReconstructionDetailsViewModel
-from sampletones_application.view_model.reconstruction.feature import FeatureData
 from sampletones_application.view_model.reconstruction.update import ReconstructionUpdate
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features

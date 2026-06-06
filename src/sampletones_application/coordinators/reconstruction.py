@@ -294,7 +294,14 @@ class ReconstructionCoordinator:
     ) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction
         if reconstruction_data is not None:
-            self._regeneration_service.start(reconstruction_data, generator_name, features, feature_key, data)
+            self._regeneration_service.start(
+                reconstruction_data.reconstruction,
+                reconstruction_data.config,
+                generator_name,
+                features,
+                feature_key,
+                data,
+            )
 
     def on_reconstruction_loaded(self) -> None:
         reconstruction_data = self._reconstruction_manager.current_reconstruction

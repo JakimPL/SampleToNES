@@ -31,6 +31,9 @@ from sampletones_application.constants.reconstructions import (
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
+from sampletones_application.logic.reconstruction.data import (
+    ReconstructionData,
+)
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
@@ -43,9 +46,6 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
-from sampletones_application.view_model.reconstruction.data import (
-    ReconstructionData,
-)
 from sampletones_application.view_model.reconstruction.reconstruction import (
     ReconstructionViewModel,
 )

@@ -121,6 +121,7 @@ TAG_<MODULE>_<WIDGET_TYPE>[_<DETAIL>]
 - All view model classes are `BaseModel, frozen=True`. Fields are never mutated; a new instance is produced on each logical state change.
 - Derived UI flags (`button_enabled`, `panel_visible`, `is_done`) are `@property` computations, not stored fields, to prevent inconsistency.
 - View models carry only what is needed for rendering. They must not expose raw domain objects that a panel could mutate.
+- Domain data containers (frozen dataclasses that wrap core types and are used across logic and services) belong in `logic/`, not here. A type belongs in `view_model/` only if its sole purpose is to feed a panel's `update_view()` call.
 
 **Naming convention:** `<Feature><Component>ViewModel`, e.g. `ConverterViewModel`, `ReconstructionDetailsViewModel`, `SequencerGridViewModel`.
 

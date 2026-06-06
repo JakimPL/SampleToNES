@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Enforces layer-boundary import rules across the sampletones_application package.
 
@@ -7,8 +8,8 @@ Python source file matched by the glob and reports any import that begins with
 one of the forbidden prefixes.
 
 Usage:
-    python check_logic_boundary.py [files...]   # check specific files
-    python check_logic_boundary.py --all        # run all rules against the source tree
+    python check_import_boundary.py [files...]   # check specific files
+    python check_import_boundary.py --all        # run all rules against the source tree
 """
 
 import re
@@ -67,6 +68,7 @@ def find_violations(filepath: Path, forbidden_prefixes: list[str]) -> list[tuple
         match = IMPORT_RE.match(line)
         if match is None:
             continue
+
         module = match.group(2)
         for prefix in forbidden_prefixes:
             if module == prefix or module.startswith(prefix + "."):
@@ -82,15 +84,17 @@ def run_all_rules() -> list[tuple[str, str]]:
     for glob_pattern, forbidden_prefixes in RULES:
         for filepath in sorted(APP_ROOT.glob(glob_pattern)):
             all_violations.extend(find_violations(filepath, forbidden_prefixes))
+
     return all_violations
 
 
 def run_on_files(filepaths: list[Path]) -> list[tuple[str, str]]:
     all_violations: list[tuple[str, str]] = []
     for rule_glob, forbidden_prefixes in RULES:
-        matched = {p for p in filepaths if p.match(rule_glob)}
+        matched = {path for path in filepaths if path.match(rule_glob)}
         for filepath in sorted(matched):
             all_violations.extend(find_violations(filepath, forbidden_prefixes))
+
     return all_violations
 
 
@@ -104,9 +108,10 @@ def main() -> None:
         all_violations = run_on_files(filepaths)
 
     if all_violations:
-        print("layer boundary violation(s) found:", file=sys.stderr)
+        print("Layer boundary violation(s) found:", file=sys.stderr)
         for kind, location in all_violations:
             print(f"  [forbidden: {kind}] {location}", file=sys.stderr)
+
         sys.exit(1)
 
 
