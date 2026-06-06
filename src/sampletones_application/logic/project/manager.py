@@ -6,12 +6,30 @@ from .session import ProjectSession
 
 
 class ProjectManager:
-    """Owns the current working :class:`Project` and its lifecycle.
+    """Owns the current working :class:`~sampletones_core.project.Project` and its lifecycle.
 
-    The application always holds a project — a fresh empty one on startup, replaced
-    by ``new`` or ``load``. Mirrors the reconstruction manager/session split: this
-    manager holds the data plus a :class:`ProjectSession` tracking dirty state,
-    while save/load I/O is delegated to :class:`ProjectContainer`.
+    The application always holds exactly one project.  On startup that is a
+    fresh empty project; ``new`` and ``load`` replace it.  ``ProjectManager``
+    does not emit callbacks — callers pull state from it directly.  For
+    callback-driven mutation notifications, use :class:`ProjectController`.
+
+    Responsibilities:
+    - Create, load, save, and close the current ``Project``.
+    - Maintain a :class:`~sampletones_application.logic.project.session.ProjectSession`
+      that tracks whether the project has unsaved changes.
+    - Delegate file I/O to ``ProjectContainer`` from ``sampletones_core``.
+
+    Governing principles:
+    - No DPG calls.  No callbacks.  No imports from ``ui/``, ``view_model/``,
+      or ``coordinators/``.
+    - ``mark_updated()`` is the only method that changes session dirty state
+      without touching the ``Project`` object itself; it is called by
+      ``ProjectController._touch()``.
+    - Callers that need to react to lifecycle events should observe
+      ``self.session.on_state_changed``.
+
+    Dependencies: ``ProjectSession``, ``Project``, ``ProjectContainer``
+    (from ``sampletones_core``).
     """
 
     def __init__(self) -> None:

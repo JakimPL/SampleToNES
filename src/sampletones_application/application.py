@@ -59,6 +59,42 @@ from sampletones_shared.types.application import Sender
 
 
 class Application:
+    """Composition root of the SampleToNES GUI application.
+
+    ``Application`` is the single object that creates every other major object,
+    wires all inter-component callbacks, and runs the DearPyGui event loop.
+    It is the composition root: nothing outside this class may construct
+    coordinators, managers, or services, and no component receives a dependency
+    it was not given here.
+
+    Responsibilities:
+    - Instantiate all managers (``ConfigManager``, ``SessionManager``,
+      ``ProjectManager``, ``ReconstructionManager``, …), services
+      (``ConversionService``, ``RegenerationService``, ``ExportService``), and
+      coordinators in the correct dependency order.
+    - Wire cross-coordinator callbacks that cannot be expressed as constructor
+      arguments (e.g. forwarding a converted reconstruction from the Main tab
+      to the Reconstructions tab, or detecting whether a project sample is
+      being edited).
+    - Drive the event loop (``run``): render each DPG frame, drain the
+      ``CallbackQueue``, and update the status bar.
+    - Persist session state (last tab, last reconstruction, audio device,
+      window geometry) on clean exit.
+
+    Governing principles:
+    - Contains no domain logic.  Every decision is delegated to a coordinator,
+      manager, or logic object.
+    - Private methods are either event listeners that forward to coordinators
+      (``_on_project_state_changed``, ``_on_close``) or helpers that coordinate
+      two objects that cannot reference each other directly
+      (``_reconstruct_file``, ``_editing_project_sample``).
+    - Does not call DPG directly except in ``_reconstruct_file_dialog`` and
+      ``_reconstruct_directory_dialog``, which open file dialogs.  These should
+      eventually be moved to a coordinator.
+
+    Dependencies: every class in ``sampletones_application``.
+    """
+
     def __init__(self, config_path: Optional[Path] = None) -> None:
         self.layout: LayoutConfig = load_layout_config(LAYOUT_DIRECTORY, BEHAVIOR_DIRECTORY)
         self.language_manager: LanguageManager = LanguageManager(LANG_EN)

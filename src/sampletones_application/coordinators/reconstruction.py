@@ -40,6 +40,45 @@ from sampletones_shared.types.callback import Callback, VoidCallback
 
 
 class ReconstructionCoordinator:
+    """Cross-cutting coordinator for the reconstruction lifecycle.
+
+    A reconstruction is a first-class document in the application (loaded,
+    saved, closed, regenerated) and its lifecycle spans all tabs.
+    ``ReconstructionCoordinator`` centralises all logic that crosses tab
+    boundaries: save-confirmation dialogs, session state propagation, and
+    regeneration via ``RegenerationService``.
+
+    Responsibilities:
+    - Load a reconstruction with save-confirmation when one is already open
+      (``load_with_confirmation``).
+    - Save the current reconstruction, with or without a file-dialog
+      (``save``, ``save_as_dialog``).
+    - Close the current reconstruction with a save-confirmation
+      (``close_with_confirmation``).
+    - Initiate and handle instrument regeneration (``regenerate_instrument``,
+      ``_on_regeneration_result``).
+    - Propagate session state changes (loaded / dirty / saved) to
+      ``Application`` via the ``on_session_state_changed`` callback, which
+      triggers a title and menu update.
+    - Coordinate with ``ReconstructionsTabCoordinator`` for UI updates
+      (``display_reconstruction``, ``close_reconstruction``,
+      ``update_reconstruction``).
+
+    Governing principles:
+    - Holds a reference to ``ReconstructionsTabCoordinator`` via
+      ``set_reconstructions_tab()`` because the two objects are created in
+      the same ``Application.__init__`` scope and cannot be passed to each
+      other's constructors simultaneously.  The ``_tab`` property asserts that
+      ``set_reconstructions_tab`` has been called before first use.
+    - DPG calls (file dialogs) are confined to ``save_as_dialog`` and
+      ``_load_dialog``.
+    - Does not import from ``application.py`` or ``shell.py``.
+
+    Dependencies: ``ReconstructionManager``, ``SessionManager``,
+    ``RegenerationService``, ``ConfigManager``, ``AudioDeviceManager``,
+    ``DialogsRenderer``, ``LanguageManager``, ``LayoutConfig``.
+    """
+
     def __init__(
         self,
         reconstruction_manager: ReconstructionManager,

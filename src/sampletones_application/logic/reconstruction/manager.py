@@ -15,6 +15,38 @@ from sampletones_shared.utils.system.paths import open_path_in_explorer
 
 
 class ReconstructionManager(CallbackMixin):
+    """Owns the currently loaded reconstruction and its session state.
+
+    The reconstruction manager is the single point of truth for which
+    reconstruction is open.  It handles both file-backed reconstructions
+    (``load_reconstruction``) and in-memory ones borrowed from a project sample
+    (``load_reconstruction_object``), so that edits in the Reconstructions tab
+    always mutate the same object the caller holds — no copy is made.
+
+    Responsibilities:
+    - Load, save, and close the current :class:`~sampletones_core.reconstructions.Reconstruction`.
+    - Wrap the raw reconstruction in :class:`~sampletones_application.view_model.reconstruction.data.ReconstructionData`
+      and compute :class:`~sampletones_application.view_model.reconstruction.feature.FeatureData`
+      for graph display.
+    - Maintain a :class:`~sampletones_application.logic.reconstruction.session.ReconstructionSession`
+      tracking load/dirty/saved state.
+    - Fire ``on_reconstruction_loaded`` and ``on_reconstruction_closed`` callbacks
+      (via ``CallbackMixin``) so that the coordinator can react to lifecycle events.
+
+    Governing principles:
+    - No DPG.  No imports from ``ui/``, ``view_model/`` (except to construct
+      ``ReconstructionData`` / ``FeatureData``), or ``coordinators/``.
+    - ``close_reconstruction`` posts ``on_reconstruction_closed`` through
+      ``CallbackQueue`` rather than calling it directly, to guarantee it runs
+      on the main thread even if ``close`` is triggered from a background path.
+    - ``mark_updated()`` is called by external coordinators after a regeneration
+      completes; it does not reload features — the coordinator is responsible
+      for refreshing the display separately.
+
+    Dependencies: ``ReconstructionSession``, ``ReconstructionData``,
+    ``FeatureData``, ``CallbackQueue``, ``CallbackMixin``.
+    """
+
     def __init__(self, *, scheduling: SchedulingBehavior) -> None:
         self._scheduling = scheduling
         self._session: ReconstructionSession = ReconstructionSession()

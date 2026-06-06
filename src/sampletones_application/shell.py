@@ -77,6 +77,45 @@ class ShortcutBindings:
 
 
 class ApplicationShell:
+    """DearPyGui context manager and top-level UI shell.
+
+    ``ApplicationShell`` is the boundary between the Python application layer
+    and the DPG framework.  It owns the DPG context lifecycle, constructs the
+    primary window (menu bar, tab bar, status bar), and registers global
+    keyboard shortcuts.  Everything below the tab bar is delegated to the tab
+    coordinators.
+
+    Responsibilities:
+    - Create the DPG context, configure fonts and the default theme, and show
+      the viewport on ``setup()``.
+    - Build the primary window: menu bar (via ``MenuBar``), tab bar (calling
+      each coordinator's ``create_tab()``), and status bar.
+    - Register all global keyboard shortcuts via ``ShortcutManager`` using the
+      ``ShortcutBindings`` callbacks supplied by ``Application``.
+    - Manage tab navigation (``set_current_tab`` / ``get_current_tab``).
+    - Route playback-player queries to the active tab
+      (``get_current_player``).
+    - Drive per-frame UI updates: FPS counter (``update_fps``), status bar
+      (``update_status_bar``), menu bar view model (``update_menu``).
+    - Restore the last-open tab and reconstruction on startup
+      (``restore_current_items``).
+    - Start the ``CallbackQueue`` worker thread.
+
+    Governing principles:
+    - Must not hold domain state or import domain managers directly.
+      (``restore_current_items`` taking a ``ReconstructionManager`` argument is
+      a known violation; see ``docs/bugs-and-todos.md § Architecture``.)
+    - Must not call coordinator methods other than ``create_tab()`` and the
+      narrow public API methods (``player_panel``, ``sync_advanced_settings_visibility``).
+    - All DPG calls live inside ``setup()`` and the widget-creation helpers it
+      calls; nothing else in this class calls DPG directly.
+
+    Dependencies: ``SessionManager``, ``LanguageManager``, ``ShortcutManager``,
+    ``LayoutConfig``, ``Theme``, ``ViewportManager``, ``MenuBar``,
+    ``GUIStatusBar``, ``FPSTimer``, ``GUIAudioSettingsWindow``, and the four
+    tab coordinators.
+    """
+
     def __init__(
         self,
         session_manager: SessionManager,

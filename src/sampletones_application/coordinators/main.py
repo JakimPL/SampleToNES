@@ -37,6 +37,41 @@ from sampletones_shared.types.callback import PathCallback
 
 
 class MainTabCoordinator:
+    """Orchestrates the Main tab: file explorer, generation config, and converter.
+
+    The Main tab is the primary entry point for converting audio files into
+    reconstructions.  ``MainTabCoordinator`` owns all panels and logic objects
+    that make up this tab, wires their callbacks together, and creates the DPG
+    tab widget via ``create_tab()``.
+
+    Responsibilities:
+    - Instantiate and hold the Main tab's panels (``GUIExplorerPanel``,
+      ``GUIConfigPanel``, ``GUIReconstructorPanel``, ``GUIAdvancedSettingsPanel``,
+      ``GUIConverterPanel``) and logic objects (``ExplorerLogic``,
+      ``ConverterLogic``).
+    - Wire all intra-tab callbacks (panel hooks → logic methods, config-change
+      listeners → panel ``update_view`` calls) during ``__init__``.
+    - Create the DPG widget tree for the tab on ``create_tab()``.
+    - Expose a narrow public API of intent-level methods
+      (``set_input_path``, ``is_converter_running``, ``toggle_advanced_settings``,
+      ``emit_initial_view``, ``refresh_browser``) for ``Application`` and the
+      shell to call.
+
+    Governing principles:
+    - Does not hold domain state.  State lives in ``ConfigManager``,
+      ``SessionManager``, and the logic objects.
+    - DPG calls are confined to ``create_tab()``.
+    - Does not expose internal panels or logic objects as public attributes.
+      (The ``converter_logic`` property is a known violation; see
+      ``docs/bugs-and-todos.md § Architecture``.)
+    - Does not import from ``application.py`` or ``shell.py``.
+
+    Dependencies: ``ConfigManager``, ``SessionManager``, ``AudioDeviceManager``,
+    ``ShortcutManager``, ``InstructionsLibraryManager``, ``ConversionService``,
+    ``LanguageManager``, ``LayoutConfig``, ``DialogsRenderer``;
+    cross-tab callbacks injected as constructor parameters.
+    """
+
     def __init__(
         self,
         config_manager: ConfigManager,
