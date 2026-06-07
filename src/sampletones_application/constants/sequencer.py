@@ -134,6 +134,12 @@ TAG_SEQUENCER_INSTRUMENTS_WINDOW = TagName(
     Widget.WINDOW,
     "instruments",
 )
+TAG_SEQUENCER_INSTRUMENTS_THEME_ROW = TagName(
+    Page.SEQUENCER,
+    Panel.INSTRUMENTS,
+    Widget.THEME,
+    "row",
+)
 TAG_SEQUENCER_THEME_TABLE_PATTERN = TagName(
     Page.SEQUENCER,
     Panel.IMPLICIT,

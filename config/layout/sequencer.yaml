@@ -26,5 +26,5 @@ tracker:
   row_height: 20
 
 colors:
-  pattern_highlight: "#ffffff18"
+  pattern_highlight: "#ffffff40"
   cell_cursor: "#4488ff60"

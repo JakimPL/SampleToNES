@@ -34,7 +34,6 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
-_SAMPLE_COLUMN_IDX: Final[int] = 2
 _GENERATOR_COLUMN_IDX: Final[Dict[GeneratorName, int]] = {
     generator: 3 + index for index, generator in enumerate(GeneratorName.items())
 }
@@ -142,11 +141,7 @@ class GUISequencerGridPanel(GUIPanel):
         with dpg.item_handler_registry(tag=self._item_handler_tag):
             dpg.add_item_hover_handler(
                 parent=self._item_handler_tag,
-                callback=self._on_item_hovered,
-            )
-            dpg.add_item_clicked_handler(
-                parent=self._item_handler_tag,
-                callback=self._on_item_hovered,
+                callback=self._on_row_hovered,
             )
         with dpg.handler_registry(tag=self._key_handler_tag):
             dpg.add_key_press_handler(
@@ -270,6 +265,7 @@ class GUISequencerGridPanel(GUIPanel):
             label=display_index(row.index),
             span_columns=True,
             user_data=row.index,
+            callback=self._on_row_number_clicked,
         )
         FontRegistry.bind_to_item(selectable, Font.REGULAR_SMALL)
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
@@ -314,21 +310,36 @@ class GUISequencerGridPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
-        col = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
-        dpg.highlight_table_cell(
-            TAG_SEQUENCER_GRID_TABLE_TRACKER,
-            row_index,
-            col,
-            color=self._layout.colors.cell_cursor,
-        )
+        if generator is None:
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                row_index,
+                color=self._layout.colors.cell_cursor,
+            )
+        else:
+            dpg.highlight_table_cell(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                row_index,
+                _GENERATOR_COLUMN_IDX[generator],
+                color=self._layout.colors.cell_cursor,
+            )
 
     def _remove_cell_highlight(self) -> None:
         if self._selected_cell is None:
             return
 
         row_index, generator = self._selected_cell
-        col = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
-        dpg.unhighlight_table_cell(TAG_SEQUENCER_GRID_TABLE_TRACKER, row_index, col)
+        if generator is None:
+            dpg.unhighlight_table_row(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                row_index,
+            )
+        else:
+            dpg.unhighlight_table_cell(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                row_index,
+                _GENERATOR_COLUMN_IDX[generator],
+            )
 
     def _on_cell_clicked(
         self,
@@ -344,17 +355,16 @@ class GUISequencerGridPanel(GUIPanel):
         if self._selected_cell is None:
             pass
 
-    def _on_item_hovered(self, sender: Sender, app_data: int) -> None:
+    def _on_row_number_clicked(self, sender: Sender, app_data: bool, user_data: int) -> None:
+        dpg.set_value(sender, False)
+        self.select_cell(user_data, None)
+
+    def _on_row_hovered(self, sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):
             return
 
         row_index = dpg.get_item_user_data(app_data)
         if row_index is not None:
-            dpg.set_value(app_data, False)
-            highlighted_item = self._rows.get(self._highlighted_row)
-            if highlighted_item is not None:
-                dpg.set_value(highlighted_item, False)
-
             self._highlighted_row = row_index
 
     def highlight_row(self, row_index: Optional[int] = None) -> None:

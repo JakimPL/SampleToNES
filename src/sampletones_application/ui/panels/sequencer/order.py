@@ -15,6 +15,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
@@ -93,14 +94,14 @@ class GUISequencerOrderPanel(GUIPanel):
         container stack, so implicit ``with`` blocks in the update path
         would race with it.
         """
-        dpg.delete_item(TAG_SEQUENCER_ORDER_TABLE, children_only=True, slot=0)
-        dpg.delete_item(TAG_SEQUENCER_ORDER_TABLE, children_only=True, slot=1)
+        dpg_delete_children(TAG_SEQUENCER_ORDER_TABLE, slot=0)
+        dpg_delete_children(TAG_SEQUENCER_ORDER_TABLE, slot=1)
 
         max_length = max((len(vm.entries) for vm in view_models), default=0)
         self._max_positions = max_length
 
-        entries_by_gen: Dict[GeneratorName, Dict[int, OrderEntryViewModel]] = {
-            vm.generator: {entry.position: entry for entry in vm.entries} for vm in view_models
+        entries_by_generator: Dict[GeneratorName, Dict[int, OrderEntryViewModel]] = {
+            view_model.generator: {entry.position: entry for entry in view_model.entries} for view_model in view_models
         }
 
         dpg.add_table_column(
@@ -118,7 +119,7 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
         for generator in GeneratorName.items():
-            self._build_channel_row(generator, entries_by_gen, max_length)
+            self._build_channel_row(generator, entries_by_generator, max_length)
 
         if 0 <= self._current_frame < self._max_positions:
             self._highlight_column(self._current_frame)

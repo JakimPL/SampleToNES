@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -19,7 +19,9 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_application.ui.themes.tables.instruments_row import InstrumentsRowTheme
+from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel, SequencerSamplesViewModel
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
@@ -33,6 +35,8 @@ class GUISequencerSamplesPanel(GUIPanel):
     ) -> None:
         self._layout = layout
         self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
+        self._selected_sample_id: Optional[str] = None
+        self._selected_row: Optional[int] = None
         self.on_sample_selected: Optional[Callable[[str], None]] = None
         self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
         self._lbl_instruments = language_manager[
@@ -111,6 +115,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                     label=self._lbl_column_name,
                     init_width_or_weight=self._layout.table_cells.instrument_name,
                 )
+        InstrumentsRowTheme().bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
         """Rebuilds the samples table with explicit parents.
@@ -119,29 +124,49 @@ class GUISequencerSamplesPanel(GUIPanel):
         browser tree builds on a worker thread and the DearPyGui container stack
         is process-global, so ``with`` blocks here would race with it.
         """
-        dpg.delete_item(TAG_SEQUENCER_INSTRUMENTS_TABLE, children_only=True, slot=1)
+        dpg_delete_children(TAG_SEQUENCER_INSTRUMENTS_TABLE, slot=1)
+        self._selected_row = None
         for position, entry in enumerate(view_model.samples):
-            row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
+            self._build_sample_row(position, entry)
 
-            position_cell = dpg.add_table_cell(parent=row_id)
-            label = display_index(position)
-            dpg.add_text(label, parent=position_cell)
+    def _build_sample_row(self, position: int, entry: SampleEntryViewModel) -> None:
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
+        id_cell = dpg.add_table_cell(parent=row_id)
+        id_selectable = dpg.add_selectable(
+            parent=id_cell,
+            label=display_index(position),
+            span_columns=True,
+            user_data=(position, entry.sample_id),
+            callback=self._on_sample_selected,
+        )
+        FontRegistry.bind_to_item(id_selectable, Font.REGULAR_SMALL)
+        dpg.bind_item_handler_registry(id_selectable, self._row_handler_tag)
+        name_cell = dpg.add_table_cell(parent=row_id)
+        name_selectable = dpg.add_selectable(
+            parent=name_cell,
+            label=entry.name,
+            user_data=(position, entry.sample_id),
+            callback=self._on_sample_selected,
+        )
+        FontRegistry.bind_to_item(name_selectable, Font.REGULAR_SMALL)
+        dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
+        if entry.sample_id == self._selected_sample_id:
+            self._selected_row = position
+            dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
 
-            name_cell = dpg.add_table_cell(parent=row_id)
-            name_item = dpg.add_selectable(
-                parent=name_cell,
-                label=entry.name,
-                user_data=entry.sample_id,
-                callback=self._on_sample_selected,
-            )
-            FontRegistry.bind_to_item(name_item, Font.REGULAR_SMALL)
-            dpg.bind_item_handler_registry(name_item, self._row_handler_tag)
-
-    def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: str) -> None:
-        self.call(self.on_sample_selected, user_data)
+    def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: Tuple[int, str]) -> None:
+        position, sample_id = user_data
+        dpg.set_value(sender, False)
+        if self._selected_row is not None:
+            dpg.unhighlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, self._selected_row)
+        self._selected_row = position
+        self._selected_sample_id = sample_id
+        dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
+        self.call(self.on_sample_selected, sample_id)
 
     def _on_sample_double_clicked(self, sender: Sender, app_data: list[int]) -> None:
         clicked_item = app_data[1]
-        sample_id = dpg.get_item_user_data(clicked_item)
-        if sample_id is not None:
+        user_data = dpg.get_item_user_data(clicked_item)
+        if user_data is not None:
+            _, sample_id = user_data
             self.call(self.on_sample_edit_requested, sample_id)

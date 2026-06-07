@@ -23,6 +23,7 @@ from sampletones_application.ui.themes.nodes.library import (
 )
 from sampletones_application.ui.themes.status import StatusBarTheme
 from sampletones_application.ui.themes.tables.initial_pitch import InitialPitchTableTheme
+from sampletones_application.ui.themes.tables.instruments_row import InstrumentsRowTheme
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.ui.themes.tables.table import TableTheme
 from sampletones_application.ui.themes.trace import TracebackTheme
@@ -63,4 +64,5 @@ def setup_themes(layout: LayoutConfig) -> None:
     ZeroLineGraphTheme.setup(graphs)
 
     InitialPitchTableTheme.setup(reconstructions)
+    InstrumentsRowTheme.setup(sequencer)
     PatternTableTheme.setup(general, sequencer)
