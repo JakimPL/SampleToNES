@@ -334,13 +334,18 @@ sequencer.browser.message.status_search: "Search reconstructions"
 sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as instrument"
 
 # =============================================================================
+# Sequencer tab — Module
+# =============================================================================
+sequencer.module.label.module_options: "Module options"
+sequencer.module.label.nes_frequency: "NES frequency"
+sequencer.module.label.tempo: "Tempo"
+sequencer.module.label.speed: "Speed"
+sequencer.module.label.export_module_button: "Export as FamiTracker module"
+sequencer.module.title.export_module_dialog: "Export FamiTracker module"
+
+# =============================================================================
 # Sequencer tab — Grid
 # =============================================================================
-sequencer.grid.label.module_options: "Module options"
-sequencer.grid.label.nes_frequency: "NES frequency"
-sequencer.grid.label.tempo: "Tempo"
-sequencer.grid.label.speed: "Speed"
-sequencer.grid.label.export_module_button: "Export as FamiTracker module"
 sequencer.grid.label.tracker_text: "Tracker"
 sequencer.grid.label.column_row: "Row"
 sequencer.grid.label.column_sample: "Sample"
@@ -351,7 +356,6 @@ sequencer.grid.label.column_noise: "Noise"
 sequencer.grid.label.column_note: "Note"
 sequencer.grid.label.column_volume: "Vol"
 sequencer.grid.label.column_transpose: "Transpose"
-sequencer.grid.title.export_module_dialog: "Export FamiTracker module"
 
 # =============================================================================
 # Sequencer tab — Order

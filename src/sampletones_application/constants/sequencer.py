@@ -50,36 +50,6 @@ TAG_SEQUENCER_GRID_PANEL_PLAYER = TagName(
     Widget.PANEL,
     "grid_player",
 )
-TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.GROUP,
-    "module_options",
-)
-TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.INPUT,
-    "nes_frequency",
-)
-TAG_SEQUENCER_GRID_INPUT_TEMPO = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.INPUT,
-    "tempo",
-)
-TAG_SEQUENCER_GRID_INPUT_SPEED = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.INPUT,
-    "speed",
-)
-TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE = TagName(
-    Page.SEQUENCER,
-    Panel.GRID,
-    Widget.BUTTON,
-    "export_module",
-)
 TAG_SEQUENCER_GRID_TABLE_TRACKER = TagName(
     Page.SEQUENCER,
     Panel.GRID,
@@ -91,6 +61,42 @@ TAG_SEQUENCER_GRID_WINDOW_TRACKER = TagName(
     Panel.GRID,
     Widget.WINDOW,
     "tracker",
+)
+TAG_SEQUENCER_MODULE_PANEL = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.PANEL,
+    "module",
+)
+TAG_SEQUENCER_MODULE_GROUP_OPTIONS = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.GROUP,
+    "options",
+)
+TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.INPUT,
+    "nes_frequency",
+)
+TAG_SEQUENCER_MODULE_INPUT_TEMPO = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.INPUT,
+    "tempo",
+)
+TAG_SEQUENCER_MODULE_INPUT_SPEED = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.INPUT,
+    "speed",
+)
+TAG_SEQUENCER_MODULE_BUTTON_EXPORT = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.BUTTON,
+    "export",
 )
 TAG_SEQUENCER_ORDER_PANEL = TagName(
     Page.SEQUENCER,

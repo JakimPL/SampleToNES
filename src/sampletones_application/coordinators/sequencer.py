@@ -26,6 +26,7 @@ from sampletones_application.logic.sequencer.samples import SequencerSamplesLogi
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
@@ -90,9 +91,14 @@ class SequencerTabCoordinator:
             self._sequencer_player_logic,
             layout=layout.sequencer,
             layout_player=layout.player,
-            input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
             dialogs=dialogs,
+        )
+        self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
+            self._sequencer_grid_logic,
+            layout=layout.sequencer,
+            input_width=layout.general.inputs.default_width,
+            language_manager=language_manager,
         )
         self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
             layout=layout.sequencer,
@@ -106,12 +112,12 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
-        self._sequencer_grid_panel.on_change_rate = self._sequencer_grid_logic.set_change_rate
-        self._sequencer_grid_panel.on_tempo = self._sequencer_grid_logic.set_tempo
-        self._sequencer_grid_panel.on_speed = self._sequencer_grid_logic.set_speed
+        self._sequencer_module_panel.on_change_rate = self._sequencer_grid_logic.set_change_rate
+        self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
+        self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_set_row = self._on_set_row
-        self._sequencer_grid_logic.on_settings_changed = self._sequencer_grid_panel.update_settings
+        self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
@@ -141,7 +147,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
-        self._sequencer_grid_panel.set_enabled(self._project_controller.is_open)
+        self._sequencer_module_panel.set_enabled(self._project_controller.is_open)
 
     def _on_song_changed(self) -> None:
         self._sequencer_grid_logic.push_grid()
@@ -237,6 +243,7 @@ class SequencerTabCoordinator:
                         no_scrollbar=True,
                         no_scroll_with_mouse=True,
                     ):
+                        self._sequencer_module_panel.create_panel()
                         self._sequencer_samples_panel.create_panel()
 
     @property

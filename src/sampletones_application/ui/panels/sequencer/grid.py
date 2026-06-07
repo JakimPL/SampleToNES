@@ -2,7 +2,6 @@ from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
 from sampletones_application.categories.elements.sequencer import SequencerGridElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -12,11 +11,6 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
-    TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
-    TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS,
-    TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
-    TAG_SEQUENCER_GRID_INPUT_SPEED,
-    TAG_SEQUENCER_GRID_INPUT_TEMPO,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
@@ -26,22 +20,17 @@ from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
 )
-from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
@@ -59,7 +48,6 @@ class GUISequencerGridPanel(GUIPanel):
         *,
         layout: SequencerLayout,
         layout_player: PlayerLayout,
-        input_width: int,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
     ) -> None:
@@ -67,7 +55,6 @@ class GUISequencerGridPanel(GUIPanel):
         self._player_logic = player_logic
         self._layout = layout
         self._layout_player = layout_player
-        self._input_width = input_width
         self._language_manager = language_manager
         self._dialogs = dialogs
 
@@ -79,9 +66,6 @@ class GUISequencerGridPanel(GUIPanel):
         self._highlighted_row: Optional[int] = None
         self._selected_cell: Optional[Tuple[int, Optional[GeneratorName]]] = None
 
-        self.on_change_rate: Optional[Callable[[int], None]] = None
-        self.on_tempo: Optional[Callable[[int], None]] = None
-        self.on_speed: Optional[Callable[[int], None]] = None
         self.on_navigate: Optional[Callable[[int, int], None]] = None
         self.on_clear_row: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
         self.on_edit_cell: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
@@ -91,36 +75,6 @@ class GUISequencerGridPanel(GUIPanel):
 
         self.pattern_theme = PatternTableTheme()
 
-        self._lbl_module_options = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.MODULE_OPTIONS,
-        ]
-        self._lbl_nes_frequency = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.NES_FREQUENCY,
-        ]
-        self._lbl_tempo = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.TEMPO,
-        ]
-        self._lbl_speed = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.SPEED,
-        ]
-        self._lbl_export_module = language_manager[
-            Page.SEQUENCER,
-            Panel.GRID,
-            TextType.LABEL,
-            SequencerGridElements.EXPORT_MODULE_BUTTON,
-        ]
         self._lbl_tracker = language_manager[
             Page.SEQUENCER,
             Panel.GRID,
@@ -163,12 +117,6 @@ class GUISequencerGridPanel(GUIPanel):
             TextType.LABEL,
             SequencerGridElements.COLUMN_NOISE,
         ]
-        self._msg_status_input = language_manager[
-            Page.GLOBAL,
-            Panel.STATUS,
-            TextType.MESSAGE,
-            StatusElements.INPUT,
-        ]
 
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
@@ -186,8 +134,6 @@ class GUISequencerGridPanel(GUIPanel):
             border=False,
         ):
             self._create_audio_panel()
-            self._create_module_options()
-            self._create_export_button()
 
     def create_tracker(self) -> None:
         self._create_tracker_view()
@@ -216,63 +162,6 @@ class GUISequencerGridPanel(GUIPanel):
             layout=self._layout_player,
             language_manager=self._language_manager,
             dialogs=self._dialogs,
-        )
-
-    def _create_module_options(self) -> None:
-        dpg.add_separator()
-        section_text = dpg.add_text(self._lbl_module_options)
-        FontRegistry.bind_to_item(section_text, Font.BOLD)
-
-        settings = self.sequencer_grid_logic.settings
-        with dpg.group(tag=TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS):
-            dpg.add_input_int(
-                label=self._lbl_nes_frequency,
-                default_value=settings.change_rate,
-                tag=TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
-                min_value=MIN_CHANGE_RATE,
-                max_value=MAX_CHANGE_RATE,
-                width=self._input_width,
-                callback=self._on_change_rate_input,
-            )
-            dpg.add_input_int(
-                label=self._lbl_tempo,
-                default_value=settings.tempo,
-                tag=TAG_SEQUENCER_GRID_INPUT_TEMPO,
-                min_value=self._layout.tempo.min,
-                max_value=self._layout.tempo.max,
-                width=self._input_width,
-                callback=self._on_tempo_input,
-            )
-            dpg.add_input_int(
-                label=self._lbl_speed,
-                default_value=settings.speed,
-                tag=TAG_SEQUENCER_GRID_INPUT_SPEED,
-                min_value=self._layout.speed.min,
-                max_value=self._layout.speed.max,
-                width=self._input_width,
-                callback=self._on_speed_input,
-            )
-
-        GUIStatusBar.bind_to_item(
-            TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
-            self._msg_status_input,
-        )
-        GUIStatusBar.bind_to_item(
-            TAG_SEQUENCER_GRID_INPUT_TEMPO,
-            self._msg_status_input,
-        )
-        GUIStatusBar.bind_to_item(
-            TAG_SEQUENCER_GRID_INPUT_SPEED,
-            self._msg_status_input,
-        )
-
-    def _create_export_button(self) -> None:
-        dpg.add_separator()
-        GUIButton(
-            tag=TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
-            label=self._lbl_export_module,
-            width=-1,
-            font=Font.BOLD,
         )
 
     def _create_tracker_view(self) -> None:
@@ -335,11 +224,6 @@ class GUISequencerGridPanel(GUIPanel):
                 dpg.add_table_column(width_stretch=True)
 
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
-
-    def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
-        dpg.set_value(TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY, view_model.change_rate)
-        dpg.set_value(TAG_SEQUENCER_GRID_INPUT_TEMPO, view_model.tempo)
-        dpg.set_value(TAG_SEQUENCER_GRID_INPUT_SPEED, view_model.speed)
 
     def update_grid(self, view_model: SequencerGridViewModel) -> None:
         """Rebuilds the tracker body from scratch for the visible order frame.
@@ -460,15 +344,6 @@ class GUISequencerGridPanel(GUIPanel):
         if self._selected_cell is None:
             pass
 
-    def _on_change_rate_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_change_rate, app_data)
-
-    def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_tempo, app_data)
-
-    def _on_speed_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_speed, app_data)
-
     def _on_item_hovered(self, sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):
             return
@@ -503,9 +378,3 @@ class GUISequencerGridPanel(GUIPanel):
             row_index,
         )
         self._highlighted_row = None
-
-    def set_enabled(self, enabled: bool) -> None:
-        dpg_configure_item(
-            TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS,
-            enabled=enabled,
-        )
