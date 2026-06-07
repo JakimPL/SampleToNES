@@ -24,6 +24,7 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 
 class SequencerRowViewModel(BaseModel, frozen=True):
     index: int
+    sample_label: str
     cells: Dict[GeneratorName, SequencerCellViewModel]
 
 

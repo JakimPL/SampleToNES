@@ -122,6 +122,11 @@ class SequencerGridLogic(CallbackMixin):
         for generator in GeneratorName.items():
             self.clear_row(generator, row_index)
 
+    def set_row_all_generators(self, row_index: int, sample_id: Optional[str]) -> None:
+        for generator in GeneratorName.items():
+            instrument = Instrument(sample_id=sample_id, generator_name=generator) if sample_id is not None else None
+            self.set_row(generator, row_index, instrument=instrument)
+
     def select_frame(self, frame_index: int) -> None:
         self._frame_index = frame_index
         self.push_grid()
@@ -142,7 +147,17 @@ class SequencerGridLogic(CallbackMixin):
             else:
                 cells[generator] = _EMPTY_CELL
 
-        return SequencerRowViewModel(index=index, cells=cells)
+        return SequencerRowViewModel(
+            index=index,
+            sample_label=self._build_sample_label(cells),
+            cells=cells,
+        )
+
+    def _build_sample_label(self, cells: Dict[GeneratorName, SequencerCellViewModel]) -> str:
+        instruments = {cell.instrument for cell in cells.values()}
+        if len(instruments) == 1:
+            return next(iter(instruments))
+        return "…"
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(

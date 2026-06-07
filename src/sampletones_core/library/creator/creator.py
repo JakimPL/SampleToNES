@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName
@@ -29,7 +29,6 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
 
         self.total_instructions = 0
         self.completed_instructions = 0
-        self.current_instruction: Optional[str] = None
 
     def start(self) -> None:
         if self.running:
@@ -72,10 +71,4 @@ class InstructionsLibraryCreator(TaskProcessor[Tuple[InstructionLibraryKey, Inst
     def _notify_progress(self) -> None:
         self.total_instructions = len(self.instructions)
         self.completed_instructions = self.completed_tasks
-
-        if 0 < self.completed_tasks <= len(self.instructions):
-            generator_class_name, instruction = self.instructions[self.completed_tasks - 1]
-            self.current_instruction = f"{generator_class_name.value}: {instruction}"
-            self.current_item = self.current_instruction
-
         super()._notify_progress()

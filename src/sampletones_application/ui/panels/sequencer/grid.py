@@ -85,6 +85,9 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_navigate: Optional[Callable[[int, int], None]] = None
         self.on_clear_row: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
         self.on_edit_cell: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
+        self.on_set_row: Optional[
+            Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
+        ] = None
 
         self.pattern_theme = PatternTableTheme()
 
@@ -391,7 +394,7 @@ class GUISequencerGridPanel(GUIPanel):
         sample_cell = dpg.add_table_cell(parent=row_id)
         sample_text = dpg.add_selectable(
             parent=sample_cell,
-            label="",
+            label=row.sample_label,
             user_data=(row.index, None),
             callback=self._on_cell_clicked,
         )
@@ -415,6 +418,12 @@ class GUISequencerGridPanel(GUIPanel):
     def deselect_cell(self) -> None:
         self._remove_cell_highlight()
         self._selected_cell = None
+
+    def show_instrument_picker(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        """Open the instrument picker for the given cell. Implement the popup UX here."""
+
+    def show_value_editor(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        """Open the transpose/volume editor for the given cell. Implement the popup UX here."""
 
     def _apply_cell_highlight(
         self,

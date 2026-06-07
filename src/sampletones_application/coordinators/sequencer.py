@@ -32,6 +32,7 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_shared.logger import logger
 
 
@@ -109,6 +110,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_grid_panel.on_speed = self._sequencer_grid_logic.set_speed
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
+        self._sequencer_grid_panel.on_set_row = self._on_set_row
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_grid_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
@@ -159,6 +161,37 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.clear_all_generators(row_index)
         else:
             self._sequencer_grid_logic.clear_row(generator, row_index)
+
+    def _on_set_row(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        sample_id: Optional[str],
+        transpose: Optional[int],
+        volume: Optional[int],
+    ) -> None:
+        if generator is None:
+            if sample_id is not None:
+                self._sequencer_grid_logic.set_row_all_generators(
+                    row_index,
+                    sample_id,
+                )
+        else:
+            instrument = (
+                Instrument(
+                    sample_id=sample_id,
+                    generator_name=generator,
+                )
+                if sample_id is not None
+                else None
+            )
+            self._sequencer_grid_logic.set_row(
+                generator,
+                row_index,
+                instrument=instrument,
+                transpose=transpose,
+                volume=volume,
+            )
 
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")

@@ -28,6 +28,5 @@
 ## Bugs
 
 * No error message while loading a corrupt library
+* No refreshing after library generation
 * Finished unclosed reconstruction prompts before exiting
-
-
