@@ -8,9 +8,9 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 
-from .noise import NoiseExporter
-from .pulse import PulseExporter
-from .triangle import TriangleExporter
+from .implementation.noise import NoiseExporter
+from .implementation.pulse import PulseExporter
+from .implementation.triangle import TriangleExporter
 from .types import ExporterTypeUnion
 
 INSTRUCTION_TO_EXPORTER_MAP: Dict[Type[Instruction], ExporterTypeUnion] = {

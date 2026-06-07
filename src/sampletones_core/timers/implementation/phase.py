@@ -5,7 +5,7 @@ import numpy as np
 from sampletones_core.constants.general import APU_CLOCK, RESET_PHASE
 from sampletones_shared.types.data import Initials
 
-from .timer import Timer
+from ..timer import Timer
 
 
 class PhaseTimer(Timer):

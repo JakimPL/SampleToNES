@@ -15,7 +15,7 @@ from sampletones_core.data import (
     FlatBufferReaderProtocol,
 )
 
-from .instruction import Instruction
+from ..instruction import Instruction
 
 
 class NoiseInstruction(Instruction):

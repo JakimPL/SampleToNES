@@ -12,7 +12,7 @@ from sampletones_core.data import (
 )
 from sampletones_core.utils.frequencies import pitch_to_name
 
-from .instruction import Instruction
+from ..instruction import Instruction
 
 
 class TriangleInstruction(Instruction):

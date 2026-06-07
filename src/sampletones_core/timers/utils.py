@@ -3,7 +3,7 @@ from typing import Dict
 from sampletones_core.configs import Config
 from sampletones_core.utils.frequencies import pitch_to_frequency
 
-from .phase import PhaseTimer
+from .implementation.phase import PhaseTimer
 
 
 def get_frequency_table(config: Config) -> Dict[int, float]:

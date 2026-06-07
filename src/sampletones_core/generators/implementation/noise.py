@@ -13,7 +13,7 @@ from sampletones_core.instructions import InstructionTypeUnion, NoiseInstruction
 from sampletones_core.timers import LFSRTimer
 from sampletones_shared.types.data import Initials
 
-from .generator import Generator
+from ..generator import Generator
 
 
 class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):

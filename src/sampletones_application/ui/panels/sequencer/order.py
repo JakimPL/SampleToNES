@@ -18,7 +18,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_index
+from sampletones_core.utils.display import display_index, display_pattern_label
 from sampletones_shared.types.application import Sender
 
 _NUM_CHANNELS = len(GeneratorName.items())
@@ -144,7 +144,7 @@ class GUISequencerOrderPanel(GUIPanel):
         for position in range(max_length):
             pos_cell = dpg.add_table_cell(parent=row_id)
             entry = entries_by_gen.get(generator, {}).get(position)
-            cell_label = entry.pattern_label if entry is not None else "—"
+            cell_label = display_pattern_label(entry.pattern_label if entry is not None else None)
             selectable = dpg.add_selectable(
                 parent=pos_cell,
                 label=cell_label,

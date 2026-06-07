@@ -12,7 +12,7 @@ from sampletones_core.instructions import (
 )
 from sampletones_core.types.feature import FeatureMap
 
-from .exporter import Exporter
+from ..exporter import Exporter
 
 
 class NoiseExporter(Exporter[NoiseInstruction]):
@@ -76,9 +76,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
     ) -> NoiseInstruction:
         return NoiseInstruction(
             on=cls._infer_instruction_on(dictionary),
-            period=int((initial_pitch + dictionary["period"]) % NUM_PERIODS),
-            volume=int(dictionary["volume"]),
-            short=bool(dictionary["short"]),
+            period=int((initial_pitch + dictionary[FeatureKey.ARPEGGIO.value]) % NUM_PERIODS),
+            volume=int(dictionary[FeatureKey.VOLUME.value]),
+            short=bool(dictionary[FeatureKey.DUTY_CYCLE.value]),
         )
 
     @classmethod

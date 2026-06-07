@@ -15,7 +15,7 @@ from sampletones_core.constants.general import (
 )
 from sampletones_shared.types.data import Initials
 
-from .timer import Timer
+from ..timer import Timer
 
 
 @dataclass(frozen=True)

@@ -16,7 +16,7 @@ from sampletones_core.instructions import (
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from .generator import Generator
+from ..generator import Generator
 
 
 class TriangleGenerator(Generator[TriangleInstruction, PhaseTimer]):

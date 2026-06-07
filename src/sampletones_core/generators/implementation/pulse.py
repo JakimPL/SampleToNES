@@ -14,7 +14,7 @@ from sampletones_core.instructions import InstructionTypeUnion, PulseInstruction
 from sampletones_core.timers import PhaseTimer
 from sampletones_shared.types.data import Initials
 
-from .generator import Generator
+from ..generator import Generator
 
 
 class PulseGenerator(Generator[PulseInstruction, PhaseTimer]):

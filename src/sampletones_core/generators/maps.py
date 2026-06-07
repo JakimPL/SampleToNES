@@ -17,9 +17,9 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 
-from .noise import NoiseGenerator
-from .pulse import PulseGenerator
-from .triangle import TriangleGenerator
+from .implementation.noise import NoiseGenerator
+from .implementation.pulse import PulseGenerator
+from .implementation.triangle import TriangleGenerator
 from .types import GeneratorTypeUnion
 
 LIBRARY_GENERATOR_CLASS_MAP: Final[Dict[LibraryGeneratorName, GeneratorClassName]] = {

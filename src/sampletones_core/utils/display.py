@@ -64,6 +64,13 @@ def display_instrument(
     return display_sample(samples=samples, sample_id=sample_id)
 
 
+def display_pattern_label(label: Optional[str]) -> str:
+    if label is None:
+        return "—"
+
+    return label
+
+
 def display_volume(value: Optional[int]) -> str:
     return display_value(value, length=1, hexadecimal=True)
 
