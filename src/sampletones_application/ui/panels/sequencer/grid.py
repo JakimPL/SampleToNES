@@ -59,6 +59,12 @@ _DEFAULT_DISPLAY: Final[Dict[SubColumns, str]] = {
 
 _COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
 
+_SUBCOLUMN_WIDTHS: Final[Dict[SubColumns, int]] = {
+    SubColumns.INSTRUMENT: 26,
+    SubColumns.TRANSPOSE: 30,
+    SubColumns.VOLUME: 18,
+}
+
 _HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
     dpg.mvKey_A + i: "0123456789ABCDEF"[10 + i] for i in range(6)
 }
@@ -88,11 +94,12 @@ class GUISequencerGridPanel(GUIPanel):
         self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}_key_handler"
 
         self._rows: Dict[Optional[int], Sender] = {}
-        self._cells: Dict[Tuple[int, Optional[GeneratorName]], Sender] = {}
+        self._cells: Dict[Tuple[int, Optional[GeneratorName], SubColumns], Sender] = {}
         self._cell_values: Dict[Tuple[int, Optional[GeneratorName], SubColumns], str] = {}
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
+        self._subcolumn_themes: Dict[SubColumns, int] = {}
 
         self.on_clear_row: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
         self.on_set_row: Optional[
@@ -163,6 +170,7 @@ class GUISequencerGridPanel(GUIPanel):
             self._create_audio_panel()
 
     def create_tracker(self) -> None:
+        self._create_subcolumn_themes()
         self._create_tracker_view()
 
     def _setup_handlers(self) -> None:
@@ -186,6 +194,18 @@ class GUISequencerGridPanel(GUIPanel):
             language_manager=self._language_manager,
             dialogs=self._dialogs,
         )
+
+    def _create_subcolumn_themes(self) -> None:
+        _theme_colors = {
+            SubColumns.INSTRUMENT: (255, 255, 255, 255),
+            SubColumns.TRANSPOSE: (160, 160, 160, 255),
+            SubColumns.VOLUME: (100, 220, 100, 255),
+        }
+        for subcolumn, color in _theme_colors.items():
+            with dpg.theme() as theme:
+                with dpg.theme_component(dpg.mvSelectable):
+                    dpg.add_theme_color(dpg.mvThemeCol_Text, color, category=dpg.mvThemeCat_Core)
+            self._subcolumn_themes[subcolumn] = theme
 
     def _create_tracker_view(self) -> None:
         dpg.add_separator(parent=self.tag)
@@ -302,26 +322,21 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row.index] = selectable
 
-        sample_cell = dpg.add_table_cell(parent=row_id)
-        sample_selectable = dpg.add_selectable(
-            parent=sample_cell,
-            label=self._cell_label(row.index, None),
-            user_data=(row.index, None),
-            callback=self._on_cell_clicked,
-        )
-        FontRegistry.bind_to_item(sample_selectable, Font.BOLD_SMALL)
-        self._cells[(row.index, None)] = sample_selectable
-
-        for generator in GeneratorName.items():
-            generator_cell = dpg.add_table_cell(parent=row_id)
-            cell_selectable = dpg.add_selectable(
-                parent=generator_cell,
-                label=self._cell_label(row.index, generator),
-                user_data=(row.index, generator),
-                callback=self._on_cell_clicked,
-            )
-            FontRegistry.bind_to_item(cell_selectable, Font.REGULAR_SMALL)
-            self._cells[(row.index, generator)] = cell_selectable
+        for generator in _COLUMNS:
+            font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
+            cell = dpg.add_table_cell(parent=row_id)
+            group = dpg.add_group(horizontal=True, horizontal_spacing=0, parent=cell)
+            for subcolumn in SubColumns:
+                subcolumn_selectable = dpg.add_selectable(
+                    parent=group,
+                    label=self._subcolumn_label(row.index, generator, subcolumn),
+                    width=_SUBCOLUMN_WIDTHS[subcolumn],
+                    user_data=(row.index, generator, subcolumn),
+                    callback=self._on_cell_clicked,
+                )
+                FontRegistry.bind_to_item(subcolumn_selectable, font)
+                dpg.bind_item_theme(subcolumn_selectable, self._subcolumn_themes[subcolumn])
+                self._cells[(row.index, generator, subcolumn)] = subcolumn_selectable
 
     def select_cell(self, row_index: int, generator: Optional[GeneratorName]) -> None:
         new_state = TrackerInputState(
@@ -360,28 +375,25 @@ class GUISequencerGridPanel(GUIPanel):
             if self.on_cell_selected is not None:
                 self.on_cell_selected(new_cursor.row, new_cursor.generator)
 
-    def _cell_label(self, row: int, generator: Optional[GeneratorName]) -> str:
+    def _subcolumn_label(self, row: int, generator: Optional[GeneratorName], subcolumn: SubColumns) -> str:
         cursor = self._input_state.cursor
         pending = self._input_state.pending
-        parts = []
-        for subcolumn in SubColumns:
-            value = self._cell_values.get((row, generator, subcolumn), _DEFAULT_DISPLAY[subcolumn])
-            if (
-                cursor is not None
-                and cursor.row == row
-                and cursor.generator == generator
-                and cursor.subcolumn == subcolumn
-                and pending
-            ):
+        is_active = (
+            cursor is not None and cursor.row == row and cursor.generator == generator and cursor.subcolumn == subcolumn
+        )
+        value = self._cell_values.get((row, generator, subcolumn), _DEFAULT_DISPLAY[subcolumn])
+        if is_active:
+            if pending:
                 expected = _DIGIT_COUNT[subcolumn]
-                value = pending + "_" * (expected - len(pending))
-            parts.append(value)
-        return " ".join(parts)
+                return pending + "_" * (expected - len(pending))
+            return "_" * len(_DEFAULT_DISPLAY[subcolumn])
+        return value
 
     def _update_cell_display(self, row: int, generator: Optional[GeneratorName]) -> None:
-        cell_id = self._cells.get((row, generator))
-        if cell_id is not None:
-            dpg.configure_item(cell_id, label=self._cell_label(row, generator))
+        for subcolumn in SubColumns:
+            cell_id = self._cells.get((row, generator, subcolumn))
+            if cell_id is not None:
+                dpg.configure_item(cell_id, label=self._subcolumn_label(row, generator, subcolumn))
 
     def _handle_edit_action(self, action: EditAction) -> None:
         row, generator = action.row, action.generator
@@ -401,6 +413,11 @@ class GUISequencerGridPanel(GUIPanel):
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
+        dpg.highlight_table_row(
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            row_index,
+            color=self._layout.colors.cursor_row,
+        )
         col_idx = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
         dpg.highlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
@@ -408,34 +425,36 @@ class GUISequencerGridPanel(GUIPanel):
             col_idx,
             color=self._layout.colors.cell_cursor,
         )
-        cell_id = self._cells.get((row_index, generator))
-        if cell_id is not None:
-            dpg.set_value(cell_id, True)
 
     def _remove_cell_highlight(
         self,
         row_index: int,
         generator: Optional[GeneratorName],
     ) -> None:
+        dpg.unhighlight_table_row(
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            row_index,
+        )
         col_idx = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
             col_idx,
         )
-        cell_id = self._cells.get((row_index, generator))
-        if cell_id is not None:
-            dpg.set_value(cell_id, False)
 
     def _on_cell_clicked(
         self,
         sender: Sender,
         app_data: bool,
-        user_data: Tuple[int, Optional[GeneratorName]],
+        user_data: Tuple[int, Optional[GeneratorName], SubColumns],
     ) -> None:
         dpg.set_value(sender, False)
-        row_index, generator = user_data
-        self.select_cell(row_index, generator)
+        row_index, generator, subcolumn = user_data
+        new_state = TrackerInputState(
+            cursor=TrackerCursor(row_index, generator, subcolumn),
+            pending="",
+        )
+        self._apply_state(new_state)
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
         if self._input_state.cursor is None:
@@ -445,37 +464,48 @@ class GUISequencerGridPanel(GUIPanel):
 
         match app_data:
             case dpg.mvKey_Up:
-                self._apply_state(self._input_state.navigate_row(-1, self._current_row_count))
+                self._apply_state(self._committed_state().navigate_row(-1, self._current_row_count))
             case dpg.mvKey_Down:
-                self._apply_state(self._input_state.navigate_row(1, self._current_row_count))
+                self._apply_state(self._committed_state().navigate_row(1, self._current_row_count))
             case dpg.mvKey_Left:
-                self._apply_state(self._input_state.navigate_subcolumn(-1))
+                self._apply_state(self._committed_state().navigate_subcolumn(-1))
             case dpg.mvKey_Right:
-                self._apply_state(self._input_state.navigate_subcolumn(1))
+                self._apply_state(self._committed_state().navigate_subcolumn(1))
             case dpg.mvKey_Tab:
                 current_idx = _COLUMNS.index(cursor.generator)
-                delta = -1 if dpg.is_key_down(dpg.mvKey_Shift) else 1
+                delta = -1 if (dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)) else 1
                 next_idx = (current_idx + delta) % len(_COLUMNS)
-                self._apply_state(self._input_state.navigate_column(_COLUMNS[next_idx]))
+                self._apply_state(self._committed_state().navigate_column(_COLUMNS[next_idx]))
             case dpg.mvKey_Home:
-                self._apply_state(self._input_state.navigate_row(0, self._current_row_count, absolute=True))
+                self._apply_state(self._committed_state().navigate_row(0, self._current_row_count, absolute=True))
             case dpg.mvKey_End:
                 self._apply_state(
-                    self._input_state.navigate_row(self._current_row_count - 1, self._current_row_count, absolute=True)
+                    self._committed_state().navigate_row(
+                        self._current_row_count - 1, self._current_row_count, absolute=True
+                    )
                 )
             case dpg.mvKey_Prior:
-                self._apply_state(self._input_state.navigate_row(-_PAGE_SIZE, self._current_row_count))
+                self._apply_state(self._committed_state().navigate_row(-_PAGE_SIZE, self._current_row_count))
             case dpg.mvKey_Next:
-                self._apply_state(self._input_state.navigate_row(_PAGE_SIZE, self._current_row_count))
-            case dpg.mvKey_Delete | dpg.mvKey_Back:
-                new_state, clear_action = self._input_state.clear()
-                self._handle_clear_action(clear_action)
-                new_state = new_state.navigate_row(1, self._current_row_count)
-                self._apply_state(new_state)
+                self._apply_state(self._committed_state().navigate_row(_PAGE_SIZE, self._current_row_count))
+            case dpg.mvKey_Return:
+                self._apply_state(self._committed_state().navigate_subcolumn(1))
+            case dpg.mvKey_Delete:
+                self._cell_values.pop((cursor.row, cursor.generator, cursor.subcolumn), None)
+                self._apply_state(self._input_state.cancel().navigate_subcolumn(1))
+            case dpg.mvKey_Back:
+                self._cell_values.pop((cursor.row, cursor.generator, cursor.subcolumn), None)
+                self._apply_state(self._input_state.cancel().navigate_subcolumn(-1))
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
                 self._handle_printable_key(app_data)
+
+    def _committed_state(self) -> TrackerInputState:
+        state, edit_action = self._input_state.commit_partial()
+        if edit_action is not None:
+            self._handle_edit_action(edit_action)
+        return state
 
     def _handle_printable_key(self, key: int) -> None:
         char = _HEX_KEYS.get(key)

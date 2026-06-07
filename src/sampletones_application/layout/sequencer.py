@@ -36,6 +36,7 @@ class TrackerLayout(BaseModel, frozen=True):
 class SequencerColors(BaseModel, frozen=True):
     pattern_highlight: RGBA
     cell_cursor: RGBA
+    cursor_row: RGBA
 
 
 class SequencerLayout(BaseModel, frozen=True):

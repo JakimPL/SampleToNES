@@ -120,6 +120,14 @@ class TrackerInputState:
         action = _parse(self.cursor, pending)
         return TrackerInputState(cursor=self.cursor, pending=""), action
 
+    def commit_partial(self) -> Tuple[TrackerInputState, Optional[EditAction]]:
+        if not self.pending or self.cursor is None:
+            return self, None
+        expected = _DIGIT_COUNT[self.cursor.subcolumn]
+        padded = self.pending.zfill(expected)
+        action = _parse(self.cursor, padded)
+        return TrackerInputState(cursor=self.cursor, pending=""), action
+
     def clear(self) -> Tuple[TrackerInputState, ClearAction]:
         action = ClearAction(
             row=self.cursor.row if self.cursor else 0,

@@ -28,3 +28,4 @@ tracker:
 colors:
   pattern_highlight: "#ffffff40"
   cell_cursor: "#4488ff60"
+  cursor_row: "#ffffff18"
