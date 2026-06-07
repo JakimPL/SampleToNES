@@ -9,7 +9,7 @@ from sampletones_core.constants.enums import GeneratorName
 class EditAction:
     row: int
     generator: Optional[GeneratorName]
-    sample_idex: Optional[int]
+    sample_index: Optional[int]
     transpose: Optional[int]
     volume: Optional[int]
 

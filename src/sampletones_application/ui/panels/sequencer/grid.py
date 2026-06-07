@@ -21,6 +21,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer import display as tracker_display
+from sampletones_application.ui.panels.sequencer.columns import COLUMNS, tracker_table_column
 from sampletones_application.ui.panels.sequencer.display import CellValues
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, EditAction
@@ -36,8 +37,6 @@ from sampletones_application.view_model.sequencer.samples import SequencerSample
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
-
-_COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
 
 _HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
     dpg.mvKey_A + i: "0123456789ABCDEF"[10 + i] for i in range(6)
@@ -310,7 +309,7 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row.index] = selectable
 
-        for generator in _COLUMNS:
+        for generator in COLUMNS:
             font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
             cell = dpg.add_table_cell(parent=row_id)
             group = dpg.add_group(horizontal=True, horizontal_spacing=0, parent=cell)
@@ -407,18 +406,15 @@ class GUISequencerGridPanel(GUIPanel):
 
         return None
 
-    def _column_index(self, generator: Optional[GeneratorName]) -> int:
-        return _COLUMNS.index(generator) + 2
-
     def _handle_edit_action(self, action: EditAction) -> None:
         row, generator = action.row, action.generator
         sample_id: Optional[str] = None
-        if action.sample_idex is not None:
+        if action.sample_index is not None:
             self._cell_values[(row, generator, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
                 SubColumn.INSTRUMENT,
-                action.sample_idex,
+                action.sample_index,
             )
-            sample_id = self._resolve_sample_id(action.sample_idex)
+            sample_id = self._resolve_sample_id(action.sample_index)
         if action.transpose is not None:
             self._cell_values[(row, generator, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
                 SubColumn.TRANSPOSE,
@@ -455,7 +451,7 @@ class GUISequencerGridPanel(GUIPanel):
             row_index,
             color=self._layout.colors.cursor_row,
         )
-        column_index = self._column_index(generator)
+        column_index = tracker_table_column(generator)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
@@ -472,7 +468,7 @@ class GUISequencerGridPanel(GUIPanel):
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
         )
-        col_idx = self._column_index(generator)
+        col_idx = tracker_table_column(generator)
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
@@ -497,66 +493,71 @@ class GUISequencerGridPanel(GUIPanel):
         if self._input_state.cursor is None:
             return
 
-        cursor = self._input_state.cursor
         match app_data:
             case dpg.mvKey_Up:
-                self._apply_state(self._committed_state().navigate_row(-1, self._current_row_count))
+                self._move_row(-1)
             case dpg.mvKey_Down:
-                self._apply_state(self._committed_state().navigate_row(1, self._current_row_count))
+                self._move_row(1)
             case dpg.mvKey_Left:
-                self._apply_state(self._committed_state().navigate_subcolumn(-1))
+                self._move_subcolumn(-1)
             case dpg.mvKey_Right:
-                self._apply_state(self._committed_state().navigate_subcolumn(1))
+                self._move_subcolumn(1)
             case dpg.mvKey_Tab:
-                current_idx = _COLUMNS.index(cursor.generator)
-                delta = -1 if (dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)) else 1
-                next_idx = (current_idx + delta) % len(_COLUMNS)
-                self._apply_state(self._committed_state().navigate_column(_COLUMNS[next_idx]))
+                shift_held = dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift)
+                self._move_column(-1 if shift_held else 1)
             case dpg.mvKey_Home:
-                self._apply_state(self._committed_state().navigate_row(0, self._current_row_count, absolute=True))
+                self._jump_to_row(0)
             case dpg.mvKey_End:
-                self._apply_state(
-                    self._committed_state().navigate_row(
-                        self._current_row_count - 1, self._current_row_count, absolute=True
-                    )
-                )
+                self._jump_to_row(self._current_row_count - 1)
             case dpg.mvKey_Prior:
-                self._apply_state(
-                    self._committed_state().navigate_row(-self._layout.tracker.page_size, self._current_row_count)
-                )
+                self._move_row(-self._layout.tracker.page_size)
             case dpg.mvKey_Next:
-                self._apply_state(
-                    self._committed_state().navigate_row(self._layout.tracker.page_size, self._current_row_count)
-                )
+                self._move_row(self._layout.tracker.page_size)
             case dpg.mvKey_Return:
-                self._apply_state(self._committed_state().navigate_subcolumn(1))
+                self._move_subcolumn(1)
             case dpg.mvKey_Delete:
-                state, clear_action = self._input_state.clear()
-                self._handle_clear_action(clear_action)
-                self._apply_state(state.navigate_subcolumn(1))
+                self._clear_cell_and_move_subcolumn(1)
             case dpg.mvKey_Back:
-                state, clear_action = self._input_state.clear()
-                self._handle_clear_action(clear_action)
-                self._apply_state(state.navigate_subcolumn(-1))
+                self._clear_cell_and_move_subcolumn(-1)
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
                 self._handle_printable_key(app_data)
 
+    def _move_row(self, delta: int) -> None:
+        self._apply_state(self._committed_state().navigate_row(delta, self._current_row_count))
+
+    def _jump_to_row(self, index: int) -> None:
+        self._apply_state(self._committed_state().navigate_row(index, self._current_row_count, absolute=True))
+
+    def _move_subcolumn(self, delta: int) -> None:
+        self._apply_state(self._committed_state().navigate_subcolumn(delta))
+
+    def _move_column(self, delta: int) -> None:
+        self._apply_state(self._committed_state().navigate_column_by(delta))
+
+    def _clear_cell_and_move_subcolumn(self, delta: int) -> None:
+        state, clear_action = self._input_state.clear()
+        self._handle_clear_action(clear_action)
+        self._apply_state(state.navigate_subcolumn(delta))
+
     def _committed_state(self) -> TrackerInputState:
         state, edit_action = self._input_state.commit_partial()
         if edit_action is not None:
             self._handle_edit_action(edit_action)
+
         return state
 
     def _handle_printable_key(self, key: int) -> None:
         char = _HEX_KEYS.get(key)
         if char is None:
             return
+
         new_state, edit_action = self._input_state.type_char(char)
         if edit_action is not None:
             self._handle_edit_action(edit_action)
             new_state = new_state.navigate_subcolumn(1)
+
         self._apply_state(new_state)
 
     def _on_row_number_clicked(self, sender: Sender, app_data: bool, user_data: int) -> None:
