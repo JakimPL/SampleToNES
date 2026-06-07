@@ -103,6 +103,7 @@ class SequencerGridLogic(CallbackMixin):
         pattern_id = self._pattern_id_at_frame(generator)
         if pattern_id is None:
             return
+
         self._controller.set_row(
             generator,
             pattern_id,
@@ -116,6 +117,7 @@ class SequencerGridLogic(CallbackMixin):
         pattern_id = self._pattern_id_at_frame(generator)
         if pattern_id is None:
             return
+
         self._controller.clear_row(generator, pattern_id, row_index)
 
     def clear_all_generators(self, row_index: int) -> None:

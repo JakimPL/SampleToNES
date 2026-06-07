@@ -15,6 +15,10 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
 )
+from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_GRID_PANEL,
+    TAG_SEQUENCER_GRID_PANEL_PLAYER,
+)
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
 from sampletones_application.logic.project.controller import ProjectController
@@ -24,6 +28,7 @@ from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.player import PlayerLogic
+from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
@@ -31,6 +36,7 @@ from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderP
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
@@ -54,6 +60,9 @@ class SequencerTabCoordinator:
     ) -> None:
         self._project_controller = project_controller
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._layout = layout
+        self._language_manager = language_manager
+        self._dialogs = dialogs
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -86,13 +95,10 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(project_controller)
         self._sequencer_player_logic = PlayerLogic(audio_device_manager)
+        self._player_panel: GUIAudioPlayerPanel
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
-            self._sequencer_grid_logic,
-            self._sequencer_player_logic,
             layout=layout.sequencer,
-            layout_player=layout.player,
             language_manager=language_manager,
-            dialogs=dialogs,
         )
         self._sequencer_module_panel: GUISequencerModulePanel = GUISequencerModulePanel(
             self._sequencer_grid_logic,
@@ -124,7 +130,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
 
-        self._sequencer_samples_logic.on_samples_changed = self._sequencer_samples_panel.update_view
+        self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
@@ -199,6 +205,10 @@ class SequencerTabCoordinator:
                 volume=volume,
             )
 
+    def _on_samples_changed(self, view_model: SequencerSamplesViewModel) -> None:
+        self._sequencer_samples_panel.update_view(view_model)
+        self._sequencer_grid_panel.update_samples(view_model)
+
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")
 
@@ -233,6 +243,14 @@ class SequencerTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_grid_panel.create_panel()
+                        self._player_panel = GUIAudioPlayerPanel(
+                            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
+                            parent=TAG_SEQUENCER_GRID_PANEL,
+                            player_logic=self._sequencer_player_logic,
+                            layout=self._layout.player,
+                            language_manager=self._language_manager,
+                            dialogs=self._dialogs,
+                        )
                         self._sequencer_order_panel.create_panel()
                         self._sequencer_grid_panel.create_tracker()
 
@@ -248,4 +266,4 @@ class SequencerTabCoordinator:
 
     @property
     def player_panel(self) -> AudioPlayerPanelProtocol:
-        return self._sequencer_grid_panel.player_panel
+        return self._player_panel

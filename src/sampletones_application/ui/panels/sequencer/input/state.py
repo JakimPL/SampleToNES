@@ -12,7 +12,7 @@ from sampletones_core.constants.general import MAX_VOLUME
 
 _COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
 _SUBCOLUMNS: Final[Tuple[SubColumns, ...]] = tuple(SubColumns)
-_DIGIT_COUNT: Final[Dict[SubColumns, int]] = {
+DIGIT_COUNT: Final[Dict[SubColumns, int]] = {
     SubColumns.INSTRUMENT: 2,
     SubColumns.TRANSPOSE: 2,
     SubColumns.VOLUME: 1,
@@ -114,7 +114,7 @@ class TrackerInputState:
         if self.cursor is None:
             return self, None
         pending = self.pending + char
-        expected = _DIGIT_COUNT[self.cursor.subcolumn]
+        expected = DIGIT_COUNT[self.cursor.subcolumn]
         if len(pending) < expected:
             return TrackerInputState(cursor=self.cursor, pending=pending), None
         action = _parse(self.cursor, pending)
@@ -123,7 +123,7 @@ class TrackerInputState:
     def commit_partial(self) -> Tuple[TrackerInputState, Optional[EditAction]]:
         if not self.pending or self.cursor is None:
             return self, None
-        expected = _DIGIT_COUNT[self.cursor.subcolumn]
+        expected = DIGIT_COUNT[self.cursor.subcolumn]
         padded = self.pending.zfill(expected)
         action = _parse(self.cursor, padded)
         return TrackerInputState(cursor=self.cursor, pending=""), action

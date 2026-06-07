@@ -28,15 +28,30 @@ class SpeedLayout(BaseModel, frozen=True):
     default: int
 
 
+class SubcolumnWidths(BaseModel, frozen=True):
+    instrument: int
+    transpose: int
+    volume: int
+
+
+class SubcolumnColors(BaseModel, frozen=True):
+    instrument: RGBA
+    transpose: RGBA
+    volume: RGBA
+
+
 class TrackerLayout(BaseModel, frozen=True):
     rows: int
     row_height: int
+    page_size: int
+    subcolumn_widths: SubcolumnWidths
 
 
 class SequencerColors(BaseModel, frozen=True):
     pattern_highlight: RGBA
     cell_cursor: RGBA
     cursor_row: RGBA
+    subcolumns: SubcolumnColors
 
 
 class SequencerLayout(BaseModel, frozen=True):

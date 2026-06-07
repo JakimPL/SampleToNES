@@ -31,7 +31,7 @@ repos:
         entry: uv run scripts/check_import_boundary.py
         language: system
         types: [python]
-        files: ^src/sampletones_application/(logic/|view_model/|shell\.py$)
+        files: ^src/sampletones_application/(logic/|view_model/|services/|shell\.py$)
         verbose: true
 
   - repo: local

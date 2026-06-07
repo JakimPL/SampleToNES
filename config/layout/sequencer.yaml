@@ -24,8 +24,17 @@ speed:
 tracker:
   rows: 64
   row_height: 20
+  page_size: 16
+  subcolumn_widths:
+    instrument: 26
+    transpose: 30
+    volume: 18
 
 colors:
   pattern_highlight: "#ffffff40"
   cell_cursor: "#4488ff60"
   cursor_row: "#ffffff18"
+  subcolumns:
+    instrument: "#ffffffff"
+    transpose: "#a0a0a0ff"
+    volume: "#64dc64ff"

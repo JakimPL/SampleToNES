@@ -12,58 +12,30 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
-    TAG_SEQUENCER_GRID_PANEL_PLAYER,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
     TAG_SEQUENCER_GRID_WINDOW_TRACKER,
 )
-from sampletones_application.layout.player import PlayerLayout
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.logic.sequencer.grid import SequencerGridLogic
-from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
+from sampletones_application.ui.panels.sequencer import display as tracker_display
+from sampletones_application.ui.panels.sequencer.display import CellValues
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, EditAction
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumns
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
-from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
 )
+from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
-_SAMPLE_COLUMN_IDX: Final[int] = 2
-_PAGE_SIZE: Final[int] = 16
-
-_GENERATOR_COLUMN_IDX: Final[Dict[GeneratorName, int]] = {
-    generator: 3 + index for index, generator in enumerate(GeneratorName.items())
-}
-
-_DIGIT_COUNT: Final[Dict[SubColumns, int]] = {
-    SubColumns.INSTRUMENT: 2,
-    SubColumns.TRANSPOSE: 2,
-    SubColumns.VOLUME: 1,
-}
-
-_DEFAULT_DISPLAY: Final[Dict[SubColumns, str]] = {
-    SubColumns.INSTRUMENT: "--",
-    SubColumns.TRANSPOSE: "...",
-    SubColumns.VOLUME: ".",
-}
-
 _COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
-
-_SUBCOLUMN_WIDTHS: Final[Dict[SubColumns, int]] = {
-    SubColumns.INSTRUMENT: 26,
-    SubColumns.TRANSPOSE: 30,
-    SubColumns.VOLUME: 18,
-}
 
 _HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
     dpg.mvKey_A + i: "0123456789ABCDEF"[10 + i] for i in range(6)
@@ -73,33 +45,31 @@ _HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} 
 class GUISequencerGridPanel(GUIPanel):
     def __init__(
         self,
-        sequencer_grid_logic: SequencerGridLogic,
-        player_logic: PlayerLogic,
         *,
         layout: SequencerLayout,
-        layout_player: PlayerLayout,
         language_manager: LanguageManager,
-        dialogs: DialogsRenderer,
     ) -> None:
-        self.sequencer_grid_logic = sequencer_grid_logic
-        self._player_logic = player_logic
         self._layout = layout
-        self._layout_player = layout_player
         self._language_manager = language_manager
-        self._dialogs = dialogs
 
-        self.player_panel: GUIAudioPlayerPanel
+        widths = layout.tracker.subcolumn_widths
+        self._subcolumn_widths: Dict[SubColumns, int] = {
+            SubColumns.INSTRUMENT: widths.instrument,
+            SubColumns.TRANSPOSE: widths.transpose,
+            SubColumns.VOLUME: widths.volume,
+        }
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
         self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}_key_handler"
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._cells: Dict[Tuple[int, Optional[GeneratorName], SubColumns], Sender] = {}
-        self._cell_values: Dict[Tuple[int, Optional[GeneratorName], SubColumns], str] = {}
+        self._cell_values: CellValues = {}
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumns, int] = {}
+        self._current_samples: Optional[SequencerSamplesViewModel] = None
 
         self.on_clear_row: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
         self.on_set_row: Optional[
@@ -167,7 +137,7 @@ class GUISequencerGridPanel(GUIPanel):
             parent=self.parent,
             border=False,
         ):
-            self._create_audio_panel()
+            pass
 
     def create_tracker(self) -> None:
         self._create_subcolumn_themes()
@@ -185,23 +155,14 @@ class GUISequencerGridPanel(GUIPanel):
                 callback=self._on_key_pressed,
             )
 
-    def _create_audio_panel(self) -> None:
-        self.player_panel = GUIAudioPlayerPanel(
-            tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
-            parent=TAG_SEQUENCER_GRID_PANEL,
-            player_logic=self._player_logic,
-            layout=self._layout_player,
-            language_manager=self._language_manager,
-            dialogs=self._dialogs,
-        )
-
     def _create_subcolumn_themes(self) -> None:
-        _theme_colors = {
-            SubColumns.INSTRUMENT: (255, 255, 255, 255),
-            SubColumns.TRANSPOSE: (160, 160, 160, 255),
-            SubColumns.VOLUME: (100, 220, 100, 255),
+        subcolumn_colors = self._layout.colors.subcolumns
+        theme_colors = {
+            SubColumns.INSTRUMENT: subcolumn_colors.instrument,
+            SubColumns.TRANSPOSE: subcolumn_colors.transpose,
+            SubColumns.VOLUME: subcolumn_colors.volume,
         }
-        for subcolumn, color in _theme_colors.items():
+        for subcolumn, color in theme_colors.items():
             with dpg.theme() as theme:
                 with dpg.theme_component(dpg.mvSelectable):
                     dpg.add_theme_color(dpg.mvThemeCol_Text, color, category=dpg.mvThemeCat_Core)
@@ -281,12 +242,16 @@ class GUISequencerGridPanel(GUIPanel):
 
         for row in view_model.rows:
             self._cell_values[(row.index, None, SubColumns.INSTRUMENT)] = row.sample_label
-            self._cell_values[(row.index, None, SubColumns.TRANSPOSE)] = _DEFAULT_DISPLAY[SubColumns.TRANSPOSE]
-            self._cell_values[(row.index, None, SubColumns.VOLUME)] = _DEFAULT_DISPLAY[SubColumns.VOLUME]
+            self._cell_values[(row.index, None, SubColumns.TRANSPOSE)] = tracker_display.default_label(
+                SubColumns.TRANSPOSE
+            )
+            self._cell_values[(row.index, None, SubColumns.VOLUME)] = tracker_display.default_label(SubColumns.VOLUME)
             for generator in GeneratorName.items():
                 cell_vm = row.cells[generator]
                 for subcolumn in SubColumns:
-                    self._cell_values[(row.index, generator, subcolumn)] = getattr(cell_vm, subcolumn.value)
+                    self._cell_values[(row.index, generator, subcolumn)] = tracker_display.cell_display(
+                        cell_vm, subcolumn
+                    )
 
         self._current_row_count = len(view_model.rows)
 
@@ -329,8 +294,15 @@ class GUISequencerGridPanel(GUIPanel):
             for subcolumn in SubColumns:
                 subcolumn_selectable = dpg.add_selectable(
                     parent=group,
-                    label=self._subcolumn_label(row.index, generator, subcolumn),
-                    width=_SUBCOLUMN_WIDTHS[subcolumn],
+                    label=tracker_display.subcolumn_label(
+                        row.index,
+                        generator,
+                        subcolumn,
+                        cursor=self._input_state.cursor,
+                        pending=self._input_state.pending,
+                        cell_values=self._cell_values,
+                    ),
+                    width=self._subcolumn_widths[subcolumn],
                     user_data=(row.index, generator, subcolumn),
                     callback=self._on_cell_clicked,
                 )
@@ -375,38 +347,60 @@ class GUISequencerGridPanel(GUIPanel):
             if self.on_cell_selected is not None:
                 self.on_cell_selected(new_cursor.row, new_cursor.generator)
 
-    def _subcolumn_label(self, row: int, generator: Optional[GeneratorName], subcolumn: SubColumns) -> str:
-        cursor = self._input_state.cursor
-        pending = self._input_state.pending
-        is_active = (
-            cursor is not None and cursor.row == row and cursor.generator == generator and cursor.subcolumn == subcolumn
-        )
-        value = self._cell_values.get((row, generator, subcolumn), _DEFAULT_DISPLAY[subcolumn])
-        if is_active:
-            if pending:
-                expected = _DIGIT_COUNT[subcolumn]
-                return pending + "_" * (expected - len(pending))
-            return "_" * len(_DEFAULT_DISPLAY[subcolumn])
-        return value
+    def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
+        self._current_samples = view_model
 
     def _update_cell_display(self, row: int, generator: Optional[GeneratorName]) -> None:
         for subcolumn in SubColumns:
             cell_id = self._cells.get((row, generator, subcolumn))
             if cell_id is not None:
-                dpg.configure_item(cell_id, label=self._subcolumn_label(row, generator, subcolumn))
+                dpg.configure_item(
+                    cell_id,
+                    label=tracker_display.subcolumn_label(
+                        row,
+                        generator,
+                        subcolumn,
+                        cursor=self._input_state.cursor,
+                        pending=self._input_state.pending,
+                        cell_values=self._cell_values,
+                    ),
+                )
+
+    def _resolve_sample_id(self, sample_index: int) -> Optional[str]:
+        if self._current_samples is None:
+            return None
+        samples = self._current_samples.samples
+        if sample_index < len(samples):
+            return samples[sample_index].sample_id
+        return None
+
+    def _column_index(self, generator: Optional[GeneratorName]) -> int:
+        # Column layout: [spacer, row#, sample, pulse1, pulse2, triangle, noise, spacer]
+        # _COLUMNS = (None, pulse1, pulse2, triangle, noise), so index 0 → col 2, index 1+ → col 3+
+        return _COLUMNS.index(generator) + 2
 
     def _handle_edit_action(self, action: EditAction) -> None:
         row, generator = action.row, action.generator
+        sample_id: Optional[str] = None
         if action.sample_idex is not None:
-            self._cell_values[(row, generator, SubColumns.INSTRUMENT)] = f"{action.sample_idex:02X}"
+            self._cell_values[(row, generator, SubColumns.INSTRUMENT)] = tracker_display.format_committed(
+                SubColumns.INSTRUMENT, action.sample_idex
+            )
+            sample_id = self._resolve_sample_id(action.sample_idex)
         if action.transpose is not None:
-            self._cell_values[(row, generator, SubColumns.TRANSPOSE)] = f"{action.transpose:02X}"
+            self._cell_values[(row, generator, SubColumns.TRANSPOSE)] = tracker_display.format_committed(
+                SubColumns.TRANSPOSE, action.transpose
+            )
         if action.volume is not None:
-            self._cell_values[(row, generator, SubColumns.VOLUME)] = f"{action.volume:01X}"
+            self._cell_values[(row, generator, SubColumns.VOLUME)] = tracker_display.format_committed(
+                SubColumns.VOLUME, action.volume
+            )
+        self.call(self.on_set_row, row, generator, sample_id, action.transpose, action.volume)
 
     def _handle_clear_action(self, action: ClearAction) -> None:
         for subcolumn in SubColumns:
             self._cell_values.pop((action.row, action.generator, subcolumn), None)
+        self.call(self.on_clear_row, action.row, action.generator)
 
     def _apply_cell_highlight(
         self,
@@ -418,7 +412,7 @@ class GUISequencerGridPanel(GUIPanel):
             row_index,
             color=self._layout.colors.cursor_row,
         )
-        col_idx = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
+        col_idx = self._column_index(generator)
         dpg.highlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
@@ -435,7 +429,7 @@ class GUISequencerGridPanel(GUIPanel):
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
         )
-        col_idx = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
+        col_idx = self._column_index(generator)
         dpg.unhighlight_table_cell(
             TAG_SEQUENCER_GRID_TABLE_TRACKER,
             row_index,
@@ -485,17 +479,23 @@ class GUISequencerGridPanel(GUIPanel):
                     )
                 )
             case dpg.mvKey_Prior:
-                self._apply_state(self._committed_state().navigate_row(-_PAGE_SIZE, self._current_row_count))
+                self._apply_state(
+                    self._committed_state().navigate_row(-self._layout.tracker.page_size, self._current_row_count)
+                )
             case dpg.mvKey_Next:
-                self._apply_state(self._committed_state().navigate_row(_PAGE_SIZE, self._current_row_count))
+                self._apply_state(
+                    self._committed_state().navigate_row(self._layout.tracker.page_size, self._current_row_count)
+                )
             case dpg.mvKey_Return:
                 self._apply_state(self._committed_state().navigate_subcolumn(1))
             case dpg.mvKey_Delete:
-                self._cell_values.pop((cursor.row, cursor.generator, cursor.subcolumn), None)
-                self._apply_state(self._input_state.cancel().navigate_subcolumn(1))
+                state, clear_action = self._input_state.clear()
+                self._handle_clear_action(clear_action)
+                self._apply_state(state.navigate_subcolumn(1))
             case dpg.mvKey_Back:
-                self._cell_values.pop((cursor.row, cursor.generator, cursor.subcolumn), None)
-                self._apply_state(self._input_state.cancel().navigate_subcolumn(-1))
+                state, clear_action = self._input_state.clear()
+                self._handle_clear_action(clear_action)
+                self._apply_state(state.navigate_subcolumn(-1))
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
