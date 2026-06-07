@@ -19,5 +19,4 @@ def from_flat(row: int, index: int) -> TrackerCursor:
 
 
 def tracker_table_column(generator: Optional[GeneratorName]) -> int:
-    # +2 accounts for the leading spacer and row-number columns in the DPG tracker table
     return COLUMNS.index(generator) + 2

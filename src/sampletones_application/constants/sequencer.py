@@ -116,6 +116,24 @@ TAG_SEQUENCER_ORDER_WINDOW = TagName(
     Widget.WINDOW,
     "order",
 )
+TAG_SEQUENCER_ORDER_BUTTON_ADD = TagName(
+    Page.SEQUENCER,
+    Panel.ORDER,
+    Widget.BUTTON,
+    "add",
+)
+TAG_SEQUENCER_ORDER_BUTTON_REMOVE = TagName(
+    Page.SEQUENCER,
+    Panel.ORDER,
+    Widget.BUTTON,
+    "remove",
+)
+TAG_SEQUENCER_ORDER_KEY_HANDLER = TagName(
+    Page.SEQUENCER,
+    Panel.ORDER,
+    Widget.HANDLER,
+    "key",
+)
 TAG_SEQUENCER_INSTRUMENTS_PANEL = TagName(
     Page.SEQUENCER,
     Panel.INSTRUMENTS,

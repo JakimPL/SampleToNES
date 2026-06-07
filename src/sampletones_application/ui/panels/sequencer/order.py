@@ -7,6 +7,9 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
+    TAG_SEQUENCER_ORDER_BUTTON_ADD,
+    TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
+    TAG_SEQUENCER_ORDER_KEY_HANDLER,
     TAG_SEQUENCER_ORDER_PANEL,
     TAG_SEQUENCER_ORDER_TABLE,
     TAG_SEQUENCER_ORDER_WINDOW,
@@ -18,7 +21,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_index, display_pattern_label
+from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
 _NUM_CHANNELS = len(GeneratorName.items())
@@ -29,7 +32,8 @@ class GUISequencerOrderPanel(GUIPanel):
 
     Each column represents one shared order position; rows map to the four NES
     channels. Clicking any position column fires ``on_frame_selected`` so the
-    tracker grid can jump to that position.
+    tracker grid can jump to that position. [+] and [−] buttons append or remove
+    the currently selected position across all channels.
     """
 
     def __init__(
@@ -43,6 +47,8 @@ class GUISequencerOrderPanel(GUIPanel):
         self._current_frame: int = 0
 
         self.on_frame_selected: Optional[Callable[[int], None]] = None
+        self.on_add_requested: Optional[Callable[[], None]] = None
+        self.on_remove_requested: Optional[Callable[[int], None]] = None
 
         self._lbl_order = language_manager[
             Page.SEQUENCER,
@@ -61,7 +67,23 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.add_separator(parent=self.tag)
             header_text = dpg.add_text(self._lbl_order, parent=self.tag)
             FontRegistry.bind_to_item(header_text, Font.BOLD)
+            self._create_button_row()
             self._create_order_window()
+            self._register_key_handler()
+
+    def _create_button_row(self) -> None:
+        with dpg.group(horizontal=True, parent=self.tag):
+            dpg.add_button(
+                tag=TAG_SEQUENCER_ORDER_BUTTON_ADD,
+                label="+",
+                callback=self._on_add_clicked,
+            )
+            dpg.add_button(
+                tag=TAG_SEQUENCER_ORDER_BUTTON_REMOVE,
+                label="-",
+                callback=self._on_remove_clicked,
+                enabled=False,
+            )
 
     def _create_order_window(self) -> None:
         with dpg.child_window(
@@ -85,6 +107,10 @@ class GUISequencerOrderPanel(GUIPanel):
                 policy=dpg.mvTable_SizingFixedFit,
             ):
                 FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
+
+    def _register_key_handler(self) -> None:
+        with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_KEY_HANDLER):
+            dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def update_order(self, view_models: Tuple[SequencerOrderViewModel, ...]) -> None:
         """Rebuilds the order table columns and rows for the current position count.
@@ -124,6 +150,8 @@ class GUISequencerOrderPanel(GUIPanel):
         if 0 <= self._current_frame < self._max_positions:
             self._highlight_column(self._current_frame)
 
+        dpg.configure_item(TAG_SEQUENCER_ORDER_BUTTON_REMOVE, enabled=self._max_positions > 0)
+
     def select_position(self, frame: int) -> None:
         """Updates the highlighted column without rebuilding the table."""
         self._apply_highlight(frame)
@@ -144,7 +172,7 @@ class GUISequencerOrderPanel(GUIPanel):
         for position in range(max_length):
             pos_cell = dpg.add_table_cell(parent=row_id)
             entry = entries_by_gen.get(generator, {}).get(position)
-            cell_label = display_pattern_label(entry.pattern_label if entry is not None else None)
+            cell_label = entry.label if entry is not None else "—"
             selectable = dpg.add_selectable(
                 parent=pos_cell,
                 label=cell_label,
@@ -173,6 +201,29 @@ class GUISequencerOrderPanel(GUIPanel):
         col = position + 1
         for row_idx in range(_NUM_CHANNELS):
             dpg.unhighlight_table_cell(TAG_SEQUENCER_ORDER_TABLE, row_idx, col)
+
+    def _navigate(self, delta: int) -> None:
+        if self._max_positions == 0:
+            return
+        next_frame = (self._current_frame + delta) % self._max_positions
+        self._apply_highlight(next_frame)
+        self._current_frame = next_frame
+        self.call(self.on_frame_selected, next_frame)
+
+    def _on_add_clicked(self) -> None:
+        self.call(self.on_add_requested)
+
+    def _on_remove_clicked(self) -> None:
+        if 0 <= self._current_frame < self._max_positions:
+            self.call(self.on_remove_requested, self._current_frame)
+
+    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        if not dpg.is_item_hovered(TAG_SEQUENCER_ORDER_WINDOW):
+            return
+        if app_data == dpg.mvKey_Left:
+            self._navigate(-1)
+        elif app_data == dpg.mvKey_Right:
+            self._navigate(1)
 
     def _on_position_clicked(self, sender: Sender, app_data: bool, user_data: int) -> None:
         dpg.set_value(sender, False)

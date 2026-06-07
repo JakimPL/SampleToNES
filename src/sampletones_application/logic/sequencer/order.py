@@ -4,7 +4,6 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.patterns.channel import Channel
-from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -58,11 +57,8 @@ class SequencerOrderLogic(CallbackMixin):
             OrderEntryViewModel(
                 position=position,
                 pattern_id=pattern_id,
-                pattern_label=self._pattern_label(channel.pattern(pattern_id)),
+                pattern_index=channel.patterns.get_index(pattern_id),
             )
             for position, pattern_id in enumerate(channel.order)
         )
         return SequencerOrderViewModel(generator=generator, entries=entries)
-
-    def _pattern_label(self, pattern: Pattern) -> str:
-        return pattern.name or f"…{pattern.id[-4:]}"
