@@ -6,20 +6,20 @@ from pydantic.dataclasses import dataclass
 
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, EditAction
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumns
+from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
 
 _COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
-_SUBCOLUMNS: Final[Tuple[SubColumns, ...]] = tuple(SubColumns)
-DIGIT_COUNT: Final[Dict[SubColumns, int]] = {
-    SubColumns.INSTRUMENT: 2,
-    SubColumns.TRANSPOSE: 2,
-    SubColumns.VOLUME: 1,
+_SUBCOLUMNS: Final[Tuple[SubColumn, ...]] = tuple(SubColumn)
+DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
+    SubColumn.INSTRUMENT: 2,
+    SubColumn.TRANSPOSE: 2,
+    SubColumn.VOLUME: 1,
 }
 
 
-def _flat_index(generator: Optional[GeneratorName], subcolumn: SubColumns) -> int:
+def _flat_index(generator: Optional[GeneratorName], subcolumn: SubColumn) -> int:
     return _COLUMNS.index(generator) * len(_SUBCOLUMNS) + _SUBCOLUMNS.index(subcolumn)
 
 
@@ -32,7 +32,7 @@ def _from_flat(row: int, index: int) -> TrackerCursor:
 def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
     try:
         match cursor.subcolumn:
-            case SubColumns.INSTRUMENT:
+            case SubColumn.INSTRUMENT:
                 return EditAction(
                     row=cursor.row,
                     generator=cursor.generator,
@@ -40,7 +40,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     transpose=None,
                     volume=None,
                 )
-            case SubColumns.VOLUME:
+            case SubColumn.VOLUME:
                 return EditAction(
                     row=cursor.row,
                     generator=cursor.generator,
@@ -48,7 +48,7 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     transpose=None,
                     volume=min(int(pending, 16), MAX_VOLUME),
                 )
-            case SubColumns.TRANSPOSE:
+            case SubColumn.TRANSPOSE:
                 return EditAction(
                     row=cursor.row,
                     generator=cursor.generator,
@@ -103,7 +103,7 @@ class TrackerInputState:
         if self.cursor is None:
             return self
         return TrackerInputState(
-            cursor=TrackerCursor(self.cursor.row, column, SubColumns.INSTRUMENT),
+            cursor=TrackerCursor(self.cursor.row, column, SubColumn.INSTRUMENT),
             pending="",
         )
 

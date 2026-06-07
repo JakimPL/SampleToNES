@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumns
+from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_core.constants.enums import GeneratorName
 
 
@@ -9,4 +9,4 @@ from sampletones_core.constants.enums import GeneratorName
 class TrackerCursor:
     row: int
     generator: Optional[GeneratorName]
-    subcolumn: SubColumns
+    subcolumn: SubColumn

@@ -6,7 +6,6 @@ from sampletones_core.constants.general import (
     MAX_TRANSPOSE,
     MAX_VOLUME,
     MIN_TRANSPOSE,
-    MIN_VOLUME,
 )
 from sampletones_core.project.instruments.instrument import Instrument
 
@@ -32,7 +31,7 @@ class Row(BaseModel):
     )
     volume: Optional[int] = Field(
         default=None,
-        ge=MIN_VOLUME,
+        ge=0,
         le=MAX_VOLUME,
         description="Volume column, or None for an empty cell.",
     )

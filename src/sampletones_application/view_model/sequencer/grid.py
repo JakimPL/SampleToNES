@@ -24,8 +24,15 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 
 class SequencerRowViewModel(BaseModel, frozen=True):
     index: int
-    sample_label: str
     cells: Dict[GeneratorName, SequencerCellViewModel]
+
+    @property
+    def sample_label(self) -> str:
+        instruments = {cell.instrument for cell in self.cells.values()}
+        if len(instruments) == 1:
+            return next(iter(instruments))
+
+        return "?"
 
 
 class SequencerGridViewModel(BaseModel, frozen=True):

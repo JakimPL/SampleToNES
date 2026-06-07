@@ -149,17 +149,7 @@ class SequencerGridLogic(CallbackMixin):
             else:
                 cells[generator] = _EMPTY_CELL
 
-        return SequencerRowViewModel(
-            index=index,
-            sample_label=self._build_sample_label(cells),
-            cells=cells,
-        )
-
-    def _build_sample_label(self, cells: Dict[GeneratorName, SequencerCellViewModel]) -> str:
-        instruments = {cell.instrument for cell in cells.values()}
-        if len(instruments) == 1:
-            return next(iter(instruments))
-        return "…"
+        return SequencerRowViewModel(index=index, cells=cells)
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(
