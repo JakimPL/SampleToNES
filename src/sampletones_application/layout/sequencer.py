@@ -3,6 +3,11 @@ from pydantic import BaseModel
 from sampletones_application.utils.color import RGBA
 
 
+class OrderLayout(BaseModel, frozen=True):
+    height: int
+    position_column_width: int
+
+
 class SequencerTableCells(BaseModel, frozen=True):
     row: int
     sample: int
@@ -30,10 +35,12 @@ class TrackerLayout(BaseModel, frozen=True):
 
 class SequencerColors(BaseModel, frozen=True):
     pattern_highlight: RGBA
+    cell_cursor: RGBA
 
 
 class SequencerLayout(BaseModel, frozen=True):
-    instruments_panel_width: int
+    samples_panel_width: int
+    order: OrderLayout
     table_cells: SequencerTableCells
     tempo: TempoLayout
     speed: SpeedLayout

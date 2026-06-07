@@ -81,6 +81,7 @@ class Panel(StrEnum):
 
     # Sequencer tab
     GRID = "grid"
+    ORDER = "order"
     INSTRUMENTS = "instruments"
 
     # Instructions tab

@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -42,7 +42,13 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
+from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
+
+_SAMPLE_COLUMN_IDX: Final[int] = 2
+_GENERATOR_COLUMN_IDX: Final[Dict[GeneratorName, int]] = {
+    generator: 3 + index for index, generator in enumerate(GeneratorName.items())
+}
 
 
 class GUISequencerGridPanel(GUIPanel):
@@ -68,12 +74,17 @@ class GUISequencerGridPanel(GUIPanel):
         self.player_panel: GUIAudioPlayerPanel
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}_key_handler"
         self._rows: Dict[Optional[int], Sender] = {}
         self._highlighted_row: Optional[int] = None
+        self._selected_cell: Optional[Tuple[int, Optional[GeneratorName]]] = None
 
         self.on_change_rate: Optional[Callable[[int], None]] = None
         self.on_tempo: Optional[Callable[[int], None]] = None
         self.on_speed: Optional[Callable[[int], None]] = None
+        self.on_navigate: Optional[Callable[[int, int], None]] = None
+        self.on_clear_row: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
+        self.on_edit_cell: Optional[Callable[[int, Optional[GeneratorName]], None]] = None
 
         self.pattern_theme = PatternTableTheme()
 
@@ -159,6 +170,7 @@ class GUISequencerGridPanel(GUIPanel):
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
             parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
+            height=-1,
         )
 
     def create_panel(self) -> None:
@@ -173,7 +185,9 @@ class GUISequencerGridPanel(GUIPanel):
             self._create_audio_panel()
             self._create_module_options()
             self._create_export_button()
-            self._create_tracker_view()
+
+    def create_tracker(self) -> None:
+        self._create_tracker_view()
 
     def _setup_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._item_handler_tag):
@@ -184,6 +198,11 @@ class GUISequencerGridPanel(GUIPanel):
             dpg.add_item_clicked_handler(
                 parent=self._item_handler_tag,
                 callback=self._on_item_hovered,
+            )
+        with dpg.handler_registry(tag=self._key_handler_tag):
+            dpg.add_key_press_handler(
+                parent=self._key_handler_tag,
+                callback=self._on_key_pressed,
             )
 
     def _create_audio_panel(self) -> None:
@@ -254,12 +273,13 @@ class GUISequencerGridPanel(GUIPanel):
         )
 
     def _create_tracker_view(self) -> None:
-        dpg.add_separator()
-        section_text = dpg.add_text(self._lbl_tracker)
+        dpg.add_separator(parent=self.tag)
+        section_text = dpg.add_text(self._lbl_tracker, parent=self.tag)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
         with dpg.child_window(
             tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+            parent=self.tag,
             width=0,
             height=-1,
         ):
@@ -331,9 +351,15 @@ class GUISequencerGridPanel(GUIPanel):
             slot=1,
         )
         self._rows = {}
-
         for row in view_model.rows:
             self._build_table_row(row)
+
+        if self._selected_cell is not None:
+            row_index, generator = self._selected_cell
+            if row_index in self._rows:
+                self._apply_cell_highlight(row_index, generator)
+            else:
+                self._selected_cell = None
 
     def _build_table_row(self, row: SequencerRowViewModel) -> None:
         """Builds one tracker row with explicit parents.
@@ -343,7 +369,10 @@ class GUISequencerGridPanel(GUIPanel):
         implicit DearPyGui container stack is process-global, so nested ``with``
         blocks here would race with that concurrent building.
         """
-        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_GRID_TABLE_TRACKER, user_data=row.index)
+        row_id = dpg.add_table_row(
+            parent=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            user_data=row.index,
+        )
 
         spacer_cell = dpg.add_table_cell(parent=row_id)
         dpg.add_spacer(parent=spacer_cell, width=0)
@@ -351,7 +380,7 @@ class GUISequencerGridPanel(GUIPanel):
         number_cell = dpg.add_table_cell(parent=row_id)
         selectable = dpg.add_selectable(
             parent=number_cell,
-            label=f"{row.index:02d}",
+            label=display_index(row.index),
             span_columns=True,
             user_data=row.index,
         )
@@ -360,13 +389,67 @@ class GUISequencerGridPanel(GUIPanel):
         self._rows[row.index] = selectable
 
         sample_cell = dpg.add_table_cell(parent=row_id)
-        sample_text = dpg.add_selectable(parent=sample_cell, label="")
+        sample_text = dpg.add_selectable(
+            parent=sample_cell,
+            label="",
+            user_data=(row.index, None),
+            callback=self._on_cell_clicked,
+        )
         FontRegistry.bind_to_item(sample_text, Font.BOLD_SMALL)
 
         for generator in GeneratorName.items():
             generator_cell = dpg.add_table_cell(parent=row_id)
-            cell_text = dpg.add_selectable(parent=generator_cell, label=row.cells[generator].label)
+            cell_text = dpg.add_selectable(
+                parent=generator_cell,
+                label=row.cells[generator].label,
+                user_data=(row.index, generator),
+                callback=self._on_cell_clicked,
+            )
             FontRegistry.bind_to_item(cell_text, Font.REGULAR_SMALL)
+
+    def select_cell(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        self._remove_cell_highlight()
+        self._selected_cell = (row_index, generator)
+        self._apply_cell_highlight(row_index, generator)
+
+    def deselect_cell(self) -> None:
+        self._remove_cell_highlight()
+        self._selected_cell = None
+
+    def _apply_cell_highlight(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        col = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
+        dpg.highlight_table_cell(
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            row_index,
+            col,
+            color=self._layout.colors.cell_cursor,
+        )
+
+    def _remove_cell_highlight(self) -> None:
+        if self._selected_cell is None:
+            return
+
+        row_index, generator = self._selected_cell
+        col = _SAMPLE_COLUMN_IDX if generator is None else _GENERATOR_COLUMN_IDX[generator]
+        dpg.unhighlight_table_cell(TAG_SEQUENCER_GRID_TABLE_TRACKER, row_index, col)
+
+    def _on_cell_clicked(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: Tuple[int, Optional[GeneratorName]],
+    ) -> None:
+        dpg.set_value(sender, False)
+        row_index, generator = user_data
+        self.select_cell(row_index, generator)
+
+    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        if self._selected_cell is None:
+            pass
 
     def _on_change_rate_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_change_rate, app_data)
@@ -413,10 +496,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._highlighted_row = None
 
     def set_enabled(self, enabled: bool) -> None:
-        for tag in (
-            TAG_SEQUENCER_GRID_INPUT_NES_FREQUENCY,
-            TAG_SEQUENCER_GRID_INPUT_TEMPO,
-            TAG_SEQUENCER_GRID_INPUT_SPEED,
-            TAG_SEQUENCER_GRID_BUTTON_EXPORT_MODULE,
-        ):
-            dpg_configure_item(tag, enabled=enabled)
+        dpg_configure_item(
+            TAG_SEQUENCER_GRID_GROUP_MODULE_OPTIONS,
+            enabled=enabled,
+        )

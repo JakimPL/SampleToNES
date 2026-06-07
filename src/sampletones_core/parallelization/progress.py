@@ -63,7 +63,11 @@ class ETAEstimator:
 
         return max(3, int(ems))
 
-    def _estimate_remaining_seconds(self, completed_items: int, current_time: float) -> Optional[float]:
+    def _estimate_remaining_seconds(
+        self,
+        completed_items: int,
+        current_time: float,
+    ) -> Optional[float]:
         if completed_items >= self._total:
             return 0.0
         if len(self._samples_window) < 2:
@@ -79,18 +83,3 @@ class ETAEstimator:
         rate = delta_completed / delta_time
         remaining = self._total - completed_items
         return remaining / rate
-
-    def _format_duration(self, seconds: float) -> str:
-        secs = int(seconds)
-        if secs <= 0:
-            return "0s"
-
-        minutes, seconds_remaining = divmod(secs, 60)
-        hours, minutes = divmod(minutes, 60)
-
-        if hours:
-            return f"{hours}h {minutes:02d}m {seconds_remaining:02d}s"
-        if minutes:
-            return f"{minutes}m {seconds_remaining:02d}s"
-
-        return f"{seconds_remaining}s"

@@ -1,4 +1,8 @@
-instruments_panel_width: 360
+samples_panel_width: 360
+
+order:
+  height: 145
+  position_column_width: 40
 
 table_cells:
   row: 30
@@ -23,3 +27,4 @@ tracker:
 
 colors:
   pattern_highlight: "#ffffff18"
+  cell_cursor: "#4488ff60"

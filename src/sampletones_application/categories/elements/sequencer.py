@@ -29,6 +29,15 @@ class SequencerGridElements(AbstractElement):
     EXPORT_MODULE_DIALOG = "export_module_dialog"
 
 
+class SequencerOrderElements(AbstractElement):
+    ORDER_TEXT = "order_text"
+    COLUMN_POSITION = "column_position"
+    COLUMN_PULSE_1 = "column_pulse_1"
+    COLUMN_PULSE_2 = "column_pulse_2"
+    COLUMN_TRIANGLE = "column_triangle"
+    COLUMN_NOISE = "column_noise"
+
+
 class SequencerInstrumentsElements(AbstractElement):
     INSTRUMENTS_TEXT = "instruments_text"
     COLUMN_ID = "column_id"

@@ -41,6 +41,7 @@ class SequencerGridLogic(CallbackMixin):
 
         self.on_settings_changed: Optional[Callable[[SequencerSettingsViewModel], None]] = None
         self.on_grid_changed: Optional[Callable[[SequencerGridViewModel], None]] = None
+        self.on_frame_changed: Optional[Callable[[int], None]] = None
 
     @property
     def settings(self) -> SequencerSettingsViewModel:
@@ -73,7 +74,9 @@ class SequencerGridLogic(CallbackMixin):
         self.call(self.on_settings_changed, self.settings)
 
     def push_grid(self) -> None:
-        self.call(self.on_grid_changed, self.build_grid())
+        view_model = self.build_grid()
+        self.call(self.on_grid_changed, view_model)
+        self.call(self.on_frame_changed, view_model.frame_index)
 
     def refresh(self) -> None:
         self.push_settings()
@@ -114,6 +117,10 @@ class SequencerGridLogic(CallbackMixin):
         if pattern_id is None:
             return
         self._controller.clear_row(generator, pattern_id, row_index)
+
+    def clear_all_generators(self, row_index: int) -> None:
+        for generator in GeneratorName.items():
+            self.clear_row(generator, row_index)
 
     def select_frame(self, frame_index: int) -> None:
         self._frame_index = frame_index

@@ -20,6 +20,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
 
@@ -123,7 +124,8 @@ class GUISequencerSamplesPanel(GUIPanel):
             row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
             position_cell = dpg.add_table_cell(parent=row_id)
-            dpg.add_text(f"{position:02d}", parent=position_cell)
+            label = display_index(position)
+            dpg.add_text(label, parent=position_cell)
 
             name_cell = dpg.add_table_cell(parent=row_id)
             name_item = dpg.add_selectable(
@@ -141,5 +143,5 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _on_sample_double_clicked(self, sender: Sender, app_data: list[int]) -> None:
         clicked_item = app_data[1]
         sample_id = dpg.get_item_user_data(clicked_item)
-        if isinstance(sample_id, str):
+        if sample_id is not None:
             self.call(self.on_sample_edit_requested, sample_id)

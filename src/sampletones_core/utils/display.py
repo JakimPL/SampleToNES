@@ -1,10 +1,12 @@
-from typing import Optional
+from typing import Final, Optional
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
+
+DEFAULT_DISPLAY_LENGTH: Final[int] = 2
 
 
 def display_pitch(value: Optional[int], generator: GeneratorName) -> str:
@@ -17,11 +19,27 @@ def display_pitch(value: Optional[int], generator: GeneratorName) -> str:
     return pitch_to_name(value)
 
 
-def display_id(value: Optional[int]) -> str:
+def display_value(
+    value: Optional[int],
+    *,
+    length: int = DEFAULT_DISPLAY_LENGTH,
+    hexadecimal: bool = True,
+) -> str:
     if value is None:
-        return ".."
+        return "." * length
 
-    return f"{value:02X}"
+    if hexadecimal:
+        return f"{value:0{length}X}"
+
+    return f"{value:0{length}d}"
+
+
+def display_id(value: Optional[int]) -> str:
+    return display_value(value, hexadecimal=True)
+
+
+def display_index(index: Optional[int]) -> str:
+    return display_value(index, hexadecimal=False)
 
 
 def display_sample(
@@ -29,10 +47,8 @@ def display_sample(
     samples: IdentifiedCollection[Sample],
     sample_id: Optional[str] = None,
 ) -> str:
-    """Render a sample reference as its current list position (not its uuid).
-
-    Resolution is O(1) via the id-keyed collection, so this is safe to call per
-    frame. Missing or absent references render as the empty placeholder.
+    """
+    Render a sample reference as its current list position (not its uuid).
     """
     if sample_id is not None and samples.get(sample_id) is not None:
         return display_id(samples.get_index(sample_id))
@@ -49,10 +65,7 @@ def display_instrument(
 
 
 def display_volume(value: Optional[int]) -> str:
-    if value is None:
-        return "."
-
-    return f"{value:01X}"
+    return display_value(value, length=1, hexadecimal=True)
 
 
 def display_transpose(value: Optional[int]) -> str:

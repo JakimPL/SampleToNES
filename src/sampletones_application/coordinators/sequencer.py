@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -21,14 +21,17 @@ from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
+from sampletones_application.logic.sequencer.order import SequencerOrderLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.constants.enums import GeneratorName
 from sampletones_shared.logger import logger
 
 
@@ -58,7 +61,7 @@ class SequencerTabCoordinator:
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
-        self._instruments_width = layout.sequencer.instruments_panel_width
+        self._instruments_width = layout.sequencer.samples_panel_width
         self._right_height = layout.general.panels.right.height
 
         self._sequencer_browser_logic: SequencerBrowserLogic = SequencerBrowserLogic(
@@ -78,6 +81,7 @@ class SequencerTabCoordinator:
             node_color=layout.general.colors.paths.hover,
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
+        self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(project_controller)
         self._sequencer_player_logic = PlayerLogic(audio_device_manager)
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
@@ -88,6 +92,10 @@ class SequencerTabCoordinator:
             input_width=layout.general.inputs.default_width,
             language_manager=language_manager,
             dialogs=dialogs,
+        )
+        self._sequencer_order_panel: GUISequencerOrderPanel = GUISequencerOrderPanel(
+            layout=layout.sequencer,
+            language_manager=language_manager,
         )
         self._sequencer_samples_panel: GUISequencerSamplesPanel = GUISequencerSamplesPanel(
             layout=layout.sequencer,
@@ -100,8 +108,13 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_change_rate = self._sequencer_grid_logic.set_change_rate
         self._sequencer_grid_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_grid_panel.on_speed = self._sequencer_grid_logic.set_speed
+        self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_grid_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
+        self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
+
+        self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
+        self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
 
         self._sequencer_samples_logic.on_samples_changed = self._sequencer_samples_panel.update_view
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
@@ -110,7 +123,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel.on_add_to_sequencer = self._import_reconstruction
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
-        self._project_controller.on_song_changed = self._sequencer_grid_logic.push_grid
+        self._project_controller.on_song_changed = self._on_song_changed
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
         self._project_controller.on_project_replaced = self.refresh
 
@@ -124,8 +137,13 @@ class SequencerTabCoordinator:
 
     def refresh(self) -> None:
         self._sequencer_grid_logic.refresh()
+        self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
         self._sequencer_grid_panel.set_enabled(self._project_controller.is_open)
+
+    def _on_song_changed(self) -> None:
+        self._sequencer_grid_logic.push_grid()
+        self._sequencer_order_logic.push_order()
 
     def _import_reconstruction(self, filepath: Path) -> None:
         if not self._project_controller.is_open:
@@ -135,6 +153,12 @@ class SequencerTabCoordinator:
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)
+
+    def _on_clear_row(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        if generator is None:
+            self._sequencer_grid_logic.clear_all_generators(row_index)
+        else:
+            self._sequencer_grid_logic.clear_row(generator, row_index)
 
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")
@@ -170,6 +194,8 @@ class SequencerTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_grid_panel.create_panel()
+                        self._sequencer_order_panel.create_panel()
+                        self._sequencer_grid_panel.create_tracker()
 
                     with dpg.child_window(
                         tag=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_RIGHT}",

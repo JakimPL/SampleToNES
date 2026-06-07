@@ -354,6 +354,16 @@ sequencer.grid.label.column_transpose: "Transpose"
 sequencer.grid.title.export_module_dialog: "Export FamiTracker module"
 
 # =============================================================================
+# Sequencer tab — Order
+# =============================================================================
+sequencer.order.label.order_text: "Order"
+sequencer.order.label.column_position: "Pos"
+sequencer.order.label.column_pulse_1: "Pulse 1"
+sequencer.order.label.column_pulse_2: "Pulse 2"
+sequencer.order.label.column_triangle: "Triangle"
+sequencer.order.label.column_noise: "Noise"
+
+# =============================================================================
 # Sequencer tab — Instruments
 # =============================================================================
 sequencer.instruments.label.instruments_text: "Samples"
