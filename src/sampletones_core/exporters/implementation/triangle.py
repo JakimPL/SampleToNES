@@ -69,7 +69,7 @@ class TriangleExporter(Exporter[TriangleInstruction]):
         dictionary: Dict[str, Union[bool, int]],
         initial_pitch: int,
     ) -> TriangleInstruction:
-        pitch = int(initial_pitch + dictionary[FeatureKey.ARPEGGIO.value])
+        pitch = int(initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]])
         if not is_pitch_valid(pitch):
             return TriangleInstruction.null_instruction()
 

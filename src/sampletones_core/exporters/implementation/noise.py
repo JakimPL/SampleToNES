@@ -76,9 +76,9 @@ class NoiseExporter(Exporter[NoiseInstruction]):
     ) -> NoiseInstruction:
         return NoiseInstruction(
             on=cls._infer_instruction_on(dictionary),
-            period=int((initial_pitch + dictionary[FeatureKey.ARPEGGIO.value]) % NUM_PERIODS),
-            volume=int(dictionary[FeatureKey.VOLUME.value]),
-            short=bool(dictionary[FeatureKey.DUTY_CYCLE.value]),
+            period=int((initial_pitch + dictionary[cls._ATTRIBUTE_MAP[FeatureKey.ARPEGGIO]]) % NUM_PERIODS),
+            volume=int(dictionary[cls._ATTRIBUTE_MAP[FeatureKey.VOLUME]]),
+            short=bool(dictionary[cls._ATTRIBUTE_MAP[FeatureKey.DUTY_CYCLE]]),
         )
 
     @classmethod

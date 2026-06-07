@@ -4,17 +4,16 @@ from typing import List, cast
 
 import numpy as np
 
+from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.result import ServiceCancelled, ServiceError, ServiceSuccess
 from sampletones_application.utils.thread import SingleThreadExecutor
-from sampletones_core.configs import Config
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import GENERATOR_NAME_TO_EXPORTER_MAP, Features
 from sampletones_core.instructions import InstructionUnion
-from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.types.feature import FeatureValue
 
-RegenerationResult = ServiceSuccess[None] | ServiceError | ServiceCancelled
+RegenerationResult = ServiceSuccess[ReconstructionData] | ServiceError | ServiceCancelled
 
 
 class RegenerationService(ServiceBase[RegenerationResult]):
@@ -25,18 +24,17 @@ class RegenerationService(ServiceBase[RegenerationResult]):
 
     def start(
         self,
-        reconstruction: Reconstruction,
-        config: Config,
+        data: ReconstructionData,
         generator_name: GeneratorName,
         features: Features,
         feature_key: FeatureKey,
-        data: FeatureValue,
+        value: FeatureValue,
     ) -> bool:
         if self._cancelled:
             return False
 
         def task() -> None:
-            self._run(reconstruction, config, generator_name, features, feature_key, data)
+            self._run(data, generator_name, features, feature_key, value)
 
         return self._executor.execute(task, wait=False)
 
@@ -45,12 +43,11 @@ class RegenerationService(ServiceBase[RegenerationResult]):
 
     def _run(
         self,
-        reconstruction: Reconstruction,
-        config: Config,
+        data: ReconstructionData,
         generator_name: GeneratorName,
         features: Features,
         feature_key: FeatureKey,
-        data: FeatureValue,
+        value: FeatureValue,
     ) -> None:
         if self._cancelled:
             self._emit(ServiceCancelled())
@@ -58,22 +55,22 @@ class RegenerationService(ServiceBase[RegenerationResult]):
         try:
             exporter_class = GENERATOR_NAME_TO_EXPORTER_MAP[generator_name]
             generator_class = exporter_class.get_generator_type()
-            features[feature_key] = data
+            features[feature_key] = value
 
             instructions = cast(
                 List[InstructionUnion],
                 exporter_class.from_features(features),
             )
-            generator = generator_class(config, generator_name)
+            generator = generator_class(data.config, generator_name)
             audio = np.concatenate(
                 [generator(instruction, save=True) for instruction in instructions],  # type: ignore[arg-type]
             )
 
-            reconstruction.update_generator_data(
+            data.reconstruction.update_generator_data(
                 generator_name,
                 instructions,
                 audio,
             )
-            self._emit(ServiceSuccess(value=None))
+            self._emit(ServiceSuccess(value=data))
         except Exception as exception:  # pylint: disable=broad-exception-caught
             self._emit(ServiceError(exception=exception))

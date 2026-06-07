@@ -1,6 +1,6 @@
 from typing import Callable
 
-from sampletones_application.view_model.reconstruction.data import ReconstructionData
+from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_core.reconstructions import Reconstruction
 
 

@@ -3,13 +3,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from sampletones_application.view_model.reconstruction.data import ReconstructionData
-from sampletones_application.view_model.reconstruction.feature import FeatureData
+from sampletones_application.logic.reconstruction.data import ReconstructionData
+from sampletones_application.logic.reconstruction.feature import FeatureData
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MIN_PITCH
-from sampletones_core.exporters import Features
-from sampletones_core.exporters.pulse import PulseExporter
+from sampletones_core.exporters import Features, PulseExporter
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 
