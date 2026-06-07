@@ -3,9 +3,7 @@ from typing import Any, Dict, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.sequencer import (
-    SequencerBrowserElements,
-)
+from sampletones_application.categories.elements.sequencer import SequencerBrowserElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
@@ -25,9 +23,7 @@ from sampletones_application.layout.behavior import (
     SchedulingBehavior,
     TreeBehavior,
 )
-from sampletones_application.logic.sequencer.browser import (
-    SequencerBrowserLogic,
-)
+from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
