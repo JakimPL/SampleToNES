@@ -35,14 +35,21 @@ class ViewportManager:
 
         icon_file_path = get_icon_path(icon_filename)
 
+        window_x, window_y = self._clamp_position(
+            self._session_manager.window_x,
+            self._session_manager.window_y,
+            self._layout.window.width,
+            self._layout.window.height,
+        )
+
         dpg.create_viewport(
             title="SampleToNES",
             width=self._layout.window.width,
             height=self._layout.window.height,
             small_icon=str(icon_file_path),
             large_icon=str(icon_file_path),
-            x_pos=self._session_manager.window_x,
-            y_pos=self._session_manager.window_y,
+            x_pos=window_x,
+            y_pos=window_y,
             decorated=not self._session_manager.fullscreen,
             disable_close=True,
         )
@@ -67,19 +74,22 @@ class ViewportManager:
 
         window_x = self._session_manager.window_x
         window_y = self._session_manager.window_y
-        window_width: Optional[int] = None
-        window_height: Optional[int] = None
 
-        monitor = self._monitor_for_position(window_x, window_y)
+        monitor = self._monitor_for_window(
+            window_x,
+            window_y,
+            self._session_manager.window_width,
+            self._session_manager.window_height,
+        )
         if monitor is not None:
             window_x = int(monitor.x)
             window_y = int(monitor.y)
             window_width = int(monitor.width)
             window_height = int(monitor.height)
         else:
-            screen_dimensions = self._get_screen_dimensions()
-            window_width = screen_dimensions[0]
-            window_height = screen_dimensions[1]
+            window_x = 0
+            window_y = 0
+            window_width, window_height = self._get_screen_dimensions()
 
         self._apply_window_state(
             fullscreen=True,
@@ -95,29 +105,17 @@ class ViewportManager:
         window_x = self._session_manager.window_x
         window_y = self._session_manager.window_y
 
-        monitor = self._monitor_for_position(window_x, window_y)
+        monitor = self._monitor_for_window(window_x, window_y, window_width, window_height)
         if monitor is not None:
-            screen_x = int(monitor.x)
-            screen_y = int(monitor.y)
-            screen_w = int(monitor.width)
-            screen_h = int(monitor.height)
+            window_width = min(window_width, int(monitor.width))
+            window_height = min(window_height, int(monitor.height))
 
-            window_width = min(window_width, screen_w)
-            window_height = min(window_height, screen_h)
-
-            window_x = max(
-                0,
-                screen_x,
-                min(window_x, screen_x + screen_w - window_width),
-            )
-            window_y = max(
-                0,
-                screen_y,
-                min(window_y, screen_y + screen_h - window_height),
-            )
-        else:
-            window_x = max(0, window_x)
-            window_y = max(0, window_y)
+        window_x, window_y = self._clamp_position(
+            window_x,
+            window_y,
+            window_width,
+            window_height,
+        )
 
         self._apply_window_state(
             fullscreen=False,
@@ -183,18 +181,54 @@ class ViewportManager:
     def _get_monitors() -> List[Monitor]:
         return get_monitors()
 
-    def _monitor_for_position(self, x: float, y: float) -> Optional[Monitor]:
+    def _clamp_position(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> Tuple[int, int]:
+        monitor = self._monitor_for_window(x, y, width, height)
+        if monitor is not None:
+            screen_x = int(monitor.x)
+            screen_y = int(monitor.y)
+            screen_w = int(monitor.width)
+            screen_h = int(monitor.height)
+        else:
+            screen_x = 0
+            screen_y = 0
+            screen_w, screen_h = self._get_screen_dimensions()
+
+        clamped_x = max(screen_x, min(x, screen_x + screen_w - width))
+        clamped_y = max(screen_y, min(y, screen_y + screen_h - height))
+
+        return clamped_x, clamped_y
+
+    def _monitor_for_window(
+        self,
+        x: int,
+        y: int,
+        width: int,
+        height: int,
+    ) -> Optional[Monitor]:
         monitors = self._get_monitors()
-        position_x = float(x)
-        position_y = float(y)
+        if not monitors:
+            return None
 
+        best_monitor = monitors[0]
+        best_overlap = -1
         for monitor in monitors:
-            if all(
-                (
-                    monitor.x <= position_x < (monitor.x + monitor.width),
-                    monitor.y <= position_y < (monitor.y + monitor.height),
-                )
-            ):
-                return monitor
+            overlap_width = max(
+                0,
+                min(x + width, monitor.x + monitor.width) - max(x, monitor.x),
+            )
+            overlap_height = max(
+                0,
+                min(y + height, monitor.y + monitor.height) - max(y, monitor.y),
+            )
+            overlap = overlap_width * overlap_height
+            if overlap > best_overlap:
+                best_overlap = overlap
+                best_monitor = monitor
 
-        return monitors[0] if monitors else None
+        return best_monitor
