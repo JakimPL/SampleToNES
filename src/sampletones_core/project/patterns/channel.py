@@ -57,6 +57,9 @@ class Channel(BaseModel):
         self.patterns.pop(pattern_id)
         self.order = [entry for entry in self.order if entry != pattern_id]
 
+    def get_row(self, pattern_id: str, row_index: int) -> Row:
+        return self.pattern(pattern_id).rows[row_index]
+
     def set_row(self, pattern_id: str, row_index: int, row: Row) -> None:
         self.pattern(pattern_id).rows[row_index] = row
 

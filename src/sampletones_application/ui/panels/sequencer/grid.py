@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Final, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -22,26 +22,31 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer import display as tracker_display
-from sampletones_application.ui.panels.sequencer.columns import COLUMNS, tracker_table_column
+from sampletones_application.ui.panels.sequencer.columns import (
+    COLUMNS,
+    tracker_table_column,
+)
 from sampletones_application.ui.panels.sequencer.display import CellValues
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, EditAction
+from sampletones_application.ui.panels.sequencer.input.edit import (
+    ClearAction,
+    EditAction,
+)
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.utils.shortcuts.keys import HEX_KEYS
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
 )
-from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_application.view_model.sequencer.samples import (
+    SequencerSamplesViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
-
-_HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
-    dpg.mvKey_A + i: "0123456789ABCDEF"[10 + i] for i in range(6)
-}
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
@@ -401,30 +406,40 @@ class GUISequencerGridPanel(GUIPanel):
                     ),
                 )
 
-    def _resolve_sample_id(self, sample_index: int) -> Optional[str]:
-        if self._current_samples is None:
+    def _resolve_sample_id(self, sample_index: int) -> Optional[Tuple[int, str]]:
+        if not self._current_samples or not self._current_samples.samples:
             return None
 
         samples = self._current_samples.samples
-        if sample_index < len(samples):
-            return samples[sample_index].sample_id
-
-        return None
+        sample_index = max(0, min(sample_index, len(samples) - 1))
+        return sample_index, samples[sample_index].sample_id
 
     def _handle_edit_action(self, action: EditAction) -> None:
+        """Commits a single-subcolumn edit.
+
+        An :class:`EditAction` only ever carries the subcolumn under the cursor;
+        the others are ``None`` meaning "leave unchanged", not "clear". Forwarding
+        those ``None`` values lets the downstream partial update preserve the rest
+        of the row instead of wiping it.
+        """
         row, generator = action.row, action.generator
         sample_id: Optional[str] = None
+
         if action.sample_index is not None:
+            resolved = self._resolve_sample_id(action.sample_index)
+            sample_index = resolved[0] if resolved is not None else None
+            sample_id = resolved[1] if resolved is not None else None
             self._cell_values[(row, generator, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
                 SubColumn.INSTRUMENT,
-                action.sample_index,
+                sample_index,
             )
-            sample_id = self._resolve_sample_id(action.sample_index)
+
         if action.transpose is not None:
             self._cell_values[(row, generator, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
                 SubColumn.TRANSPOSE,
                 action.transpose,
             )
+
         if action.volume is not None:
             self._cell_values[(row, generator, SubColumn.VOLUME)] = tracker_display.format_committed(
                 SubColumn.VOLUME,
@@ -442,7 +457,10 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _handle_clear_action(self, action: ClearAction) -> None:
         for subcolumn in SubColumn:
-            self._cell_values.pop((action.row, action.generator, subcolumn), None)
+            self._cell_values.pop(
+                (action.row, action.generator, subcolumn),
+                None,
+            )
 
         self.call(self.on_clear_row, action.row, action.generator)
 
@@ -554,7 +572,7 @@ class GUISequencerGridPanel(GUIPanel):
         return state
 
     def _handle_printable_key(self, key: int) -> None:
-        char = _HEX_KEYS.get(key)
+        char = HEX_KEYS.get(key)
         if char is None:
             return
 

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict
+from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
@@ -74,4 +74,9 @@ KEY_DISPLAY_NAMES: Dict[int, str] = {
     dpg.mvKey_Down: "Down",
     dpg.mvKey_Left: "Left",
     dpg.mvKey_Right: "Right",
+}
+
+
+HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
+    dpg.mvKey_A + i: "ABCDEF"[i] for i in range(6)
 }

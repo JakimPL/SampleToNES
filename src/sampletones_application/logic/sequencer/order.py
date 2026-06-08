@@ -52,7 +52,11 @@ class SequencerOrderLogic(CallbackMixin):
 
     # ------------------------------------------------------------------
 
-    def _build_channel_view(self, generator: GeneratorName, channel: Channel) -> SequencerOrderViewModel:
+    def _build_channel_view(
+        self,
+        generator: GeneratorName,
+        channel: Channel,
+    ) -> SequencerOrderViewModel:
         entries = tuple(
             OrderEntryViewModel(
                 position=position,
@@ -61,4 +65,7 @@ class SequencerOrderLogic(CallbackMixin):
             )
             for position, pattern_id in enumerate(channel.order)
         )
-        return SequencerOrderViewModel(generator=generator, entries=entries)
+        return SequencerOrderViewModel(
+            generator=generator,
+            entries=entries,
+        )

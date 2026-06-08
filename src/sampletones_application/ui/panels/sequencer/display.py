@@ -31,7 +31,7 @@ def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) 
             return cell_view_model.volume
 
 
-def format_committed(subcolumn: SubColumn, value: int) -> str:
+def format_committed(subcolumn: SubColumn, value: Optional[int]) -> str:
     """Format an integer value as the display string stored in the optimistic cell cache."""
     match subcolumn:
         case SubColumn.INSTRUMENT:

@@ -104,7 +104,7 @@ class SequencerGridLogic(CallbackMixin):
         if pattern_id is None:
             return
 
-        self._controller.set_row(
+        self._controller.update_row(
             generator,
             pattern_id,
             row_index,
