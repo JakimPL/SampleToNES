@@ -155,7 +155,10 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
-        self._sequencer_module_panel.set_enabled(self._project_controller.is_open)
+        is_open = self._project_controller.is_open
+        self._sequencer_module_panel.set_enabled(is_open)
+        self._sequencer_grid_panel.set_enabled(is_open)
+        self._sequencer_order_panel.set_enabled(is_open)
 
     def _on_song_changed(self) -> None:
         self._sequencer_grid_logic.push_grid()

@@ -12,6 +12,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_GRID_GROUP_TRACKER,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
     TAG_SEQUENCER_GRID_WINDOW_TRACKER,
@@ -28,7 +29,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, 
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
-from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -177,13 +178,14 @@ class GUISequencerGridPanel(GUIPanel):
             self._subcolumn_themes[subcolumn] = theme
 
     def _create_tracker_view(self) -> None:
-        dpg.add_separator(parent=self.tag)
-        section_text = dpg.add_text(self._lbl_tracker, parent=self.tag)
+        dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
+        dpg.add_separator(parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
+        section_text = dpg.add_text(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
         with dpg.child_window(
             tag=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
-            parent=self.tag,
+            parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
             width=0,
             height=-1,
         ):
@@ -379,6 +381,9 @@ class GUISequencerGridPanel(GUIPanel):
 
     def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
         self._current_samples = view_model
+
+    def set_enabled(self, enabled: bool) -> None:
+        dpg_configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
 
     def _update_cell_display(self, row: int, generator: Optional[GeneratorName]) -> None:
         for subcolumn in SubColumn:

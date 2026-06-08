@@ -56,6 +56,12 @@ TAG_SEQUENCER_GRID_TABLE_TRACKER = TagName(
     Widget.TABLE,
     "tracker",
 )
+TAG_SEQUENCER_GRID_GROUP_TRACKER = TagName(
+    Page.SEQUENCER,
+    Panel.GRID,
+    Widget.GROUP,
+    "tracker",
+)
 TAG_SEQUENCER_GRID_WINDOW_TRACKER = TagName(
     Page.SEQUENCER,
     Panel.GRID,

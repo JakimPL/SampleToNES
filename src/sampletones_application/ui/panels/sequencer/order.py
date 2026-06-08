@@ -18,7 +18,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
 from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_index
@@ -156,6 +156,9 @@ class GUISequencerOrderPanel(GUIPanel):
         """Updates the highlighted column without rebuilding the table."""
         self._apply_highlight(frame)
         self._current_frame = frame
+
+    def set_enabled(self, enabled: bool) -> None:
+        dpg_configure_item(TAG_SEQUENCER_ORDER_PANEL, enabled=enabled)
 
     def _build_channel_row(
         self,
