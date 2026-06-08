@@ -31,6 +31,7 @@ from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
+from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
@@ -122,6 +123,7 @@ class SequencerTabCoordinator:
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
+        self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
         self._sequencer_grid_panel.on_set_row = self._on_set_row
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
@@ -178,6 +180,27 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.clear_all_generators(row_index)
         else:
             self._sequencer_grid_logic.clear_row(generator, row_index)
+
+    def _on_clear_subcolumn(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> None:
+        instrument = subcolumn is SubColumn.INSTRUMENT
+        transpose = subcolumn is SubColumn.TRANSPOSE
+        volume = subcolumn is SubColumn.VOLUME
+        if generator is None:
+            if instrument:
+                self._sequencer_grid_logic.clear_subcolumn_all_generators(row_index, instrument=True)
+        else:
+            self._sequencer_grid_logic.clear_subcolumn(
+                generator,
+                row_index,
+                instrument=instrument,
+                transpose=transpose,
+                volume=volume,
+            )
 
     def _on_set_row(
         self,

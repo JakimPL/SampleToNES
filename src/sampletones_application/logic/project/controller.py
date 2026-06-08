@@ -221,8 +221,26 @@ class ProjectController(CallbackMixin):
         generator: GeneratorName,
         pattern_id: str,
         row_index: int,
+        *,
+        instrument: bool = True,
+        transpose: bool = True,
+        volume: bool = True,
     ) -> None:
-        self.set_row(generator, pattern_id, row_index)
+        """Clears the selected subcolumns of a row, preserving the rest.
+
+        Every subcolumn is cleared by default (a blank row); pass ``False`` for a
+        subcolumn to keep its current value. With no selectors this is the inverse
+        of :meth:`update_row`.
+        """
+        existing = self.project.song[generator].get_row(pattern_id, row_index)
+        self.set_row(
+            generator,
+            pattern_id,
+            row_index,
+            instrument=None if instrument else existing.instrument,
+            transpose=None if transpose else existing.transpose,
+            volume=None if volume else existing.volume,
+        )
 
     def append_to_order(self, generator: GeneratorName, pattern_id: str) -> None:
         self.project.song[generator].append_to_order(pattern_id)

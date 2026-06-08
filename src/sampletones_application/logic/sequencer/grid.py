@@ -120,9 +120,48 @@ class SequencerGridLogic(CallbackMixin):
 
         self._controller.clear_row(generator, pattern_id, row_index)
 
+    def clear_subcolumn(
+        self,
+        generator: GeneratorName,
+        row_index: int,
+        *,
+        instrument: bool = False,
+        transpose: bool = False,
+        volume: bool = False,
+    ) -> None:
+        pattern_id = self._pattern_id_at_frame(generator)
+        if pattern_id is None:
+            return
+
+        self._controller.clear_row(
+            generator,
+            pattern_id,
+            row_index,
+            instrument=instrument,
+            transpose=transpose,
+            volume=volume,
+        )
+
     def clear_all_generators(self, row_index: int) -> None:
         for generator in GeneratorName.items():
             self.clear_row(generator, row_index)
+
+    def clear_subcolumn_all_generators(
+        self,
+        row_index: int,
+        *,
+        instrument: bool = False,
+        transpose: bool = False,
+        volume: bool = False,
+    ) -> None:
+        for generator in GeneratorName.items():
+            self.clear_subcolumn(
+                generator,
+                row_index,
+                instrument=instrument,
+                transpose=transpose,
+                volume=volume,
+            )
 
     def set_row_all_generators(self, row_index: int, sample_id: Optional[str]) -> None:
         for generator in GeneratorName.items():

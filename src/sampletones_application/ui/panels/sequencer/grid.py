@@ -49,6 +49,7 @@ from sampletones_core.utils.display import display_index
 from sampletones_shared.types.application import Sender
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
+OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
 OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
 OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 
@@ -83,6 +84,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._current_samples: Optional[SequencerSamplesViewModel] = None
 
         self.on_clear_row: Optional[OnClearRowCallback] = None
+        self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
 
@@ -456,13 +458,19 @@ class GUISequencerGridPanel(GUIPanel):
         )
 
     def _handle_clear_action(self, action: ClearAction) -> None:
-        for subcolumn in SubColumn:
+        if action.subcolumn is None:
+            for subcolumn in SubColumn:
+                self._cell_values.pop(
+                    (action.row, action.generator, subcolumn),
+                    None,
+                )
+            self.call(self.on_clear_row, action.row, action.generator)
+        else:
             self._cell_values.pop(
-                (action.row, action.generator, subcolumn),
+                (action.row, action.generator, action.subcolumn),
                 None,
             )
-
-        self.call(self.on_clear_row, action.row, action.generator)
+            self.call(self.on_clear_subcolumn, action.row, action.generator, action.subcolumn)
 
     def _apply_cell_highlight(
         self,
@@ -539,9 +547,11 @@ class GUISequencerGridPanel(GUIPanel):
             case dpg.mvKey_Return:
                 self._move_subcolumn(1)
             case dpg.mvKey_Delete:
-                self._clear_cell_and_move_subcolumn(1)
+                self._clear_row_and_move_row(1)
             case dpg.mvKey_Back:
-                self._clear_cell_and_move_subcolumn(-1)
+                self._clear_row_and_move_subcolumn(-1)
+            case dpg.mvKey_Spacebar:
+                self._clear_subcolumn_and_move_subcolumn(1)
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
@@ -559,8 +569,18 @@ class GUISequencerGridPanel(GUIPanel):
     def _move_column(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_column_by(delta))
 
-    def _clear_cell_and_move_subcolumn(self, delta: int) -> None:
+    def _clear_row_and_move_row(self, delta: int) -> None:
         state, clear_action = self._input_state.clear()
+        self._handle_clear_action(clear_action)
+        self._apply_state(state.navigate_row(delta, self._current_row_count))
+
+    def _clear_row_and_move_subcolumn(self, delta: int) -> None:
+        state, clear_action = self._input_state.clear()
+        self._handle_clear_action(clear_action)
+        self._apply_state(state.navigate_subcolumn(delta))
+
+    def _clear_subcolumn_and_move_subcolumn(self, delta: int) -> None:
+        state, clear_action = self._input_state.clear_subcolumn()
         self._handle_clear_action(clear_action)
         self._apply_state(state.navigate_subcolumn(delta))
 

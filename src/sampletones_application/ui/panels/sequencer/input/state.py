@@ -140,5 +140,13 @@ class TrackerInputState:
         )
         return TrackerInputState(cursor=self.cursor, pending=""), action
 
+    def clear_subcolumn(self) -> Tuple[TrackerInputState, ClearAction]:
+        action = ClearAction(
+            row=self.cursor.row if self.cursor else 0,
+            generator=self.cursor.generator if self.cursor else None,
+            subcolumn=self.cursor.subcolumn if self.cursor else None,
+        )
+        return TrackerInputState(cursor=self.cursor, pending=""), action
+
     def cancel(self) -> TrackerInputState:
         return TrackerInputState(cursor=self.cursor, pending="")
