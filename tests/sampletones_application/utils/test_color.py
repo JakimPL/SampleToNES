@@ -4,9 +4,9 @@ from typing import Optional, Tuple, Type, Union
 import pytest
 
 from sampletones_application.utils.color import parse_hex_color
-from tests.sampletones.errors import expect_error
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseRegularTestCase
+from tests.suite.errors import expect_error
 
 
 class TestParseHexColor(BaseTestSuite):
