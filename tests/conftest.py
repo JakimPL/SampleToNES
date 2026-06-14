@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Callable
+from typing import Callable, TypeAlias
 
 import numpy as np
 import pytest
@@ -9,9 +9,11 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.reconstructions import Reconstruction
 
+ReconstructionFactory: TypeAlias = Callable[[], Reconstruction]
+
 
 @pytest.fixture
-def reconstruction_factory() -> Callable[[], Reconstruction]:
+def reconstruction_factory() -> ReconstructionFactory:
     def build() -> Reconstruction:
         length = 64
         instructions = [PulseInstruction(on=True, pitch=60, volume=8, duty_cycle=0)]

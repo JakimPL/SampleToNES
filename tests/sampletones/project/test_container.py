@@ -1,6 +1,9 @@
 import json
 import zipfile
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.container import ProjectContainer
@@ -13,9 +16,20 @@ from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
 )
+from sampletones_shared.exceptions import (
+    IncorrectReconstructionDataError,
+    InvalidProjectDataValuesError,
+    MissingProjectDataFileError,
+    NotAValidArchiveError,
+    UnhandledProjectError,
+)
+from tests.conftest import ReconstructionFactory
 
 
-def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
+def _populated_project(
+    reconstruction_factory: ReconstructionFactory,
+    shared: bool = False,
+) -> Project:
     project = Project.create(title="Demo")
     project.settings.tempo = 128
 
@@ -43,7 +57,11 @@ def _populated_project(reconstruction_factory, shared: bool = False) -> Project:
 
 
 class TestRoundTrip:
-    def test_full_round_trip(self, tmp_path: Path, reconstruction_factory) -> None:
+    def test_full_round_trip(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
         project = _populated_project(reconstruction_factory)
         path = tmp_path / "demo.stp"
 
@@ -65,7 +83,11 @@ class TestRoundTrip:
         assert row.instrument is not None
         assert row.instrument.sample_id == loaded.samples[0].id
 
-    def test_references_resolve_after_load(self, tmp_path: Path, reconstruction_factory) -> None:
+    def test_references_resolve_after_load(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
         project = _populated_project(reconstruction_factory)
         path = tmp_path / "demo.stp"
         ProjectContainer.save(project, path)
@@ -74,12 +96,15 @@ class TestRoundTrip:
         channel = loaded.song[GeneratorName.PULSE1]
         row = channel.pattern(channel.order[0]).rows[0]
         assert loaded.sample(row.instrument.sample_id) is loaded.samples[0]
-        # the order referenc`es the same pattern twice; both resolve to one object
         assert channel.pattern(channel.order[0]) is channel.pattern(channel.order[2])
 
 
 class TestArchiveLayout:
-    def test_unique_reconstructions_are_deduplicated(self, tmp_path: Path, reconstruction_factory) -> None:
+    def test_unique_reconstructions_are_deduplicated(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
         project = _populated_project(reconstruction_factory, shared=True)
         path = tmp_path / "demo.stp"
         ProjectContainer.save(project, path)
@@ -91,7 +116,11 @@ class TestArchiveLayout:
 
         assert len(reconstruction_files) == 1
 
-    def test_separate_reconstructions_are_kept(self, tmp_path: Path, reconstruction_factory) -> None:
+    def test_separate_reconstructions_are_kept(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
         project = _populated_project(reconstruction_factory, shared=False)
         path = tmp_path / "demo.stp"
         ProjectContainer.save(project, path)
@@ -103,7 +132,11 @@ class TestArchiveLayout:
 
         assert len(reconstruction_files) == 2
 
-    def test_document_is_plain_json(self, tmp_path: Path, reconstruction_factory) -> None:
+    def test_document_is_plain_json(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
         project = _populated_project(reconstruction_factory)
         path = tmp_path / "demo.stp"
         ProjectContainer.save(project, path)
@@ -128,3 +161,82 @@ class TestEmptyProject:
 
         with zipfile.ZipFile(path, "r") as archive:
             assert all(not name.startswith(f"{RECONSTRUCTIONS_DIRECTORY}/") for name in archive.namelist())
+
+
+class TestLoadRejectsInvalidArchives:
+    def test_missing_file_raises_file_not_found(self, tmp_path: Path) -> None:
+        with pytest.raises(FileNotFoundError):
+            ProjectContainer.load(tmp_path / "nope.stp")
+
+    def test_directory_raises_is_a_directory(self, tmp_path: Path) -> None:
+        with pytest.raises(IsADirectoryError):
+            ProjectContainer.load(tmp_path)
+
+    def test_non_zip_raises_not_a_valid_archive(self, tmp_path: Path) -> None:
+        path = tmp_path / "broken.stp"
+        path.write_bytes(b"this is not a zip archive")
+
+        with pytest.raises(NotAValidArchiveError):
+            ProjectContainer.load(path)
+
+    def test_missing_document_raises_missing_data_file(self, tmp_path: Path) -> None:
+        path = tmp_path / "nodoc.stp"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("other.txt", "hello")
+
+        with pytest.raises(MissingProjectDataFileError):
+            ProjectContainer.load(path)
+
+    def test_malformed_document_raises_invalid_values(self, tmp_path: Path) -> None:
+        path = tmp_path / "baddoc.stp"
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(PROJECT_DOCUMENT_NAME, b"{ not valid json")
+
+        with pytest.raises(InvalidProjectDataValuesError):
+            ProjectContainer.load(path)
+
+    def test_corrupt_reconstruction_raises_incorrect_data(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        path = tmp_path / "demo.stp"
+        ProjectContainer.save(project, path)
+
+        with zipfile.ZipFile(path, "a") as archive:
+            archive.writestr(f"{RECONSTRUCTIONS_DIRECTORY}/corrupt.stn", b"garbage-not-a-flatbuffer")
+
+        with pytest.raises(IncorrectReconstructionDataError):
+            ProjectContainer.load(path)
+
+    def test_missing_reconstruction_reference_raises_missing_data_file(
+        self,
+        tmp_path: Path,
+        reconstruction_factory: ReconstructionFactory,
+    ) -> None:
+        project = _populated_project(reconstruction_factory)
+        full = tmp_path / "demo.stp"
+        ProjectContainer.save(project, full)
+
+        # Rebuild an archive that keeps the document but drops every reconstruction,
+        # so a sample references a reconstruction_id with no matching entry
+        # (KeyError in _build_project).
+        stripped = tmp_path / "stripped.stp"
+        with zipfile.ZipFile(full, "r") as source:
+            document = source.read(PROJECT_DOCUMENT_NAME)
+        with zipfile.ZipFile(stripped, "w") as target:
+            target.writestr(PROJECT_DOCUMENT_NAME, document)
+
+        with pytest.raises(MissingProjectDataFileError):
+            ProjectContainer.load(stripped)
+
+    def test_unexpected_error_wrapped_as_unhandled(self, tmp_path: Path) -> None:
+        # A valid archive whose assembly blows up with an unanticipated error must be
+        # wrapped into UnhandledProjectError rather than leaking the raw exception.
+        path = tmp_path / "demo.stp"
+        ProjectContainer.save(Project.create(title="Demo"), path)
+
+        with patch.object(ProjectContainer, "_build_project", side_effect=RuntimeError("runtime_error")):
+            with pytest.raises(UnhandledProjectError):
+                ProjectContainer.load(path)

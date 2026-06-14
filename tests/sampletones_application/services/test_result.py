@@ -3,7 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from sampletones_application.services.export import ExportError, ExportKind, ExportSuccess
+from sampletones_application.services.export import (
+    ExportError,
+    ExportKind,
+    ExportSuccess,
+)
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
@@ -81,7 +85,7 @@ class TestServiceSuccess:
 
 class TestServiceError:
     def test_stores_exception(self) -> None:
-        exception = RuntimeError("boom")
+        exception = RuntimeError("runtime_error")
         error = ServiceError(exception=exception)
         assert error.exception is exception
 

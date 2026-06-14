@@ -78,7 +78,7 @@ addopts = """
 """
 
 [tool.coverage.run]
-source = ["sampletones_core", "sampletones_shared"]
+source = ["sampletones_application", "sampletones_core", "sampletones_shared"]
 
 [tool.coverage.report]
 show_missing = true
