@@ -14,7 +14,9 @@ from sampletones_application.categories.key import TextKey
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
-from sampletones_application.constants.general import TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION
+from sampletones_application.constants.general import (
+    TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+)
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
@@ -23,18 +25,28 @@ from sampletones_application.coordinators.playback import (
     PlaybackRouter,
 )
 from sampletones_application.coordinators.project import ProjectCoordinator
-from sampletones_application.coordinators.reconstruction import ReconstructionCoordinator
-from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.reconstruction import (
+    ReconstructionCoordinator,
+)
+from sampletones_application.coordinators.reconstructions import (
+    ReconstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig, load_layout_config
-from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.project.title import document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
-from sampletones_application.services import ConversionService, ExportService, RegenerationService
+from sampletones_application.services import (
+    ConversionService,
+    ExportService,
+    RegenerationService,
+)
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
@@ -54,7 +66,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.types.feature import FeatureValue
-from sampletones_shared.exceptions import LoadReconstructionError
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -263,8 +275,14 @@ class Application:
     def _try_load_current_reconstruction(self, path: Path) -> None:
         try:
             self.reconstruction_manager.load_reconstruction(path)
-        except LoadReconstructionError:
+        except (SampleToNESError, OSError):
             self.session_manager.set_current_reconstruction(None)
+
+    def _try_load_current_project(self, path: Path) -> None:
+        try:
+            self.project_manager.load(path)
+        except (SampleToNESError, OSError):
+            self.session_manager.set_current_project(None)
 
     def _setup_gui(self) -> None:
         bindings = ShortcutBindings(
@@ -303,7 +321,10 @@ class Application:
         self._sequencer_tab.initialize()
         self.config_manager.update_gui()
         self._update_menu()
-        self._shell.restore_current_items(self._try_load_current_reconstruction)
+        self._shell.restore_current_items(
+            self._try_load_current_project,
+            self._try_load_current_reconstruction,
+        )
 
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self._update_menu)

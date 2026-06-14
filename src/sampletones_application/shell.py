@@ -1,10 +1,11 @@
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import GlobalDialogTitleElements
+from sampletones_application.categories.elements.global_ import (
+    GlobalDialogTitleElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
@@ -20,7 +21,9 @@ from sampletones_application.constants.general import (
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
 from sampletones_application.coordinators.main import MainTabCoordinator
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
-from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.reconstructions import (
+    ReconstructionsTabCoordinator,
+)
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -37,7 +40,7 @@ from sampletones_application.utils.shortcuts.shortcut import Shortcut
 from sampletones_application.view_model.shared.menu import MenuBarViewModel
 from sampletones_application.viewport import ViewportManager
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.callback import Callback, PathCallback
 
 _TAB_TAGS: Dict[Tab, str] = {
     Tab.MAIN: TAG_GLOBAL_TAB_MAIN,
@@ -322,19 +325,29 @@ class ApplicationShell:
         ):
             self._status_bar.create()
 
-    def restore_current_items(self, on_load_reconstruction: Callable[[Path], None]) -> None:
+    def restore_current_items(
+        self,
+        on_load_project: PathCallback,
+        on_load_reconstruction: PathCallback,
+    ) -> None:
         current_tab = self._session_manager.load_current_tab()
         self.set_current_tab(current_tab)
+        self._restore_current_project(on_load_project)
         self._restore_current_reconstruction(on_load_reconstruction)
 
-    def _restore_current_reconstruction(self, on_load_reconstruction: Callable[[Path], None]) -> None:
-        current_reconstruction = self._session_manager.current_reconstruction
-        if current_reconstruction is None:
+    def _restore_current_project(self, on_load_project: PathCallback) -> None:
+        current_project_path = self._session_manager.current_project
+        if current_project_path is None:
             return
-        if current_reconstruction.exists():
-            on_load_reconstruction(current_reconstruction)
-        else:
-            self._session_manager.set_current_reconstruction(None)
+
+        on_load_project(current_project_path)
+
+    def _restore_current_reconstruction(self, on_load_reconstruction: PathCallback) -> None:
+        current_reconstruction_path = self._session_manager.current_reconstruction
+        if current_reconstruction_path is None:
+            return
+
+        on_load_reconstruction(current_reconstruction_path)
 
     def open_audio_settings(self) -> None:
         self._audio_settings_window.show()

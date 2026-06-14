@@ -5,12 +5,14 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.reconstruction.data import ReconstructionData
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.services.export import ExportService
-from sampletones_application.view_model.reconstruction.reconstruction import ReconstructionViewModel
+from sampletones_application.view_model.reconstruction.reconstruction import (
+    ReconstructionViewModel,
+)
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
 
@@ -41,7 +43,7 @@ class ReconstructionPanelLogic(CallbackMixin):
         self.on_open_export_wav_dialog: Optional[Callable[[str, str], None]] = None
 
         self.on_locate_audio_missing: Optional[VoidCallback] = None
-        self.on_locate_audio_not_found: Optional[Callable[[Path], None]] = None
+        self.on_locate_audio_not_found: Optional[PathCallback] = None
 
     def display_reconstruction(self) -> None:
         reconstruction_data = self._reconstruction_data

@@ -37,13 +37,13 @@ from sampletones_core.parallelization import (
 )
 from sampletones_core.structures.tree import Tree
 from sampletones_shared.exceptions import (
+    DeserializationError,
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataError,
     InvalidLibraryDataValuesError,
     InvalidMetadataError,
     WindowNotAvailableError,
 )
-from sampletones_shared.exceptions.validation import DeserializationError
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.callbacks import CallbackMixin
 

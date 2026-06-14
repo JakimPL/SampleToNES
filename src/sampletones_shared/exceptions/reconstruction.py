@@ -23,5 +23,9 @@ class IncompatibleReconstructionVersionError(IncompatibleVersionError, LoadRecon
     """Raised when the reconstruction data version is incompatible."""
 
 
+class UnhandledReconstructionError(LoadReconstructionError):
+    """Raised when an unhandled error is encountered while loading a reconstruction."""
+
+
 class NoFilesToProcessError(ReconstructionError):
     """Raised when there are no files to process during reconstruction."""

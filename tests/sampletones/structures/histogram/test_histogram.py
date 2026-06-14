@@ -9,9 +9,7 @@ from pydantic import ValidationError
 from sampletones_core.array import CUPY_AVAILABLE, xp
 from sampletones_core.structures.histogram.histogram import Histogram
 from sampletones_core.structures.histogram.interval import Interval
-from sampletones_shared.exceptions.structures import (
-    IncompleteHistogramRebinningWarning,
-)
+from sampletones_shared.exceptions import IncompleteHistogramRebinningWarning
 from sampletones_shared.types.array import Array, Float, Numeric
 from tests.sampletones.arrays import assert_array_equal
 from tests.sampletones.errors import expect_error, expect_warning

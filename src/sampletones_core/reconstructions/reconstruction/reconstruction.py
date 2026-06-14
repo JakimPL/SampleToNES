@@ -35,11 +35,12 @@ from sampletones_shared.constants.application import (
 from sampletones_shared.exceptions import (
     IncompatibleReconstructionVersionError,
     InvalidMetadataError,
-)
-from sampletones_shared.exceptions.reconstruction import (
     InvalidReconstructionValuesError,
+    SampleToNESError,
+    UnhandledReconstructionError,
 )
 from sampletones_shared.logger import logger
+from sampletones_shared.types.callback import Callback
 from sampletones_shared.types.data import SerializedData
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.arrays import pad
@@ -211,13 +212,28 @@ class Reconstruction(DataModel):
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Reconstruction:
         binary = load_binary(path)
+        return cls.deserialize_data(binary, source=Path(path), validation=cls.validate_metadata, fast=fast)
 
+    @classmethod
+    def deserialize_data(
+        cls,
+        binary: bytes,
+        source: Pathlike,
+        validation: Optional[Callback] = None,
+        fast: bool = True,
+    ) -> Reconstruction:
         try:
-            return cls.deserialize(binary, validation=cls.validate_metadata, fast=fast)
+            return cls.deserialize(binary, validation=validation, fast=fast)
         except (ValidationError, TypeError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
-                f"Failed to deserialize ReconstructionData from {Path(path)} due to validation error",
+                f'Failed to deserialize ReconstructionData from "{source}" due to validation error: {exception}',
                 exception,
+            ) from exception
+        except SampleToNESError:
+            raise
+        except Exception as exception:
+            raise UnhandledReconstructionError(
+                f'Unhandled reconstruction error while loading "{source}": {exception}'
             ) from exception
 
     @staticmethod

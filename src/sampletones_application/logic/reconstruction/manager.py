@@ -40,16 +40,10 @@ class ReconstructionManager(CallbackMixin):
     def session(self) -> ReconstructionSession:
         return self._session
 
-    def load_reconstruction(self, filepath: Path) -> None:
-        if filepath.is_dir():
-            raise IsADirectoryError(f"Expected a file but got a directory: {filepath}")
-
-        if not filepath.exists():
-            raise FileNotFoundError(f"Reconstruction file not found: {filepath}")
-
-        self._load_reconstruction_data(filepath)
+    def load_reconstruction(self, path: Path) -> None:
+        self._load_reconstruction_data(path)
         self._load_reconstruction_features()
-        self._session.mark_loaded(filepath.stem)
+        self._session.mark_loaded(path.stem)
         self.call(self.on_reconstruction_loaded)
 
     def load_reconstruction_object(self, reconstruction: Reconstruction) -> None:

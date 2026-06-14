@@ -32,9 +32,11 @@ from sampletones_application.utils.align import table_wrapper
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.utils.widgets import clamp_widget_value
-from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel
+from sampletones_application.view_model.main.advanced import (
+    AdvancedSettingsPanelViewModel,
+)
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class GUIAdvancedSettingsPanel(GUIPanel):
@@ -51,7 +53,7 @@ class GUIAdvancedSettingsPanel(GUIPanel):
         path_colors: PathColors,
     ) -> None:
         self.on_advanced_settings_changed: Optional[Callable[[AdvancedSettingsUpdate], None]] = None
-        self.on_library_path_memorized: Optional[Callable[[Path], None]] = None
+        self.on_library_path_memorized: Optional[PathCallback] = None
         self.on_update_library_directory: Optional[VoidCallback] = None
         self.on_update_output_directory: Optional[VoidCallback] = None
 

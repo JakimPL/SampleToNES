@@ -31,5 +31,9 @@ class IncompatibleLibraryDataVersionError(IncompatibleVersionError, LoadLibraryE
     """Raised when the library data version is incompatible."""
 
 
+class UnhandledLibraryError(LoadLibraryError):
+    """Raised when an unhandled error is encountered while loading a library."""
+
+
 class LibraryDisplayError(LibraryError):
     """Exception raised when there is an error loading library data."""

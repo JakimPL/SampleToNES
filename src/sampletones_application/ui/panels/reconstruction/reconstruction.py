@@ -53,7 +53,7 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import MessageCallback, VoidCallback
+from sampletones_shared.types.callback import MessageCallback, PathCallback, VoidCallback
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -83,9 +83,9 @@ class GUIReconstructionPanel(GUIPanel):
         self.on_audio_source_changed: Optional[Callable[[AudioSourceType], None]] = None
         self.on_generators_changed: Optional[Callable[[List[GeneratorName]], None]] = None
         self.on_export_wav_requested: Optional[VoidCallback] = None
-        self.on_export_instrument_confirmed: Optional[Callable[[Path], None]] = None
-        self.on_export_instruments_confirmed: Optional[Callable[[Path], None]] = None
-        self.on_export_wav_confirmed: Optional[Callable[[Path], None]] = None
+        self.on_export_instrument_confirmed: Optional[PathCallback] = None
+        self.on_export_instruments_confirmed: Optional[PathCallback] = None
+        self.on_export_wav_confirmed: Optional[PathCallback] = None
         self.on_locate_original_audio_requested: Optional[VoidCallback] = None
 
         self.audio_tag = f"{TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO}"

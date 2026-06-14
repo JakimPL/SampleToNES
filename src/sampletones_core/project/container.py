@@ -2,6 +2,8 @@ import zipfile
 from pathlib import Path
 from typing import Dict
 
+from pydantic import ValidationError
+
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.project.document import ProjectDocument
 from sampletones_core.project.instruments.record import SampleRecord
@@ -12,6 +14,15 @@ from sampletones_core.structures import IdentifiedCollection
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
+)
+from sampletones_shared.exceptions import (
+    DeserializationError,
+    IncorrectReconstructionDataError,
+    InvalidProjectDataValuesError,
+    LoadReconstructionError,
+    MissingProjectDataFileError,
+    NotAValidArchiveError,
+    UnhandledProjectError,
 )
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import JSON_INDENT
@@ -45,11 +56,32 @@ class ProjectContainer:
 
     @staticmethod
     def load(path: Pathlike) -> Project:
-        with zipfile.ZipFile(path, "r") as archive:
-            document = ProjectDocument.model_validate_json(archive.read(PROJECT_DOCUMENT_NAME))
-            reconstructions = ProjectContainer._read_reconstructions(archive)
-
-        return ProjectContainer._build_project(document, reconstructions)
+        try:
+            with zipfile.ZipFile(path, "r") as archive:
+                document = ProjectDocument.model_validate_json(archive.read(PROJECT_DOCUMENT_NAME))
+                reconstructions = ProjectContainer._read_reconstructions(archive)
+            return ProjectContainer._build_project(document, reconstructions)
+        except zipfile.BadZipFile as exception:
+            raise NotAValidArchiveError(f'The project file "{Path(path)}" is not a valid archive.') from exception
+        except (LoadReconstructionError, DeserializationError) as exception:
+            raise IncorrectReconstructionDataError(
+                f'The project file "{Path(path)}" contains invalid reconstruction data: {exception}'
+            ) from exception
+        except KeyError as exception:
+            raise MissingProjectDataFileError(
+                f'The project "{Path(path)}" is incomplete: missing {exception}'
+            ) from exception
+        except ValidationError as exception:
+            raise InvalidProjectDataValuesError(
+                f'Failed to load project data from "{Path(path)}" due to validation error: {exception}',
+                exception,
+            ) from exception
+        except OSError:
+            raise
+        except Exception as exception:
+            raise UnhandledProjectError(
+                f'Unhandled project error while loading "{Path(path)}": {exception}'
+            ) from exception
 
     @staticmethod
     def _build_document(project: Project) -> ProjectDocument:
@@ -107,6 +139,6 @@ class ProjectContainer:
         for name in archive.namelist():
             if name.startswith(prefix) and name.endswith(EXT_FILE_RECONSTRUCTION):
                 reconstruction_id = Path(name).stem
-                reconstructions[reconstruction_id] = Reconstruction.deserialize(archive.read(name))
+                reconstructions[reconstruction_id] = Reconstruction.deserialize_data(archive.read(name), source=name)
 
         return reconstructions

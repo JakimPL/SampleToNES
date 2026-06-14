@@ -25,6 +25,8 @@ from sampletones_shared.exceptions import (
     IncompatibleLibraryDataVersionError,
     InvalidLibraryDataValuesError,
     InvalidMetadataError,
+    SampleToNESError,
+    UnhandledLibraryError,
 )
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import load_binary
@@ -125,8 +127,14 @@ class InstructionLibraryData(DataModel):
             )
         except (ValidationError, TypeError) as exception:
             raise InvalidLibraryDataValuesError(
-                f"Failed to deserialize LibraryData from {Path(path)} due to validation error",
+                f'Failed to deserialize LibraryData from "{Path(path)}" due to validation error: {exception}',
                 exception,
+            ) from exception
+        except SampleToNESError:
+            raise
+        except Exception as exception:
+            raise UnhandledLibraryError(
+                f'Unhandled library error while loading "{Path(path)}": {exception}'
             ) from exception
 
     @staticmethod
