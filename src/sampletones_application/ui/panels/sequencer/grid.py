@@ -36,7 +36,7 @@ from sampletones_application.ui.panels.sequencer.input.state import TrackerInput
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
-from sampletones_application.utils.shortcuts.keys import HEX_KEYS
+from sampletones_application.utils.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.view_model.sequencer.grid import (
     SequencerGridViewModel,
     SequencerRowViewModel,
@@ -592,7 +592,7 @@ class GUISequencerGridPanel(GUIPanel):
         return state
 
     def _handle_printable_key(self, key: int) -> None:
-        char = HEX_KEYS.get(key)
+        char = HEX_KEYS.get(key) or SIGN_KEYS.get(key)
         if char is None:
             return
 

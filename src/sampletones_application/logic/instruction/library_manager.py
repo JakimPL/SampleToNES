@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.elements.instructions import (
+    InstructionsLibraryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -29,6 +31,7 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
+from sampletones_shared.constants.symbols import HEXADECIMAL
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
@@ -232,6 +235,7 @@ class InstructionsLibraryManager(CallbackMixin):
         self._current_library_key = None
 
     def _is_library_file(self, filename: str) -> bool:
+        # TODO: delegate to Library
         file_parts = filename.split("_")
         if len(file_parts) != 10:
             return False
@@ -243,7 +247,7 @@ class InstructionsLibraryManager(CallbackMixin):
             return False
         if not file_parts[6] == "tg" or not file_parts[7].isdigit():
             return False
-        if not file_parts[8] == "ch" or not all(c in "0123456789abcdef" for c in file_parts[9]):
+        if not file_parts[8] == "ch" or not all(c in HEXADECIMAL.lower() for c in file_parts[9]):
             return False
 
         return True

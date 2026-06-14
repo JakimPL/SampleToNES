@@ -4,11 +4,20 @@ from typing import Dict, Final, Optional, Tuple
 
 from pydantic.dataclasses import dataclass
 
-from sampletones_application.ui.panels.sequencer.columns import COLUMNS, SUBCOLUMNS, flat_index, from_flat
+from sampletones_application.ui.panels.sequencer.columns import (
+    COLUMNS,
+    SUBCOLUMNS,
+    flat_index,
+    from_flat,
+)
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
-from sampletones_application.ui.panels.sequencer.input.edit import ClearAction, EditAction
+from sampletones_application.ui.panels.sequencer.input.edit import (
+    ClearAction,
+    EditAction,
+)
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_core.constants.general import MAX_VOLUME
+from sampletones_shared.constants.symbols import MINUS, PLUS, PLUS_MINUS, SIGNS
 
 DIGIT_COUNT: Final[Dict[SubColumn, int]] = {
     SubColumn.INSTRUMENT: 2,
@@ -37,11 +46,16 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
                     volume=min(int(pending, 16), MAX_VOLUME),
                 )
             case SubColumn.TRANSPOSE:
+                sign = -1 if pending.startswith(MINUS) else 1
+                magnitude = pending.lstrip(PLUS_MINUS)
+                if not magnitude:
+                    return None
+
                 return EditAction(
                     row=cursor.row,
                     generator=cursor.generator,
                     sample_index=None,
-                    transpose=int(pending, 16),
+                    transpose=sign * int(magnitude, 16),
                     volume=None,
                 )
     except ValueError:
@@ -52,6 +66,9 @@ def _parse(cursor: TrackerCursor, pending: str) -> Optional[EditAction]:
 class TrackerInputState:
     cursor: Optional[TrackerCursor] = None
     pending: str = ""
+
+    def reset_pending(self) -> TrackerInputState:
+        return TrackerInputState(cursor=self.cursor, pending="")
 
     def navigate_row(
         self,
@@ -116,29 +133,72 @@ class TrackerInputState:
         if self.cursor is None:
             return self, None
 
+        if self.cursor.subcolumn is SubColumn.TRANSPOSE:
+            return self._type_transpose_char(char)
+
+        if char in SIGNS:
+            return self, None
+
         pending = self.pending + char
         expected = DIGIT_COUNT[self.cursor.subcolumn]
         if len(pending) < expected:
             return TrackerInputState(cursor=self.cursor, pending=pending), None
 
         action = _parse(self.cursor, pending)
-        return TrackerInputState(cursor=self.cursor, pending=""), action
+        return self.reset_pending(), action
+
+    def _type_transpose_char(
+        self,
+        char: str,
+    ) -> Tuple[TrackerInputState, Optional[EditAction]]:
+        """Drives the signed transpose field: ``[±][H][H]``.
+
+        The first slot is reserved for the sign. A leading sign sets it; a leading
+        digit implies ``+``. A sign key pressed later flips the sign in place,
+        keeping any digits already entered. The field commits once both magnitude
+        digits are in.
+        """
+        if self.cursor is None:
+            return self, None
+
+        is_sign = char in SIGNS
+        if not self.pending:
+            pending = char if is_sign else f"{PLUS}{char}"
+        elif is_sign:
+            pending = char + self.pending[1:]
+            return (
+                TrackerInputState(cursor=self.cursor, pending=pending),
+                None,
+            )
+        else:
+            pending = self.pending + char
+
+        digits = len(pending) - 1
+        if digits < DIGIT_COUNT[SubColumn.TRANSPOSE]:
+            return TrackerInputState(cursor=self.cursor, pending=pending), None
+
+        action = _parse(self.cursor, pending)
+        return self.reset_pending(), action
 
     def commit_partial(self) -> Tuple[TrackerInputState, Optional[EditAction]]:
         if not self.pending or self.cursor is None:
             return self, None
 
+        if self.cursor.subcolumn is SubColumn.TRANSPOSE:
+            action = _parse(self.cursor, self.pending)
+            return self.reset_pending(), action
+
         expected = DIGIT_COUNT[self.cursor.subcolumn]
         padded = self.pending.zfill(expected)
         action = _parse(self.cursor, padded)
-        return TrackerInputState(cursor=self.cursor, pending=""), action
+        return self.reset_pending(), action
 
     def clear(self) -> Tuple[TrackerInputState, ClearAction]:
         action = ClearAction(
             row=self.cursor.row if self.cursor else 0,
             generator=self.cursor.generator if self.cursor else None,
         )
-        return TrackerInputState(cursor=self.cursor, pending=""), action
+        return self.reset_pending(), action
 
     def clear_subcolumn(self) -> Tuple[TrackerInputState, ClearAction]:
         action = ClearAction(
@@ -146,7 +206,7 @@ class TrackerInputState:
             generator=self.cursor.generator if self.cursor else None,
             subcolumn=self.cursor.subcolumn if self.cursor else None,
         )
-        return TrackerInputState(cursor=self.cursor, pending=""), action
+        return self.reset_pending(), action
 
     def cancel(self) -> TrackerInputState:
-        return TrackerInputState(cursor=self.cursor, pending="")
+        return self.reset_pending()

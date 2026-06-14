@@ -3,6 +3,8 @@ from typing import Dict, Final
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_shared.constants.symbols import HEXADECIMAL, MINUS, PLUS
+
 
 class Modifier(Enum):
     CTRL = "Ctrl"
@@ -77,6 +79,13 @@ KEY_DISPLAY_NAMES: Dict[int, str] = {
 }
 
 
-HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: str(i) for i in range(10)} | {
-    dpg.mvKey_A + i: "ABCDEF"[i] for i in range(6)
+HEX_KEYS: Final[Dict[int, str]] = {dpg.mvKey_0 + i: HEXADECIMAL[i] for i in range(10)} | {
+    dpg.mvKey_A + i: HEXADECIMAL[10 + i] for i in range(6)
+}
+
+SIGN_KEYS: Final[Dict[int, str]] = {
+    dpg.mvKey_Minus: MINUS,
+    dpg.mvKey_Subtract: MINUS,
+    dpg.mvKey_Plus: PLUS,
+    dpg.mvKey_Add: PLUS,
 }
