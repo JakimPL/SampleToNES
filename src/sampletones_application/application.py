@@ -273,15 +273,15 @@ class Application:
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _try_load_current_reconstruction(self, path: Path) -> None:
-        try:
-            self.reconstruction_manager.load_reconstruction(path)
-        except (SampleToNESError, OSError):
-            self.session_manager.set_current_reconstruction(None)
+        # Composition root forwards only; the reconstruction coordinator is the recovery
+        # boundary that catches load failures and notifies the user (docs/architecture.md).
+        self._reconstruction_coordinator.load_with_confirmation(path)
 
     def _try_load_current_project(self, path: Path) -> None:
         try:
-            self.project_manager.load(path)
-        except (SampleToNESError, OSError):
+            self.project_controller.load(path)
+        except (SampleToNESError, OSError) as exception:
+            logger.warning(f"Loading project failed: {logger.format_path(path)}: {exception}")
             self.session_manager.set_current_project(None)
 
     def _setup_gui(self) -> None:

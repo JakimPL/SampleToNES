@@ -8,7 +8,9 @@ from sampletones_application.categories.elements.global_ import (
     GlobalDialogTitleElements,
     GlobalMessageElements,
 )
-from sampletones_application.categories.elements.reconstructions import ReconstructionsBrowserElements
+from sampletones_application.categories.elements.reconstructions import (
+    ReconstructionsBrowserElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -17,7 +19,9 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
     TAG_GLOBAL_DIALOG_RECONSTRUCTION_SAVED,
 )
-from sampletones_application.coordinators.reconstructions import ReconstructionsTabCoordinator
+from sampletones_application.coordinators.reconstructions import (
+    ReconstructionsTabCoordinator,
+)
 from sampletones_application.layout import LayoutConfig
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
 from sampletones_application.logic.reconstruction.session import ReconstructionSession
@@ -190,12 +194,15 @@ class ReconstructionCoordinator:
         ):
             dpg.add_file_extension(EXT_FILE_RECONSTRUCTION)
 
+    def load(self, filepath: Path) -> None:
+        return self._tab.load_reconstruction(filepath)
+
     def load_with_confirmation(self, filepath: Optional[Path] = None) -> None:
         def load_reconstruction() -> None:
             if filepath is None:
                 self._load_dialog()
             else:
-                self._tab.load_reconstruction(filepath)
+                self.load(filepath)
 
         if self.is_unsaved():
             self._show_save_confirmation(

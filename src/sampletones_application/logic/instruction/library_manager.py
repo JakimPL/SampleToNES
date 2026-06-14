@@ -32,6 +32,7 @@ from sampletones_core.structures.tree import (
     TreeNode,
 )
 from sampletones_shared.constants.symbols import HEXADECIMAL
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
 from sampletones_shared.utils.system.paths import to_path
@@ -135,10 +136,12 @@ class InstructionsLibraryManager(CallbackMixin):
         self._current_library_key = library_key
         return True
 
-    def load_library_file(self, filepath: Path) -> InstructionLibraryKey:
-        library_key = create_key_from_filename(filepath)
+    def load_library_file(self, path: Path) -> InstructionLibraryKey:
+        logger.info(f"Loading library data: {logger.format_path(path)}")
+        library_key = create_key_from_filename(path)
         self._library.load_data(library_key)
         self._current_library_key = library_key
+        logger.info(f"Library data: {logger.format_path(path)} loaded successfully")
         return library_key
 
     def load_instruction(self, instruction: InstructionUnion) -> Optional[InstructionPanelData]:

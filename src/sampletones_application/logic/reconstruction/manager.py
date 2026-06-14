@@ -41,10 +41,12 @@ class ReconstructionManager(CallbackMixin):
         return self._session
 
     def load_reconstruction(self, path: Path) -> None:
+        logger.info(f"Loading project: {logger.format_path(path)}")
         self._load_reconstruction_data(path)
         self._load_reconstruction_features()
         self._session.mark_loaded(path.stem)
         self.call(self.on_reconstruction_loaded)
+        logger.info(f"Reconstruction {logger.format_path(path)} loaded successfully")
 
     def load_reconstruction_object(self, reconstruction: Reconstruction) -> None:
         """Loads an in-memory reconstruction (e.g. a project sample's) for editing.

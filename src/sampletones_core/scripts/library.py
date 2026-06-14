@@ -37,7 +37,7 @@ def generate_library(config: Config) -> None:
     ) -> None:
         key, library_data = result
         library.save_data(key, library_data)
-        logger.info("Library successfully generated")
+        logger.info(f"Library {key.filename} generated successfully")
         progress_bar.close()
 
     def on_progress(task_status: TaskStatus, task_progress: TaskProgress) -> None:
