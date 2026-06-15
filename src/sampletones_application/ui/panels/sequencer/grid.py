@@ -21,13 +21,14 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.columns import (
     DIVIDER_TABLE_COLUMN,
     SAMPLE_TABLE_COLUMN,
     tracker_table_column,
 )
-from sampletones_application.ui.panels.sequencer.display import CellValues
+from sampletones_application.ui.panels.sequencer.display import CellKey, CellValues
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.edit import (
     ClearAction,
@@ -76,8 +77,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_KEY}"
 
         self._rows: Dict[Optional[int], Sender] = {}
-        self._cells: Dict[Tuple[int, Optional[GeneratorName], SubColumn], Sender] = {}
-        self._cell_values: CellValues = {}
+        self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
@@ -264,14 +264,25 @@ class GUISequencerGridPanel(GUIPanel):
         if len(view_model.rows) != self._current_row_count:
             self._rebuild_table(view_model, cell_values)
         else:
-            self._reconcile_cells(cell_values)
+            self._editable_cells.reconcile(cell_values, self._render_cell)
 
     def _rebuild_table(self, view_model: SequencerGridViewModel, cell_values: CellValues) -> None:
         dpg_delete_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
-        self._cell_values = cell_values
+        self._editable_cells.reset(cell_values)
         self._build_table(view_model)
         self._highlight_sample_column()
         self._update_cursor()
+
+    def _render_cell(self, key: CellKey) -> str:
+        row, generator, subcolumn = key
+        return tracker_display.subcolumn_label(
+            row,
+            generator,
+            subcolumn,
+            cursor=self._input_state.cursor,
+            pending=self._input_state.pending,
+            cell_values=self._editable_cells.values,
+        )
 
     def _highlight_sample_column(self) -> None:
         """Tints the sample column and the rule that separates it from the channels.
@@ -291,29 +302,6 @@ class GUISequencerGridPanel(GUIPanel):
             self._layout.colors.sample_divider,
         )
 
-    def _reconcile_cells(self, cell_values: CellValues) -> None:
-        for key, value in cell_values.items():
-            if self._cell_values.get(key) == value:
-                continue
-
-            self._cell_values[key] = value
-            cell_id = self._cells.get(key)
-            if cell_id is None:
-                continue
-
-            row, generator, subcolumn = key
-            dpg.configure_item(
-                cell_id,
-                label=tracker_display.subcolumn_label(
-                    row,
-                    generator,
-                    subcolumn,
-                    cursor=self._input_state.cursor,
-                    pending=self._input_state.pending,
-                    cell_values=self._cell_values,
-                ),
-            )
-
     def _compute_cell_values(self, view_model: SequencerGridViewModel) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
@@ -329,7 +317,6 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _build_table(self, view_model: SequencerGridViewModel) -> None:
         self._rows = {}
-        self._cells = {}
         self._current_row_count = len(view_model.rows)
         for row in view_model.rows:
             self._build_table_row(row)
@@ -383,23 +370,17 @@ class GUISequencerGridPanel(GUIPanel):
         subcolumn: SubColumn,
         font: Font,
     ) -> None:
+        key = (row_index, generator, subcolumn)
         selectable = dpg.add_selectable(
             parent=group,
-            label=tracker_display.subcolumn_label(
-                row_index,
-                generator,
-                subcolumn,
-                cursor=self._input_state.cursor,
-                pending=self._input_state.pending,
-                cell_values=self._cell_values,
-            ),
+            label=self._render_cell(key),
             width=self._subcolumn_widths[subcolumn],
-            user_data=(row_index, generator, subcolumn),
+            user_data=key,
             callback=self._on_cell_clicked,
         )
         FontRegistry.bind_to_item(selectable, font)
         dpg.bind_item_theme(selectable, self._subcolumn_themes[subcolumn])
-        self._cells[(row_index, generator, subcolumn)] = selectable
+        self._editable_cells.register(key, selectable)
 
     def _update_cursor(self) -> None:
         cursor = self._input_state.cursor
@@ -454,19 +435,10 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _update_cell_display(self, row: int, generator: Optional[GeneratorName]) -> None:
         for subcolumn in SubColumn:
-            cell_id = self._cells.get((row, generator, subcolumn))
+            key = (row, generator, subcolumn)
+            cell_id = self._editable_cells.widget(key)
             if cell_id is not None:
-                dpg.configure_item(
-                    cell_id,
-                    label=tracker_display.subcolumn_label(
-                        row,
-                        generator,
-                        subcolumn,
-                        cursor=self._input_state.cursor,
-                        pending=self._input_state.pending,
-                        cell_values=self._cell_values,
-                    ),
-                )
+                dpg.configure_item(cell_id, label=self._render_cell(key))
 
     def _resolve_sample_id(self, sample_index: int) -> Optional[Tuple[int, str]]:
         if not self._current_samples or not self._current_samples.samples:
@@ -491,19 +463,19 @@ class GUISequencerGridPanel(GUIPanel):
             resolved = self._resolve_sample_id(action.sample_index)
             sample_index = resolved[0] if resolved is not None else None
             sample_id = resolved[1] if resolved is not None else None
-            self._cell_values[(row, generator, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, generator, SubColumn.INSTRUMENT)] = tracker_display.format_committed(
                 SubColumn.INSTRUMENT,
                 sample_index,
             )
 
         if action.transpose is not None:
-            self._cell_values[(row, generator, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, generator, SubColumn.TRANSPOSE)] = tracker_display.format_committed(
                 SubColumn.TRANSPOSE,
                 action.transpose,
             )
 
         if action.volume is not None:
-            self._cell_values[(row, generator, SubColumn.VOLUME)] = tracker_display.format_committed(
+            self._editable_cells.values[(row, generator, SubColumn.VOLUME)] = tracker_display.format_committed(
                 SubColumn.VOLUME,
                 action.volume,
             )
@@ -520,13 +492,13 @@ class GUISequencerGridPanel(GUIPanel):
     def _handle_clear_action(self, action: ClearAction) -> None:
         if action.subcolumn is None:
             for subcolumn in SubColumn:
-                self._cell_values.pop(
+                self._editable_cells.values.pop(
                     (action.row, action.generator, subcolumn),
                     None,
                 )
             self.call(self.on_clear_row, action.row, action.generator)
         else:
-            self._cell_values.pop(
+            self._editable_cells.values.pop(
                 (action.row, action.generator, action.subcolumn),
                 None,
             )

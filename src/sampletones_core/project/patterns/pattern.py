@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -11,14 +10,12 @@ from .row import Row
 class Pattern(BaseModel):
     """A reusable block of rows belonging to a single channel.
 
-    Mutable so its rows and name can be edited in place, but its identity is
-    anchored to a uuid ``id`` generated once at construction. The hash never
-    changes under mutation, satisfying the invariant required to store patterns
-    in an :class:`IndexedCollection`. References from a channel order list use
-    this stable ``id``, never the collection position.
+    Mutable so its rows and name can be edited in place. A pattern's identity is
+    its integer key within the owning channel's pattern dictionary, so the model
+    itself carries no id; the same key may be referenced from several order
+    positions, and editing the pattern there changes every position at once.
     """
 
-    id: str = Field(default_factory=lambda: uuid4().hex, description="Stable identifier.")
     name: Optional[str] = Field(default=None, description="Optional human-readable name.")
     rows: List[Row] = Field(..., description="Tracker lines, in order.")
 
@@ -30,11 +27,5 @@ class Pattern(BaseModel):
     def length(self) -> int:
         return len(self.rows)
 
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, other: object) -> bool:
-        return isinstance(other, Pattern) and self.id == other.id
-
     def __repr__(self) -> str:
-        return f"Pattern(id={self.id!r}, name={self.name!r}, length={self.length})"
+        return f"Pattern(name={self.name!r}, length={self.length})"

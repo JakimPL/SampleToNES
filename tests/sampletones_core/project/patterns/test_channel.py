@@ -13,9 +13,9 @@ def _channel() -> Channel:
 class TestPatternPool:
     def test_add_pattern_appends_with_requested_length(self) -> None:
         channel = _channel()
-        pattern = channel.add_pattern(8)
-        assert pattern.length == 8
-        assert pattern in channel.patterns
+        index = channel.add_pattern(8)
+        assert index in channel.patterns
+        assert channel.pattern(index).length == 8
 
     def test_duplicate_pattern_copies_rows_with_new_identity(self) -> None:
         channel = _channel()
@@ -25,46 +25,48 @@ class TestPatternPool:
             volume=10,
         )
 
-        clone = channel.duplicate_pattern(source.id)
+        clone_index = channel.duplicate_pattern(0)
+        clone = channel.pattern(clone_index)
 
-        assert clone.id != source.id
-        assert clone in channel.patterns
+        assert clone_index != 0
+        assert clone is not source
         assert clone.rows[0] == source.rows[0]
 
-    def test_remove_pattern_purges_order_references(self) -> None:
+    def test_remove_pattern_drops_from_pool_and_leaves_order_aligned(self) -> None:
         channel = _channel()
-        extra = channel.add_pattern(ROWS_PER_PATTERN)
-        channel.append_to_order(extra.id)
-        channel.append_to_order(extra.id)
+        extra_index = channel.add_pattern(ROWS_PER_PATTERN)
+        channel.append_to_order(extra_index)
+        channel.append_to_order(extra_index)
 
-        channel.remove_pattern(extra.id)
+        channel.remove_pattern(extra_index)
 
-        assert extra not in channel.patterns
-        assert extra.id not in channel.order
+        assert extra_index not in channel.patterns
+        assert channel.pattern(extra_index) is None
+        assert channel.order.count(extra_index) == 2
 
 
 class TestOrder:
     def test_order_operations(self) -> None:
         channel = _channel()
         first = channel.order[0]
-        second = channel.add_pattern(ROWS_PER_PATTERN)
-        channel.append_to_order(second.id)
-        assert channel.order == [first, second.id]
+        second_index = channel.add_pattern(ROWS_PER_PATTERN)
+        channel.append_to_order(second_index)
+        assert channel.order == [first, second_index]
 
         channel.move_in_order(0, 1)
-        assert channel.order == [second.id, first]
+        assert channel.order == [second_index, first]
 
         channel.remove_from_order(0)
         assert channel.order == [first]
 
-        channel.insert_into_order(0, second.id)
-        assert channel.order == [second.id, first]
+        channel.insert_into_order(0, second_index)
+        assert channel.order == [second_index, first]
 
     def test_set_row_replaces_row(self) -> None:
         channel = _channel()
-        pattern_id = channel.order[0]
+        pattern_index = channel.order[0]
         row = Row(transpose=5, volume=12)
 
-        channel.set_row(pattern_id, 3, row)
+        channel.set_row(pattern_index, 3, row)
 
-        assert channel.pattern(pattern_id).rows[3] == row
+        assert channel.pattern(pattern_index).rows[3] == row

@@ -17,7 +17,7 @@ class FPSTimerTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
+        colors = layout.colors
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
@@ -28,27 +28,27 @@ class FPSTimerTheme(Theme):
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.disabled,
+                        color=colors.text.disabled,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_Button,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonHovered,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonActive,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_MenuBarBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                 ],

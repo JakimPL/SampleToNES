@@ -17,18 +17,18 @@ class StatusBarTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
-        sb = layout.status_bar
+        colors = layout.colors
+        status_bar = layout.status_bar
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvAll): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TextDisabled,
-                        color=c.text.default,
+                        color=colors.text.default,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeStyle(
@@ -38,51 +38,51 @@ class StatusBarTheme(Theme):
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_Button,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonHovered,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonActive,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_FrameBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_WindowBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                         category=dpg.mvThemeCat_Core,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TextDisabled,
-                        color=c.text.default,
+                        color=colors.text.default,
                         category=dpg.mvThemeCat_Core,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TextDisabled,
-                        color=c.text.default,
+                        color=colors.text.default,
                         category=dpg.mvThemeCat_Core,
                     ),
                     ThemeStyle(
@@ -92,12 +92,12 @@ class StatusBarTheme(Theme):
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FrameRounding,
-                        x=sb.frame_rounding,
+                        x=status_bar.frame_rounding,
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FramePadding,
-                        x=sb.frame_padding[0],
-                        y=sb.frame_padding[1],
+                        x=status_bar.frame_padding[0],
+                        y=status_bar.frame_padding[1],
                     ),
                 ],
             }

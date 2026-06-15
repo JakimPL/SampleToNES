@@ -17,120 +17,120 @@ class DefaultTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
-        b = layout.buttons
+        colors = layout.colors
+        buttons = layout.buttons
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvAll): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TextDisabled,
-                        color=c.text.disabled,
+                        color=colors.text.disabled,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_WindowBg,
-                        color=c.backgrounds.default,
+                        color=colors.backgrounds.default,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ChildBg,
-                        color=c.backgrounds.default,
+                        color=colors.backgrounds.default,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_PopupBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_MenuBarBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvMenuBar, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_MenuBarBg,
-                        color=c.backgrounds.menu,
+                        color=colors.backgrounds.menu,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Button,
-                        color=c.buttons.default,
+                        color=colors.buttons.default,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonHovered,
-                        color=c.buttons.hovered,
+                        color=colors.buttons.hovered,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ButtonActive,
-                        color=c.buttons.active,
+                        color=colors.buttons.active,
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FrameRounding,
-                        x=b.frame_rounding,
+                        x=buttons.frame_rounding,
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FramePadding,
-                        x=b.frame_padding[0],
-                        y=b.frame_padding[1],
+                        x=buttons.frame_padding[0],
+                        y=buttons.frame_padding[1],
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=False): [
                     ThemeStyle(
                         key=dpg.mvStyleVar_FrameRounding,
-                        x=b.frame_rounding,
+                        x=buttons.frame_rounding,
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FramePadding,
-                        x=b.frame_padding[0],
-                        y=b.frame_padding[1],
+                        x=buttons.frame_padding[0],
+                        y=buttons.frame_padding[1],
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_TableHeaderBg,
-                        color=c.tables.header,
+                        color=colors.tables.header,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TableRowBg,
-                        color=c.tables.row,
+                        color=colors.tables.row,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TableRowBgAlt,
-                        color=c.tables.row_alternative,
+                        color=colors.tables.row_alternative,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TableBorderStrong,
-                        color=c.tables.border,
+                        color=colors.tables.border,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TableBorderLight,
-                        color=c.tables.border,
+                        color=colors.tables.border,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvRadioButton, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvRadioButton, enabled_state=False): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.disabled,
+                        color=colors.text.disabled,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvCheckbox, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.default,
+                        color=colors.text.default,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvCheckbox, enabled_state=False): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.disabled,
+                        color=colors.text.disabled,
                     ),
                 ],
             }

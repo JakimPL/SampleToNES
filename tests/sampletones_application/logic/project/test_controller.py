@@ -32,13 +32,14 @@ class TestInfoAndSettings:
 
     def test_rows_per_pattern_only_affects_new_patterns(self) -> None:
         controller = _controller()
-        original_length = controller.project.song[GeneratorName.PULSE1].patterns[0].length
+        channel = controller.project.song[GeneratorName.PULSE1]
+        original_length = channel.patterns[0].length
 
         controller.set_rows_per_pattern(original_length + 16)
-        new_pattern = controller.add_pattern(GeneratorName.PULSE1)
+        new_index = controller.add_pattern(GeneratorName.PULSE1)
 
-        assert controller.project.song[GeneratorName.PULSE1].patterns[0].length == original_length
-        assert new_pattern.length == original_length + 16
+        assert channel.patterns[0].length == original_length
+        assert channel.pattern(new_index).length == original_length + 16
 
 
 class TestSamples:
@@ -94,28 +95,29 @@ class TestSong:
         assert row.transpose == 0
         assert row.volume == 10
 
-    def test_add_and_remove_pattern_keeps_order_consistent(self) -> None:
+    def test_remove_pattern_drops_from_pool_and_preserves_arrangement(self) -> None:
         controller = _controller()
         channel = controller.project.song[GeneratorName.TRIANGLE]
 
-        pattern = controller.add_pattern(GeneratorName.TRIANGLE)
-        controller.append_to_order(GeneratorName.TRIANGLE, pattern.id)
-        assert pattern.id in channel.order
+        pattern_index = controller.add_pattern(GeneratorName.TRIANGLE)
+        controller.append_to_order(GeneratorName.TRIANGLE, pattern_index)
+        assert pattern_index in channel.order
+        assert channel.pattern(pattern_index) is not None
 
-        controller.remove_pattern(GeneratorName.TRIANGLE, pattern.id)
-        assert pattern.id not in channel.order
-        assert controller.project.sample(pattern.id) is None
+        controller.remove_pattern(GeneratorName.TRIANGLE, pattern_index)
+        assert channel.pattern(pattern_index) is None
+        assert pattern_index in channel.order
 
     def test_move_in_order(self) -> None:
         controller = _controller()
         channel = controller.project.song[GeneratorName.PULSE2]
         first = channel.order[0]
-        second = controller.add_pattern(GeneratorName.PULSE2)
-        controller.append_to_order(GeneratorName.PULSE2, second.id)
+        second_index = controller.add_pattern(GeneratorName.PULSE2)
+        controller.append_to_order(GeneratorName.PULSE2, second_index)
 
         controller.move_in_order(GeneratorName.PULSE2, 0, 1)
 
-        assert channel.order == [second.id, first]
+        assert channel.order == [second_index, first]
 
 
 class TestPersistenceRoundTrip:

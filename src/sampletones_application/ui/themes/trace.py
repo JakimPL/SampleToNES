@@ -13,13 +13,13 @@ class TracebackTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
+        colors = layout.colors
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvInputText): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.traceback,
+                        color=colors.text.traceback,
                     ),
                 ],
             }

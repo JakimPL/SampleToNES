@@ -2,9 +2,9 @@ from typing import Callable, Dict, FrozenSet, Set, Tuple
 
 from pydantic import BaseModel
 
+from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
-from sampletones_shared.constants.symbols import MIXED
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -69,13 +69,7 @@ class SequencerRowViewModel(BaseModel, frozen=True):
         :data:`MIXED`. With no channels the empty default is shown.
         """
         values: Set[str] = {select(self.cells[generator]) for generator in generators}
-        if not values:
-            return default
-
-        if len(values) == 1:
-            return next(iter(values))
-
-        return MIXED
+        return aggregate_labels(values, default=default)
 
 
 class SequencerGridViewModel(BaseModel, frozen=True):

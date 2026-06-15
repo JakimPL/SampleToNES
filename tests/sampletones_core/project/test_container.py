@@ -9,9 +9,9 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.container import ProjectContainer
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
+from sampletones_shared.constants.application import SAMPLETONES_PROJECT_DATA_VERSION
 from sampletones_shared.constants.project import (
     PROJECT_DOCUMENT_NAME,
     RECONSTRUCTIONS_DIRECTORY,
@@ -50,9 +50,8 @@ def _populated_project(
         volume=15,
     )
 
-    extra = Pattern.empty(project.settings.rows_per_pattern, name="verse")
-    channel.patterns.append(extra)
-    channel.order = [pattern.id, extra.id, pattern.id]
+    extra_index = channel.add_pattern(project.settings.rows_per_pattern, name="verse")
+    channel.order = [0, extra_index, 0]
     return project
 
 
@@ -144,7 +143,7 @@ class TestArchiveLayout:
         with zipfile.ZipFile(path, "r") as archive:
             document = json.loads(archive.read(PROJECT_DOCUMENT_NAME).decode("utf-8"))
 
-        assert document["format_version"] == "1.0"
+        assert document["format_version"] == SAMPLETONES_PROJECT_DATA_VERSION
         assert set(document["song"]["channels"]) == {generator.value for generator in GeneratorName.items()}
 
 

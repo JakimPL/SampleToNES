@@ -1,13 +1,14 @@
 from typing import Dict, Final, Optional, Tuple
 
+from sampletones_application.ui.elements.table.cells import active_label
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.grid import SequencerCellViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.utils.display import display_id, display_transpose, display_volume
-from sampletones_shared.constants.symbols import UNDERSCORE
 
-CellValues = Dict[Tuple[int, Optional[GeneratorName], SubColumn], str]
+CellKey = Tuple[int, Optional[GeneratorName], SubColumn]
+CellValues = Dict[CellKey, str]
 
 _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
     SubColumn.INSTRUMENT: display_id(None),
@@ -52,10 +53,6 @@ def subcolumn_label(
     )
     stored = cell_values.get((row, generator, subcolumn), _DEFAULT_LABELS[subcolumn])
     if is_active:
-        width = len(_DEFAULT_LABELS[subcolumn])
-        if pending:
-            return pending + UNDERSCORE * (width - len(pending))
-
-        return UNDERSCORE * width
+        return active_label(pending, len(_DEFAULT_LABELS[subcolumn]))
 
     return stored

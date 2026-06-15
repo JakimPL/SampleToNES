@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.structures import IdentifiedCollection
 
 from .pattern import Pattern
 from .row import Row
@@ -14,69 +13,75 @@ from .row import Row
 class Channel(BaseModel):
     """One NES channel track.
 
-    Owns a private pool of patterns, reusable within the channel and an order
-    list that arranges them into the song. The order references patterns by
-    their ``id``, resolved in O(1) through the :class:`IdentifiedCollection`, so
-    reordering the pool never invalidates the arrangement. The same pattern id
-    may appear multiple times in the order.
+    Owns a private pool of patterns keyed by their integer index, reusable within
+    the channel, and an order list that arranges them into the song by index. The
+    same index may appear several times in the order; editing the pattern at a
+    reused index affects every position that references it.
     """
 
     generator: GeneratorName = Field(..., description="The NES channel this track drives.")
-    patterns: IdentifiedCollection[Pattern] = Field(..., description="Reusable pattern pool, keyed by id.")
-    order: List[str] = Field(..., description="Sequence of pattern ids forming the arrangement.")
+    patterns: Dict[int, Pattern] = Field(..., description="Pattern pool keyed by index.")
+    order: List[int] = Field(..., description="Sequence of pattern indices forming the arrangement.")
 
     @classmethod
     def empty(cls, generator: GeneratorName, rows_per_pattern: int) -> Channel:
-        pattern = Pattern.empty(rows_per_pattern)
-        patterns: IdentifiedCollection[Pattern] = IdentifiedCollection([pattern])
-        return cls(generator=generator, patterns=patterns, order=[pattern.id])
+        return cls(generator=generator, patterns={0: Pattern.empty(rows_per_pattern)}, order=[0])
 
-    def pattern(self, pattern_id: str) -> Pattern:
-        return self.patterns[pattern_id]
+    def pattern(self, index: int) -> Optional[Pattern]:
+        """Resolves an order index to its pattern, or ``None`` for an empty slot.
 
-    def ordered_patterns(self) -> List[Pattern]:
-        return [self.patterns[pattern_id] for pattern_id in self.order]
-
-    def add_pattern(self, length: int, *, name: Optional[str] = None) -> Pattern:
-        pattern = Pattern.empty(length, name=name)
-        self.patterns.append(pattern)
-        return pattern
-
-    def duplicate_pattern(self, pattern_id: str) -> Pattern:
-        source = self.pattern(pattern_id)
-        clone = Pattern(name=source.name, rows=list(source.rows))
-        self.patterns.append(clone)
-        return clone
-
-    def remove_pattern(self, pattern_id: str) -> None:
-        """Drops the pattern from the pool and purges every order reference to it.
-
-        Patterns are referenced by id from the order list, so a removal that
-        left stale ids behind would break :meth:`ordered_patterns`.
+        An order position may reference an index with no pattern in the pool (e.g.
+        after the pattern was removed). ``None`` represents that empty slot, so the
+        arrangement keeps its length and the order table stays aligned.
         """
-        self.patterns.pop(pattern_id)
-        self.order = [entry for entry in self.order if entry != pattern_id]
+        return self.patterns.get(index)
 
-    def get_row(self, pattern_id: str, row_index: int) -> Row:
-        return self.pattern(pattern_id).rows[row_index]
+    def ordered_patterns(self) -> List[Optional[Pattern]]:
+        return [self.patterns.get(index) for index in self.order]
 
-    def set_row(self, pattern_id: str, row_index: int, row: Row) -> None:
-        self.pattern(pattern_id).rows[row_index] = row
+    def _next_index(self) -> int:
+        return max(self.patterns, default=-1) + 1
 
-    def append_to_order(self, pattern_id: str) -> None:
-        self.pattern(pattern_id)
-        self.order.append(pattern_id)
+    def add_pattern(self, length: int, *, name: Optional[str] = None) -> int:
+        index = self._next_index()
+        self.patterns[index] = Pattern.empty(length, name=name)
+        return index
 
-    def insert_into_order(self, index: int, pattern_id: str) -> None:
-        self.pattern(pattern_id)
-        self.order.insert(index, pattern_id)
+    def duplicate_pattern(self, index: int) -> int:
+        source = self.patterns[index]
+        clone_index = self._next_index()
+        self.patterns[clone_index] = Pattern(name=source.name, rows=list(source.rows))
+        return clone_index
 
-    def remove_from_order(self, index: int) -> None:
-        del self.order[index]
+    def remove_pattern(self, index: int) -> None:
+        """Drops the pattern from the pool, leaving the arrangement untouched.
 
-    def move_in_order(self, from_index: int, to_index: int) -> None:
-        entry = self.order.pop(from_index)
-        self.order.insert(to_index, entry)
+        The pool and the order are independent axes: order positions that still
+        reference this index resolve to an empty slot (:meth:`pattern` returns
+        ``None``). Filtering the order here would instead delete a content-dependent
+        number of positions from this one channel, shifting its later positions and
+        breaking the order table's column alignment across channels.
+        """
+        del self.patterns[index]
+
+    def get_row(self, index: int, row_index: int) -> Row:
+        return self.patterns[index].rows[row_index]
+
+    def set_row(self, index: int, row_index: int, row: Row) -> None:
+        self.patterns[index].rows[row_index] = row
+
+    def append_to_order(self, index: int) -> None:
+        self.order.append(index)
+
+    def insert_into_order(self, position: int, index: int) -> None:
+        self.order.insert(position, index)
+
+    def remove_from_order(self, position: int) -> None:
+        del self.order[position]
+
+    def move_in_order(self, from_position: int, to_position: int) -> None:
+        entry = self.order.pop(from_position)
+        self.order.insert(to_position, entry)
 
     def __repr__(self) -> str:
         return f"Channel(generator={self.generator}, patterns={len(self.patterns)}, order={len(self.order)})"

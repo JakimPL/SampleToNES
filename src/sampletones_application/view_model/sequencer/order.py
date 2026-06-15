@@ -8,7 +8,6 @@ from sampletones_core.utils.display import display_id
 
 class OrderEntryViewModel(BaseModel, frozen=True):
     position: int
-    pattern_id: str
     pattern_index: int
 
     @property

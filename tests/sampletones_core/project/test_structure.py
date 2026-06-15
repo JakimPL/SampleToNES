@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict
 from unittest.mock import Mock
-
-import pytest
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
@@ -12,7 +10,6 @@ from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.project import Project
 from sampletones_core.project.song import Song
-from sampletones_core.structures import IdentifiedCollection
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
 
 
@@ -27,40 +24,22 @@ class TestPattern:
         assert pattern.name is None
         assert all(row == Row() for row in pattern.rows)
 
-    def test_ids_are_unique(self) -> None:
-        assert Pattern.empty(1).id != Pattern.empty(1).id
-
-    def test_hash_is_stable_under_mutation(self) -> None:
-        pattern = Pattern.empty(4)
-        original_hash = hash(pattern)
-        pattern.name = "lead"
-        pattern.rows = pattern.rows[:2]
-        assert hash(pattern) == original_hash
-        assert pattern.length == 2
-
-    def test_equality_is_by_id(self) -> None:
-        pattern = Pattern.empty(1)
-        assert pattern == pattern  # pylint: disable=comparison-with-itself
-        assert pattern != Pattern.empty(1)
-
 
 class TestChannel:
     def test_empty_channel(self) -> None:
         channel = Channel.empty(GeneratorName.PULSE1, rows_per_pattern=16)
         assert channel.generator == GeneratorName.PULSE1
         assert len(channel.patterns) == 1
-        assert channel.order == [channel.patterns[0].id]
+        assert channel.order == [0]
 
     def test_pattern_resolution(self) -> None:
         channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
-        pattern_id = channel.patterns[0].id
-        assert channel.pattern(pattern_id) is channel.patterns[0]
+        assert channel.pattern(0) is channel.patterns[0]
         assert channel.ordered_patterns() == [channel.patterns[0]]
 
-    def test_unknown_pattern_raises(self) -> None:
+    def test_unknown_pattern_returns_none(self) -> None:
         channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
-        with pytest.raises(KeyError):
-            channel.pattern("missing")
+        assert channel.pattern(99) is None
 
 
 class TestSong:
@@ -87,12 +66,6 @@ class TestProject:
 
 
 @dataclass
-class PatternContext:
-    channel: Channel
-    patterns: List[Pattern]
-
-
-@dataclass
 class SampleContext:
     project: Project
     sample: Sample
@@ -103,42 +76,6 @@ class SampleContext:
 class TestReferenceIntegrity:
     """Reordering a collection or editing an item in place must not break the
     stable-id references that the song relies on."""
-
-    def _build_pattern_context(self) -> PatternContext:
-        patterns = [Pattern.empty(4, name=f"p{index}") for index in range(3)]
-        collection: IdentifiedCollection[Pattern] = IdentifiedCollection(patterns)
-        channel = Channel(
-            generator=GeneratorName.PULSE1,
-            patterns=collection,
-            order=[pattern.id for pattern in patterns],
-        )
-        return PatternContext(channel=channel, patterns=patterns)
-
-    def test_patterns_survive_reorder_and_edit(self) -> None:
-        def reorder(context: PatternContext) -> None:
-            moved = context.channel.patterns.pop(0)
-            context.channel.patterns.append(moved)
-            assert context.channel.patterns[-1] is context.patterns[0]
-            assert context.channel.ordered_patterns() == context.patterns
-
-        def edit_in_place(context: PatternContext) -> None:
-            target = context.patterns[1]
-            original_hash = hash(target)
-            target.name = "edited"
-            target.rows = target.rows[:1]
-            assert hash(target) == original_hash
-            assert context.channel.pattern(target.id) is target
-            assert context.channel.pattern(target.id).name == "edited"
-
-        scenario = BaseTestScenario(
-            label="patterns_reorder_and_edit",
-            build=self._build_pattern_context,
-            steps=[
-                ScenarioStep(label="reorder", action=reorder),
-                ScenarioStep(label="edit_in_place", action=edit_in_place),
-            ],
-        )
-        scenario.run()
 
     def _build_instrument_context(self) -> SampleContext:
         project = Project.create()

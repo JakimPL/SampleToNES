@@ -58,12 +58,8 @@ class SequencerOrderLogic(CallbackMixin):
         channel: Channel,
     ) -> SequencerOrderViewModel:
         entries = tuple(
-            OrderEntryViewModel(
-                position=position,
-                pattern_id=pattern_id,
-                pattern_index=channel.patterns.get_index(pattern_id),
-            )
-            for position, pattern_id in enumerate(channel.order)
+            OrderEntryViewModel(position=position, pattern_index=pattern_index)
+            for position, pattern_index in enumerate(channel.order)
         )
         return SequencerOrderViewModel(
             generator=generator,

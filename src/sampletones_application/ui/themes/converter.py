@@ -13,31 +13,31 @@ class ConverterTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
+        color = layout.colors
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvAll, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Text,
-                        color=c.text.white,
+                        color=color.text.white,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_TextDisabled,
-                        color=c.text.disabled,
+                        color=color.text.disabled,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_WindowBg,
-                        color=c.backgrounds.light,
+                        color=color.backgrounds.light,
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_ChildBg,
-                        color=c.backgrounds.light,
+                        color=color.backgrounds.light,
                     ),
                 ],
                 ThemeParameter(item_type=dpg.mvButton, enabled_state=True): [
                     ThemeColor(
                         key=dpg.mvThemeCol_Button,
-                        color=c.buttons.light,
+                        color=color.buttons.light,
                     ),
                 ],
             }

@@ -6,7 +6,6 @@ from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TR
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
@@ -133,20 +132,20 @@ class ProjectController(CallbackMixin):
         self.call(self.on_samples_changed)
         self.call(self.on_song_changed)
 
-    def add_pattern(self, generator: GeneratorName) -> Pattern:
-        pattern = self.project.song[generator].add_pattern(self.project.settings.rows_per_pattern)
+    def add_pattern(self, generator: GeneratorName) -> int:
+        index = self.project.song[generator].add_pattern(self.project.settings.rows_per_pattern)
         self._touch()
         self.call(self.on_song_changed)
-        return pattern
+        return index
 
-    def duplicate_pattern(self, generator: GeneratorName, pattern_id: str) -> Pattern:
-        pattern = self.project.song[generator].duplicate_pattern(pattern_id)
+    def duplicate_pattern(self, generator: GeneratorName, pattern_index: int) -> int:
+        clone_index = self.project.song[generator].duplicate_pattern(pattern_index)
         self._touch()
         self.call(self.on_song_changed)
-        return pattern
+        return clone_index
 
-    def remove_pattern(self, generator: GeneratorName, pattern_id: str) -> None:
-        self.project.song[generator].remove_pattern(pattern_id)
+    def remove_pattern(self, generator: GeneratorName, pattern_index: int) -> None:
+        self.project.song[generator].remove_pattern(pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 
@@ -165,7 +164,7 @@ class ProjectController(CallbackMixin):
     def set_row(
         self,
         generator: GeneratorName,
-        pattern_id: str,
+        pattern_index: int,
         row_index: int,
         *,
         instrument: Optional[Instrument] = None,
@@ -183,7 +182,7 @@ class ProjectController(CallbackMixin):
             volume=self._clamp_volume(volume),
         )
         self.project.song[generator].set_row(
-            pattern_id,
+            pattern_index,
             row_index,
             row,
         )
@@ -193,7 +192,7 @@ class ProjectController(CallbackMixin):
     def update_row(
         self,
         generator: GeneratorName,
-        pattern_id: str,
+        pattern_index: int,
         row_index: int,
         *,
         instrument: Optional[Instrument] = None,
@@ -206,10 +205,10 @@ class ProjectController(CallbackMixin):
         :meth:`set_row`, which treats ``None`` as "clear". This lets the tracker
         edit a single subcolumn without wiping the others.
         """
-        existing = self.project.song[generator].get_row(pattern_id, row_index)
+        existing = self.project.song[generator].get_row(pattern_index, row_index)
         self.set_row(
             generator,
-            pattern_id,
+            pattern_index,
             row_index,
             instrument=instrument if instrument is not None else existing.instrument,
             transpose=transpose if transpose is not None else existing.transpose,
@@ -219,7 +218,7 @@ class ProjectController(CallbackMixin):
     def clear_row(
         self,
         generator: GeneratorName,
-        pattern_id: str,
+        pattern_index: int,
         row_index: int,
         *,
         instrument: bool = True,
@@ -232,28 +231,28 @@ class ProjectController(CallbackMixin):
         subcolumn to keep its current value. With no selectors this is the inverse
         of :meth:`update_row`.
         """
-        existing = self.project.song[generator].get_row(pattern_id, row_index)
+        existing = self.project.song[generator].get_row(pattern_index, row_index)
         self.set_row(
             generator,
-            pattern_id,
+            pattern_index,
             row_index,
             instrument=None if instrument else existing.instrument,
             transpose=None if transpose else existing.transpose,
             volume=None if volume else existing.volume,
         )
 
-    def append_to_order(self, generator: GeneratorName, pattern_id: str) -> None:
-        self.project.song[generator].append_to_order(pattern_id)
+    def append_to_order(self, generator: GeneratorName, pattern_index: int) -> None:
+        self.project.song[generator].append_to_order(pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 
     def insert_into_order(
         self,
         generator: GeneratorName,
-        index: int,
-        pattern_id: str,
+        position: int,
+        pattern_index: int,
     ) -> None:
-        self.project.song[generator].insert_into_order(index, pattern_id)
+        self.project.song[generator].insert_into_order(position, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 
@@ -274,7 +273,7 @@ class ProjectController(CallbackMixin):
         Rows reference samples by id.
         """
         for channel in self.project.song.channels.values():
-            for pattern in channel.patterns:
+            for pattern in channel.patterns.values():
                 for row_index, row in enumerate(pattern.rows):
                     if row.instrument is not None and row.instrument.sample_id == sample_id:
                         pattern.rows[row_index] = Row(

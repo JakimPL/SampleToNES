@@ -13,13 +13,13 @@ class InvalidInputTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        c = layout.colors
+        colors = layout.colors
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvInputText): [
                     ThemeColor(
                         key=dpg.mvThemeCol_FrameBg,
-                        color=c.backgrounds.input_invalid,
+                        color=colors.backgrounds.input_invalid,
                     ),
                 ],
             }

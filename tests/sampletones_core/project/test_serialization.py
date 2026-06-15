@@ -4,7 +4,6 @@ from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
-from sampletones_core.structures import IdentifiedCollection
 
 
 def _pattern_with_instrument() -> Pattern:
@@ -21,10 +20,9 @@ def _pattern_with_instrument() -> Pattern:
 
 
 class TestPatternSerialization:
-    def test_round_trip_preserves_id_name_rows(self) -> None:
+    def test_round_trip_preserves_name_rows(self) -> None:
         pattern = _pattern_with_instrument()
         restored = Pattern.model_validate(pattern.model_dump())
-        assert restored.id == pattern.id
         assert restored.name == pattern.name
         assert restored.rows == pattern.rows
 
@@ -36,13 +34,10 @@ class TestPatternSerialization:
 
 class TestChannelSerialization:
     def _channel(self) -> Channel:
-        first = Pattern.empty(4, name="a")
-        second = Pattern.empty(4, name="b")
-        patterns: IdentifiedCollection[Pattern] = IdentifiedCollection([first, second])
         return Channel(
             generator=GeneratorName.PULSE1,
-            patterns=patterns,
-            order=[first.id, second.id, first.id],
+            patterns={0: Pattern.empty(4, name="a"), 1: Pattern.empty(4, name="b")},
+            order=[0, 1, 0],
         )
 
     def test_round_trip_preserves_patterns_and_order(self) -> None:
@@ -51,13 +46,13 @@ class TestChannelSerialization:
         restored = Channel.model_validate(dump)
         assert restored.model_dump() == dump
         assert restored.order == channel.order
-        assert [pattern.id for pattern in restored.patterns] == [pattern.id for pattern in channel.patterns]
+        assert set(restored.patterns) == set(channel.patterns)
 
     def test_order_resolves_after_round_trip(self) -> None:
         channel = self._channel()
         restored = Channel.model_validate(channel.model_dump())
-        first_id = restored.order[0]
-        assert restored.pattern(first_id) is restored.ordered_patterns()[0]
+        first_index = restored.order[0]
+        assert restored.pattern(first_index) is restored.ordered_patterns()[0]
 
 
 class TestSongSerialization:
