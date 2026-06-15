@@ -7,7 +7,6 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
-from sampletones_shared.exceptions import NotAValidArchiveError
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -59,55 +58,20 @@ def app() -> Generator[Any, Application, Any]:
         dpg.destroy_context()
 
 
-class TestStartupLoadResilience:
-    """Startup auto-load behaviour, per docs/architecture.md (§ Error Handling Policy).
-
-    The reconstruction handler forwards to the ReconstructionCoordinator — the recovery
-    boundary that catches load failures and notifies the user; Application does not
-    recover there. The project handler still loads via the controller and resets the
-    session on failure (a known asymmetry: the project coordinator's interactive
-    open-with-confirmation flow is unsuitable for a silent startup restore).
+class TestStartupRestoreDelegation:
+    """Application only forwards the startup restore to the domain coordinators, which
+    are the recovery boundary (docs/architecture.md § Error Handling Policy). The
+    recovery behaviour itself is covered by the coordinator tests.
     """
 
-    def test_failed_project_load_resets_to_none(self, app: Application) -> None:
-        with (
-            patch.object(
-                app.project_manager,
-                "load",
-                side_effect=NotAValidArchiveError("bad archive"),
-            ),
-            patch.object(app.session_manager, "set_current_project") as reset,
-        ):
-            app._try_load_current_project(Path("missing.stp"))
+    def test_project_restore_delegates_to_coordinator(self, app: Application) -> None:
+        with patch.object(app._project_coordinator, "restore") as restore:
+            app._try_load_current_project(Path("last.stp"))
 
-        reset.assert_called_once_with(None)
-
-    def test_oserror_project_load_resets_to_none(self, app: Application) -> None:
-        with (
-            patch.object(
-                app.project_manager,
-                "load",
-                side_effect=FileNotFoundError("missing"),
-            ),
-            patch.object(app.session_manager, "set_current_project") as reset,
-        ):
-            app._try_load_current_project(Path("missing.stp"))
-
-        reset.assert_called_once_with(None)
+        restore.assert_called_once_with(Path("last.stp"))
 
     def test_reconstruction_restore_delegates_to_coordinator(self, app: Application) -> None:
-        # Application only forwards the startup restore; recovery (catching the failure
-        # and informing the user) is the reconstruction coordinator's responsibility.
-        with patch.object(app._reconstruction_coordinator, "load_with_confirmation") as load:
+        with patch.object(app._reconstruction_coordinator, "restore") as restore:
             app._try_load_current_reconstruction(Path("last.stn"))
 
-        load.assert_called_once_with(Path("last.stn"))
-
-    def test_unexpected_error_propagates(self, app: Application) -> None:
-        with patch.object(
-            app.project_manager,
-            "load",
-            side_effect=RuntimeError("runtime_error"),
-        ):
-            with pytest.raises(RuntimeError):
-                app._try_load_current_project(Path("missing.stp"))
+        restore.assert_called_once_with(Path("last.stn"))

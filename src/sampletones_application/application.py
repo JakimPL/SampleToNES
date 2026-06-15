@@ -66,7 +66,6 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILES_AUDIO
 from sampletones_core.types.feature import FeatureValue
-from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 
@@ -273,16 +272,10 @@ class Application:
         self.audio_device_manager.set_buffer_size(buffer_size)
 
     def _try_load_current_reconstruction(self, path: Path) -> None:
-        # Composition root forwards only; the reconstruction coordinator is the recovery
-        # boundary that catches load failures and notifies the user (docs/architecture.md).
-        self._reconstruction_coordinator.load_with_confirmation(path)
+        self._reconstruction_coordinator.restore(path)
 
     def _try_load_current_project(self, path: Path) -> None:
-        try:
-            self.project_controller.load(path)
-        except (SampleToNESError, OSError) as exception:
-            logger.warning(f"Loading project failed: {logger.format_path(path)}: {exception}")
-            self.session_manager.set_current_project(None)
+        self._project_coordinator.restore(path)
 
     def _setup_gui(self) -> None:
         bindings = ShortcutBindings(

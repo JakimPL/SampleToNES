@@ -24,6 +24,7 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
 from sampletones_core.paths import EXT_FILE_PROJECT
 from sampletones_shared.constants.project import DEFAULT_PROJECT_FILENAME
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
 from sampletones_shared.utils.system.paths import get_directory
@@ -91,6 +92,20 @@ class ProjectCoordinator:
             open_message=GlobalMessageElements.OPEN_OPEN_PROJECT,
             on_confirm=open_project,
         )
+
+    def restore(self, path: Path) -> None:
+        """Loads the persisted project when the application starts.
+
+        Startup restore is not user-initiated, so a failed load is recovered silently:
+        the stale session pointer is cleared so a missing, moved, or corrupt file is
+        forgotten rather than re-attempted (and dialog-prompted) on every launch. Only
+        known domain and I/O failures are absorbed; unexpected errors propagate.
+        """
+        try:
+            self._project_controller.load(path)
+        except (SampleToNESError, OSError) as exception:
+            logger.warning(f"Could not restore project from {logger.format_path(path)}: {exception}")
+            self._session_manager.set_current_project(None)
 
     def close_with_confirmation(self) -> None:
         if not self._project_controller.is_open:

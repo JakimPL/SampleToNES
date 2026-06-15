@@ -39,6 +39,7 @@ from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.exporters import Features
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.types.feature import FeatureValue
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import Callback, VoidCallback
 
@@ -229,6 +230,20 @@ class ReconstructionCoordinator:
             )
         else:
             load_reconstruction()
+
+    def restore(self, path: Path) -> None:
+        """Loads the persisted reconstruction when the application starts.
+
+        Startup restore is not user-initiated, so a failed load is recovered silently:
+        the stale session pointer is cleared so a missing, moved, or corrupt file is
+        forgotten rather than re-attempted (and dialog-prompted) on every launch. Only
+        known domain and I/O failures are absorbed; unexpected errors propagate.
+        """
+        try:
+            self._reconstruction_manager.load_reconstruction(path)
+        except (SampleToNESError, OSError) as exception:
+            logger.warning(f"Could not restore reconstruction from {logger.format_path(path)}: {exception}")
+            self._session_manager.set_current_reconstruction(None)
 
     def show_exit_save_confirmation(self, on_confirm: Callback) -> None:
         self._show_save_confirmation(
