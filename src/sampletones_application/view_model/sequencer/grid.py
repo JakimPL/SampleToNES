@@ -1,8 +1,10 @@
-from typing import Dict, Tuple
+from typing import Callable, Dict, FrozenSet, Set, Tuple
 
 from pydantic import BaseModel
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_shared.constants.symbols import MIXED
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -25,14 +27,55 @@ class SequencerCellViewModel(BaseModel, frozen=True):
 class SequencerRowViewModel(BaseModel, frozen=True):
     index: int
     cells: Dict[GeneratorName, SequencerCellViewModel]
+    relevant_generators: FrozenSet[GeneratorName]
+    """Channels the row's sample(s) span — the union of their reconstructions' channels.
+
+    The sample column summarises a subcolumn only across these channels, so a
+    sample that spans more channels than it currently occupies reads as mixed.
+    """
 
     @property
-    def sample_label(self) -> str:
-        instruments = {cell.instrument for cell in self.cells.values()}
-        if len(instruments) == 1:
-            return next(iter(instruments))
+    def subcolumn_generators(self) -> FrozenSet[GeneratorName]:
+        """Channels the sample column's transpose/volume span.
 
-        return "?"
+        Transpose and volume exist independently of an instrument, so on a row with
+        no sample they fall back to every channel; otherwise they track the
+        sample's channels exactly like the instrument does.
+        """
+        return self.relevant_generators or frozenset(self.cells)
+
+    @property
+    def sample_instrument(self) -> str:
+        return self._aggregate(self.relevant_generators, lambda cell: cell.instrument, display_id(None))
+
+    @property
+    def sample_transpose(self) -> str:
+        return self._aggregate(self.subcolumn_generators, lambda cell: cell.transpose, display_transpose(None))
+
+    @property
+    def sample_volume(self) -> str:
+        return self._aggregate(self.subcolumn_generators, lambda cell: cell.volume, display_volume(None))
+
+    def _aggregate(
+        self,
+        generators: FrozenSet[GeneratorName],
+        select: Callable[[SequencerCellViewModel], str],
+        default: str,
+    ) -> str:
+        """Summarise one subcolumn across the given channels.
+
+        The summary holds a value only when every channel agrees on it, so a sample
+        missing from one of its channels (an empty cell there) reads as
+        :data:`MIXED`. With no channels the empty default is shown.
+        """
+        values: Set[str] = {select(self.cells[generator]) for generator in generators}
+        if not values:
+            return default
+
+        if len(values) == 1:
+            return next(iter(values))
+
+        return MIXED
 
 
 class SequencerGridViewModel(BaseModel, frozen=True):

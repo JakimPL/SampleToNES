@@ -247,47 +247,60 @@ class GUISequencerGridPanel(GUIPanel):
         self.pattern_theme.bind_to_item(TAG_SEQUENCER_GRID_TABLE_TRACKER)
 
     def update_grid(self, view_model: SequencerGridViewModel) -> None:
-        """Rebuilds the tracker body from scratch for the visible order frame."""
+        """Reconciles the tracker body with the visible order frame.
+
+        The grid is only torn down and rebuilt when the row count changes; for the
+        common in-place edit the changed cell labels are reconfigured one by one.
+        Reusing the existing widgets preserves scroll position, the hover row, and
+        the edit cursor that a full rebuild would otherwise discard.
+        """
+        cell_values = self._compute_cell_values(view_model)
+        if len(view_model.rows) != self._current_row_count:
+            self._rebuild_table(view_model, cell_values)
+        else:
+            self._reconcile_cells(cell_values)
+
+    def _rebuild_table(self, view_model: SequencerGridViewModel, cell_values: CellValues) -> None:
         dpg_delete_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
-        self._set_rows(view_model)
+        self._cell_values = cell_values
         self._build_table(view_model)
         self._update_cursor()
 
-    def _set_rows(self, view_model: SequencerGridViewModel) -> None:
-        self._cell_values = {}
-        for row in view_model.rows:
-            self._set_instrument_cell(row)
-            for generator in GeneratorName.items():
-                self._set_channel_cell(row, generator)
+    def _reconcile_cells(self, cell_values: CellValues) -> None:
+        for key, value in cell_values.items():
+            if self._cell_values.get(key) == value:
+                continue
 
-    def _set_instrument_cell(self, row: SequencerRowViewModel) -> None:
-        self._cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample_label
-        self._cell_values[(row.index, None, SubColumn.TRANSPOSE)] = tracker_display.default_label(SubColumn.TRANSPOSE)
-        self._cell_values[(row.index, None, SubColumn.VOLUME)] = tracker_display.default_label(SubColumn.VOLUME)
+            self._cell_values[key] = value
+            cell_id = self._cells.get(key)
+            if cell_id is None:
+                continue
 
-    def _set_channel_cell(
-        self,
-        row: SequencerRowViewModel,
-        generator: GeneratorName,
-    ) -> None:
-        for subcolumn in SubColumn:
-            self._set_subcolumn_cell(
-                row,
-                generator,
-                subcolumn,
+            row, generator, subcolumn = key
+            dpg.configure_item(
+                cell_id,
+                label=tracker_display.subcolumn_label(
+                    row,
+                    generator,
+                    subcolumn,
+                    cursor=self._input_state.cursor,
+                    pending=self._input_state.pending,
+                    cell_values=self._cell_values,
+                ),
             )
 
-    def _set_subcolumn_cell(
-        self,
-        row: SequencerRowViewModel,
-        generator: GeneratorName,
-        subcolumn: SubColumn,
-    ) -> None:
-        key = row.index, generator, subcolumn
-        self._cell_values[key] = tracker_display.cell_display(
-            row.cells[generator],
-            subcolumn,
-        )
+    def _compute_cell_values(self, view_model: SequencerGridViewModel) -> CellValues:
+        cell_values: CellValues = {}
+        for row in view_model.rows:
+            cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample_instrument
+            cell_values[(row.index, None, SubColumn.TRANSPOSE)] = row.sample_transpose
+            cell_values[(row.index, None, SubColumn.VOLUME)] = row.sample_volume
+            for generator in GeneratorName.items():
+                cell = row.cells[generator]
+                for subcolumn in SubColumn:
+                    cell_values[(row.index, generator, subcolumn)] = tracker_display.cell_display(cell, subcolumn)
+
+        return cell_values
 
     def _build_table(self, view_model: SequencerGridViewModel) -> None:
         self._rows = {}

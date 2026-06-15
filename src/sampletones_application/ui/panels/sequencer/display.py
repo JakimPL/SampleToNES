@@ -16,10 +16,6 @@ _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
 }
 
 
-def default_label(subcolumn: SubColumn) -> str:
-    return _DEFAULT_LABELS[subcolumn]
-
-
 def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) -> str:
     """Extract the pre-formatted display string for one subcolumn from a cell view model."""
     match subcolumn:

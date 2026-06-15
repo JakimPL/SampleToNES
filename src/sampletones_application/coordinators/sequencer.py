@@ -193,6 +193,12 @@ class SequencerTabCoordinator:
         if generator is None:
             if instrument:
                 self._sequencer_grid_logic.clear_subcolumn_all_generators(row_index, instrument=True)
+            else:
+                self._sequencer_grid_logic.clear_sample_subcolumn(
+                    row_index,
+                    transpose=transpose,
+                    volume=volume,
+                )
         else:
             self._sequencer_grid_logic.clear_subcolumn(
                 generator,
@@ -212,9 +218,12 @@ class SequencerTabCoordinator:
     ) -> None:
         if generator is None:
             if sample_id is not None:
-                self._sequencer_grid_logic.set_row_all_generators(
+                self._sequencer_grid_logic.set_sample_instrument(row_index, sample_id)
+            elif transpose is not None or volume is not None:
+                self._sequencer_grid_logic.set_sample_subcolumn(
                     row_index,
-                    sample_id,
+                    transpose=transpose,
+                    volume=volume,
                 )
         else:
             instrument = (

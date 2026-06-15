@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, FrozenSet, List, Optional, Set
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.view_model.sequencer.grid import (
@@ -9,6 +9,7 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.utils.display import (
@@ -163,10 +164,58 @@ class SequencerGridLogic(CallbackMixin):
                 volume=volume,
             )
 
-    def set_row_all_generators(self, row_index: int, sample_id: Optional[str]) -> None:
+    def set_sample_instrument(self, row_index: int, sample_id: Optional[str]) -> None:
+        """Places a sample across the channels its reconstruction uses.
+
+        The sample column is authoritative: the instrument is written to every
+        generator the sample covers, and the remaining channels on that row are
+        cleared so the row reflects exactly that sample. Clearing an empty sample
+        id wipes the whole row.
+        """
+        if sample_id is None:
+            self.clear_all_generators(row_index)
+            return
+
+        sample = self._controller.project.samples.get(sample_id)
+        if sample is None:
+            return
+
+        used = self._used_generators(sample)
         for generator in GeneratorName.items():
-            instrument = Instrument(sample_id=sample_id, generator_name=generator) if sample_id is not None else None
-            self.set_row(generator, row_index, instrument=instrument)
+            if generator in used:
+                self.set_row(
+                    generator,
+                    row_index,
+                    instrument=Instrument(sample_id=sample_id, generator_name=generator),
+                )
+            else:
+                self.clear_row(generator, row_index)
+
+    def set_sample_subcolumn(
+        self,
+        row_index: int,
+        *,
+        transpose: Optional[int] = None,
+        volume: Optional[int] = None,
+    ) -> None:
+        """Synchronises a subcolumn across the row's relevant channels.
+
+        Transpose and volume exist independently of an instrument: they follow the
+        sample's channels when one is present, and otherwise reach every channel, so
+        a value typed in the sample column always lands somewhere.
+        """
+        for generator in self._subcolumn_generators(row_index):
+            self.set_row(generator, row_index, transpose=transpose, volume=volume)
+
+    def clear_sample_subcolumn(
+        self,
+        row_index: int,
+        *,
+        transpose: bool = False,
+        volume: bool = False,
+    ) -> None:
+        for generator in self._subcolumn_generators(row_index):
+            self.clear_subcolumn(generator, row_index, transpose=transpose, volume=volume)
 
     def select_frame(self, frame_index: int) -> None:
         self._frame_index = frame_index
@@ -179,16 +228,85 @@ class SequencerGridLogic(CallbackMixin):
 
         return None
 
+    def _used_generators(self, sample: Sample) -> List[GeneratorName]:
+        """The channels a sample's reconstruction provides instructions for."""
+        return [
+            generator
+            for generator in GeneratorName.items()
+            if sample.reconstruction.get_generator_instructions(generator)
+        ]
+
+    def _subcolumn_generators(self, row_index: int) -> List[GeneratorName]:
+        """Channels a sample-column transpose/volume edit writes to.
+
+        Falls back to every channel when no sample constrains the row, mirroring
+        :attr:`SequencerRowViewModel.subcolumn_generators`.
+        """
+        relevant = self._relevant_generators(row_index)
+        if not relevant:
+            return GeneratorName.items()
+
+        return [generator for generator in GeneratorName.items() if generator in relevant]
+
+    def _relevant_generators(self, row_index: int) -> FrozenSet[GeneratorName]:
+        rows: Dict[GeneratorName, Optional[Row]] = {}
+        for generator in GeneratorName.items():
+            pattern_id = self._pattern_id_at_frame(generator)
+            rows[generator] = (
+                self._controller.project.song[generator].get_row(pattern_id, row_index)
+                if pattern_id is not None
+                else None
+            )
+
+        return self._relevant_generators_from_rows(rows)
+
+    def _relevant_generators_from_rows(
+        self,
+        rows: Dict[GeneratorName, Optional[Row]],
+    ) -> FrozenSet[GeneratorName]:
+        """The channels spanned by the samples referenced on a row.
+
+        Each referenced sample contributes the channels its reconstruction covers,
+        so the sample column reasons about a sample's whole channel span rather than
+        only the cells that happen to be filled.
+        """
+        relevant: Set[GeneratorName] = set()
+        resolved: Set[str] = set()
+        for row in rows.values():
+            if row is None or row.instrument is None:
+                continue
+
+            sample_id = row.instrument.sample_id
+            if sample_id in resolved:
+                continue
+
+            resolved.add(sample_id)
+            sample = self._controller.project.samples.get(sample_id)
+            if sample is None:
+                relevant.add(row.instrument.generator_name)
+            else:
+                relevant.update(self._used_generators(sample))
+
+        return frozenset(relevant)
+
     def _build_row(self, index: int, patterns: Dict[GeneratorName, Pattern]) -> SequencerRowViewModel:
+        rows: Dict[GeneratorName, Optional[Row]] = {}
         cells: Dict[GeneratorName, SequencerCellViewModel] = {}
         for generator in GeneratorName.items():
             pattern = patterns.get(generator)
             if pattern is not None and index < pattern.length:
-                cells[generator] = self._build_cell(pattern.rows[index])
+                row = pattern.rows[index]
+                rows[generator] = row
+                cells[generator] = self._build_cell(row)
             else:
+                rows[generator] = None
                 cells[generator] = _EMPTY_CELL
 
-        return SequencerRowViewModel(index=index, cells=cells)
+        return SequencerRowViewModel(
+            index=index,
+            cells=cells,
+            relevant_generators=self._relevant_generators_from_rows(rows),
+        )
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(
