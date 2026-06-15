@@ -40,8 +40,8 @@ OrderKey = Tuple[Optional[GeneratorName], int]
 OnFrameSelectedCallback = Callable[[int], None]
 OnAddCallback = Callable[[], None]
 OnRemoveCallback = Callable[[int], None]
-OnSetOrderEntryCallback = Callable[[GeneratorName, int, int], None]
-OnSetMasterEntryCallback = Callable[[int, int], None]
+OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
+OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
 
 _EMPTY_LABEL = display_id(None)
 
@@ -67,6 +67,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._input_state: OrderInputState = OrderInputState()
         self._highlighted: Optional[OrderCursor] = None
         self._hover_position: Optional[int] = None
+        self._hover_widget: Optional[Sender] = None
         self._hover_handler_tag = f"{TAG_SEQUENCER_ORDER_PANEL}{SUF_HANDLER_REGISTRY}"
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
@@ -215,6 +216,7 @@ class GUISequencerOrderPanel(GUIPanel):
             dpg.delete_item(TAG_SEQUENCER_ORDER_TABLE)
         self._highlighted = None
         self._hover_position = None
+        self._hover_widget = None
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -276,33 +278,56 @@ class GUISequencerOrderPanel(GUIPanel):
         if user_data is None:
             return
 
+        self._hover_widget = app_data
         position = user_data[1]
         if position == self._hover_position:
             return
 
-        self._clear_hover_highlight()
+        if self._hover_position is not None:
+            self._highlight_column_shade(self._hover_position)
+
         self._hover_position = position
-        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, self._layout.colors.pattern_highlight)
+        dpg.highlight_table_column(
+            TAG_SEQUENCER_ORDER_TABLE,
+            position + 1,
+            self._layout.colors.pattern_highlight,
+        )
 
     def _clear_hover_highlight(self) -> None:
         """Restores the hovered column's alternating shade (column highlights are
         single-valued, so the hover tint replaces the shade and must be put back)."""
-        if self._hover_position is None:
-            return
+        if self._hover_position is not None:
+            self._highlight_column_shade(self._hover_position)
+            self._hover_position = None
 
-        self._highlight_column_shade(self._hover_position)
-        self._hover_position = None
+        self._hover_widget = None
 
     def _on_mouse_moved(self, sender: Sender, app_data: object) -> None:
-        if self._hover_position is not None and not dpg.is_item_hovered(TAG_SEQUENCER_ORDER_TABLE):
+        """Clears the hover once the pointer leaves the cell it was over.
+
+        DPG containers (the table) carry no ``hovered`` state, so the leave check
+        polls the tracked cell widget — an interactive item that does report it.
+        """
+        widget = self._hover_widget
+        if widget is None:
+            return
+
+        if not dpg.does_item_exist(widget) or not dpg.get_item_state(widget).get("hovered", False):
             self._clear_hover_highlight()
 
-    def _build_row(self, generator: Optional[GeneratorName], position_count: int) -> None:
+    def _build_row(
+        self,
+        generator: Optional[GeneratorName],
+        position_count: int,
+    ) -> None:
         font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_ORDER_TABLE)
 
         label_cell = dpg.add_table_cell(parent=row_id)
-        label_text = dpg.add_text(self._row_labels[generator], parent=label_cell)
+        label_text = dpg.add_text(
+            self._row_labels[generator],
+            parent=label_cell,
+        )
         FontRegistry.bind_to_item(label_text, Font.BOLD_SMALL)
 
         for position in range(position_count):
@@ -359,7 +384,11 @@ class GUISequencerOrderPanel(GUIPanel):
         self._input_state = OrderInputState(cursor=clamped)
         self._apply_cursor_highlight(clamped)
 
-    def _apply_state(self, new_state: OrderInputState, notify: bool = True) -> None:
+    def _apply_state(
+        self,
+        new_state: OrderInputState,
+        notify: bool = True,
+    ) -> None:
         old = self._input_state.cursor
         new = new_state.cursor
 
@@ -406,16 +435,28 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._jump_position(0)
             case dpg.mvKey_End:
                 self._jump_position(self._position_count - 1)
+            case dpg.mvKey_Delete:
+                self._clear_cell()
+                self._move_position(1)
+            case dpg.mvKey_Back:
+                self._clear_cell()
+                self._move_position(-1)
+            case dpg.mvKey_Spacebar:
+                self._clear_cell()
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
                 self._handle_printable_key(app_data)
 
     def _move_position(self, delta: int) -> None:
-        self._apply_state(self._committed_state().navigate_position(delta, self._position_count))
+        self._apply_state(
+            self._committed_state().navigate_position(delta, self._position_count),
+        )
 
     def _jump_position(self, index: int) -> None:
-        self._apply_state(self._committed_state().navigate_position(index, self._position_count, absolute=True))
+        self._apply_state(
+            self._committed_state().navigate_position(index, self._position_count, absolute=True),
+        )
 
     def _move_channel(self, delta: int) -> None:
         self._apply_state(self._committed_state().navigate_channel(delta))
@@ -423,7 +464,7 @@ class GUISequencerOrderPanel(GUIPanel):
     def _committed_state(self) -> OrderInputState:
         state, index = self._input_state.commit_partial()
         if index is not None:
-            self._emit_edit(self._input_state.cursor, index)
+            self._emit(self._input_state.cursor, index)
 
         return state
 
@@ -434,19 +475,37 @@ class GUISequencerOrderPanel(GUIPanel):
 
         new_state, index = self._input_state.type_char(char)
         if index is not None:
-            self._emit_edit(self._input_state.cursor, index)
+            self._emit(self._input_state.cursor, index)
             new_state = new_state.navigate_position(1, self._position_count)
 
         self._apply_state(new_state)
 
-    def _emit_edit(self, cursor: Optional[OrderCursor], index: int) -> None:
+    def _clear_cell(self) -> None:
+        """Empties the cell under the cursor (sets its slot to ``None``).
+
+        Mirrors the tracker's clear: a channel cell empties just that channel's
+        slot; the master row empties every channel at that position.
+        """
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return
+
+        self._emit(cursor, None)
+        self._apply_state(self._input_state.cancel())
+
+    def _emit(self, cursor: Optional[OrderCursor], index: Optional[int]) -> None:
         if cursor is None:
             return
 
         if cursor.generator is None:
             self.call(self.on_set_master_entry, cursor.position, index)
         else:
-            self.call(self.on_set_order_entry, cursor.generator, cursor.position, index)
+            self.call(
+                self.on_set_order_entry,
+                cursor.generator,
+                cursor.position,
+                index,
+            )
 
     def _on_add_clicked(self) -> None:
         self.call(self.on_add_requested)

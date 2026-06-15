@@ -38,10 +38,15 @@ class SequencerOrderLogic(CallbackMixin):
     def refresh(self) -> None:
         self.push_order()
 
-    def set_order_entry(self, generator: GeneratorName, position: int, pattern_index: int) -> None:
+    def set_order_entry(
+        self,
+        generator: GeneratorName,
+        position: int,
+        pattern_index: Optional[int],
+    ) -> None:
         self._controller.set_order_entry(generator, position, pattern_index)
 
-    def set_master_entry(self, position: int, pattern_index: int) -> None:
+    def set_master_entry(self, position: int, pattern_index: Optional[int]) -> None:
         for generator in GeneratorName.items():
             self._controller.set_order_entry(generator, position, pattern_index)
 

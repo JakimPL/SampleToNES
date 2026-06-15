@@ -287,7 +287,7 @@ class ProjectController(CallbackMixin):
         self,
         generator: GeneratorName,
         position: int,
-        pattern_index: int,
+        pattern_index: Optional[int],
     ) -> None:
         self.project.song[generator].set_in_order(position, pattern_index)
         self._touch()

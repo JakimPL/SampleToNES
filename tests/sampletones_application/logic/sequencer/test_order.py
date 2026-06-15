@@ -29,6 +29,22 @@ class TestOrderMutations:
         for generator in GeneratorName.items():
             assert _order(logic, generator) == [4]
 
+    def test_set_order_entry_clears_one_channel_with_none(self) -> None:
+        logic = _logic()
+
+        logic.set_order_entry(GeneratorName.PULSE1, 0, None)
+
+        assert _order(logic, GeneratorName.PULSE1) == [None]
+        assert _order(logic, GeneratorName.TRIANGLE) == [0]
+
+    def test_set_master_entry_clears_every_channel_with_none(self) -> None:
+        logic = _logic()
+
+        logic.set_master_entry(0, None)
+
+        for generator in GeneratorName.items():
+            assert _order(logic, generator) == [None]
+
     def test_add_to_order_all_appends_an_empty_slot(self) -> None:
         logic = _logic()
 
