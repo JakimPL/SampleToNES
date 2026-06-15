@@ -133,6 +133,8 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
         self._sequencer_order_panel.on_add_requested = self._sequencer_order_logic.add_to_order_all
         self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order_all
+        self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
+        self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
 
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample

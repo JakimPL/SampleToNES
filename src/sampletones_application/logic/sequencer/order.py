@@ -1,28 +1,36 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional
 
 from sampletones_application.logic.project.controller import ProjectController
-from sampletones_application.view_model.sequencer.order import OrderEntryViewModel, SequencerOrderViewModel
+from sampletones_application.view_model.sequencer.order import (
+    OrderEntryViewModel,
+    SequencerOrderGridViewModel,
+    SequencerOrderViewModel,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
 class SequencerOrderLogic(CallbackMixin):
-    """Builds the per-channel order view models and exposes order mutations.
+    """Builds the order arrangement view model and exposes order mutations.
 
-    Navigation (current frame) is owned by :class:`SequencerGridLogic`; this
-    class is only responsible for what patterns are in each channel's order and
-    how to change that arrangement.
+    Navigation (the current frame) is owned by :class:`SequencerGridLogic`; this
+    class is only responsible for which pattern index each channel plays at every
+    order position, and how to change that arrangement.
     """
 
     def __init__(self, project_controller: ProjectController) -> None:
         self._controller = project_controller
 
-        self.on_order_changed: Optional[Callable[[Tuple[SequencerOrderViewModel, ...]], None]] = None
+        self.on_order_changed: Optional[Callable[[SequencerOrderGridViewModel], None]] = None
 
-    def build_order(self) -> Tuple[SequencerOrderViewModel, ...]:
+    def build_order(self) -> SequencerOrderGridViewModel:
         song = self._controller.project.song
-        return tuple(self._build_channel_view(generator, song[generator]) for generator in GeneratorName.items())
+        channels = {
+            generator: self._build_channel_view(generator, song[generator]) for generator in GeneratorName.items()
+        }
+        position_count = max((len(view.entries) for view in channels.values()), default=0)
+        return SequencerOrderGridViewModel(position_count=position_count, channels=channels)
 
     def push_order(self) -> None:
         self.call(self.on_order_changed, self.build_order())
@@ -30,27 +38,26 @@ class SequencerOrderLogic(CallbackMixin):
     def refresh(self) -> None:
         self.push_order()
 
-    # ------------------------------------------------------------------
-    # Phase 4 stubs — order position mutations (all channels in sync)
-    # ------------------------------------------------------------------
+    def set_order_entry(self, generator: GeneratorName, position: int, pattern_index: int) -> None:
+        self._controller.set_order_entry(generator, position, pattern_index)
+
+    def set_master_entry(self, position: int, pattern_index: int) -> None:
+        for generator in GeneratorName.items():
+            self._controller.set_order_entry(generator, position, pattern_index)
 
     def add_to_order_all(self) -> None:
-        """Append a new empty pattern to every channel's order."""
-        raise NotImplementedError
+        """Appends one empty position (a ``None`` slot) to every channel's order.
 
-    def insert_into_order_all(self, position: int) -> None:
-        """Insert a new empty pattern before ``position`` in every channel."""
-        raise NotImplementedError
+        The slot holds no pattern until an index is typed into it, so the master row
+        reads empty and that frame shows blank in the tracker grid; assigning an
+        index later materialises the pattern on first edit.
+        """
+        for generator in GeneratorName.items():
+            self._controller.append_to_order(generator, None)
 
     def remove_from_order_all(self, position: int) -> None:
-        """Remove the order entry at ``position`` from every channel."""
-        raise NotImplementedError
-
-    def duplicate_position_all(self, position: int) -> None:
-        """Duplicate the pattern at ``position`` and insert the copy after it."""
-        raise NotImplementedError
-
-    # ------------------------------------------------------------------
+        for generator in GeneratorName.items():
+            self._controller.remove_from_order(generator, position)
 
     def _build_channel_view(
         self,

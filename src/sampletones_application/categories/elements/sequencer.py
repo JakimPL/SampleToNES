@@ -35,6 +35,7 @@ class SequencerGridElements(AbstractElement):
 class SequencerOrderElements(AbstractElement):
     ORDER_TEXT = "order_text"
     COLUMN_POSITION = "column_position"
+    COLUMN_MASTER = "column_master"
     COLUMN_PULSE_1 = "column_pulse_1"
     COLUMN_PULSE_2 = "column_pulse_2"
     COLUMN_TRIANGLE = "column_triangle"

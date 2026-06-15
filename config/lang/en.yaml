@@ -362,6 +362,7 @@ sequencer.grid.label.column_transpose: "Transpose"
 # =============================================================================
 sequencer.order.label.order_text: "Order"
 sequencer.order.label.column_position: "Pos"
+sequencer.order.label.column_master: "All"
 sequencer.order.label.column_pulse_1: "Pulse 1"
 sequencer.order.label.column_pulse_2: "Pulse 2"
 sequencer.order.label.column_triangle: "Triangle"

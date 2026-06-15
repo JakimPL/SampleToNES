@@ -106,7 +106,7 @@ class TestSong:
 
         controller.remove_pattern(GeneratorName.TRIANGLE, pattern_index)
         assert channel.pattern(pattern_index) is None
-        assert pattern_index in channel.order
+        assert channel.order == [0, None]
 
     def test_move_in_order(self) -> None:
         controller = _controller()

@@ -60,17 +60,30 @@ class SequencerGridLogic(CallbackMixin):
         frame_index = self._clamp_frame(frame_count)
 
         patterns: Dict[GeneratorName, Pattern] = {}
-        row_count = 0
         for generator in GeneratorName.items():
             channel = song[generator]
             if frame_index < len(channel.order):
-                pattern = channel.pattern(channel.order[frame_index])
+                entry = channel.order[frame_index]
+                pattern = channel.pattern(entry) if entry is not None else None
                 if pattern is not None:
                     patterns[generator] = pattern
-                    row_count = max(row_count, pattern.length)
 
+        row_count = self._frame_row_count(patterns) if frame_count > 0 else 0
         rows = tuple(self._build_row(index, patterns) for index in range(row_count))
         return SequencerGridViewModel(frame_index=frame_index, frame_count=frame_count, rows=rows)
+
+    def _frame_row_count(self, patterns: Dict[GeneratorName, Pattern]) -> int:
+        """Rows to show for the current frame.
+
+        Empty (None) slots contribute no pattern, so a frame whose channels are all
+        empty falls back to ``rows_per_pattern`` blank rows — keeping the frame
+        editable so the first keystroke can auto-create a pattern for that channel.
+        """
+        lengths = [pattern.length for pattern in patterns.values()]
+        if lengths:
+            return max(lengths)
+
+        return self._controller.project.settings.rows_per_pattern
 
     def push_settings(self) -> None:
         self.call(self.on_settings_changed, self.settings)
@@ -103,6 +116,8 @@ class SequencerGridLogic(CallbackMixin):
         volume: Optional[int] = None,
     ) -> None:
         pattern_index = self._pattern_index_at_frame(generator)
+        if pattern_index is None:
+            pattern_index = self._create_frame_pattern(generator)
         if pattern_index is None:
             return
 
@@ -229,6 +244,22 @@ class SequencerGridLogic(CallbackMixin):
 
         return None
 
+    def _create_frame_pattern(self, generator: GeneratorName) -> Optional[int]:
+        """Materialises a pattern for an empty slot at the current frame, on first edit.
+
+        Providing content to a channel whose current frame is an empty (None) slot
+        creates a fresh pattern and assigns it to that order position, so the
+        arrangement grows as the user plays rather than dropping the input. Returns
+        ``None`` when the frame has no order position for this channel at all.
+        """
+        channel = self._controller.project.song[generator]
+        if self._frame_index >= len(channel.order):
+            return None
+
+        pattern_index = self._controller.add_pattern(generator)
+        self._controller.set_order_entry(generator, self._frame_index, pattern_index)
+        return pattern_index
+
     def _used_generators(self, sample: Sample) -> List[GeneratorName]:
         """The channels a sample's reconstruction provides instructions for."""
         return [
@@ -253,11 +284,10 @@ class SequencerGridLogic(CallbackMixin):
         rows: Dict[GeneratorName, Optional[Row]] = {}
         for generator in GeneratorName.items():
             pattern_index = self._pattern_index_at_frame(generator)
-            rows[generator] = (
-                self._controller.project.song[generator].get_row(pattern_index, row_index)
-                if pattern_index is not None
-                else None
+            pattern = (
+                self._controller.project.song[generator].pattern(pattern_index) if pattern_index is not None else None
             )
+            rows[generator] = pattern.rows[row_index] if pattern is not None else None
 
         return self._relevant_generators_from_rows(rows)
 

@@ -161,6 +161,24 @@ class ProjectController(CallbackMixin):
 
         return clamp(volume, 0, MAX_VOLUME)
 
+    def _existing_row(
+        self,
+        generator: GeneratorName,
+        pattern_index: int,
+        row_index: int,
+    ) -> Row:
+        """Reads a row without requiring its pattern to exist yet.
+
+        An order position may reference an empty (uncreated) pattern; partial and
+        clear edits treat that as a blank row, and :meth:`set_row` materialises the
+        pattern when it writes.
+        """
+        pattern = self.project.song[generator].pattern(pattern_index)
+        if pattern is None:
+            return Row()
+
+        return pattern.rows[row_index]
+
     def set_row(
         self,
         generator: GeneratorName,
@@ -181,7 +199,12 @@ class ProjectController(CallbackMixin):
             transpose=self._clamp_transpose(transpose),
             volume=self._clamp_volume(volume),
         )
-        self.project.song[generator].set_row(
+        channel = self.project.song[generator]
+        channel.ensure_pattern(
+            pattern_index,
+            self.project.settings.rows_per_pattern,
+        )
+        channel.set_row(
             pattern_index,
             row_index,
             row,
@@ -205,7 +228,7 @@ class ProjectController(CallbackMixin):
         :meth:`set_row`, which treats ``None`` as "clear". This lets the tracker
         edit a single subcolumn without wiping the others.
         """
-        existing = self.project.song[generator].get_row(pattern_index, row_index)
+        existing = self._existing_row(generator, pattern_index, row_index)
         self.set_row(
             generator,
             pattern_index,
@@ -231,7 +254,7 @@ class ProjectController(CallbackMixin):
         subcolumn to keep its current value. With no selectors this is the inverse
         of :meth:`update_row`.
         """
-        existing = self.project.song[generator].get_row(pattern_index, row_index)
+        existing = self._existing_row(generator, pattern_index, row_index)
         self.set_row(
             generator,
             pattern_index,
@@ -241,7 +264,11 @@ class ProjectController(CallbackMixin):
             volume=None if volume else existing.volume,
         )
 
-    def append_to_order(self, generator: GeneratorName, pattern_index: int) -> None:
+    def append_to_order(
+        self,
+        generator: GeneratorName,
+        pattern_index: Optional[int],
+    ) -> None:
         self.project.song[generator].append_to_order(pattern_index)
         self._touch()
         self.call(self.on_song_changed)
@@ -253,6 +280,16 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
     ) -> None:
         self.project.song[generator].insert_into_order(position, pattern_index)
+        self._touch()
+        self.call(self.on_song_changed)
+
+    def set_order_entry(
+        self,
+        generator: GeneratorName,
+        position: int,
+        pattern_index: int,
+    ) -> None:
+        self.project.song[generator].set_in_order(position, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 

@@ -21,7 +21,10 @@ class Channel(BaseModel):
 
     generator: GeneratorName = Field(..., description="The NES channel this track drives.")
     patterns: Dict[int, Pattern] = Field(..., description="Pattern pool keyed by index.")
-    order: List[int] = Field(..., description="Sequence of pattern indices forming the arrangement.")
+    order: List[Optional[int]] = Field(
+        ...,
+        description="Arrangement: each position is a pattern index, or None for an empty slot.",
+    )
 
     @classmethod
     def empty(cls, generator: GeneratorName, rows_per_pattern: int) -> Channel:
@@ -37,7 +40,7 @@ class Channel(BaseModel):
         return self.patterns.get(index)
 
     def ordered_patterns(self) -> List[Optional[Pattern]]:
-        return [self.patterns.get(index) for index in self.order]
+        return [self.patterns.get(index) if index is not None else None for index in self.order]
 
     def _next_index(self) -> int:
         return max(self.patterns, default=-1) + 1
@@ -47,6 +50,17 @@ class Channel(BaseModel):
         self.patterns[index] = Pattern.empty(length, name=name)
         return index
 
+    def ensure_pattern(self, index: int, length: int) -> Pattern:
+        """Returns the pattern at ``index``, creating an empty one if absent.
+
+        Lets an order position reference an index that has no pattern yet; the
+        pattern is materialised on first write (when the slot is no longer empty).
+        """
+        if index not in self.patterns:
+            self.patterns[index] = Pattern.empty(length)
+
+        return self.patterns[index]
+
     def duplicate_pattern(self, index: int) -> int:
         source = self.patterns[index]
         clone_index = self._next_index()
@@ -54,15 +68,16 @@ class Channel(BaseModel):
         return clone_index
 
     def remove_pattern(self, index: int) -> None:
-        """Drops the pattern from the pool, leaving the arrangement untouched.
+        """Drops the pattern from the pool and empties the positions that used it.
 
-        The pool and the order are independent axes: order positions that still
-        reference this index resolve to an empty slot (:meth:`pattern` returns
-        ``None``). Filtering the order here would instead delete a content-dependent
-        number of positions from this one channel, shifting its later positions and
-        breaking the order table's column alignment across channels.
+        Order references to the removed index are rewritten to ``None`` *in place*
+        (same positions, just emptied), so the arrangement keeps its length and the
+        order table's columns stay aligned across channels. Rewriting to ``None``
+        rather than leaving the stale index also prevents a later :meth:`add_pattern`
+        — which reuses the freed index — from accidentally refilling those slots.
         """
         del self.patterns[index]
+        self.order = [None if entry == index else entry for entry in self.order]
 
     def get_row(self, index: int, row_index: int) -> Row:
         return self.patterns[index].rows[row_index]
@@ -70,11 +85,14 @@ class Channel(BaseModel):
     def set_row(self, index: int, row_index: int, row: Row) -> None:
         self.patterns[index].rows[row_index] = row
 
-    def append_to_order(self, index: int) -> None:
+    def append_to_order(self, index: Optional[int]) -> None:
         self.order.append(index)
 
-    def insert_into_order(self, position: int, index: int) -> None:
+    def insert_into_order(self, position: int, index: Optional[int]) -> None:
         self.order.insert(position, index)
+
+    def set_in_order(self, position: int, index: Optional[int]) -> None:
+        self.order[position] = index
 
     def remove_from_order(self, position: int) -> None:
         del self.order[position]

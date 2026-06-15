@@ -220,3 +220,33 @@ class TestBuildGridAggregation:
 
         assert row.sample_transpose == row.cells[GeneratorName.PULSE1].transpose
         assert row.sample_transpose != MIXED
+
+
+class TestEmptyFrameAutoCreate:
+    def _empty_frame(self, controller: ProjectController) -> None:
+        for generator in GeneratorName.items():
+            controller.append_to_order(generator, None)
+
+    def test_editing_an_empty_slot_creates_and_assigns_a_pattern(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        self._empty_frame(controller)
+        logic.select_frame(1)
+
+        logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
+
+        channel = controller.project.song[GeneratorName.PULSE1]
+        new_index = channel.order[1]
+        assert new_index is not None
+        assert channel.get_row(new_index, 0).transpose == 5
+        assert controller.project.song[GeneratorName.PULSE2].order[1] is None
+
+    def test_empty_frame_still_shows_editable_rows(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        self._empty_frame(controller)
+        logic.select_frame(1)
+
+        grid = logic.build_grid()
+
+        assert len(grid.rows) == controller.project.settings.rows_per_pattern
