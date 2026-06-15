@@ -55,6 +55,8 @@ class SequencerColors(BaseModel, frozen=True):
     cursor_row: RGBA
     sample_column: RGBA
     sample_divider: RGBA
+    order_column: RGBA
+    order_column_alternate: RGBA
     subcolumns: SubcolumnColors
 
 

@@ -25,7 +25,7 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_children
+from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.shortcuts.keys import HEX_KEYS
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderGridViewModel,
@@ -64,12 +64,14 @@ class GUISequencerOrderPanel(GUIPanel):
         self._position_count: int = 0
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
+        self._highlighted: Optional[OrderCursor] = None
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_add_requested: Optional[OnAddCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
+        self.on_cell_selected: Optional[Callable[[], None]] = None
 
         self._lbl_order = language_manager[
             Page.SEQUENCER,
@@ -78,30 +80,30 @@ class GUISequencerOrderPanel(GUIPanel):
             SequencerOrderElements.ORDER_TEXT,
         ]
         self._row_labels: Dict[Optional[GeneratorName], str] = {
-            None: language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, SequencerOrderElements.COLUMN_MASTER],
+            None: language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, SequencerOrderElements.ROW_MASTER],
             GeneratorName.PULSE1: language_manager[
                 Page.SEQUENCER,
                 Panel.ORDER,
                 TextType.LABEL,
-                SequencerOrderElements.COLUMN_PULSE_1,
+                SequencerOrderElements.ROW_PULSE_1,
             ],
             GeneratorName.PULSE2: language_manager[
                 Page.SEQUENCER,
                 Panel.ORDER,
                 TextType.LABEL,
-                SequencerOrderElements.COLUMN_PULSE_2,
+                SequencerOrderElements.ROW_PULSE_2,
             ],
             GeneratorName.TRIANGLE: language_manager[
                 Page.SEQUENCER,
                 Panel.ORDER,
                 TextType.LABEL,
-                SequencerOrderElements.COLUMN_TRIANGLE,
+                SequencerOrderElements.ROW_TRIANGLE,
             ],
             GeneratorName.NOISE: language_manager[
                 Page.SEQUENCER,
                 Panel.ORDER,
                 TextType.LABEL,
-                SequencerOrderElements.COLUMN_NOISE,
+                SequencerOrderElements.ROW_NOISE,
             ],
         }
 
@@ -134,27 +136,13 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
     def _create_order_window(self) -> None:
-        with dpg.child_window(
+        dpg.add_child_window(
             tag=TAG_SEQUENCER_ORDER_WINDOW,
             parent=self.tag,
             height=self._layout.order.height,
             width=0,
             border=False,
-        ):
-            with dpg.table(
-                tag=TAG_SEQUENCER_ORDER_TABLE,
-                parent=TAG_SEQUENCER_ORDER_WINDOW,
-                header_row=True,
-                resizable=False,
-                borders_innerH=True,
-                borders_innerV=True,
-                borders_outerH=True,
-                borders_outerV=True,
-                scrollX=True,
-                scrollY=False,
-                policy=dpg.mvTable_SizingFixedFit,
-            ):
-                FontRegistry.bind_to_item(dpg.last_item(), Font.BOLD)
+        )
 
     def _register_key_handler(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_KEY_HANDLER):
@@ -171,17 +159,30 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg_configure_item(TAG_SEQUENCER_ORDER_BUTTON_REMOVE, enabled=view_model.position_count > 0)
 
     def select_position(self, frame: int) -> None:
-        """Moves the cursor to ``frame`` to follow the tracker, without re-driving it."""
+        """Moves an existing cursor to ``frame`` to follow the tracker, without re-driving it.
+
+        Does nothing when there is no edit cursor, so the order stays unhighlighted
+        until the user actually clicks into it (no phantom "editable" cell on a
+        freshly opened or closed project).
+        """
         cursor = self._input_state.cursor
-        if cursor is not None and cursor.position == frame:
+        if cursor is None or cursor.position == frame:
             return
 
-        generator = cursor.generator if cursor is not None else ORDER_ROWS[0]
-        new_state = OrderInputState(cursor=OrderCursor(generator, frame))
+        new_state = OrderInputState(cursor=OrderCursor(cursor.generator, frame))
         if 0 <= frame < self._position_count:
             self._apply_state(new_state, notify=False)
         else:
+            self._clear_cursor_highlight()
             self._input_state = new_state
+
+    def deselect_cell(self) -> None:
+        """Drops the edit cursor (e.g. when focus moves to the tracker grid)."""
+        cursor = self._input_state.cursor
+        self._clear_cursor_highlight()
+        self._input_state = OrderInputState()
+        if cursor is not None:
+            self._update_cell_display(cursor)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_ORDER_PANEL, enabled=enabled)
@@ -196,16 +197,38 @@ class GUISequencerOrderPanel(GUIPanel):
         return cell_values
 
     def _rebuild_table(self, view_model: SequencerOrderGridViewModel, cell_values: Dict[OrderKey, str]) -> None:
-        dpg_delete_children(TAG_SEQUENCER_ORDER_TABLE, slot=0)
-        dpg_delete_children(TAG_SEQUENCER_ORDER_TABLE, slot=1)
+        """Recreates the whole table when the position count changes.
+
+        Deleting and re-adding a live table's *columns* leaves DPG's per-column
+        state (and any highlight keyed by column index) dangling, which corrupted
+        the heap. Replacing the table item wholesale sidesteps that: the cursor and
+        column highlights die with the old table, so nothing references freed
+        columns.
+        """
+        if dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
+            dpg.delete_item(TAG_SEQUENCER_ORDER_TABLE)
+        self._highlighted = None
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
-        self._build_columns(view_model.position_count)
-        for generator in ORDER_ROWS:
-            self._build_row(generator, view_model.position_count)
+        self._build_table(view_model.position_count)
         self._restore_cursor()
 
-    def _build_columns(self, position_count: int) -> None:
+    def _build_table(self, position_count: int) -> None:
+        dpg.add_table(
+            tag=TAG_SEQUENCER_ORDER_TABLE,
+            parent=TAG_SEQUENCER_ORDER_WINDOW,
+            header_row=True,
+            resizable=False,
+            borders_innerH=True,
+            borders_innerV=True,
+            borders_outerH=True,
+            borders_outerV=True,
+            scrollX=True,
+            scrollY=False,
+            policy=dpg.mvTable_SizingFixedFit,
+        )
+        FontRegistry.bind_to_item(TAG_SEQUENCER_ORDER_TABLE, Font.BOLD)
+
         dpg.add_table_column(
             label="",
             parent=TAG_SEQUENCER_ORDER_TABLE,
@@ -219,6 +242,20 @@ class GUISequencerOrderPanel(GUIPanel):
                 width_fixed=True,
                 init_width_or_weight=self._layout.order.position_column_width,
             )
+
+        for generator in ORDER_ROWS:
+            self._build_row(generator, position_count)
+
+        self._apply_column_backgrounds(position_count)
+
+    def _apply_column_backgrounds(self, position_count: int) -> None:
+        """Tints position columns in two shades — the transposed analog of the
+        tracker grid's alternating rows, reusing the same dark-blue shades."""
+        for position in range(position_count):
+            shade = (
+                self._layout.colors.order_column_alternate if position % 2 == 1 else self._layout.colors.order_column
+            )
+            dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, shade)
 
     def _build_row(self, generator: Optional[GeneratorName], position_count: int) -> None:
         font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
@@ -251,22 +288,24 @@ class GUISequencerOrderPanel(GUIPanel):
         return ORDER_ROWS.index(generator)
 
     def _apply_cursor_highlight(self, cursor: OrderCursor) -> None:
-        for generator in ORDER_ROWS:
-            color = self._layout.colors.cell_cursor if generator == cursor.generator else self._layout.colors.cursor_row
-            dpg.highlight_table_cell(
-                TAG_SEQUENCER_ORDER_TABLE,
-                self._table_row(generator),
-                cursor.position + 1,
-                color=color,
-            )
+        dpg.highlight_table_cell(
+            TAG_SEQUENCER_ORDER_TABLE,
+            self._table_row(cursor.generator),
+            cursor.position + 1,
+            color=self._layout.colors.cell_cursor,
+        )
+        self._highlighted = cursor
 
-    def _remove_cursor_highlight(self, cursor: OrderCursor) -> None:
-        for generator in ORDER_ROWS:
-            dpg.unhighlight_table_cell(
-                TAG_SEQUENCER_ORDER_TABLE,
-                self._table_row(generator),
-                cursor.position + 1,
-            )
+    def _clear_cursor_highlight(self) -> None:
+        if self._highlighted is None:
+            return
+
+        dpg.unhighlight_table_cell(
+            TAG_SEQUENCER_ORDER_TABLE,
+            self._table_row(self._highlighted.generator),
+            self._highlighted.position + 1,
+        )
+        self._highlighted = None
 
     def _restore_cursor(self) -> None:
         cursor = self._input_state.cursor
@@ -283,9 +322,7 @@ class GUISequencerOrderPanel(GUIPanel):
         old = self._input_state.cursor
         new = new_state.cursor
 
-        if old is not None:
-            self._remove_cursor_highlight(old)
-
+        self._clear_cursor_highlight()
         self._input_state = new_state
 
         if old is not None:
@@ -295,8 +332,10 @@ class GUISequencerOrderPanel(GUIPanel):
             self._apply_cursor_highlight(new)
             self._update_cell_display(new)
 
-        if notify and new is not None and (old is None or old.position != new.position):
-            self.call(self.on_frame_selected, new.position)
+        if notify and new is not None:
+            self.call(self.on_cell_selected)
+            if old is None or old.position != new.position:
+                self.call(self.on_frame_selected, new.position)
 
     def _update_cell_display(self, cursor: OrderCursor) -> None:
         key: OrderKey = (cursor.generator, cursor.position)
@@ -310,9 +349,6 @@ class GUISequencerOrderPanel(GUIPanel):
         self._apply_state(OrderInputState(cursor=OrderCursor(generator, position)))
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
-        if not dpg.is_item_hovered(TAG_SEQUENCER_ORDER_WINDOW):
-            return
-
         if self._input_state.cursor is None:
             return
 

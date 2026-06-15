@@ -2,7 +2,7 @@ samples_panel_width: 360
 cell_padding: [3, 4]
 
 order:
-  height: 145
+  height: 171
   position_column_width: 40
 
 table_cells:
@@ -38,6 +38,8 @@ colors:
   cursor_row: "#ffffff18"
   sample_column: "#22ccff18"
   sample_divider: "#22ccff24"
+  order_column: "#1e2028"
+  order_column_alternate: "#262834"
   subcolumns:
     instrument: "#ffffffff"
     transpose: "#a0a0a0ff"

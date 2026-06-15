@@ -13,14 +13,14 @@ class InitialPitchTableTheme(Theme):
 
     @classmethod
     def setup(cls, layout: ReconstructionsLayout) -> None:
-        cp = layout.initial_pitch_table.cell_padding
+        cell_padding = layout.initial_pitch_table.cell_padding
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTable): [
                     ThemeStyle(
                         key=dpg.mvStyleVar_CellPadding,
-                        x=cp[0],
-                        y=cp[1],
+                        x=cell_padding[0],
+                        y=cell_padding[1],
                     ),
                 ],
             }

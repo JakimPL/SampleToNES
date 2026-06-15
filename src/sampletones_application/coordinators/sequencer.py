@@ -125,6 +125,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
         self._sequencer_grid_panel.on_set_row = self._on_set_row
+        self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
@@ -135,6 +136,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order_all
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
         self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
+        self._sequencer_order_panel.on_cell_selected = self._sequencer_grid_panel.deselect_cell
 
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
@@ -250,6 +252,15 @@ class SequencerTabCoordinator:
 
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")
+
+    def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        """Drops the order's edit cursor when the tracker grid takes focus.
+
+        The two grids share global key handlers; mutually exclusive cursors ensure
+        only the focused grid consumes keystrokes (the order's cursor here, the
+        tracker's via :meth:`GUISequencerOrderPanel.deselect_cell`).
+        """
+        self._sequencer_order_panel.deselect_cell()
 
     def create_tab(self) -> None:
         with dpg.tab(

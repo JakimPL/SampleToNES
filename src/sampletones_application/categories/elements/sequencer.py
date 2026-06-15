@@ -34,12 +34,11 @@ class SequencerGridElements(AbstractElement):
 
 class SequencerOrderElements(AbstractElement):
     ORDER_TEXT = "order_text"
-    COLUMN_POSITION = "column_position"
-    COLUMN_MASTER = "column_master"
-    COLUMN_PULSE_1 = "column_pulse_1"
-    COLUMN_PULSE_2 = "column_pulse_2"
-    COLUMN_TRIANGLE = "column_triangle"
-    COLUMN_NOISE = "column_noise"
+    ROW_MASTER = "row_master"
+    ROW_PULSE_1 = "row_pulse_1"
+    ROW_PULSE_2 = "row_pulse_2"
+    ROW_TRIANGLE = "row_triangle"
+    ROW_NOISE = "row_noise"
 
 
 class SequencerInstrumentsElements(AbstractElement):

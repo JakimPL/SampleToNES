@@ -13,18 +13,18 @@ class TableTheme(Theme):
 
     @classmethod
     def setup(cls, layout: GeneralLayout) -> None:
-        t = layout.tables
+        tables = layout.tables
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTable, enabled_state=True): [
                     ThemeStyle(
                         key=dpg.mvStyleVar_CellPadding,
-                        x=t.cell_padding[0],
-                        y=t.cell_padding[1],
+                        x=tables.cell_padding[0],
+                        y=tables.cell_padding[1],
                     ),
                     ThemeStyle(
                         key=dpg.mvStyleVar_FrameRounding,
-                        x=t.frame_rounding,
+                        x=tables.frame_rounding,
                     ),
                 ],
             }
