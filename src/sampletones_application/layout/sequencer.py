@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from sampletones_application.layout.general import Padding
 from sampletones_application.utils.color import RGBA
 
 
@@ -11,6 +12,7 @@ class OrderLayout(BaseModel, frozen=True):
 class SequencerTableCells(BaseModel, frozen=True):
     row: int
     sample: int
+    divider: int
     generator: int
     instrument_id: int
     instrument_name: int
@@ -51,11 +53,14 @@ class SequencerColors(BaseModel, frozen=True):
     pattern_highlight: RGBA
     cell_cursor: RGBA
     cursor_row: RGBA
+    sample_column: RGBA
+    sample_divider: RGBA
     subcolumns: SubcolumnColors
 
 
 class SequencerLayout(BaseModel, frozen=True):
     samples_panel_width: int
+    cell_padding: Padding
     order: OrderLayout
     table_cells: SequencerTableCells
     tempo: TempoLayout

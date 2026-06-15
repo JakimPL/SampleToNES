@@ -65,4 +65,4 @@ def setup_themes(layout: LayoutConfig) -> None:
 
     InitialPitchTableTheme.setup(reconstructions)
     InstrumentsRowTheme.setup(sequencer)
-    PatternTableTheme.setup(general, sequencer)
+    PatternTableTheme.setup(sequencer)

@@ -1,7 +1,6 @@
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.constants.sequencer import TAG_SEQUENCER_THEME_TABLE_PATTERN
-from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.themes.items import ThemeItems
 from sampletones_application.ui.themes.style import (
@@ -17,15 +16,15 @@ class PatternTableTheme(Theme):
     _theme: ThemeItems = ThemeItems()
 
     @classmethod
-    def setup(cls, general: GeneralLayout, sequencer: SequencerLayout) -> None:
-        t = general.tables
+    def setup(cls, sequencer: SequencerLayout) -> None:
+        cell_padding = sequencer.cell_padding
         cls._theme = ThemeItems(
             items={
                 ThemeParameter(item_type=dpg.mvTable): [
                     ThemeStyle(
                         key=dpg.mvStyleVar_CellPadding,
-                        x=t.cell_padding[0],
-                        y=t.cell_padding[1],
+                        x=cell_padding[0],
+                        y=cell_padding[1],
                     ),
                     ThemeColor(
                         key=dpg.mvThemeCol_HeaderHovered,

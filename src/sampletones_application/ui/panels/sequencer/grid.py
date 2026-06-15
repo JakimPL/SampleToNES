@@ -23,7 +23,8 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.columns import (
-    COLUMNS,
+    DIVIDER_TABLE_COLUMN,
+    SAMPLE_TABLE_COLUMN,
     tracker_table_column,
 )
 from sampletones_application.ui.panels.sequencer.display import CellValues
@@ -223,6 +224,11 @@ class GUISequencerGridPanel(GUIPanel):
                     init_width_or_weight=self._layout.table_cells.sample,
                 )
                 dpg.add_table_column(
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.divider,
+                    no_header_label=True,
+                )
+                dpg.add_table_column(
                     label=self._lbl_col_pulse_1,
                     width_fixed=True,
                     init_width_or_weight=self._layout.table_cells.generator,
@@ -264,7 +270,26 @@ class GUISequencerGridPanel(GUIPanel):
         dpg_delete_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
         self._cell_values = cell_values
         self._build_table(view_model)
+        self._highlight_sample_column()
         self._update_cursor()
+
+    def _highlight_sample_column(self) -> None:
+        """Tints the sample column and the rule that separates it from the channels.
+
+        These column highlights are static decoration, distinct from the cursor's
+        cell/row highlight; reapplying them after each rebuild keeps them in place
+        once the rows are replaced.
+        """
+        dpg.highlight_table_column(
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            SAMPLE_TABLE_COLUMN,
+            self._layout.colors.sample_column,
+        )
+        dpg.highlight_table_column(
+            TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            DIVIDER_TABLE_COLUMN,
+            self._layout.colors.sample_divider,
+        )
 
     def _reconcile_cells(self, cell_values: CellValues) -> None:
         for key, value in cell_values.items():
@@ -310,19 +335,25 @@ class GUISequencerGridPanel(GUIPanel):
             self._build_table_row(row)
 
     def _build_table_row(self, row: SequencerRowViewModel) -> None:
-        """Builds one tracker row: a leading spacer, the row-number selectable, and the channel columns."""
+        """Builds one tracker row.
+
+        The cells are positional, so the empty divider cell after the sample column
+        keeps the channel cells aligned with their (shifted) table columns.
+        """
         row_id = dpg.add_table_row(
             parent=TAG_SEQUENCER_GRID_TABLE_TRACKER,
             user_data=row.index,
         )
-        self._add_spacer_cell(row_id)
+        self._add_empty_cell(row_id)
         self._add_row_number_cell(row_id, row.index)
-        for generator in COLUMNS:
+        self._add_column_cell(row_id, row.index, None)
+        self._add_empty_cell(row_id)
+        for generator in GeneratorName.items():
             self._add_column_cell(row_id, row.index, generator)
 
-    def _add_spacer_cell(self, row_id: Sender) -> None:
-        spacer_cell = dpg.add_table_cell(parent=row_id)
-        dpg.add_spacer(parent=spacer_cell, width=0)
+    def _add_empty_cell(self, row_id: Sender) -> None:
+        empty_cell = dpg.add_table_cell(parent=row_id)
+        dpg.add_spacer(parent=empty_cell, width=0)
 
     def _add_row_number_cell(self, row_id: Sender, row_index: int) -> None:
         number_cell = dpg.add_table_cell(parent=row_id)

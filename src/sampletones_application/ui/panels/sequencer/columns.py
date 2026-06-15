@@ -7,6 +7,11 @@ from sampletones_core.constants.enums import GeneratorName
 COLUMNS: Final[Tuple[Optional[GeneratorName], ...]] = (None,) + tuple(GeneratorName.items())
 SUBCOLUMNS: Final[Tuple[SubColumn, ...]] = tuple(SubColumn)
 
+_LEADING_TABLE_COLUMNS: Final[int] = 2
+SAMPLE_TABLE_COLUMN: Final[int] = _LEADING_TABLE_COLUMNS
+DIVIDER_TABLE_COLUMN: Final[int] = SAMPLE_TABLE_COLUMN + 1
+_FIRST_CHANNEL_TABLE_COLUMN: Final[int] = DIVIDER_TABLE_COLUMN + 1
+
 
 def flat_index(generator: Optional[GeneratorName], subcolumn: SubColumn) -> int:
     return COLUMNS.index(generator) * len(SUBCOLUMNS) + SUBCOLUMNS.index(subcolumn)
@@ -19,4 +24,14 @@ def from_flat(row: int, index: int) -> TrackerCursor:
 
 
 def tracker_table_column(generator: Optional[GeneratorName]) -> int:
-    return COLUMNS.index(generator) + 2
+    """Maps a logical column to its DPG table column index.
+
+    The visual divider between the sample column and the channels occupies a table
+    column of its own, so the channels sit one slot further right than their
+    logical position. The divider is never a cursor target, hence it is absent from
+    :data:`COLUMNS`.
+    """
+    if generator is None:
+        return SAMPLE_TABLE_COLUMN
+
+    return _FIRST_CHANNEL_TABLE_COLUMN + GeneratorName.items().index(generator)
