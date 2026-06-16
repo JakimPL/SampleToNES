@@ -41,6 +41,7 @@ colors:
   order_label: "#2d3241"
   order_column: "#1e2028"
   order_column_alternate: "#262834"
+  order_column_current: "#ffffff20"
   subcolumns:
     instrument: "#ffffffff"
     transpose: "#a0a0a0ff"

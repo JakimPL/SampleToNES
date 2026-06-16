@@ -5,7 +5,6 @@ import dearpygui.dearpygui as dpg
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
@@ -26,7 +25,7 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderCursor,
     OrderInputState,
 )
-from sampletones_application.utils.dpg import dpg_configure_item
+from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item
 from sampletones_application.utils.shortcuts.keys import HEX_KEYS
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderGridViewModel,
@@ -66,9 +65,8 @@ class GUISequencerOrderPanel(GUIPanel):
         self._order: EditableCells[OrderKey] = EditableCells()
         self._input_state: OrderInputState = OrderInputState()
         self._highlighted: Optional[OrderCursor] = None
-        self._hover_position: Optional[int] = None
-        self._hover_widget: Optional[Sender] = None
-        self._hover_handler_tag = f"{TAG_SEQUENCER_ORDER_PANEL}{SUF_HANDLER_REGISTRY}"
+        self._highlighted_column: Optional[int] = None
+        self._current_position: Optional[int] = None
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_add_requested: Optional[OnAddCallback] = None
@@ -149,11 +147,8 @@ class GUISequencerOrderPanel(GUIPanel):
         )
 
     def _register_handlers(self) -> None:
-        with dpg.item_handler_registry(tag=self._hover_handler_tag):
-            dpg.add_item_hover_handler(parent=self._hover_handler_tag, callback=self._on_cell_hovered)
         with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_KEY_HANDLER):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
-            dpg.add_mouse_move_handler(callback=self._on_mouse_moved)
 
     def update_order(self, view_model: SequencerOrderGridViewModel) -> None:
         """Reconciles the order table; rebuilds only when the position count changes."""
@@ -166,30 +161,38 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg_configure_item(TAG_SEQUENCER_ORDER_BUTTON_REMOVE, enabled=view_model.position_count > 0)
 
     def select_position(self, frame: int) -> None:
-        """Moves an existing cursor to ``frame`` to follow the tracker, without re-driving it.
-
-        Does nothing when there is no edit cursor, so the order stays unhighlighted
-        until the user actually clicks into it (no phantom "editable" cell on a
-        freshly opened or closed project).
+        """Follows the tracker frame: always updates the unfocused column highlight;
+        also moves the edit cursor when one is active.
         """
+        self._current_position = frame
         cursor = self._input_state.cursor
-        if cursor is None or cursor.position == frame:
-            return
-
-        new_state = OrderInputState(cursor=OrderCursor(cursor.generator, frame))
-        if 0 <= frame < self._position_count:
-            self._apply_state(new_state, notify=False)
+        if cursor is not None:
+            if cursor.position == frame:
+                return
+            new_state = OrderInputState(cursor=OrderCursor(cursor.generator, frame))
+            if 0 <= frame < self._position_count:
+                self._apply_state(new_state, notify=False)
+            else:
+                self._clear_cursor_highlight()
+                self._clear_column_highlight()
+                self._input_state = new_state
         else:
-            self._clear_cursor_highlight()
-            self._input_state = new_state
+            if self._highlighted_column == frame:
+                return
+            self._clear_column_highlight()
+            if 0 <= frame < self._position_count:
+                self._apply_column_highlight(frame, focused=False)
 
     def deselect_cell(self) -> None:
         """Drops the edit cursor (e.g. when focus moves to the tracker grid)."""
         cursor = self._input_state.cursor
         self._clear_cursor_highlight()
+        self._clear_column_highlight()
         self._input_state = OrderInputState()
         if cursor is not None:
             self._update_cell_display(cursor)
+        if self._current_position is not None and 0 <= self._current_position < self._position_count:
+            self._apply_column_highlight(self._current_position, focused=False)
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_ORDER_PANEL, enabled=enabled)
@@ -212,11 +215,9 @@ class GUISequencerOrderPanel(GUIPanel):
         column highlights die with the old table, so nothing references freed
         columns.
         """
-        if dpg.does_item_exist(TAG_SEQUENCER_ORDER_TABLE):
-            dpg.delete_item(TAG_SEQUENCER_ORDER_TABLE)
+        dpg_delete_item(TAG_SEQUENCER_ORDER_TABLE)
         self._highlighted = None
-        self._hover_position = None
-        self._hover_widget = None
+        self._highlighted_column = None
         self._order.reset(cell_values)
         self._position_count = view_model.position_count
         self._build_table(view_model.position_count)
@@ -269,51 +270,15 @@ class GUISequencerOrderPanel(GUIPanel):
         shade = self._layout.colors.order_column_alternate if position % 2 == 1 else self._layout.colors.order_column
         dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, shade)
 
-    def _on_cell_hovered(self, sender: Sender, app_data: int) -> None:
-        """Highlights the whole position column under the mouse (transposed row-hover)."""
-        if not dpg.does_item_exist(app_data):
-            return
+    def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
+        color = self._layout.colors.pattern_highlight if focused else self._layout.colors.order_column_current
+        dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, color)
+        self._highlighted_column = position
 
-        user_data = dpg.get_item_user_data(app_data)
-        if user_data is None:
-            return
-
-        self._hover_widget = app_data
-        position = user_data[1]
-        if position == self._hover_position:
-            return
-
-        if self._hover_position is not None:
-            self._highlight_column_shade(self._hover_position)
-
-        self._hover_position = position
-        dpg.highlight_table_column(
-            TAG_SEQUENCER_ORDER_TABLE,
-            position + 1,
-            self._layout.colors.pattern_highlight,
-        )
-
-    def _clear_hover_highlight(self) -> None:
-        """Restores the hovered column's alternating shade (column highlights are
-        single-valued, so the hover tint replaces the shade and must be put back)."""
-        if self._hover_position is not None:
-            self._highlight_column_shade(self._hover_position)
-            self._hover_position = None
-
-        self._hover_widget = None
-
-    def _on_mouse_moved(self, sender: Sender, app_data: object) -> None:
-        """Clears the hover once the pointer leaves the cell it was over.
-
-        DPG containers (the table) carry no ``hovered`` state, so the leave check
-        polls the tracked cell widget — an interactive item that does report it.
-        """
-        widget = self._hover_widget
-        if widget is None:
-            return
-
-        if not dpg.does_item_exist(widget) or not dpg.get_item_state(widget).get("hovered", False):
-            self._clear_hover_highlight()
+    def _clear_column_highlight(self) -> None:
+        if self._highlighted_column is not None:
+            self._highlight_column_shade(self._highlighted_column)
+            self._highlighted_column = None
 
     def _build_row(
         self,
@@ -340,7 +305,6 @@ class GUISequencerOrderPanel(GUIPanel):
                 callback=self._on_cell_clicked,
             )
             FontRegistry.bind_to_item(selectable, font)
-            dpg.bind_item_handler_registry(selectable, self._hover_handler_tag)
             self._order.register(key, selectable)
 
     def _render_cell(self, key: OrderKey) -> str:
@@ -377,12 +341,15 @@ class GUISequencerOrderPanel(GUIPanel):
         cursor = self._input_state.cursor
         if cursor is None or self._position_count == 0:
             self._input_state = OrderInputState()
+            if self._current_position is not None and 0 <= self._current_position < self._position_count:
+                self._apply_column_highlight(self._current_position, focused=False)
             return
 
         position = min(cursor.position, self._position_count - 1)
         clamped = OrderCursor(cursor.generator, position)
         self._input_state = OrderInputState(cursor=clamped)
         self._apply_cursor_highlight(clamped)
+        self._apply_column_highlight(clamped.position, focused=True)
 
     def _apply_state(
         self,
@@ -401,6 +368,14 @@ class GUISequencerOrderPanel(GUIPanel):
         if new is not None:
             self._apply_cursor_highlight(new)
             self._update_cell_display(new)
+
+        old_position = old.position if old is not None else None
+        new_position = new.position if new is not None else None
+        if old_position != new_position:
+            self._clear_column_highlight()
+            if new_position is not None:
+                self._current_position = new_position
+                self._apply_column_highlight(new_position, focused=True)
 
         if notify and new is not None:
             self.call(self.on_cell_selected)
