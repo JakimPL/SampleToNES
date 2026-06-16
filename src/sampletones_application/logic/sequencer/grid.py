@@ -233,6 +233,10 @@ class SequencerGridLogic(CallbackMixin):
         for generator in self._subcolumn_generators(row_index):
             self.clear_subcolumn(generator, row_index, transpose=transpose, volume=volume)
 
+    @property
+    def frame_index(self) -> int:
+        return self._frame_index
+
     def select_frame(self, frame_index: int) -> None:
         self._frame_index = frame_index
         self.push_grid()

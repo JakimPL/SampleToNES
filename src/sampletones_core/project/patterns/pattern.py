@@ -27,5 +27,8 @@ class Pattern(BaseModel):
     def length(self) -> int:
         return len(self.rows)
 
+    def is_empty(self) -> bool:
+        return all(row.is_empty() for row in self.rows)
+
     def __repr__(self) -> str:
         return f"Pattern(name={self.name!r}, length={self.length})"

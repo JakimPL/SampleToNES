@@ -35,3 +35,6 @@ class Row(BaseModel):
         le=MAX_VOLUME,
         description="Volume column, or None for an empty cell.",
     )
+
+    def is_empty(self) -> bool:
+        return self.instrument is None and self.transpose is None and self.volume is None

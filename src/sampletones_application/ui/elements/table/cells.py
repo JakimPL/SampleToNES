@@ -3,22 +3,17 @@ from typing import Callable, Dict, Generic, Optional, TypeVar
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.constants.symbols import UNDERSCORE
+from sampletones_shared.constants.symbols import DOT, UNDERSCORE
 from sampletones_shared.types.application import Sender
 
 KeyT = TypeVar("KeyT", bound=Hashable)
 
 
 def active_label(pending: str, width: int) -> str:
-    """Renders the cell under the edit cursor: typed digits, padded with underscores.
-
-    ``width`` is the cell's committed-label width, so an empty pending buffer shows
-    a full run of underscores and a partial entry shows the digits typed so far.
-    """
-    if pending:
-        return pending + UNDERSCORE * (width - len(pending))
-
-    return UNDERSCORE * width
+    remaining = width - len(pending)
+    if remaining == 0:
+        return pending
+    return pending + UNDERSCORE + DOT * (remaining - 1)
 
 
 class EditableCells(Generic[KeyT]):

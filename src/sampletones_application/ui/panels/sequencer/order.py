@@ -487,5 +487,6 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _on_remove_clicked(self) -> None:
         cursor = self._input_state.cursor
-        if cursor is not None and 0 <= cursor.position < self._position_count:
-            self.call(self.on_remove_requested, cursor.position)
+        position = cursor.position if cursor is not None else self._current_position
+        if position is not None and 0 <= position < self._position_count:
+            self.call(self.on_remove_requested, position)

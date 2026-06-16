@@ -132,7 +132,7 @@ class SequencerTabCoordinator:
 
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
-        self._sequencer_order_panel.on_add_requested = self._sequencer_order_logic.add_to_order_all
+        self._sequencer_order_panel.on_add_requested = self._on_add_to_order
         self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order_all
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
         self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
@@ -252,6 +252,17 @@ class SequencerTabCoordinator:
 
     def _on_sample_selected(self, sample_id: str) -> None:
         logger.debug(f"Sequencer sample selected: {sample_id}")
+
+    def _on_add_to_order(self) -> None:
+        empty_position = self._sequencer_order_logic.find_empty_frame(after=self._sequencer_grid_logic.frame_index)
+        if empty_position is not None:
+            self._sequencer_grid_logic.select_frame(empty_position)
+            return
+
+        self._sequencer_order_logic.add_to_order_all()
+        song = self._project_controller.project.song
+        new_position = max(len(song[generator].order) for generator in GeneratorName.items()) - 1
+        self._sequencer_grid_logic.select_frame(new_position)
 
     def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:
         """Drops the order's edit cursor when the tracker grid takes focus.

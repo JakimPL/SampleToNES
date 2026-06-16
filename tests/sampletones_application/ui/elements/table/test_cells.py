@@ -8,14 +8,14 @@ from sampletones_application.ui.elements.table.cells import EditableCells, activ
 @pytest.mark.parametrize(
     "pending, width, expected",
     [
-        ("", 3, "___"),
-        ("0", 3, "0__"),
+        ("", 3, "_.."),
+        ("0", 3, "0_."),
         ("05", 3, "05_"),
         ("", 1, "_"),
         ("F", 1, "F"),
     ],
 )
-def test_active_label_pads_with_underscores(pending: str, width: int, expected: str) -> None:
+def test_active_label_cursor_and_dots(pending: str, width: int, expected: str) -> None:
     assert active_label(pending, width) == expected
 
 

@@ -50,6 +50,25 @@ class SequencerOrderLogic(CallbackMixin):
         for generator in GeneratorName.items():
             self._controller.set_order_entry(generator, position, pattern_index)
 
+    def find_empty_frame(self, after: int) -> Optional[int]:
+        """Returns the index of the first order position strictly after ``after``
+        where every generator's pattern is either unassigned or contains no notes.
+        Returns None if no such position exists ahead of the given frame."""
+        song = self._controller.project.song
+        channels = {generator: song[generator] for generator in GeneratorName.items()}
+        position_count = max((len(channel.order) for channel in channels.values()), default=0)
+        for position in range(after + 1, position_count):
+            if all(
+                (
+                    position >= len(channel.order)
+                    or (index := channel.order[position]) is None
+                    or ((pattern := channel.patterns.get(index)) is not None and pattern.is_empty())
+                )
+                for channel in channels.values()
+            ):
+                return position
+        return None
+
     def add_to_order_all(self) -> None:
         """Appends one empty position (a ``None`` slot) to every channel's order.
 
