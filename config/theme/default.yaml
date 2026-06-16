@@ -1,0 +1,96 @@
+name: default
+tag: global.theme.default
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+      - type: color
+        key: TextDisabled
+        value: "#828282"
+      - type: color
+        key: WindowBg
+        value: "#242424"
+      - type: color
+        key: ChildBg
+        value: "#242424"
+      - type: color
+        key: PopupBg
+        value: "#323232"
+      - type: color
+        key: MenuBarBg
+        value: "#323232"
+  - item_type: MenuBar
+    entries:
+      - type: color
+        key: MenuBarBg
+        value: "#323232"
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: "#363648"
+      - type: color
+        key: ButtonHovered
+        value: "#48486c"
+      - type: color
+        key: ButtonActive
+        value: "#5a5a78"
+      - type: style
+        key: FrameRounding
+        x: 6
+      - type: style
+        key: FramePadding
+        x: 10
+        y: 4
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: style
+        key: FrameRounding
+        x: 6
+      - type: style
+        key: FramePadding
+        x: 10
+        y: 4
+  - item_type: Table
+    entries:
+      - type: color
+        key: TableHeaderBg
+        value: "#2d3241"
+      - type: color
+        key: TableRowBg
+        value: "#1e2028"
+      - type: color
+        key: TableRowBgAlt
+        value: "#262834"
+      - type: color
+        key: TableBorderStrong
+        value: "#3c4155"
+      - type: color
+        key: TableBorderLight
+        value: "#3c4155"
+  - item_type: RadioButton
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+  - item_type: RadioButton
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: "#828282"
+  - item_type: Checkbox
+    entries:
+      - type: color
+        key: Text
+        value: "#dcdcdc"
+  - item_type: Checkbox
+    enabled: false
+    entries:
+      - type: color
+        key: Text
+        value: "#828282"

@@ -25,6 +25,8 @@ from sampletones_application.constants.general import (
     SUF_TABLE,
     SUF_TEXT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_INPUT_INVALID,
 )
 from sampletones_application.constants.graphs import (
     SUF_GRAPH,
@@ -39,6 +41,7 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_DETAILS_PANEL,
     TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR,
     TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
+    TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
@@ -58,11 +61,7 @@ from sampletones_application.ui.panels.reconstruction.details.config import (
     FeaturePlotConfig,
     make_feature_plot_configs,
 )
-from sampletones_application.ui.themes.default import DefaultTheme
-from sampletones_application.ui.themes.input import InvalidInputTheme
-from sampletones_application.ui.themes.tables.initial_pitch import (
-    InitialPitchTableTheme,
-)
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.clipboard import copy_to_clipboard
 from sampletones_application.utils.dpg import (
     dpg_configure_item,
@@ -116,9 +115,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self._layout_reconstructions = layout_reconstructions
         self._feature_plot_configs = make_feature_plot_configs(layout_reconstructions, language_manager)
 
-        self.theme = DefaultTheme()
-        self.invalid_input_theme = InvalidInputTheme()
-        self.initial_pitch_theme = InitialPitchTableTheme()
+        self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
+        self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
+        self.initial_pitch_theme = ThemeRegistry.get(TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE)
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_instruments_export: Optional[VoidCallback] = None

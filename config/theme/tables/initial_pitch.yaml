@@ -1,0 +1,10 @@
+name: table_initial_pitch
+tag: reconstructions.details.theme.initial_pitch_table
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 2
+        y: 2

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import traceback
-from typing import Dict
+from typing import Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -12,11 +12,12 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP_TRACEBACK,
     SUF_TEXT,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_TRACEBACK,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.themes.default import DefaultTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
-from sampletones_application.ui.themes.trace import TracebackTheme
 from sampletones_application.utils.clipboard import copy_to_clipboard
 
 
@@ -28,8 +29,8 @@ class GUITraceback:
         parent: str,
         exception: Exception,
         language_manager: LanguageManager,
-        theme: Theme = TracebackTheme(),
-        button_theme: Theme = DefaultTheme(),
+        theme: Optional[Theme] = None,
+        button_theme: Optional[Theme] = None,
     ) -> None:
         self._parent = parent
         self._tag = f"{parent}{SUF_GROUP_TRACEBACK}"
@@ -54,7 +55,8 @@ class GUITraceback:
             DialogElements.COPIED,
         ]
 
-        self.theme = theme
+        self.theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TRACEBACK)
+        resolved_button_theme = ThemeRegistry.resolve(button_theme, TAG_GLOBAL_THEME_DEFAULT)
         traceback_text_tag = f"{self._tag}{SUF_TEXT}"
         traceback_copy_tag = f"{self._tag}{SUF_BUTTON_COPY}"
 
@@ -81,7 +83,7 @@ class GUITraceback:
                     copied_label=self._lbl_copied,
                 ),
                 width=-1,
-                theme=button_theme,
+                theme=resolved_button_theme,
             )
 
         GUITraceback._REGISTRY[self._tag] = self

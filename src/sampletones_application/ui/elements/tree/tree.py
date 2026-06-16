@@ -19,6 +19,20 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_SEARCH,
     SUF_HANDLER_NODE,
     SUF_INPUT_SEARCH,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_FAVORITE,
+    TAG_GLOBAL_THEME_FAVORITE_CHILD,
+    TAG_GLOBAL_THEME_FILE_LIBRARY,
+    TAG_GLOBAL_THEME_FILE_NO_CONTENT,
+    TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY,
+    TAG_GLOBAL_THEME_FILE_RECONSTRUCTION,
+    TAG_GLOBAL_THEME_FILE_WAVE,
+)
+from sampletones_application.constants.instructions import (
+    TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION,
+    TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY,
 )
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.shared.tree import TreeLogic
@@ -29,24 +43,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
-from sampletones_application.ui.themes.default import DefaultTheme
-from sampletones_application.ui.themes.nodes.favorite import (
-    FavoriteChildNodeTheme,
-    FavoriteNodeTheme,
-)
-from sampletones_application.ui.themes.nodes.file import (
-    LibraryFileNodeTheme,
-    NoContentFileNodeTheme,
-    NotExpandedDirectoryNodeTheme,
-    ReconstructionFileNodeTheme,
-    WaveFileNodeTheme,
-)
-from sampletones_application.ui.themes.nodes.library import (
-    LibraryGeneratorNodeTheme,
-    LibraryGroupNodeTheme,
-    LibraryInstructionNodeTheme,
-    LibraryLibraryNodeTheme,
-)
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dpg import dpg_delete_children, dpg_get_value
@@ -598,13 +595,13 @@ class GUITreePanel(GUIPanel):
 
         theme: Theme
         if is_favorite:
-            theme = FavoriteNodeTheme()
+            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE)
         elif not has_content:
-            theme = NoContentFileNodeTheme()
+            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_NO_CONTENT)
         elif has_favorite_ancestor:
-            theme = FavoriteChildNodeTheme()
+            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE_CHILD)
         else:
-            theme = DefaultTheme()
+            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
 
         theme.bind_to_item(node_tag)
 
@@ -619,22 +616,22 @@ class GUITreePanel(GUIPanel):
 
         theme: Theme
         if is_favorite:
-            theme = FavoriteNodeTheme()
+            theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE)
         else:
             match node.filepath.suffix.lower():
                 case paths.EXT_FILE_RECONSTRUCTION:
-                    theme = ReconstructionFileNodeTheme()
+                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_RECONSTRUCTION)
                 case paths.EXT_FILE_LIBRARY:
-                    theme = LibraryFileNodeTheme()
+                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_LIBRARY)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    theme = WaveFileNodeTheme()
+                    theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_WAVE)
                 case _:
                     if has_favorite_ancestor:
-                        theme = FavoriteChildNodeTheme()
+                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FAVORITE_CHILD)
                     elif is_not_expanded:
-                        theme = NotExpandedDirectoryNodeTheme()
+                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_FILE_NOT_EXPANDED_DIRECTORY)
                     else:
-                        theme = DefaultTheme()
+                        theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
 
         theme.bind_to_item(node_tag)
 
@@ -646,15 +643,15 @@ class GUITreePanel(GUIPanel):
         theme: Theme
         match node.node_type:
             case NodeType.LIBRARY:
-                theme = LibraryLibraryNodeTheme()
+                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_LIBRARY)
             case NodeType.GENERATOR:
-                theme = LibraryGeneratorNodeTheme()
+                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_GENERATOR)
             case NodeType.GROUP:
-                theme = LibraryGroupNodeTheme()
+                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_GROUP)
             case NodeType.INSTRUCTION:
-                theme = LibraryInstructionNodeTheme()
+                theme = ThemeRegistry.get(TAG_INSTRUCTIONS_LIBRARY_THEME_INSTRUCTION)
             case _:
-                theme = DefaultTheme()
+                theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
 
         theme.bind_to_item(node_tag)
 

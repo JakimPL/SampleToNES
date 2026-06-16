@@ -4,10 +4,10 @@ from typing import Any, Dict, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.constants.general import SUF_BUTTON
+from sampletones_application.constants.general import SUF_BUTTON, TAG_GLOBAL_THEME_DEFAULT
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.themes.default import DefaultTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import Callback
@@ -24,13 +24,14 @@ class GUIButton:
         callback: Optional[Callback] = None,
         enabled: bool = True,
         font: Font = Font.REGULAR,
-        theme: Theme = DefaultTheme(),
+        theme: Optional[Theme] = None,
         **kwargs: Any,
     ) -> None:
         self._tag = tag
         self._parent = parent
         self._button_tag = f"{tag}{SUF_BUTTON}"
         callback = callback if callback is not None else lambda: None
+        resolved_theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_DEFAULT)
 
         group_kwargs = {
             "tag": tag,
@@ -51,8 +52,8 @@ class GUIButton:
                 **kwargs,
             )
 
-            theme.bind_to_item(self._tag)
-            theme.bind_to_item(self._button_tag)
+            resolved_theme.bind_to_item(self._tag)
+            resolved_theme.bind_to_item(self._button_tag)
             FontRegistry.bind_to_item(self._button_tag, font)
 
         GUIButton._REGISTRY[tag] = self

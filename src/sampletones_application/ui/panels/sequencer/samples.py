@@ -13,13 +13,14 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_TABLE,
+    TAG_SEQUENCER_INSTRUMENTS_THEME_ROW,
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.themes.tables.instruments_row import InstrumentsRowTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel, SequencerSamplesViewModel
 from sampletones_core.utils.display import display_index
@@ -115,7 +116,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                     label=self._lbl_column_name,
                     init_width_or_weight=self._layout.table_cells.instrument_name,
                 )
-        InstrumentsRowTheme().bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
+        ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
         """Rebuilds the samples table with explicit parents.

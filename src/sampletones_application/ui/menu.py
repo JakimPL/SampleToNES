@@ -28,7 +28,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_MENU_ITEM_VIEW_SHOW_ADVANCED_SETTINGS,
     TAG_GLOBAL_TEXT_MENU_FPS,
 )
-from sampletones_application.ui.themes.fps import FPSTimerTheme
+from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.ids import ShortcutId
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
@@ -40,7 +40,7 @@ class MenuBar:
         self,
         *,
         shortcut_manager: ShortcutManager,
-        fps_theme: FPSTimerTheme,
+        fps_theme: Theme,
         language_manager: LanguageManager,
     ) -> None:
         self._shortcut_manager = shortcut_manager

@@ -1,0 +1,9 @@
+name: node_file_no_content
+tag: global.theme.file_no_content
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#828282"

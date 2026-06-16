@@ -1,0 +1,9 @@
+name: input_invalid
+tag: global.theme.input_invalid
+
+components:
+  - item_type: InputText
+    entries:
+      - type: color
+        key: FrameBg
+        value: "#c0202064"

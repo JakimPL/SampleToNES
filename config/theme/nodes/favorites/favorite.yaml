@@ -1,0 +1,14 @@
+name: node_favorite
+tag: global.theme.favorite
+
+components:
+  - item_type: TreeNode
+    entries:
+      - type: color
+        key: Text
+        value: "#ffd76e"
+  - item_type: Selectable
+    entries:
+      - type: color
+        key: Text
+        value: "#ffd76e"

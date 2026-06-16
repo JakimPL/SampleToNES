@@ -9,7 +9,7 @@ from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.resources.items import IconResource
 from sampletones_application.ui.resources.resources import get_icon_path
-from sampletones_application.ui.themes.default import DefaultTheme
+from sampletones_application.ui.themes.theme import Theme
 from sampletones_shared.types.callback import VoidCallback
 
 
@@ -17,7 +17,7 @@ class ViewportManager:
     def __init__(
         self,
         session_manager: SessionManager,
-        theme: DefaultTheme,
+        theme: Theme,
         *,
         layout: GeneralLayout,
         on_fullscreen_state_changed: VoidCallback,

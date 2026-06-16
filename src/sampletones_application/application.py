@@ -16,6 +16,8 @@ from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
+    TAG_GLOBAL_THEME_DEFAULT,
+    TAG_GLOBAL_THEME_MENU_FPS,
 )
 from sampletones_application.coordinators.config import ConfigCoordinator
 from sampletones_application.coordinators.instructions import InstructionsTabCoordinator
@@ -41,18 +43,18 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.project.title import document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY
+from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY, THEME_DIRECTORY
 from sampletones_application.services import (
     ConversionService,
     ExportService,
     RegenerationService,
 )
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
+from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
-from sampletones_application.ui.themes.default import DefaultTheme
-from sampletones_application.ui.themes.fps import FPSTimerTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dialogs import DialogsRenderer
@@ -92,7 +94,8 @@ class Application:
             layout=self.layout.general,
             language_manager=self.language_manager,
         )
-        setup_themes(self.layout)
+        FontRegistry.setup(self.layout.general.fonts)
+        setup_themes(THEME_DIRECTORY)
         self.audio_device_manager: AudioDeviceManager = AudioDeviceManager()
         self.config_manager = ConfigManager(config_path, dialogs=self.dialogs)
         self.session_manager = SessionManager()
@@ -126,8 +129,8 @@ class Application:
         self.status_bar = GUIStatusBar(
             display_time=self.layout.behavior.ui.status_bar_display_time,
         )
-        self.theme = DefaultTheme()
-        self.fps_theme = FPSTimerTheme()
+        self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
+        self.fps_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_MENU_FPS)
 
         self._menu_bar = MenuBar(
             shortcut_manager=self.shortcut_manager,

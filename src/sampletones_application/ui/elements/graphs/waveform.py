@@ -11,6 +11,8 @@ from sampletones_application.constants.graphs import (
     SUF_GRAPH_THEME,
     SUF_WAVEFORM_OVERLAY,
     SUF_WAVEFORM_POSITION_INDICATOR,
+    TAG_GLOBAL_GRAPH_THEME_INDICATOR,
+    TAG_GLOBAL_GRAPH_THEME_OVERLAY,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.logic.reconstruction.data import (
@@ -22,10 +24,7 @@ from sampletones_application.ui.elements.graphs.layers.instruction import (
     InstructionLayer,
 )
 from sampletones_application.ui.elements.status import GUIStatusBar
-from sampletones_application.ui.themes.graphs.indicator import (
-    IndicatorGraphTheme,
-)
-from sampletones_application.ui.themes.graphs.overlay import OverlayGraphTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import (
     dpg_bind_item_theme,
     dpg_configure_item,
@@ -108,8 +107,8 @@ class GUIWaveformGraph(GUIGraph[Union[ArrayLayer, InstructionLayer]]):
         self.position_indicator_tag = f"{tag}{SUF_WAVEFORM_POSITION_INDICATOR}"
         self.overlay_rectangle_tag = f"{tag}{SUF_WAVEFORM_OVERLAY}"
 
-        self.indicator_theme = IndicatorGraphTheme()
-        self.overlay_theme = OverlayGraphTheme()
+        self.indicator_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_INDICATOR)
+        self.overlay_theme = ThemeRegistry.get(TAG_GLOBAL_GRAPH_THEME_OVERLAY)
 
         self.current_data: Optional[Union[InstructionLibraryFragment[Any], ReconstructionData]] = None
         self.current_position: int = 0

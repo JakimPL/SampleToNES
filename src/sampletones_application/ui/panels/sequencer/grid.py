@@ -16,6 +16,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_TABLE_TRACKER,
     TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+    TAG_SEQUENCER_THEME_TABLE_PATTERN,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
@@ -36,7 +37,7 @@ from sampletones_application.ui.panels.sequencer.input.edit import (
 )
 from sampletones_application.ui.panels.sequencer.input.state import TrackerInputState
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
-from sampletones_application.ui.themes.tables.pattern import PatternTableTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.utils.shortcuts.keys import HEX_KEYS, SIGN_KEYS
 from sampletones_application.view_model.sequencer.grid import (
@@ -89,7 +90,7 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
 
-        self.pattern_theme = PatternTableTheme()
+        self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
         self._lbl_tracker = language_manager[
             Page.SEQUENCER,

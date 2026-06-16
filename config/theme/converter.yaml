@@ -1,0 +1,23 @@
+name: converter
+tag: global.theme.converter
+
+components:
+  - item_type: All
+    entries:
+      - type: color
+        key: Text
+        value: "#ffffff"
+      - type: color
+        key: TextDisabled
+        value: "#828282"
+      - type: color
+        key: WindowBg
+        value: "#2c2c2c"
+      - type: color
+        key: ChildBg
+        value: "#2c2c2c"
+  - item_type: Button
+    entries:
+      - type: color
+        key: Button
+        value: "#404060"

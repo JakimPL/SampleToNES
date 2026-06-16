@@ -1,0 +1,12 @@
+name: table_instruments_row
+tag: sequencer.instruments.theme.row
+
+components:
+  - item_type: Table
+    entries:
+      - type: color
+        key: HeaderHovered
+        value: "#ffffff40"
+      - type: color
+        key: HeaderActive
+        value: "#00000000"

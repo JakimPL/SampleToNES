@@ -1,0 +1,14 @@
+name: graph_indicator
+tag: global.graph.theme.indicator
+
+components:
+  - item_type: InfLineSeries
+    entries:
+      - type: color
+        key: Line
+        category: Plots
+        value: "#ffffff"
+      - type: style
+        key: LineWeight
+        category: Plots
+        x: 2.0

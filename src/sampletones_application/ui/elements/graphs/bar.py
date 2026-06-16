@@ -12,11 +12,12 @@ from sampletones_application.constants.graphs import (
     SUF_BAR_PLOT_ZERO_LINE,
     SUF_GRAPH_THEME,
     SUF_HANDLER_MOUSE,
+    TAG_GLOBAL_GRAPH_THEME_ZERO_LINE,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.bar import BarLayer
-from sampletones_application.ui.themes.graphs.zero import ZeroLineGraphTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.dpg import (
     dpg_bind_item_theme,
@@ -47,7 +48,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         language_manager: Optional[LanguageManager] = None,
         label: str = "",
         y_range: Tuple[float, float] = (0.0, 0.0),
-        zero_line_theme: Theme = ZeroLineGraphTheme(),
+        zero_line_theme: Optional[Theme] = None,
     ):
         self._layout = layout
         self._hover_alpha = layout.bar_plot.hover_alpha
@@ -69,7 +70,7 @@ class GUIBarGraph(GUIGraph[BarLayer]):
         self.mouse_handler_tag = f"{tag}{SUF_HANDLER_MOUSE}"
 
         self.zero_line_tag = f"{tag}{SUF_BAR_PLOT_ZERO_LINE}"
-        self.zero_line_theme = zero_line_theme
+        self.zero_line_theme = ThemeRegistry.resolve(zero_line_theme, TAG_GLOBAL_GRAPH_THEME_ZERO_LINE)
 
         self.data_range = data_range
         self.y_ticks: Optional[Tuple[int, ...]] = None

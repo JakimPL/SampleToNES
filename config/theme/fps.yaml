@@ -1,0 +1,25 @@
+name: fps
+tag: global.theme.menu_fps
+
+components:
+  - item_type: Button
+    enabled: false
+    entries:
+      - type: style
+        key: ButtonTextAlign
+        x: 1.0
+      - type: color
+        key: Text
+        value: "#828282"
+      - type: color
+        key: Button
+        value: "#323232"
+      - type: color
+        key: ButtonHovered
+        value: "#323232"
+      - type: color
+        key: ButtonActive
+        value: "#323232"
+      - type: color
+        key: MenuBarBg
+        value: "#323232"

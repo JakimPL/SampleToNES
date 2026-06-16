@@ -4,9 +4,10 @@ from typing import Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.constants.general import TAG_GLOBAL_THEME_TABLE
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
-from sampletones_application.ui.themes.tables.table import TableTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.instruction.cell import TableCell
@@ -35,7 +36,7 @@ class GUITable:
         row_background: bool = True,
         resizable: bool = False,
         bold_labels: bool = True,
-        theme: Theme = TableTheme(),
+        theme: Optional[Theme] = None,
     ) -> None:
         self._tag = tag
 
@@ -47,7 +48,7 @@ class GUITable:
         self._label_color = label_color
         self._value_color = value_color
         self._bold_labels = bold_labels
-        self._theme = theme
+        self._theme = ThemeRegistry.resolve(theme, TAG_GLOBAL_THEME_TABLE)
 
         table_kwargs: SerializedData = {
             "tag": tag,

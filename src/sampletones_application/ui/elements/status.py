@@ -8,9 +8,10 @@ from sampletones_application.constants.general import (
     SUF_HANDLER_STATUS,
     TAG_GLOBAL_STATUS_BAR,
     TAG_GLOBAL_STATUS_WINDOW,
+    TAG_GLOBAL_THEME_STATUS,
 )
 from sampletones_application.ui.elements.button import GUIButton
-from sampletones_application.ui.themes.status import StatusBarTheme
+from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import (
     dpg_configure_item,
     dpg_delete_item,
@@ -33,7 +34,7 @@ class GUIStatusBar(metaclass=SingletonMeta):
         self._display_time = display_time
 
         self.message: Optional[str] = None
-        self.theme = StatusBarTheme()
+        self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_STATUS)
         self.timer = 0.0
 
     def create(self) -> None:

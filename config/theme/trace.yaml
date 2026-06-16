@@ -1,0 +1,9 @@
+name: traceback
+tag: global.theme.traceback
+
+components:
+  - item_type: InputText
+    entries:
+      - type: color
+        key: Text
+        value: "#c0c0c0"
