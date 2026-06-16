@@ -411,13 +411,19 @@ class GUISequencerOrderPanel(GUIPanel):
             case dpg.mvKey_End:
                 self._jump_position(self._position_count - 1)
             case dpg.mvKey_Delete:
-                self._clear_cell()
-                self._move_position(1)
+                ctrl_held = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
+                if ctrl_held:
+                    self._on_remove_clicked()
+                else:
+                    self._clear_cell()
+                    self._move_position(1)
             case dpg.mvKey_Back:
                 self._clear_cell()
                 self._move_position(-1)
             case dpg.mvKey_Spacebar:
                 self._clear_cell()
+            case dpg.mvKey_Insert:
+                self._on_add_clicked()
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
