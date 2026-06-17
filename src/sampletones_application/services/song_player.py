@@ -8,6 +8,7 @@ import pyaudio
 from sampletones_application.logic.sequencer.playback.protocol import RowSynthesizerProtocol
 from sampletones_application.services.base import ServiceBase
 from sampletones_application.services.song_player_result import (
+    SongPlaybackError,
     SongPlaybackStopped,
     SongPlayerResult,
     SongPositionUpdate,
@@ -94,9 +95,9 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
                 sample_rate=sample_rate,
                 buffer_size=frame_length,
             )
-            logger.debug(f"SongPlayerService: audio stream opened at {sample_rate} Hz")
-        except Exception as exception:
-            logger.error(f"SongPlayerService: failed to open audio stream: {exception}")
+            logger.debug(f"{self.class_name}: audio stream opened at {sample_rate} Hz")
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error(f"{self.class_name}: failed to open audio stream: {exception}")
             self._emit(SongPlaybackStopped())
             return
 
@@ -115,6 +116,12 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
                 if self._synthesizer.is_finished:
                     self._emit(SongPlaybackStopped())
                     break
+        except Exception as exception:  # pylint: disable=broad-exception-caught
+            logger.error_with_traceback(
+                exception,
+                f"{self.class_name}: playback error",
+            )
+            self._emit(SongPlaybackError(error=exception))
         finally:
             self._stream.stop_stream()
             self._stream.close()

@@ -44,7 +44,11 @@ class Logger(metaclass=SingletonMeta):
     def critical(self, message: str) -> None:
         self._logger.critical(message)
 
-    def error_with_traceback(self, exception: BaseException, message: Optional[str] = None) -> None:
+    def error_with_traceback(
+        self,
+        exception: BaseException,
+        message: Optional[str] = None,
+    ) -> None:
         if not message:
             message = f"{type(exception).__name__}"
         self._logger.error(message, exc_info=exception, stack_info=True)

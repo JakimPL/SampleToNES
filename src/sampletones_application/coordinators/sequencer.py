@@ -152,6 +152,7 @@ class SequencerTabCoordinator:
         self._sequencer_browser_panel.on_add_to_sequencer = self._import_reconstruction
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
+        self._song_player_logic.on_error = self._on_player_error
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
@@ -181,10 +182,14 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.push_grid()
         self._sequencer_order_logic.push_order()
 
+    def _on_player_error(self, error: Exception) -> None:
+        self._dialogs.show_error(error)
+
     def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
         if not view_model.is_playing and not view_model.is_paused:
             self._sequencer_grid_panel.set_playing_row(None)
             self._sequencer_order_panel.set_playing_position(None)
+
         self._player_panel.update_view(view_model)
 
     def _on_player_position_changed(self, order_position: int, row_index: int) -> None:

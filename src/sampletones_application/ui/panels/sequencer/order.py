@@ -283,11 +283,15 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted_column = position
 
     def set_playing_position(self, position: Optional[int]) -> None:
-        prev_playing = self._playing_position
+        previous_position = self._playing_position
         self._playing_position = position
-        if prev_playing is not None and prev_playing != position and prev_playing == self._highlighted_column:
-            focused = self._input_state.cursor is not None and self._input_state.cursor.position == prev_playing
-            self._apply_column_highlight(prev_playing, focused=focused)
+        if (
+            previous_position is not None
+            and previous_position != position
+            and previous_position == self._highlighted_column
+        ):
+            focused = self._input_state.cursor is not None and self._input_state.cursor.position == previous_position
+            self._apply_column_highlight(previous_position, focused=focused)
 
     def _clear_column_highlight(self) -> None:
         if self._highlighted_column is not None:

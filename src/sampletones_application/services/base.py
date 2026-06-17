@@ -34,3 +34,7 @@ class ServiceBase(ABC, Generic[T]):
     def _emit(self, result: T) -> None:
         for listener in self._listeners:
             CallbackQueue.add(listener, result, priority=self._priority)
+
+    @property
+    def class_name(self) -> str:
+        return self.__class__.__name__

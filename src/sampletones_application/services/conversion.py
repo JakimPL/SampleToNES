@@ -15,7 +15,6 @@ from sampletones_application.services.result import (
 from sampletones_core.configs import Config
 from sampletones_core.parallelization import ETAEstimator, TaskProgress, TaskStatus
 from sampletones_core.reconstructions.converter import ReconstructionConverter
-from sampletones_shared.exceptions import NoFilesToProcessError
 from sampletones_shared.logger import logger
 from sampletones_shared.utils.system.paths import to_path
 
@@ -110,10 +109,7 @@ class ConversionService(ServiceBase[ConversionResult]):
         self._emit(ServiceSuccess(value=output_path))
 
     def _on_error(self, exception: Exception) -> None:
-        if isinstance(exception, NoFilesToProcessError):
-            self._emit(ServiceError(exception=exception))
-        else:
-            self._emit(ServiceError(exception=exception))
+        self._emit(ServiceError(exception=exception))
 
     def _on_cancelled(self) -> None:
         self._emit(ServiceCancelled())

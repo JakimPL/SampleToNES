@@ -13,4 +13,9 @@ class SongPlaybackStopped:
     pass
 
 
-SongPlayerResult = SongPositionUpdate | SongPlaybackStopped
+@dataclass(frozen=True)
+class SongPlaybackError:
+    error: Exception
+
+
+SongPlayerResult = SongPositionUpdate | SongPlaybackStopped | SongPlaybackError

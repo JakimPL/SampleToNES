@@ -72,6 +72,12 @@ class GUISongPlayerPanel(GUIPanel):
             TextType.MESSAGE,
             SequencerPlayerElements.NO_SONG_LOADED,
         ]
+        self._msg_playback_error = language_manager[
+            Page.SEQUENCER,
+            Panel.PLAYER,
+            TextType.MESSAGE,
+            SequencerPlayerElements.PLAYBACK_ERROR,
+        ]
         self._tpl_position = language_manager[
             Page.SEQUENCER,
             Panel.PLAYER,
@@ -156,11 +162,19 @@ class GUISongPlayerPanel(GUIPanel):
         else:
             dpg_set_item_label(self.pause_button_tag, self._lbl_pause)
 
-        position_text = self._tpl_position.format(
-            frame=view_model.order_position,
-            row=view_model.row_index,
-        )
-        dpg_set_value(self.position_text_tag, position_text)
+        if view_model.error is not None:
+            dpg_set_value(
+                self.position_text_tag,
+                self._msg_playback_error.format(error=view_model.error),
+            )
+        else:
+            dpg_set_value(
+                self.position_text_tag,
+                self._tpl_position.format(
+                    frame=view_model.order_position,
+                    row=view_model.row_index,
+                ),
+            )
 
     def play(self) -> None:
         self._song_player_logic.play()

@@ -116,7 +116,7 @@ class RowSynthesizer:
     def render_row(self) -> tuple[np.ndarray, SongPosition]:
         project = self._project_controller.project
         settings = project.settings
-        frame_length = settings.sample_rate // settings.change_rate
+        frame_length = self._config.library.frame_length
         ticks_per_row = self._ticks_for_row(settings)
         chunk_length = frame_length * ticks_per_row
 

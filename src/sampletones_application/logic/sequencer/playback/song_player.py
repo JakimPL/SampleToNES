@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 from typing import Callable, FrozenSet, Optional
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.services.song_player import SongPlayerService
 from sampletones_application.services.song_player_result import (
+    SongPlaybackError,
     SongPlaybackStopped,
     SongPlayerResult,
     SongPositionUpdate,
@@ -39,14 +38,17 @@ class SongPlayerLogic(CallbackMixin):
         self._service.subscribe(self._on_service_result)
         self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
         self._position = SongPosition()
+        self._last_error: Optional[str] = None
 
         self.on_position_changed: Optional[Callable[[int, int], None]] = None
         self.on_view_changed: Optional[Callable[[SongPlayerViewModel], None]] = None
+        self.on_error: Optional[Callable[[Exception], None]] = None
 
     def play(self) -> None:
         if not self._project_controller.is_open:
             return
 
+        self._last_error = None
         self._position = SongPosition()
         self._service.start(active_channels=self._active_channels)
         self._emit_view()
@@ -95,6 +97,11 @@ class SongPlayerLogic(CallbackMixin):
                 self._emit_view()
             case SongPlaybackStopped():
                 self._emit_view()
+            case SongPlaybackError(error=error):
+                self._last_error = str(error) if str(error) else type(error).__name__
+                self._position = SongPosition()
+                self.call(self.on_error, error)
+                self._emit_view()
 
     def _emit_view(self) -> None:
         self.call(self.on_view_changed, self._build_view_model())
@@ -106,4 +113,5 @@ class SongPlayerLogic(CallbackMixin):
             is_paused=self.is_paused(),
             order_position=self._position.order_position,
             row_index=self._position.row_index,
+            error=self._last_error,
         )

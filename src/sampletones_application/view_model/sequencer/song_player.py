@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -7,6 +9,7 @@ class SongPlayerViewModel(BaseModel, frozen=True):
     is_paused: bool
     order_position: int
     row_index: int
+    error: Optional[str] = None
 
     @property
     def play_enabled(self) -> bool:
