@@ -94,8 +94,10 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
                 sample_rate=sample_rate,
                 buffer_size=frame_length,
             )
+            logger.debug(f"SongPlayerService: audio stream opened at {sample_rate} Hz")
         except Exception as exception:
             logger.error(f"SongPlayerService: failed to open audio stream: {exception}")
+            self._emit(SongPlaybackStopped())
             return
 
         try:

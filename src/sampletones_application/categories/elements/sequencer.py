@@ -41,6 +41,11 @@ class SequencerOrderElements(AbstractElement):
     ROW_NOISE = "row_noise"
 
 
+class SequencerPlayerElements(AbstractElement):
+    NO_SONG_LOADED = "no_song_loaded"
+    POSITION = "position"
+
+
 class SequencerInstrumentsElements(AbstractElement):
     INSTRUMENTS_TEXT = "instruments_text"
     COLUMN_ID = "column_id"

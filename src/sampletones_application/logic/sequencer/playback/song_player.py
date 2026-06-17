@@ -47,11 +47,8 @@ class SongPlayerLogic(CallbackMixin):
         if not self._project_controller.is_open:
             return
 
-        self._service.start(
-            order_position=self._position.order_position,
-            row_index=self._position.row_index,
-            active_channels=self._active_channels,
-        )
+        self._position = SongPosition()
+        self._service.start(active_channels=self._active_channels)
         self._emit_view()
 
     def play_from(self, order_position: int, row_index: int = 0) -> None:
@@ -71,6 +68,7 @@ class SongPlayerLogic(CallbackMixin):
 
     def stop(self) -> None:
         self._service.stop()
+        self._position = SongPosition()
         self._emit_view()
 
     def is_playing(self) -> bool:

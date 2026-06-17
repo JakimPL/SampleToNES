@@ -43,6 +43,8 @@ colors:
   order_column: "#1e2028"
   order_column_alternate: "#262834"
   order_column_current: "#ffffff20"
+  order_column_playing: "#64dc6430"
+  playback_row: "#64dc6440"
   subcolumns:
     instrument: "#ffffffff"
     transpose: "#a0a0a0ff"

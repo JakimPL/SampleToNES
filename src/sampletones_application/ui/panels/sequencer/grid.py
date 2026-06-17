@@ -81,6 +81,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._editable_cells: EditableCells[CellKey] = EditableCells()
         self._current_row_count: int = 0
         self._highlighted_row: Optional[int] = None
+        self._playing_row: Optional[int] = None
         self._input_state: TrackerInputState = TrackerInputState()
         self._subcolumn_themes: Dict[SubColumn, int] = {}
         self._current_samples: Optional[SequencerSamplesViewModel] = None
@@ -273,6 +274,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._build_table(view_model)
         self._highlight_sample_column()
         self._update_cursor()
+        self._apply_playing_row_highlight()
 
     def _render_cell(self, key: CellKey) -> str:
         row, generator, subcolumn = key
@@ -683,3 +685,18 @@ class GUISequencerGridPanel(GUIPanel):
             row_index,
         )
         self._highlighted_row = None
+
+    def set_playing_row(self, row_index: Optional[int]) -> None:
+        if self._playing_row is not None:
+            dpg.unhighlight_table_row(TAG_SEQUENCER_GRID_TABLE_TRACKER, self._playing_row)
+
+        self._playing_row = row_index
+        self._apply_playing_row_highlight()
+
+    def _apply_playing_row_highlight(self) -> None:
+        if self._playing_row is not None:
+            dpg.highlight_table_row(
+                TAG_SEQUENCER_GRID_TABLE_TRACKER,
+                self._playing_row,
+                color=self._layout.colors.playback_row,
+            )

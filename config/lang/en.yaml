@@ -334,6 +334,12 @@ sequencer.browser.message.status_search: "Search reconstructions"
 sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as instrument"
 
 # =============================================================================
+# Sequencer tab — Player
+# =============================================================================
+sequencer.player.message.no_song_loaded: "No song loaded."
+sequencer.player.template.position: "Frame {frame} | Row {row}"
+
+# =============================================================================
 # Sequencer tab — Module
 # =============================================================================
 sequencer.module.label.module_options: "Module options"

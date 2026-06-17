@@ -67,6 +67,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted: Optional[OrderCursor] = None
         self._highlighted_column: Optional[int] = None
         self._current_position: Optional[int] = None
+        self._playing_position: Optional[int] = None
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
         self.on_add_requested: Optional[OnAddCallback] = None
@@ -271,9 +272,22 @@ class GUISequencerOrderPanel(GUIPanel):
         dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, shade)
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
-        color = self._layout.colors.pattern_highlight if focused else self._layout.colors.order_column_current
+        if focused:
+            color = self._layout.colors.pattern_highlight
+        elif position == self._playing_position:
+            color = self._layout.colors.order_column_playing
+        else:
+            color = self._layout.colors.order_column_current
+
         dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, color)
         self._highlighted_column = position
+
+    def set_playing_position(self, position: Optional[int]) -> None:
+        prev_playing = self._playing_position
+        self._playing_position = position
+        if prev_playing is not None and prev_playing != position and prev_playing == self._highlighted_column:
+            focused = self._input_state.cursor is not None and self._input_state.cursor.position == prev_playing
+            self._apply_column_highlight(prev_playing, focused=focused)
 
     def _clear_column_highlight(self) -> None:
         if self._highlighted_column is not None:

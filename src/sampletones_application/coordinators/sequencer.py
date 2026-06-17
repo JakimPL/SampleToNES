@@ -26,18 +26,19 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
+from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
-from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.ui.panels.sequencer.module import GUISequencerModulePanel
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
+from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
@@ -95,8 +96,12 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
         self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(project_controller)
-        self._sequencer_player_logic = PlayerLogic(audio_device_manager)
-        self._player_panel: GUIAudioPlayerPanel
+        self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
+            audio_device_manager,
+            project_controller,
+            config_manager.config,
+        )
+        self._player_panel: GUISongPlayerPanel
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
             layout=layout.sequencer,
             language_manager=language_manager,
@@ -146,6 +151,8 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
         self._sequencer_browser_panel.on_add_to_sequencer = self._import_reconstruction
 
+        self._song_player_logic.on_position_changed = self._on_player_position_changed
+
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
         self._project_controller.on_song_changed = self._on_song_changed
         self._project_controller.on_samples_changed = self._sequencer_samples_logic.push_samples
@@ -160,6 +167,7 @@ class SequencerTabCoordinator:
         self.refresh()
 
     def refresh(self) -> None:
+        self._song_player_logic.stop()
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
         self._sequencer_samples_logic.push_samples()
@@ -172,6 +180,17 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.push_settings()
         self._sequencer_grid_logic.push_grid()
         self._sequencer_order_logic.push_order()
+
+    def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
+        if not view_model.is_playing and not view_model.is_paused:
+            self._sequencer_grid_panel.set_playing_row(None)
+            self._sequencer_order_panel.set_playing_position(None)
+        self._player_panel.update_view(view_model)
+
+    def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
+        self._sequencer_grid_panel.set_playing_row(row_index)
+        self._sequencer_order_panel.set_playing_position(order_position)
+        self._sequencer_grid_logic.select_frame(order_position)
 
     def _import_reconstruction(self, filepath: Path) -> None:
         if not self._project_controller.is_open:
@@ -306,14 +325,14 @@ class SequencerTabCoordinator:
                         no_scroll_with_mouse=True,
                     ):
                         self._sequencer_grid_panel.create_panel()
-                        self._player_panel = GUIAudioPlayerPanel(
+                        self._player_panel = GUISongPlayerPanel(
                             tag=TAG_SEQUENCER_GRID_PANEL_PLAYER,
                             parent=TAG_SEQUENCER_GRID_PANEL,
-                            player_logic=self._sequencer_player_logic,
+                            song_player_logic=self._song_player_logic,
                             layout=self._layout.player,
                             language_manager=self._language_manager,
-                            dialogs=self._dialogs,
                         )
+                        self._song_player_logic.on_view_changed = self._on_player_view_changed
                         self._sequencer_order_panel.create_panel()
                         self._sequencer_grid_panel.create_tracker()
 
