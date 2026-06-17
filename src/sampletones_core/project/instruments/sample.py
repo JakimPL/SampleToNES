@@ -4,10 +4,17 @@ from sampletones_core.reconstructions import Reconstruction
 
 
 class Sample:
-    def __init__(self, name: str, reconstruction: Reconstruction) -> None:
+    def __init__(
+        self,
+        name: str,
+        reconstruction: Reconstruction,
+        *,
+        loop: bool = False,
+    ) -> None:
         self.id: str = uuid4().hex
         self.name: str = name
         self.reconstruction: Reconstruction = reconstruction
+        self.loop: bool = loop
 
     def __hash__(self) -> int:
         return hash(self.id)

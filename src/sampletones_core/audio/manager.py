@@ -659,6 +659,35 @@ class AudioDeviceManager(CallbackMixin):
         with self._lock:
             return self._paused
 
+    def open_output_stream(
+        self,
+        *,
+        sample_rate: int,
+        buffer_size: int,
+    ) -> pyaudio.Stream:
+        """Open a blocking output stream for caller-managed streaming playback.
+
+        The caller owns the stream's lifetime and must close it when done.
+
+        Args:
+            sample_rate: Sample rate in Hz.
+            buffer_size: Frames per buffer (controls write granularity).
+
+        Raises:
+            PlaybackError: If PyAudio is not initialized.
+        """
+        if self._pyaudio is None:
+            raise PlaybackError("PyAudio not initialized; call reinitialize() first")
+
+        return self._pyaudio.open(
+            format=FORMAT,
+            channels=CHANNELS,
+            rate=sample_rate,
+            output=True,
+            output_device_index=self._device_index,
+            frames_per_buffer=buffer_size,
+        )
+
     def terminate(self) -> None:
         """
         Clean up and terminate the audio device manager.

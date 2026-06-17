@@ -38,7 +38,8 @@ def _populated_project(
     second = Sample(name="bass", reconstruction=second_reconstruction)
     project.samples.extend([first, second])
 
-    channel = project.song[GeneratorName.PULSE1]
+    song = project.song
+    channel = song[GeneratorName.PULSE1]
     pattern = channel.patterns[0]
     pattern.name = "intro"
     pattern.rows[0] = Row(
@@ -50,8 +51,11 @@ def _populated_project(
         volume=15,
     )
 
-    extra_index = channel.add_pattern(project.settings.rows_per_pattern, name="verse")
-    channel.order = [0, extra_index, 0]
+    extra_index = channel.add_pattern(song.rows_per_pattern, name="verse")
+    song.append_frame()
+    song.set_order_entry(1, GeneratorName.PULSE1, extra_index)
+    song.append_frame()
+    song.set_order_entry(2, GeneratorName.PULSE1, 0)
     return project
 
 
@@ -73,9 +77,10 @@ class TestRoundTrip:
         assert [sample.id for sample in loaded.samples] == [sample.id for sample in project.samples]
         assert [sample.name for sample in loaded.samples] == ["lead", "bass"]
 
-        channel = loaded.song[GeneratorName.PULSE1]
-        assert channel.order == project.song[GeneratorName.PULSE1].order
-        first_pattern = channel.pattern(channel.order[0])
+        loaded_song = loaded.song
+        assert loaded_song.order == project.song.order
+        pulse1_index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        first_pattern = loaded_song.pattern(GeneratorName.PULSE1, pulse1_index_at_0)
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
         assert row.transpose == 0
@@ -92,10 +97,13 @@ class TestRoundTrip:
         ProjectContainer.save(project, path)
 
         loaded = ProjectContainer.load(path)
-        channel = loaded.song[GeneratorName.PULSE1]
-        row = channel.pattern(channel.order[0]).rows[0]
+        loaded_song = loaded.song
+        channel = loaded_song[GeneratorName.PULSE1]
+        index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
+        row = channel.pattern(index_at_0).rows[0]
         assert loaded.sample(row.instrument.sample_id) is loaded.samples[0]
-        assert channel.pattern(channel.order[0]) is channel.pattern(channel.order[2])
+        index_at_2 = loaded_song.order[2].get(GeneratorName.PULSE1)
+        assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
 
 
 class TestArchiveLayout:
@@ -218,9 +226,6 @@ class TestLoadRejectsInvalidArchives:
         full = tmp_path / "demo.stp"
         ProjectContainer.save(project, full)
 
-        # Rebuild an archive that keeps the document but drops every reconstruction,
-        # so a sample references a reconstruction_id with no matching entry
-        # (KeyError in _build_project).
         stripped = tmp_path / "stripped.stp"
         with zipfile.ZipFile(full, "r") as source:
             document = source.read(PROJECT_DOCUMENT_NAME)
@@ -231,8 +236,6 @@ class TestLoadRejectsInvalidArchives:
             ProjectContainer.load(stripped)
 
     def test_unexpected_error_wrapped_as_unhandled(self, tmp_path: Path) -> None:
-        # A valid archive whose assembly blows up with an unanticipated error must be
-        # wrapped into UnhandledProjectError rather than leaking the raw exception.
         path = tmp_path / "demo.stp"
         ProjectContainer.save(Project.create(title="Demo"), path)
 

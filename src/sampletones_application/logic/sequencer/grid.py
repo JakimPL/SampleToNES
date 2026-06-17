@@ -46,33 +46,41 @@ class SequencerGridLogic(CallbackMixin):
 
     @property
     def settings(self) -> SequencerSettingsViewModel:
-        settings = self._controller.project.settings
+        project = self._controller.project
+        project_settings = project.settings
         return SequencerSettingsViewModel(
-            change_rate=settings.change_rate,
-            tempo=settings.tempo,
-            speed=settings.speed,
-            rows_per_pattern=settings.rows_per_pattern,
+            change_rate=project_settings.change_rate,
+            tempo=project_settings.tempo,
+            speed=project_settings.speed,
+            rows_per_pattern=project.song.rows_per_pattern,
         )
 
     def build_grid(self) -> SequencerGridViewModel:
         song = self._controller.project.song
-        frame_count = max((len(song[generator].order) for generator in GeneratorName.items()), default=0)
+        frame_count = song.order_length()
         frame_index = self._clamp_frame(frame_count)
 
         patterns: Dict[GeneratorName, Pattern] = {}
-        for generator in GeneratorName.items():
-            channel = song[generator]
-            if frame_index < len(channel.order):
-                entry = channel.order[frame_index]
-                pattern = channel.pattern(entry) if entry is not None else None
+        if frame_count > 0:
+            for generator in GeneratorName.items():
+                index = song.order[frame_index].get(generator)
+                pattern = song.pattern(generator, index) if index is not None else None
                 if pattern is not None:
                     patterns[generator] = pattern
 
-        row_count = self._frame_row_count(patterns) if frame_count > 0 else 0
+        row_count = self._frame_row_count(patterns, song.rows_per_pattern) if frame_count > 0 else 0
         rows = tuple(self._build_row(index, patterns) for index in range(row_count))
-        return SequencerGridViewModel(frame_index=frame_index, frame_count=frame_count, rows=rows)
+        return SequencerGridViewModel(
+            frame_index=frame_index,
+            frame_count=frame_count,
+            rows=rows,
+        )
 
-    def _frame_row_count(self, patterns: Dict[GeneratorName, Pattern]) -> int:
+    def _frame_row_count(
+        self,
+        patterns: Dict[GeneratorName, Pattern],
+        rows_per_pattern: int,
+    ) -> int:
         """Rows to show for the current frame.
 
         Empty (None) slots contribute no pattern, so a frame whose channels are all
@@ -83,7 +91,7 @@ class SequencerGridLogic(CallbackMixin):
         if lengths:
             return max(lengths)
 
-        return self._controller.project.settings.rows_per_pattern
+        return rows_per_pattern
 
     def push_settings(self) -> None:
         self.call(self.on_settings_changed, self.settings)
@@ -99,6 +107,9 @@ class SequencerGridLogic(CallbackMixin):
 
     def set_change_rate(self, change_rate: int) -> None:
         self._controller.set_change_rate(change_rate)
+
+    def set_rows_per_pattern(self, rows_per_pattern: int) -> None:
+        self._controller.set_rows_per_pattern(rows_per_pattern)
 
     def set_tempo(self, tempo: int) -> None:
         self._controller.set_tempo(tempo)
@@ -202,7 +213,10 @@ class SequencerGridLogic(CallbackMixin):
                 self.set_row(
                     generator,
                     row_index,
-                    instrument=Instrument(sample_id=sample_id, generator_name=generator),
+                    instrument=Instrument(
+                        sample_id=sample_id,
+                        generator_name=generator,
+                    ),
                 )
             else:
                 self.clear_row(generator, row_index)
@@ -221,7 +235,12 @@ class SequencerGridLogic(CallbackMixin):
         a value typed in the sample column always lands somewhere.
         """
         for generator in self._subcolumn_generators(row_index):
-            self.set_row(generator, row_index, transpose=transpose, volume=volume)
+            self.set_row(
+                generator,
+                row_index,
+                transpose=transpose,
+                volume=volume,
+            )
 
     def clear_sample_subcolumn(
         self,
@@ -231,7 +250,12 @@ class SequencerGridLogic(CallbackMixin):
         volume: bool = False,
     ) -> None:
         for generator in self._subcolumn_generators(row_index):
-            self.clear_subcolumn(generator, row_index, transpose=transpose, volume=volume)
+            self.clear_subcolumn(
+                generator,
+                row_index,
+                transpose=transpose,
+                volume=volume,
+            )
 
     @property
     def frame_index(self) -> int:
@@ -242,9 +266,9 @@ class SequencerGridLogic(CallbackMixin):
         self.push_grid()
 
     def _pattern_index_at_frame(self, generator: GeneratorName) -> Optional[int]:
-        channel = self._controller.project.song[generator]
-        if self._frame_index < len(channel.order):
-            return channel.order[self._frame_index]
+        song = self._controller.project.song
+        if self._frame_index < song.order_length():
+            return song.order[self._frame_index].get(generator)
 
         return None
 
@@ -254,14 +278,18 @@ class SequencerGridLogic(CallbackMixin):
         Providing content to a channel whose current frame is an empty (None) slot
         creates a fresh pattern and assigns it to that order position, so the
         arrangement grows as the user plays rather than dropping the input. Returns
-        ``None`` when the frame has no order position for this channel at all.
+        ``None`` when the frame is beyond the order length.
         """
-        channel = self._controller.project.song[generator]
-        if self._frame_index >= len(channel.order):
+        song = self._controller.project.song
+        if self._frame_index >= song.order_length():
             return None
 
         pattern_index = self._controller.add_pattern(generator)
-        self._controller.set_order_entry(generator, self._frame_index, pattern_index)
+        self._controller.set_order_entry(
+            generator,
+            self._frame_index,
+            pattern_index,
+        )
         return pattern_index
 
     def _used_generators(self, sample: Sample) -> List[GeneratorName]:
@@ -289,7 +317,12 @@ class SequencerGridLogic(CallbackMixin):
         for generator in GeneratorName.items():
             pattern_index = self._pattern_index_at_frame(generator)
             pattern = (
-                self._controller.project.song[generator].pattern(pattern_index) if pattern_index is not None else None
+                self._controller.project.song.pattern(
+                    generator,
+                    pattern_index,
+                )
+                if pattern_index is not None
+                else None
             )
             rows[generator] = pattern.rows[row_index] if pattern is not None else None
 
@@ -324,7 +357,11 @@ class SequencerGridLogic(CallbackMixin):
 
         return frozenset(relevant)
 
-    def _build_row(self, index: int, patterns: Dict[GeneratorName, Pattern]) -> SequencerRowViewModel:
+    def _build_row(
+        self,
+        index: int,
+        patterns: Dict[GeneratorName, Pattern],
+    ) -> SequencerRowViewModel:
         rows: Dict[GeneratorName, Optional[Row]] = {}
         cells: Dict[GeneratorName, SequencerCellViewModel] = {}
         for generator in GeneratorName.items():
@@ -345,7 +382,10 @@ class SequencerGridLogic(CallbackMixin):
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(
-            instrument=display_instrument(self._controller.project.samples, row.instrument),
+            instrument=display_instrument(
+                self._controller.project.samples,
+                row.instrument,
+            ),
             transpose=display_transpose(row.transpose),
             volume=display_volume(row.volume),
         )

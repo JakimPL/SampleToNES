@@ -16,6 +16,7 @@ class SequencerTableCells(BaseModel, frozen=True):
     generator: int
     instrument_id: int
     instrument_name: int
+    instrument_loop: int
 
 
 class TempoLayout(BaseModel, frozen=True):

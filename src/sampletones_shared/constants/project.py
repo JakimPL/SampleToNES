@@ -15,6 +15,11 @@ MAX_PROJECT_TITLE_LENGTH: Final[int] = 64
 MAX_PROJECT_AUTHOR_LENGTH: Final[int] = 64
 MAX_PROJECT_COMMENT_LENGTH: Final[int] = 65536
 
+# Tick formula calibration
+# speed == ticks_per_row at these reference values
+REFERENCE_TEMPO: Final[int] = 150
+REFERENCE_CHANGE_RATE: Final[int] = 60
+
 # Song timing
 DEFAULT_TEMPO: Final[int] = 150
 MIN_TEMPO: Final[int] = 1

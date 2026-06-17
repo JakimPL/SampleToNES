@@ -30,12 +30,11 @@ class TestChannel:
         channel = Channel.empty(GeneratorName.PULSE1, rows_per_pattern=16)
         assert channel.generator == GeneratorName.PULSE1
         assert len(channel.patterns) == 1
-        assert channel.order == [0]
+        assert 0 in channel.patterns
 
     def test_pattern_resolution(self) -> None:
         channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)
         assert channel.pattern(0) is channel.patterns[0]
-        assert channel.ordered_patterns() == [channel.patterns[0]]
 
     def test_unknown_pattern_returns_none(self) -> None:
         channel = Channel.empty(GeneratorName.NOISE, rows_per_pattern=4)

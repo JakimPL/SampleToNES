@@ -5,7 +5,12 @@ from typing import Optional
 from sampletones_core.data import Metadata
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
-from sampletones_shared.constants.project import DEFAULT_PROJECT_AUTHOR, DEFAULT_PROJECT_COMMENT, DEFAULT_PROJECT_TITLE
+from sampletones_shared.constants.project import (
+    DEFAULT_PROJECT_AUTHOR,
+    DEFAULT_PROJECT_COMMENT,
+    DEFAULT_PROJECT_TITLE,
+    DEFAULT_ROWS_PER_PATTERN,
+)
 
 from .info import ProjectInfo
 from .settings import ProjectSettings
@@ -42,6 +47,7 @@ class Project:
         title: str = DEFAULT_PROJECT_TITLE,
         author: str = DEFAULT_PROJECT_AUTHOR,
         comment: str = DEFAULT_PROJECT_COMMENT,
+        rows_per_pattern: int = DEFAULT_ROWS_PER_PATTERN,
         settings: Optional[ProjectSettings] = None,
     ) -> Project:
         if settings is None:
@@ -57,7 +63,7 @@ class Project:
             info=info,
             settings=settings,
             samples=IdentifiedCollection(),
-            song=Song.empty(settings.rows_per_pattern),
+            song=Song.empty(rows_per_pattern),
         )
 
     def sample(self, sample_id: str) -> Optional[Sample]:

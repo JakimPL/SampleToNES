@@ -120,6 +120,7 @@ class SequencerTabCoordinator:
 
     def _wire_callbacks(self) -> None:
         self._sequencer_module_panel.on_change_rate = self._sequencer_grid_logic.set_change_rate
+        self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
@@ -133,7 +134,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
         self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
         self._sequencer_order_panel.on_add_requested = self._on_add_to_order
-        self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order_all
+        self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
         self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
         self._sequencer_order_panel.on_cell_selected = self._sequencer_grid_panel.deselect_cell
@@ -142,6 +143,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
+        self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
         self._sequencer_browser_panel.on_add_to_sequencer = self._import_reconstruction
 
         self._project_controller.on_settings_changed = self._sequencer_grid_logic.push_settings
@@ -167,6 +169,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.set_enabled(is_open)
 
     def _on_song_changed(self) -> None:
+        self._sequencer_grid_logic.push_settings()
         self._sequencer_grid_logic.push_grid()
         self._sequencer_order_logic.push_order()
 
@@ -259,9 +262,8 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.select_frame(empty_position)
             return
 
-        self._sequencer_order_logic.add_to_order_all()
-        song = self._project_controller.project.song
-        new_position = max(len(song[generator].order) for generator in GeneratorName.items()) - 1
+        self._sequencer_order_logic.add_to_order()
+        new_position = self._project_controller.order_length - 1
         self._sequencer_grid_logic.select_frame(new_position)
 
     def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:

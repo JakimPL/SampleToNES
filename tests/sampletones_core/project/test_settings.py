@@ -9,10 +9,8 @@ from sampletones_core.constants.general import (
 )
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.constants.project import (
-    MAX_ROWS_PER_PATTERN,
     MAX_SPEED,
     MAX_TEMPO,
-    MIN_ROWS_PER_PATTERN,
     MIN_SPEED,
     MIN_TEMPO,
 )
@@ -45,10 +43,6 @@ class TestBounds(BaseTestSuite):
         TestCase(field="speed", value=MAX_SPEED, expected=True),
         TestCase(field="speed", value=MIN_SPEED - 1, expected=False),
         TestCase(field="speed", value=MAX_SPEED + 1, expected=False),
-        TestCase(field="rows_per_pattern", value=MIN_ROWS_PER_PATTERN, expected=True),
-        TestCase(field="rows_per_pattern", value=MAX_ROWS_PER_PATTERN, expected=True),
-        TestCase(field="rows_per_pattern", value=MIN_ROWS_PER_PATTERN - 1, expected=False),
-        TestCase(field="rows_per_pattern", value=MAX_ROWS_PER_PATTERN + 1, expected=False),
     ]
 
     @pytest.mark.parametrize(
@@ -78,7 +72,7 @@ class TestMutability:
 
 class TestSerialization:
     def test_round_trip(self) -> None:
-        settings = ProjectSettings(tempo=120, speed=4, rows_per_pattern=32)
+        settings = ProjectSettings(tempo=120, speed=4)
         restored = ProjectSettings.model_validate(settings.model_dump())
         assert restored == settings
 

@@ -390,6 +390,7 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _on_cell_clicked(self, sender: Sender, app_data: bool, user_data: OrderKey) -> None:
         dpg.set_value(sender, False)
+        self._committed_state()
         generator, position = user_data
         self._apply_state(OrderInputState(cursor=OrderCursor(generator, position)))
 
@@ -410,6 +411,8 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._jump_position(0)
             case dpg.mvKey_End:
                 self._jump_position(self._position_count - 1)
+            case dpg.mvKey_Return:
+                self._move_position(1)
             case dpg.mvKey_Delete:
                 ctrl_held = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
                 if ctrl_held:

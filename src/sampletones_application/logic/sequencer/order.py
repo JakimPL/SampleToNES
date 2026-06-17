@@ -7,7 +7,7 @@ from sampletones_application.view_model.sequencer.order import (
     SequencerOrderViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.project.patterns.channel import Channel
+from sampletones_core.project.song import Song
 from sampletones_shared.utils.callbacks import CallbackMixin
 
 
@@ -26,11 +26,8 @@ class SequencerOrderLogic(CallbackMixin):
 
     def build_order(self) -> SequencerOrderGridViewModel:
         song = self._controller.project.song
-        channels = {
-            generator: self._build_channel_view(generator, song[generator]) for generator in GeneratorName.items()
-        }
-        position_count = max((len(view.entries) for view in channels.values()), default=0)
-        return SequencerOrderGridViewModel(position_count=position_count, channels=channels)
+        channels = {generator: self._build_channel_view(generator, song) for generator in GeneratorName.items()}
+        return SequencerOrderGridViewModel(position_count=song.order_length(), channels=channels)
 
     def push_order(self) -> None:
         self.call(self.on_order_changed, self.build_order())
@@ -52,45 +49,36 @@ class SequencerOrderLogic(CallbackMixin):
 
     def find_empty_frame(self, after: int) -> Optional[int]:
         """Returns the index of the first order position strictly after ``after``
-        where every generator's pattern is either unassigned or contains no notes.
+        where every channel's pattern is either unassigned or contains no notes.
         Returns None if no such position exists ahead of the given frame."""
         song = self._controller.project.song
-        channels = {generator: song[generator] for generator in GeneratorName.items()}
-        position_count = max((len(channel.order) for channel in channels.values()), default=0)
-        for position in range(after + 1, position_count):
+        for position in range(after + 1, song.order_length()):
+            frame = song.order[position]
             if all(
-                (
-                    position >= len(channel.order)
-                    or (index := channel.order[position]) is None
-                    or ((pattern := channel.patterns.get(index)) is not None and pattern.is_empty())
-                )
-                for channel in channels.values()
+                index is None or ((pattern := song.pattern(generator, index)) is not None and pattern.is_empty())
+                for generator, index in frame.items()
             ):
                 return position
         return None
 
-    def add_to_order_all(self) -> None:
-        """Appends one empty position (a ``None`` slot) to every channel's order.
+    def add_to_order(self) -> None:
+        """Appends one empty frame (all channels silent) to the order."""
+        self._controller.append_frame()
 
-        The slot holds no pattern until an index is typed into it, so the master row
-        reads empty and that frame shows blank in the tracker grid; assigning an
-        index later materialises the pattern on first edit.
-        """
-        for generator in GeneratorName.items():
-            self._controller.append_to_order(generator, None)
-
-    def remove_from_order_all(self, position: int) -> None:
-        for generator in GeneratorName.items():
-            self._controller.remove_from_order(generator, position)
+    def remove_from_order(self, position: int) -> None:
+        self._controller.remove_frame(position)
 
     def _build_channel_view(
         self,
         generator: GeneratorName,
-        channel: Channel,
+        song: Song,
     ) -> SequencerOrderViewModel:
         entries = tuple(
-            OrderEntryViewModel(position=position, pattern_index=pattern_index)
-            for position, pattern_index in enumerate(channel.order)
+            OrderEntryViewModel(
+                position=position,
+                pattern_index=frame.get(generator),
+            )
+            for position, frame in enumerate(song.order)
         )
         return SequencerOrderViewModel(
             generator=generator,

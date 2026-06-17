@@ -7,6 +7,7 @@ from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.arrays import clamp
@@ -38,6 +39,14 @@ class ProjectController(CallbackMixin):
     @property
     def project(self) -> Project:
         return self._project_manager.current
+
+    @property
+    def song(self) -> Song:
+        return self.project.song
+
+    @property
+    def order_length(self) -> int:
+        return self.song.order_length()
 
     @property
     def is_open(self) -> bool:
@@ -102,9 +111,9 @@ class ProjectController(CallbackMixin):
         self.call(self.on_settings_changed)
 
     def set_rows_per_pattern(self, rows_per_pattern: int) -> None:
-        self.project.settings.rows_per_pattern = rows_per_pattern
+        self.song.resize_patterns(rows_per_pattern)
         self._touch()
-        self.call(self.on_settings_changed)
+        self.call(self.on_song_changed)
 
     def add_sample(self, reconstruction: Reconstruction, name: str) -> Sample:
         sample = Sample(name=name, reconstruction=reconstruction)
@@ -125,6 +134,11 @@ class ProjectController(CallbackMixin):
         self.call(self.on_samples_changed)
         self.call(self.on_song_changed)
 
+    def set_sample_loop(self, sample_id: str, loop: bool) -> None:
+        self.project.samples[sample_id].loop = loop
+        self._touch()
+        self.call(self.on_samples_changed)
+
     def remove_sample(self, sample_id: str) -> None:
         self.project.samples.pop(sample_id)
         self._purge_sample_references(sample_id)
@@ -133,19 +147,19 @@ class ProjectController(CallbackMixin):
         self.call(self.on_song_changed)
 
     def add_pattern(self, generator: GeneratorName) -> int:
-        index = self.project.song[generator].add_pattern(self.project.settings.rows_per_pattern)
+        index = self.song[generator].add_pattern(self.song.rows_per_pattern)
         self._touch()
         self.call(self.on_song_changed)
         return index
 
     def duplicate_pattern(self, generator: GeneratorName, pattern_index: int) -> int:
-        clone_index = self.project.song[generator].duplicate_pattern(pattern_index)
+        clone_index = self.song[generator].duplicate_pattern(pattern_index)
         self._touch()
         self.call(self.on_song_changed)
         return clone_index
 
     def remove_pattern(self, generator: GeneratorName, pattern_index: int) -> None:
-        self.project.song[generator].remove_pattern(pattern_index)
+        self.song.remove_pattern(generator, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 
@@ -173,7 +187,7 @@ class ProjectController(CallbackMixin):
         clear edits treat that as a blank row, and :meth:`set_row` materialises the
         pattern when it writes.
         """
-        pattern = self.project.song[generator].pattern(pattern_index)
+        pattern = self.song.pattern(generator, pattern_index)
         if pattern is None:
             return Row()
 
@@ -199,10 +213,10 @@ class ProjectController(CallbackMixin):
             transpose=self._clamp_transpose(transpose),
             volume=self._clamp_volume(volume),
         )
-        channel = self.project.song[generator]
+        channel = self.song[generator]
         channel.ensure_pattern(
             pattern_index,
-            self.project.settings.rows_per_pattern,
+            self.song.rows_per_pattern,
         )
         channel.set_row(
             pattern_index,
@@ -264,22 +278,13 @@ class ProjectController(CallbackMixin):
             volume=None if volume else existing.volume,
         )
 
-    def append_to_order(
-        self,
-        generator: GeneratorName,
-        pattern_index: Optional[int],
-    ) -> None:
-        self.project.song[generator].append_to_order(pattern_index)
+    def append_frame(self) -> None:
+        self.song.append_frame()
         self._touch()
         self.call(self.on_song_changed)
 
-    def insert_into_order(
-        self,
-        generator: GeneratorName,
-        position: int,
-        pattern_index: int,
-    ) -> None:
-        self.project.song[generator].insert_into_order(position, pattern_index)
+    def insert_frame(self, position: int) -> None:
+        self.song.insert_frame(position)
         self._touch()
         self.call(self.on_song_changed)
 
@@ -289,35 +294,32 @@ class ProjectController(CallbackMixin):
         position: int,
         pattern_index: Optional[int],
     ) -> None:
-        self.project.song[generator].set_in_order(position, pattern_index)
+        self.song.set_order_entry(position, generator, pattern_index)
         self._touch()
         self.call(self.on_song_changed)
 
-    def remove_from_order(self, generator: GeneratorName, index: int) -> None:
-        self.project.song[generator].remove_from_order(index)
+    def remove_frame(self, position: int) -> None:
+        self.song.remove_frame(position)
         self._touch()
         self.call(self.on_song_changed)
 
-    def move_in_order(self, generator: GeneratorName, from_index: int, to_index: int) -> None:
-        self.project.song[generator].move_in_order(from_index, to_index)
+    def move_frame(self, from_position: int, to_position: int) -> None:
+        self.song.move_frame(from_position, to_position)
         self._touch()
         self.call(self.on_song_changed)
 
     def _purge_sample_references(self, sample_id: str) -> None:
-        """
-        Clears the instrument of any row that still points at a removed sample.
-
-        Rows reference samples by id.
-        """
-        for channel in self.project.song.channels.values():
+        """Clears the instrument of any row that still points at a removed sample."""
+        for channel in self.song.channels.values():
             for pattern in channel.patterns.values():
-                for row_index, row in enumerate(pattern.rows):
-                    if row.instrument is not None and row.instrument.sample_id == sample_id:
-                        pattern.rows[row_index] = Row(
-                            instrument=None,
-                            transpose=row.transpose,
-                            volume=row.volume,
-                        )
+                pattern.rows = [
+                    (
+                        row.model_copy(update={"instrument": None})
+                        if row.instrument is not None and row.instrument.sample_id == sample_id
+                        else row
+                    )
+                    for row in pattern.rows
+                ]
 
     def _touch(self) -> None:
         self.project.info.touch()

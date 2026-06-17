@@ -37,15 +37,16 @@ def _reconstruction(generators: List[GeneratorName]) -> Reconstruction:
 
 
 def _row(controller: ProjectController, generator: GeneratorName, row_index: int = 0) -> Row:
-    channel = controller.project.song[generator]
-    return channel.get_row(channel.order[0], row_index)
+    song = controller.project.song
+    pattern_index = song.order[0][generator]
+    return song[generator].get_row(pattern_index, row_index)
 
 
 def _place_instrument(controller: ProjectController, generator: GeneratorName, sample_id: str) -> None:
-    channel = controller.project.song[generator]
+    pattern_index = controller.project.song.order[0][generator]
     controller.set_row(
         generator,
-        channel.order[0],
+        pattern_index,
         0,
         instrument=Instrument(sample_id=sample_id, generator_name=generator),
     )
@@ -75,10 +76,10 @@ class TestSetSampleInstrument:
         controller = _controller()
         logic = SequencerGridLogic(controller)
         stale = controller.add_sample(_reconstruction([GeneratorName.PULSE2]), name="bass")
-        channel = controller.project.song[GeneratorName.PULSE2]
+        pattern_index = controller.project.song.order[0][GeneratorName.PULSE2]
         controller.set_row(
             GeneratorName.PULSE2,
-            channel.order[0],
+            pattern_index,
             0,
             instrument=Instrument(sample_id=stale.id, generator_name=GeneratorName.PULSE2),
             volume=15,
@@ -223,30 +224,29 @@ class TestBuildGridAggregation:
 
 
 class TestEmptyFrameAutoCreate:
-    def _empty_frame(self, controller: ProjectController) -> None:
-        for generator in GeneratorName.items():
-            controller.append_to_order(generator, None)
+    def _append_empty_frame(self, controller: ProjectController) -> None:
+        controller.append_frame()
 
     def test_editing_an_empty_slot_creates_and_assigns_a_pattern(self) -> None:
         controller = _controller()
         logic = SequencerGridLogic(controller)
-        self._empty_frame(controller)
+        self._append_empty_frame(controller)
         logic.select_frame(1)
 
         logic.set_row(GeneratorName.PULSE1, 0, transpose=5)
 
-        channel = controller.project.song[GeneratorName.PULSE1]
-        new_index = channel.order[1]
+        song = controller.project.song
+        new_index = song.order[1][GeneratorName.PULSE1]
         assert new_index is not None
-        assert channel.get_row(new_index, 0).transpose == 5
-        assert controller.project.song[GeneratorName.PULSE2].order[1] is None
+        assert song[GeneratorName.PULSE1].get_row(new_index, 0).transpose == 5
+        assert song.order[1][GeneratorName.PULSE2] is None
 
     def test_empty_frame_still_shows_editable_rows(self) -> None:
         controller = _controller()
         logic = SequencerGridLogic(controller)
-        self._empty_frame(controller)
+        self._append_empty_frame(controller)
         logic.select_frame(1)
 
         grid = logic.build_grid()
 
-        assert len(grid.rows) == controller.project.settings.rows_per_pattern
+        assert len(grid.rows) == controller.project.song.rows_per_pattern

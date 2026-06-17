@@ -13,10 +13,10 @@ class SequencerBrowserElements(AbstractElement):
 class SequencerModuleElements(AbstractElement):
     MODULE_OPTIONS = "module_options"
     NES_FREQUENCY = "nes_frequency"
+    ROWS = "rows"
     TEMPO = "tempo"
     SPEED = "speed"
-    EXPORT_MODULE_BUTTON = "export_module_button"
-    EXPORT_MODULE_DIALOG = "export_module_dialog"
+    EXPORT_MODULE = "export_module"
 
 
 class SequencerGridElements(AbstractElement):
@@ -45,3 +45,4 @@ class SequencerInstrumentsElements(AbstractElement):
     INSTRUMENTS_TEXT = "instruments_text"
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
+    COLUMN_LOOP = "column_loop"

@@ -40,6 +40,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row: Optional[int] = None
         self.on_sample_selected: Optional[Callable[[str], None]] = None
         self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
+        self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -57,6 +58,12 @@ class GUISequencerSamplesPanel(GUIPanel):
             Panel.INSTRUMENTS,
             TextType.LABEL,
             SequencerInstrumentsElements.COLUMN_NAME,
+        ]
+        self._lbl_column_loop = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.COLUMN_LOOP,
         ]
 
         super().__init__(
@@ -116,6 +123,11 @@ class GUISequencerSamplesPanel(GUIPanel):
                     label=self._lbl_column_name,
                     init_width_or_weight=self._layout.table_cells.instrument_name,
                 )
+                dpg.add_table_column(
+                    label=self._lbl_column_loop,
+                    width_fixed=True,
+                    init_width_or_weight=self._layout.table_cells.instrument_loop,
+                )
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
@@ -132,6 +144,14 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _build_sample_row(self, position: int, entry: SampleEntryViewModel) -> None:
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
+        self._build_id_cell(row_id, position, entry)
+        self._build_name_cell(row_id, position, entry)
+        self._build_loop_cell(row_id, entry)
+        if entry.sample_id == self._selected_sample_id:
+            self._selected_row = position
+            dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
+
+    def _build_id_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
         id_cell = dpg.add_table_cell(parent=row_id)
         id_selectable = dpg.add_selectable(
             parent=id_cell,
@@ -142,6 +162,8 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(id_selectable, Font.REGULAR_SMALL)
         dpg.bind_item_handler_registry(id_selectable, self._row_handler_tag)
+
+    def _build_name_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
         name_cell = dpg.add_table_cell(parent=row_id)
         name_selectable = dpg.add_selectable(
             parent=name_cell,
@@ -151,19 +173,29 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(name_selectable, Font.REGULAR_SMALL)
         dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
-        if entry.sample_id == self._selected_sample_id:
-            self._selected_row = position
-            dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
+
+    def _build_loop_cell(self, row_id: int | str, entry: SampleEntryViewModel) -> None:
+        loop_cell = dpg.add_table_cell(parent=row_id)
+        dpg.add_checkbox(
+            parent=loop_cell,
+            default_value=entry.loop,
+            user_data=entry.sample_id,
+            callback=self._on_loop_toggled,
+        )
 
     def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: Tuple[int, str]) -> None:
         position, sample_id = user_data
         dpg.set_value(sender, False)
         if self._selected_row is not None:
             dpg.unhighlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, self._selected_row)
+
         self._selected_row = position
         self._selected_sample_id = sample_id
         dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
         self.call(self.on_sample_selected, sample_id)
+
+    def _on_loop_toggled(self, sender: Sender, app_data: bool, user_data: str) -> None:
+        self.call(self.on_loop_changed, user_data, app_data)
 
     def _on_sample_double_clicked(self, sender: Sender, app_data: list[int]) -> None:
         clicked_item = app_data[1]

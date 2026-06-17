@@ -4,6 +4,7 @@
 
 * Functional grid sequences
 * Delete library/reconstruction (with confirmation)
+* Export FamiTracker module
 
 ### Navigation
 
@@ -12,6 +13,12 @@
 * Waveform LOD for zooming
 * About panel
 * Gray out reconstruction when in progress
+
+### Tracker
+
+* Selecting pattern's cells
+* Replacing cursor's underscore symbol
+* Selection: copy, cut, delete and paste
 
 ### Workflow
 

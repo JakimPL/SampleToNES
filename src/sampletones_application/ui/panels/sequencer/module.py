@@ -14,6 +14,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_MODULE_BUTTON_EXPORT,
     TAG_SEQUENCER_MODULE_GROUP_OPTIONS,
     TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+    TAG_SEQUENCER_MODULE_INPUT_ROWS,
     TAG_SEQUENCER_MODULE_INPUT_SPEED,
     TAG_SEQUENCER_MODULE_INPUT_TEMPO,
     TAG_SEQUENCER_MODULE_PANEL,
@@ -26,8 +27,10 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.dpg import dpg_configure_item
+from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.general import MAX_CHANGE_RATE, MIN_CHANGE_RATE
+from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
 from sampletones_shared.types.application import Sender
 
 
@@ -45,6 +48,7 @@ class GUISequencerModulePanel(GUIPanel):
         self._input_width = input_width
 
         self.on_change_rate: Optional[Callable[[int], None]] = None
+        self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
         self.on_tempo: Optional[Callable[[int], None]] = None
         self.on_speed: Optional[Callable[[int], None]] = None
 
@@ -59,6 +63,18 @@ class GUISequencerModulePanel(GUIPanel):
             Panel.MODULE,
             TextType.LABEL,
             SequencerModuleElements.NES_FREQUENCY,
+        ]
+        self._lbl_rows = language_manager[
+            Page.SEQUENCER,
+            Panel.MODULE,
+            TextType.LABEL,
+            SequencerModuleElements.ROWS,
+        ]
+        self._tpl_rows_tooltip = language_manager[
+            Page.SEQUENCER,
+            Panel.MODULE,
+            TextType.TOOLTIP,
+            SequencerModuleElements.ROWS,
         ]
         self._lbl_tempo = language_manager[
             Page.SEQUENCER,
@@ -76,7 +92,7 @@ class GUISequencerModulePanel(GUIPanel):
             Page.SEQUENCER,
             Panel.MODULE,
             TextType.LABEL,
-            SequencerModuleElements.EXPORT_MODULE_BUTTON,
+            SequencerModuleElements.EXPORT_MODULE,
         ]
         self._msg_status_input = language_manager[
             Page.GLOBAL,
@@ -115,6 +131,16 @@ class GUISequencerModulePanel(GUIPanel):
                 callback=self._on_change_rate_input,
             )
             dpg.add_input_int(
+                label=self._lbl_rows,
+                default_value=settings.rows_per_pattern,
+                tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
+                min_value=MIN_ROWS_PER_PATTERN,
+                max_value=MAX_ROWS_PER_PATTERN,
+                width=self._input_width,
+                on_enter=True,
+                callback=self._on_rows_per_pattern_input,
+            )
+            dpg.add_input_int(
                 label=self._lbl_tempo,
                 default_value=settings.tempo,
                 tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
@@ -133,7 +159,9 @@ class GUISequencerModulePanel(GUIPanel):
                 callback=self._on_speed_input,
             )
 
+        show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_TEMPO, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_SPEED, self._msg_status_input)
 
@@ -148,6 +176,7 @@ class GUISequencerModulePanel(GUIPanel):
 
     def update_settings(self, view_model: SequencerSettingsViewModel) -> None:
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, view_model.change_rate)
+        dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_ROWS, view_model.rows_per_pattern)
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO, view_model.tempo)
         dpg.set_value(TAG_SEQUENCER_MODULE_INPUT_SPEED, view_model.speed)
 
@@ -156,6 +185,9 @@ class GUISequencerModulePanel(GUIPanel):
 
     def _on_change_rate_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_change_rate, app_data)
+
+    def _on_rows_per_pattern_input(self, sender: Sender, app_data: int) -> None:
+        self.call(self.on_rows_per_pattern, app_data)
 
     def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_tempo, app_data)

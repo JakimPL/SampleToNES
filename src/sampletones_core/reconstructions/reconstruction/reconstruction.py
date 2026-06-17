@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Self, Type
+from typing import Any, Dict, List, Mapping, Optional, Self, Sequence, Type
 from uuid import uuid4
 
 import numpy as np
@@ -93,8 +93,8 @@ class Reconstruction(DataModel):
     def create(
         cls,
         approximation: np.ndarray,
-        approximations: Dict[GeneratorName, np.ndarray],
-        instructions: Dict[GeneratorName, List[InstructionUnion]],
+        approximations: Mapping[GeneratorName, np.ndarray],
+        instructions: Mapping[GeneratorName, Sequence[InstructionUnion]],
         config: Config,
         coefficient: float,
         audio_filepath: Path,
@@ -110,7 +110,7 @@ class Reconstruction(DataModel):
             instructions_data.append(
                 InstructionsItem.create(
                     generator_name=generator_name,
-                    instructions=instructions_list,
+                    instructions=list(instructions_list),
                 )
             )
 

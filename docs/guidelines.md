@@ -32,11 +32,12 @@
 ## Type Hints
 
 1. Specify all input and return types in function signatures, including `None`.
-2. Fill generic types. Use `dict[str, int]`, not `dict`.
+2. Fill generic types. Use `Dict[str, int]`, not `Dict`.
 3. Do not cast/silence type errors unless the boundary is an untyped or mistyped third-party API.
 4. Avoid `Any` and `object` unless the boundary genuinely accepts arbitrary data.
 5. Do not quote type names. Use `from __future__ import annotations` (only if needed), `Self`, or `TYPE_CHECKING`.
-6. Validate with `mypy`.
+6. Prefer classic typehints: `Dict[...]` instead of `dict[...]`, `Optional[...]` over `... | None` etc.
+7. Validate with `mypy`.
 
 ## Error Handling
 

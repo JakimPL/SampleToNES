@@ -86,6 +86,12 @@ TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
+TAG_SEQUENCER_MODULE_INPUT_ROWS = TagName(
+    Page.SEQUENCER,
+    Panel.MODULE,
+    Widget.INPUT,
+    "rows",
+)
 TAG_SEQUENCER_MODULE_INPUT_TEMPO = TagName(
     Page.SEQUENCER,
     Panel.MODULE,

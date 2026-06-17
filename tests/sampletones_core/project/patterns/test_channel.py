@@ -32,49 +32,15 @@ class TestPatternPool:
         assert clone is not source
         assert clone.rows[0] == source.rows[0]
 
-    def test_remove_pattern_empties_referencing_slots_without_shifting(self) -> None:
+    def test_remove_pattern_drops_from_pool(self) -> None:
         channel = _channel()
         extra_index = channel.add_pattern(ROWS_PER_PATTERN)
-        channel.append_to_order(extra_index)
-        channel.append_to_order(extra_index)
-
         channel.remove_pattern(extra_index)
-
         assert extra_index not in channel.patterns
-        assert channel.order == [0, None, None]
-
-    def test_reusing_a_removed_index_does_not_refill_emptied_slots(self) -> None:
-        channel = _channel()
-        extra_index = channel.add_pattern(ROWS_PER_PATTERN)
-        channel.append_to_order(extra_index)
-        channel.remove_pattern(extra_index)
-
-        reused_index = channel.add_pattern(ROWS_PER_PATTERN)
-
-        assert reused_index == extra_index
-        assert channel.order == [0, None]
-
-
-class TestOrder:
-    def test_order_operations(self) -> None:
-        channel = _channel()
-        first = channel.order[0]
-        second_index = channel.add_pattern(ROWS_PER_PATTERN)
-        channel.append_to_order(second_index)
-        assert channel.order == [first, second_index]
-
-        channel.move_in_order(0, 1)
-        assert channel.order == [second_index, first]
-
-        channel.remove_from_order(0)
-        assert channel.order == [first]
-
-        channel.insert_into_order(0, second_index)
-        assert channel.order == [second_index, first]
 
     def test_set_row_replaces_row(self) -> None:
         channel = _channel()
-        pattern_index = channel.order[0]
+        pattern_index = 0
         row = Row(transpose=5, volume=12)
 
         channel.set_row(pattern_index, 3, row)

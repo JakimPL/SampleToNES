@@ -30,6 +30,7 @@ class SequencerSamplesLogic(CallbackMixin):
             SampleEntryViewModel(
                 sample_id=sample.id,
                 name=sample.name,
+                loop=sample.loop,
             )
             for sample in self._controller.project.samples
         )
@@ -53,6 +54,9 @@ class SequencerSamplesLogic(CallbackMixin):
 
     def remove_sample(self, sample_id: str) -> None:
         self._controller.remove_sample(sample_id)
+
+    def set_sample_loop(self, sample_id: str, loop: bool) -> None:
+        self._controller.set_sample_loop(sample_id, loop)
 
     def request_edit(self, sample_id: str) -> None:
         self.call(self.on_edit_sample_requested, sample_id)

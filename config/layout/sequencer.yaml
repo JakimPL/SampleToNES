@@ -2,7 +2,7 @@ samples_panel_width: 360
 cell_padding: [3, 4]
 
 order:
-  height: 171
+  height: 185
   position_column_width: 40
 
 table_cells:
@@ -12,6 +12,7 @@ table_cells:
   generator: 80
   instrument_id: 40
   instrument_name: -1
+  instrument_loop: 40
 
 tempo:
   min: 32

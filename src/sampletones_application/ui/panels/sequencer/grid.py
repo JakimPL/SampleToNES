@@ -348,7 +348,6 @@ class GUISequencerGridPanel(GUIPanel):
         selectable = dpg.add_selectable(
             parent=number_cell,
             label=display_index(row_index),
-            span_columns=True,
             user_data=row_index,
             callback=self._on_row_number_clicked,
         )
@@ -551,6 +550,7 @@ class GUISequencerGridPanel(GUIPanel):
         user_data: Tuple[int, Optional[GeneratorName], SubColumn],
     ) -> None:
         dpg.set_value(sender, False)
+        self._committed_state()
         row_index, generator, subcolumn = user_data
         new_state = TrackerInputState(
             cursor=TrackerCursor(row_index, generator, subcolumn),
@@ -649,7 +649,10 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _on_row_number_clicked(self, sender: Sender, app_data: bool, user_data: int) -> None:
         dpg.set_value(sender, False)
-        self.select_cell(user_data, None)
+        existing = self._input_state.cursor
+        generator = existing.generator if existing is not None else None
+        subcolumn = existing.subcolumn if existing is not None else SubColumn.INSTRUMENT
+        self._apply_state(TrackerInputState(cursor=TrackerCursor(user_data, generator, subcolumn), pending=""))
 
     def _on_row_hovered(self, sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):
