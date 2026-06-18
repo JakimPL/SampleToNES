@@ -108,7 +108,7 @@ class TestAdvanceSequence:
         position = SongPosition(order_position=0, row_index=3)
         position.advance(rows_in_pattern=4, order_length=1)
 
-        assert position.order_position == 1  # finished
+        assert position.order_position == 1
 
         position.advance(rows_in_pattern=4, order_length=1)
         position.advance(rows_in_pattern=4, order_length=1)

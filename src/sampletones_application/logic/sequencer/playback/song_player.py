@@ -45,18 +45,23 @@ class SongPlayerLogic(CallbackMixin):
         self.on_error: Optional[Callable[[Exception], None]] = None
 
     def play(self) -> None:
+        self._last_error = None
+        self._start_from(SongPosition())
+
+    def play_from(self, order_position: int, row_index: int = 0) -> None:
+        self._start_from(SongPosition(order_position=order_position, row_index=row_index))
+
+    def _start_from(self, position: SongPosition) -> None:
         if not self._project_controller.is_open:
             return
 
-        self._last_error = None
-        self._position = SongPosition()
-        self._service.start(active_channels=self._active_channels)
+        self._position = position
+        self._service.start(
+            order_position=position.order_position,
+            row_index=position.row_index,
+            active_channels=self._active_channels,
+        )
         self._emit_view()
-
-    def play_from(self, order_position: int, row_index: int = 0) -> None:
-        self._position.order_position = order_position
-        self._position.row_index = row_index
-        self.play()
 
     def pause_or_resume(self) -> None:
         if self._service.is_paused:

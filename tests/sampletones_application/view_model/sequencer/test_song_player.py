@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 
@@ -52,9 +53,9 @@ class TestSongPlayerViewModelProperties:
 
 
 class TestSongPlayerViewModelFrozen:
-    def test_is_frozen(self) -> None:
+    def test_assignment_raises(self) -> None:
         vm = _view_model()
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             vm.is_playing = True  # type: ignore[misc]
 
 

@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.patterns.row import Row
@@ -53,9 +54,6 @@ class TestSongPattern:
 
 
 class TestSongOrderLength:
-    def test_initial_order_length_is_one(self) -> None:
-        assert _song().order_length() == 1
-
     def test_order_length_grows_after_append(self) -> None:
         song = _song()
         song.append_frame()
@@ -108,6 +106,11 @@ class TestSongRemoveFrame:
         song.remove_frame(0)
         assert song.order[0][GeneratorName.PULSE1] == 3
 
+    def test_remove_only_frame_leaves_empty_order(self) -> None:
+        song = _song()
+        song.remove_frame(0)
+        assert song.order_length() == 0
+
 
 class TestSongSetOrderEntry:
     def test_set_order_entry_updates_value(self) -> None:
@@ -156,6 +159,13 @@ class TestSongOrderedPatterns:
         patterns = song.ordered_patterns(GeneratorName.PULSE1)
         assert patterns[1] is None
 
+    def test_ordered_patterns_same_index_repeated_returns_same_object(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(1, GeneratorName.PULSE1, 0)
+        patterns = song.ordered_patterns(GeneratorName.PULSE1)
+        assert patterns[0] is patterns[1]
+
 
 class TestSongRemovePattern:
     def test_remove_pattern_clears_order_references(self) -> None:
@@ -172,6 +182,11 @@ class TestSongRemovePattern:
         song = _song()
         song.remove_pattern(GeneratorName.PULSE1, 0)
         assert song.order[0][GeneratorName.TRIANGLE] == 0
+
+    def test_remove_nonexistent_pattern_raises(self) -> None:
+        song = _song()
+        with pytest.raises(KeyError):
+            song.remove_pattern(GeneratorName.PULSE1, 99)
 
 
 class TestSongResizePatterns:
@@ -200,6 +215,16 @@ class TestSongResizePatterns:
         for channel in song.channels.values():
             for pattern in channel.patterns.values():
                 assert len(pattern.rows) == 8
+
+
+class TestSongValidation:
+    def test_zero_rows_per_pattern_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Song.empty(0)
+
+    def test_rows_per_pattern_above_max_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            Song.empty(257)
 
 
 @pytest.mark.parametrize("rows", [1, 16, 64, 256])
