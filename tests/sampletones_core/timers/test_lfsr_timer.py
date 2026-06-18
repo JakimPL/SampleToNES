@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
 from sampletones_core.constants.general import MAX_LFSR, MAX_LFSR_SHORT
@@ -105,3 +106,92 @@ class TestLFSRValidate:
 
     def test_maximum_valid_initials_do_not_raise(self, long_timer: LFSRTimer) -> None:
         long_timer.validate((0x7FFF, 0.9999))
+
+
+class TestLFSRStateManagement:
+    def test_get_returns_current_lfsr_and_clock(self, long_timer: LFSRTimer) -> None:
+        long_timer.lfsr = 100
+        long_timer.clock = 0.5
+        assert long_timer.get() == (100, 0.5)
+
+    def test_set_restores_given_state(self, long_timer: LFSRTimer) -> None:
+        long_timer.set((200, 0.3))
+        assert long_timer.lfsr == 200
+        assert long_timer.clock == 0.3
+
+    def test_set_none_resets_to_initial(self, long_timer: LFSRTimer) -> None:
+        long_timer.lfsr = 100
+        long_timer.clock = 0.5
+        long_timer.set(None)
+        assert long_timer.get() == (1, 0.0)
+
+    def test_reset_restores_initial_state(self, long_timer: LFSRTimer) -> None:
+        long_timer.lfsr = 500
+        long_timer.clock = 0.7
+        long_timer.reset()
+        assert long_timer.lfsr == 1
+        assert long_timer.clock == 0.0
+
+
+class TestLFSRCall:
+    def test_unconfigured_returns_constant_frame(self, long_timer: LFSRTimer) -> None:
+        frame = long_timer()
+        assert np.all(frame == frame[0])
+
+    def test_unconfigured_returns_frame_of_correct_length(self, long_timer: LFSRTimer) -> None:
+        frame = long_timer()
+        assert len(frame) == long_timer.frame_length
+
+    def test_configured_returns_frame_of_correct_length(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        frame = long_timer()
+        assert len(frame) == long_timer.frame_length
+
+    def test_initials_override_lfsr_before_render(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        long_timer((500, 0.0), save=False)
+        assert long_timer.lfsr == 500
+
+    def test_initials_override_clock_before_render(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        long_timer((500, 0.3), save=False)
+        assert long_timer.clock == 0.3
+
+
+class TestLFSRGenerateFrameSaveFlag:
+    def test_save_false_does_not_advance_lfsr(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        state_before = long_timer.get()
+        long_timer.generate_frame(save=False)
+        assert long_timer.get() == state_before
+
+    def test_save_true_advances_lfsr(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        state_before = long_timer.get()
+        long_timer.generate_frame(save=True)
+        assert long_timer.get() != state_before
+
+
+class TestLFSRProperties:
+    def test_initials_reflects_current_state(self, long_timer: LFSRTimer) -> None:
+        long_timer.lfsr = 100
+        long_timer.clock = 0.3
+        assert long_timer.initials == (100, 0.3)
+
+    def test_period_getter_returns_positive_after_setting(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        assert long_timer.period > 0
+
+    def test_real_frequency_positive_after_period_set(self, long_timer: LFSRTimer) -> None:
+        long_timer.period = 7
+        assert long_timer.real_frequency > 0
+
+
+class TestLFSRResetPhase:
+    def test_period_setter_resets_state_when_reset_phase_true(self) -> None:
+        timer = LFSRTimer(sample_rate=44100, change_rate=60, reset_phase=True)
+        timer.lfsr = 500
+        timer.clock = 0.5
+        timer.period = 7
+        assert timer.lfsr == 1
+        assert timer.clock == 0.0
