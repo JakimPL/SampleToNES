@@ -49,7 +49,7 @@ def _apply_modifiers(
             return instruction.model_copy(update={"pitch": effective_pitch, "volume": scaled_volume})
         case TriangleInstruction():
             effective_pitch = max(MIN_PITCH, min(MAX_PITCH, instruction.pitch + transpose))
-            on = instruction.on and row_volume > 0
+            on = instruction.on and row_volume > MAX_VOLUME // 2
             return instruction.model_copy(update={"pitch": effective_pitch, "on": on})
         case NoiseInstruction():
             scaled_volume = max(0, min(MAX_VOLUME, round(instruction.volume * row_volume / MAX_VOLUME)))

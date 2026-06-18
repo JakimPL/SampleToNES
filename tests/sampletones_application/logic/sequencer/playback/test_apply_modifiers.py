@@ -124,6 +124,22 @@ TRIANGLE_MODIFIERS_CASES = [
         expected_on=False,
     ),
     TriangleModifiersCase(
+        label="volume at half threshold forces off",
+        pitch=60,
+        transpose=0,
+        row_volume=MAX_VOLUME // 2,
+        expected_pitch=60,
+        expected_on=False,
+    ),
+    TriangleModifiersCase(
+        label="volume one above half threshold preserves on",
+        pitch=60,
+        transpose=0,
+        row_volume=MAX_VOLUME // 2 + 1,
+        expected_pitch=60,
+        expected_on=True,
+    ),
+    TriangleModifiersCase(
         label="nonzero volume preserves on",
         pitch=60,
         transpose=0,
