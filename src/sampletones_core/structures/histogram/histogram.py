@@ -9,7 +9,6 @@ from typing import (
     Iterator,
     List,
     Optional,
-    Self,
     Tuple,
     Union,
     overload,
@@ -118,7 +117,7 @@ class Histogram(DataModel):
         return data
 
     @model_validator(mode="after")
-    def _validate(self) -> Self:
+    def _validate(self) -> Histogram:
         """
         Validate histogram structure.
 
@@ -187,7 +186,7 @@ class Histogram(DataModel):
         values_equal: bool = self.xp.array_equal(self.values, other.values)
         return edges_equal and values_equal
 
-    def __copy__(self) -> Self:
+    def __copy__(self) -> Histogram:
         """
         Create a shallow copy of the histogram.
 
@@ -196,7 +195,7 @@ class Histogram(DataModel):
         """
         return self.__class__(edges=self.edges, values=self.values)
 
-    def __deepcopy__(self, memo: Optional[Dict[int, object]] = None) -> Self:
+    def __deepcopy__(self, memo: Optional[Dict[int, object]] = None) -> Histogram:
         """
         Create a deep copy of the histogram.
 
@@ -266,8 +265,8 @@ class Histogram(DataModel):
     def _from_density(
         cls,
         density: ArrayOrNumeric,
-        histogram: Self,
-    ) -> Self:
+        histogram: Histogram,
+    ) -> Histogram:
         """
         Create a histogram from a density operation result.
 
@@ -287,7 +286,7 @@ class Histogram(DataModel):
         return cls(edges=histogram.edges.copy(), values=values)
 
     @classmethod
-    def _validate_histogram_edges(cls, *histograms: Self, equal_edges: bool = True) -> None:
+    def _validate_histogram_edges(cls, *histograms: Histogram, equal_edges: bool = True) -> None:
         """
         Validate that all histograms have the same edges.
         Used for operations requiring aligned histograms,
@@ -332,8 +331,8 @@ class Histogram(DataModel):
     @classmethod
     def _validate_negative_power(
         cls,
-        base: Union[Numeric, Array, Self],
-        exponent: Union[Numeric, Array, Self],
+        base: Union[Numeric, Array, Histogram],
+        exponent: Union[Numeric, Array, Histogram],
     ) -> None:
         """
         Validate that no zero densities are raised to negative powers.
@@ -380,8 +379,8 @@ class Histogram(DataModel):
     def apply_with(
         self,
         function: MultaryTransformation[ArrayOrNumeric],
-        *histograms: Self,
-    ) -> Self:
+        *histograms: Histogram,
+    ) -> Histogram:
         """
         Apply a function to this histogram's densities along with other histograms.
 
@@ -404,8 +403,8 @@ class Histogram(DataModel):
     def apply(
         cls,
         function: MultaryTransformation[ArrayOrNumeric],
-        *histograms: Self,
-    ) -> Self:
+        *histograms: Histogram,
+    ) -> Histogram:
         """
         Apply a function to histogram densities.
 
@@ -433,8 +432,8 @@ class Histogram(DataModel):
     def reduce_with(
         self,
         function: BinaryTransformation[ArrayOrNumeric],
-        *histograms: Self,
-    ) -> Self:
+        *histograms: Histogram,
+    ) -> Histogram:
         """
         Reduce this histogram with others using a binary operation on densities.
 
@@ -457,8 +456,8 @@ class Histogram(DataModel):
     def reduce(
         cls,
         function: BinaryTransformation[ArrayOrNumeric],
-        *histograms: Self,
-    ) -> Self:
+        *histograms: Histogram,
+    ) -> Histogram:
         """
         Reduce multiple histograms into one using the specified operation.
 
@@ -487,7 +486,7 @@ class Histogram(DataModel):
         return cls._from_density(new_density, histograms[0])
 
     @classmethod
-    def refine(cls, *histograms: Self) -> Tuple[Self, ...]:
+    def refine(cls, *histograms: Histogram) -> Tuple[Histogram, ...]:
         """
         Rebin multiple histograms to the union of all their edge points.
 
@@ -514,7 +513,7 @@ class Histogram(DataModel):
     @classmethod
     def density_to_values(
         cls,
-        edges: Union[Array, Self],
+        edges: Union[Array, Histogram],
         density: Numeric,
     ) -> Array:
         """
@@ -546,7 +545,7 @@ class Histogram(DataModel):
         cls,
         density: Numeric,
         edges: Array,
-    ) -> Self:
+    ) -> Histogram:
         """
         Create a histogram with constant densities.
 
@@ -560,7 +559,7 @@ class Histogram(DataModel):
         values: Array = cls.density_to_values(edges, density)
         return cls(edges=edges, values=values)
 
-    def astype(self, dtype: DTypeLike) -> Self:
+    def astype(self, dtype: DTypeLike) -> Histogram:
         """
         Cast edges and values to a specified data type.
 
@@ -574,8 +573,8 @@ class Histogram(DataModel):
 
     def rebin(
         self,
-        target_bins: Union[Array, Interval, Self],
-    ) -> Self:
+        target_bins: Union[Array, Interval, Histogram],
+    ) -> Histogram:
         """
         Rebin the histogram to new bins.
 
@@ -634,7 +633,7 @@ class Histogram(DataModel):
                 IncompleteHistogramRebinningWarning,
             )
 
-    def _rebin(self, target_bins: Array) -> Self:
+    def _rebin(self, target_bins: Array) -> Histogram:
         """
         Internal rebinning using cumulative sum interpolation.
 
@@ -766,7 +765,7 @@ class Histogram(DataModel):
         return self.__class__.get_module(self.edges)
 
     @classmethod
-    def get_module(cls, obj: Union[Numeric, Array, Self]) -> ModuleType:
+    def get_module(cls, obj: Union[Numeric, Array, Histogram]) -> ModuleType:
         """
         Get the array module (NumPy or CuPy) based on the object type.
 
@@ -784,7 +783,7 @@ class Histogram(DataModel):
 
         return get_array_module(obj)
 
-    def to_cupy(self) -> Self:
+    def to_cupy(self) -> Histogram:
         """
         Convert histogram to CuPy arrays.
 
@@ -796,15 +795,15 @@ class Histogram(DataModel):
         return self.__class__(edges=edges, values=values)
 
     @overload
-    def __add__(self, other: Self) -> Self: ...
+    def __add__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __add__(self, other: Numeric) -> Self: ...
+    def __add__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __add__(self, other: Array) -> Self: ...
+    def __add__(self, other: Array) -> Histogram: ...
 
-    def __add__(self, other: Union[Numeric, Array, Self]) -> Self:
+    def __add__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
         """
         Add another histogram, array, or scalar to this histogram.
 
@@ -844,12 +843,12 @@ class Histogram(DataModel):
         raise TypeError(f"Unsupported type for addition: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __radd__(self, other: Numeric) -> Self: ...
+    def __radd__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __radd__(self, other: Array) -> Self: ...
+    def __radd__(self, other: Array) -> Histogram: ...
 
-    def __radd__(self, other: Union[Numeric, Array]) -> Self:
+    def __radd__(self, other: Union[Numeric, Array]) -> Histogram:
         """
         Right addition: support array + histogram and scalar + histogram.
 
@@ -862,15 +861,15 @@ class Histogram(DataModel):
         return self.__add__(other)
 
     @overload
-    def __mul__(self, other: Self) -> Self: ...
+    def __mul__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __mul__(self, other: Numeric) -> Self: ...
+    def __mul__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __mul__(self, other: Array) -> Self: ...
+    def __mul__(self, other: Array) -> Histogram: ...
 
-    def __mul__(self, other: Union[Numeric, Array, Self]) -> Self:
+    def __mul__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
         """
         Multiply this histogram by another histogram, array, or scalar.
 
@@ -906,12 +905,12 @@ class Histogram(DataModel):
         raise TypeError(f"Unsupported type for multiplication: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rmul__(self, other: Numeric) -> Self: ...
+    def __rmul__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __rmul__(self, other: Array) -> Self: ...
+    def __rmul__(self, other: Array) -> Histogram: ...
 
-    def __rmul__(self, other: Union[Numeric, Array]) -> Self:
+    def __rmul__(self, other: Union[Numeric, Array]) -> Histogram:
         """
         Right multiplication: support `array ⋅ histogram` and `scalar ⋅ histogram`.
 
@@ -924,15 +923,15 @@ class Histogram(DataModel):
         return self.__mul__(other)
 
     @overload
-    def __pow__(self, other: Self) -> Self: ...
+    def __pow__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __pow__(self, other: Numeric) -> Self: ...
+    def __pow__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __pow__(self, other: Array) -> Self: ...
+    def __pow__(self, other: Array) -> Histogram: ...
 
-    def __pow__(self, other: Union[Numeric, Array, Self]) -> Self:
+    def __pow__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
         """
         Raise histogram to a power (applies exponent to densities).
 
@@ -972,12 +971,12 @@ class Histogram(DataModel):
         raise TypeError(f"Unsupported type for power: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rpow__(self, other: Numeric) -> Self: ...
+    def __rpow__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __rpow__(self, other: Array) -> Self: ...
+    def __rpow__(self, other: Array) -> Histogram: ...
 
-    def __rpow__(self, other: Union[Numeric, Array]) -> Self:
+    def __rpow__(self, other: Union[Numeric, Array]) -> Histogram:
         """
         Right power: support `array ** histogram` and `scalar ** histogram`.
 
@@ -1004,14 +1003,14 @@ class Histogram(DataModel):
         raise TypeError(f"Unsupported type for power: {type(other)}, expected Array or Numeric")
 
     @overload
-    def __sub__(self, other: Self) -> Self: ...
+    def __sub__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __sub__(self, other: Numeric) -> Self: ...
+    def __sub__(self, other: Numeric) -> Histogram: ...
     @overload
-    def __sub__(self, other: Array) -> Self: ...
+    def __sub__(self, other: Array) -> Histogram: ...
 
-    def __sub__(self, other: Union[Numeric, Array, Self]) -> Self:
+    def __sub__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
         """
         Subtract another histogram, array, or scalar from this histogram.
 
@@ -1028,7 +1027,7 @@ class Histogram(DataModel):
         """
         return self.__add__(-other)
 
-    def __neg__(self) -> Self:
+    def __neg__(self) -> Histogram:
         """
         Multiply histogram by -1.
 
@@ -1038,12 +1037,12 @@ class Histogram(DataModel):
         return self.__mul__(-1)
 
     @overload
-    def __rsub__(self, other: Numeric) -> Self: ...
+    def __rsub__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __rsub__(self, other: Array) -> Self: ...
+    def __rsub__(self, other: Array) -> Histogram: ...
 
-    def __rsub__(self, other: Union[Numeric, Array]) -> Self:
+    def __rsub__(self, other: Union[Numeric, Array]) -> Histogram:
         """
         Right subtraction: support `array - histogram` and `scalar - histogram`.
 
@@ -1058,15 +1057,15 @@ class Histogram(DataModel):
         return (-self).__add__(other)
 
     @overload
-    def __truediv__(self, other: Self) -> Self: ...
+    def __truediv__(self, other: Histogram) -> Histogram: ...
 
     @overload
-    def __truediv__(self, other: Numeric) -> Self: ...
+    def __truediv__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __truediv__(self, other: Array) -> Self: ...
+    def __truediv__(self, other: Array) -> Histogram: ...
 
-    def __truediv__(self, other: Union[Numeric, Array, Self]) -> Self:
+    def __truediv__(self, other: Union[Numeric, Array, Histogram]) -> Histogram:
         """
         Divide this histogram by another histogram, array, or scalar.
 
@@ -1103,12 +1102,12 @@ class Histogram(DataModel):
         raise TypeError(f"Unsupported type for division: {type(other)}, expected Histogram, Array, or Numeric")
 
     @overload
-    def __rtruediv__(self, other: Numeric) -> Self: ...
+    def __rtruediv__(self, other: Numeric) -> Histogram: ...
 
     @overload
-    def __rtruediv__(self, other: Array) -> Self: ...
+    def __rtruediv__(self, other: Array) -> Histogram: ...
 
-    def __rtruediv__(self, other: Union[Numeric, Array]) -> Self:
+    def __rtruediv__(self, other: Union[Numeric, Array]) -> Histogram:
         """
         Right division: support `array / histogram` and `scalar / histogram`.
 

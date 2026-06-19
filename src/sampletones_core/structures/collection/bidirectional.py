@@ -96,8 +96,7 @@ class BidirectionalHashMap(Generic[ValueT]):
             return self._forward[key_or_value]
 
         if key_or_value in self._backward:
-            value = cast(ValueT, key_or_value)
-            return self._backward[value]
+            return self._backward[key_or_value]
 
         raise KeyError(f"Key/value '{key_or_value}' not found in either direction")
 
@@ -397,7 +396,7 @@ class BidirectionalHashMap(Generic[ValueT]):
             return self._forward.get(key_or_value)
 
         if key_or_value in self._backward:
-            return self._backward.get(cast(ValueT, key_or_value))
+            return self._backward.get(key_or_value)
 
         return None
 
@@ -452,7 +451,7 @@ class BidirectionalHashMap(Generic[ValueT]):
             return self.pop_forward(key_or_value)
 
         if key_or_value in self._backward:
-            return self.pop_backward(cast(ValueT, key_or_value))
+            return self.pop_backward(key_or_value)
 
         raise KeyError(f"Key/value '{key_or_value}' not found in either direction")
 

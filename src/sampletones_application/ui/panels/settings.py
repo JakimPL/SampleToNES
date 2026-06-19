@@ -269,7 +269,7 @@ class GUIAudioSettingsWindow(GUIWindow):
         buffer_size_string: str = dpg.get_value(TAG_SETTINGS_AUDIO_COMBO_BUFFER_SIZE)
         buffier_size: int = int(buffer_size_string)
         assert buffier_size in BUFFER_SIZES, "Unsupported buffer size selected"
-        return cast(BufferSize, buffier_size)
+        return buffier_size
 
     def _refresh_devices(self) -> None:
         self.audio_device_manager.refresh_devices()

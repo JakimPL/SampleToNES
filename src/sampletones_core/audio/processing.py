@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, cast
 
 import librosa
 import numpy as np
@@ -26,7 +26,7 @@ def clip_audio(audio: np.ndarray) -> np.ndarray:
         TypeError: If audio is not a numpy array.
     """
     validate_audio_array(audio, allowed_dims=None)
-    return np.clip(audio, -1.0, 1.0)
+    return cast(np.ndarray, np.clip(audio, -1.0, 1.0))
 
 
 def to_mono(audio: np.ndarray) -> np.ndarray:
