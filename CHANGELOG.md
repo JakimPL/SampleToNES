@@ -2,10 +2,10 @@
 
 ## v0.2.4
 
-* Added _Sequencer_ view with FamiTracker-like patterns.
-* Added FamiTracker-exportable Project.
-* Changed FFT transformation methods.
-* Changed the internal data format (.stn, .ins).
+* Added a _Sequencer_ view with FamiTracker-style patterns.
+* Added project export in a FamiTracker-compatible format.
+* Changed the FFT transformation methods.
+* Changed the internal file formats (.stn, .ins).
 
 ## v0.2.3 [2026-01-09]
 
