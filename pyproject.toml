@@ -9,7 +9,7 @@ authors = [{ name = "Jakim / Stage Magician" }]
 dependencies = [
     "anytree==2.13.0",
     "dearpygui==2.2",
-    "flatbuffers==25.12.19",
+    "msgpack==1.2.1",
     "librosa==0.11.0",
     "numpy==2.3.4",
     "pebble==5.2.0",
@@ -52,7 +52,6 @@ packages = [
     "src/sampletones_application",
     "src/sampletones_assets",
     "src/sampletones_core",
-    "src/sampletones_schemas",
     "src/sampletones_shared",
 ]
 
@@ -68,7 +67,6 @@ known_first_party = [
     "sampletones_application",
     "sampletones_assets",
     "sampletones_core",
-    "sampletones_schemas",
     "sampletones_shared",
 ]
 
@@ -91,7 +89,7 @@ files = [
     "src/sampletones_core",
     "src/sampletones_shared",
 ]
-exclude = ["src/sampletones_schemas", "tests"]
+exclude = ["tests"]
 disallow_subclassing_any = true
 ignore_missing_imports = true
 strict = true

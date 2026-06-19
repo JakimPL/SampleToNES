@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Self, Type
+from typing import List, Self
 
 from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 from sampletones_core.data.metadata import Metadata
 from sampletones_core.paths import CONFIG_PATH
 from sampletones_shared.types.path import Pathlike
@@ -106,15 +102,3 @@ class Config(DataModel):
     @property
     def transformation_gamma(self) -> int:
         return self.library.transformation_gamma
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.configs import FBConfig
-
-        return FBConfig
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.configs import FBConfig
-
-        return FBConfig.FBConfig

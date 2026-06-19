@@ -3,7 +3,7 @@ from __future__ import annotations
 import struct
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Self, Sequence, Type
+from typing import Any, Dict, List, Mapping, Optional, Self, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -11,12 +11,7 @@ from pydantic import ConfigDict, Field, ValidationError, field_serializer
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-    Metadata,
-)
+from sampletones_core.data import DataModel, Metadata
 from sampletones_core.exporters import (
     INSTRUCTION_TO_EXPORTER_MAP,
     ExporterTypeUnion,
@@ -224,7 +219,7 @@ class Reconstruction(DataModel):
     ) -> Reconstruction:
         try:
             return cls.deserialize(binary, validation=validation, fast=fast)
-        except (ValidationError, TypeError, struct.error, IndexError) as exception:
+        except (ValidationError, TypeError, ValueError, struct.error, IndexError) as exception:
             raise InvalidReconstructionValuesError(
                 f'Failed to deserialize ReconstructionData from "{source}" due to validation error: {exception}',
                 exception,
@@ -291,15 +286,3 @@ class Reconstruction(DataModel):
     @field_serializer("audio_filepath")
     def _serialize_audio_filepath(self, audio_filepath: Path, _info: Any) -> str:
         return str(audio_filepath)
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.reconstruction import FBReconstruction
-
-        return FBReconstruction
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.reconstruction import FBReconstruction
-
-        return FBReconstruction.FBReconstruction

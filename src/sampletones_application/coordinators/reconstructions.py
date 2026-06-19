@@ -39,6 +39,7 @@ from sampletones_application.services.export import ExportError, ExportKind, Exp
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_core.audio import AudioDeviceManager
@@ -50,7 +51,7 @@ from sampletones_shared.exceptions import (
     InvalidReconstructionValuesError,
 )
 from sampletones_shared.logger import logger
-from sampletones_shared.types.callback import VoidCallback
+from sampletones_shared.types.callback import PathCallback, VoidCallback
 
 
 class ReconstructionsTabCoordinator:
@@ -212,6 +213,7 @@ class ReconstructionsTabCoordinator:
             favorite_color=layout.general.colors.favorites.default,
             node_color=layout.general.colors.paths.hover,
         )
+        self._browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
         self._reconstruction_player_logic = PlayerLogic(
             audio_device_manager,
             on_change_audio_state,
@@ -423,6 +425,12 @@ class ReconstructionsTabCoordinator:
 
     def request_export_instruments_dialog(self) -> None:
         self._reconstruction_panel_logic.request_export_instruments_dialog()
+
+    def _on_browser_autoplay_error(self, exception: Exception) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+
+    def set_on_add_to_sequencer(self, callback: PathCallback) -> None:
+        self._browser_panel.on_add_to_sequencer = callback
 
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()

@@ -20,6 +20,9 @@ HELP_CONFIG = """Path to a configuration .json file
 HELP_GENERATE = """Generate library data for given configuration
     (using default one if not provided)"""
 
+HELP_GENERATE_LIBRARY = """Generate library data using the given reconstruction config path.
+    If no path is provided, the default configuration is used."""
+
 HELP_HELP = """Show this help message and exit"""
 
 HELP_VERSION = "Show application version information"
@@ -34,6 +37,7 @@ class ProgramArguments:
     help: bool = False
     version: bool = False
     generate: bool = False
+    generate_library: Optional[str] = None
 
 
 def main() -> None:
@@ -69,6 +73,15 @@ def main() -> None:
         help=HELP_GENERATE,
     )
     parser.add_argument(
+        "--generate-library",
+        "-G",
+        nargs="?",
+        default=None,
+        const="",
+        metavar="CONFIG",
+        help=HELP_GENERATE_LIBRARY,
+    )
+    parser.add_argument(
         "--help",
         "-h",
         action="store_true",
@@ -93,7 +106,14 @@ def main() -> None:
 
         return print(SAMPLETONES_NAME_VERSION)
 
-    if args.path and args.generate:
+    exclusive_actions = sum(
+        [
+            bool(args.path),
+            args.generate,
+            args.generate_library is not None,
+        ]
+    )
+    if exclusive_actions > 1:
         raise RuntimeError("Only one action can be called at once.")
 
     config_path = Path(args.config) if args.config else None
@@ -105,6 +125,13 @@ def main() -> None:
         EXT_FILE_RECONSTRUCTION,
     )
     from sampletones_shared.logger import logger
+
+    if args.generate_library is not None:
+        from sampletones_core.scripts.library import generate_library
+
+        library_config_path = Path(args.generate_library) if args.generate_library else None
+        config = Config.load(library_config_path) if library_config_path else Config.default()
+        return generate_library(config)
 
     config = Config.load(config_path) if config_path else Config.default()
 
@@ -154,7 +181,7 @@ def main() -> None:
 
             return reconstruct_directory(path, config)
 
-        raise RuntimeError("Unsupported path type or file extensio.")
+        raise RuntimeError("Unsupported path type or file extension.")
 
     from sampletones.run import run_application
 
@@ -162,7 +189,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    main()
     multiprocessing.freeze_support()
     main()

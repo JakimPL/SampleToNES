@@ -43,7 +43,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^(src/sampletones_schemas/|tests/)
+        exclude: ^(tests/)
 
   - repo: local
     hooks:
@@ -54,7 +54,7 @@ repos:
         types: [python]
         verbose: True
         require_serial: true
-        exclude: ^(src/sampletones_schemas/|tests/)
+        exclude: ^(tests/)
 
   - repo: local
     hooks:

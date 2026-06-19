@@ -11,18 +11,13 @@ from typing import (
     Optional,
     Self,
     Tuple,
-    Type,
     Union,
     overload,
 )
 
 from pydantic import ConfigDict, field_serializer, model_validator
 
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 from sampletones_shared.array import xp
 from sampletones_shared.exceptions import IncompleteHistogramRebinningWarning
 from sampletones_shared.types.array import (
@@ -1130,15 +1125,3 @@ class Histogram(DataModel):
     @field_serializer("edges", "values")
     def _serialize_array(self, array: Array) -> SerializedData:
         return serialize_array(array)
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.collections import FBHistogram
-
-        return FBHistogram
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.collections import FBHistogram
-
-        return FBHistogram.FBHistogram

@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
@@ -27,7 +27,6 @@ from sampletones_application.ui.panels.player import GUIAudioPlayerPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.shared.audio_data import AudioData
-from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_shared.exceptions import LibraryDisplayError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
@@ -53,7 +52,6 @@ class GUIInstructionPanel(GUIPanel):
         self.spectrum_display: GUISpectrumGraph
 
         self.on_clear_instruction_details: Optional[VoidCallback] = None
-        self.on_instruction_config_changed: Optional[Callable[[Optional[InstructionsLibraryConfig]], None]] = None
 
         self._lbl_waveform = language_manager[
             Page.INSTRUCTIONS,
@@ -130,7 +128,6 @@ class GUIInstructionPanel(GUIPanel):
         self.waveform_display.clear_layers()
         self.spectrum_display.clear_layers()
         self.call(self.on_clear_instruction_details)
-        self.call(self.on_instruction_config_changed, None)
 
     def display_instruction(self, instruction_data: Optional[InstructionPanelData]) -> None:
         if instruction_data is None:
@@ -140,7 +137,6 @@ class GUIInstructionPanel(GUIPanel):
         config = instruction_data.config
         fragment = instruction_data.fragment
 
-        self.call(self.on_instruction_config_changed, config)
         try:
             self.waveform_display.load_library_fragment(fragment)
             self.spectrum_display.load_library_fragment(

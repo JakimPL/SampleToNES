@@ -1,13 +1,20 @@
 import threading
 from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
+from sampletones_shared.types.data import SerializedData
+
 T = TypeVar("T")
 
 
 class SingletonMeta(type):
     _lock: threading.Lock = threading.Lock()
 
-    def __init__(cls, name: str, bases: Tuple[Type[Any], ...], namespace: Dict[str, Any]) -> None:
+    def __init__(
+        cls,
+        name: str,
+        bases: Tuple[Type[Any], ...],
+        namespace: SerializedData,
+    ) -> None:
         super().__init__(name, bases, namespace)
         cls._instances: Dict[Type[Any], Any] = {}
         cls._instance_lock: threading.Lock = threading.Lock()

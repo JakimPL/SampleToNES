@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from anytree import Node
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_shared.types.callback import Callback
+from sampletones_shared.types.data import SerializedData
 
 
 class Arguments(BaseModel):
@@ -28,7 +29,7 @@ class Arguments(BaseModel):
     self: Optional[Any] = Field(default=None)
     node: Node = Field(..., frozen=True)
     args: List[Any] = Field(default_factory=list, frozen=True)
-    kwargs: Dict[str, Any] = Field(default_factory=dict, frozen=True)
+    kwargs: SerializedData = Field(default_factory=dict, frozen=True)
 
     @property
     def method(self) -> bool:
@@ -42,7 +43,7 @@ class Arguments(BaseModel):
         cls,
         method: bool,
         args: List[Any],
-        kwargs: Dict[str, Any],
+        kwargs: SerializedData,
     ) -> Arguments:
         """
         Factory method to create an Arguments instance from raw arguments.

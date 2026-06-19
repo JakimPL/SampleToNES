@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from enum import StrEnum
 from pathlib import Path
 from typing import (
@@ -16,9 +16,8 @@ from typing import (
     get_origin,
 )
 
+import msgpack
 import numpy as np
-from flatbuffers.builder import Builder
-from flatbuffers.table import Table
 from pydantic import BaseModel
 
 from sampletones_shared.array import CUPY_AVAILABLE, xp
@@ -29,7 +28,6 @@ from sampletones_shared.exceptions import (
 from sampletones_shared.types.array import (
     Array,
     ArrayClasses,
-    Numeric,
     NumericClasses,
 )
 from sampletones_shared.types.callback import Callback
@@ -38,24 +36,12 @@ from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import (
     load_binary,
     save_binary,
-    snake_to_camel,
 )
-
-from .scheme import (
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-    FlatBufferUnionProtocol,
-)
-
-FLOAT32_SIZE = 4
 
 
 class DataModel(BaseModel, ABC):
     def serialize(self) -> bytes:
-        builder = Builder(1024)
-        offset = self.serialize_inner(builder)
-        builder.Finish(offset)
-        return bytes(builder.Output())
+        return bytes(msgpack.packb(self.serialize_inner(), use_bin_type=True))
 
     @classmethod
     def deserialize(
@@ -64,219 +50,149 @@ class DataModel(BaseModel, ABC):
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
-        fb_reader = cls.buffer_reader()
-        root = fb_reader.GetRootAs(buffer, 0)
-        return cls.deserialize_inner(root, validation, fast=fast)
+        data = msgpack.unpackb(buffer, raw=False)
+        return cls.deserialize_inner(data, validation, fast=fast)
 
     def save(self, path: Pathlike) -> None:
-        binary = self.serialize()
-        save_binary(path, binary)
+        save_binary(path, self.serialize())
 
     @classmethod
     def load(cls, path: Pathlike, fast: bool = True) -> Self:
-        binary = load_binary(path)
-        return cls.deserialize(binary, fast=fast)
+        return cls.deserialize(load_binary(path), fast=fast)
 
     @classmethod
     def _construct(cls, fast: bool = True, **data: Any) -> Self:
         if fast:
             return cls.model_construct(**data)
-
         return cls(**data)
 
-    def serialize_inner(self, builder: Builder) -> int:
-        fb_builder = self.buffer_builder()
-        offsets = {}
-
+    def serialize_inner(self) -> SerializedData:
+        result: SerializedData = {}
         for field_name, field_info in self.__class__.model_fields.items():
             value = getattr(self, field_name)
-            camel = snake_to_camel(field_name)
-            add_method = f"Add{camel}"
-
-            fb_add = getattr(fb_builder, add_method, None)
-            if fb_add is None:
-                raise AttributeError(f"{fb_builder.__name__} missing '{add_method}' for field '{field_name}'")
-
             annotation = field_info.annotation
-
-            if annotation is None:
-                raise DeserializationError(f"Field '{field_name}' has no annotation")
-
-            if annotation in (Array, *ArrayClasses):
-                offsets[field_name] = self._serialize_numpy_array(builder, value, field_name)
-
-            elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
-                union_offsets = self._serialize_union(builder, value, field_name)
-                offsets.update(union_offsets)
-
-            elif get_origin(annotation) is list:
-                offsets[field_name] = self._serialize_list(builder, value, field_name)
-
-            elif issubclass(annotation, DataModel):
-                offsets[field_name] = value.serialize_inner(builder)
-
-            elif issubclass(annotation, (str, StrEnum)):
-                offsets[field_name] = self._serialize_string(builder, value)
-
-            elif annotation is Path:
-                offsets[field_name] = builder.CreateString(str(value))
-
-            elif issubclass(annotation, (bool, *NumericClasses)):
-                offsets[field_name] = value
-
-            else:
-                raise SerializationError(f"Unsupported field type {type(value)} for {field_name}")
-
-        fb_builder.Start(builder)
-        for field_name, val in offsets.items():
-            camel = snake_to_camel(field_name)
-            fb_add = getattr(fb_builder, f"Add{camel}")
-            fb_add(builder, val)
-
-        offset: int = fb_builder.End(builder)
-        return offset
+            result[field_name] = self._pack_value(value, annotation, field_name)
+        return result
 
     @classmethod
     def deserialize_inner(
         cls,
-        fb_object: Any,
+        data: SerializedData,
         validation: Optional[Callback] = None,
         fast: bool = True,
     ) -> Self:
         field_values: SerializedData = {}
-
         for field_name, field_info in cls.model_fields.items():
-            camel = snake_to_camel(field_name)
-            getter = getattr(fb_object, camel, None)
-            if getter is None:
-                raise DeserializationError(f"{fb_object.__class__.__name__} missing getter '{camel}'")
-
             annotation = field_info.annotation
-            if annotation is None:
-                raise DeserializationError(f"Field '{field_name}' has no annotation")
-
-            value: Union[
-                TypeVar,
-                DataModel,
-                bool,
-                int,
-                float,
-                Array,
-                np.ndarray,
-                xp.ndarray,
-                List[Any],
-                str,
-                Path,
-                None,
-            ]
-            if annotation in (Array, *ArrayClasses):
-                value = cls._deserialize_numpy_array(fb_object, field_name)
-
-            elif isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
-                value = cls._deserialize_union(fb_object, getter)
-
-            elif get_origin(annotation) is list:
-                list_class = get_args(annotation)[0]
-                value = cls._deserialize_list(fb_object, field_name, list_class)
-
-            elif issubclass(annotation, DataModel):
-                fb_child = getter()
-                value = annotation.deserialize_inner(fb_child, validation, fast=fast)
-
-            elif issubclass(annotation, (str, StrEnum)):
-                value = cls._deserialize_string(getter(), annotation)
-
-            elif annotation is Path:
-                raw = cls._deserialize_string(getter(), str)
-                value = Path(raw)
-
-            elif issubclass(annotation, (int, float, bool)):
-                value = annotation(getter())
-
-            else:
-                raise DeserializationError(f"Unsupported field type {annotation} for field '{field_name}'")
-
+            raw = data.get(field_name)
+            value = cls._unpack_value(raw, annotation, field_name, validation, fast)
             if validation is not None:
                 validation(value)
-
             field_values[field_name] = value
-
         return cls._construct(fast=fast, **field_values)
 
-    def _serialize_list(self, builder: Builder, collection: List[Any], field_name: str) -> int:
-        if len(collection) == 0:
-            return 0
+    def _pack_value(self, value: Any, annotation: Any, field_name: str) -> Any:
+        if annotation is None:
+            raise SerializationError(f"Field '{field_name}' has no annotation")
 
-        if all(isinstance(value, (int, float)) for value in collection):
-            return self._serialize_numpy_array(builder, np.array(collection, dtype=np.float32), field_name)
+        if annotation in (Array, *ArrayClasses):
+            return self._pack_array(value, field_name)
+
+        if isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
+            return self._pack_union(value, field_name)
+
+        if get_origin(annotation) is list:
+            return self._pack_list(value, annotation, field_name)
+
+        if issubclass(annotation, DataModel):
+            return value.serialize_inner()
+
+        if issubclass(annotation, (str, StrEnum)):
+            return str(value)
+
+        if annotation is Path:
+            return str(value)
+
+        if issubclass(annotation, (bool, *NumericClasses)):
+            return value
+
+        raise SerializationError(f"Unsupported field type {type(value)} for '{field_name}'")
+
+    @classmethod
+    def _unpack_value(
+        cls,
+        raw: Any,
+        annotation: Any,
+        field_name: str,
+        validation: Optional[Callback] = None,
+        fast: bool = True,
+    ) -> Any:
+        if annotation is None:
+            raise DeserializationError(f"Field '{field_name}' has no annotation")
+
+        if annotation in (Array, *ArrayClasses):
+            return cls._unpack_array(raw, field_name)
+
+        if isinstance(annotation, TypeVar) or get_origin(annotation) is Union:
+            return cls._unpack_union(raw, field_name)
+
+        if get_origin(annotation) is list:
+            list_class = get_args(annotation)[0]
+            return cls._unpack_list(raw, field_name, list_class, validation, fast)
+
+        if issubclass(annotation, DataModel):
+            return annotation.deserialize_inner(raw, validation, fast=fast)
+
+        if issubclass(annotation, (str, StrEnum)):
+            return cls._deserialize_string(raw, annotation)
+
+        if annotation is Path:
+            return Path(cls._deserialize_string(raw, str))
+
+        if issubclass(annotation, (int, float, bool)):
+            return annotation(raw)
+
+        raise DeserializationError(f"Unsupported field type {annotation} for field '{field_name}'")
+
+    def _pack_list(self, collection: List[Any], annotation: Any, field_name: str) -> List[Any]:
+        if not collection:
+            return []
 
         if all(isinstance(value, (str, StrEnum)) for value in collection):
-            string_offsets = [self._serialize_string(builder, value) for value in collection]
-            return self._prepend_offsets(builder, string_offsets)
+            return [str(value) for value in collection]
 
         if all(isinstance(model, DataModel) for model in collection):
-            child_offsets = [model.serialize_inner(builder) for model in collection]
-            return self._prepend_offsets(builder, child_offsets)
+            return [model.serialize_inner() for model in collection]
 
         raise SerializationError(
             f"Unsupported list element type {type(collection[0])} or mixed types for field '{field_name}'"
         )
 
-    def _serialize_string(self, builder: Builder, value: Union[str, StrEnum]) -> int:
-        if isinstance(value, StrEnum):
-            value = value.value
-
-        offset: int = builder.CreateString(value)
-        return offset
-
     @classmethod
-    def _deserialize_string(cls, raw: bytes, string_class: type) -> Union[str, StrEnum]:
-        try:
-            string = raw.decode("utf-8")
-        except UnicodeDecodeError as exception:
-            raise DeserializationError("Failed to decode string from bytes") from exception
-
-        if issubclass(string_class, StrEnum):
-            return string_class(string)
-
-        return string
-
-    @classmethod
-    def _deserialize_list(
+    def _unpack_list(
         cls,
-        fb_object: Any,
+        raw_list: Any,
         field_name: str,
         element_class: type,
-    ) -> Optional[Union[List[Any], Array]]:
-        camel = snake_to_camel(field_name)
-        getter = getattr(fb_object, camel, None)
-        length_function = getattr(fb_object, f"{camel}Length", None)
-
+        validation: Optional[Callback] = None,
+        fast: bool = True,
+    ) -> List[Any]:
         origin = get_origin(element_class)
         if origin is not None:
             raise DeserializationError(f"Generics are not supported for field '{field_name}'")
 
-        if getter is None or length_function is None:
-            raise DeserializationError(
-                f"{fb_object.__class__.__name__} missing getter or Length method for field '{camel}'"
-            )
-
-        length = length_function()
-        if length == 0:
+        if not raw_list:
             return []
 
         if issubclass(element_class, DataModel):
-            return [element_class.deserialize_inner(getter(i)) for i in range(length)]
+            return [element_class.deserialize_inner(item, validation, fast=fast) for item in raw_list]
 
         if issubclass(element_class, (str, StrEnum)):
-            return [cls._deserialize_string(getter(i), element_class) for i in range(length)]
+            return [cls._deserialize_string(item, element_class) for item in raw_list]
 
-        if element_class in (int, float, bool, Numeric):
-            raise DeserializationError("Primitive lists should be deserialized using _deserialize_numpy_array method")
+        raise DeserializationError(f"Unsupported vector element type: {element_class} for field '{field_name}'")
 
-        raise DeserializationError(f"Unsupported vector element type: {element_class} " f"for field '{field_name}'")
-
-    def _serialize_numpy_array(self, builder: Builder, array: Array, field_name: str) -> int:
+    def _pack_array(self, array: Array, field_name: str) -> bytes:
         if CUPY_AVAILABLE and isinstance(array, xp.ndarray):
             array = xp.asnumpy(array)
 
@@ -288,8 +204,8 @@ class DataModel(BaseModel, ABC):
 
         if array.ndim != 1:
             raise SerializationError(
-                f"Only 1D numpy arrays are supported for serialization, got "
-                f"{array.ndim}D array for field '{field_name}'"
+                f"Only 1D numpy arrays are supported for serialization, "
+                f"got {array.ndim}D array for field '{field_name}'"
             )
 
         if np.isnan(array).any():
@@ -297,22 +213,11 @@ class DataModel(BaseModel, ABC):
                 f"Array contains NaN values, which are not supported for serialization for field '{field_name}'"
             )
 
-        builder.StartVector(FLOAT32_SIZE, len(array), FLOAT32_SIZE)
-        for value in reversed(array):
-            builder.PrependFloat32(float(value))
-
-        offset: int = builder.EndVector()
-        return offset
+        return array.tobytes()
 
     @classmethod
-    def _deserialize_numpy_array(cls, fb_object: Any, field_name: str) -> np.ndarray:
-        camel = snake_to_camel(field_name)
-        getter = getattr(fb_object, f"{camel}AsNumpy")
-
-        if getter is None:
-            raise DeserializationError(f"{fb_object.__class__.__name__} missing getter '{camel}AsNumpy'")
-
-        array: np.ndarray = getter()
+    def _unpack_array(cls, raw: bytes, field_name: str) -> np.ndarray:
+        array = np.frombuffer(raw, dtype=np.float32).copy()
 
         if np.isnan(array).any():
             raise DeserializationError(f"Deserialized array for '{field_name}' contains NaN values")
@@ -320,43 +225,43 @@ class DataModel(BaseModel, ABC):
         return array
 
     @classmethod
-    def deserialize_from_table(cls, table: Table) -> Self:
-        fb_class = cls.buffer_reader()
-        wrapper = fb_class()
-        wrapper.Init(table.Bytes, table.Pos)
-        return cls.deserialize_inner(wrapper)
+    def _deserialize_string(cls, raw: Union[str, bytes], string_class: type) -> Union[str, StrEnum]:
+        if isinstance(raw, bytes):
+            try:
+                string = raw.decode("utf-8")
+            except UnicodeDecodeError as exception:
+                raise DeserializationError("Failed to decode string from bytes") from exception
+        else:
+            string = raw
 
-    def _serialize_union(self, builder: Builder, value: Any, field_name: str) -> Dict[Any, Any]:
-        union_map: Optional[Dict[int, Type[DataModel]]] = self.__class__.buffer_union_map()
+        if issubclass(string_class, StrEnum):
+            return string_class(string)
+
+        return string
+
+    def _pack_union(self, value: Any, field_name: str) -> SerializedData:
+        union_map: Optional[Dict[int, Type[DataModel]]] = self.__class__.union_map()
         if union_map is None:
             raise SerializationError(f"No union map defined for {self.__class__.__name__}")
 
         tag: Optional[int] = None
-        for tag_type, cls in union_map.items():
-            if isinstance(value, cls):
+        for tag_type, member_cls in union_map.items():
+            if isinstance(value, member_cls):
                 tag = tag_type
                 break
 
         if tag is None:
             raise SerializationError(f"No union tag for value {type(value).__name__} in {self.__class__.__name__}")
 
-        child_offset = value.serialize_inner(builder)
-        return {field_name: child_offset, f"{field_name}_type": tag}
+        return {"_type": tag, "_data": value.serialize_inner()}
 
     @classmethod
-    def _deserialize_union(cls, fb_parent: Any, getter: Callback) -> Any:
-        union_map = cls.buffer_union_map()
+    def _unpack_union(cls, raw: SerializedData, field_name: str) -> Any:
+        union_map = cls.union_map()
         if union_map is None:
             raise DeserializationError(f"No union map defined for {cls.__name__}")
 
-        type_accessor_name = f"{getter.__name__}Type"
-        type_accessor = getattr(fb_parent, type_accessor_name, None)
-        if type_accessor is None:
-            raise DeserializationError(
-                f"Missing union type accessor '{type_accessor_name}' on {fb_parent.__class__.__name__}"
-            )
-
-        tag = type_accessor()
+        tag = raw["_type"]
         if tag == 0:
             raise DeserializationError(f"Union tag is 0 (null) for {cls.__name__}")
 
@@ -364,33 +269,8 @@ class DataModel(BaseModel, ABC):
         if target_cls is None:
             raise DeserializationError(f"Unknown union tag {tag} for {cls.__name__}")
 
-        table: Table = getter()
-        return target_cls.deserialize_from_table(table)
-
-    @staticmethod
-    def _prepend_offsets(builder: Builder, offsets: List[int]) -> int:
-        builder.StartVector(FLOAT32_SIZE, len(offsets), FLOAT32_SIZE)
-        for offset in reversed(offsets):
-            builder.PrependUOffsetTRelative(offset)
-
-        return int(builder.EndVector(len(offsets)))
+        return target_cls.deserialize_inner(raw["_data"])
 
     @classmethod
-    @abstractmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]: ...
-
-    @classmethod
-    @abstractmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol: ...
-
-    @classmethod
-    def buffer_union_builder(cls) -> Optional[FlatBufferUnionProtocol]:
-        return None
-
-    @classmethod
-    def buffer_union_reader(cls) -> Optional[Type[FlatBufferUnionProtocol]]:
-        return None
-
-    @classmethod
-    def buffer_union_map(cls) -> Optional[Dict[int, Type[DataModel]]]:
+    def union_map(cls) -> Optional[Dict[int, Type[DataModel]]]:
         return None

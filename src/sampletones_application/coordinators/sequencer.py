@@ -35,6 +35,7 @@ from sampletones_application.ui.panels.sequencer.module import GUISequencerModul
 from sampletones_application.ui.panels.sequencer.order import GUISequencerOrderPanel
 from sampletones_application.ui.panels.sequencer.samples import GUISequencerSamplesPanel
 from sampletones_application.ui.panels.sequencer.song_player import GUISongPlayerPanel
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
@@ -42,6 +43,7 @@ from sampletones_application.view_model.sequencer.song_player import SongPlayerV
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 
 
@@ -149,7 +151,8 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
-        self._sequencer_browser_panel.on_add_to_sequencer = self._import_reconstruction
+        self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
+        self._sequencer_browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_error = self._on_player_error
@@ -197,11 +200,21 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.set_playing_position(order_position)
         self._sequencer_grid_logic.select_frame(order_position)
 
-    def _import_reconstruction(self, filepath: Path) -> None:
+    def _on_browser_autoplay_error(self, exception: Exception) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
+
+    def import_reconstruction(self, filepath: Path) -> None:
         if not self._project_controller.is_open:
             return
 
-        self._sequencer_browser_logic.import_reconstruction(filepath)
+        try:
+            self._sequencer_browser_logic.import_reconstruction(filepath)
+        except (SampleToNESError, OSError, ValueError) as exception:
+            logger.error_with_traceback(exception, f"Failed to import reconstruction from {filepath}")
+            self._dialogs.show_error(exception)
+        except Exception as exception:
+            logger.error_with_traceback(exception, f"Unexpected error while importing reconstruction from {filepath}")
+            self._dialogs.show_error(exception)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)

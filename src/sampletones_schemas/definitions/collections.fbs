@@ -1,8 +1,0 @@
-namespace sampletones_schemas.collections;
-
-table FBHistogram {
-	edges: [float];
-	values: [float];
-}
-
-root_type FBHistogram;

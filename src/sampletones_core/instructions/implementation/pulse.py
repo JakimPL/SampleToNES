@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Type
-
 from pydantic import Field
 
 from sampletones_core.constants.enums import InstructionClassName
@@ -12,10 +10,6 @@ from sampletones_core.constants.general import (
     MAX_VOLUME,
     MIN_PITCH,
     PITCH_RANGE,
-)
-from sampletones_core.data import (
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
 )
 from sampletones_core.utils.frequencies import pitch_to_name
 
@@ -103,15 +97,3 @@ class PulseInstruction(Instruction):
     @classmethod
     def class_name(cls) -> InstructionClassName:
         return InstructionClassName.PULSE_INSTRUCTION
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.instructions import FBPulseInstruction
-
-        return FBPulseInstruction
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.instructions import FBPulseInstruction
-
-        return FBPulseInstruction.FBPulseInstruction

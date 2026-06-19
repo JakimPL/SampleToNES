@@ -1,6 +1,6 @@
 from pathlib import Path
 from time import sleep
-from typing import Any, Dict, List
+from typing import Any, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,7 +25,7 @@ def mock_converter_class():
         instance.status = TaskStatus.COMPLETED
         instance.total_tasks = 5
 
-        captured: Dict[str, Any] = {}
+        captured: SerializedData = {}
         instance.set_callbacks.side_effect = lambda **kwargs: captured.update(kwargs)
 
         cls.return_value = instance

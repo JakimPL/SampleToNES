@@ -32,6 +32,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import (
     dpg_configure_item,
@@ -185,6 +186,11 @@ class GUIExplorerPanel(GUITreePanel):
             favorite_color=favorite_color,
             node_color=node_color,
         )
+
+        self.logic.on_autoplay_error = self._on_autoplay_error
+
+    def _on_autoplay_error(self, exception: Exception) -> None:
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def create_panel(self) -> None:
         self._setup_handlers()

@@ -325,6 +325,7 @@ class Application:
     def _set_callbacks(self) -> None:
         self.config_manager.add_config_change_callback(self._update_menu)
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
+        self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()

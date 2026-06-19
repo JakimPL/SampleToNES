@@ -1,16 +1,12 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Generic, Self, Tuple, Type
+from typing import Any, Generic, Self, Tuple
 
 from pydantic import ConfigDict, Field
 
 from sampletones_core.constants.enums import InstructionClassName
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 from sampletones_core.instructions import (
     INSTRUCTION_CLASS_MAP,
     InstructionData,
@@ -63,15 +59,3 @@ class LibraryItem(DataModel, Generic[InstructionT]):
 
         instruction: InstructionT = self.instruction_data.instruction
         return instruction
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.library import FBInstructionsLibraryItem
-
-        return FBInstructionsLibraryItem
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.library import FBInstructionsLibraryItem
-
-        return FBInstructionsLibraryItem.FBInstructionsLibraryItem

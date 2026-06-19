@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Tuple, Type, Union
+from typing import Tuple, Union
 
 import numpy as np
 from pydantic import ConfigDict
 
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.data.model import DataModel
-from sampletones_core.data.scheme import (
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
 from sampletones_shared.utils.arrays import pad
 
 from ..fft import calculate_weights
@@ -138,15 +134,3 @@ class Window(DataModel):
     @property
     def sample_rate(self) -> int:
         return self.config.sample_rate
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.fft import FBWindow
-
-        return FBWindow
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.fft import FBWindow
-
-        return FBWindow.FBWindow

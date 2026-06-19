@@ -2,18 +2,13 @@ from __future__ import annotations
 
 from functools import cached_property
 from pathlib import Path
-from typing import Any, Dict, KeysView, List, Self, Type, Union, ValuesView
+from typing import Any, Dict, KeysView, List, Self, Union, ValuesView
 
 from pydantic import ConfigDict, Field, ValidationError
 
 from sampletones_core.configs import Config, InstructionsLibraryConfig
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-    Metadata,
-)
+from sampletones_core.data import DataModel, Metadata
 from sampletones_core.generators import GeneratorClassNames
 from sampletones_core.instructions import InstructionUnion
 from sampletones_shared.constants.application import (
@@ -156,15 +151,3 @@ class InstructionLibraryData(DataModel):
                 expected_version=SAMPLETONES_LIBRARY_DATA_VERSION,
                 actual_version=library_version,
             )
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.library import FBInstructionsLibraryData
-
-        return FBInstructionsLibraryData
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.library import FBInstructionsLibraryData
-
-        return FBInstructionsLibraryData.FBInstructionsLibraryData

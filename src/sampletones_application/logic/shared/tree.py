@@ -8,7 +8,6 @@ from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
-from sampletones_shared.exceptions import LoadReconstructionError
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -36,6 +35,7 @@ class TreeLogic(CallbackMixin):
         self.on_lock_state_changed: Optional[Callable[[bool], None]] = None
         self.on_favorite_changed: Optional[Callable[[FileSystemNode], None]] = None
         self.on_search_update_needed: Optional[VoidCallback] = None
+        self.on_autoplay_error: Optional[Callable[[Exception], None]] = None
 
     def lock(self) -> None:
         with self._thread_lock:
@@ -86,8 +86,10 @@ class TreeLogic(CallbackMixin):
                             update=False,
                         )
                     except Exception as exception:
-                        logger.error(f"Failed to autoplay reconstruction file: {exception}")
-                        raise LoadReconstructionError("Failed to load reconstruction for autoplay") from exception
+                        logger.error_with_traceback(
+                            exception, f"Failed to autoplay reconstruction file: {node.filepath}"
+                        )
+                        self.call(self.on_autoplay_error, exception)
                 case suffix if suffix in paths.EXT_FILES_AUDIO:
                     self._audio_device_manager.play_file(
                         node.filepath,

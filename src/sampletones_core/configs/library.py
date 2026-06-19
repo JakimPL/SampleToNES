@@ -1,5 +1,3 @@
-from typing import Type
-
 import numpy as np
 from pydantic import ConfigDict, Field
 
@@ -18,11 +16,7 @@ from sampletones_core.constants.general import (
     MIN_FREQUENCY,
     TRANSFORMATION_GAMMA,
 )
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 
 
 class InstructionsLibraryConfig(DataModel):
@@ -42,15 +36,3 @@ class InstructionsLibraryConfig(DataModel):
     def window_size(self) -> int:
         lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
         return max(self.frame_length, lower_bound)
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.configs import FBInstructionsLibraryConfig
-
-        return FBInstructionsLibraryConfig
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.configs import FBInstructionsLibraryConfig
-
-        return FBInstructionsLibraryConfig.FBInstructionsLibraryConfig

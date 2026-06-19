@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Generic, List, Self, Type
+from typing import Any, Generic, List, Self
 
 import numpy as np
 from pydantic import ConfigDict
@@ -9,11 +9,7 @@ from pydantic import ConfigDict
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import LIBRARY_PHASES_PER_SAMPLE
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 from sampletones_core.fft import CyclicArray, FFTTransformer, Fragment, Window
 from sampletones_core.generators import (
     GENERATOR_CLASS_MAP,
@@ -126,15 +122,3 @@ class InstructionLibraryFragment(DataModel, Generic[InstructionT]):
     @property
     def length(self) -> int:
         return self.sample.length
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.library import FBInstructionsLibraryFragment
-
-        return FBInstructionsLibraryFragment
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.library import FBInstructionsLibraryFragment
-
-        return FBInstructionsLibraryFragment.FBInstructionsLibraryFragment

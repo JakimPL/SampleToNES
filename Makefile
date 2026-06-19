@@ -68,5 +68,3 @@ mypy:
 format:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/format$(SCRIPT_EXT)
 
-schemas:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/schemas$(SCRIPT_EXT)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Self, Type
+from typing import Self
 
 from pydantic import ConfigDict, Field
 
@@ -12,7 +12,6 @@ from sampletones_shared.constants.application import (
 )
 
 from .model import DataModel
-from .scheme import FlatBufferBuilderProtocol, FlatBufferReaderProtocol
 
 
 class Metadata(DataModel):
@@ -26,15 +25,3 @@ class Metadata(DataModel):
     @classmethod
     def default(cls) -> Self:
         return cls()
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.metadata import FBMetadata
-
-        return FBMetadata
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.metadata import FBMetadata
-
-        return FBMetadata.FBMetadata

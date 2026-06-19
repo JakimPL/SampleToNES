@@ -1,5 +1,3 @@
-from typing import Type
-
 from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.general import (
@@ -9,11 +7,7 @@ from sampletones_core.constants.general import (
     NORMALIZE,
     QUANTIZE,
 )
-from sampletones_core.data import (
-    DataModel,
-    FlatBufferBuilderProtocol,
-    FlatBufferReaderProtocol,
-)
+from sampletones_core.data import DataModel
 from sampletones_core.paths import LIBRARY_DIRECTORY, RECONSTRUCTIONS_DIRECTORY
 
 
@@ -34,15 +28,3 @@ class GeneralConfig(DataModel):
             "reconstructions_directory",
         ),
     )
-
-    @classmethod
-    def buffer_builder(cls) -> FlatBufferBuilderProtocol:
-        from sampletones_schemas.configs import FBGeneralConfig
-
-        return FBGeneralConfig
-
-    @classmethod
-    def buffer_reader(cls) -> Type[FlatBufferReaderProtocol]:
-        from sampletones_schemas.configs import FBGeneralConfig
-
-        return FBGeneralConfig.FBGeneralConfig

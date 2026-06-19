@@ -35,6 +35,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
@@ -483,7 +484,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         )
 
     def _on_load_file_not_found(self, path: Path, message: str) -> None:
-        self._dialogs.show_file_not_found(path, message)
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_file_not_found(path, message))
 
     def _on_load_error(self, exception: Exception, message: str) -> None:
-        self._dialogs.show_error(exception, message)
+        FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception, message))

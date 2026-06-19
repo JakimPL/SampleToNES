@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import pytest
@@ -755,7 +755,7 @@ class TestTransformationErrors(BaseTestSuite):
         transformation: Transformation
         method_name: str
         args: Tuple[Any, ...]
-        kwargs: Dict[str, Any]
+        kwargs: SerializedData
 
     identity_transformation = Transformation(forward=identity, backward=identity)
 
