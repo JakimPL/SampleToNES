@@ -11,7 +11,7 @@ waveform:
   max_display_points: 4096
 
 spectrum:
-  max_display_bins: 128
+  max_display_bins: 512
   offset_log: 0.01
 
 graph:

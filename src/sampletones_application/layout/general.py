@@ -40,7 +40,6 @@ class FontsLayout(BaseModel, frozen=True):
     size_small: int
     size_large: int
     scale: int
-    ranges: tuple[tuple[int, int], ...]
     icon_chars: tuple[int, ...]
 
 

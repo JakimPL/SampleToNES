@@ -91,8 +91,6 @@ class FontRegistry:
                     font_data.size,
                     tag=font_data.tag,
                 )
-                for start, end in cls._LAYOUT.ranges:
-                    dpg.add_font_range(start, end, parent=font_data.tag)
 
             dpg.add_font_chars(list(cls._LAYOUT.icon_chars), parent=TAG_GLOBAL_FONT_ICON)
             dpg.bind_font(TAG_GLOBAL_FONT_REGULAR)
