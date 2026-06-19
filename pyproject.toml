@@ -8,35 +8,35 @@ authors = [{ name = "Jakim / Stage Magician" }]
 
 dependencies = [
     "anytree==2.13.0",
-    "dearpygui==2.2",
+    "dearpygui==2.3.1",
     "msgpack==1.2.1",
     "librosa==0.11.0",
-    "numpy==2.3.4",
+    "numpy==2.4.6",
     "pebble==5.2.0",
-    "pydantic==2.12.5",
+    "pydantic==2.13.4",
     "pyaudio==0.2.14",
-    "rich==14.3.3",
-    "scipy==1.17.1",
+    "rich==15.0.0",
+    "scipy==1.18.0",
     "screeninfo==0.8.1",
-    "tqdm==4.67.3",
-    "pytaskbar; platform_system == 'Windows'",
-    "pywin32; platform_system == 'Windows'",
+    "tqdm==4.68.3",
+    "pytaskbar==0.1.1; platform_system == 'Windows'",
+    "pywin32==312; platform_system == 'Windows'",
     "PyYAML==6.0.3",
 ]
 
 [project.scripts]
 sampletones = "sampletones.__main__:main"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "black==26.1.0",
+    "black==26.5.1",
     "isort==8.0.1",
-    "mypy==1.19.1",
-    "pre-commit==4.5.1",
-    "pylint==4.0.5",
+    "mypy==2.1.0",
+    "pre-commit==4.6.0",
+    "pylint==4.0.6",
     "pylint-pydantic==0.4.1",
-    "pytest==9.0.2",
-    "pytest-cov==7.0.0",
+    "pytest==9.1.1",
+    "pytest-cov==7.1.0",
     "pytest-xdist==3.8.0",
     "types-PyYAML",
 ]
@@ -71,9 +71,7 @@ known_first_party = [
 ]
 
 [tool.pytest.ini_options]
-addopts = """
---import-mode=importlib
-"""
+addopts = "--import-mode=importlib"
 
 [tool.coverage.run]
 source = ["sampletones_application", "sampletones_core", "sampletones_shared"]
