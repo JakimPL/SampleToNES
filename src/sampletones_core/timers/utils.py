@@ -9,7 +9,7 @@ from .implementation.phase import PhaseTimer
 def get_frequency_table(config: Config) -> Dict[int, float]:
     timer = PhaseTimer(
         sample_rate=config.library.sample_rate,
-        change_rate=config.library.change_rate,
+        nes_frequency=config.library.nes_frequency,
     )
     frequencies = {}
     for note in range(config.general.min_pitch, config.general.max_pitch + 1):

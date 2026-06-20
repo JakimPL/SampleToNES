@@ -7,7 +7,7 @@ from sampletones_application.logic.sequencer.playback.synthesizer import RowSynt
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_VOLUME
-from sampletones_shared.constants.project import REFERENCE_CHANGE_RATE, REFERENCE_TEMPO
+from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
 from tests.sampletones_application.logic.sequencer.playback.conftest import (
     add_sample,
     make_controller,
@@ -324,7 +324,7 @@ class TestLoopBehavior:
 
     def test_loop_false_produces_silence_after_instructions_end(self) -> None:
         settings = make_controller().project.settings
-        frame_length = settings.sample_rate // settings.change_rate
+        frame_length = settings.sample_rate // settings.nes_frequency
 
         def place_one_instruction_non_loop_sample(context: SynthesizerContext) -> None:
             recon = make_pulse_reconstruction(count=1)
@@ -399,12 +399,12 @@ class TestSilenceCases:
 
 
 class TestFrameCount:
-    def test_chunk_length_matches_speed_sample_rate_and_change_rate(self) -> None:
+    def test_chunk_length_matches_speed_sample_rate_and_nes_frequency(self) -> None:
         def render_and_assert_chunk_length(context: SynthesizerContext) -> None:
             settings = _controller(context).project.settings
-            frame_length = settings.sample_rate // settings.change_rate
-            ticks_per_row = (settings.speed * settings.change_rate * REFERENCE_TEMPO) // (
-                settings.tempo * REFERENCE_CHANGE_RATE
+            frame_length = settings.sample_rate // settings.nes_frequency
+            ticks_per_row = (settings.speed * settings.nes_frequency * REFERENCE_TEMPO) // (
+                settings.tempo * REFERENCE_NES_FREQUENCY
             )
             audio = _render(context)
             assert len(audio) == frame_length * ticks_per_row

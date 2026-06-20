@@ -97,11 +97,11 @@ TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE = TagName(
     Widget.INPUT,
     "sample_rate",
 )
-TAG_MAIN_CONFIG_INPUT_CHANGE_RATE = TagName(
+TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,
     Widget.INPUT,
-    "change_rate",
+    "nes_frequency",
 )
 TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA = TagName(
     Page.MAIN,

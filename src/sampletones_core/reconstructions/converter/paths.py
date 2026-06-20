@@ -20,10 +20,10 @@ def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
 
 def generate_config_directory_name(config: Config) -> str:
     sample_rate = config.library.sample_rate
-    change_rate = config.library.change_rate
+    nes_frequency = config.library.nes_frequency
     generators = abbreviate_generator_names(config.generation.generators)
     config_hash = hash_models(config.library, config.generation)
-    config_directory = f"{sample_rate}_{change_rate}_{generators}_{config_hash}"
+    config_directory = f"{sample_rate}_{nes_frequency}_{generators}_{config_hash}"
     return config_directory
 
 

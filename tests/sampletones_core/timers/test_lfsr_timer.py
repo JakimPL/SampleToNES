@@ -17,14 +17,14 @@ class LFSRForwardCase(BaseTestCase):
 
 @pytest.fixture
 def long_timer() -> LFSRTimer:
-    timer = LFSRTimer(sample_rate=44100, change_rate=60)
+    timer = LFSRTimer(sample_rate=44100, nes_frequency=60)
     timer.short = False
     return timer
 
 
 @pytest.fixture
 def short_timer() -> LFSRTimer:
-    timer = LFSRTimer(sample_rate=44100, change_rate=60)
+    timer = LFSRTimer(sample_rate=44100, nes_frequency=60)
     timer.short = True
     return timer
 
@@ -189,7 +189,7 @@ class TestLFSRProperties:
 
 class TestLFSRResetPhase:
     def test_period_setter_resets_state_when_reset_phase_true(self) -> None:
-        timer = LFSRTimer(sample_rate=44100, change_rate=60, reset_phase=True)
+        timer = LFSRTimer(sample_rate=44100, nes_frequency=60, reset_phase=True)
         timer.lfsr = 500
         timer.clock = 0.5
         timer.period = 7

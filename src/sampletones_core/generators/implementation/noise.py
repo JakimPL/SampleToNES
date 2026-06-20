@@ -25,7 +25,7 @@ class NoiseGenerator(Generator[NoiseInstruction, LFSRTimer]):
         super().__init__(config, name)
         self.timer = LFSRTimer(
             sample_rate=config.library.sample_rate,
-            change_rate=config.library.change_rate,
+            nes_frequency=config.library.nes_frequency,
             reset_phase=config.generation.reset_phase,
         )
 

@@ -45,7 +45,7 @@ class InstructionsDetailsElements(AbstractElement):
     DETAILS_TEXT = "details_text"
     PARAMETERS_TEXT = "parameters_text"
     GENERAL_TEXT = "general_text"
-    CELL_CHANGE_RATE = "cell_change_rate"
+    CELL_NES_FREQUENCY = "cell_nes_frequency"
     CELL_GENERATOR = "cell_generator"
     CELL_NAME = "cell_name"
     CELL_FREQUENCY = "cell_frequency"

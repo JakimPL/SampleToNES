@@ -29,7 +29,7 @@ from sampletones_core.library import (
     InstructionLibraryKey,
     get_display_name_from_key,
 )
-from sampletones_core.library.utils import create_key_from_filename
+from sampletones_core.library.filename.utils import create_key_from_filename
 from sampletones_core.parallelization import (
     ETAEstimator,
     TaskProgress,

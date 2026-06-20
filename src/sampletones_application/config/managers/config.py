@@ -111,7 +111,7 @@ class ConfigManager:
         new_library = self.config.library.model_copy(
             update={
                 "sample_rate": update.sample_rate,
-                "change_rate": update.change_rate,
+                "nes_frequency": update.nes_frequency,
                 "transformation_gamma": update.transformation_gamma,
             }
         )
@@ -167,14 +167,14 @@ class ConfigManager:
 
     def apply_library_config(self, library_key: InstructionLibraryKey) -> None:
         sample_rate = library_key.sample_rate
-        change_rate = round(sample_rate / library_key.frame_length)
+        nes_frequency = round(sample_rate / library_key.frame_length)
         window_size = library_key.window_size
         transformation_gamma = library_key.transformation_gamma
 
         new_library_config = self.config.library.model_copy(
             update={
                 "sample_rate": sample_rate,
-                "change_rate": change_rate,
+                "nes_frequency": nes_frequency,
                 "window_size": window_size,
                 "transformation_gamma": transformation_gamma,
             }

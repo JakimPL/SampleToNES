@@ -5,5 +5,5 @@ class ConfigPanelViewModel(BaseModel, frozen=True):
     normalize: bool
     quantize: bool
     sample_rate: int
-    change_rate: int
+    nes_frequency: int
     transformation_gamma: int

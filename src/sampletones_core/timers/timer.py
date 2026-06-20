@@ -16,14 +16,14 @@ class Timer(ABC):
     def __init__(
         self,
         sample_rate: int,
-        change_rate: int,
+        nes_frequency: int,
         reset_phase: bool = RESET_PHASE,
     ):
         self._real_frequency: float = 0.0
         self.sample_rate: int = sample_rate
         self.reset_phase: bool = reset_phase
-        self.change_rate: int = change_rate
-        self.frame_length: int = round(self.sample_rate / self.change_rate)
+        self.nes_frequency: int = nes_frequency
+        self.frame_length: int = round(self.sample_rate / self.nes_frequency)
 
     @abstractmethod
     def __call__(

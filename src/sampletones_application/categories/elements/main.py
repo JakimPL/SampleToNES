@@ -25,12 +25,12 @@ class ConfigPanelElements(AbstractElement):
     CHECKBOX_NORMALIZE = "checkbox_normalize"
     CHECKBOX_QUANTIZE = "checkbox_quantize"
     INPUT_SAMPLE_RATE = "input_sample_rate"
-    INPUT_CHANGE_RATE = "input_change_rate"
+    INPUT_NES_FREQUENCY = "input_nes_frequency"
     SLIDER_TRANSFORMATION_GAMMA = "slider_transformation_gamma"
     TOOLTIP_NORMALIZE = "tooltip_normalize"
     TOOLTIP_QUANTIZE = "tooltip_quantize"
     TOOLTIP_SAMPLE_RATE = "tooltip_sample_rate"
-    TOOLTIP_CHANGE_RATE = "tooltip_change_rate"
+    TOOLTIP_NES_FREQUENCY = "tooltip_nes_frequency"
     TOOLTIP_TRANSFORMATION_GAMMA = "tooltip_transformation_gamma"
 
 

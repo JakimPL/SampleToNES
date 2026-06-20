@@ -2,9 +2,9 @@ from typing import Final, Tuple
 
 # NES limits
 
-DEFAULT_CHANGE_RATE: Final[int] = 60  # NTSC frame rate
-MIN_CHANGE_RATE: Final[int] = 15
-MAX_CHANGE_RATE: Final[int] = 300
+DEFAULT_NES_FREQUENCY: Final[int] = 60  # NTSC frame rate
+MIN_NES_FREQUENCY: Final[int] = 15
+MAX_NES_FREQUENCY: Final[int] = 300
 
 # Pitches and frequencies
 

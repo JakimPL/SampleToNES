@@ -19,7 +19,7 @@ from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
 from sampletones_core.project.song_position import SongPosition
-from sampletones_shared.constants.project import REFERENCE_CHANGE_RATE, REFERENCE_TEMPO
+from sampletones_shared.constants.project import REFERENCE_NES_FREQUENCY, REFERENCE_TEMPO
 
 from .protocol import ChannelGeneratorProtocol
 
@@ -137,12 +137,12 @@ class RowSynthesizer:
         return mixed, position_before
 
     def _ticks_for_row(self, settings: ProjectSettings) -> int:
-        """ticks_per_row == speed at REFERENCE_TEMPO and REFERENCE_CHANGE_RATE."""
-        self._tick_debt += settings.speed * settings.change_rate * REFERENCE_TEMPO
+        """ticks_per_row == speed at REFERENCE_TEMPO and REFERENCE_NES_FREQUENCY."""
+        self._tick_debt += settings.speed * settings.nes_frequency * REFERENCE_TEMPO
         return self._drain_tick_debt(settings.tempo)
 
     def _drain_tick_debt(self, tempo: int) -> int:
-        divisor = tempo * REFERENCE_CHANGE_RATE
+        divisor = tempo * REFERENCE_NES_FREQUENCY
         ticks = self._tick_debt // divisor
         self._tick_debt -= ticks * divisor
         return ticks

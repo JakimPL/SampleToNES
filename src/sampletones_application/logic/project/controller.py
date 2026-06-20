@@ -100,8 +100,8 @@ class ProjectController(CallbackMixin):
         self._touch()
         self.call(self.on_settings_changed)
 
-    def set_change_rate(self, change_rate: int) -> None:
-        self.project.settings.change_rate = change_rate
+    def set_nes_frequency(self, nes_frequency: int) -> None:
+        self.project.settings.nes_frequency = nes_frequency
         self._touch()
         self.call(self.on_settings_changed)
 

@@ -88,8 +88,8 @@ class Config(DataModel):
         return self.general.quantize
 
     @property
-    def change_rate(self) -> int:
-        return self.library.change_rate
+    def nes_frequency(self) -> int:
+        return self.library.nes_frequency
 
     @property
     def sample_rate(self) -> int:

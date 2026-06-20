@@ -14,7 +14,7 @@ from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
     TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE,
-    TAG_MAIN_CONFIG_INPUT_CHANGE_RATE,
+    TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
     TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
     TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
     TAG_MAIN_CONFIG_PANEL,
@@ -29,9 +29,9 @@ from sampletones_application.utils.widgets import clamp_widget_value
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.general import (
-    MAX_CHANGE_RATE,
+    MAX_NES_FREQUENCY,
     MAX_TRANSFORMATION_GAMMA,
-    MIN_CHANGE_RATE,
+    MIN_NES_FREQUENCY,
 )
 from sampletones_shared.types.application import Sender
 
@@ -81,11 +81,11 @@ class GUIConfigPanel(GUIPanel):
             TextType.LABEL,
             ConfigPanelElements.INPUT_SAMPLE_RATE,
         ]
-        self._lbl_change_rate = language_manager[
+        self._lbl_nes_frequency = language_manager[
             Page.MAIN,
             Panel.CONFIG_PANEL,
             TextType.LABEL,
-            ConfigPanelElements.INPUT_CHANGE_RATE,
+            ConfigPanelElements.INPUT_NES_FREQUENCY,
         ]
         self._lbl_gamma = language_manager[
             Page.MAIN,
@@ -111,11 +111,11 @@ class GUIConfigPanel(GUIPanel):
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_SAMPLE_RATE,
         ]
-        self._tooltip_change_rate = language_manager[
+        self._tooltip_nes_frequency = language_manager[
             Page.MAIN,
             Panel.CONFIG_PANEL,
             TextType.TOOLTIP,
-            ConfigPanelElements.TOOLTIP_CHANGE_RATE,
+            ConfigPanelElements.TOOLTIP_NES_FREQUENCY,
         ]
         self._tooltip_gamma = language_manager[
             Page.MAIN,
@@ -163,7 +163,7 @@ class GUIConfigPanel(GUIPanel):
         )
         library_update = LibrarySettingsUpdate(
             sample_rate=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE)),
-            change_rate=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_CHANGE_RATE)),
+            nes_frequency=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY)),
             transformation_gamma=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA)),
         )
         self.call(self.on_audio_settings_changed, audio_update)
@@ -201,11 +201,11 @@ class GUIConfigPanel(GUIPanel):
             callback=self._on_parameter_change,
         )
         dpg.add_input_int(
-            label=self._lbl_change_rate,
-            default_value=self._view.change_rate,
-            tag=TAG_MAIN_CONFIG_INPUT_CHANGE_RATE,
-            min_value=MIN_CHANGE_RATE,
-            max_value=MAX_CHANGE_RATE,
+            label=self._lbl_nes_frequency,
+            default_value=self._view.nes_frequency,
+            tag=TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
+            min_value=MIN_NES_FREQUENCY,
+            max_value=MAX_NES_FREQUENCY,
             width=self._input_width,
             callback=self._on_parameter_change,
         )
@@ -220,7 +220,7 @@ class GUIConfigPanel(GUIPanel):
 
         for tag in [
             TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
-            TAG_MAIN_CONFIG_INPUT_CHANGE_RATE,
+            TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
             TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
@@ -231,7 +231,7 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, self._tooltip_normalize)
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, self._tooltip_quantize)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, self._tooltip_sample_rate)
-        show_tooltip(TAG_MAIN_CONFIG_INPUT_CHANGE_RATE, self._tooltip_change_rate)
+        show_tooltip(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, self._tooltip_nes_frequency)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._tooltip_gamma)
 
     def update_view(self, viewmodel: ConfigPanelViewModel) -> None:
@@ -239,7 +239,7 @@ class GUIConfigPanel(GUIPanel):
         dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, viewmodel.normalize)
         dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, viewmodel.quantize)
         dpg.set_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, viewmodel.sample_rate)
-        dpg.set_value(TAG_MAIN_CONFIG_INPUT_CHANGE_RATE, viewmodel.change_rate)
+        dpg.set_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, viewmodel.nes_frequency)
         dpg.set_value(
             TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
             viewmodel.transformation_gamma,

@@ -4,8 +4,8 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.general import (
-    MAX_CHANGE_RATE,
-    MIN_CHANGE_RATE,
+    MAX_NES_FREQUENCY,
+    MIN_NES_FREQUENCY,
 )
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_shared.constants.project import (
@@ -31,10 +31,10 @@ class TestBounds(BaseTestSuite):
             return f"{self.field}={self.value}_{verdict}"
 
     test_cases = [
-        TestCase(field="change_rate", value=MIN_CHANGE_RATE, expected=True),
-        TestCase(field="change_rate", value=MAX_CHANGE_RATE, expected=True),
-        TestCase(field="change_rate", value=MIN_CHANGE_RATE - 1, expected=False),
-        TestCase(field="change_rate", value=MAX_CHANGE_RATE + 1, expected=False),
+        TestCase(field="nes_frequency", value=MIN_NES_FREQUENCY, expected=True),
+        TestCase(field="nes_frequency", value=MAX_NES_FREQUENCY, expected=True),
+        TestCase(field="nes_frequency", value=MIN_NES_FREQUENCY - 1, expected=False),
+        TestCase(field="nes_frequency", value=MAX_NES_FREQUENCY + 1, expected=False),
         TestCase(field="tempo", value=MIN_TEMPO, expected=True),
         TestCase(field="tempo", value=MAX_TEMPO, expected=True),
         TestCase(field="tempo", value=MIN_TEMPO - 1, expected=False),
@@ -77,6 +77,6 @@ class TestSerialization:
         assert restored == settings
 
     def test_json_round_trip(self) -> None:
-        settings = ProjectSettings(change_rate=50)
+        settings = ProjectSettings(nes_frequency=50)
         restored = ProjectSettings.model_validate_json(settings.model_dump_json())
         assert restored == settings

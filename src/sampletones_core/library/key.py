@@ -53,7 +53,7 @@ class InstructionLibraryKey(BaseModel):
     def get_filename(config: InstructionsLibraryConfig, window: Window, config_hash: str) -> str:
         return (
             f"sr_{config.sample_rate}_"
-            f"cr_{config.change_rate}_"
+            f"cr_{config.nes_frequency}_"
             f"ws_{window.size}_"
             f"tg_{config.transformation_gamma}_"
             f"ch_{config_hash}{EXT_FILE_LIBRARY}"

@@ -13,7 +13,7 @@ INVALID_PHASE_INITIALS = [
 
 @pytest.fixture
 def phase_timer() -> PhaseTimer:
-    return PhaseTimer(sample_rate=44100, change_rate=60)
+    return PhaseTimer(sample_rate=44100, nes_frequency=60)
 
 
 class TestFrequencyToTimer:
@@ -145,7 +145,7 @@ class TestPhaseTimerProperties:
 
 class TestPhaseTimerResetPhase:
     def test_frequency_setter_resets_phase_when_reset_phase_true(self) -> None:
-        timer = PhaseTimer(sample_rate=44100, change_rate=60, reset_phase=True)
+        timer = PhaseTimer(sample_rate=44100, nes_frequency=60, reset_phase=True)
         timer.phase = 0.5
         timer.frequency = 440.0
         assert timer.phase == 0.0

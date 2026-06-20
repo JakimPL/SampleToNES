@@ -13,7 +13,7 @@ class AudioSettingsUpdate(BaseModel, frozen=True):
 
 class LibrarySettingsUpdate(BaseModel, frozen=True):
     sample_rate: int
-    change_rate: int
+    nes_frequency: int
     transformation_gamma: int
 
 

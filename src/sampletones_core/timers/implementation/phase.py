@@ -12,11 +12,11 @@ class PhaseTimer(Timer):
     def __init__(
         self,
         sample_rate: int,
-        change_rate: int,
+        nes_frequency: int,
         reset_phase: bool = RESET_PHASE,
         phase_increment: float = 1.0,
     ) -> None:
-        super().__init__(sample_rate, change_rate, reset_phase)
+        super().__init__(sample_rate, nes_frequency, reset_phase)
         self._cycles_per_sample: float = APU_CLOCK / sample_rate
         self._frequency: float = 0.0
         self._timer: int = 0

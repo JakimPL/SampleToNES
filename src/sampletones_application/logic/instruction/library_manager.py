@@ -244,7 +244,7 @@ class InstructionsLibraryManager(CallbackMixin):
             return False
         if not file_parts[0] == "sr" or not file_parts[1].isdigit():
             return False
-        if not file_parts[2] == "cr" or not file_parts[3].isdigit():
+        if not file_parts[2] == "nf" or not file_parts[3].isdigit():
             return False
         if not file_parts[4] == "ws" or not file_parts[5].isdigit():
             return False

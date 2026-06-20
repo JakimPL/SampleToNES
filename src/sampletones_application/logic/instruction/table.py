@@ -20,11 +20,11 @@ class InstructionTableLogic:
         float_precision: int,
     ) -> None:
         self._float_precision = float_precision
-        self._lbl_change_rate = language_manager[
+        self._lbl_nes_frequency = language_manager[
             Page.INSTRUCTIONS,
             Panel.DETAILS,
             TextType.LABEL,
-            InstructionsDetailsElements.CELL_CHANGE_RATE,
+            InstructionsDetailsElements.CELL_NES_FREQUENCY,
         ]
         self._lbl_generator = language_manager[
             Page.INSTRUCTIONS,
@@ -101,7 +101,7 @@ class InstructionTableLogic:
 
         self._current_data: Optional[InstructionPanelData] = None
         self._current_hash: str = ""
-        self._current_change_rate: Optional[int] = None
+        self._current_nes_frequency: Optional[int] = None
 
     def clear_data(self) -> None:
         self.current_data = None
@@ -127,8 +127,8 @@ class InstructionTableLogic:
             fragment = self.current_data.fragment
             rows.append(
                 TableCell(
-                    label=self._lbl_change_rate,
-                    value=str(self._current_change_rate),
+                    label=self._lbl_nes_frequency,
+                    value=str(self._current_nes_frequency),
                 )
             )
             rows.append(
@@ -223,17 +223,17 @@ class InstructionTableLogic:
         if instruction_data is None:
             self._current_data = None
             self._current_hash = ""
-            self._current_change_rate = None
+            self._current_nes_frequency = None
             return
 
         self._current_data = instruction_data
         self._current_hash = hash_model(self._current_data)
-        self._current_change_rate = instruction_data.config.change_rate
+        self._current_nes_frequency = instruction_data.config.nes_frequency
 
     @property
     def current_hash(self) -> str:
         return self._current_hash
 
     @property
-    def current_change_rate(self) -> Optional[int]:
-        return self._current_change_rate
+    def current_nes_frequency(self) -> Optional[int]:
+        return self._current_nes_frequency

@@ -29,10 +29,10 @@ class LFSRTimer(Timer):
     def __init__(
         self,
         sample_rate: int,
-        change_rate: int,
+        nes_frequency: int,
         reset_phase: bool = RESET_PHASE,
     ) -> None:
-        super().__init__(sample_rate, change_rate, reset_phase)
+        super().__init__(sample_rate, nes_frequency, reset_phase)
 
         self._clocks_per_sample: float = 0.0
         self._real_frequency: float = 0.0

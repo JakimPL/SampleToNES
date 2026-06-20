@@ -126,7 +126,7 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
-        self._sequencer_module_panel.on_change_rate = self._sequencer_grid_logic.set_change_rate
+        self._sequencer_module_panel.on_nes_frequency = self._sequencer_grid_logic.set_nes_frequency
         self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed

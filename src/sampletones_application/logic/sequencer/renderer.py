@@ -14,7 +14,7 @@ class SongRenderer(Protocol):
     ``transpose`` and scaled by ``volume``) through the matching
     :class:`~sampletones_core.generators.generator.Generator`, advancing one
     tracker row every ``speed`` engine ticks at the project ``tempo`` /
-    ``change_rate``, then mixes the four channels into one buffer.
+    ``nes_frequency``, then mixes the four channels into one buffer.
     """
 
     def render(self, project: Project) -> np.ndarray: ...

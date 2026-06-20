@@ -6,9 +6,9 @@ from sampletones_core.constants.audio import (
     MIN_SAMPLE_RATE,
 )
 from sampletones_core.constants.general import (
-    DEFAULT_CHANGE_RATE,
-    MAX_CHANGE_RATE,
-    MIN_CHANGE_RATE,
+    DEFAULT_NES_FREQUENCY,
+    MAX_NES_FREQUENCY,
+    MIN_NES_FREQUENCY,
 )
 from sampletones_shared.constants.project import (
     DEFAULT_SPEED,
@@ -23,10 +23,10 @@ from sampletones_shared.constants.project import (
 class ProjectSettings(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    change_rate: int = Field(
-        default=DEFAULT_CHANGE_RATE,
-        ge=MIN_CHANGE_RATE,
-        le=MAX_CHANGE_RATE,
+    nes_frequency: int = Field(
+        default=DEFAULT_NES_FREQUENCY,
+        ge=MIN_NES_FREQUENCY,
+        le=MAX_NES_FREQUENCY,
         description="NES engine refresh rate in Hz (NTSC is 60).",
     )
     sample_rate: int = Field(

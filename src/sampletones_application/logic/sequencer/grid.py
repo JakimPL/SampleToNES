@@ -49,7 +49,7 @@ class SequencerGridLogic(CallbackMixin):
         project = self._controller.project
         project_settings = project.settings
         return SequencerSettingsViewModel(
-            change_rate=project_settings.change_rate,
+            nes_frequency=project_settings.nes_frequency,
             tempo=project_settings.tempo,
             speed=project_settings.speed,
             rows_per_pattern=project.song.rows_per_pattern,
@@ -105,8 +105,8 @@ class SequencerGridLogic(CallbackMixin):
         self.push_settings()
         self.push_grid()
 
-    def set_change_rate(self, change_rate: int) -> None:
-        self._controller.set_change_rate(change_rate)
+    def set_nes_frequency(self, nes_frequency: int) -> None:
+        self._controller.set_nes_frequency(nes_frequency)
 
     def set_rows_per_pattern(self, rows_per_pattern: int) -> None:
         self._controller.set_rows_per_pattern(rows_per_pattern)

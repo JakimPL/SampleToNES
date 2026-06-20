@@ -1,5 +1,5 @@
 import numpy as np
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.audio import (
     DEFAULT_SAMPLE_RATE,
@@ -9,11 +9,12 @@ from sampletones_core.constants.audio import (
 from sampletones_core.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
-    DEFAULT_CHANGE_RATE,
-    MAX_CHANGE_RATE,
+    DEFAULT_NES_FREQUENCY,
+    LIMIT_MAX_PITCH,
+    MAX_NES_FREQUENCY,
     MAX_TRANSFORMATION_GAMMA,
-    MIN_CHANGE_RATE,
     MIN_FREQUENCY,
+    MIN_NES_FREQUENCY,
     TRANSFORMATION_GAMMA,
 )
 from sampletones_core.data import DataModel
@@ -22,15 +23,39 @@ from sampletones_core.data import DataModel
 class InstructionsLibraryConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    change_rate: int = Field(default=DEFAULT_CHANGE_RATE, ge=MIN_CHANGE_RATE, le=MAX_CHANGE_RATE)
-    sample_rate: int = Field(default=DEFAULT_SAMPLE_RATE, ge=MIN_SAMPLE_RATE, le=MAX_SAMPLE_RATE)
-    transformation_gamma: int = Field(default=TRANSFORMATION_GAMMA, ge=0, le=MAX_TRANSFORMATION_GAMMA)
-    a4_frequency: float = Field(default=A4_FREQUENCY, gt=20.0, lt=20000.0)
-    a4_pitch: int = Field(default=A4_PITCH, ge=1, le=127)
+    nes_frequency: int = Field(
+        default=DEFAULT_NES_FREQUENCY,
+        ge=MIN_NES_FREQUENCY,
+        le=MAX_NES_FREQUENCY,
+        validation_alias=AliasChoices(
+            "change_rate",
+            "nes_frequency",
+        ),
+    )
+    sample_rate: int = Field(
+        default=DEFAULT_SAMPLE_RATE,
+        ge=MIN_SAMPLE_RATE,
+        le=MAX_SAMPLE_RATE,
+    )
+    transformation_gamma: int = Field(
+        default=TRANSFORMATION_GAMMA,
+        ge=0,
+        le=MAX_TRANSFORMATION_GAMMA,
+    )
+    a4_frequency: float = Field(
+        default=A4_FREQUENCY,
+        gt=20.0,
+        lt=20000.0,
+    )
+    a4_pitch: int = Field(
+        default=A4_PITCH,
+        ge=1,
+        le=LIMIT_MAX_PITCH,
+    )
 
     @property
     def frame_length(self) -> int:
-        return round(self.sample_rate / self.change_rate)
+        return round(self.sample_rate / self.nes_frequency)
 
     @property
     def window_size(self) -> int:

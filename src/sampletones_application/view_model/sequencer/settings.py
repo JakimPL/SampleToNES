@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class SequencerSettingsViewModel(BaseModel, frozen=True):
-    change_rate: int
+    nes_frequency: int
     tempo: int
     speed: int
     rows_per_pattern: int
