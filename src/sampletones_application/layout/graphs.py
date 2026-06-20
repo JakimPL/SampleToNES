@@ -20,6 +20,8 @@ class WaveformLayout(BaseModel, frozen=True):
 class SpectrumLayout(BaseModel, frozen=True):
     max_display_bins: int
     offset_log: float
+    color_dim: RGBA
+    color_bright: RGBA
 
 
 class GraphRange(BaseModel, frozen=True):

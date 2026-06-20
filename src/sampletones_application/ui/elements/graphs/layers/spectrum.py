@@ -4,8 +4,6 @@ from typing import Any, Final, Generator, Tuple
 import numpy as np
 
 from sampletones_application.ui.elements.graphs.layers.layer import Layer
-from sampletones_core.constants.spectrum import CQT_CUTOFF_FREQUENCY
-from sampletones_core.fft.utils import to_log_even_bands
 from sampletones_core.library import InstructionLibraryFragment
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.application import Color
@@ -17,9 +15,8 @@ _DEFAULT_MAX_DISPLAY_BINS: Final[int] = 128
 class SpectrumLayer(Layer):
     data: InstructionLibraryFragment[Any]
     name: str
-    sample_rate: int
-    frame_length: int
-    color: Color = 255, 255, 255
+    color_dim: Color = (0, 0, 0)
+    color_bright: Color = (255, 255, 255)
     max_display_bins: int = _DEFAULT_MAX_DISPLAY_BINS
 
     spectrum: Histogram = field(init=False)
@@ -29,13 +26,13 @@ class SpectrumLayer(Layer):
 
     def __post_init__(self) -> None:
         spectrum = self.data.feature
-        n_bins = min(len(self.data.feature), self.max_display_bins)
-        bands = to_log_even_bands(spectrum.edges, CQT_CUTOFF_FREQUENCY, n_bins)
-        spectrum = spectrum.rebin(bands)
+        n_bins = min(len(spectrum), self.max_display_bins)
+        if n_bins < len(spectrum):
+            spectrum = Histogram(edges=spectrum.edges[: n_bins + 1], values=spectrum.values[:n_bins])
 
         values = spectrum.values / np.max(spectrum.values)
-        frequencies = np.sqrt(spectrum.edges[:-1] * spectrum.edges[1:])
-        bandwidths = frequencies[1:] - frequencies[:-1]
+        frequencies = (spectrum.edges[:-1] + spectrum.edges[1:]) / 2
+        bandwidths = spectrum.edges[1:] - spectrum.edges[:-1]
         brightness = np.round(values * 255).astype(np.uint8)
 
         object.__setattr__(self, "spectrum", spectrum)

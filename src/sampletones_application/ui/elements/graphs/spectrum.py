@@ -7,9 +7,7 @@ from sampletones_application.categories.elements.global_ import GraphElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.constants.graphs import (
-    SUF_GRAPH_THEME,
-)
+from sampletones_application.constants.graphs import SUF_GRAPH_THEME
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.ui.elements.graphs.graph import GUIGraph
 from sampletones_application.ui.elements.graphs.layers.spectrum import SpectrumLayer
@@ -140,9 +138,9 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             SpectrumLayer(
                 data=fragment,
                 name=self._lbl_spectrum_name,
-                sample_rate=sample_rate,
-                frame_length=frame_length,
                 max_display_bins=self._layout.spectrum.max_display_bins,
+                color_dim=self._layout.spectrum.color_dim[:3],
+                color_bright=self._layout.spectrum.color_bright[:3],
             )
         )
 
@@ -158,8 +156,14 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
             frequencies = [frequency for layer in self.layers.values() for frequency, _, _ in layer]
             self.y_range = (frequencies[0], frequencies[-1])
 
-    def _create_brightness_theme(self, color: Color, brightness: float) -> str:
-        color = (color[0], color[1], color[2], round(brightness))
+    def _create_brightness_theme(self, color_dim: Color, color_bright: Color, brightness: float) -> str:
+        t = brightness / 255.0
+        color = (
+            round(color_dim[0] + (color_bright[0] - color_dim[0]) * t),
+            round(color_dim[1] + (color_bright[1] - color_dim[1]) * t),
+            round(color_dim[2] + (color_bright[2] - color_dim[2]) * t),
+            255,
+        )
         if color in self.themes:
             return self.themes[color]
 
@@ -193,7 +197,7 @@ class GUISpectrumGraph(GUIGraph[SpectrumLayer]):
                     horizontal=True,
                 )
 
-                theme_tag = self._create_brightness_theme(layer.color, brightness)
+                theme_tag = self._create_brightness_theme(layer.color_dim, layer.color_bright, brightness)
                 dpg_bind_item_theme(series_tag, theme_tag)
 
         self._update_ranges()

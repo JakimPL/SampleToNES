@@ -13,6 +13,8 @@ waveform:
 spectrum:
   max_display_bins: 512
   offset_log: 0.01
+  color_dim: "#1c1c1c"
+  color_bright: "#ffffff"
 
 graph:
   min_x: 0.0
