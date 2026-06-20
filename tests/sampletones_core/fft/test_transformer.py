@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import partial
 from typing import Optional, Tuple, Type, Union
 from unittest.mock import patch
 
 import numpy as np
 import pytest
 
+from sampletones_core.constants.general import SPECTRUM_FLOOR
 from sampletones_core.fft.transformer import FFTTransformer
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
@@ -15,7 +17,8 @@ from sampletones_shared.types.array import (
     Numeric,
     NumericClasses,
 )
-from sampletones_shared.utils.transformations.morpher import PowerMorpher
+from sampletones_shared.utils.transformations.functions import power, power_inverse
+from sampletones_shared.utils.transformations.morpher import LogMorpher
 from sampletones_shared.utils.transformations.transformation import (
     Transformation,
 )
@@ -28,12 +31,13 @@ from tests.suite.functions import compare_functions
 
 @pytest.fixture
 def transformer_identity() -> FFTTransformer:
-    return FFTTransformer.from_gamma(gamma=50, sample_rate=44100)
+    return FFTTransformer.from_gamma(gamma=0, sample_rate=44100)
 
 
 @pytest.fixture
 def transformer_square() -> FFTTransformer:
-    return FFTTransformer.from_gamma(gamma=25, sample_rate=44100)
+    transformation = Transformation(partial(power, a=0.5), partial(power_inverse, a=0.5))
+    return FFTTransformer(transformation=transformation, sample_rate=44100)
 
 
 class TransformerFixture(StrEnum):
@@ -54,52 +58,52 @@ class TestFromGamma(BaseTestSuite):
 
     test_cases = [
         TestCase(
-            label="gamma_0_flat_features",
+            label="gamma_0_identity",
             gamma=0,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=0.0).transformation,
+            expected=LogMorpher(gamma=0.0, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
-            label="gamma_25_sqrt",
+            label="gamma_25_intermediate",
             gamma=25,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=0.25).transformation,
+            expected=LogMorpher(gamma=0.25, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
-            label="gamma_50_identity",
+            label="gamma_50_intermediate",
             gamma=50,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=0.5).transformation,
+            expected=LogMorpher(gamma=0.5, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
-            label="gamma_75_square",
+            label="gamma_75_intermediate",
             gamma=75,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=0.75).transformation,
+            expected=LogMorpher(gamma=0.75, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
-            label="gamma_100_sharp_features",
+            label="gamma_100_log",
             gamma=100,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=1.0).transformation,
+            expected=LogMorpher(gamma=1.0, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
             label="gamma_25.5_decimal",
             gamma=25.5,
             sample_rate=44100,
-            expected=PowerMorpher(gamma=0.255).transformation,
+            expected=LogMorpher(gamma=0.255, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
             label="sample_rate_48000",
             gamma=50,
             sample_rate=48000,
-            expected=PowerMorpher(gamma=0.5).transformation,
+            expected=LogMorpher(gamma=0.5, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
             label="sample_rate_8000",
             gamma=50,
             sample_rate=8000,
-            expected=PowerMorpher(gamma=0.5).transformation,
+            expected=LogMorpher(gamma=0.5, epsilon=SPECTRUM_FLOOR).transformation,
         ),
         TestCase(
             label="gamma_negative_error",

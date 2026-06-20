@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
-from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA
+from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA, SPECTRUM_FLOOR
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.types.array import (
     Array,
@@ -16,7 +16,7 @@ from sampletones_shared.types.array import (
     Numeric,
     NumericClasses,
 )
-from sampletones_shared.utils.transformations.morpher import PowerMorpher
+from sampletones_shared.utils.transformations.morpher import LogMorpher
 from sampletones_shared.utils.transformations.transformation import (
     Transformation,
 )
@@ -29,37 +29,27 @@ class FFTTransformer(BaseModel):
     """
     A Transformation wrapper specifically for FFT features.
 
-    Calculates FFT features on the spectrum and sends them to the feature space.
-    Features are of the form:
+    Calculates FFT features on the spectrum and sends them to the feature space using
+    the Yeo-Johnson family of transformations. The forward transformation is:
 
-        `f(x) = x ^ a`
+        `f_λ(x; ε) = ((x + ε)^λ - ε^λ) / λ`
 
-    The feature space allows to shape the spectrum, either to flatten it or to sharpen its peaks.
+    where `λ = 1 - gamma / 100` and `ε` is the spectrum noise floor (`SPECTRUM_FLOOR`).
 
-    The exponent `a` is a value from [0.25, 4], which depends on the `gamma` parameter in [0, 100].
-    The mapping from `gamma` to `a` is as follows:
-        - `gamma = 0   -> a = 0.25`  (flat features)
-        - `gamma = 50  -> a = 1.0`   (standard energy)
-        - `gamma = 100 -> a = 4.0`   (sharp features)
+    The mapping from `gamma` to feature space is:
+        - `gamma = 0   -> λ = 1.0`  (identity; features equal the power spectrum)
+        - `gamma = 100 -> λ = 0.0`  (log; features equal `log(1 + x / ε)`)
 
-    FFTTransformer allows transforming features by applying operations in the original spectrum space,
-    and then mapping the result back to the feature space. More precisely, the general form of
-    a composed transformation is:
+    Intermediate values of gamma produce a smooth, real-valued family between these two
+    extremes. All intermediate transforms have closed-form inverses, so operations can be
+    applied in the feature space and mapped back to the spectrum space.
 
-        `[ op( spectrum ^ (1 / a) ) ] ^ a`
+    FFTTransformer allows composing operations in the feature space using the general form:
 
-    where:
-    - `op` is a unary or binary operation (e.g., addition, subtraction)
-    - `a` is the power derived from gamma
-    - `spectrum` is the result of the base operation on the FFT values.
+        `[ op( f_λ⁻¹(feature₁), f_λ⁻¹(feature₂), ... ) ] ↦ f_λ`
 
-    Elements of the form `spectrum ^ a` are called _FFT features_, or simply _features_.
-
-    The spectrum should be a positive real-valued array, to ensure all that mapping:
-
-        `x ↦ x ^ a`
-
-    is well-defined. The condition of non-negativity is enforced only during spectrum calculation.
+    The spectrum must be non-negative to ensure the Yeo-Johnson transform remains real-valued.
+    This is enforced during spectrum calculation.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True, use_enum_values=True)
@@ -84,11 +74,21 @@ class FFTTransformer(BaseModel):
         method: SpectrumMethod = SpectrumMethod.FFT,
     ) -> Self:
         """
-        Create an FFTTransformer from a gamma parameter, and sample rate.
+        Create an FFTTransformer from a gamma parameter and sample rate.
+
+        gamma = 0 selects the identity transform (raw power spectrum features).
+        gamma = 100 selects the logarithmic transform (log-scale features).
+        Intermediate values produce a smooth Yeo-Johnson interpolation between the two.
+
+        The noise floor `SPECTRUM_FLOOR` anchors the log transition: it equals
+        `(MIN_VOLUME / MAX_VOLUME)²`, the minimum meaningful power ratio across
+        NES volume levels. Below this level, amplitude differences are sub-volume-step
+        and treated linearly.
 
         Args:
-            gamma (int): Gamma parameter in the range [0, 100].
-            sample_rate (int): Sample rate for FFT calculations.
+            gamma: Gamma parameter in the range [0, 100].
+            sample_rate: Sample rate for FFT calculations.
+            method: Spectrum computation method.
 
         Returns:
             Self: Configured FFTTransformer instance.
@@ -99,7 +99,7 @@ class FFTTransformer(BaseModel):
         if not 0 <= gamma <= MAX_TRANSFORMATION_GAMMA:
             raise ValueError(f"Gamma must be in [0, {MAX_TRANSFORMATION_GAMMA}]")
 
-        morpher = PowerMorpher(gamma=gamma / MAX_TRANSFORMATION_GAMMA)
+        morpher = LogMorpher(gamma=gamma / MAX_TRANSFORMATION_GAMMA, epsilon=SPECTRUM_FLOOR)
         transformation = morpher.transformation
         return cls(
             transformation=transformation,

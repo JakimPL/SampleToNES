@@ -44,6 +44,7 @@ MIN_VOLUME: Final[int] = 1
 MAX_VOLUME: Final[int] = 15
 VOLUME_RANGE: Final[range] = range(0, MAX_VOLUME + 1)
 MAX_DUTY_CYCLE: Final[int] = 3
+SPECTRUM_FLOOR: Final[float] = (MIN_VOLUME / MAX_VOLUME) ** 2
 
 # Audio import
 
@@ -59,7 +60,7 @@ LIBRARY_PHASES_PER_SAMPLE: Final[int] = 100
 
 # Calculation methods
 
-TRANSFORMATION_GAMMA: Final[int] = 50
+TRANSFORMATION_GAMMA: Final[int] = 0
 MAX_TRANSFORMATION_GAMMA: Final[int] = 100
 FIND_BEST_PHASE: Final[bool] = True
 FAST_DIFFERENCE: Final[bool] = False

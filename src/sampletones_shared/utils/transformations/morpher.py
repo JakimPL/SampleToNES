@@ -4,7 +4,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_shared.types.array import ArrayOrNumeric, UnaryTransformation
 
-from .functions import identity, power, power_inverse
+from .functions import (
+    identity,
+    power,
+    power_inverse,
+    yeo_johnson,
+    yeo_johnson_inverse,
+    yeo_johnson_log,
+    yeo_johnson_log_inverse,
+)
 from .transformation import Transformation
 
 
@@ -102,3 +110,85 @@ class PowerMorpher(BaseModel):
             backward = partial(power_inverse, a=self.power)
 
         return Transformation(forward, backward)
+
+
+class LogMorpher(BaseModel):
+    """
+    Provides a family of Yeo-Johnson transformations that morph continuously from
+    identity (gamma = 0) to a logarithmic feature space (gamma = 1).
+
+    The forward transformation is:
+
+        `f_λ(x; ε) = ((x + ε)^λ - ε^λ) / λ`
+
+    where `λ = 1 - gamma` and `ε` is the noise floor. At `gamma = 0` (λ = 1) this
+    is the identity. As `gamma → 1` (λ → 0) it converges to `log(1 + x / ε)`.
+
+    The inverse is:
+
+        `f_λ⁻¹(y; ε) = (λy + ε^λ)^(1/λ) - ε`
+
+    with the limit case `ε(e^y - 1)` at `gamma = 1`.
+
+    The parameter `ε` (epsilon) is the noise floor. It defines the knee between the
+    linear and logarithmic regimes: values well below `ε` are treated linearly, while
+    values well above `ε` are in the log regime. It must be chosen relative to the
+    meaningful signal range of the input.
+
+    Attributes:
+        gamma: Morphing parameter in [0, 1]. 0 = identity, 1 = log.
+        epsilon: Noise floor. Must be positive. Caller is responsible for choosing
+            a value appropriate for the expected spectrum magnitude range.
+        power: Derived shape parameter λ = 1 - gamma.
+        transformation: The forward and backward transformation pair.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
+
+    gamma: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Morphing parameter in [0, 1]. 0 = identity, 1 = log.",
+    )
+    epsilon: float = Field(
+        ...,
+        gt=0.0,
+        description="Noise floor defining the linear-to-log transition point.",
+    )
+
+    @cached_property
+    def power(self) -> float:
+        """
+        Shape parameter λ = 1 - gamma.
+
+        Returns:
+            float: The computed shape parameter in [0, 1].
+        """
+        return 1.0 - self.gamma
+
+    @cached_property
+    def transformation(self) -> Transformation:
+        """
+        Yeo-Johnson transformation pair for the current gamma and epsilon.
+
+        The identity branch (gamma = 0) and log branch (gamma = 1) are handled
+        explicitly rather than through the general formula, which is numerically
+        unstable at the boundary values.
+
+        Returns:
+            Transformation: Forward and backward function pair.
+        """
+        match self.gamma:
+            case 0.0:
+                return Transformation(identity, identity)
+            case 1.0:
+                return Transformation(
+                    partial(yeo_johnson_log, epsilon=self.epsilon),
+                    partial(yeo_johnson_log_inverse, epsilon=self.epsilon),
+                )
+            case _:
+                return Transformation(
+                    partial(yeo_johnson, power=self.power, epsilon=self.epsilon),
+                    partial(yeo_johnson_inverse, power=self.power, epsilon=self.epsilon),
+                )

@@ -72,7 +72,7 @@ pip install ".[gpu]"
 To optimize sample reconstruction, all single-oscillator instructions are prerendered as samples with spectral information.
 
 The instruction data depends on the following configuration properties:
-* `change_rate` (NES frequency, usually NTSC or PAL)
+* `nes_frequency` (NES frequency, usually NTSC or PAL)
 * `sample_rate` (in Hz)
 * `transformation_gamma`, which determines the transformation of the spectral information:
     * `0` - raw absolute values of Fourier Transform
@@ -117,12 +117,12 @@ Within each waveform, each instruction data contains spectral information on the
 Instructions libraries are stored as `.ins` files in the user's documents folder, e.g.:
 
 ```
-sr_44100_cr_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
+sr_44100_nf_30_ws_1615_tg_0_ch_283a31a50176c14faf36949913117e49.ins
 ```
 
 The configuration is embedded in the file name:
 * `sr_44100` corresponds to the sample rate 44100 Hz
-* `cr_30` describes change rate of 30 Hz
+* `nf_30` describes NES frequency of 30 Hz
 * `ws_1615` is the size of the FFT transformation (1615 samples)
 * `tg_0` encodes `transformation_gamma = 0`
 * `ch_283a31a50176c14faf36949913117e49` is the config hash.

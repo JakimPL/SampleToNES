@@ -72,3 +72,78 @@ def power_inverse(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     """
     array: ArrayOrNumeric = power(x, 1 / a)
     return array
+
+
+def yeo_johnson(x: ArrayOrNumeric, *, power: float, epsilon: float) -> ArrayOrNumeric:
+    """
+    Yeo-Johnson forward transformation for non-negative inputs.
+
+    Computes `((x + epsilon)^power - epsilon^power) / power`.
+
+    At `power = 1` this reduces to the identity. As `power → 0` this approaches
+    `log(1 + x / epsilon)`. The `epsilon` shift keeps the transform real at `x = 0`
+    and defines the knee between the linear and logarithmic regimes.
+
+    Args:
+        x: Input value or array (must be non-negative).
+        power: Shape parameter λ ∈ (0, 1].
+        epsilon: Noise floor defining the linear-to-log transition point.
+
+    Returns:
+        Transformed value or array.
+    """
+    array: ArrayOrNumeric = (np.power(x + epsilon, power) - epsilon**power) / power
+    return array
+
+
+def yeo_johnson_inverse(y: ArrayOrNumeric, *, power: float, epsilon: float) -> ArrayOrNumeric:
+    """
+    Inverse of the Yeo-Johnson forward transformation for non-negative inputs.
+
+    Computes `(power * y + epsilon^power)^(1 / power) - epsilon`.
+
+    Args:
+        y: Transformed value or array.
+        power: Shape parameter λ ∈ (0, 1].
+        epsilon: Noise floor used in the forward transformation.
+
+    Returns:
+        Recovered original value or array.
+    """
+    array: ArrayOrNumeric = np.power(power * y + epsilon**power, 1.0 / power) - epsilon
+    return array
+
+
+def yeo_johnson_log(x: ArrayOrNumeric, *, epsilon: float) -> ArrayOrNumeric:
+    """
+    Limiting case of the Yeo-Johnson transform as `power → 0`.
+
+    Computes `log(1 + x / epsilon)`, the natural logarithm normalized by the
+    noise floor. Uses `np.log1p` for numerical stability near `x = 0`.
+
+    Args:
+        x: Input value or array (must be non-negative).
+        epsilon: Noise floor defining the reference level for the log scale.
+
+    Returns:
+        Log-transformed value or array.
+    """
+    array: ArrayOrNumeric = np.log1p(x / epsilon)
+    return array
+
+
+def yeo_johnson_log_inverse(y: ArrayOrNumeric, *, epsilon: float) -> ArrayOrNumeric:
+    """
+    Inverse of the Yeo-Johnson log transformation (limit as `power → 0`).
+
+    Computes `epsilon * (e^y - 1)`. Uses `np.expm1` for numerical stability near `y = 0`.
+
+    Args:
+        y: Log-transformed value or array.
+        epsilon: Noise floor used in the forward log transformation.
+
+    Returns:
+        Recovered original value or array.
+    """
+    array: ArrayOrNumeric = epsilon * np.expm1(y)
+    return array
