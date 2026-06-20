@@ -14,7 +14,7 @@ from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
-    TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER,
+    TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
@@ -27,7 +27,7 @@ from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.constants.general import MAX_MIXER
+from sampletones_core.constants.general import MAX_DRIVE
 from sampletones_shared.types.application import Sender
 
 
@@ -57,17 +57,17 @@ class GUIReconstructorPanel(GUIPanel):
             TextType.LABEL,
             ReconstructorElements.SECTION_GENERATORS,
         ]
-        self._lbl_mixer = language_manager[
+        self._lbl_drive = language_manager[
             Page.MAIN,
             Panel.RECONSTRUCTOR,
             TextType.LABEL,
-            ReconstructorElements.SLIDER_MIXER,
+            ReconstructorElements.SLIDER_DRIVE,
         ]
-        self._tooltip_mixer = language_manager[
+        self._tooltip_drive = language_manager[
             Page.MAIN,
             Panel.RECONSTRUCTOR,
             TextType.TOOLTIP,
-            ReconstructorElements.TOOLTIP_MIXER,
+            ReconstructorElements.TOOLTIP_DRIVE,
         ]
         self._lbl_triangle = language_manager[
             Page.GLOBAL,
@@ -117,7 +117,7 @@ class GUIReconstructorPanel(GUIPanel):
         ):
             self._create_section_text()
             self._create_generator_selection()
-            self._create_mixer_slider()
+            self._create_drive_slider()
             self._create_tooltips()
 
     def _setup_handlers(self) -> None:
@@ -159,34 +159,34 @@ class GUIReconstructorPanel(GUIPanel):
             callback=self._on_parameter_change,
         )
 
-    def _create_mixer_slider(self) -> None:
+    def _create_drive_slider(self) -> None:
         dpg.add_separator()
         dpg.add_slider_float(
-            label=self._lbl_mixer,
-            tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER,
+            label=self._lbl_drive,
+            tag=TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
             min_value=0.0,
-            max_value=MAX_MIXER,
-            default_value=self._view.mixer,
+            max_value=MAX_DRIVE,
+            default_value=self._view.drive,
             width=self._input_width,
         )
 
-        dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._item_handler_tag)
-        GUIStatusBar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._msg_status_input)
+        dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
+        GUIStatusBar.bind_to_item(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
-        show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, self._tooltip_mixer)
+        show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
         generators = [generator for generator in GeneratorName if dpg.get_value(f"gen_{generator.value}")]
         generation_update = GenerationSettingsUpdate(
-            mixer=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER)),
+            drive=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE)),
             generators=generators,
         )
         self.call(self.on_generation_settings_changed, generation_update)
 
     def update_view(self, viewmodel: ReconstructorPanelViewModel) -> None:
         self._view = viewmodel
-        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER, viewmodel.mixer)
+        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, viewmodel.drive)
         for generator in GeneratorName:
             tag = f"gen_{generator.value}"
             dpg_set_value(tag, generator in viewmodel.generators)

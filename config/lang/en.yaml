@@ -216,8 +216,8 @@ main.config_panel.tooltip.tooltip_transformation_gamma: "Interpolate between lin
 # =============================================================================
 main.reconstructor.label.section_generators: "Generators"
 main.reconstructor.label.section_settings: "Reconstructor settings"
-main.reconstructor.label.slider_mixer: "Mixer volume"
-main.reconstructor.tooltip.tooltip_mixer: "Amplify the NES generated audio. Lower values introduce compression, while higher values increase dynamics."
+main.reconstructor.label.slider_drive: "Drive"
+main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output. At 1.0 amplitudes are calibrated; higher values push the selection harder, introducing a distortion-like effect."
 
 # =============================================================================
 # Main tab — Converter

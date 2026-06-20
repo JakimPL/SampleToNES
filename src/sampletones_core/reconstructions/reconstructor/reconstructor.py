@@ -126,10 +126,10 @@ class Reconstructor:
                     initials=initials,
                     save=True,
                 )
-                * self.config.generation.mixer
+                * self.config.generation.drive
             )
         else:
-            approximation = fragment_approximation.approximation.audio * self.config.generation.mixer
+            approximation = fragment_approximation.approximation.audio * self.config.generation.drive
 
         self.state.append(fragment_approximation, approximation)
 

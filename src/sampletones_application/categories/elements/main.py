@@ -37,8 +37,8 @@ class ConfigPanelElements(AbstractElement):
 class ReconstructorElements(AbstractElement):
     SECTION_GENERATORS = "section_generators"
     SECTION_SETTINGS = "section_settings"
-    SLIDER_MIXER = "slider_mixer"
-    TOOLTIP_MIXER = "tooltip_mixer"
+    SLIDER_DRIVE = "slider_drive"
+    TOOLTIP_DRIVE = "tooltip_drive"
 
 
 class ConverterElements(AbstractElement):

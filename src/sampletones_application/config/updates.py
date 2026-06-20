@@ -18,7 +18,7 @@ class LibrarySettingsUpdate(BaseModel, frozen=True):
 
 
 class GenerationSettingsUpdate(BaseModel, frozen=True):
-    mixer: float
+    drive: float
     generators: List[GeneratorName]
 
 

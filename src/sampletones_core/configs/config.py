@@ -72,8 +72,8 @@ class Config(DataModel):
         return Path(self.general.reconstructions_directory)
 
     @property
-    def mixer(self) -> float:
-        return self.generation.mixer
+    def drive(self) -> float:
+        return self.generation.drive
 
     @property
     def generators(self) -> List[GeneratorName]:

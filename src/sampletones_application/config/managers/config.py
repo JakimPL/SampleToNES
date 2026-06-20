@@ -122,7 +122,7 @@ class ConfigManager:
     def apply_generation_settings(self, update: GenerationSettingsUpdate) -> None:
         new_generation = self.config.generation.model_copy(
             update={
-                "mixer": update.mixer,
+                "drive": update.drive,
                 "generators": update.generators,
             }
         )

@@ -7,4 +7,4 @@ from sampletones_core.constants.enums import GeneratorName
 
 class ReconstructorPanelViewModel(BaseModel, frozen=True):
     generators: FrozenSet[GeneratorName]
-    mixer: float
+    drive: float

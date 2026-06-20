@@ -113,8 +113,8 @@ MAX_LFSR_SHORT: Final[int] = 0x5D
 
 # Mixer constants
 
-MIXER: Final[float] = 1.8
-MAX_MIXER: Final[float] = 5.0
+DRIVE: Final[float] = 1.8
+MAX_DRIVE: Final[float] = 5.0
 MIXER_PULSE: Final[float] = 0.26395226395226395
 MIXER_TRIANGLE: Final[float] = 0.2987012987012987
 MIXER_NOISE: Final[float] = 0.1733941733941734

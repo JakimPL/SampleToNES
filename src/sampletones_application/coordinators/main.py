@@ -137,7 +137,7 @@ class MainTabCoordinator:
         self._reconstructor_panel: GUIReconstructorPanel = GUIReconstructorPanel(
             ReconstructorPanelViewModel(
                 generators=frozenset(_config.generation.generators),
-                mixer=_config.generation.mixer,
+                drive=_config.generation.drive,
             ),
             input_width=layout.general.inputs.default_width,
             panel_height=layout.main.config.height,
@@ -247,7 +247,7 @@ class MainTabCoordinator:
         self._reconstructor_panel.update_view(
             ReconstructorPanelViewModel(
                 generators=frozenset(config.generation.generators),
-                mixer=config.generation.mixer,
+                drive=config.generation.drive,
             )
         )
 

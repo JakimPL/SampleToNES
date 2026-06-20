@@ -1,14 +1,14 @@
 from typing import List
 
-from pydantic import ConfigDict, Field
+from pydantic import AliasChoices, ConfigDict, Field
 
 from sampletones_core.constants.enums import DEFAULT_GENERATORS, GeneratorName
 from sampletones_core.constants.general import (
+    DRIVE,
     FAST_DIFFERENCE,
     FINAL_REGENERATION,
     FIND_BEST_PHASE,
-    MAX_MIXER,
-    MIXER,
+    MAX_DRIVE,
     RESET_PHASE,
     SPECTRAL_LOSS_WEIGHT,
     TEMPORAL_LOSS_WEIGHT,
@@ -33,7 +33,16 @@ class WeightsConfig(DataModel):
 class GenerationConfig(DataModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    mixer: float = Field(default=MIXER, ge=0.0, le=MAX_MIXER)
+    drive: float = Field(
+        default=DRIVE,
+        ge=0.0,
+        le=MAX_DRIVE,
+        validation_alias=AliasChoices(
+            "drive",
+            "mixer",
+        ),
+    )
+
     reset_phase: bool = Field(default=RESET_PHASE)
     final_regeneration: bool = Field(default=FINAL_REGENERATION)
 

@@ -115,11 +115,11 @@ TAG_MAIN_RECONSTRUCTOR_PANEL = TagName(
     Widget.PANEL,
     "reconstructor",
 )
-TAG_MAIN_RECONSTRUCTOR_SLIDER_MIXER = TagName(
+TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE = TagName(
     Page.MAIN,
     Panel.RECONSTRUCTOR,
     Widget.SLIDER,
-    "mixer",
+    "drive",
 )
 TAG_MAIN_ADVANCED_PANEL = TagName(
     Page.MAIN,

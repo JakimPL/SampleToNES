@@ -174,7 +174,7 @@ class ReconstructorWorker:
             self.window,
             generator.initials,
         )
-        return fragment * self.config.generation.mixer
+        return fragment * self.config.generation.drive
 
     def get_approximations(
         self,
