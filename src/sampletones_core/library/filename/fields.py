@@ -21,12 +21,8 @@ class InstructionsFilenameFields(BaseModel):
 
     @property
     def stem(self) -> str:
-        return FILENAME_SEPARATOR.join(
-            map(
-                lambda pair: FILENAME_SEPARATOR.join(map(str, pair)),
-                self.__dict__.items(),
-            )
-        )
+        pairs = (FILENAME_SEPARATOR.join([key, str(value)]) for key, value in self.model_dump().items())
+        return FILENAME_SEPARATOR.join(pairs)
 
     @property
     def filename(self) -> str:
@@ -37,18 +33,21 @@ class InstructionsFilenameFields(BaseModel):
         dictionary: Dict[str, Any] = {}
         filename = Path(pathlike).stem
         parts = filename.removesuffix(EXT_FILE_LIBRARY).split(FILENAME_SEPARATOR)
-        print(parts)
+
+        expected_parts = 2 * len(InstructionsFilenameFields.model_fields)
+        if len(parts) != expected_parts:
+            raise ValueError(f"Expected {expected_parts} parts separated by '{FILENAME_SEPARATOR}', got {len(parts)}")
+
         for i, (key, field_info) in enumerate(InstructionsFilenameFields.model_fields.items()):
             try:
                 part_key, part_value = parts[2 * i : 2 * i + 2]
-            except KeyError as exception:
+            except ValueError as exception:
                 raise ValueError(
-                    f"Expected {2 * len(parts)} elements separated by '{FILENAME_SEPARATOR}', got {i}"
+                    f"Expected {expected_parts} parts separated by '{FILENAME_SEPARATOR}', got {len(parts)}"
                 ) from exception
 
-            print(key, part_key, part_value)
             if key != part_key:
-                raise ValueError(f"Malformed file, expected key '{key}', got '{part_key}' at position {i}")
+                raise ValueError(f"Malformed filename, expected key '{key}', got '{part_key}' at position {i}")
 
             value_type = field_info.annotation
             if value_type is None:

@@ -7,7 +7,7 @@ from sampletones_core.configs.config import Config
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
 from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.fft import Window
-from sampletones_core.paths import EXT_FILE_LIBRARY
+from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_shared.utils.serialization import hash_model
 
 
@@ -51,10 +51,10 @@ class InstructionLibraryKey(BaseModel):
 
     @staticmethod
     def get_filename(config: InstructionsLibraryConfig, window: Window, config_hash: str) -> str:
-        return (
-            f"sr_{config.sample_rate}_"
-            f"cr_{config.nes_frequency}_"
-            f"ws_{window.size}_"
-            f"tg_{config.transformation_gamma}_"
-            f"ch_{config_hash}{EXT_FILE_LIBRARY}"
-        )
+        return InstructionsFilenameFields(
+            sr=config.sample_rate,
+            nf=config.nes_frequency,
+            ws=window.size,
+            tg=config.transformation_gamma,
+            ch=config_hash,
+        ).filename
