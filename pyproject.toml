@@ -27,6 +27,15 @@ dependencies = [
 [project.scripts]
 sampletones = "sampletones.__main__:main"
 
+[project.optional-dependencies]
+gpu = [
+    "cupy-cuda12x>=13,<14",
+    # CUDA 12 runtime libraries (libcudart, libnvrtc) required by CuPy, shipped as
+    # wheels. Linux only; on Windows install the CUDA Toolkit (see README).
+    "nvidia-cuda-runtime-cu12; sys_platform == 'linux'",
+    "nvidia-cuda-nvrtc-cu12; sys_platform == 'linux'",
+]
+
 [dependency-groups]
 dev = [
     "black==26.5.1",
@@ -40,7 +49,6 @@ dev = [
     "pytest-xdist==3.8.0",
     "types-PyYAML",
 ]
-gpu = ["cupy-cuda12x>=13,<14"]
 
 [build-system]
 requires = ["hatchling"]

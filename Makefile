@@ -18,13 +18,15 @@ endif
 
 ifeq ($(GPU),1)
 	GPU_FLAG := --gpu
+	GPU_EXTRA := --extra gpu
 else
 	GPU_FLAG :=
+	GPU_EXTRA :=
 endif
 
 help:
 	@echo "Available targets:"
-	@echo "  make setup       - Set up development environment (uv)"
+	@echo "  make setup       - Set up development environment (uv; append GPU=1 for CUDA support)"
 	@echo "  make pre-commit  - Install pre-commit hooks"
 	@echo "  make build       - Compile standalone executable (append GPU=1 for CUDA support)"
 	@echo "  make install     - Install Python package into build venv (append GPU=1 for CUDA support)"
@@ -35,7 +37,7 @@ help:
 	@echo "  make run         - Run SampleToNES application"
 
 setup:
-	uv sync --extra dev
+	uv sync --group dev $(GPU_EXTRA)
 
 build:
 	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv $(GPU_FLAG)

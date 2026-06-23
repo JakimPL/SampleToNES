@@ -1,7 +1,36 @@
 from typing import Optional, Type, Union
 
+
+def _preload_cuda_libraries() -> None:
+    """Make CUDA libraries shipped as ``nvidia-*-cu12`` wheels discoverable by CuPy.
+
+    CuPy loads CUDA shared objects (e.g. ``libnvrtc.so.12``) by soname through the
+    system dynamic loader, which does not search ``site-packages``. When the libraries
+    come from the pip wheels (the ``gpu`` extra), preload them with ``RTLD_GLOBAL`` so
+    CuPy's later ``dlopen`` calls resolve against the already-loaded handles.
+
+    No-op when the wheels are absent (system CUDA, Windows, or the NumPy fallback).
+    """
+    import ctypes
+    import glob
+    import os
+
+    try:
+        import nvidia
+    except ImportError:
+        return
+
+    for base in list(getattr(nvidia, "__path__", [])):
+        for library in sorted(glob.glob(os.path.join(base, "*", "lib", "lib*.so.*"))):
+            try:
+                ctypes.CDLL(library, mode=ctypes.RTLD_GLOBAL)
+            except OSError:
+                pass
+
+
 CUPY_AVAILABLE = False  # pylint: disable=invalid-name
 try:
+    _preload_cuda_libraries()
     import cupy as xp
     import cupy.typing as xp_typing
 

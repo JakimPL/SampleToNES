@@ -2,10 +2,7 @@
 
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 EXTRAS=""
-GPU=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -17,7 +14,6 @@ while [[ $# -gt 0 ]]; do
             fi
             ;;
         --gpu)
-            GPU=true
             if [[ -n "$EXTRAS" ]]; then
                 EXTRAS="${EXTRAS},gpu"
             else
@@ -27,10 +23,6 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
-
-if [[ "$GPU" == "true" ]]; then
-    bash "${SCRIPT_DIR}/cuda.sh"
-fi
 
 echo "Installing dependencies..."
 pip install --upgrade pip

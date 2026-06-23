@@ -60,7 +60,7 @@ For development, _SampleToNES_ uses [uv](https://docs.astral.sh/uv/) to manage t
     ```
     which is equivalent to:
     ```sh
-    uv sync --extra dev
+    uv sync --group dev
     ```
 2. Run the application:
     ```sh
@@ -88,27 +88,29 @@ sampletones
 
 ### GPU support (CUDA)
 
-_SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU mode requires the `cupy` package (the `gpu` extra) and the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`).
-
-The `--gpu` flag (exposed as `GPU=1` in the `make` targets) always installs the `cupy` package. Whether the CUDA runtime libraries are also installed automatically depends on the platform — see below.
+_SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU mode is enabled by the `gpu` extra.
 
 #### Linux
 
-On Debian-based Linux, the `make` targets install both the Python extra and the required CUDA runtime libraries automatically — just append `GPU=1`:
+On Linux the `gpu` extra installs CuPy **and** the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as pip wheels — no system CUDA toolkit or apt packages are required, and it does not matter which CUDA version (if any) is installed system-wide. You only need a recent NVIDIA driver; the driver is backward compatible with the CUDA 12 runtime even when your system CUDA is newer (e.g. CUDA 13).
+
+With uv:
 ```sh
-make build GPU=1      # standalone executable with GPU support
-make install GPU=1    # dev install with GPU support
+uv sync --extra gpu                 # add GPU support to the environment
+uv sync --group dev --extra gpu     # GPU support plus dev tooling
+uv run python -m sampletones
 ```
 
-To install only the Python extra manually:
+Equivalently, via the `make` targets, append `GPU=1`:
 ```sh
-uv pip install ".[gpu]"   # or: pip install ".[gpu]"
+make setup GPU=1      # uv dev environment with GPU support
+make build GPU=1      # standalone executable with GPU support
+make install GPU=1    # package install with GPU support
 ```
-In that case you must provide the CUDA runtime libraries yourself. They come from NVIDIA's CUDA apt repository (https://developer.nvidia.com/cuda-downloads); _SampleToNES_ installs `cuda-cudart-12-0` and `cuda-nvrtc-12-0`.
 
 #### Windows
 
-On Windows, the `--gpu` flag (and `make build GPU=1` / `make install GPU=1`) installs the `cupy` package, but **not** the CUDA runtime libraries — there is no automated equivalent of the Linux step. You must install the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x) yourself, which provides the required `cudart64_12.dll` and `nvrtc64_120_0.dll`. Without it, _CuPy_ will fail at runtime with a missing-DLL error.
+On Windows the CUDA runtime wheels are not available, so the `gpu` extra installs only CuPy. Install the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x) yourself; it provides the required `cudart64_12.dll` and `nvrtc64_120_0.dll`. Without it, _CuPy_ will fail at runtime with a missing-DLL error.
 
 ## Data structures
 

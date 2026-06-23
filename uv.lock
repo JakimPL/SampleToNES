@@ -952,6 +952,24 @@ wheels = [
 ]
 
 [[package]]
+name = "nvidia-cuda-nvrtc-cu12"
+version = "12.9.86"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/85/e4af82cc9202023862090bfca4ea827d533329e925c758f0cde964cb54b7/nvidia_cuda_nvrtc_cu12-12.9.86-py3-none-manylinux2010_x86_64.manylinux_2_12_x86_64.whl", hash = "sha256:210cf05005a447e29214e9ce50851e83fc5f4358df8b453155d5e1918094dcb4", size = 89568129, upload-time = "2025-06-05T20:02:41.973Z" },
+    { url = "https://files.pythonhosted.org/packages/64/eb/c2295044b8f3b3b08860e2f6a912b702fc92568a167259df5dddb78f325e/nvidia_cuda_nvrtc_cu12-12.9.86-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:096d4de6bda726415dfaf3198d4f5c522b8e70139c97feef5cd2ca6d4cd9cead", size = 44528905, upload-time = "2025-06-05T20:02:29.754Z" },
+]
+
+[[package]]
+name = "nvidia-cuda-runtime-cu12"
+version = "12.9.79"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/e0/0279bd94539fda525e0c8538db29b72a5a8495b0c12173113471d28bce78/nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:83469a846206f2a733db0c42e223589ab62fd2fabac4432d2f8802de4bded0a4", size = 3515012, upload-time = "2025-06-05T20:00:35.519Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/46/a92db19b8309581092a3add7e6fceb4c301a3fd233969856a8cbf042cd3c/nvidia_cuda_runtime_cu12-12.9.79-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:25bba2dfb01d48a9b59ca474a1ac43c6ebf7011f1b0b8cc44f54eb6ac48a96c3", size = 3493179, upload-time = "2025-06-05T20:00:53.735Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1430,6 +1448,13 @@ dependencies = [
     { name = "tqdm" },
 ]
 
+[package.optional-dependencies]
+gpu = [
+    { name = "cupy-cuda12x" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform == 'linux'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux'" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "black" },
@@ -1443,17 +1468,17 @@ dev = [
     { name = "pytest-xdist" },
     { name = "types-pyyaml" },
 ]
-gpu = [
-    { name = "cupy-cuda12x" },
-]
 
 [package.metadata]
 requires-dist = [
     { name = "anytree", specifier = "==2.13.0" },
+    { name = "cupy-cuda12x", marker = "extra == 'gpu'", specifier = ">=13,<14" },
     { name = "dearpygui", specifier = "==2.3.1" },
     { name = "librosa", specifier = "==0.11.0" },
     { name = "msgpack", specifier = "==1.2.1" },
     { name = "numpy", specifier = "==2.4.6" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform == 'linux' and extra == 'gpu'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "pebble", specifier = "==5.2.0" },
     { name = "pyaudio", specifier = "==0.2.14" },
     { name = "pydantic", specifier = "==2.13.4" },
@@ -1465,6 +1490,7 @@ requires-dist = [
     { name = "screeninfo", specifier = "==0.8.1" },
     { name = "tqdm", specifier = "==4.68.3" },
 ]
+provides-extras = ["gpu"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1479,7 +1505,6 @@ dev = [
     { name = "pytest-xdist", specifier = "==3.8.0" },
     { name = "types-pyyaml" },
 ]
-gpu = [{ name = "cupy-cuda12x", specifier = ">=13,<14" }]
 
 [[package]]
 name = "scikit-learn"
