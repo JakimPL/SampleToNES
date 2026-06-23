@@ -82,5 +82,9 @@ class BrowserManager:
         return directory_node
 
     def get_all_reconstruction_files(self) -> List[Path]:
-        file_nodes = [node for node in self.tree.collect_leaves() if isinstance(node, FileSystemNode)]
+        file_nodes = [
+            node
+            for node in self.tree.collect_leaves()
+            if isinstance(node, FileSystemNode) and node.node_type == NodeType.FILE
+        ]
         return [node.filepath for node in file_nodes]
