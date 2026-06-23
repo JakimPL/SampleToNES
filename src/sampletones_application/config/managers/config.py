@@ -101,7 +101,10 @@ class ConfigManager:
 
     def apply_audio_settings(self, update: AudioSettingsUpdate) -> None:
         new_general = self.config.general.model_copy(
-            update={"normalize": update.normalize, "quantize": update.quantize}
+            update={
+                "normalize": update.normalize,
+                "quantize": update.quantize,
+            }
         )
         self.config = self.config.model_copy(update={"general": new_general})
         self.window = Window.from_config(self.config)
