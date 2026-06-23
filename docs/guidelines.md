@@ -71,3 +71,4 @@
 4. Use test scenario suite class for defining more complex steps defined as series of functions with assertions.
 5. Prefer fixtures over factories. Define shared fixtures in an appropriate place.
 6. Do not assert default values of configurations, layouts, settings, and similar. Defaults are not contracts, and pinning them overconstrains the tests. Test behavior instead: validation bounds, serialization round-trips, and invariants. The exception is when values must match by contract rather than equal a chosen constant — e.g. project metadata at creation or after a save/load round-trip should be asserted to match, never hardcoded to a version string.
+7. Unit tests may mock system boundaries (file I/O, external services, IPC channels), but must not mock the domain logic that is the subject of the test. Integration tests must exercise real computation pipelines against real (synthetically built) data.
