@@ -67,6 +67,7 @@
 
 1. Test files should mirror the ownership of the functionality under test.
 2. When moving functionality between packages, move its direct unit tests in the same change.
-3. Parametrize test functions of the same body and use test case dataclass pattern.
-4. Prefer fixtures over factories.
-5. Do not assert default values of configurations, layouts, settings, and similar. Defaults are not contracts, and pinning them overconstrains the tests. Test behavior instead: validation bounds, serialization round-trips, and invariants. The exception is when values must match by contract rather than equal a chosen constant — e.g. project metadata at creation or after a save/load round-trip should be asserted to match, never hardcoded to a version string.
+3. Parametrize test functions of the same body and use test case dataclass.
+4. Use test scenario suite class for defining more complex steps defined as series of functions with assertions.
+5. Prefer fixtures over factories. Define shared fixtures in an appropriate place.
+6. Do not assert default values of configurations, layouts, settings, and similar. Defaults are not contracts, and pinning them overconstrains the tests. Test behavior instead: validation bounds, serialization round-trips, and invariants. The exception is when values must match by contract rather than equal a chosen constant — e.g. project metadata at creation or after a save/load round-trip should be asserted to match, never hardcoded to a version string.

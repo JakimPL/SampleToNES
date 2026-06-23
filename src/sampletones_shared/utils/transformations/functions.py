@@ -74,7 +74,12 @@ def power_inverse(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
     return array
 
 
-def yeo_johnson(x: ArrayOrNumeric, *, power: float, epsilon: float) -> ArrayOrNumeric:
+def yeo_johnson(
+    x: ArrayOrNumeric,
+    *,
+    power: float,
+    epsilon: float,
+) -> ArrayOrNumeric:
     """
     Yeo-Johnson forward transformation for non-negative inputs.
 
@@ -96,7 +101,12 @@ def yeo_johnson(x: ArrayOrNumeric, *, power: float, epsilon: float) -> ArrayOrNu
     return array
 
 
-def yeo_johnson_inverse(y: ArrayOrNumeric, *, power: float, epsilon: float) -> ArrayOrNumeric:
+def yeo_johnson_inverse(
+    y: ArrayOrNumeric,
+    *,
+    power: float,
+    epsilon: float,
+) -> ArrayOrNumeric:
     """
     Inverse of the Yeo-Johnson forward transformation for non-negative inputs.
 
@@ -114,7 +124,11 @@ def yeo_johnson_inverse(y: ArrayOrNumeric, *, power: float, epsilon: float) -> A
     return array
 
 
-def yeo_johnson_log(x: ArrayOrNumeric, *, epsilon: float) -> ArrayOrNumeric:
+def yeo_johnson_log(
+    x: ArrayOrNumeric,
+    *,
+    epsilon: float,
+) -> ArrayOrNumeric:
     """
     Limiting case of the Yeo-Johnson transform as `power → 0`.
 
@@ -132,7 +146,11 @@ def yeo_johnson_log(x: ArrayOrNumeric, *, epsilon: float) -> ArrayOrNumeric:
     return array
 
 
-def yeo_johnson_log_inverse(y: ArrayOrNumeric, *, epsilon: float) -> ArrayOrNumeric:
+def yeo_johnson_log_inverse(
+    y: ArrayOrNumeric,
+    *,
+    epsilon: float,
+) -> ArrayOrNumeric:
     """
     Inverse of the Yeo-Johnson log transformation (limit as `power → 0`).
 

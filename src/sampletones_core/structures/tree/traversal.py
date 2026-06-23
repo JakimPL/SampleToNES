@@ -53,7 +53,10 @@ def execute(
         collection.append(child_arguments)
 
 
-def traverse(traversal: TreeTraversal, method: bool = True) -> Callable[[Callback], Callback]:
+def traverse(
+    traversal: TreeTraversal,
+    method: bool = True,
+) -> Callable[[Callback], Callback]:
     """
     Decorator factory for tree traversal with specified strategy.
 

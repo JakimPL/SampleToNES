@@ -19,7 +19,11 @@ class Tree:
     def get_root(self) -> Optional[TreeNode]:
         return self.root
 
-    def apply_filter(self, query: str, predicate: Callable[[TreeNode, str], bool]) -> None:
+    def apply_filter(
+        self,
+        query: str,
+        predicate: Callable[[TreeNode, str], bool],
+    ) -> None:
         if not self.root:
             self._filter_query = query
             self._node_visibility = {}
@@ -58,9 +62,13 @@ class Tree:
     def is_node_visible(self, node: TreeNode) -> bool:
         if not self.is_filtered():
             return True
+
         return self._node_visibility.get(node, False)
 
-    def find_node(self, predicate: Callable[[TreeNode], bool]) -> Optional[TreeNode]:
+    def find_node(
+        self,
+        predicate: Callable[[TreeNode], bool],
+    ) -> Optional[TreeNode]:
         if not self.root:
             return None
 
@@ -74,4 +82,5 @@ class Tree:
         leaves = [node for node in PreOrderIter(self.root) if node.is_leaf]
         if self.is_filtered():
             return [leaf for leaf in leaves if self.is_node_visible(leaf)]
+
         return leaves
