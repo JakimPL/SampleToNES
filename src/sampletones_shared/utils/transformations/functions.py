@@ -77,40 +77,40 @@ def power_inverse(x: ArrayOrNumeric, a: float) -> ArrayOrNumeric:
 def yeo_johnson(
     x: ArrayOrNumeric,
     *,
-    power: float,
+    exponent: float,
     epsilon: float,
 ) -> ArrayOrNumeric:
     """
     Yeo-Johnson forward transformation for non-negative inputs.
 
-    Computes `((x + epsilon)^power - epsilon^power) / power`.
+    Computes `((x + epsilon)^exponent - epsilon^exponent) / exponent`.
 
-    At `power = 1` this reduces to the identity. As `power → 0` this approaches
+    At `exponent = 1` this reduces to the identity. As `exponent → 0` this approaches
     `log(1 + x / epsilon)`. The `epsilon` shift keeps the transform real at `x = 0`
     and defines the knee between the linear and logarithmic regimes.
 
     Args:
         x: Input value or array (must be non-negative).
-        power: Shape parameter λ ∈ (0, 1].
+        exponent: Shape parameter λ ∈ (0, 1].
         epsilon: Noise floor defining the linear-to-log transition point.
 
     Returns:
         Transformed value or array.
     """
-    array: ArrayOrNumeric = (np.power(x + epsilon, power) - epsilon**power) / power
+    array: ArrayOrNumeric = (np.power(x + epsilon, exponent) - epsilon**exponent) / exponent
     return array
 
 
 def yeo_johnson_inverse(
     y: ArrayOrNumeric,
     *,
-    power: float,
+    exponent: float,
     epsilon: float,
 ) -> ArrayOrNumeric:
     """
     Inverse of the Yeo-Johnson forward transformation for non-negative inputs.
 
-    Computes `(power * y + epsilon^power)^(1 / power) - epsilon`.
+    Computes `(exponent * y + epsilon^exponent)^(1 / exponent) - epsilon`.
 
     Args:
         y: Transformed value or array.
@@ -120,7 +120,7 @@ def yeo_johnson_inverse(
     Returns:
         Recovered original value or array.
     """
-    array: ArrayOrNumeric = np.power(power * y + epsilon**power, 1.0 / power) - epsilon
+    array: ArrayOrNumeric = np.power(exponent * y + epsilon**exponent, 1.0 / exponent) - epsilon
     return array
 
 

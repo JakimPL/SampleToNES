@@ -189,6 +189,6 @@ class LogMorpher(BaseModel):
                 )
             case _:
                 return Transformation(
-                    partial(yeo_johnson, power=self.power, epsilon=self.epsilon),
-                    partial(yeo_johnson_inverse, power=self.power, epsilon=self.epsilon),
+                    partial(yeo_johnson, exponent=self.power, epsilon=self.epsilon),
+                    partial(yeo_johnson_inverse, exponent=self.power, epsilon=self.epsilon),
                 )
