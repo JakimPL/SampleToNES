@@ -91,6 +91,15 @@ class TestBrowserManagerRefreshTree:
         browser_manager.refresh_tree()
         assert browser_manager.get_all_reconstruction_files() == []
 
+    def test_empty_subdirectory_is_not_returned(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        (tmp_path / "empty_dir").mkdir()
+        browser_manager.refresh_tree()
+        assert browser_manager.get_all_reconstruction_files() == []
+
 
 class TestBrowserManagerSetDirectory:
     def test_set_reconstructions_directory_updates_directory(

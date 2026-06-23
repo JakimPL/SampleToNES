@@ -133,6 +133,14 @@ class TestReconstructionDetailsLogicHandlePitchInput:
         details_logic.handle_pitch_input(GeneratorName.NOISE, "9999", 0)
         assert details_logic._current_pitches[GeneratorName.NOISE] <= MAX_PERIOD
 
+    def test_noise_hex_name_resolves_to_period(
+        self,
+        details_logic: ReconstructionDetailsLogic,
+        mock_reconstruction_manager: MagicMock,
+    ) -> None:
+        details_logic.handle_pitch_input(GeneratorName.NOISE, "A-#", 0)
+        assert details_logic._current_pitches[GeneratorName.NOISE] == 10
+
     def test_noise_invalid_name_falls_back_to_current_raw_value(
         self,
         details_logic: ReconstructionDetailsLogic,

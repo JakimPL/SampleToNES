@@ -71,7 +71,7 @@ class TestGetRelativePath:
         audio_file = Path("/base/sub/file.wav")
         output = Path("/output")
         result = get_relative_path(base, audio_file, output)
-        assert result.parts[-3:-1] == ("sub", "file.stn") or "sub" in result.parts
+        assert result == Path("/output/sub/file.stn")
 
     def test_replaces_extension_with_suffix(self) -> None:
         base = Path("/base")
