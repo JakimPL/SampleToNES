@@ -28,13 +28,18 @@ It also supports:
 ### Requirements
 - Python 3.12 (https://www.python.org/downloads/)
 - Windows, macOS, or Linux
+- [uv](https://docs.astral.sh/uv/) — recommended for development and running from source
 
-### Windows
+### Standalone executable
+
+The quickest way to get a ready-to-run build. This path uses a self-contained virtual environment and does **not** require `uv`.
+
+#### Windows
 1. Make sure Python 3.12 is installed and available as `python` in your PATH.
 2. Double-click `install.bat` in this folder. It will build a standalone `sampletones.exe` in the same directory.
 3. Run `sampletones.exe` to start the application.
 
-### Linux
+#### Linux
 1. Make sure Python 3.12 is installed and available as `python3` in your PATH.
 2. Open a terminal in this folder and run:
 	```sh
@@ -43,27 +48,67 @@ It also supports:
 	This will build a standalone `sampletones` executable in the same directory.
 3. Run `./sampletones` to start the application.
 
-For now, the installation script is adjusted to Debian-based distrubtions only.
+For now, the installation script is adjusted to Debian-based distributions only.
 
-### Alternative: Install as a Python Package
+### Run from source (uv)
 
-If you already have a Python 3.12 environment set up (for example, using `venv` or another virtual environment tool), you can install and run _SampleToNES_ directly as a package:
+For development, _SampleToNES_ uses [uv](https://docs.astral.sh/uv/) to manage the environment and dependencies. With `uv` installed:
 
-1. Open a terminal in this folder.
-2. Activate your Python 3.12 environment.
-3. Install the package:
+1. Set up the environment (creates a virtual environment and installs all dependencies, including dev tools):
     ```sh
-    pip install .
+    make setup
     ```
-4. Run the application:
+    which is equivalent to:
     ```sh
-    sampletones
+    uv sync --extra dev
+    ```
+2. Run the application:
+    ```sh
+    make run
+    ```
+    or directly:
+    ```sh
+    uv run python -m sampletones
     ```
 
-_SampleToNES_ supports CUDA. To install with the GPU mode, run:
+### Alternative: install as a Python package
+
+If you manage your own Python 3.12 environment, you can install _SampleToNES_ as a package. With `uv`:
 ```sh
-pip install ".[gpu]"
+uv pip install .
 ```
+or with plain `pip` in an activated environment:
+```sh
+pip install .
+```
+Then run it with:
+```sh
+sampletones
+```
+
+### GPU support (CUDA)
+
+_SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU mode requires the `cupy` package (the `gpu` extra) and the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`).
+
+The `--gpu` flag (exposed as `GPU=1` in the `make` targets) always installs the `cupy` package. Whether the CUDA runtime libraries are also installed automatically depends on the platform — see below.
+
+#### Linux
+
+On Debian-based Linux, the `make` targets install both the Python extra and the required CUDA runtime libraries automatically — just append `GPU=1`:
+```sh
+make build GPU=1      # standalone executable with GPU support
+make install GPU=1    # dev install with GPU support
+```
+
+To install only the Python extra manually:
+```sh
+uv pip install ".[gpu]"   # or: pip install ".[gpu]"
+```
+In that case you must provide the CUDA runtime libraries yourself. They come from NVIDIA's CUDA apt repository (https://developer.nvidia.com/cuda-downloads); _SampleToNES_ installs `cuda-cudart-12-0` and `cuda-nvrtc-12-0`.
+
+#### Windows
+
+On Windows, the `--gpu` flag (and `make build GPU=1` / `make install GPU=1`) installs the `cupy` package, but **not** the CUDA runtime libraries — there is no automated equivalent of the Linux step. You must install the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x) yourself, which provides the required `cudart64_12.dll` and `nvrtc64_120_0.dll`. Without it, _CuPy_ will fail at runtime with a missing-DLL error.
 
 ## Data structures
 
@@ -333,22 +378,15 @@ The graphical user interface is implemented with _DearPyGui_, a Python wrapper f
 
 The core depends on common Python packages:
 * `numpy`
+* `scipy`
+* `librosa`
 * `cupy` (optional; required for GPU mode)
 
-If you have CUDA and want GPU acceleration, install the package with the GPU extras:
-```sh
-pip install ".[gpu]"
-```
+See the [_GPU support (CUDA)_](#gpu-support-cuda) section for enabling GPU acceleration.
 
 ### Serialization
 
-Serialization uses _FlatBuffers_. You do not need the `flatc` compiler to run the application; the compiler is required only for development. On Debian/Ubuntu, install it with:
-
-```sh
-sudo apt-get install flatbuffers-compiler
-```
-
-Alternatively, build the compiler from source: https://github.com/google/flatbuffers
+Instruction libraries and reconstructions are serialized with [_MessagePack_](https://msgpack.org/) (the `msgpack` package). No external compiler or system dependency is required — it is installed automatically with the package.
 
 ### Linux (standalone executable)
 

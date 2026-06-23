@@ -16,12 +16,18 @@ else
 	EXECUTABLE := sampletones
 endif
 
+ifeq ($(GPU),1)
+	GPU_FLAG := --gpu
+else
+	GPU_FLAG :=
+endif
+
 help:
 	@echo "Available targets:"
 	@echo "  make setup       - Set up development environment (uv)"
 	@echo "  make pre-commit  - Install pre-commit hooks"
-	@echo "  make build       - Compile standalone executable"
-	@echo "  make install     - Install Python package into build venv"
+	@echo "  make build       - Compile standalone executable (append GPU=1 for CUDA support)"
+	@echo "  make install     - Install Python package into build venv (append GPU=1 for CUDA support)"
 	@echo "  make test        - Run unit tests with coverage"
 	@echo "  make clean       - Remove build artifacts and cache files"
 	@echo "  make lint        - Run linting (pylint, mypy)"
@@ -30,13 +36,9 @@ help:
 
 setup:
 	uv sync --extra dev
-ifeq ($(UNAME_S),Windows)
-else
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/dependencies$(SCRIPT_EXT)
-endif
 
 build:
-	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv
+	$(RUN_SCRIPT) $(BUILD_SCRIPT) --no-venv $(GPU_FLAG)
 
 run:
 	uv run python -m sampletones
@@ -45,7 +47,7 @@ clean:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/clean$(SCRIPT_EXT)
 
 install:
-	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/install$(SCRIPT_EXT) --dev
+	$(RUN_SCRIPT) $(SCRIPTS_DIR)/build/install$(SCRIPT_EXT) --dev $(GPU_FLAG)
 
 pre-commit:
 	$(RUN_SCRIPT) $(SCRIPTS_DIR)/dev/pre_commit$(SCRIPT_EXT)

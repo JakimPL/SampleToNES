@@ -40,7 +40,7 @@ dev = [
     "pytest-xdist==3.8.0",
     "types-PyYAML",
 ]
-gpu = ["cupy==13.6.0"]
+gpu = ["cupy-cuda12x>=13,<14"]
 
 [build-system]
 requires = ["hatchling"]
