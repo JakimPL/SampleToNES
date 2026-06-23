@@ -156,6 +156,154 @@ class TestPersistenceRoundTrip:
         assert loaded_row.volume == 12
 
 
+class TestProperties:
+    def test_order_length_returns_number_of_frames(self) -> None:
+        controller = _controller()
+        assert controller.order_length >= 1
+
+    def test_is_dirty_false_initially(self) -> None:
+        controller = _controller()
+        assert controller.is_dirty is False
+
+    def test_is_dirty_true_after_mutation(self) -> None:
+        controller = _controller()
+        controller.set_title("x")
+        assert controller.is_dirty is True
+
+
+class TestProjectLifecycle:
+    def test_new_creates_fresh_project_and_fires_callback(self) -> None:
+        controller = _controller()
+        controller.set_title("Before")
+        fired: list[str] = []
+        controller.on_project_replaced = lambda: fired.append("replaced")
+        controller.new()
+        assert controller.project.info.title == ""
+        assert fired == ["replaced"]
+
+    def test_close_fires_project_replaced_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_project_replaced = lambda: fired.append("replaced")
+        controller.close()
+        assert fired == ["replaced"]
+
+    def test_load_project_from_file(self, tmp_path: Path) -> None:
+        source = _controller()
+        source.set_title("Loaded")
+        path = tmp_path / "project.stp"
+        source.save(path)
+
+        target = _controller()
+        fired: list[str] = []
+        target.on_project_replaced = lambda: fired.append("replaced")
+        target.load(path)
+        assert target.project.info.title == "Loaded"
+        assert fired == ["replaced"]
+
+    def test_mark_updated_fires_song_changed_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_song_changed = lambda: fired.append("song")
+        controller.mark_updated()
+        assert fired == ["song"]
+
+
+class TestInfoAndSettingsCallbacks:
+    def test_set_author_updates_info_and_fires_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_info_changed = lambda: fired.append("info")
+        controller.set_author("Alice")
+        assert controller.project.info.author == "Alice"
+        assert fired == ["info"]
+
+    def test_set_comment_updates_info_and_fires_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_info_changed = lambda: fired.append("info")
+        controller.set_comment("A demo")
+        assert controller.project.info.comment == "A demo"
+        assert fired == ["info"]
+
+    def test_set_tempo_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_tempo(120)
+        assert fired == ["settings"]
+
+    def test_set_speed_fires_settings_callback(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_speed(6)
+        assert fired == ["settings"]
+
+    def test_set_nes_frequency_updates_settings(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_nes_frequency(50)
+        assert controller.project.settings.nes_frequency == 50
+        assert fired == ["settings"]
+
+    def test_set_sample_rate_updates_settings(self) -> None:
+        controller = _controller()
+        fired: list[str] = []
+        controller.on_settings_changed = lambda: fired.append("settings")
+        controller.set_sample_rate(44100)
+        assert controller.project.settings.sample_rate == 44100
+        assert fired == ["settings"]
+
+
+class TestSampleLoop:
+    def test_set_sample_loop_toggles_loop_flag(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.set_sample_loop(sample.id, True)
+        assert controller.project.sample(sample.id).loop is True
+
+
+class TestPatternManagement:
+    def test_add_pattern_returns_int_index(self) -> None:
+        controller = _controller()
+        index = controller.add_pattern(GeneratorName.PULSE1)
+        assert isinstance(index, int)
+
+    def test_duplicate_pattern_creates_independent_copy(self) -> None:
+        controller = _controller()
+        original_index = controller.add_pattern(GeneratorName.TRIANGLE)
+        clone_index = controller.duplicate_pattern(
+            GeneratorName.TRIANGLE,
+            original_index,
+        )
+        assert clone_index != original_index
+        assert controller.song.pattern(GeneratorName.TRIANGLE, clone_index) is not None
+
+
+class TestFrameManagement:
+    def test_insert_frame_inserts_at_given_position(self) -> None:
+        controller = _controller()
+        controller.append_frame()
+        initial_length = controller.order_length
+        controller.insert_frame(0)
+        assert controller.order_length == initial_length + 1
+
+
+class TestExistingRow:
+    def test_update_row_on_nonexistent_pattern_is_no_op(self) -> None:
+        controller = _controller()
+        controller.update_row(
+            GeneratorName.PULSE1,
+            999,
+            0,
+        )
+
+
 class TestLiveLinkedReconstruction:
     def test_sample_holds_reconstruction_by_reference(
         self, reconstruction_factory: Callable[[], Reconstruction]
@@ -173,7 +321,14 @@ class TestLiveLinkedReconstruction:
         reconstruction = reconstruction_factory()
         sample = controller.add_sample(reconstruction, name="lead")
 
-        new_instructions = [PulseInstruction(on=True, pitch=72, volume=15, duty_cycle=1)]
+        new_instructions = [
+            PulseInstruction(
+                on=True,
+                pitch=72,
+                volume=15,
+                duty_cycle=1,
+            )
+        ]
         reconstruction.update_generator_data(
             GeneratorName.PULSE1,
             new_instructions,
