@@ -414,7 +414,7 @@ class AudioDeviceManager(CallbackMixin):
         Configure the audio device and sample rate.
 
         Stops any active playback and switches to the specified device and sample rate.
-        If the sample rate is not supported, falls back to the device's default rate.
+        If the sample rate is not supported, falls back to the first supported rate for that device.
 
         Args:
             device_index: Index of the device to configure.
@@ -428,7 +428,7 @@ class AudioDeviceManager(CallbackMixin):
 
         device = self._devices[device_index]
         if sample_rate not in device.supported_sample_rates:
-            fallback_rate = device.default_sample_rate
+            fallback_rate = device.supported_sample_rates[0]
             logger.warning(
                 f"Sample rate {sample_rate} not supported by device {device.name}. " f"Falling back to {fallback_rate}"
             )
