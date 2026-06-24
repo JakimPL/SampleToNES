@@ -6,6 +6,7 @@
 * Added project export in a FamiTracker-compatible format.
 * Changed the FFT transformation methods.
 * Changed the internal file formats (.stn, .ins).
+* Switched to `uv` as the package manager.
 
 ## v0.2.3 [2026-01-09]
 

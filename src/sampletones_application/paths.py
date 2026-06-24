@@ -1,9 +1,11 @@
+import sys
 from pathlib import Path
 from typing import Final
 
 from sampletones_core.paths import USER_PATH_CONFIG
 
-PROJECT_ROOT: Final[Path] = Path(__file__).parents[2]
+_MEIPASS = getattr(sys, "_MEIPASS", None)
+PROJECT_ROOT: Final[Path] = Path(_MEIPASS) if _MEIPASS is not None else Path(__file__).parents[2]
 CONFIG_DIRECTORY: Final[Path] = PROJECT_ROOT / "config"
 BEHAVIOR_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "behavior"
 LAYOUT_DIRECTORY: Final[Path] = CONFIG_DIRECTORY / "layout"

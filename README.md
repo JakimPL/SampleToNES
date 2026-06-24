@@ -220,7 +220,7 @@ For now, only `mixer` is present in the main application. Other values are exper
 All local files, that is:
 * configuration (`config.json`)
 * instruction libraries (`.ins`)
-* reconstructions (`.json`)
+* reconstructions (`.stn`)
 
 are stored in the default documents directory. The path depends on the operating system.
 
@@ -304,7 +304,7 @@ SampleToNES exposes a variety of classes:
 from sampletones import (
     Config,  # generation configuration
     Window,  # FFT window
-    InstructionsLibrary,  # library
+    InstructionLibrary,  # library
     Reconstruction,  # reconstruction data
     Reconstructor,  # object reconstructing an audio
     # Generators
@@ -325,7 +325,7 @@ Currently, the API is not well documented. I hope that this will change in time.
 
 ```python
 from sampletones import Config, PulseGenerator, PulseInstruction
-from sampletones.audio import write_wave
+from sampletones_core.audio.io import write_wave
 
 # Load configuration
 config = Config.load("config.json")
@@ -353,7 +353,7 @@ audio = generator(instruction, save=False)  # doesn't change the generator state
 
 ```python
 from sampletones import Config, Reconstructor
-from sampletones.audio import write_wave
+from sampletones_core.audio.io import write_wave
 
 # Load configuration
 config = Config.load("config.json")
@@ -363,7 +363,7 @@ reconstructor = Reconstructor(config)
 
 # Reconstruct an audio file and save the reconstruction to a file
 reconstruction = reconstructor("sample.wav")
-reconstruction.save("reconstruction.json")
+reconstruction.save("reconstruction.stn")
 
 # Save the reconstruction waveform
 sample_rate = config.sample_rate
