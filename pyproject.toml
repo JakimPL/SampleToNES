@@ -59,6 +59,7 @@ packages = [
     "src/sampletones",
     "src/sampletones_application",
     "src/sampletones_assets",
+    "src/sampletones_config",
     "src/sampletones_core",
     "src/sampletones_shared",
 ]
@@ -74,6 +75,7 @@ known_first_party = [
     "sampletones",
     "sampletones_application",
     "sampletones_assets",
+    "sampletones_config",
     "sampletones_core",
     "sampletones_shared",
 ]

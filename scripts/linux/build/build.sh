@@ -10,7 +10,7 @@ pyinstaller --name sampletones \
     --icon "src/sampletones_assets/icons/sampletones.png" \
     --add-data "src/sampletones_assets/icons:assets/icons" \
     --add-data "src/sampletones_assets/fonts:assets/fonts" \
-    --add-data "config:config" \
+    --add-data "src/sampletones_config:config" \
     "src/sampletones/__main__.py"
 
 if [[ -f sampletones ]]; then

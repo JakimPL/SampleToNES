@@ -26,13 +26,14 @@ It also supports:
 ## Installation
 
 ### Requirements
-- Python 3.12 (https://www.python.org/downloads/)
+
 - Windows, macOS, or Linux
-- [uv](https://docs.astral.sh/uv/) — recommended for development and running from source
+- Python 3.12 (https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/), recommended for development and running from source
 
 ### Standalone executable
 
-The quickest way to get a ready-to-run build. This path uses a self-contained virtual environment and does **not** require `uv`.
+The quickest way to get a ready-to-run build. Python 3.12 is the only prerequisite.
 
 #### Windows
 1. Make sure Python 3.12 is installed and available as `python` in your PATH.
@@ -50,40 +51,34 @@ The quickest way to get a ready-to-run build. This path uses a self-contained vi
 
 For now, the installation script is adjusted to Debian-based distributions only.
 
-### Run from source (uv)
+### Run from source
 
-For development, _SampleToNES_ uses [uv](https://docs.astral.sh/uv/) to manage the environment and dependencies. With `uv` installed:
+Requires [uv](https://docs.astral.sh/uv/) and `make` (included with most Linux and macOS systems; Windows users can use `run.bat` in place of `make run`).
 
 1. Set up the environment (creates a virtual environment and installs all dependencies, including dev tools):
     ```sh
     make setup
     ```
-    which is equivalent to:
-    ```sh
-    uv sync --group dev
-    ```
 2. Run the application:
     ```sh
     make run
     ```
-    or directly:
-    ```sh
-    uv run python -m sampletones
+    On Windows without `make`:
+    ```bat
+    run.bat
     ```
 
-### Alternative: install as a Python package
+### Run from anywhere
 
-If you manage your own Python 3.12 environment, you can install _SampleToNES_ as a package. With `uv`:
+To make `sampletones` available as a command from any folder, run once from the project directory:
 ```sh
-uv pip install .
+uv tool install .
 ```
-or with plain `pip` in an activated environment:
+After that, `sampletones` is available in any terminal without keeping the project open.
+
+To update after pulling new changes:
 ```sh
-pip install .
-```
-Then run it with:
-```sh
-sampletones
+uv tool upgrade sampletones
 ```
 
 ### GPU support (CUDA)
@@ -92,25 +87,21 @@ _SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU
 
 #### Linux
 
-On Linux the `gpu` extra installs CuPy **and** the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as pip wheels — no system CUDA toolkit or apt packages are required, and it does not matter which CUDA version (if any) is installed system-wide. You only need a recent NVIDIA driver; the driver is backward compatible with the CUDA 12 runtime even when your system CUDA is newer (e.g. CUDA 13).
+On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as Python wheels. A compatible NVIDIA driver on the host is sufficient.
 
-With uv:
 ```sh
-uv sync --extra gpu                 # add GPU support to the environment
-uv sync --group dev --extra gpu     # GPU support plus dev tooling
-uv run python -m sampletones
+make setup GPU=1      # dev environment with GPU support
 ```
 
-Equivalently, via the `make` targets, append `GPU=1`:
+Or with uv directly:
 ```sh
-make setup GPU=1      # uv dev environment with GPU support
-make build GPU=1      # standalone executable with GPU support
-make install GPU=1    # package install with GPU support
+uv sync --extra gpu                 # GPU support only
+uv sync --group dev --extra gpu     # GPU support plus dev tooling
 ```
 
 #### Windows
 
-On Windows the CUDA runtime wheels are not available, so the `gpu` extra installs only CuPy. Install the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x) yourself; it provides the required `cudart64_12.dll` and `nvrtc64_120_0.dll`. Without it, _CuPy_ will fail at runtime with a missing-DLL error.
+On Windows, the `gpu` extra installs CuPy. GPU mode additionally requires the [NVIDIA CUDA Toolkit](https://developer.nvidia.com/cuda-downloads) (version 12.x), which provides `cudart64_12.dll` and `nvrtc64_120_0.dll`.
 
 ## Data structures
 
