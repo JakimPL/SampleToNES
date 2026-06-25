@@ -1,36 +1,8 @@
-from typing import Any, FrozenSet, Protocol, Tuple
+from typing import Any, Protocol
 
 import numpy as np
 
-from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
-from sampletones_core.project.song_position import SongPosition
-
-
-class RowSynthesizerProtocol(Protocol):
-    """Streaming synthesis kernel for one-row-at-a-time playback.
-
-    Each call to ``render_row`` produces one row's worth of audio (ticks_per_row
-    × frame_length samples), advances the internal position cursor, and returns
-    a snapshot of the cursor position from before the advance so callers can
-    post accurate position events.
-    """
-
-    @property
-    def order_position(self) -> int: ...
-
-    @property
-    def row_index(self) -> int: ...
-
-    @property
-    def is_finished(self) -> bool: ...
-
-    def set_position(self, order_position: int, row_index: int) -> None: ...
-
-    def set_channel_mask(self, active_channels: FrozenSet[GeneratorName]) -> None: ...
-
-    def render_row(self) -> Tuple[np.ndarray, SongPosition]: ...
-
-    def reset(self) -> None: ...
+from sampletones_core.constants.enums import GeneratorClassName
 
 
 class ChannelGeneratorProtocol(Protocol):

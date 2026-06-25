@@ -5,9 +5,9 @@ from typing import FrozenSet, Optional
 
 import pyaudio
 
-from sampletones_application.logic.sequencer.playback.protocol import RowSynthesizerProtocol
 from sampletones_application.services.base import ServiceBase
-from sampletones_application.services.song_player_result import (
+from sampletones_application.services.song_player.protocol import RowSynthesizerProtocol
+from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
     SongPlayerResult,

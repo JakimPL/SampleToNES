@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
-from sampletones_application.services.song_player_result import (
+from sampletones_application.services.song_player.result import (
     SongPlaybackError,
     SongPlaybackStopped,
     SongPositionUpdate,

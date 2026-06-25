@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
-from sampletones_application.services.song_player import SongPlayerService
-from sampletones_application.services.song_player_result import (
+from sampletones_application.services.song_player.player import SongPlayerService
+from sampletones_application.services.song_player.result import (
     SongPlaybackStopped,
     SongPositionUpdate,
 )

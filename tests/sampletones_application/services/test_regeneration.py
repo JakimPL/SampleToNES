@@ -41,18 +41,17 @@ def synthesis_mocks():
 
 
 @pytest.fixture
-def reconstruction_data():
-    data = MagicMock()
-    data.config = MagicMock()
-    data.reconstruction = MagicMock()
-    return data
+def reconstruction():
+    reconstruction = MagicMock()
+    reconstruction.config = MagicMock()
+    return reconstruction
 
 
 class TestRegenerationServiceStart:
-    def test_start_when_not_cancelled_returns_true(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_start_when_not_cancelled_returns_true(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
         result = service.start(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,
@@ -106,13 +105,13 @@ class TestRegenerationServiceRun:
         assert len(results) == 1
         assert isinstance(results[0], ServiceCancelled)
 
-    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_run_success_emits_service_success(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,
@@ -121,16 +120,16 @@ class TestRegenerationServiceRun:
 
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
-        assert results[0].value is reconstruction_data
+        assert results[0].value is reconstruction
 
-    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_run_updates_feature_before_synthesis(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
         features: Dict[Any, Any] = {}
         feature_key = FeatureKey.VOLUME
         new_value = 42
 
         service._run(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             features,
             feature_key,
@@ -139,28 +138,28 @@ class TestRegenerationServiceRun:
 
         assert features[feature_key] == new_value
 
-    def test_run_updates_reconstruction_data(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_run_updates_reconstruction(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,
             1,
         )
 
-        reconstruction_data.reconstruction.update_generator_data.assert_called_once()
-        call_args = reconstruction_data.reconstruction.update_generator_data.call_args
+        reconstruction.update_generator_data.assert_called_once()
+        call_args = reconstruction.update_generator_data.call_args
         assert call_args.args[0] == synthesis_mocks.generator_name
 
-    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_run_calls_generator_for_each_instruction(self, synthesis_mocks, reconstruction) -> None:
         extra_instruction = MagicMock()
         synthesis_mocks.exporter.from_features.return_value = [synthesis_mocks.instruction, extra_instruction]
         service = RegenerationService()
 
         service._run(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,
@@ -169,7 +168,7 @@ class TestRegenerationServiceRun:
 
         assert synthesis_mocks.generator.call_count == 2
 
-    def test_run_exception_emits_service_error(self, reconstruction_data) -> None:
+    def test_run_exception_emits_service_error(self, reconstruction) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
@@ -183,7 +182,7 @@ class TestRegenerationServiceRun:
             {GeneratorName.PULSE1: mock_exporter},
         ):
             service._run(
-                reconstruction_data,
+                reconstruction,
                 GeneratorName.PULSE1,
                 {},
                 FeatureKey.VOLUME,
@@ -195,7 +194,7 @@ class TestRegenerationServiceRun:
         assert isinstance(result, ServiceError)
         assert result.exception is exception
 
-    def test_run_exception_does_not_update_reconstruction(self, reconstruction_data) -> None:
+    def test_run_exception_does_not_update_reconstruction(self, reconstruction) -> None:
         service = RegenerationService()
         mock_exporter = MagicMock()
         mock_exporter.get_generator_type.side_effect = RuntimeError("fail")
@@ -205,14 +204,14 @@ class TestRegenerationServiceRun:
             {GeneratorName.PULSE1: mock_exporter},
         ):
             service._run(
-                reconstruction_data,
+                reconstruction,
                 GeneratorName.PULSE1,
                 {},
                 FeatureKey.VOLUME,
                 1,
             )
 
-        reconstruction_data.reconstruction.update_generator_data.assert_not_called()
+        reconstruction.update_generator_data.assert_not_called()
 
 
 class TestRegenerationServiceCancellationConstraints:
@@ -242,12 +241,11 @@ class TestRegenerationServiceCancellationConstraints:
             return [synthesis_mocks.instruction]
 
         synthesis_mocks.exporter.from_features.side_effect = blocking_from_features
-        reconstruction_data = MagicMock()
-        reconstruction_data.config = MagicMock()
-        reconstruction_data.reconstruction = MagicMock()
+        reconstruction = MagicMock()
+        reconstruction.config = MagicMock()
 
         def run() -> None:
-            service._run(reconstruction_data, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1)
+            service._run(reconstruction, synthesis_mocks.generator_name, {}, FeatureKey.VOLUME, 1)
 
         _real_executor_execute(service._executor, run, wait=False)
         task_started.wait(timeout=2.0)
@@ -260,13 +258,13 @@ class TestRegenerationServiceCancellationConstraints:
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
 
-    def test_cancel_after_completion_prevents_new_tasks(self, synthesis_mocks, reconstruction_data) -> None:
+    def test_cancel_after_completion_prevents_new_tasks(self, synthesis_mocks, reconstruction) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
 
         service.start(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,
@@ -275,7 +273,7 @@ class TestRegenerationServiceCancellationConstraints:
 
         service.cancel()
         second_result = service.start(
-            reconstruction_data,
+            reconstruction,
             synthesis_mocks.generator_name,
             {},
             FeatureKey.VOLUME,

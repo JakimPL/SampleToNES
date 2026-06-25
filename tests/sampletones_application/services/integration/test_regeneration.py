@@ -22,7 +22,7 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
@@ -32,26 +32,26 @@ class TestRegenerationServicePipeline:
         assert len(results) == 1
         assert isinstance(results[0], ServiceSuccess)
 
-    def test_run_emitted_value_is_same_reconstruction_data_object(self, reconstruction_data, pulse_features) -> None:
+    def test_run_emitted_value_is_same_reconstruction_object(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
         results: List[Any] = []
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
             pulse_features.volume,
         )
 
-        assert results[0].value is reconstruction_data
+        assert results[0].value is reconstruction_data.reconstruction
 
     def test_run_updates_reconstruction_approximation(self, reconstruction_data, pulse_features) -> None:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
@@ -65,7 +65,7 @@ class TestRegenerationServicePipeline:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
@@ -80,7 +80,7 @@ class TestRegenerationServicePipeline:
         service = RegenerationService()
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
@@ -95,7 +95,7 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service._run(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             {},
             FeatureKey.VOLUME,
@@ -111,7 +111,7 @@ class TestRegenerationServicePipeline:
         service.subscribe(results.append)
 
         service.start(
-            reconstruction_data,
+            reconstruction_data.reconstruction,
             GeneratorName.PULSE1,
             pulse_features,
             FeatureKey.VOLUME,
