@@ -121,6 +121,7 @@ class GUISequencerSamplesPanel(GUIPanel):
                 )
                 dpg.add_table_column(
                     label=self._lbl_column_name,
+                    width_stretch=True,
                     init_width_or_weight=self._layout.table_cells.instrument_name,
                 )
                 dpg.add_table_column(
@@ -156,7 +157,6 @@ class GUISequencerSamplesPanel(GUIPanel):
         id_selectable = dpg.add_selectable(
             parent=id_cell,
             label=display_index(position),
-            span_columns=True,
             user_data=(position, entry.sample_id),
             callback=self._on_sample_selected,
         )
@@ -176,12 +176,13 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _build_loop_cell(self, row_id: int | str, entry: SampleEntryViewModel) -> None:
         loop_cell = dpg.add_table_cell(parent=row_id)
-        dpg.add_checkbox(
+        loop_checkbox = dpg.add_checkbox(
             parent=loop_cell,
             default_value=entry.loop,
             user_data=entry.sample_id,
             callback=self._on_loop_toggled,
         )
+        FontRegistry.bind_to_item(loop_checkbox, Font.REGULAR_SMALL)
 
     def _on_sample_selected(self, sender: Sender, app_data: bool, user_data: Tuple[int, str]) -> None:
         position, sample_id = user_data

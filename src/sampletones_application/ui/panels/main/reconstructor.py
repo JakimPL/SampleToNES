@@ -11,10 +11,10 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import GenerationSettingsUpdate
 from sampletones_application.constants.general import (
-    PRE_GENERATOR,
     SUF_HANDLER_REGISTRY,
 )
 from sampletones_application.constants.main import (
+    PRE_MAIN_RECONSTRUCTOR_GENERATOR,
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
@@ -201,4 +201,4 @@ class GUIReconstructorPanel(GUIPanel):
 
     @staticmethod
     def _get_generator_checkbox_tag(generator: GeneratorName) -> str:
-        return f"{PRE_GENERATOR}{generator.value}"
+        return f"{PRE_MAIN_RECONSTRUCTOR_GENERATOR}{generator.value}"
