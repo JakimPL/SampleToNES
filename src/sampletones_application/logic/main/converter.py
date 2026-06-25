@@ -114,6 +114,7 @@ class ConverterLogic(CallbackMixin):
         self.on_success: Optional[VoidCallback] = None
         self.on_error: Optional[Callable[[Exception], None]] = None
         self.on_no_files_to_process: Optional[VoidCallback] = None
+        self.on_no_generators: Optional[VoidCallback] = None
         self.on_load_file: Optional[PathCallback] = None
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
@@ -142,6 +143,10 @@ class ConverterLogic(CallbackMixin):
     def start_conversion(self) -> None:
         if self.is_running():
             logger.warning("Conversion is already in progress")
+            return
+
+        if not self._config_manager.config.generation.generators:
+            self.call(self.on_no_generators)
             return
 
         self._phase = ConversionPhase.WAITING

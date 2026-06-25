@@ -18,6 +18,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
 )
 from sampletones_application.constants.reconstructions import (
+    PRE_RECONSTRUCTION_GENERATOR,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUDIO,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_AUTOSCALE,
     SUF_RECONSTRUCTIONS_RECONSTRUCTION_PLOT_WINDOW,
@@ -28,6 +29,7 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_PLAYER,
     TAG_RECONSTRUCTIONS_RECONSTRUCTION_PANEL_WAVEFORM,
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
 )
 from sampletones_application.layout.graphs import GraphsLayout
 from sampletones_application.layout.player import PlayerLayout
@@ -217,17 +219,17 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_plot_panel()
 
     def update_view(self, view_model: ReconstructionViewModel) -> None:
-        radio_tag = "reconstruction_audio_source_selector"
-
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
             is_available = generator_name in view_model.available_generators
             dpg_configure_item(tag, enabled=is_available, default_value=is_available)
             dpg_set_value(tag, is_available)
 
-        dpg_configure_item(radio_tag, enabled=view_model.audio_source_enabled)
+        dpg_configure_item(
+            TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, enabled=view_model.audio_source_enabled
+        )
         if not view_model.audio_source_enabled:
-            dpg_set_value(radio_tag, self._lbl_reconstruction_radio)
+            dpg_set_value(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, self._lbl_reconstruction_radio)
 
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
@@ -381,19 +383,18 @@ class GUIReconstructionPanel(GUIPanel):
             parent=self.audio_tag,
             horizontal=True,
         ):
-            radio_button_tag = "reconstruction_audio_source_selector"
             dpg.add_radio_button(
                 items=[
                     self._lbl_reconstruction_radio,
                     self._lbl_original_audio,
                 ],
-                tag=radio_button_tag,
+                tag=TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE,
                 default_value=self._lbl_reconstruction_radio,
                 callback=self._on_audio_source_changed,
                 horizontal=True,
                 enabled=False,
             )
-            FontRegistry.bind_to_item(radio_button_tag, Font.REGULAR_SMALL)
+            FontRegistry.bind_to_item(TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE, Font.REGULAR_SMALL)
 
     def _create_locate_original_audio_button(self) -> None:
         GUIButton(
@@ -480,15 +481,16 @@ class GUIReconstructionPanel(GUIPanel):
 
         return message_function
 
-    def _get_generator_checkbox_tag(self, generator_name: GeneratorName) -> str:
-        return f"reconstruction_generator_{generator_name.value}"
+    @staticmethod
+    def _get_generator_checkbox_tag(generator_name: GeneratorName) -> str:
+        return f"{PRE_RECONSTRUCTION_GENERATOR}{generator_name.value}"
 
     def _read_selected_generators(self) -> List[GeneratorName]:
         selected_generators: List[GeneratorName] = []
         for generator_name in GeneratorName:
-            tag = f"reconstruction_generator_{generator_name}".lower()
-            if dpg.get_value(tag):
+            if dpg.get_value(self._get_generator_checkbox_tag(generator_name)):
                 selected_generators.append(generator_name)
+
         return selected_generators
 
     def _on_generator_checkbox_changed(self) -> None:
@@ -500,6 +502,7 @@ class GUIReconstructionPanel(GUIPanel):
             audio_source = AudioSourceType.ORIGINAL
         else:
             audio_source = AudioSourceType.RECONSTRUCTION
+
         self.call(self.on_audio_source_changed, audio_source)
 
     def _handle_locate_original_audio_button_click(self, sender: Sender, app_data: Any, user_data: Any) -> None:

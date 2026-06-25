@@ -143,25 +143,25 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_checkbox(
             label=self._lbl_pulse_1,
             default_value=GeneratorName.PULSE1 in self._view.generators,
-            tag=f"{PRE_GENERATOR}{GeneratorName.PULSE1.value}",
+            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE1),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_pulse_2,
             default_value=GeneratorName.PULSE2 in self._view.generators,
-            tag=f"{PRE_GENERATOR}{GeneratorName.PULSE2.value}",
+            tag=self._get_generator_checkbox_tag(GeneratorName.PULSE2),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_triangle,
             default_value=GeneratorName.TRIANGLE in self._view.generators,
-            tag=f"{PRE_GENERATOR}{GeneratorName.TRIANGLE.value}",
+            tag=self._get_generator_checkbox_tag(GeneratorName.TRIANGLE),
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_noise,
             default_value=GeneratorName.NOISE in self._view.generators,
-            tag=f"{PRE_GENERATOR}{GeneratorName.NOISE.value}",
+            tag=self._get_generator_checkbox_tag(GeneratorName.NOISE),
             callback=self._on_parameter_change,
         )
 
@@ -184,7 +184,9 @@ class GUIReconstructorPanel(GUIPanel):
         show_tooltip(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._tooltip_drive)
 
     def _on_parameter_change(self, sender: Sender, app_data: Any) -> None:
-        generators = [generator for generator in GeneratorName if dpg.get_value(f"gen_{generator.value}")]
+        generators = [
+            generator for generator in GeneratorName if dpg.get_value(self._get_generator_checkbox_tag(generator))
+        ]
         generation_update = GenerationSettingsUpdate(
             drive=float(clamp_widget_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE)),
             generators=generators,
@@ -195,5 +197,8 @@ class GUIReconstructorPanel(GUIPanel):
         self._view = view_model
         dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, view_model.drive)
         for generator in GeneratorName:
-            tag = f"{PRE_GENERATOR}{generator.value}"
-            dpg_set_value(tag, generator in view_model.generators)
+            dpg_set_value(self._get_generator_checkbox_tag(generator), generator in view_model.generators)
+
+    @staticmethod
+    def _get_generator_checkbox_tag(generator: GeneratorName) -> str:
+        return f"{PRE_GENERATOR}{generator.value}"

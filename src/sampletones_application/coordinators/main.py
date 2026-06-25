@@ -108,6 +108,12 @@ class MainTabCoordinator:
             TextType.MESSAGE,
             ConverterElements.STATUS_NO_FILES,
         ]
+        _msg_no_generators = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.MESSAGE,
+            ConverterElements.STATUS_NO_GENERATORS,
+        ]
         _title_progress = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -217,6 +223,11 @@ class MainTabCoordinator:
         self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
             self._converter_panel.tag,
             _msg_no_files,
+            _title_progress,
+        )
+        self._converter_logic.on_no_generators = lambda: dialogs.show_info(
+            self._converter_panel.tag,
+            _msg_no_generators,
             _title_progress,
         )
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config

@@ -65,3 +65,21 @@ class TestCancelDuringLibraryGeneration:
 
         converter_logic._service.start.assert_not_called()
         scheduled.assert_not_called()
+
+
+class TestNoGeneratorsGuard:
+    """With no generators enabled there is nothing to reconstruct, so the conversion must not start."""
+
+    def test_no_generators_notifies_and_does_not_start(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        converter_logic._config_manager.config.generation.generators = []
+        on_no_generators = MagicMock()
+        converter_logic.on_no_generators = on_no_generators
+
+        converter_logic.start_conversion()
+
+        on_no_generators.assert_called_once()
+        converter_logic.generate_library.assert_not_called()
+        assert converter_logic._phase == ConversionPhase.IDLE

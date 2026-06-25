@@ -25,6 +25,7 @@ class Widget(StrEnum):
     PANEL = "panel"
     PATH = "path"
     PROGRESS = "progress"
+    RADIO = "radio"
     SLIDER = "slider"
     STATUS = "status"
     TAB = "tab"

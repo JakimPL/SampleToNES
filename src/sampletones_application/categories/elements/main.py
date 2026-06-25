@@ -53,6 +53,7 @@ class ConverterElements(AbstractElement):
     STATUS_CONFIG_NOT_AVAILABLE = "status_config_not_available"
     STATUS_RECONSTRUCTION_COMPLETED = "status_reconstruction_completed"
     STATUS_NO_FILES = "status_no_files"
+    STATUS_NO_GENERATORS = "status_no_generators"
     STATUS_IDLE = "status_idle"
     STATUS_WAITING = "status_waiting"
     STATUS_GENERATING_LIBRARY = "status_generating_library"

@@ -1,6 +1,8 @@
 from sampletones_application.categories.hierarchy import Page, Panel, Widget
 from sampletones_application.categories.key import TagName
 
+PRE_RECONSTRUCTION_GENERATOR = "reconstruction.generator."
+
 TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED = TagName(
     Page.RECONSTRUCTIONS,
     Panel.RECONSTRUCTION,
@@ -83,6 +85,12 @@ TAG_RECONSTRUCTIONS_RECONSTRUCTION_GROUP_AUDIO_SOURCE = TagName(
     Page.RECONSTRUCTIONS,
     Panel.RECONSTRUCTION,
     Widget.GROUP,
+    "audio_source",
+)
+TAG_RECONSTRUCTIONS_RECONSTRUCTION_RADIO_AUDIO_SOURCE = TagName(
+    Page.RECONSTRUCTIONS,
+    Panel.RECONSTRUCTION,
+    Widget.RADIO,
     "audio_source",
 )
 TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV = TagName(
