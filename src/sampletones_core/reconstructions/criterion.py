@@ -48,6 +48,9 @@ class Criterion:
         if isinstance(candidates, Histogram):
             candidates = candidates.values
 
+        reference = xp.asarray(reference)
+        candidates = xp.asarray(candidates)
+
         if reference.ndim != 1:
             raise ValueError("reference must be 1D")
 

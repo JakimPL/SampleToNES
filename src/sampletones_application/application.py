@@ -56,6 +56,7 @@ from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.ui.themes.setup import setup_themes
+from sampletones_application.utils.background import stop_background_workers
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.file import file_dialog_handler
@@ -628,7 +629,7 @@ class Application:
         return self._instructions_tab.is_library_generating()
 
     def _exit_application(self) -> None:
-        CallbackQueue.stop()
+        stop_background_workers()
         self.audio_device_manager.stop()
         self._main_tab.cleanup()
 
@@ -657,6 +658,7 @@ class Application:
         except KeyboardInterrupt:
             return
         finally:
+            stop_background_workers()
             self._main_tab.cleanup()
             self.config_manager.save_config()
             self._persist_application_state()

@@ -7,6 +7,7 @@ import dearpygui.dearpygui as dpg
 import pytest
 
 from sampletones_application.application import Application
+from sampletones_application.utils.background import stop_background_workers
 
 _DPG_DISPLAY_FUNCTIONS = [
     "create_context",
@@ -30,6 +31,7 @@ class TestGUIStartup:
     def dpg_context(self) -> Generator[Any, Application, Any]:
         dpg.create_context()
         yield
+        stop_background_workers()
         dpg.destroy_context()
 
     def test_initialises_without_error(self) -> None:
@@ -55,6 +57,7 @@ def app() -> Generator[Any, Application, Any]:
                 stack.enter_context(p)
             yield Application()
     finally:
+        stop_background_workers()
         dpg.destroy_context()
 
 

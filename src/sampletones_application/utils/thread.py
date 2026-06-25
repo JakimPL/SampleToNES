@@ -1,14 +1,23 @@
+from __future__ import annotations
+
 import threading
+import weakref
 from functools import wraps
 from typing import Any, Callable, Optional, cast
 
+from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import CallbackT, VoidCallback
 
 
 class SingleThreadExecutor:
+    _instances: weakref.WeakSet[SingleThreadExecutor] = weakref.WeakSet()
+    _instances_lock = threading.Lock()
+
     def __init__(self) -> None:
         self._thread: Optional[threading.Thread] = None
         self._lock = threading.Lock()
+        with SingleThreadExecutor._instances_lock:
+            SingleThreadExecutor._instances.add(self)
 
     def execute(self, target: VoidCallback, wait: bool = True) -> bool:
         with self._lock:
@@ -28,6 +37,26 @@ class SingleThreadExecutor:
             )
             self._thread.start()
             return True
+
+    def join(self, timeout: Optional[float] = None) -> None:
+        with self._lock:
+            thread = self._thread
+
+        if thread is not None and thread.is_alive():
+            thread.join(timeout)
+
+    @classmethod
+    def join_all(cls, timeout: Optional[float] = None) -> None:
+        """Wait for every executor's in-flight task to finish.
+
+        Background tasks touch non-thread-safe resources (e.g. dearpygui), so
+        they must be awaited before the GUI context is torn down.
+        """
+        with cls._instances_lock:
+            instances = list(cls._instances)
+
+        for instance in instances:
+            instance.join(timeout)
 
 
 def concurrent(
@@ -50,7 +79,13 @@ def concurrent(
             executor: SingleThreadExecutor = getattr(self, executor_attribute)
 
             def task() -> None:
-                function(self, *args, **kwargs)
+                try:
+                    function(self, *args, **kwargs)
+                except Exception as exception:
+                    logger.error_with_traceback(
+                        exception,
+                        f"Error in background task {function.__qualname__}",
+                    )
 
             executor.execute(task, wait=wait)
 

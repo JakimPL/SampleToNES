@@ -88,7 +88,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
 
     @classmethod
     def _process(cls) -> None:
-        while True:
+        while not cls._stop_event.is_set():
             task = None
             frame_before = None
 
