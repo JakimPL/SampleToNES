@@ -16,22 +16,30 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TABS,
 )
 from sampletones_application.layout.config import LayoutConfig
-from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.services.conversion import ConversionService
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
-from sampletones_application.ui.panels.main.converter.success_dialog import ConverterSuccessDialog
+from sampletones_application.ui.panels.main.converter.success_dialog import (
+    ConverterSuccessDialog,
+)
 from sampletones_application.ui.panels.main.explorer import GUIExplorerPanel
 from sampletones_application.ui.panels.main.main import GUIMainPanel
 from sampletones_application.ui.panels.main.reconstructor import GUIReconstructorPanel
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.main.advanced import AdvancedSettingsPanelViewModel
+from sampletones_application.view_model.main.advanced import (
+    AdvancedSettingsPanelViewModel,
+)
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
-from sampletones_application.view_model.main.reconstructor import ReconstructorPanelViewModel
+from sampletones_application.view_model.main.reconstructor import (
+    ReconstructorPanelViewModel,
+)
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_shared.types.callback import PathCallback, VoidCallback
 
@@ -139,6 +147,7 @@ class MainTabCoordinator:
                 generators=frozenset(_config.generation.generators),
                 drive=_config.generation.drive,
             ),
+            layout=layout.main.reconstructor,
             input_width=layout.general.inputs.default_width,
             panel_height=layout.main.config.height,
             language_manager=language_manager,
@@ -210,7 +219,7 @@ class MainTabCoordinator:
             _msg_no_files,
             _title_progress,
         )
-        self._converter_logic.is_library_loaded = library_manager.is_library_loaded
+        self._converter_logic.is_library_available = library_manager.is_library_available_for_config
         self._converter_logic.on_load_file = on_load_file
         self._converter_logic.on_load_directory = on_load_directory
         self._converter_logic.on_cancelled = on_cancelled

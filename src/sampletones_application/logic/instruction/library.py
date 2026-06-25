@@ -268,14 +268,6 @@ class LibraryLogic(CallbackMixin):
     def update_status(self) -> None:
         self._emit_view()
 
-    def load_current_library(self) -> None:
-        library_key = self._library_manager.get_library_key()
-        if library_key is None:
-            logger.warning("No library key specified for loading")
-            return
-
-        self.load_library_and_set_current(library_key)
-
     def load_library_file(self, filepath: Path) -> None:
         if self._is_locked:
             logger.warning("Library is already loading; please wait until it finishes")
@@ -517,7 +509,7 @@ class LibraryLogic(CallbackMixin):
         else:
             generate_button_label = self._lbl_generate_library
 
-        viewmodel = LibraryPanelViewModel(
+        view_model = LibraryPanelViewModel(
             status_text=self._status_text,
             generate_button_label=generate_button_label,
             generate_button_enabled=not is_generating,
@@ -526,4 +518,4 @@ class LibraryLogic(CallbackMixin):
             progress_value=self._progress_value,
             progress_overlay=self._progress_overlay,
         )
-        self.call(self.on_view_changed, viewmodel)
+        self.call(self.on_view_changed, view_model)

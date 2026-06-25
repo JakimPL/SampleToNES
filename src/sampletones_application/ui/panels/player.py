@@ -165,8 +165,8 @@ class GUIAudioPlayerPanel(GUIPanel):
                     width=-1,
                 )
 
-    def update_view(self, viewmodel: PlayerViewModel) -> None:
-        if not viewmodel.has_audio:
+    def update_view(self, view_model: PlayerViewModel) -> None:
+        if not view_model.has_audio:
             dpg_configure_item(self.play_button_tag, enabled=False)
             dpg_configure_item(self.pause_button_tag, enabled=False)
             dpg_configure_item(self.stop_button_tag, enabled=False)
@@ -176,17 +176,17 @@ class GUIAudioPlayerPanel(GUIPanel):
         dpg_configure_item(self.play_button_tag, enabled=True)
         dpg_configure_item(
             self.pause_button_tag,
-            enabled=viewmodel.is_playing or viewmodel.is_paused,
+            enabled=view_model.is_playing or view_model.is_paused,
         )
         dpg_configure_item(self.stop_button_tag, enabled=True)
 
-        if viewmodel.is_paused:
+        if view_model.is_paused:
             dpg_set_item_label(self.pause_button_tag, self._lbl_resume)
         else:
             dpg_set_item_label(self.pause_button_tag, self._lbl_pause)
 
         position_text = (
-            f"{self._lbl_position}{viewmodel.current_position}" f"/{viewmodel.total_samples}{self._lbl_samples}"
+            f"{self._lbl_position}{view_model.current_position}" f"/{view_model.total_samples}{self._lbl_samples}"
         )
         dpg_set_value(self.position_text_tag, position_text)
 

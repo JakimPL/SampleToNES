@@ -4,7 +4,9 @@ from typing import Any, Dict, Tuple
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import TreeElements
-from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.elements.instructions import (
+    InstructionsLibraryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.session import SessionManager
@@ -267,28 +269,25 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def generate_library(self) -> None:
         self.library_logic.generate_library()
 
-    def load_current_library(self) -> None:
-        self.library_logic.load_current_library()
-
     def load_library_file(self, filepath: Path) -> None:
         self.library_logic.load_library_file(filepath)
 
-    def update_view(self, viewmodel: LibraryPanelViewModel) -> None:
-        dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, viewmodel.status_text)
+    def update_view(self, view_model: LibraryPanelViewModel) -> None:
+        dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, view_model.status_text)
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-            label=viewmodel.generate_button_label,
-            enabled=viewmodel.generate_button_enabled,
-            show=viewmodel.generate_button_visible,
+            label=view_model.generate_button_label,
+            enabled=view_model.generate_button_enabled,
+            show=view_model.generate_button_visible,
         )
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
-            show=viewmodel.progress_visible,
-            overlay=viewmodel.progress_overlay,
+            show=view_model.progress_visible,
+            overlay=view_model.progress_overlay,
         )
         dpg_set_value(
             TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
-            viewmodel.progress_value,
+            view_model.progress_value,
         )
 
     def _set_tree_enabled(self, enabled: bool) -> None:

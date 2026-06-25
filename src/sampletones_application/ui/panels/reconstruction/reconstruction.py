@@ -53,7 +53,11 @@ from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.constants.enums import AudioSourceType, GeneratorName
 from sampletones_core.paths import EXT_FILE_INSTRUMENT, EXT_FILE_WAVE
 from sampletones_shared.types.application import Sender
-from sampletones_shared.types.callback import MessageCallback, PathCallback, VoidCallback
+from sampletones_shared.types.callback import (
+    MessageCallback,
+    PathCallback,
+    VoidCallback,
+)
 
 
 class GUIReconstructionPanel(GUIPanel):
@@ -212,26 +216,26 @@ class GUIReconstructionPanel(GUIPanel):
         self._create_audio_panel()
         self._create_plot_panel()
 
-    def update_view(self, viewmodel: ReconstructionViewModel) -> None:
+    def update_view(self, view_model: ReconstructionViewModel) -> None:
         radio_tag = "reconstruction_audio_source_selector"
 
         for generator_name in GeneratorName:
             tag = self._get_generator_checkbox_tag(generator_name)
-            is_available = generator_name in viewmodel.available_generators
+            is_available = generator_name in view_model.available_generators
             dpg_configure_item(tag, enabled=is_available, default_value=is_available)
             dpg_set_value(tag, is_available)
 
-        dpg_configure_item(radio_tag, enabled=viewmodel.audio_source_enabled)
-        if not viewmodel.audio_source_enabled:
+        dpg_configure_item(radio_tag, enabled=view_model.audio_source_enabled)
+        if not view_model.audio_source_enabled:
             dpg_set_value(radio_tag, self._lbl_reconstruction_radio)
 
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_EXPORT_WAV,
-            enabled=viewmodel.buttons_enabled,
+            enabled=view_model.buttons_enabled,
         )
         dpg_configure_item(
             TAG_RECONSTRUCTIONS_RECONSTRUCTION_BUTTON_LOCATE_ORIGINAL_AUDIO,
-            enabled=viewmodel.buttons_enabled,
+            enabled=view_model.buttons_enabled,
         )
 
     def load_waveform_data(

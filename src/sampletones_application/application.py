@@ -161,7 +161,6 @@ class Application:
             self.reconstruction_manager,
             self.session_manager,
             self.regeneration_service,
-            self.config_manager,
             self.audio_device_manager,
             dialogs=self.dialogs,
             language_manager=self.language_manager,

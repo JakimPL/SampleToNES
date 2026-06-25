@@ -176,9 +176,15 @@ class InstructionsTabCoordinator:
                         self._instruction_details_panel.create_panel()
 
     def ensure_library_loaded(self) -> None:
-        if not self._library_manager.does_library_exist():
+        """Make sure a library matching the current configuration exists before reconstructing.
+
+        The reconstruction pipeline loads the library from disk by the configuration's key, so the
+        only requirement here is that the corresponding file is present; it is generated when missing.
+        The library's stored parameters are deliberately not applied back to the configuration, which
+        would overwrite the user's current settings.
+        """
+        if not self._library_manager.is_library_available_for_config():
             self._library_panel.generate_library()
-        self._library_panel.load_current_library()
 
     def load_library_file(self, filepath: Path) -> None:
         self._instruction_panel.close_instruction()

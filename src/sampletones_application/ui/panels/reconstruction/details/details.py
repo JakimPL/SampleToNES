@@ -405,8 +405,8 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         raw_data_text = self._format_data(data)
         dpg_set_value(raw_data_tag, raw_data_text)
 
-    def update_view(self, viewmodel: ReconstructionDetailsViewModel) -> None:
-        is_loaded = viewmodel.reconstruction_loaded
+    def update_view(self, view_model: ReconstructionDetailsViewModel) -> None:
+        is_loaded = view_model.reconstruction_loaded
         dpg_configure_item(self.export_button_separator_tag, show=is_loaded)
         dpg_configure_item(self.no_data_message_tag, show=not is_loaded)
         dpg_configure_item(self.tab_bar_tag, show=is_loaded)
@@ -419,7 +419,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         for generator_name in GeneratorName.items():
             tab_tag = self._get_generator_tab_tag(generator_name)
-            is_available = generator_name in viewmodel.available_generators
+            is_available = generator_name in view_model.available_generators
             dpg_configure_item(tab_tag, show=is_available)
 
     def update_feature_data(self, feature_data: Optional[FeatureData]) -> None:

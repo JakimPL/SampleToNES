@@ -133,37 +133,37 @@ class GUIConverterPanel(GUIPanel):
             self._create_paths()
             self._create_conversion_status()
 
-    def update_view(self, viewmodel: ConverterViewModel) -> None:
-        dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=viewmodel.subpanel_visible)
-        dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, viewmodel.status_text)
-        dpg_set_value(TAG_MAIN_CONVERTER_PROGRESS, viewmodel.progress)
-        dpg_configure_item(TAG_MAIN_CONVERTER_PROGRESS, overlay=viewmodel.progress_overlay)
+    def update_view(self, view_model: ConverterViewModel) -> None:
+        dpg.configure_item(TAG_MAIN_CONVERTER_GROUP, show=view_model.subpanel_visible)
+        dpg_set_value(TAG_MAIN_CONVERTER_TEXT_STATUS, view_model.status_text)
+        dpg_set_value(TAG_MAIN_CONVERTER_PROGRESS, view_model.progress)
+        dpg_configure_item(TAG_MAIN_CONVERTER_PROGRESS, overlay=view_model.progress_overlay)
 
-        if self.input_path_text is not None and viewmodel.input_path is not None:
-            self.input_path_text.set_path(viewmodel.input_path)
-        if self.output_path_text is not None and viewmodel.output_path is not None:
-            self.output_path_text.set_path(viewmodel.output_path)
+        if self.input_path_text is not None and view_model.input_path is not None:
+            self.input_path_text.set_path(view_model.input_path)
+        if self.output_path_text is not None and view_model.output_path is not None:
+            self.output_path_text.set_path(view_model.output_path)
 
-        _cancel_label = self._lbl_close_button if viewmodel.is_done else self._lbl_cancel_button
-        _base_convert = self._lbl_convert_button if viewmodel.is_file else self._lbl_convert_directory_button
+        _cancel_label = self._lbl_close_button if view_model.is_done else self._lbl_cancel_button
+        _base_convert = self._lbl_convert_button if view_model.is_file else self._lbl_convert_directory_button
         _convert_label = (
-            f"{_base_convert}: {viewmodel.input_path.name}" if viewmodel.input_path is not None else _base_convert
+            f"{_base_convert}: {view_model.input_path.name}" if view_model.input_path is not None else _base_convert
         )
         dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_CONVERT,
             label=_convert_label,
-            enabled=viewmodel.convert_button_enabled,
+            enabled=view_model.convert_button_enabled,
         )
         dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_LOAD,
-            enabled=viewmodel.load_button_enabled,
+            enabled=view_model.load_button_enabled,
         )
         dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_CANCEL,
             label=_cancel_label,
         )
 
-        if viewmodel.is_done:
+        if view_model.is_done:
             dpg_set_item_callback(
                 TAG_MAIN_CONVERTER_BUTTON_CANCEL,
                 self._on_close_clicked,

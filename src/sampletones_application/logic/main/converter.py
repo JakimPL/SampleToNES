@@ -7,7 +7,10 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.layout.behavior import SchedulingBehavior
-from sampletones_application.services.conversion import ConversionResult, ConversionService
+from sampletones_application.services.conversion import (
+    ConversionResult,
+    ConversionService,
+)
 from sampletones_application.services.result import (
     ServiceCancelled,
     ServiceError,
@@ -115,7 +118,7 @@ class ConverterLogic(CallbackMixin):
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
         self.generate_library: Optional[VoidCallback] = None
-        self.is_library_loaded: Optional[Callable[[], bool]] = None
+        self.is_library_available: Optional[Callable[[], bool]] = None
 
     def is_running(self) -> bool:
         return self._service.is_running()
@@ -245,7 +248,7 @@ class ConverterLogic(CallbackMixin):
         return True
 
     def _wait_for_library_and_start(self) -> None:
-        if not self.call(self.is_library_loaded):
+        if not self.call(self.is_library_available):
             self._emit_view_model(self._msg_generating_library, 0.0, "0%")
             CallbackQueue.add(
                 self._wait_for_library_and_start,
@@ -298,7 +301,7 @@ class ConverterLogic(CallbackMixin):
         display_output = (
             self._output_path if self._output_path is not None else self._config_manager.get_reconstructions_directory()
         )
-        viewmodel = ConverterViewModel(
+        view_model = ConverterViewModel(
             phase=self._phase,
             status_text=status_text,
             progress=progress,
@@ -307,4 +310,4 @@ class ConverterLogic(CallbackMixin):
             output_path=display_output,
             is_file=self._is_file,
         )
-        self.call(self.on_view_changed, viewmodel)
+        self.call(self.on_view_changed, view_model)

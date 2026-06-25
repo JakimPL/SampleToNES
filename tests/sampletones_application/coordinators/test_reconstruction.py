@@ -20,7 +20,6 @@ def reconstruction_coordinator() -> ReconstructionCoordinator:
         MagicMock(),
         MagicMock(),
         MagicMock(),
-        MagicMock(),
         dialogs=MagicMock(),
         language_manager=MagicMock(),
         layout=MagicMock(),

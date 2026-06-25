@@ -293,13 +293,13 @@ class GUIAdvancedSettingsPanel(GUIPanel):
 
         self.call(self.on_update_output_directory)
 
-    def update_view(self, viewmodel: AdvancedSettingsPanelViewModel) -> None:
-        self._library_directory = viewmodel.library_directory
-        self._output_directory = viewmodel.reconstructions_directory
-        dpg.set_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS, viewmodel.max_workers)
+    def update_view(self, view_model: AdvancedSettingsPanelViewModel) -> None:
+        self._library_directory = view_model.library_directory
+        self._output_directory = view_model.reconstructions_directory
+        dpg.set_value(TAG_MAIN_ADVANCED_INPUT_MAX_WORKERS, view_model.max_workers)
 
         if self.output_path_text:
-            self.output_path_text.set_path(viewmodel.reconstructions_directory)
+            self.output_path_text.set_path(view_model.reconstructions_directory)
 
         if self.library_path_text:
-            self.library_path_text.set_path(viewmodel.library_directory)
+            self.library_path_text.set_path(view_model.library_directory)

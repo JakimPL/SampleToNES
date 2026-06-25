@@ -216,6 +216,7 @@ class GUIConfigPanel(GUIPanel):
             min_value=0,
             max_value=MAX_TRANSFORMATION_GAMMA,
             width=self._input_width,
+            callback=self._on_parameter_change,
         )
 
         for tag in [
@@ -234,13 +235,13 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, self._tooltip_nes_frequency)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._tooltip_gamma)
 
-    def update_view(self, viewmodel: ConfigPanelViewModel) -> None:
-        self._view = viewmodel
-        dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, viewmodel.normalize)
-        dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, viewmodel.quantize)
-        dpg.set_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, viewmodel.sample_rate)
-        dpg.set_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, viewmodel.nes_frequency)
+    def update_view(self, view_model: ConfigPanelViewModel) -> None:
+        self._view = view_model
+        dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE, view_model.normalize)
+        dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, view_model.quantize)
+        dpg.set_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, view_model.sample_rate)
+        dpg.set_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, view_model.nes_frequency)
         dpg.set_value(
             TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
-            viewmodel.transformation_gamma,
+            view_model.transformation_gamma,
         )

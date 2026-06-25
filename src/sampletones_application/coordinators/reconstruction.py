@@ -13,7 +13,6 @@ from sampletones_application.categories.elements.reconstructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
-from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_EXIT_CONFIRMATION,
@@ -65,7 +64,6 @@ class ReconstructionCoordinator:
         reconstruction_manager: ReconstructionManager,
         session_manager: SessionManager,
         regeneration_service: RegenerationService,
-        config_manager: ConfigManager,
         audio_device_manager: AudioDeviceManager,
         *,
         dialogs: DialogsRenderer,
@@ -77,7 +75,6 @@ class ReconstructionCoordinator:
         self._reconstruction_manager = reconstruction_manager
         self._session_manager = session_manager
         self._regeneration_service = regeneration_service
-        self._config_manager = config_manager
         self._audio_device_manager = audio_device_manager
         self._reconstructions_tab: Optional[ReconstructionsTabCoordinator] = None
         self._dialogs = dialogs
@@ -342,7 +339,6 @@ class ReconstructionCoordinator:
             )
 
         filepath = reconstruction_data.filepath
-        self._config_manager.load_library_and_generation_config(reconstruction_data.config)
         self._tab.display_reconstruction()
         self._session_manager.set_current_reconstruction(filepath)
         self._on_tab_switch(Tab.RECONSTRUCTIONS)

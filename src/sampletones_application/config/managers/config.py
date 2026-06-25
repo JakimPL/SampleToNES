@@ -10,7 +10,7 @@ from sampletones_application.config.updates import (
     LibrarySettingsUpdate,
 )
 from sampletones_application.utils.dialogs import DialogsRenderer
-from sampletones_core.configs import Config, GeneralConfig
+from sampletones_core.configs import Config
 from sampletones_core.fft import Window
 from sampletones_core.library import InstructionLibraryKey
 from sampletones_core.paths import CONFIG_PATH, LIBRARY_DIRECTORY
@@ -189,15 +189,6 @@ class ConfigManager:
 
     def load_default_config(self) -> None:
         self.load_config(Config())
-
-    def load_library_and_generation_config(self, config: Config) -> None:
-        self.load_config(
-            Config(
-                general=self.config.general if self.config else GeneralConfig(),
-                library=config.library,
-                generation=config.generation,
-            )
-        )
 
     def load_config(self, config: Config) -> None:
         self.config = config

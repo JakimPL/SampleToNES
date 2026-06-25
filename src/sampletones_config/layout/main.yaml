@@ -5,6 +5,9 @@ explorer:
 config:
   height: 244
 
+reconstructor:
+  drive_format: "%.2f"
+
 converter:
   width: -1
   height: 252

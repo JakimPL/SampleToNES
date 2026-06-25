@@ -398,6 +398,7 @@ TAG_GLOBAL_HANDLER_FOCUS = TagName(
     "focus",
 )
 
+PRE_GENERATOR = "gen."
 SUF_BUTTON = ".button"
 SUF_BUTTON_COPY = f"{SUF_BUTTON}.copy"
 SUF_BUTTON_OK = f"{SUF_BUTTON}.ok"

@@ -3,7 +3,9 @@ from typing import Any, Callable, List, Optional, Union
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import StatusElements
-from sampletones_application.categories.elements.instructions import InstructionsDetailsElements
+from sampletones_application.categories.elements.instructions import (
+    InstructionsDetailsElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
@@ -40,8 +42,12 @@ from sampletones_application.utils.dpg import (
     dpg_delete_children,
 )
 from sampletones_application.view_model.instruction.data import InstructionPanelData
-from sampletones_application.view_model.instruction.details import InstructionDetailsPanelViewModel
-from sampletones_application.view_model.instruction.table_data import InstructionTableData
+from sampletones_application.view_model.instruction.details import (
+    InstructionDetailsPanelViewModel,
+)
+from sampletones_application.view_model.instruction.table_data import (
+    InstructionTableData,
+)
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import (
     MAX_DUTY_CYCLE,
@@ -240,10 +246,10 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 Font.BOLD,
             )
 
-    def update_view(self, viewmodel: InstructionDetailsPanelViewModel) -> None:
-        self._current_viewmodel = viewmodel
-        self._update_tables(viewmodel.table_data)
-        self._update_instructions_choice_panel(viewmodel.instruction_data)
+    def update_view(self, view_model: InstructionDetailsPanelViewModel) -> None:
+        self._current_viewmodel = view_model
+        self._update_tables(view_model.table_data)
+        self._update_instructions_choice_panel(view_model.instruction_data)
 
     def _update_tables(self, table_data: Optional[InstructionTableData]) -> None:
         if table_data is None:

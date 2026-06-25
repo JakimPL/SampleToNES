@@ -174,15 +174,3 @@ class TestConfigManagerProperties:
     def test_window_is_initialized(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")
         assert manager.window is not None
-
-
-class TestConfigManagerLoadLibraryAndGeneration:
-    def test_load_library_and_generation_preserves_general_config(
-        self,
-        tmp_path: Path,
-    ) -> None:
-        manager = _manager(tmp_path / "missing.json")
-        original_general = manager.config.general
-        other_config = Config()
-        manager.load_library_and_generation_config(other_config)
-        assert manager.config.general == original_general

@@ -175,6 +175,9 @@ class InstructionsLibraryManager(CallbackMixin):
     def library_exists_for_key(self, key: InstructionLibraryKey) -> bool:
         return self._library.exists(key)
 
+    def is_library_available_for_config(self) -> bool:
+        return self.library_exists_for_key(self._config_manager.key)
+
     def generate_library(self, config: Config, window: Window) -> None:
         self._creator = InstructionsLibraryCreator(config, window)
 

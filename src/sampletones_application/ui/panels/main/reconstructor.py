@@ -10,12 +10,16 @@ from sampletones_application.categories.elements.main import ReconstructorElemen
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.updates import GenerationSettingsUpdate
-from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
+from sampletones_application.constants.general import (
+    PRE_GENERATOR,
+    SUF_HANDLER_REGISTRY,
+)
 from sampletones_application.constants.main import (
     TAG_MAIN_RECONSTRUCTOR_PANEL,
     TAG_MAIN_RECONSTRUCTOR_PANEL_RECONSTRUCTOR_CELL,
     TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE,
 )
+from sampletones_application.layout.main import ReconstructorLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -36,11 +40,13 @@ class GUIReconstructorPanel(GUIPanel):
         self,
         initial_view: ReconstructorPanelViewModel,
         *,
+        layout: ReconstructorLayout,
         input_width: int,
         panel_height: int,
         language_manager: LanguageManager,
     ) -> None:
         self._view = initial_view
+        self._layout = layout
         self._input_width = input_width
         self.on_generation_settings_changed: Optional[Callable[[GenerationSettingsUpdate], None]] = None
         self._item_handler_tag = f"{TAG_MAIN_RECONSTRUCTOR_PANEL}{SUF_HANDLER_REGISTRY}"
@@ -137,25 +143,25 @@ class GUIReconstructorPanel(GUIPanel):
         dpg.add_checkbox(
             label=self._lbl_pulse_1,
             default_value=GeneratorName.PULSE1 in self._view.generators,
-            tag=f"gen_{GeneratorName.PULSE1.value}",
+            tag=f"{PRE_GENERATOR}{GeneratorName.PULSE1.value}",
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_pulse_2,
             default_value=GeneratorName.PULSE2 in self._view.generators,
-            tag=f"gen_{GeneratorName.PULSE2.value}",
+            tag=f"{PRE_GENERATOR}{GeneratorName.PULSE2.value}",
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_triangle,
             default_value=GeneratorName.TRIANGLE in self._view.generators,
-            tag=f"gen_{GeneratorName.TRIANGLE.value}",
+            tag=f"{PRE_GENERATOR}{GeneratorName.TRIANGLE.value}",
             callback=self._on_parameter_change,
         )
         dpg.add_checkbox(
             label=self._lbl_noise,
             default_value=GeneratorName.NOISE in self._view.generators,
-            tag=f"gen_{GeneratorName.NOISE.value}",
+            tag=f"{PRE_GENERATOR}{GeneratorName.NOISE.value}",
             callback=self._on_parameter_change,
         )
 
@@ -168,6 +174,7 @@ class GUIReconstructorPanel(GUIPanel):
             max_value=MAX_DRIVE,
             default_value=self._view.drive,
             width=self._input_width,
+            format=self._layout.drive_format,
         )
 
         dpg.bind_item_handler_registry(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, self._item_handler_tag)
@@ -184,9 +191,9 @@ class GUIReconstructorPanel(GUIPanel):
         )
         self.call(self.on_generation_settings_changed, generation_update)
 
-    def update_view(self, viewmodel: ReconstructorPanelViewModel) -> None:
-        self._view = viewmodel
-        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, viewmodel.drive)
+    def update_view(self, view_model: ReconstructorPanelViewModel) -> None:
+        self._view = view_model
+        dpg.set_value(TAG_MAIN_RECONSTRUCTOR_SLIDER_DRIVE, view_model.drive)
         for generator in GeneratorName:
-            tag = f"gen_{generator.value}"
-            dpg_set_value(tag, generator in viewmodel.generators)
+            tag = f"{PRE_GENERATOR}{generator.value}"
+            dpg_set_value(tag, generator in view_model.generators)
