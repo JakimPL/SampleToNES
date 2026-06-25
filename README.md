@@ -2,26 +2,25 @@
 
 ## Overview
 
-_SampleToNES_ (`sampletones`) is a WAV converter that transforms audio signals into basic oscillator instructions for the 2A03 NES audio chip:
-* 2x pulse
-* triangle
-* noise
+_SampleToNES_ (`sampletones`) is a desktop tool for people writing music for the NES 2A03 sound chip, mainly in [_FamiTracker_](http://famitracker.com/).
 
-without using any DPCM samples.
+The core idea is to approximate an audio sample using only the chip's basic oscillators — two pulse channels, a triangle, and noise — **without any DPCM samples**.
 
-_SampleToNES_ allows exporting reconstructed audio as [_FamiTracker_](http://famitracker.com/) `.fti` instruments
+A built-in sequencer lets you arrange the reconstructed samples into patterns and play them back inside the application, so you can experiment with the results before exporting the instruments into FamiTracker.
 
-It also supports:
+It supports:
 
+* loading common audio formats: WAV, MP3, FLAC, OGG, AIFF, and AU
 * a wide range of NES frequencies, from 15 Hz to 600 Hz, including the two most common standards:
     * NTSC (60 Hz)
     * PAL (50 Hz)
 * various sample rates, from 8000 Hz to 192,000 Hz
-* reconstruction limited to a selected oscillator:
+* restricting the reconstruction to a chosen subset of oscillators:
     * `pulse1`
     * `pulse2`
     * `triangle`
     * `noise`
+* exporting reconstructed audio as FamiTracker `.fti` instruments or as `.wav`
 
 ## Installation
 
@@ -53,33 +52,27 @@ For now, the installation script is adjusted to Debian-based distributions only.
 
 ### Run from source
 
-Requires [uv](https://docs.astral.sh/uv/) and `make` (included with most Linux and macOS systems; Windows users can use `run.bat` in place of `make run`).
+Requires [uv](https://docs.astral.sh/uv/). `make` is recommended (included with most Linux and macOS systems); without it, run the equivalent `uv` commands directly.
 
-1. Set up the environment (creates a virtual environment and installs all dependencies, including dev tools):
+1. Set up everything — creates the virtual environment, installs all dependencies (including dev tools), and installs `sampletones` as a global command:
     ```sh
     make setup
     ```
 2. Run the application:
     ```sh
-    make run
+    make run        # from the project directory
+    sampletones     # from any folder, thanks to the global install
     ```
-    On Windows without `make`:
-    ```bat
-    run.bat
-    ```
+    On Windows without `make`, use `run.bat` in place of `make run`.
 
-### Run from anywhere
-
-To make `sampletones` available as a command from any folder, run once from the project directory:
+`make setup` is the recommended entry point. To do the same steps manually with `uv`:
 ```sh
-uv tool install .
+uv sync --group dev     # create the environment with dev tools
+uv tool install .       # install the global `sampletones` command
+uv run sampletones      # run from the project without the global install
 ```
-After that, `sampletones` is available in any terminal without keeping the project open.
 
-To update after pulling new changes:
-```sh
-uv tool upgrade sampletones
-```
+To update the global command after pulling new changes, re-run `make setup` (or `uv tool install --force .`).
 
 ### GPU support (CUDA)
 
@@ -87,16 +80,16 @@ _SampleToNES_ can use CUDA for acceleration via [_CuPy_](https://cupy.dev/). GPU
 
 #### Linux
 
-On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as Python wheels. A compatible NVIDIA driver on the host is sufficient.
+On Linux, the `gpu` extra installs CuPy alongside the CUDA 12 runtime libraries (`libcudart`, `libnvrtc`) as Python wheels. A compatible NVIDIA driver on the host is sufficient — no system CUDA toolkit required, regardless of which CUDA version (if any) is installed system-wide.
 
 ```sh
-make setup GPU=1      # dev environment with GPU support
+make setup GPU=1      # environment and global command, both with GPU support
 ```
 
 Or with uv directly:
 ```sh
-uv sync --extra gpu                 # GPU support only
-uv sync --group dev --extra gpu     # GPU support plus dev tooling
+uv sync --group dev --extra gpu     # environment with GPU support and dev tooling
+uv tool install ".[gpu]"            # global `sampletones` command with GPU support
 ```
 
 #### Windows
