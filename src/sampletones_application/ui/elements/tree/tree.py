@@ -200,6 +200,7 @@ class GUITreePanel(GUIPanel):
         self.logic.on_search_update_needed = self._update_tree_visibility
 
         self.on_add_to_sequencer: Optional[PathCallback] = None
+        self.can_add_to_sequencer: Optional[Callable[[], bool]] = None
 
         super().__init__(
             tag=tag,
@@ -483,6 +484,7 @@ class GUITreePanel(GUIPanel):
             label=self._lbl_ctx_add_to_sequencer,
             callback=self._on_add_to_sequencer,
             user_data=node,
+            enabled=self.call(self.can_add_to_sequencer),
         )
 
     def _add_context_menu_favorite_item(self, node: FileSystemNode) -> None:

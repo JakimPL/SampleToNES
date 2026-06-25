@@ -142,6 +142,7 @@ class GlobalMessageElements(AbstractElement):
     CONFIGURATION_INVALID_ERROR = "configuration_invalid_error"
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
     ALL_AUDIO_FORMATS = "all_audio_formats"
+    NO_PROJECT_OPEN = "no_project_open"
 
 
 class GlobalDialogTitleElements(AbstractElement):
@@ -163,6 +164,7 @@ class GlobalDialogTitleElements(AbstractElement):
     NEW_UNSAVED_PROJECT = "new_unsaved_project"
     OPEN_UNSAVED_PROJECT = "open_unsaved_project"
     CLOSE_UNSAVED_PROJECT = "close_unsaved_project"
+    NO_PROJECT_OPEN = "no_project_open"
 
 
 class GlobalTemplateElements(AbstractElement):

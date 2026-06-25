@@ -432,6 +432,9 @@ class ReconstructionsTabCoordinator:
     def set_on_add_to_sequencer(self, callback: PathCallback) -> None:
         self._browser_panel.on_add_to_sequencer = callback
 
+    def set_can_add_to_sequencer(self, predicate: Callable[[], bool]) -> None:
+        self._browser_panel.can_add_to_sequencer = predicate
+
     def load_reconstruction(self, filepath: Path) -> None:
         self._browser_panel.lock()
         try:

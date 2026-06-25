@@ -3,8 +3,12 @@ from typing import Callable, Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.categories.hierarchy import Page, Panel, TextType
+from sampletones_application.categories.elements.global_ import (
+    GlobalDialogTitleElements,
+    GlobalMessageElements,
+    MenuElements,
+)
+from sampletones_application.categories.hierarchy import Page, Panel, Tab, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
 from sampletones_application.config.managers.session import SessionManager
@@ -12,6 +16,7 @@ from sampletones_application.constants.general import (
     SUF_PANEL_CENTER,
     SUF_PANEL_LEFT,
     SUF_PANEL_RIGHT,
+    TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
     TAG_GLOBAL_TAB_SEQUENCER,
     TAG_GLOBAL_TABS,
 )
@@ -61,9 +66,11 @@ class SequencerTabCoordinator:
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         on_edit_sample_requested: Callable[[str], None],
+        on_tab_switch: Callable[[Tab], None],
     ) -> None:
         self._project_controller = project_controller
         self._on_edit_sample_requested = on_edit_sample_requested
+        self._on_tab_switch = on_tab_switch
         self._layout = layout
         self._language_manager = language_manager
         self._dialogs = dialogs
@@ -73,6 +80,18 @@ class SequencerTabCoordinator:
             Panel.MENU,
             TextType.LABEL,
             MenuElements.TAB_SEQUENCER,
+        ]
+        self._msg_no_project = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.NO_PROJECT_OPEN,
+        ]
+        self._ttl_no_project = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.NO_PROJECT_OPEN,
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
@@ -152,6 +171,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
+        self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
@@ -203,8 +223,16 @@ class SequencerTabCoordinator:
     def _on_browser_autoplay_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
+    def _is_project_open(self) -> bool:
+        return self._project_controller.is_open
+
     def import_reconstruction(self, filepath: Path) -> None:
         if not self._project_controller.is_open:
+            self._dialogs.show_info(
+                TAG_GLOBAL_DIALOG_NO_PROJECT_OPEN,
+                self._msg_no_project,
+                self._ttl_no_project,
+            )
             return
 
         try:
@@ -212,9 +240,13 @@ class SequencerTabCoordinator:
         except (SampleToNESError, OSError, ValueError) as exception:
             logger.error_with_traceback(exception, f"Failed to import reconstruction from {filepath}")
             self._dialogs.show_error(exception)
+            return
         except Exception as exception:
             logger.error_with_traceback(exception, f"Unexpected error while importing reconstruction from {filepath}")
             self._dialogs.show_error(exception)
+            return
+
+        self._on_tab_switch(Tab.SEQUENCER)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)

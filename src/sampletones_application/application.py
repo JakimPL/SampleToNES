@@ -234,6 +234,7 @@ class Application:
             language_manager=self.language_manager,
             dialogs=self.dialogs,
             on_edit_sample_requested=self._edit_project_sample,
+            on_tab_switch=self._set_current_tab,
         )
 
         self._playback_router = PlaybackRouter(
@@ -326,6 +327,7 @@ class Application:
         self.config_manager.add_config_change_callback(self._update_menu)
         self.audio_device_manager.set_callbacks(on_playback_error=self._on_playback_error)
         self._reconstructions_tab.set_on_add_to_sequencer(self._sequencer_tab.import_reconstruction)
+        self._reconstructions_tab.set_can_add_to_sequencer(self._is_project_open)
 
     def _on_tab_changed(self, sender: Sender, app_data: Any, user_data: Any) -> None:
         self._update_menu()
@@ -626,6 +628,9 @@ class Application:
 
     def _is_library_generating(self) -> bool:
         return self._instructions_tab.is_library_generating()
+
+    def _is_project_open(self) -> bool:
+        return self.project_controller.is_open
 
     def _exit_application(self) -> None:
         stop_background_workers()

@@ -31,6 +31,7 @@ global.dialog.title.project_saved: "Project saved"
 global.dialog.title.new_unsaved_project: "New project"
 global.dialog.title.open_unsaved_project: "Open project"
 global.dialog.title.close_unsaved_project: "Close project"
+global.dialog.title.no_project_open: "No project open"
 
 # Global — Dialog messages
 global.dialog.message.tree_no_results: "No results found."
@@ -59,6 +60,7 @@ global.dialog.message.configuration_load_error: "Error loading configuration."
 global.dialog.message.configuration_invalid_error: "Invalid configuration file."
 global.dialog.message.audio_playback_error: "Audio playback error"
 global.dialog.message.all_audio_formats: "All supported audio formats"
+global.dialog.message.no_project_open: "No project is open. Create or open a project before adding a reconstruction."
 
 # Global — Dialog templates
 global.dialog.template.time_estimation: " (ETA: {eta_string})"
