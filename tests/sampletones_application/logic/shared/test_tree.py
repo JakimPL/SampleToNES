@@ -3,6 +3,7 @@ from typing import Optional
 from unittest.mock import MagicMock
 
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_core.structures.tree import FileSystemNode, NodeType, TreeNode
 
@@ -103,6 +104,7 @@ class TestTreeLogicAutoplay:
         audio_device_manager.play_file.assert_called_once_with(
             node.filepath,
             update=False,
+            priority=PlaybackPriority.PREVIEW,
         )
 
     def test_autoplay_with_directory_node_is_no_op(self, tmp_path: Path) -> None:

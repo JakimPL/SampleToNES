@@ -1,5 +1,6 @@
 from typing import Callable, Optional
 
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.view_model.shared.audio_data import AudioData
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
@@ -12,9 +13,10 @@ class AudioPlayer(CallbackMixin):
     def __init__(
         self,
         audio_device_manager: AudioDeviceManager,
+        *,
+        sample_rate: int = DEFAULT_SAMPLE_RATE,
         on_position_changed: Optional[Callable[[int], None]] = None,
         on_change_audio_state: Optional[VoidCallback] = None,
-        sample_rate: int = DEFAULT_SAMPLE_RATE,
     ):
         self.audio_device_manager = audio_device_manager
         self.audio_data: AudioData = AudioData.empty(sample_rate)
@@ -34,9 +36,18 @@ class AudioPlayer(CallbackMixin):
         self.stop()
         self.audio_data = AudioData.empty(self.audio_data.sample_rate)
 
+    def _set_current_position(self, position: int) -> None:
+        self._current_position = max(
+            0,
+            min(
+                position,
+                self.audio_data.samples,
+            ),
+        )
+
     def _on_device_position_changed(self, position: int) -> None:
         if self.audio_data.is_loaded():
-            self._current_position = max(0, min(position, self.audio_data.samples))
+            self._set_current_position(position)
             self.call(self.on_position_changed, position)
 
         if position == 0:
@@ -44,7 +55,7 @@ class AudioPlayer(CallbackMixin):
 
     def set_position(self, position: int) -> None:
         if self.audio_data.is_loaded():
-            self._current_position = max(0, min(position, self.audio_data.samples))
+            self._set_current_position(position)
             self.audio_device_manager.set_position(position)
             self.call(self.on_position_changed, position)
 
@@ -53,11 +64,16 @@ class AudioPlayer(CallbackMixin):
             self._notify_audio_state_changed()
             return
 
-        self.audio_device_manager.set_position_callback(self._on_device_position_changed)
+        self.audio_device_manager.set_position_callback(
+            self._on_device_position_changed,
+        )
         audio = self.audio_data.sample
 
         try:
-            self.audio_device_manager.play(audio)
+            self.audio_device_manager.play(
+                audio,
+                priority=PlaybackPriority.NORMAL,
+            )
         except Exception as exception:
             raise PlaybackError(f"Audio playback failed: {exception}") from exception
 

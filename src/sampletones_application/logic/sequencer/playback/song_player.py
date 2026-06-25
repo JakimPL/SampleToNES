@@ -2,6 +2,7 @@ from typing import Callable, FrozenSet, Optional
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.services.song_player import SongPlayerService
 from sampletones_application.services.song_player_result import (
     SongPlaybackError,
@@ -36,6 +37,8 @@ class SongPlayerLogic(CallbackMixin):
         self._synthesizer = RowSynthesizer(project_controller, config)
         self._service = SongPlayerService(audio_device_manager, self._synthesizer)
         self._service.subscribe(self._on_service_result)
+        self._audio_device_manager.on_acquire_output = self.stop
+        self._audio_device_manager.external_output_priority = self._external_output_priority
         self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
         self._position = SongPosition()
         self._last_error: Optional[str] = None
@@ -86,6 +89,10 @@ class SongPlayerLogic(CallbackMixin):
 
     def is_loaded(self) -> bool:
         return self._project_controller.is_open
+
+    def _external_output_priority(self) -> Optional[int]:
+        """The song holds the shared output device while its stream is alive (playing or paused)."""
+        return PlaybackPriority.NORMAL if self._service.alive else None
 
     def set_active_channels(self, active_channels: FrozenSet[GeneratorName]) -> None:
         self._active_channels = active_channels

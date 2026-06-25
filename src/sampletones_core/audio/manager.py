@@ -85,6 +85,7 @@ class AudioDeviceManager(CallbackMixin):
         self._audio_data: Optional[np.ndarray] = None
         self._position: int = 0
         self._playing: bool = False
+        self._active_priority: int = 0
         self._paused: bool = False
         self._stop: bool = False
 
@@ -95,6 +96,8 @@ class AudioDeviceManager(CallbackMixin):
 
         self._position_callback: Optional[Callable[[int], None]] = None
         self.on_playback_error: Optional[OnPlaybackErrorCallback] = None
+        self.on_acquire_output: Optional[Callable[[], None]] = None
+        self.external_output_priority: Optional[Callable[[], Optional[int]]] = None
 
         self.refresh_devices()
         self._initialize_default_device()
@@ -167,7 +170,11 @@ class AudioDeviceManager(CallbackMixin):
                 host_api=host_api,
             )
 
-    def _is_sample_rate_supported(self, device_index: int, sample_rate: int) -> bool:
+    def _is_sample_rate_supported(
+        self,
+        device_index: int,
+        sample_rate: int,
+    ) -> bool:
         """
         Check if a device supports a specific sample rate.
 
@@ -190,7 +197,11 @@ class AudioDeviceManager(CallbackMixin):
         except ValueError:
             return False
 
-    def _get_supported_sample_rates(self, device_index: int, default_sample_rate: int) -> List[SampleRate]:
+    def _get_supported_sample_rates(
+        self,
+        device_index: int,
+        default_sample_rate: int,
+    ) -> List[SampleRate]:
         """
         Get list of supported sample rates for a device.
 
@@ -409,7 +420,11 @@ class AudioDeviceManager(CallbackMixin):
         """
         return dict(self._devices)
 
-    def configure_device(self, device_index: int, sample_rate: SampleRate) -> None:
+    def configure_device(
+        self,
+        device_index: int,
+        sample_rate: SampleRate,
+    ) -> None:
         """
         Configure the audio device and sample rate.
 
@@ -473,33 +488,66 @@ class AudioDeviceManager(CallbackMixin):
             if self._audio_data is not None:
                 self._position = max(0, min(position, len(self._audio_data)))
 
-    def play_file(self, filepath: Path, *, update: bool = True) -> None:
+    def play_file(
+        self,
+        filepath: Path,
+        *,
+        update: bool = True,
+        priority: int = 0,
+    ) -> None:
         """
         Load and play an audio file.
 
         Args:
             filepath: Path to the audio file.
             update: If True, invoke position callback during playback.
+            priority: Output-request priority; see :meth:`play`.
         """
         audio = load_audio(filepath, normalize=False, quantize=False)
-        self.play(audio, update=update)
+        self.play(audio, update=update, priority=priority)
 
-    def play(self, audio: np.ndarray, *, update: bool = True) -> None:
+    def play(
+        self,
+        audio: np.ndarray,
+        *,
+        update: bool = True,
+        priority: int = 0,
+    ) -> None:
         """
         Play audio data.
 
-        Stops any active playback and starts playing the provided audio data
-        in a background thread.
+        Starts playing the provided audio data in a background thread, after stopping
+        any active playback.
+
+        The output device exposes a single stream, so requests are ranked by ``priority``:
+        this request is skipped when output is already held at a strictly higher priority
+        (a buffer of this manager, or an external stream reported by ``external_output_priority``).
+        Otherwise it takes over, releasing any external stream first via ``on_acquire_output``.
 
         Args:
             audio: Audio data as numpy array (will be converted to float32).
             update: If True, invoke position callback during playback.
+            priority: Output-request priority; higher wins. Callers assign the meaning.
         """
+        external_priority = self.call(self.external_output_priority)
+        with self._lock:
+            internal_priority = self._active_priority if self._playing else None
+
+        held = max(
+            (priority for priority in (internal_priority, external_priority) if priority is not None), default=None
+        )
+        if held is not None and priority < held:
+            return
+
         self.stop()
+        if external_priority is not None:
+            self.call(self.on_acquire_output)
+
         with self._lock:
             self._audio_data = audio.astype(np.float32)
             self._position = 0
             self._playing = True
+            self._active_priority = priority
             self._paused = False
             self._stop = False
 
@@ -667,7 +715,9 @@ class AudioDeviceManager(CallbackMixin):
     ) -> pyaudio.Stream:
         """Open a blocking output stream for caller-managed streaming playback.
 
-        The caller owns the stream's lifetime and must close it when done.
+        The caller owns the stream's lifetime and must close it when done. Any buffer
+        playback owned by this manager is stopped first, since the output device allows
+        only a single open stream at a time.
 
         Args:
             sample_rate: Sample rate in Hz.
@@ -679,6 +729,7 @@ class AudioDeviceManager(CallbackMixin):
         if self._pyaudio is None:
             raise PlaybackError("PyAudio not initialized; call reinitialize() first")
 
+        self.stop()
         return self._pyaudio.open(
             format=FORMAT,
             channels=CHANNELS,

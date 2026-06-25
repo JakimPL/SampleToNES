@@ -3,6 +3,7 @@ from typing import Callable, Optional
 
 from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.layout.behavior import SchedulingBehavior
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
@@ -84,6 +85,7 @@ class TreeLogic(CallbackMixin):
                         self._audio_device_manager.play(
                             reconstruction.approximation,
                             update=False,
+                            priority=PlaybackPriority.PREVIEW,
                         )
                     except Exception as exception:
                         logger.error_with_traceback(
@@ -94,6 +96,7 @@ class TreeLogic(CallbackMixin):
                     self._audio_device_manager.play_file(
                         node.filepath,
                         update=False,
+                        priority=PlaybackPriority.PREVIEW,
                     )
 
     def is_node_favorite(self, node: TreeNode) -> bool:
