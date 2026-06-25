@@ -15,6 +15,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_INSTRUCTIONS,
 )
 from sampletones_application.constants.instructions import (
+    TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
@@ -86,6 +87,12 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             Panel.LIBRARY,
             TextType.LABEL,
             InstructionsLibraryElements.REFRESH_LIBRARIES_BUTTON,
+        ]
+        self._lbl_cancel = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.CANCEL_GENERATION_BUTTON,
         ]
         self._lbl_libraries = language_manager[
             Page.INSTRUCTIONS,
@@ -237,6 +244,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 callback=self.refresh,
             )
             GUIButton(
+                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
+                label=self._lbl_cancel,
+                width=-1,
+                callback=self.cancel_generation,
+                show=False,
+            )
+            GUIButton(
                 tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
                 label=self._lbl_generate,
                 width=-1,
@@ -269,6 +283,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def generate_library(self) -> None:
         self.library_logic.generate_library()
 
+    def cancel_generation(self) -> None:
+        self.library_logic.cancel_generation()
+
     def load_library_file(self, filepath: Path) -> None:
         self.library_logic.load_library_file(filepath)
 
@@ -277,8 +294,15 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             label=view_model.generate_button_label,
-            enabled=view_model.generate_button_enabled,
             show=view_model.generate_button_visible,
+        )
+        dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+            show=view_model.refresh_button_visible,
+        )
+        dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
+            show=view_model.cancel_button_visible,
         )
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
@@ -296,7 +320,11 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             enabled=enabled,
         )
         dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+            enabled=enabled,
+        )
+        dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             enabled=enabled,
         )
 

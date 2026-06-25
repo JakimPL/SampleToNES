@@ -65,10 +65,8 @@ class LibraryLogic(CallbackMixin):
         self._status_lock = threading.Lock()
 
         self._status_text: str = ""
-        self._progress_visible: bool = False
         self._progress_value: float = 0.0
         self._progress_overlay: str = ""
-        self._generate_button_visible: bool = True
 
         self._lock_function: Optional[Callable[[], None]] = None
         self._unlock_function: Optional[Callable[[], None]] = None
@@ -317,11 +315,12 @@ class LibraryLogic(CallbackMixin):
             self.call(self.on_load_error, exception, self._msg_window_not_available)
             return
 
-        self._progress_visible = True
-        self._generate_button_visible = False
         self._progress_value = 0.0
-        self._emit_view(status_text_override=self._msg_generating)
         self._library_manager.generate_library(config, window)
+        self._emit_view(status_text_override=self._msg_generating)
+
+    def cancel_generation(self) -> None:
+        self._library_manager.cancel_generation()
 
     def _sync_with_config_key(self, load_if_needed: bool = True) -> None:
         config_key = self._config_manager.key
@@ -467,23 +466,19 @@ class LibraryLogic(CallbackMixin):
 
     def _finalize_generation(self) -> None:
         try:
-            self._progress_visible = False
-            self._generate_button_visible = True
+            self._library_manager.cleanup_creator()
             self._set_current_library(
                 self._config_manager.key,
                 load_if_needed=True,
                 apply_config=False,
             )
             self.refresh_libraries()
-            self._library_manager.cleanup_creator()
         finally:
             self._do_unlock()
 
     def _finalize_generation_error(self, exception: Exception) -> None:
         try:
             self.call(self.on_generation_error_dialog, exception)
-            self._progress_visible = False
-            self._generate_button_visible = True
             self._library_manager.cleanup_creator()
             self.update_status()
         finally:
@@ -512,9 +507,7 @@ class LibraryLogic(CallbackMixin):
         view_model = LibraryPanelViewModel(
             status_text=self._status_text,
             generate_button_label=generate_button_label,
-            generate_button_enabled=not is_generating,
-            generate_button_visible=self._generate_button_visible,
-            progress_visible=self._progress_visible,
+            is_generating=is_generating,
             progress_value=self._progress_value,
             progress_overlay=self._progress_overlay,
         )

@@ -31,6 +31,12 @@ TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES = TagName(
     Widget.BUTTON,
     "refresh_libraries",
 )
+TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.BUTTON,
+    "cancel_generation",
+)
 TAG_INSTRUCTIONS_LIBRARY_PROGRESS = TagName(
     Page.INSTRUCTIONS,
     Panel.LIBRARY,

@@ -220,6 +220,7 @@ class MainTabCoordinator:
             _title_progress,
         )
         self._converter_logic.is_library_available = library_manager.is_library_available_for_config
+        self._converter_logic.cancel_library_generation = library_manager.cancel_generation
         self._converter_logic.on_load_file = on_load_file
         self._converter_logic.on_load_directory = on_load_directory
         self._converter_logic.on_cancelled = on_cancelled

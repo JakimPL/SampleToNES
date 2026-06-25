@@ -5,6 +5,7 @@ class InstructionsLibraryElements(AbstractElement):
     GENERATE_LIBRARY_BUTTON = "generate_library_button"
     REGENERATE_LIBRARY_BUTTON = "regenerate_library_button"
     REFRESH_LIBRARIES_BUTTON = "refresh_libraries_button"
+    CANCEL_GENERATION_BUTTON = "cancel_generation_button"
     LIBRARIES_TEXT = "libraries_text"
     AVAILABLE_LIBRARIES_TEXT = "available_libraries_text"
     LOAD_LIBRARY_NODE = "load_library_node"

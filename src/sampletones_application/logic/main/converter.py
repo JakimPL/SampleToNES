@@ -118,6 +118,7 @@ class ConverterLogic(CallbackMixin):
         self.on_load_directory: Optional[VoidCallback] = None
         self.on_cancelled: Optional[VoidCallback] = None
         self.generate_library: Optional[VoidCallback] = None
+        self.cancel_library_generation: Optional[VoidCallback] = None
         self.is_library_available: Optional[Callable[[], bool]] = None
 
     def is_running(self) -> bool:
@@ -154,6 +155,9 @@ class ConverterLogic(CallbackMixin):
             self._emit_view_model(self._msg_cancelling, 0.0, "0%")
             self._system_progress.error()
             self._service.cancel()
+        elif self._phase == ConversionPhase.WAITING:
+            self.call(self.cancel_library_generation)
+            self._on_cancellation_complete()
 
     def close(self) -> None:
         try:
@@ -248,6 +252,9 @@ class ConverterLogic(CallbackMixin):
         return True
 
     def _wait_for_library_and_start(self) -> None:
+        if self._phase != ConversionPhase.WAITING:
+            return
+
         if not self.call(self.is_library_available):
             self._emit_view_model(self._msg_generating_library, 0.0, "0%")
             CallbackQueue.add(

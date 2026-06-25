@@ -212,7 +212,13 @@ class InstructionsLibraryManager(CallbackMixin):
         self.call(self.on_generation_completed)
 
     def is_generating(self) -> bool:
-        return self._creator is not None and self._creator.is_running()
+        """A generation is in progress from the moment a creator is started until it is cleaned up.
+
+        This deliberately does not consult the creator's ``is_running`` flag: the worker thread
+        clears it before the library is saved and finalised, which would otherwise report the
+        generation as finished while the saving step is still underway.
+        """
+        return self._creator is not None
 
     @property
     def tree(self) -> Tree:
