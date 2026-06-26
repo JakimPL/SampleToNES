@@ -711,14 +711,19 @@ class GUISequencerGridPanel(GUIPanel):
         self._highlighted_row = None
 
     def set_playing_row(self, row_index: Optional[int]) -> None:
-        if self._playing_row is not None:
+        if self._playing_row is not None and self._playing_row < self._current_row_count:
             dpg.unhighlight_table_row(TAG_SEQUENCER_GRID_TABLE_TRACKER, self._playing_row)
 
         self._playing_row = row_index
         self._apply_playing_row_highlight()
 
     def _apply_playing_row_highlight(self) -> None:
-        if self._playing_row is not None:
+        """Highlights the playing row, skipping a stale index that a shrunk pattern dropped.
+
+        A rebuild after fewer rows can leave ``_playing_row`` beyond the table; the next
+        position update from the player replaces it with a valid row.
+        """
+        if self._playing_row is not None and self._playing_row < self._current_row_count:
             dpg.highlight_table_row(
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 self._playing_row,

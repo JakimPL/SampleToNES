@@ -113,6 +113,10 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
         widget = cls._widget
         if widget is None or cls._font is None:
             return None
+
+        if not dpg.does_item_exist(widget):
+            return None
+
         if not dpg.is_item_visible(widget):
             return None
 

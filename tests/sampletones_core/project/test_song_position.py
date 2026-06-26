@@ -117,6 +117,62 @@ class TestAdvanceSequence:
         assert position.row_index == 0
 
 
+class TestWrapOverflow(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseAutolabelTestCase):
+        start_order: int
+        start_row: int
+        rows: int
+        expected_order: int
+        expected_row: int
+
+        @property
+        def label(self) -> str:
+            return str(self.expected)
+
+    test_cases = [
+        TestCase(
+            expected="row_within_pattern_is_unchanged",
+            start_order=0,
+            start_row=2,
+            rows=4,
+            expected_order=0,
+            expected_row=2,
+        ),
+        TestCase(
+            expected="overflowed_row_resumes_at_next_frame",
+            start_order=0,
+            start_row=50,
+            rows=16,
+            expected_order=1,
+            expected_row=0,
+        ),
+        TestCase(
+            expected="row_equal_to_count_wraps",
+            start_order=2,
+            start_row=4,
+            rows=4,
+            expected_order=3,
+            expected_row=0,
+        ),
+        TestCase(
+            expected="first_row_is_always_within_bounds",
+            start_order=1,
+            start_row=0,
+            rows=1,
+            expected_order=1,
+            expected_row=0,
+        ),
+    ]
+
+    @pytest.mark.parametrize("test_case", test_cases, ids=lambda case: case.label)
+    def test_wrap_overflow(self, test_case: TestCase) -> None:
+        position = SongPosition(order_position=test_case.start_order, row_index=test_case.start_row)
+        position.wrap_overflow(rows_in_pattern=test_case.rows)
+        assert position.order_position == test_case.expected_order
+        assert position.row_index == test_case.expected_row
+
+
 class TestSongPositionIteration:
     def test_unpacks_as_order_then_row(self) -> None:
         order_position, row_index = SongPosition(order_position=3, row_index=7)

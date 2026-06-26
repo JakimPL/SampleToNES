@@ -212,6 +212,31 @@ class TestOnServiceResult:
 
         assert len(views) == 1
 
+    def test_playback_stopped_emits_idle_view_even_when_worker_still_reports_playing(self) -> None:
+        """The worker thread may still be closing its stream when the stop result is processed;
+        the emitted view must report idle regardless so the playhead highlight clears."""
+        logic = _make_logic()
+        logic._service.is_playing = True
+        logic._service.is_paused = True
+        views = _capture_views(logic)
+
+        logic._on_service_result(SongPlaybackStopped())
+
+        assert views[-1].is_playing is False
+        assert views[-1].is_paused is False
+
+    def test_playback_stopped_resets_position_to_beginning(self) -> None:
+        logic = _make_logic()
+        logic._position = SongPosition(order_position=3, row_index=9)
+        views = _capture_views(logic)
+
+        logic._on_service_result(SongPlaybackStopped())
+
+        assert logic._position.order_position == 0
+        assert logic._position.row_index == 0
+        assert views[-1].order_position == 0
+        assert views[-1].row_index == 0
+
     def test_playback_error_stores_message_in_emitted_view(self) -> None:
         logic = _make_logic()
         logic.on_error = lambda _: None

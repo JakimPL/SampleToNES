@@ -26,3 +26,14 @@ class SongPosition:
         if self.row_index >= rows_in_pattern:
             self.row_index = 0
             self.order_position += 1
+
+    def wrap_overflow(self, rows_in_pattern: int) -> None:
+        """Realigns a row that fell outside its pattern to the next frame's first row.
+
+        Shrinking ``rows_per_pattern`` below the active row leaves the playhead beyond
+        the pattern's end; playback then resumes at the next frame rather than stalling
+        on the now-missing row.
+        """
+        if self.row_index >= rows_in_pattern:
+            self.row_index = 0
+            self.order_position += 1

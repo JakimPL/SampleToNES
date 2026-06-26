@@ -108,7 +108,8 @@ class SongPlayerLogic(CallbackMixin):
                 self.call(self.on_position_changed, position.order_position, position.row_index)
                 self._emit_view()
             case SongPlaybackStopped():
-                self._emit_view()
+                self._position = SongPosition()
+                self._emit_idle_view()
             case SongPlaybackError(error=error):
                 self._last_error = str(error) if str(error) else type(error).__name__
                 self._position = SongPosition()
@@ -116,13 +117,23 @@ class SongPlayerLogic(CallbackMixin):
                 self._emit_view()
 
     def _emit_view(self) -> None:
-        self.call(self.on_view_changed, self._build_view_model())
+        self.call(self.on_view_changed, self._build_view_model(self.is_playing(), self.is_paused()))
 
-    def _build_view_model(self) -> SongPlayerViewModel:
+    def _emit_idle_view(self) -> None:
+        """Pushes a definitively stopped view.
+
+        ``SongPlaybackStopped`` is the authoritative end-of-playback signal, so the flags are
+        forced off rather than read from the worker thread, which may still be closing its audio
+        stream when this runs and would otherwise momentarily report itself as still playing —
+        leaving the final row highlighted as if it were current.
+        """
+        self.call(self.on_view_changed, self._build_view_model(is_playing=False, is_paused=False))
+
+    def _build_view_model(self, is_playing: bool, is_paused: bool) -> SongPlayerViewModel:
         return SongPlayerViewModel(
             is_loaded=self.is_loaded(),
-            is_playing=self.is_playing(),
-            is_paused=self.is_paused(),
+            is_playing=is_playing,
+            is_paused=is_paused,
             order_position=self._position.order_position,
             row_index=self._position.row_index,
             error=self._last_error,

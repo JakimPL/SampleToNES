@@ -116,6 +116,9 @@ class RowSynthesizer:
     def render_row(self) -> tuple[np.ndarray, SongPosition]:
         project = self._project_controller.project
         settings = project.settings
+        song = project.song
+        self._position.wrap_overflow(song.rows_per_pattern)
+
         frame_length = self._config.library.frame_length
         ticks_per_row = self._ticks_for_row(settings)
         chunk_length = frame_length * ticks_per_row
@@ -124,7 +127,6 @@ class RowSynthesizer:
         if self.is_finished:
             return np.zeros(chunk_length, dtype=np.float32), position_before
 
-        song = project.song
         mixed = self._mix_channels(
             project,
             song,

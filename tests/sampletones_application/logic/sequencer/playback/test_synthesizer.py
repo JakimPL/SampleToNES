@@ -273,6 +273,34 @@ class TestPositionAdvance:
             ],
         ).run()
 
+    def test_shrinking_rows_below_playhead_resumes_at_next_frame(self) -> None:
+        def append_second_frame(context: SynthesizerContext) -> None:
+            _controller(context).project.song.append_frame()
+
+        def seek_past_then_shrink_pattern(context: SynthesizerContext) -> None:
+            context.synthesizer.set_position(0, 50)
+            _controller(context).set_rows_per_pattern(16)
+
+        def render_and_assert_advanced_without_finishing(context: SynthesizerContext) -> None:
+            _, (order_position, row_index) = context.synthesizer.render_row()
+            assert (order_position, row_index) == (1, 0)
+            assert not context.synthesizer.is_finished
+
+        BaseTestScenario(
+            label="shrinking rows below the playhead resumes at the next frame",
+            build=_make_context,
+            steps=[
+                ScenarioStep(label="append a second order frame", action=append_second_frame),
+                ScenarioStep(
+                    label="seek to row 50, then shrink pattern to 16 rows", action=seek_past_then_shrink_pattern
+                ),
+                ScenarioStep(
+                    label="render — playhead lands on order 1 row 0, still playing",
+                    action=render_and_assert_advanced_without_finishing,
+                ),
+            ],
+        ).run()
+
     def test_returned_position_is_before_advance(self) -> None:
         def render_and_check_returned_position(context: SynthesizerContext) -> None:
             _, (order_position, row_index) = context.synthesizer.render_row()
