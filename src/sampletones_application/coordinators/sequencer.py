@@ -22,6 +22,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TABS,
 )
 from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
@@ -53,6 +54,7 @@ from sampletones_application.view_model.sequencer.song_player import SongPlayerV
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.exceptions import SampleToNESError
 from sampletones_shared.logger import logger
 
@@ -139,6 +141,24 @@ class SequencerTabCoordinator:
             Panel.DIALOG,
             TextType.LABEL,
             DialogElements.DONT_ASK_AGAIN,
+        ]
+        self._ttl_frequency_mismatch = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.FREQUENCY_MISMATCH,
+        ]
+        self._msg_frequency_mismatch = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.FREQUENCY_MISMATCH,
+        ]
+        self._lbl_add_anyway = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.ADD_ANYWAY,
         ]
         self._nes_frequency_change_acknowledged: bool = False
         self._left_width = layout.general.panels.left.width
@@ -296,16 +316,51 @@ class SequencerTabCoordinator:
             return
 
         try:
-            self._sequencer_browser_logic.import_reconstruction(filepath)
+            reconstruction = self._sequencer_browser_logic.load_reconstruction(filepath)
         except (SampleToNESError, OSError, ValueError) as exception:
-            logger.error_with_traceback(exception, f"Failed to import reconstruction from {filepath}")
+            logger.error_with_traceback(exception, f"Failed to load reconstruction from {filepath}")
             self._dialogs.show_error(exception)
             return
         except Exception as exception:
-            logger.error_with_traceback(exception, f"Unexpected error while importing reconstruction from {filepath}")
+            logger.error_with_traceback(exception, f"Unexpected error while loading reconstruction from {filepath}")
             self._dialogs.show_error(exception)
             return
 
+        self._add_reconstruction_with_frequency_check(reconstruction, filepath.stem)
+
+    def _add_reconstruction_with_frequency_check(self, reconstruction: Reconstruction, name: str) -> None:
+        """Adds a loaded reconstruction, reconciling its NES frequency with the project's.
+
+        A reconstruction is rendered at the frequency it was generated at, so importing one
+        recorded at a different rate plays back wrong. An empty project simply adopts the
+        incoming frequency; a project that already holds samples (which a frequency change would
+        re-time) confirms first, showing both rates.
+        """
+        reconstruction_frequency = reconstruction.config.nes_frequency
+        project_frequency = self._sequencer_grid_logic.settings.nes_frequency
+
+        if reconstruction_frequency == project_frequency:
+            self._add_reconstruction_to_sequencer(reconstruction, name)
+            return
+
+        if not self._project_controller.has_samples:
+            self._sequencer_grid_logic.set_nes_frequency(reconstruction_frequency)
+            self._add_reconstruction_to_sequencer(reconstruction, name)
+            return
+
+        self._dialogs.show_confirmation(
+            tag=TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY,
+            title=self._ttl_frequency_mismatch,
+            message=self._msg_frequency_mismatch.format(
+                reconstruction=reconstruction_frequency,
+                project=project_frequency,
+            ),
+            on_confirm=lambda: self._add_reconstruction_to_sequencer(reconstruction, name),
+            ok_label=self._lbl_add_anyway,
+        )
+
+    def _add_reconstruction_to_sequencer(self, reconstruction: Reconstruction, name: str) -> None:
+        self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:

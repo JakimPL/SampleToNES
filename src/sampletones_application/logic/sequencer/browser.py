@@ -28,11 +28,19 @@ class SequencerBrowserLogic(CallbackMixin):
         reconstructions_directory = self._config_manager.get_reconstructions_directory()
         self._browser_manager.set_reconstructions_directory(reconstructions_directory)
 
-    def import_reconstruction(self, path: Path) -> Sample:
-        """Loads a reconstruction file from the browser and adds it as a sample.
+    def load_reconstruction(self, path: Path) -> Reconstruction:
+        """Loads a reconstruction file without adding it.
 
-        The sample embeds the loaded reconstruction object; its name defaults to
-        the file stem and can be renamed afterwards from the samples panel.
+        Kept separate from :meth:`add_reconstruction` so the caller can inspect the
+        loaded reconstruction — e.g. compare its NES frequency to the project's —
+        before deciding to add it.
         """
-        reconstruction = Reconstruction.load(path)
-        return self._controller.add_sample(reconstruction, name=path.stem)
+        return Reconstruction.load(path)
+
+    def add_reconstruction(self, reconstruction: Reconstruction, name: str) -> Sample:
+        """Adds an already-loaded reconstruction as a sample.
+
+        The sample embeds the reconstruction object and can be renamed afterwards
+        from the samples panel.
+        """
+        return self._controller.add_sample(reconstruction, name=name)

@@ -116,6 +116,12 @@ TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY = TagName(
     Widget.DIALOG,
     "nes_frequency",
 )
+TAG_SEQUENCER_BROWSER_DIALOG_FREQUENCY = TagName(
+    Page.SEQUENCER,
+    Panel.BROWSER,
+    Widget.DIALOG,
+    "frequency",
+)
 TAG_SEQUENCER_ORDER_PANEL = TagName(
     Page.SEQUENCER,
     Panel.ORDER,

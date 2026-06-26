@@ -12,15 +12,24 @@ def coordinator() -> SequencerTabCoordinator:
     """A coordinator with only the collaborators ``import_reconstruction`` touches.
 
     The full constructor builds the sequencer's GUI subtree (themes, fonts, synthesiser), which
-    is out of scope here; only the import orchestration is under test.
+    is out of scope here; only the import orchestration is under test. Defaults to an open project
+    with samples and a matching reconstruction frequency (60 Hz); individual tests override.
     """
     instance = object.__new__(SequencerTabCoordinator)
     instance._project_controller = MagicMock()
+    instance._project_controller.is_open = True
+    instance._project_controller.has_samples = True
     instance._sequencer_browser_logic = MagicMock()
+    instance._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_grid_logic.settings.nes_frequency = 60
     instance._dialogs = MagicMock()
     instance._on_tab_switch = MagicMock()
     instance._msg_no_project = "no project"
     instance._ttl_no_project = "No project open"
+    instance._ttl_frequency_mismatch = "Different NES frequency"
+    instance._msg_frequency_mismatch = "recon {reconstruction} vs project {project}"
+    instance._lbl_add_anyway = "Add anyway"
     return instance
 
 
@@ -181,30 +190,84 @@ class TestImportReconstruction:
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
         coordinator._dialogs.show_info.assert_called_once()
-        coordinator._sequencer_browser_logic.import_reconstruction.assert_not_called()
+        coordinator._sequencer_browser_logic.load_reconstruction.assert_not_called()
         coordinator._on_tab_switch.assert_not_called()
 
     def test_successful_import_switches_to_sequencer_tab(
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._project_controller.is_open = True
-        filepath = Path("reconstruction.stn")
+        reconstruction = coordinator._sequencer_browser_logic.load_reconstruction.return_value
 
-        coordinator.import_reconstruction(filepath)
+        coordinator.import_reconstruction(Path("reconstruction.stn"))
 
-        coordinator._sequencer_browser_logic.import_reconstruction.assert_called_once_with(filepath)
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once_with(
+            reconstruction, "reconstruction"
+        )
         coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)
         coordinator._dialogs.show_info.assert_not_called()
+        coordinator._dialogs.show_confirmation.assert_not_called()
 
-    def test_failed_import_does_not_switch_tab(
+    def test_failed_load_shows_error_and_does_not_switch_tab(
         self,
         coordinator: SequencerTabCoordinator,
     ) -> None:
-        coordinator._project_controller.is_open = True
-        coordinator._sequencer_browser_logic.import_reconstruction.side_effect = ValueError("invalid")
+        coordinator._sequencer_browser_logic.load_reconstruction.side_effect = ValueError("invalid")
 
         coordinator.import_reconstruction(Path("reconstruction.stn"))
 
         coordinator._dialogs.show_error.assert_called_once()
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_not_called()
         coordinator._on_tab_switch.assert_not_called()
+
+
+class TestImportFrequencyCheck:
+    def test_matching_frequency_adds_without_prompt_or_adopt(
+        self,
+        coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 60
+
+        coordinator.import_reconstruction(Path("reconstruction.stn"))
+
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
+
+    def test_empty_project_adopts_reconstruction_frequency_silently(
+        self,
+        coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator._project_controller.has_samples = False
+        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        coordinator.import_reconstruction(Path("reconstruction.stn"))
+
+        coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(50)
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
+        coordinator._dialogs.show_confirmation.assert_not_called()
+        coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)
+
+    def test_mismatch_with_samples_confirms_before_adding(
+        self,
+        coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator._project_controller.has_samples = True
+        coordinator._sequencer_grid_logic.settings.nes_frequency = 60
+        coordinator._sequencer_browser_logic.load_reconstruction.return_value.config.nes_frequency = 50
+
+        coordinator.import_reconstruction(Path("reconstruction.stn"))
+
+        coordinator._dialogs.show_confirmation.assert_called_once()
+        coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_not_called()
+        coordinator._on_tab_switch.assert_not_called()
+
+        confirmation = coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "recon 50 vs project 60"
+        confirmation["on_confirm"]()
+
+        coordinator._sequencer_browser_logic.add_reconstruction.assert_called_once()
+        coordinator._on_tab_switch.assert_called_once_with(Tab.SEQUENCER)

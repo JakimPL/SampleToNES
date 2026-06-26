@@ -500,6 +500,7 @@ class TestNesFrequencyTempo:
         sample_rate = controller.project.settings.sample_rate
         pulse_state = synthesizer._channel_states[GeneratorName.PULSE1]
 
+        controller.set_nes_frequency(60)
         synthesizer.render_row()
         assert pulse_state.generator.frame_length == round(sample_rate / 60)
 

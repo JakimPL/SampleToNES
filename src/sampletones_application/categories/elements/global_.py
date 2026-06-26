@@ -15,6 +15,7 @@ class DialogElements(AbstractElement):
     REMOVE = "remove"
     CHANGE = "change"
     DONT_ASK_AGAIN = "dont_ask_again"
+    ADD_ANYWAY = "add_anyway"
 
 
 class TracebackElements(AbstractElement):
@@ -149,6 +150,7 @@ class GlobalMessageElements(AbstractElement):
     NO_PROJECT_OPEN = "no_project_open"
     REMOVE_SAMPLE = "remove_sample"
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
+    FREQUENCY_MISMATCH = "frequency_mismatch"
 
 
 class GlobalDialogTitleElements(AbstractElement):
@@ -173,6 +175,7 @@ class GlobalDialogTitleElements(AbstractElement):
     NO_PROJECT_OPEN = "no_project_open"
     REMOVE_SAMPLE = "remove_sample"
     CHANGE_NES_FREQUENCY = "change_nes_frequency"
+    FREQUENCY_MISMATCH = "frequency_mismatch"
 
 
 class GlobalTemplateElements(AbstractElement):
