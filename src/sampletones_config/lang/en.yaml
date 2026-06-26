@@ -392,6 +392,10 @@ sequencer.instruments.label.column_name: "Name"
 sequencer.instruments.label.column_loop: "Loop"
 sequencer.instruments.label.context_edit: "Edit"
 sequencer.instruments.label.context_remove: "Remove"
+sequencer.instruments.label.context_move_up: "Move up"
+sequencer.instruments.label.context_move_down: "Move down"
+sequencer.instruments.label.context_move_top: "Move to top"
+sequencer.instruments.label.context_move_bottom: "Move to bottom"
 
 # =============================================================================
 # Instructions tab — Library

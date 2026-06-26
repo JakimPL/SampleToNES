@@ -198,6 +198,7 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
         self._sequencer_samples_panel.on_remove_requested = self._remove_sample
         self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
+        self._sequencer_samples_panel.on_move_requested = self._sequencer_samples_logic.move_sample
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.logic.on_autoplay_error = self._on_preview_error

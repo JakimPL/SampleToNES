@@ -88,6 +88,17 @@ class TestRemoveSample:
         assert logic.is_sample_used(sample.id) is False
 
 
+class TestMoveSample:
+    def test_move_sample_reorders_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller, logic = _logic()
+        first = controller.add_sample(reconstruction_factory(), name="first")
+        controller.add_sample(reconstruction_factory(), name="second")
+
+        logic.move_sample(first.id, 1)
+
+        assert [sample.name for sample in controller.project.samples] == ["second", "first"]
+
+
 class TestBuildSamples:
     def test_lists_added_samples_in_insertion_order(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller, logic = _logic()

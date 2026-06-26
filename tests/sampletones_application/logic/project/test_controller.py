@@ -93,6 +93,51 @@ class TestSamples:
 
         assert controller.is_sample_used(sample.id) is True
 
+    def test_move_sample_reorders_pool(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller = _controller()
+        first = controller.add_sample(reconstruction_factory(), name="first")
+        controller.add_sample(reconstruction_factory(), name="second")
+        controller.add_sample(reconstruction_factory(), name="third")
+
+        controller.move_sample(first.id, 2)
+
+        assert [sample.name for sample in controller.project.samples] == ["second", "third", "first"]
+        assert controller.project.samples.get_index(first.id) == 2
+
+    def test_move_sample_preserves_row_references(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.add_sample(reconstruction_factory(), name="pad")
+        song = controller.project.song
+        pattern_id = song.order[0][GeneratorName.PULSE1]
+        controller.set_row(
+            GeneratorName.PULSE1,
+            pattern_id,
+            0,
+            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+        )
+
+        controller.move_sample(sample.id, 1)
+
+        row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
+        assert row.instrument is not None
+        assert row.instrument.sample_id == sample.id
+
+    def test_move_sample_emits_samples_and_song_changes(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        controller.add_sample(reconstruction_factory(), name="pad")
+        emitted: list[str] = []
+        controller.on_samples_changed = lambda: emitted.append("samples")
+        controller.on_song_changed = lambda: emitted.append("song")
+
+        controller.move_sample(sample.id, 1)
+
+        assert "samples" in emitted
+        assert "song" in emitted
+
 
 class TestSong:
     def test_set_row_replaces_row(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:

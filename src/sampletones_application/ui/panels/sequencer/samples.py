@@ -25,7 +25,11 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import dpg_delete_children
-from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel, SequencerSamplesViewModel
+from sampletones_application.view_model.sequencer.samples import (
+    MoveDirection,
+    SampleEntryViewModel,
+    SequencerSamplesViewModel,
+)
 from sampletones_core.utils.display import display_index, display_sample_label
 from sampletones_shared.types.application import Sender
 
@@ -47,6 +51,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
         self.on_remove_requested: Optional[Callable[[str], None]] = None
         self.on_play_requested: Optional[Callable[[str], None]] = None
+        self.on_move_requested: Optional[Callable[[str, int], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -88,6 +93,30 @@ class GUISequencerSamplesPanel(GUIPanel):
             Panel.INSTRUMENTS,
             TextType.LABEL,
             SequencerInstrumentsElements.CONTEXT_REMOVE,
+        ]
+        self._lbl_context_move_up = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_MOVE_UP,
+        ]
+        self._lbl_context_move_down = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_MOVE_DOWN,
+        ]
+        self._lbl_context_move_top = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_MOVE_TOP,
+        ]
+        self._lbl_context_move_bottom = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_MOVE_BOTTOM,
         ]
 
         super().__init__(
@@ -291,3 +320,25 @@ class GUISequencerSamplesPanel(GUIPanel):
                 label=self._lbl_context_remove,
                 callback=lambda: self.call(self.on_remove_requested, sample_id),
             )
+            dpg.add_separator()
+            count = len(self._entries)
+            self._add_move_item(self._lbl_context_move_up, sample_id, position, count, MoveDirection.UP)
+            self._add_move_item(self._lbl_context_move_down, sample_id, position, count, MoveDirection.DOWN)
+            self._add_move_item(self._lbl_context_move_top, sample_id, position, count, MoveDirection.TOP)
+            self._add_move_item(self._lbl_context_move_bottom, sample_id, position, count, MoveDirection.BOTTOM)
+
+    def _add_move_item(
+        self,
+        label: str,
+        sample_id: str,
+        position: int,
+        count: int,
+        direction: MoveDirection,
+    ) -> None:
+        """Add a move item, greyed out (disabled) when the move would have no effect."""
+        target = direction.target(position, count)
+        dpg.add_menu_item(
+            label=label,
+            enabled=target is not None,
+            callback=lambda: self.call(self.on_move_requested, sample_id, target),
+        )

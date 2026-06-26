@@ -149,6 +149,18 @@ class ProjectController(CallbackMixin):
         self.call(self.on_samples_changed)
         self.call(self.on_song_changed)
 
+    def move_sample(self, sample_id: str, to_index: int) -> None:
+        """Reorders the sample pool.
+
+        Pattern rows reference samples by stable id, so reordering never breaks a
+        reference; it only changes the positional index the tracker displays, hence
+        ``on_song_changed`` fires so the grid re-renders those indices.
+        """
+        self.project.samples.move(sample_id, to_index)
+        self._touch()
+        self.call(self.on_samples_changed)
+        self.call(self.on_song_changed)
+
     def add_pattern(self, generator: GeneratorName) -> int:
         index = self.song[generator].add_pattern(self.song.rows_per_pattern)
         self._touch()

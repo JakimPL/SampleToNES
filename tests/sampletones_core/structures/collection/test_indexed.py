@@ -379,6 +379,54 @@ class TestDelItem:
             del collection["nonexistent"]
 
 
+class TestMove:
+    def test_move_first_to_last(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c", "d"])
+        collection.move(0, 3)
+        assert list(collection) == ["b", "c", "d", "a"]
+
+    def test_move_last_to_first(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c", "d"])
+        collection.move(3, 0)
+        assert list(collection) == ["d", "a", "b", "c"]
+
+    def test_move_up_one_swaps_with_predecessor(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c", "d"])
+        collection.move(2, 1)
+        assert list(collection) == ["a", "c", "b", "d"]
+
+    def test_move_down_one_swaps_with_successor(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c", "d"])
+        collection.move(1, 2)
+        assert list(collection) == ["a", "c", "b", "d"]
+
+    def test_move_to_same_index_is_noop(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c"])
+        collection.move(1, 1)
+        assert list(collection) == ["a", "b", "c"]
+
+    def test_move_by_hash_key(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c"])
+        collection.move(IndexedCollection.hash("c"), 0)
+        assert list(collection) == ["c", "a", "b"]
+
+    def test_move_negative_index_targets_from_end(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c"])
+        collection.move(0, -1)
+        assert list(collection) == ["b", "c", "a"]
+
+    def test_move_out_of_bounds_raises(self) -> None:
+        collection = IndexedCollection[str](["a", "b"])
+        with pytest.raises(IndexError):
+            collection.move(0, 5)
+
+    def test_move_keeps_hash_lookup_consistent(self) -> None:
+        collection = IndexedCollection[str](["a", "b", "c"])
+        collection.move(0, 2)
+        assert collection[IndexedCollection.hash("a")] == "a"
+        assert collection.get_index(IndexedCollection.hash("a")) == 2
+
+
 class TestContains:
     def test_contains_existing_integer(self) -> None:
         collection = IndexedCollection[int]([1, 2, 3])

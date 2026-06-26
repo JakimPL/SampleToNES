@@ -410,6 +410,31 @@ class IndexedCollection(Generic[T]):
         self._unset(index)
         return item
 
+    def move(self, key: Union[int, str], to_index: int) -> None:
+        """
+        Moves the item identified by ``key`` to ``to_index``, shifting the rest.
+
+        ``to_index`` is the item's destination position in the resulting order, so its
+        last valid value is ``len - 1``. Moving an item onto its current position is a
+        no-op. Hashes stay stable; only the affected positional indices are updated.
+
+        Args:
+            key (Union[int, str]): The integer index (supports negative indices) or hash string.
+            to_index (int): The destination position (supports negative indices).
+
+        Raises:
+            IndexError: If either position is out of bounds.
+            KeyError: If the hash string is not found.
+            TypeError: If the key is neither an int nor a str.
+        """
+        from_index = self.get_index(key)
+        to_index = self._wrap_index(to_index)
+        if from_index == to_index:
+            return
+
+        item = self.pop(from_index)
+        self.insert(to_index, item)
+
     def remove(self, item: T) -> None:
         """
         Removes the first occurrence of an item from the collection.
