@@ -72,6 +72,7 @@ class RowSynthesizer:
     def __init__(self, project_controller: ProjectController, config: Config) -> None:
         self._project_controller = project_controller
         self._config = config
+        self._nes_frequency: int = config.library.nes_frequency
         self._position = SongPosition()
         self._tick_debt: int = 0
         self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
@@ -113,13 +114,37 @@ class RowSynthesizer:
             state.transpose = 0
             state.volume = MAX_VOLUME
 
+    def _ensure_generators(self, nes_frequency: int) -> None:
+        """Rebuilds the channel generators when the engine refresh rate changes.
+
+        ``nes_frequency`` is the rate at which instructions (engine ticks) are
+        consumed, so each tick spans ``sample_rate / nes_frequency`` audio samples.
+        The generators must follow the project's current value so a row keeps a
+        constant real-time duration as the rate changes (the tempo is otherwise tied
+        to the frequency). Pitch is derived from the APU clock, not this rate, so only
+        the per-tick frame length changes; the generators' phase continuity resets,
+        which is acceptable for an occasional settings edit.
+        """
+        if nes_frequency == self._nes_frequency:
+            return
+
+        self._nes_frequency = nes_frequency
+        config = self._playback_config(nes_frequency)
+        for generator_name, state in self._channel_states.items():
+            state.generator = GENERATOR_CLASSES[generator_name](config, generator_name.value)
+
+    def _playback_config(self, nes_frequency: int) -> Config:
+        library = self._config.library.model_copy(update={"nes_frequency": nes_frequency})
+        return self._config.model_copy(update={"library": library})
+
     def render_row(self) -> tuple[np.ndarray, SongPosition]:
         project = self._project_controller.project
         settings = project.settings
         song = project.song
         self._position.wrap_overflow(song.rows_per_pattern)
+        self._ensure_generators(settings.nes_frequency)
 
-        frame_length = self._config.library.frame_length
+        frame_length = round(self._config.library.sample_rate / settings.nes_frequency)
         ticks_per_row = self._ticks_for_row(settings)
         chunk_length = frame_length * ticks_per_row
 

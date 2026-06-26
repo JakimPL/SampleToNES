@@ -53,6 +53,10 @@ class ProjectController(CallbackMixin):
         return self._project_manager.is_open
 
     @property
+    def has_samples(self) -> bool:
+        return bool(self.project.samples)
+
+    @property
     def is_dirty(self) -> bool:
         return self._project_manager.is_dirty
 

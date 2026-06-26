@@ -25,6 +25,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
     TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+    TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
 )
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
@@ -115,6 +116,31 @@ class SequencerTabCoordinator:
             TextType.LABEL,
             DialogElements.REMOVE,
         ]
+        self._ttl_change_nes_frequency = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.CHANGE_NES_FREQUENCY,
+        ]
+        self._msg_change_nes_frequency = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.CHANGE_NES_FREQUENCY,
+        ]
+        self._lbl_change_nes_frequency = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.CHANGE,
+        ]
+        self._lbl_dont_ask_again = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.DONT_ASK_AGAIN,
+        ]
+        self._nes_frequency_change_acknowledged: bool = False
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
         self._instruments_width = layout.sequencer.samples_panel_width
@@ -172,7 +198,7 @@ class SequencerTabCoordinator:
         self._wire_callbacks()
 
     def _wire_callbacks(self) -> None:
-        self._sequencer_module_panel.on_nes_frequency = self._sequencer_grid_logic.set_nes_frequency
+        self._sequencer_module_panel.on_nes_frequency = self._request_nes_frequency_change
         self._sequencer_module_panel.on_rows_per_pattern = self._sequencer_grid_logic.set_rows_per_pattern
         self._sequencer_module_panel.on_tempo = self._sequencer_grid_logic.set_tempo
         self._sequencer_module_panel.on_speed = self._sequencer_grid_logic.set_speed
@@ -224,6 +250,7 @@ class SequencerTabCoordinator:
         self.refresh()
 
     def refresh(self) -> None:
+        self._nes_frequency_change_acknowledged = False
         self._song_player_logic.stop()
         self._sequencer_grid_logic.refresh()
         self._sequencer_order_logic.refresh()
@@ -385,6 +412,34 @@ class SequencerTabCoordinator:
         stripped = name.strip()
         if stripped:
             self._sequencer_samples_logic.rename_sample(sample_id, stripped)
+
+    def _request_nes_frequency_change(self, nes_frequency: int) -> None:
+        """Applies a NES-frequency change, confirming first when it would re-time existing samples.
+
+        The rate governs how every sample plays back, so changing it on a project that already
+        holds samples prompts once (until acknowledged for the session); an empty or acknowledged
+        project applies silently. Cancelling restores the field to the project's current value.
+        """
+        if nes_frequency == self._sequencer_grid_logic.settings.nes_frequency:
+            return
+
+        if self._nes_frequency_change_acknowledged or not self._project_controller.has_samples:
+            self._sequencer_grid_logic.set_nes_frequency(nes_frequency)
+            return
+
+        self._dialogs.show_confirmation(
+            tag=TAG_SEQUENCER_MODULE_DIALOG_NES_FREQUENCY,
+            title=self._ttl_change_nes_frequency,
+            message=self._msg_change_nes_frequency,
+            on_confirm=lambda: self._sequencer_grid_logic.set_nes_frequency(nes_frequency),
+            ok_label=self._lbl_change_nes_frequency,
+            opt_out_label=self._lbl_dont_ask_again,
+            on_opt_out=self._acknowledge_nes_frequency_changes,
+            on_cancel=self._sequencer_grid_logic.push_settings,
+        )
+
+    def _acknowledge_nes_frequency_changes(self) -> None:
+        self._nes_frequency_change_acknowledged = True
 
     def _on_add_to_order(self) -> None:
         empty_position = self._sequencer_order_logic.find_empty_frame(after=self._sequencer_grid_logic.frame_index)

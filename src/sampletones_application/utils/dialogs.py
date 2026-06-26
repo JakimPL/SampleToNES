@@ -22,6 +22,7 @@ from sampletones_application.constants.general import (
     SUF_BUTTON_OK,
     SUF_BUTTON_SAVE,
     SUF_BUTTON_SHOW_TRACEBACK,
+    SUF_CHECKBOX,
     SUF_DIALOG_INFO,
     SUF_GROUP,
     SUF_INPUT,
@@ -30,7 +31,9 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_DIALOG_FILE_NOT_FOUND,
     TAG_GLOBAL_DIALOG_PATH_MESSAGE,
 )
-from sampletones_application.constants.reconstructions import TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED
+from sampletones_application.constants.reconstructions import (
+    TAG_RECONSTRUCTIONS_RECONSTRUCTION_DIALOG_NOT_LOADED,
+)
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.path import GUIPathText
@@ -238,7 +241,11 @@ class DialogsRenderer:
                     color=self._col_text_error,
                 )
 
-            traceback = GUITraceback(parent=tag, exception=exception, language_manager=self._language_manager)
+            traceback = GUITraceback(
+                parent=tag,
+                exception=exception,
+                language_manager=self._language_manager,
+            )
 
             dpg.add_separator()
 
@@ -268,7 +275,13 @@ class DialogsRenderer:
 
             content(None)
 
-        FrameCallbackManager.set_frame_callback(lambda: center_item(tag, self._error_width, self._error_height))
+        FrameCallbackManager.set_frame_callback(
+            lambda: center_item(
+                tag,
+                self._error_width,
+                self._error_height,
+            )
+        )
 
     def show_file_not_found(self, filepath: Path, message: str) -> None:
         tag = get_dialog_tag(TAG_GLOBAL_DIALOG_FILE_NOT_FOUND)
@@ -299,11 +312,27 @@ class DialogsRenderer:
         on_confirm: Callback,
         *,
         ok_label: str,
+        opt_out_label: Optional[str] = None,
+        on_opt_out: Optional[Callback] = None,
+        on_cancel: Optional[Callback] = None,
     ) -> None:
+        """Modal confirmation. ``on_confirm``/``on_cancel`` run on the respective choice.
+
+        When ``opt_out_label`` is given, a checkbox is shown; if it is ticked when the user
+        confirms, ``on_opt_out`` runs as well — letting the caller suppress future prompts.
+        """
         tag = get_dialog_tag(tag)
+        opt_out_tag = f"{tag}{SUF_CHECKBOX}"
 
         def content(parent: str) -> None:
             dpg.add_text(message, parent=parent, wrap=self._default_wrap)
+
+            if opt_out_label is not None:
+                dpg.add_checkbox(
+                    label=opt_out_label,
+                    tag=opt_out_tag,
+                    parent=parent,
+                )
 
             ok_button_tag = f"{tag}{SUF_BUTTON_OK}"
             cancel_button_tag = f"{tag}{SUF_BUTTON_CANCEL}"
@@ -317,11 +346,17 @@ class DialogsRenderer:
 
             def _on_confirm() -> None:
                 disable()
+                if opt_out_label is not None and on_opt_out is not None and dpg.get_value(opt_out_tag):
+                    on_opt_out()
+
                 on_confirm()
                 close()
 
             def _on_cancel() -> None:
                 disable()
+                if on_cancel is not None:
+                    on_cancel()
+
                 close()
 
             @table_wrapper(columns=2)
@@ -352,7 +387,11 @@ class DialogsRenderer:
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
-            lambda: center_item(tag, self._default_width, self._confirmation_height)
+            lambda: center_item(
+                tag,
+                self._default_width,
+                self._confirmation_height,
+            )
         )
 
     def show_text_input(
@@ -429,7 +468,13 @@ class DialogsRenderer:
         ):
             content(tag)
 
-        FrameCallbackManager.set_frame_callback(lambda: center_item(tag, self._default_width, self._text_input_height))
+        FrameCallbackManager.set_frame_callback(
+            lambda: center_item(
+                tag,
+                self._default_width,
+                self._text_input_height,
+            )
+        )
 
     def show_save_confirmation(
         self,
@@ -507,7 +552,11 @@ class DialogsRenderer:
             content(tag)
 
         FrameCallbackManager.set_frame_callback(
-            lambda: center_item(tag, self._default_width, self._confirmation_height)
+            lambda: center_item(
+                tag,
+                self._default_width,
+                self._confirmation_height,
+            )
         )
 
     def show_reconstruction_not_loaded(self) -> None:

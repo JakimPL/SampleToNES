@@ -86,6 +86,91 @@ class TestSubmitRename:
         samples_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
 
 
+@pytest.fixture
+def nes_frequency_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the NES-frequency change handler touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_grid_logic.settings.nes_frequency = 60
+    instance._project_controller = MagicMock()
+    instance._project_controller.has_samples = True
+    instance._dialogs = MagicMock()
+    instance._nes_frequency_change_acknowledged = False
+    instance._ttl_change_nes_frequency = "Change NES frequency"
+    instance._msg_change_nes_frequency = "Re-times samples. Continue?"
+    instance._lbl_change_nes_frequency = "Change"
+    instance._lbl_dont_ask_again = "Don't ask again"
+    return instance
+
+
+class TestRequestNesFrequencyChange:
+    def test_unchanged_value_does_nothing(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._request_nes_frequency_change(60)
+
+        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_applies_without_confirmation_when_no_samples(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._project_controller.has_samples = False
+
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_applies_without_confirmation_once_acknowledged(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._nes_frequency_change_acknowledged = True
+
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+        nes_frequency_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_prompts_before_applying_when_samples_exist(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        nes_frequency_coordinator._dialogs.show_confirmation.assert_called_once()
+        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_not_called()
+
+        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
+        confirmation["on_confirm"]()
+        nes_frequency_coordinator._sequencer_grid_logic.set_nes_frequency.assert_called_once_with(30)
+
+    def test_opt_out_acknowledges_for_the_session(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
+        confirmation["on_opt_out"]()
+
+        assert nes_frequency_coordinator._nes_frequency_change_acknowledged is True
+
+    def test_cancel_restores_the_field(
+        self,
+        nes_frequency_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        nes_frequency_coordinator._request_nes_frequency_change(30)
+
+        confirmation = nes_frequency_coordinator._dialogs.show_confirmation.call_args.kwargs
+        confirmation["on_cancel"]()
+
+        nes_frequency_coordinator._sequencer_grid_logic.push_settings.assert_called_once()
+
+
 class TestImportReconstruction:
     def test_closed_project_shows_dialog_and_does_not_import(
         self,

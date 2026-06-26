@@ -2,7 +2,7 @@ from typing import Final, Tuple
 
 # NES limits
 
-DEFAULT_NES_FREQUENCY: Final[int] = 60  # NTSC frame rate
+DEFAULT_NES_FREQUENCY: Final[int] = 30  # half of NTSC frame rate
 MIN_NES_FREQUENCY: Final[int] = 15
 MAX_NES_FREQUENCY: Final[int] = 300
 

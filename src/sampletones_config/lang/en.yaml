@@ -12,6 +12,8 @@ global.dialog.label.yes: "Yes"
 global.dialog.label.no: "No"
 global.dialog.label.untitled: "Untitled"
 global.dialog.label.remove: "Remove"
+global.dialog.label.change: "Change"
+global.dialog.label.dont_ask_again: "Don't ask again"
 
 # Global — Dialog titles
 global.dialog.title.main_window: "SampleToNES"
@@ -34,6 +36,7 @@ global.dialog.title.open_unsaved_project: "Open project"
 global.dialog.title.close_unsaved_project: "Close project"
 global.dialog.title.no_project_open: "No project open"
 global.dialog.title.remove_sample: "Remove sample"
+global.dialog.title.change_nes_frequency: "Change NES frequency"
 
 # Global — Dialog messages
 global.dialog.message.tree_no_results: "No results found."
@@ -64,6 +67,7 @@ global.dialog.message.audio_playback_error: "Audio playback error"
 global.dialog.message.all_audio_formats: "All supported audio formats"
 global.dialog.message.no_project_open: "No project is open. Create or open a project before adding a reconstruction."
 global.dialog.message.remove_sample: "The sample \"{name}\" is used by one or more patterns. Removing it will clear every row that references it. Remove it anyway?"
+global.dialog.message.change_nes_frequency: "Changing the NES frequency re-times how all existing samples play back, since each was reconstructed at a specific rate. Continue?"
 
 # Global — Dialog templates
 global.dialog.template.time_estimation: " (ETA: {eta_string})"

@@ -7,6 +7,7 @@ from sampletones_application.categories.elements.sequencer import SequencerModul
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
+    SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
     TAG_GLOBAL_TAB_SEQUENCER,
 )
@@ -47,6 +48,7 @@ class GUISequencerModulePanel(GUIPanel):
         self._sequencer_grid_logic = sequencer_grid_logic
         self._layout = layout
         self._input_width = input_width
+        self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
 
         self.on_nes_frequency: Optional[Callable[[int], None]] = None
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
@@ -128,8 +130,9 @@ class GUISequencerModulePanel(GUIPanel):
                 tag=TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
                 min_value=MIN_NES_FREQUENCY,
                 max_value=MAX_NES_FREQUENCY,
+                min_clamped=True,
+                max_clamped=True,
                 width=self._input_width,
-                callback=self._on_nes_frequency_input,
             )
             dpg.add_input_int(
                 label=self._lbl_rows,
@@ -137,6 +140,8 @@ class GUISequencerModulePanel(GUIPanel):
                 tag=TAG_SEQUENCER_MODULE_INPUT_ROWS,
                 min_value=MIN_ROWS_PER_PATTERN,
                 max_value=MAX_ROWS_PER_PATTERN,
+                min_clamped=True,
+                max_clamped=True,
                 width=self._input_width,
                 on_enter=True,
                 callback=self._on_rows_per_pattern_input,
@@ -147,6 +152,8 @@ class GUISequencerModulePanel(GUIPanel):
                 tag=TAG_SEQUENCER_MODULE_INPUT_TEMPO,
                 min_value=self._layout.tempo.min,
                 max_value=self._layout.tempo.max,
+                min_clamped=True,
+                max_clamped=True,
                 width=self._input_width,
                 callback=self._on_tempo_input,
             )
@@ -156,10 +163,13 @@ class GUISequencerModulePanel(GUIPanel):
                 tag=TAG_SEQUENCER_MODULE_INPUT_SPEED,
                 min_value=self._layout.speed.min,
                 max_value=self._layout.speed.max,
+                min_clamped=True,
+                max_clamped=True,
                 width=self._input_width,
                 callback=self._on_speed_input,
             )
 
+        self._create_nes_frequency_handler()
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
@@ -183,6 +193,18 @@ class GUISequencerModulePanel(GUIPanel):
 
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
+
+    def _create_nes_frequency_handler(self) -> None:
+        """Commits the NES frequency only when the field is left or Enter is pressed.
+
+        The change is potentially destructive — the coordinator may confirm it — so it must
+        not fire on every keystroke or [-]/[+] step; ``deactivated_after_edit`` collapses a
+        burst of edits into one commit when the field loses focus or Enter is pressed.
+        """
+        with dpg.item_handler_registry(tag=self._nes_frequency_handler_tag):
+            dpg.add_item_deactivated_after_edit_handler(callback=self._on_nes_frequency_input)
+
+        dpg.bind_item_handler_registry(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._nes_frequency_handler_tag)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_nes_frequency, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)))

@@ -13,6 +13,8 @@ class DialogElements(AbstractElement):
     NO = "no"
     UNTITLED = "untitled"
     REMOVE = "remove"
+    CHANGE = "change"
+    DONT_ASK_AGAIN = "dont_ask_again"
 
 
 class TracebackElements(AbstractElement):
@@ -146,6 +148,7 @@ class GlobalMessageElements(AbstractElement):
     ALL_AUDIO_FORMATS = "all_audio_formats"
     NO_PROJECT_OPEN = "no_project_open"
     REMOVE_SAMPLE = "remove_sample"
+    CHANGE_NES_FREQUENCY = "change_nes_frequency"
 
 
 class GlobalDialogTitleElements(AbstractElement):
@@ -169,6 +172,7 @@ class GlobalDialogTitleElements(AbstractElement):
     CLOSE_UNSAVED_PROJECT = "close_unsaved_project"
     NO_PROJECT_OPEN = "no_project_open"
     REMOVE_SAMPLE = "remove_sample"
+    CHANGE_NES_FREQUENCY = "change_nes_frequency"
 
 
 class GlobalTemplateElements(AbstractElement):

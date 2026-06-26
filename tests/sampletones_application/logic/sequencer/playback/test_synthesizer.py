@@ -444,3 +444,67 @@ class TestFrameCount:
                 ScenarioStep(label="render one row and check length", action=render_and_assert_chunk_length),
             ],
         ).run()
+
+
+class TestNesFrequencyTempo:
+    def test_frame_length_follows_project_nes_frequency(self) -> None:
+        """Each tick spans ``sample_rate / nes_frequency`` samples taken from the project's
+        live frequency, not the fixed library config — otherwise the row duration drifts."""
+
+        def lower_nes_frequency(context: SynthesizerContext) -> None:
+            _controller(context).set_nes_frequency(30)
+
+        def render_and_assert_chunk_uses_project_frequency(context: SynthesizerContext) -> None:
+            settings = _controller(context).project.settings
+            frame_length = round(settings.sample_rate / settings.nes_frequency)
+            ticks_per_row = (settings.speed * settings.nes_frequency * REFERENCE_TEMPO) // (
+                settings.tempo * REFERENCE_NES_FREQUENCY
+            )
+            audio = _render(context)
+            assert len(audio) == frame_length * ticks_per_row
+
+        BaseTestScenario(
+            label="frame length tracks the project NES frequency",
+            build=_make_context,
+            steps=[
+                ScenarioStep(label="lower NES frequency to 30", action=lower_nes_frequency),
+                ScenarioStep(
+                    label="render — chunk uses project frequency",
+                    action=render_and_assert_chunk_uses_project_frequency,
+                ),
+            ],
+        ).run()
+
+    def test_tempo_is_independent_of_nes_frequency(self) -> None:
+        """A whole pattern spans the same real time at 60 Hz and 30 Hz; only the instruction
+        rate differs. Before the fix, halving the frequency roughly doubled the tempo."""
+
+        def pattern_duration_seconds(nes_frequency: int) -> float:
+            controller = make_controller()
+            controller.set_nes_frequency(nes_frequency)
+            synthesizer = RowSynthesizer(controller, Config())
+            rows = controller.project.song.rows_per_pattern
+            total_samples = sum(len(synthesizer.render_row()[0]) for _ in range(rows))
+            return total_samples / controller.project.settings.sample_rate
+
+        assert abs(pattern_duration_seconds(60) - pattern_duration_seconds(30)) < 0.1
+
+    def test_frequency_change_between_rows_takes_effect_without_restart(self) -> None:
+        """A frequency change mid-playback is picked up on the next row: render_row reads the
+        live setting and rebuilds the generators in place, keeping the sounding note going."""
+        controller = make_controller()
+        recon = make_pulse_reconstruction(count=12)
+        sample = add_sample(controller, recon)
+        place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+        synthesizer = RowSynthesizer(controller, Config())
+        sample_rate = controller.project.settings.sample_rate
+        pulse_state = synthesizer._channel_states[GeneratorName.PULSE1]
+
+        synthesizer.render_row()
+        assert pulse_state.generator.frame_length == round(sample_rate / 60)
+
+        controller.set_nes_frequency(30)
+        synthesizer.render_row()
+
+        assert pulse_state.generator.frame_length == round(sample_rate / 30)
+        assert pulse_state.sample_id is not None
