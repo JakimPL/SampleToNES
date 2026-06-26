@@ -149,6 +149,18 @@ class ProjectController(CallbackMixin):
         self.call(self.on_samples_changed)
         self.call(self.on_song_changed)
 
+    def duplicate_sample(self, sample_id: str) -> Sample:
+        """Appends an independent copy of a sample (same name and loop flag).
+
+        The copy is appended, so existing samples keep their positions; it keeps the
+        source name (like duplicated patterns), leaving renaming to the user.
+        """
+        clone = self.project.samples[sample_id].clone()
+        self.project.samples.append(clone)
+        self._touch()
+        self.call(self.on_samples_changed)
+        return clone
+
     def move_sample(self, sample_id: str, to_index: int) -> None:
         """Reorders the sample pool.
 

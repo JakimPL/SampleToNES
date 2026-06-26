@@ -138,6 +138,30 @@ class TestSamples:
         assert "samples" in emitted
         assert "song" in emitted
 
+    def test_duplicate_sample_appends_independent_copy(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        controller = _controller()
+        source = controller.add_sample(reconstruction_factory(), name="lead")
+
+        clone = controller.duplicate_sample(source.id)
+
+        assert clone.id != source.id
+        assert clone.name == source.name
+        assert clone.reconstruction is not source.reconstruction
+        assert [sample.name for sample in controller.project.samples] == ["lead", "lead"]
+        assert controller.project.samples.get_index(clone.id) == 1
+
+    def test_duplicate_sample_emits_samples_change(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller = _controller()
+        source = controller.add_sample(reconstruction_factory(), name="lead")
+        emitted: list[str] = []
+        controller.on_samples_changed = lambda: emitted.append("samples")
+
+        controller.duplicate_sample(source.id)
+
+        assert emitted == ["samples"]
+
 
 class TestSong:
     def test_set_row_replaces_row(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:

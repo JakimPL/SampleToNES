@@ -53,6 +53,8 @@ class SequencerInstrumentsElements(AbstractElement):
     COLUMN_NAME = "column_name"
     COLUMN_LOOP = "column_loop"
     CONTEXT_EDIT = "context_edit"
+    CONTEXT_RENAME = "context_rename"
+    CONTEXT_DUPLICATE = "context_duplicate"
     CONTEXT_REMOVE = "context_remove"
     CONTEXT_MOVE_UP = "context_move_up"
     CONTEXT_MOVE_DOWN = "context_move_down"

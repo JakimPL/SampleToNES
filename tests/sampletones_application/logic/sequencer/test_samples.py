@@ -99,6 +99,16 @@ class TestMoveSample:
         assert [sample.name for sample in controller.project.samples] == ["second", "first"]
 
 
+class TestDuplicateSample:
+    def test_duplicate_sample_appends_copy(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller, logic = _logic()
+        source = controller.add_sample(reconstruction_factory(), name="lead")
+
+        logic.duplicate_sample(source.id)
+
+        assert [sample.name for sample in controller.project.samples] == ["lead", "lead"]
+
+
 class TestBuildSamples:
     def test_lists_added_samples_in_insertion_order(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller, logic = _logic()

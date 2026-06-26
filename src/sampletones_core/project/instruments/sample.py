@@ -1,3 +1,4 @@
+from typing import Self
 from uuid import uuid4
 
 from sampletones_core.reconstructions import Reconstruction
@@ -15,6 +16,18 @@ class Sample:
         self.name: str = name
         self.reconstruction: Reconstruction = reconstruction
         self.loop: bool = loop
+
+    def clone(self) -> Self:
+        """Return an independent copy with a fresh id.
+
+        The reconstruction is deep-copied so the copy can be edited without affecting
+        the original; the name and loop flag are carried over.
+        """
+        return type(self)(
+            name=self.name,
+            reconstruction=self.reconstruction.model_copy(deep=True),
+            loop=self.loop,
+        )
 
     def __hash__(self) -> int:
         return hash(self.id)

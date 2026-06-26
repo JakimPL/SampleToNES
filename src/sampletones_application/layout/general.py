@@ -62,6 +62,7 @@ class DialogsLayout(BaseModel, frozen=True):
     error: DialogSizeLayout
     file: DialogSizeLayout
     confirmation: DialogSizeNoWidth
+    text_input: DialogSizeNoWidth
     traceback: DialogSizeLayout
 
 

@@ -42,6 +42,8 @@ dialogs:
     height: 400
   confirmation:
     height: 130
+  text_input:
+    height: 104
   traceback:
     width: 0
     height: 400

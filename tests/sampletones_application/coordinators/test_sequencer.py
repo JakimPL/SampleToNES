@@ -26,7 +26,7 @@ def coordinator() -> SequencerTabCoordinator:
 
 @pytest.fixture
 def samples_coordinator() -> SequencerTabCoordinator:
-    """A coordinator with only the collaborators ``_remove_sample`` touches."""
+    """A coordinator with only the collaborators the samples-menu handlers touch."""
     instance = object.__new__(SequencerTabCoordinator)
     instance._sequencer_samples_logic = MagicMock()
     instance._dialogs = MagicMock()
@@ -66,6 +66,24 @@ class TestRemoveSample:
 
         confirmation["on_confirm"]()
         logic.remove_sample.assert_called_once_with("abc")
+
+
+class TestSubmitRename:
+    def test_submit_rename_trims_whitespace(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        samples_coordinator._submit_rename("abc", "  bass  ")
+
+        samples_coordinator._sequencer_samples_logic.rename_sample.assert_called_once_with("abc", "bass")
+
+    def test_submit_rename_ignores_blank_name(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        samples_coordinator._submit_rename("abc", "   ")
+
+        samples_coordinator._sequencer_samples_logic.rename_sample.assert_not_called()
 
 
 class TestImportReconstruction:

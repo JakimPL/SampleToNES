@@ -86,6 +86,9 @@ class SequencerSamplesLogic(CallbackMixin):
     def move_sample(self, sample_id: str, to_index: int) -> None:
         self._controller.move_sample(sample_id, to_index)
 
+    def duplicate_sample(self, sample_id: str) -> None:
+        self._controller.duplicate_sample(sample_id)
+
     def set_sample_loop(self, sample_id: str, loop: bool) -> None:
         self._controller.set_sample_loop(sample_id, loop)
 

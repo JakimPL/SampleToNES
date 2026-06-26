@@ -45,7 +45,9 @@ from sampletones_application.ui.panels.sequencer.song_player import GUISongPlaye
 from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.view_model.sequencer.samples import SequencerSamplesViewModel
+from sampletones_application.view_model.sequencer.samples import (
+    SequencerSamplesViewModel,
+)
 from sampletones_application.view_model.sequencer.song_player import SongPlayerViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.constants.enums import GeneratorName
@@ -199,6 +201,8 @@ class SequencerTabCoordinator:
         self._sequencer_samples_panel.on_remove_requested = self._remove_sample
         self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
         self._sequencer_samples_panel.on_move_requested = self._sequencer_samples_logic.move_sample
+        self._sequencer_samples_panel.on_rename_committed = self._submit_rename
+        self._sequencer_samples_panel.on_duplicate_requested = self._sequencer_samples_logic.duplicate_sample
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.logic.on_autoplay_error = self._on_preview_error
@@ -375,6 +379,12 @@ class SequencerTabCoordinator:
             on_confirm=lambda: self._sequencer_samples_logic.remove_sample(sample_id),
             ok_label=self._lbl_remove_sample,
         )
+
+    def _submit_rename(self, sample_id: str, name: str) -> None:
+        """Applies an inline rename, ignoring a blank name so the sample keeps its current one."""
+        stripped = name.strip()
+        if stripped:
+            self._sequencer_samples_logic.rename_sample(sample_id, stripped)
 
     def _on_add_to_order(self) -> None:
         empty_position = self._sequencer_order_logic.find_empty_frame(after=self._sequencer_grid_logic.frame_index)

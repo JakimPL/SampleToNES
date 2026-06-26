@@ -12,6 +12,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
     TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER,
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_TABLE,
@@ -24,13 +25,14 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
+from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.samples import (
     MoveDirection,
     SampleEntryViewModel,
     SequencerSamplesViewModel,
 )
-from sampletones_core.utils.display import display_index, display_sample_label
+from sampletones_core.utils.display import display_id, display_sample_label
 from sampletones_shared.types.application import Sender
 
 
@@ -43,8 +45,10 @@ class GUISequencerSamplesPanel(GUIPanel):
     ) -> None:
         self._layout = layout
         self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
+        self._rename_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME}{SUF_HANDLER_REGISTRY}"
         self._selected_sample_id: Optional[str] = None
         self._selected_row: Optional[int] = None
+        self._editing_sample_id: Optional[str] = None
         self._entries: Tuple[SampleEntryViewModel, ...] = ()
         self.on_sample_selected: Optional[Callable[[str], None]] = None
         self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
@@ -52,6 +56,8 @@ class GUISequencerSamplesPanel(GUIPanel):
         self.on_remove_requested: Optional[Callable[[str], None]] = None
         self.on_play_requested: Optional[Callable[[str], None]] = None
         self.on_move_requested: Optional[Callable[[str, int], None]] = None
+        self.on_rename_committed: Optional[Callable[[str, str], None]] = None
+        self.on_duplicate_requested: Optional[Callable[[str], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -87,6 +93,18 @@ class GUISequencerSamplesPanel(GUIPanel):
             Panel.INSTRUMENTS,
             TextType.LABEL,
             SequencerInstrumentsElements.CONTEXT_EDIT,
+        ]
+        self._lbl_context_rename = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_RENAME,
+        ]
+        self._lbl_context_duplicate = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_DUPLICATE,
         ]
         self._lbl_context_remove = language_manager[
             Page.SEQUENCER,
@@ -137,12 +155,17 @@ class GUISequencerSamplesPanel(GUIPanel):
             self._create_section_text()
             self._create_samples_table()
         self._create_row_handlers()
+        self._create_rename_handler()
         self._create_key_handler()
 
     def _create_row_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._row_handler_tag):
             dpg.add_item_clicked_handler(callback=self._on_sample_clicked)
             dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
+
+    def _create_rename_handler(self) -> None:
+        with dpg.item_handler_registry(tag=self._rename_handler_tag):
+            dpg.add_item_deactivated_handler(callback=self._on_rename_deactivated)
 
     def _create_key_handler(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER):
@@ -191,16 +214,20 @@ class GUISequencerSamplesPanel(GUIPanel):
         ThemeRegistry.get(TAG_SEQUENCER_INSTRUMENTS_THEME_ROW).bind_to_item(TAG_SEQUENCER_INSTRUMENTS_TABLE)
 
     def update_view(self, view_model: SequencerSamplesViewModel) -> None:
-        """Rebuilds the samples table with explicit parents.
+        self._entries = view_model.samples
+        self._editing_sample_id = None
+        self._rebuild()
+
+    def _rebuild(self) -> None:
+        """Rebuilds the samples table from the cached entries with explicit parents.
 
         Items pass an explicit ``parent`` rather than nesting ``with`` blocks: the
         browser tree builds on a worker thread and the DearPyGui container stack
         is process-global, so ``with`` blocks here would race with it.
         """
         dpg_delete_children(TAG_SEQUENCER_INSTRUMENTS_TABLE, slot=1)
-        self._entries = view_model.samples
         self._selected_row = None
-        for position, entry in enumerate(view_model.samples):
+        for position, entry in enumerate(self._entries):
             self._build_sample_row(position, entry)
         if self._selected_row is None:
             self._selected_sample_id = None
@@ -218,7 +245,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         id_cell = dpg.add_table_cell(parent=row_id)
         id_selectable = dpg.add_selectable(
             parent=id_cell,
-            label=display_index(position),
+            label=display_id(position),
             user_data=(position, entry.sample_id),
             callback=self._on_sample_selected,
         )
@@ -227,6 +254,12 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _build_name_cell(self, row_id: int | str, position: int, entry: SampleEntryViewModel) -> None:
         name_cell = dpg.add_table_cell(parent=row_id)
+        if entry.sample_id == self._editing_sample_id:
+            self._build_name_input(name_cell, entry)
+        else:
+            self._build_name_selectable(name_cell, position, entry)
+
+    def _build_name_selectable(self, name_cell: int | str, position: int, entry: SampleEntryViewModel) -> None:
         name_selectable = dpg.add_selectable(
             parent=name_cell,
             label=entry.name,
@@ -235,6 +268,18 @@ class GUISequencerSamplesPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(name_selectable, Font.REGULAR_SMALL)
         dpg.bind_item_handler_registry(name_selectable, self._row_handler_tag)
+
+    def _build_name_input(self, name_cell: int | str, entry: SampleEntryViewModel) -> None:
+        name_input = dpg.add_input_text(
+            tag=TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME,
+            parent=name_cell,
+            default_value=entry.name,
+            width=-1,
+            on_enter=True,
+            callback=self._on_rename_enter,
+        )
+        FontRegistry.bind_to_item(name_input, Font.REGULAR_SMALL)
+        dpg.bind_item_handler_registry(name_input, self._rename_handler_tag)
 
     def _build_loop_cell(self, row_id: int | str, entry: SampleEntryViewModel) -> None:
         loop_cell = dpg.add_table_cell(parent=row_id)
@@ -270,11 +315,55 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_sample_id = None
 
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        if self._editing_sample_id is not None:
+            if app_data == dpg.mvKey_Escape:
+                self._cancel_rename()
+            return
+
         if self._selected_sample_id is None:
             return
 
         if app_data == dpg.mvKey_Delete:
             self.call(self.on_remove_requested, self._selected_sample_id)
+        elif app_data == dpg.mvKey_F2:
+            self._start_rename(self._selected_sample_id)
+
+    def _start_rename(self, sample_id: str) -> None:
+        """Turns the sample's name cell into a focused text input."""
+        if self._entry_for(sample_id) is None:
+            return
+
+        self._editing_sample_id = sample_id
+        self._rebuild()
+        FrameCallbackManager.set_frame_callback(lambda: dpg.focus_item(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME))
+
+    def _commit_rename(self) -> None:
+        """Applies the edited name and restores the read-only cell.
+
+        Clears the edit before notifying so the teardown rebuild does not re-enter
+        this through the input's deactivated handler.
+        """
+        if self._editing_sample_id is None:
+            return
+
+        sample_id = self._editing_sample_id
+        name = dpg.get_value(TAG_SEQUENCER_INSTRUMENTS_INPUT_RENAME)
+        self._editing_sample_id = None
+        self.call(self.on_rename_committed, sample_id, name)
+        self._rebuild()
+
+    def _cancel_rename(self) -> None:
+        if self._editing_sample_id is None:
+            return
+
+        self._editing_sample_id = None
+        self._rebuild()
+
+    def _on_rename_enter(self, sender: Sender, app_data: str) -> None:
+        self._commit_rename()
+
+    def _on_rename_deactivated(self, sender: Sender, app_data: int) -> None:
+        self._commit_rename()
 
     def _on_loop_toggled(self, sender: Sender, app_data: bool, user_data: str) -> None:
         self.call(self.on_loop_changed, user_data, app_data)
@@ -314,6 +403,14 @@ class GUISequencerSamplesPanel(GUIPanel):
             dpg.add_menu_item(
                 label=self._lbl_context_edit,
                 callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
+            )
+            dpg.add_menu_item(
+                label=self._lbl_context_rename,
+                callback=lambda: self._start_rename(sample_id),
+            )
+            dpg.add_menu_item(
+                label=self._lbl_context_duplicate,
+                callback=lambda: self.call(self.on_duplicate_requested, sample_id),
             )
             dpg.add_separator()
             dpg.add_menu_item(
