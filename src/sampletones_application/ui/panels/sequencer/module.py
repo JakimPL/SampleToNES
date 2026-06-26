@@ -28,6 +28,7 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.tooltip import show_tooltip
+from sampletones_application.utils.widgets import clamp_widget_value
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.general import MAX_NES_FREQUENCY, MIN_NES_FREQUENCY
 from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
@@ -184,13 +185,13 @@ class GUISequencerModulePanel(GUIPanel):
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_nes_frequency, app_data)
+        self.call(self.on_nes_frequency, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)))
 
     def _on_rows_per_pattern_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_rows_per_pattern, app_data)
+        self.call(self.on_rows_per_pattern, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_ROWS)))
 
     def _on_tempo_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_tempo, app_data)
+        self.call(self.on_tempo, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_TEMPO)))
 
     def _on_speed_input(self, sender: Sender, app_data: int) -> None:
-        self.call(self.on_speed, app_data)
+        self.call(self.on_speed, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_SPEED)))

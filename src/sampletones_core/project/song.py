@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.patterns.channel import Channel
 from sampletones_core.project.patterns.pattern import Pattern
 from sampletones_core.project.patterns.row import Row
-from sampletones_shared.constants.project import MAX_ROWS_PER_PATTERN, MIN_ROWS_PER_PATTERN
+from sampletones_shared.constants.project import (
+    MAX_ROWS_PER_PATTERN,
+    MIN_ROWS_PER_PATTERN,
+)
 
 
 class Song(BaseModel):
@@ -22,6 +25,8 @@ class Song(BaseModel):
     ``rows_per_pattern`` is the invariant row count for every pattern in this song.
     Changing it via :meth:`resize_patterns` resizes all existing patterns in place.
     """
+
+    model_config = ConfigDict(validate_assignment=True)
 
     rows_per_pattern: int = Field(
         ...,

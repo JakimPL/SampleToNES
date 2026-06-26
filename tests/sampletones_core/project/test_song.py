@@ -5,7 +5,11 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
-from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN
+from sampletones_shared.constants.project import (
+    DEFAULT_ROWS_PER_PATTERN,
+    MAX_ROWS_PER_PATTERN,
+    MIN_ROWS_PER_PATTERN,
+)
 
 _ROWS = DEFAULT_ROWS_PER_PATTERN
 
@@ -276,6 +280,19 @@ class TestSongValidation:
     def test_zero_rows_per_pattern_raises(self) -> None:
         with pytest.raises(ValidationError):
             Song.empty(0)
+
+    def test_resize_above_maximum_raises_and_leaves_song_unchanged(self) -> None:
+        """``resize_patterns`` assigns ``rows_per_pattern``, so its bounds must hold on mutation too."""
+        song = Song.empty(8)
+        with pytest.raises(ValidationError):
+            song.resize_patterns(MAX_ROWS_PER_PATTERN + 1)
+
+        assert song.rows_per_pattern == 8
+
+    def test_resize_below_minimum_raises(self) -> None:
+        song = Song.empty(8)
+        with pytest.raises(ValidationError):
+            song.resize_patterns(MIN_ROWS_PER_PATTERN - 1)
 
     def test_rows_per_pattern_above_max_raises(self) -> None:
         with pytest.raises(ValidationError):
