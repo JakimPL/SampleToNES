@@ -22,6 +22,7 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.elements.table.cells import EditableCells
 from sampletones_application.ui.panels.sequencer import display as tracker_display
 from sampletones_application.ui.panels.sequencer.columns import (
@@ -392,6 +393,8 @@ class GUISequencerGridPanel(GUIPanel):
             else:
                 self._input_state = TrackerInputState()
 
+        self._update_caret()
+
     def select_cell(self, row_index: int, generator: Optional[GeneratorName]) -> None:
         new_state = TrackerInputState(
             cursor=TrackerCursor(row_index, generator, SubColumn.INSTRUMENT),
@@ -404,6 +407,8 @@ class GUISequencerGridPanel(GUIPanel):
         if cursor is not None:
             self._remove_cell_highlight(cursor.row, cursor.generator)
             self._input_state = TrackerInputState()
+
+        self._update_caret()
 
     def _apply_state(self, new_state: TrackerInputState) -> None:
         old_cursor = self._input_state.cursor
@@ -429,6 +434,8 @@ class GUISequencerGridPanel(GUIPanel):
             if self.on_cell_selected is not None:
                 self.on_cell_selected(new_cursor.row, new_cursor.generator)
 
+        self._update_caret()
+
     def update_samples(self, view_model: SequencerSamplesViewModel) -> None:
         self._current_samples = view_model
 
@@ -441,6 +448,23 @@ class GUISequencerGridPanel(GUIPanel):
             cell_id = self._editable_cells.widget(key)
             if cell_id is not None:
                 dpg.configure_item(cell_id, label=self._render_cell(key))
+
+    def _update_caret(self) -> None:
+        """Arms (or clears) the shared caret box on the active subcolumn cell."""
+        cursor = self._input_state.cursor
+        if cursor is None:
+            CaretOverlay.clear(TAG_SEQUENCER_GRID_TABLE_TRACKER)
+            return
+
+        key = (cursor.row, cursor.generator, cursor.subcolumn)
+        font = Font.BOLD_SMALL if cursor.generator is None else Font.REGULAR_SMALL
+        CaretOverlay.set_target(
+            owner=TAG_SEQUENCER_GRID_TABLE_TRACKER,
+            widget=self._editable_cells.widget(key),
+            caret_index=len(self._input_state.pending),
+            font=font,
+            clip_widget=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
+        )
 
     def _resolve_sample_id(self, sample_index: int) -> Optional[Tuple[int, str]]:
         if not self._current_samples or not self._current_samples.samples:

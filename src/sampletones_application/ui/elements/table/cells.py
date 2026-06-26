@@ -3,17 +3,24 @@ from typing import Callable, Dict, Generic, Optional, TypeVar
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_shared.constants.symbols import DOT, UNDERSCORE
+from sampletones_shared.constants.symbols import DOT
 from sampletones_shared.types.application import Sender
 
 KeyT = TypeVar("KeyT", bound=Hashable)
 
 
-def active_label(pending: str, width: int) -> str:
-    remaining = width - len(pending)
-    if remaining == 0:
-        return pending
-    return pending + UNDERSCORE + DOT * (remaining - 1)
+def pending_label(pending: str, stored: str, width: int) -> str:
+    """Label for the cell currently under the edit cursor.
+
+    Returns the committed ``stored`` value until the user types, then the entered
+    digits padded with dots up to ``width``. The caret position is drawn over the
+    label by
+    :class:`~sampletones_application.ui.elements.table.caret.CaretOverlay`.
+    """
+    if not pending:
+        return stored
+
+    return pending + DOT * (width - len(pending))
 
 
 class EditableCells(Generic[KeyT]):

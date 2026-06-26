@@ -1,6 +1,6 @@
 from typing import Dict, Final, Optional, Tuple
 
-from sampletones_application.ui.elements.table.cells import active_label
+from sampletones_application.ui.elements.table.cells import pending_label
 from sampletones_application.ui.panels.sequencer.input.cursor import TrackerCursor
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
 from sampletones_application.view_model.sequencer.grid import SequencerCellViewModel
@@ -53,6 +53,6 @@ def subcolumn_label(
     )
     stored = cell_values.get((row, generator, subcolumn), _DEFAULT_LABELS[subcolumn])
     if is_active:
-        return active_label(pending, len(_DEFAULT_LABELS[subcolumn]))
+        return pending_label(pending, stored, len(_DEFAULT_LABELS[subcolumn]))
 
     return stored

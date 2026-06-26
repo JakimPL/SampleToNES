@@ -18,7 +18,8 @@ from sampletones_application.layout.sequencer import SequencerLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
-from sampletones_application.ui.elements.table.cells import EditableCells, active_label
+from sampletones_application.ui.elements.table.caret import CaretOverlay
+from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
 from sampletones_application.ui.panels.sequencer.order_input import (
     INDEX_DIGITS,
     ORDER_ROWS,
@@ -177,6 +178,7 @@ class GUISequencerOrderPanel(GUIPanel):
                 self._clear_cursor_highlight()
                 self._clear_column_highlight()
                 self._input_state = new_state
+                self._update_caret()
         else:
             if self._highlighted_column == frame:
                 return
@@ -190,8 +192,11 @@ class GUISequencerOrderPanel(GUIPanel):
         self._clear_cursor_highlight()
         self._clear_column_highlight()
         self._input_state = OrderInputState()
+        self._update_caret()
+
         if cursor is not None:
             self._update_cell_display(cursor)
+
         if self._current_position is not None and 0 <= self._current_position < self._position_count:
             self._apply_column_highlight(self._current_position, focused=False)
 
@@ -327,10 +332,15 @@ class GUISequencerOrderPanel(GUIPanel):
 
     def _render_cell(self, key: OrderKey) -> str:
         cursor = self._input_state.cursor
+        stored = self._order.values.get(key, _EMPTY_LABEL)
         if cursor is not None and (cursor.generator, cursor.position) == key:
-            return active_label(self._input_state.pending, INDEX_DIGITS)
+            return pending_label(
+                self._input_state.pending,
+                stored,
+                INDEX_DIGITS,
+            )
 
-        return self._order.values.get(key, _EMPTY_LABEL)
+        return stored
 
     def _table_row(self, generator: Optional[GeneratorName]) -> int:
         return ORDER_ROWS.index(generator)
@@ -360,7 +370,12 @@ class GUISequencerOrderPanel(GUIPanel):
         if cursor is None or self._position_count == 0:
             self._input_state = OrderInputState()
             if self._current_position is not None and 0 <= self._current_position < self._position_count:
-                self._apply_column_highlight(self._current_position, focused=False)
+                self._apply_column_highlight(
+                    self._current_position,
+                    focused=False,
+                )
+
+            self._update_caret()
             return
 
         position = min(cursor.position, self._position_count - 1)
@@ -368,6 +383,7 @@ class GUISequencerOrderPanel(GUIPanel):
         self._input_state = OrderInputState(cursor=clamped)
         self._apply_cursor_highlight(clamped)
         self._apply_column_highlight(clamped.position, focused=True)
+        self._update_caret()
 
     def _apply_state(
         self,
@@ -400,11 +416,30 @@ class GUISequencerOrderPanel(GUIPanel):
             if old is None or old.position != new.position:
                 self.call(self.on_frame_selected, new.position)
 
+        self._update_caret()
+
     def _update_cell_display(self, cursor: OrderCursor) -> None:
         key: OrderKey = (cursor.generator, cursor.position)
         widget = self._order.widget(key)
         if widget is not None:
             dpg.configure_item(widget, label=self._render_cell(key))
+
+    def _update_caret(self) -> None:
+        """Arms (or clears) the shared caret box on the active order cell."""
+        cursor = self._input_state.cursor
+        if cursor is None:
+            CaretOverlay.clear(TAG_SEQUENCER_ORDER_TABLE)
+            return
+
+        key: OrderKey = (cursor.generator, cursor.position)
+        font = Font.BOLD_SMALL if cursor.generator is None else Font.REGULAR_SMALL
+        CaretOverlay.set_target(
+            owner=TAG_SEQUENCER_ORDER_TABLE,
+            widget=self._order.widget(key),
+            caret_index=len(self._input_state.pending),
+            font=font,
+            clip_widget=TAG_SEQUENCER_ORDER_WINDOW,
+        )
 
     def _on_cell_clicked(self, sender: Sender, app_data: bool, user_data: OrderKey) -> None:
         dpg.set_value(sender, False)

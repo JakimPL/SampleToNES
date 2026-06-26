@@ -2,21 +2,23 @@ from unittest.mock import patch
 
 import pytest
 
-from sampletones_application.ui.elements.table.cells import EditableCells, active_label
+from sampletones_application.ui.elements.table.cells import EditableCells, pending_label
 
 
 @pytest.mark.parametrize(
-    "pending, width, expected",
+    "pending, stored, width, expected",
     [
-        ("", 3, "_.."),
-        ("0", 3, "0_."),
-        ("05", 3, "05_"),
-        ("", 1, "_"),
-        ("F", 1, "F"),
+        ("", "AB", 3, "AB"),  # navigating onto a populated cell keeps its value
+        ("", "...", 3, "..."),  # an empty cell stays empty (no underscore)
+        ("0", "AB", 3, "0.."),  # typing shows the entered digits, padded with dots
+        ("05", "AB", 3, "05."),
+        ("058", "AB", 3, "058"),  # full width: just the typed digits
+        ("", "F", 1, "F"),
+        ("F", "x", 1, "F"),
     ],
 )
-def test_active_label_cursor_and_dots(pending: str, width: int, expected: str) -> None:
-    assert active_label(pending, width) == expected
+def test_pending_label_preserves_value_until_typing(pending: str, stored: str, width: int, expected: str) -> None:
+    assert pending_label(pending, stored, width) == expected
 
 
 def _render(key: str) -> str:

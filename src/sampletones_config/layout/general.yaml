@@ -65,6 +65,12 @@ tables:
 menu:
   fps_text_offset: 10
 
+caret:
+  offset: 3
+  width_padding: 2
+  fill: "#4488ffb0"
+  border: "#88bbffff"
+
 colors:
   text:
     white: "#ffffff"

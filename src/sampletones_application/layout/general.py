@@ -88,6 +88,13 @@ class MenuLayout(BaseModel, frozen=True):
     fps_text_offset: int
 
 
+class CaretLayout(BaseModel, frozen=True):
+    offset: int
+    width_padding: int
+    fill: RGBA
+    border: RGBA
+
+
 class TextColors(BaseModel, frozen=True):
     white: RGBA
     default: RGBA
@@ -157,4 +164,5 @@ class GeneralLayout(BaseModel, frozen=True):
     buttons: ButtonsLayout
     tables: TablesLayout
     menu: MenuLayout
+    caret: CaretLayout
     colors: GeneralColors

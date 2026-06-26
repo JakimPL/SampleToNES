@@ -43,7 +43,12 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.project.title import document_title
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
 from sampletones_application.logic.reconstruction.manager import ReconstructionManager
-from sampletones_application.paths import BEHAVIOR_DIRECTORY, LANG_EN, LAYOUT_DIRECTORY, THEME_DIRECTORY
+from sampletones_application.paths import (
+    BEHAVIOR_DIRECTORY,
+    LANG_EN,
+    LAYOUT_DIRECTORY,
+    THEME_DIRECTORY,
+)
 from sampletones_application.services import (
     ConversionService,
     ExportService,
@@ -52,6 +57,7 @@ from sampletones_application.services import (
 from sampletones_application.shell import ApplicationShell, ShortcutBindings
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.table.caret import CaretOverlay
 from sampletones_application.ui.menu import MenuBar
 from sampletones_application.ui.panels.settings import GUIAudioSettingsWindow
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -282,7 +288,18 @@ class Application:
         self._project_coordinator.restore(path)
 
     def _setup_gui(self) -> None:
-        bindings = ShortcutBindings(
+        bindings = self._create_shortcut_bindings()
+        self._setup_shell(bindings)
+        self._initialize_caret()
+        self._set_callbacks()
+        self._main_tab.emit_initial_view()
+        self._sequencer_tab.initialize()
+        self.config_manager.update_gui()
+        self._update_menu()
+        self._restore_current_items()
+
+    def _create_shortcut_bindings(self) -> ShortcutBindings:
+        return ShortcutBindings(
             new_project=self._project_coordinator.new_project_with_confirmation,
             open_project=self._project_coordinator.open_with_confirmation,
             save_project=self._project_coordinator.save,
@@ -307,17 +324,19 @@ class Application:
             stop=self._stop,
             toggle_autoplay=self._toggle_autoplay,
         )
+
+    def _setup_shell(self, bindings: ShortcutBindings) -> None:
         self._shell.setup(
             bindings,
             on_close=self._on_close,
             on_tab_changed=self._on_tab_changed,
             initial_menu_state=self._build_initial_menu_state(),
         )
-        self._set_callbacks()
-        self._main_tab.emit_initial_view()
-        self._sequencer_tab.initialize()
-        self.config_manager.update_gui()
-        self._update_menu()
+
+    def _initialize_caret(self) -> None:
+        CaretOverlay.initialize(self.layout.general.caret)
+
+    def _restore_current_items(self) -> None:
         self._shell.restore_current_items(
             self._try_load_current_project,
             self._try_load_current_reconstruction,
@@ -648,6 +667,7 @@ class Application:
         dpg.render_dearpygui_frame()
 
     def _post_frame(self) -> None:
+        CaretOverlay.redraw()
         CallbackQueue.notify_frame()
         CallbackQueue.add(
             self._update_status,
