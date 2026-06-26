@@ -4,6 +4,7 @@ from typing import Callable, Optional
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import (
+    DialogElements,
     GlobalDialogTitleElements,
     GlobalMessageElements,
     MenuElements,
@@ -23,6 +24,7 @@ from sampletones_application.constants.general import (
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_GRID_PANEL_PLAYER,
+    TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
 )
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
@@ -92,6 +94,24 @@ class SequencerTabCoordinator:
             Panel.DIALOG,
             TextType.TITLE,
             GlobalDialogTitleElements.NO_PROJECT_OPEN,
+        ]
+        self._ttl_remove_sample = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.TITLE,
+            GlobalDialogTitleElements.REMOVE_SAMPLE,
+        ]
+        self._msg_remove_sample = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.REMOVE_SAMPLE,
+        ]
+        self._lbl_remove_sample = language_manager[
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.LABEL,
+            DialogElements.REMOVE,
         ]
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
@@ -163,13 +183,14 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
         self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
-        self._sequencer_order_panel.on_cell_selected = self._sequencer_grid_panel.deselect_cell
+        self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
 
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
+        self._sequencer_samples_panel.on_remove_requested = self._remove_sample
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
         self._sequencer_browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
@@ -323,7 +344,28 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.update_samples(view_model)
 
     def _on_sample_selected(self, sample_id: str) -> None:
+        self._sequencer_grid_panel.deselect_cell()
+        self._sequencer_order_panel.deselect_cell()
         logger.debug(f"Sequencer sample selected: {sample_id}")
+
+    def _remove_sample(self, sample_id: str) -> None:
+        """Removes a sample, confirming first only when a pattern still references it.
+
+        An unused sample is dropped silently; a referenced one would clear every row
+        that points at it, so the user confirms that loss first.
+        """
+        if not self._sequencer_samples_logic.is_sample_used(sample_id):
+            self._sequencer_samples_logic.remove_sample(sample_id)
+            return
+
+        name = self._sequencer_samples_logic.sample_name(sample_id)
+        self._dialogs.show_confirmation(
+            tag=TAG_SEQUENCER_INSTRUMENTS_DIALOG_REMOVE,
+            title=self._ttl_remove_sample,
+            message=self._msg_remove_sample.format(name=name),
+            on_confirm=lambda: self._sequencer_samples_logic.remove_sample(sample_id),
+            ok_label=self._lbl_remove_sample,
+        )
 
     def _on_add_to_order(self) -> None:
         empty_position = self._sequencer_order_logic.find_empty_frame(after=self._sequencer_grid_logic.frame_index)
@@ -336,13 +378,18 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.select_frame(new_position)
 
     def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:
-        """Drops the order's edit cursor when the tracker grid takes focus.
+        """Drops the order cursor and sample selection when the tracker grid takes focus.
 
-        The two grids share global key handlers; mutually exclusive cursors ensure
-        only the focused grid consumes keystrokes (the order's cursor here, the
-        tracker's via :meth:`GUISequencerOrderPanel.deselect_cell`).
+        The tracker, order, and samples panels share global key handlers; mutually
+        exclusive selections ensure only the focused panel consumes keystrokes.
         """
         self._sequencer_order_panel.deselect_cell()
+        self._sequencer_samples_panel.deselect()
+
+    def _on_order_cell_focused(self) -> None:
+        """Drops the tracker cursor and sample selection when the order grid takes focus."""
+        self._sequencer_grid_panel.deselect_cell()
+        self._sequencer_samples_panel.deselect()
 
     def create_tab(self) -> None:
         with dpg.tab(

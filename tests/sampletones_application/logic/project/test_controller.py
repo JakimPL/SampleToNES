@@ -74,6 +74,25 @@ class TestSamples:
         assert controller.project.sample(sample.id) is None
         assert song.pattern(GeneratorName.PULSE1, pattern_id).rows[0].instrument is None
 
+    def test_is_sample_used_reflects_pattern_references(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller = _controller()
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        pattern_id = controller.project.song.order[0][GeneratorName.PULSE1]
+
+        assert controller.is_sample_used(sample.id) is False
+
+        controller.set_row(
+            GeneratorName.PULSE1,
+            pattern_id,
+            0,
+            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+        )
+
+        assert controller.is_sample_used(sample.id) is True
+
 
 class TestSong:
     def test_set_row_replaces_row(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:

@@ -30,6 +30,17 @@ class TestRowIsEmpty:
         assert not Row(volume=15).is_empty()
 
 
+class TestRowReferencesSample:
+    def test_default_row_references_no_sample(self) -> None:
+        assert not Row().references_sample("x")
+
+    def test_row_references_its_instrument_sample(self) -> None:
+        assert _row_with_instrument().references_sample("x")
+
+    def test_row_does_not_reference_a_different_sample(self) -> None:
+        assert not _row_with_instrument().references_sample("y")
+
+
 class TestPatternIsEmpty:
     def test_freshly_created_pattern_is_empty(self) -> None:
         assert _empty_pattern().is_empty()

@@ -12,6 +12,7 @@ class DialogElements(AbstractElement):
     YES = "yes"
     NO = "no"
     UNTITLED = "untitled"
+    REMOVE = "remove"
 
 
 class TracebackElements(AbstractElement):
@@ -143,6 +144,7 @@ class GlobalMessageElements(AbstractElement):
     AUDIO_PLAYBACK_ERROR = "audio_playback_error"
     ALL_AUDIO_FORMATS = "all_audio_formats"
     NO_PROJECT_OPEN = "no_project_open"
+    REMOVE_SAMPLE = "remove_sample"
 
 
 class GlobalDialogTitleElements(AbstractElement):
@@ -165,6 +167,7 @@ class GlobalDialogTitleElements(AbstractElement):
     OPEN_UNSAVED_PROJECT = "open_unsaved_project"
     CLOSE_UNSAVED_PROJECT = "close_unsaved_project"
     NO_PROJECT_OPEN = "no_project_open"
+    REMOVE_SAMPLE = "remove_sample"
 
 
 class GlobalTemplateElements(AbstractElement):

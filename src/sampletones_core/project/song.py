@@ -82,6 +82,24 @@ class Song(BaseModel):
             if frame.get(generator) == index:
                 frame[generator] = None
 
+    def references_sample(self, sample_id: str) -> bool:
+        """Whether any row in any pattern of any channel still points at the sample."""
+        return any(
+            row.references_sample(sample_id)
+            for channel in self.channels.values()
+            for pattern in channel.patterns.values()
+            for row in pattern.rows
+        )
+
+    def clear_sample_references(self, sample_id: str) -> None:
+        """Clears the instrument of every row that points at a removed sample."""
+        for channel in self.channels.values():
+            for pattern in channel.patterns.values():
+                pattern.rows = [
+                    row.model_copy(update={"instrument": None}) if row.references_sample(sample_id) else row
+                    for row in pattern.rows
+                ]
+
     def resize_patterns(self, rows_per_pattern: int) -> None:
         """Updates the row count for every pattern in the song.
 

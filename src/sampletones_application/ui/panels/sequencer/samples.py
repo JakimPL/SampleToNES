@@ -11,6 +11,7 @@ from sampletones_application.constants.general import (
     TAG_GLOBAL_TAB_SEQUENCER,
 )
 from sampletones_application.constants.sequencer import (
+    TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER,
     TAG_SEQUENCER_INSTRUMENTS_PANEL,
     TAG_SEQUENCER_INSTRUMENTS_TABLE,
     TAG_SEQUENCER_INSTRUMENTS_THEME_ROW,
@@ -41,6 +42,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         self.on_sample_selected: Optional[Callable[[str], None]] = None
         self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
+        self.on_remove_requested: Optional[Callable[[str], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -84,10 +86,15 @@ class GUISequencerSamplesPanel(GUIPanel):
             self._create_section_text()
             self._create_samples_table()
         self._create_row_handlers()
+        self._create_key_handler()
 
     def _create_row_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._row_handler_tag):
             dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
+
+    def _create_key_handler(self) -> None:
+        with dpg.handler_registry(tag=TAG_SEQUENCER_INSTRUMENTS_KEY_HANDLER):
+            dpg.add_key_press_handler(callback=self._on_key_pressed)
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(self._lbl_instruments)
@@ -142,6 +149,8 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_row = None
         for position, entry in enumerate(view_model.samples):
             self._build_sample_row(position, entry)
+        if self._selected_row is None:
+            self._selected_sample_id = None
 
     def _build_sample_row(self, position: int, entry: SampleEntryViewModel) -> None:
         row_id = dpg.add_table_row(parent=TAG_SEQUENCER_INSTRUMENTS_TABLE)
@@ -194,6 +203,25 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._selected_sample_id = sample_id
         dpg.highlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, position, color=self._layout.colors.cell_cursor)
         self.call(self.on_sample_selected, sample_id)
+
+    def deselect(self) -> None:
+        """Drops the sample selection so the panel stops consuming keystrokes.
+
+        Mirrors the grid and order panels: the three share global key handlers, so
+        only the panel holding a selection acts on a keystroke. Selecting a cell in
+        another panel clears this one's selection via this method.
+        """
+        if self._selected_row is not None:
+            dpg.unhighlight_table_row(TAG_SEQUENCER_INSTRUMENTS_TABLE, self._selected_row)
+        self._selected_row = None
+        self._selected_sample_id = None
+
+    def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
+        if self._selected_sample_id is None:
+            return
+
+        if app_data == dpg.mvKey_Delete:
+            self.call(self.on_remove_requested, self._selected_sample_id)
 
     def _on_loop_toggled(self, sender: Sender, app_data: bool, user_data: str) -> None:
         self.call(self.on_loop_changed, user_data, app_data)

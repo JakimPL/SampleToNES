@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.song import Song
 from sampletones_shared.constants.project import DEFAULT_ROWS_PER_PATTERN
@@ -11,6 +12,12 @@ _ROWS = DEFAULT_ROWS_PER_PATTERN
 
 def _song(rows_per_pattern: int = _ROWS) -> Song:
     return Song.empty(rows_per_pattern)
+
+
+def _place_instrument(song: Song, generator: GeneratorName, sample_id: str, row_index: int = 0) -> None:
+    pattern = song.pattern(generator, 0)
+    assert pattern is not None
+    pattern.rows[row_index] = Row(instrument=Instrument(sample_id=sample_id, generator_name=generator))
 
 
 class TestSongEmpty:
@@ -187,6 +194,54 @@ class TestSongRemovePattern:
         song = _song()
         with pytest.raises(KeyError):
             song.remove_pattern(GeneratorName.PULSE1, 99)
+
+
+class TestSongReferencesSample:
+    def test_false_when_no_row_references_any_sample(self) -> None:
+        assert _song().references_sample("abc") is False
+
+    def test_true_when_a_row_references_the_sample(self) -> None:
+        song = _song()
+        _place_instrument(song, GeneratorName.PULSE1, "abc")
+        assert song.references_sample("abc") is True
+
+    def test_false_for_a_different_sample_id(self) -> None:
+        song = _song()
+        _place_instrument(song, GeneratorName.PULSE1, "abc")
+        assert song.references_sample("xyz") is False
+
+
+class TestSongClearSampleReferences:
+    def test_clears_only_rows_referencing_the_target(self) -> None:
+        song = _song()
+        _place_instrument(song, GeneratorName.PULSE1, "abc", row_index=0)
+        _place_instrument(song, GeneratorName.PULSE1, "keep", row_index=1)
+
+        song.clear_sample_references("abc")
+
+        pattern = song.pattern(GeneratorName.PULSE1, 0)
+        assert pattern is not None
+        assert pattern.rows[0].instrument is None
+        assert pattern.rows[1].instrument is not None
+
+    def test_clears_references_across_all_channels(self) -> None:
+        song = _song()
+        _place_instrument(song, GeneratorName.PULSE1, "abc")
+        _place_instrument(song, GeneratorName.TRIANGLE, "abc")
+
+        song.clear_sample_references("abc")
+
+        assert song.references_sample("abc") is False
+
+    def test_leaves_rows_untouched_when_sample_absent(self) -> None:
+        song = _song()
+        _place_instrument(song, GeneratorName.PULSE1, "abc")
+
+        song.clear_sample_references("missing")
+
+        pattern = song.pattern(GeneratorName.PULSE1, 0)
+        assert pattern is not None
+        assert pattern.rows[0].instrument is not None
 
 
 class TestSongResizePatterns:

@@ -38,3 +38,6 @@ class Row(BaseModel):
 
     def is_empty(self) -> bool:
         return self.instrument is None and self.transpose is None and self.volume is None
+
+    def references_sample(self, sample_id: str) -> bool:
+        return self.instrument is not None and self.instrument.sample_id == sample_id

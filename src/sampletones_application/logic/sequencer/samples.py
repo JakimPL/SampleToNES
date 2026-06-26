@@ -52,6 +52,12 @@ class SequencerSamplesLogic(CallbackMixin):
     def rename_sample(self, sample_id: str, name: str) -> None:
         self._controller.rename_sample(sample_id, name)
 
+    def is_sample_used(self, sample_id: str) -> bool:
+        return self._controller.is_sample_used(sample_id)
+
+    def sample_name(self, sample_id: str) -> str:
+        return self._controller.project.samples[sample_id].name
+
     def remove_sample(self, sample_id: str) -> None:
         self._controller.remove_sample(sample_id)
 

@@ -139,9 +139,12 @@ class ProjectController(CallbackMixin):
         self._touch()
         self.call(self.on_samples_changed)
 
+    def is_sample_used(self, sample_id: str) -> bool:
+        return self.song.references_sample(sample_id)
+
     def remove_sample(self, sample_id: str) -> None:
         self.project.samples.pop(sample_id)
-        self._purge_sample_references(sample_id)
+        self.song.clear_sample_references(sample_id)
         self._touch()
         self.call(self.on_samples_changed)
         self.call(self.on_song_changed)
@@ -307,19 +310,6 @@ class ProjectController(CallbackMixin):
         self.song.move_frame(from_position, to_position)
         self._touch()
         self.call(self.on_song_changed)
-
-    def _purge_sample_references(self, sample_id: str) -> None:
-        """Clears the instrument of any row that still points at a removed sample."""
-        for channel in self.song.channels.values():
-            for pattern in channel.patterns.values():
-                pattern.rows = [
-                    (
-                        row.model_copy(update={"instrument": None})
-                        if row.instrument is not None and row.instrument.sample_id == sample_id
-                        else row
-                    )
-                    for row in pattern.rows
-                ]
 
     def _touch(self) -> None:
         self.project.info.touch()

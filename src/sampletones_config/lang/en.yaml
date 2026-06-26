@@ -11,6 +11,7 @@ global.dialog.label.copied: "Copied!"
 global.dialog.label.yes: "Yes"
 global.dialog.label.no: "No"
 global.dialog.label.untitled: "Untitled"
+global.dialog.label.remove: "Remove"
 
 # Global — Dialog titles
 global.dialog.title.main_window: "SampleToNES"
@@ -32,6 +33,7 @@ global.dialog.title.new_unsaved_project: "New project"
 global.dialog.title.open_unsaved_project: "Open project"
 global.dialog.title.close_unsaved_project: "Close project"
 global.dialog.title.no_project_open: "No project open"
+global.dialog.title.remove_sample: "Remove sample"
 
 # Global — Dialog messages
 global.dialog.message.tree_no_results: "No results found."
@@ -61,6 +63,7 @@ global.dialog.message.configuration_invalid_error: "Invalid configuration file."
 global.dialog.message.audio_playback_error: "Audio playback error"
 global.dialog.message.all_audio_formats: "All supported audio formats"
 global.dialog.message.no_project_open: "No project is open. Create or open a project before adding a reconstruction."
+global.dialog.message.remove_sample: "The sample \"{name}\" is used by one or more patterns. Removing it will clear every row that references it. Remove it anyway?"
 
 # Global — Dialog templates
 global.dialog.template.time_estimation: " (ETA: {eta_string})"
