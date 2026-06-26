@@ -527,6 +527,7 @@ class GUIExplorerPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
+            self._add_context_menu_play_item(node)
             self._add_context_menu_file_actions(node)
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)

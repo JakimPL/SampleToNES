@@ -29,6 +29,7 @@ class TreeElements(AbstractElement):
 
 
 class ContextElements(AbstractElement):
+    PLAY = "play"
     MARK_AS_FAVORITE = "mark_as_favorite"
     UNMARK_AS_FAVORITE = "unmark_as_favorite"
     COPY_FILENAME = "copy_filename"

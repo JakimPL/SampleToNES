@@ -91,6 +91,7 @@ global.browser.label.clear_search: "Clear"
 # =============================================================================
 # Global — Context menu
 # =============================================================================
+global.context.label.play: "Play"
 global.context.label.mark_as_favorite: "Mark as favorite"
 global.context.label.unmark_as_favorite: "Unmark as favorite"
 global.context.label.copy_filename: "Copy filename to clipboard"
@@ -389,6 +390,8 @@ sequencer.instruments.label.instruments_text: "Samples"
 sequencer.instruments.label.column_id: "ID"
 sequencer.instruments.label.column_name: "Name"
 sequencer.instruments.label.column_loop: "Loop"
+sequencer.instruments.label.context_edit: "Edit"
+sequencer.instruments.label.context_remove: "Remove"
 
 # =============================================================================
 # Instructions tab — Library

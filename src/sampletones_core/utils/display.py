@@ -56,6 +56,11 @@ def display_sample(
     return display_id(None)
 
 
+def display_sample_label(position: int, name: str) -> str:
+    """Render an instrument's list label as ``"<hex position>: <name>"`` (e.g. ``"1A: Bass"``)."""
+    return f"{display_id(position)}: {name}"
+
+
 def display_instrument(
     samples: IdentifiedCollection[Sample],
     instruments: Optional[Instrument],

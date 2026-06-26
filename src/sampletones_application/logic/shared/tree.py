@@ -68,36 +68,54 @@ class TreeLogic(CallbackMixin):
     def cancel_autoplay(self) -> None:
         self._pending_autoplay_node = None
 
+    def play_node(self, node: FileSystemNode) -> None:
+        """Play a file on demand, preempting the auxiliary preview and the players.
+
+        Unlike autoplay this ignores the session autoplay flag and uses ``NORMAL``
+        priority: it is a deliberate user action, so it always plays and outranks the
+        reconstruction/sequencer players.
+        """
+        self._play_file(node, PlaybackPriority.NORMAL)
+
+    def is_playable_file(self, node: TreeNode) -> bool:
+        """Whether the node is a file this logic knows how to play (reconstruction or audio)."""
+        if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
+            return False
+
+        suffix = node.filepath.suffix.lower()
+        return suffix == paths.EXT_FILE_RECONSTRUCTION or suffix in paths.EXT_FILES_AUDIO
+
     def _execute_autoplay(self) -> None:
         if self._pending_autoplay_node is not None:
             self._autoplay_file(self._pending_autoplay_node)
             self._pending_autoplay_node = None
 
     def _autoplay_file(self, node: FileSystemNode) -> None:
+        if self._session_manager.autoplay:
+            self._play_file(node, PlaybackPriority.PREVIEW)
+
+    def _play_file(self, node: FileSystemNode, priority: PlaybackPriority) -> None:
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
-        if self._session_manager.autoplay:
-            match node.filepath.suffix.lower():
-                case paths.EXT_FILE_RECONSTRUCTION:
-                    try:
-                        reconstruction = Reconstruction.load(node.filepath)
-                        self._audio_device_manager.play(
-                            reconstruction.approximation,
-                            update=False,
-                            priority=PlaybackPriority.PREVIEW,
-                        )
-                    except Exception as exception:
-                        logger.error_with_traceback(
-                            exception, f"Failed to autoplay reconstruction file: {node.filepath}"
-                        )
-                        self.call(self.on_autoplay_error, exception)
-                case suffix if suffix in paths.EXT_FILES_AUDIO:
-                    self._audio_device_manager.play_file(
-                        node.filepath,
+        match node.filepath.suffix.lower():
+            case paths.EXT_FILE_RECONSTRUCTION:
+                try:
+                    reconstruction = Reconstruction.load(node.filepath)
+                    self._audio_device_manager.play(
+                        reconstruction.approximation,
                         update=False,
-                        priority=PlaybackPriority.PREVIEW,
+                        priority=priority,
                     )
+                except Exception as exception:
+                    logger.error_with_traceback(exception, f"Failed to play reconstruction file: {node.filepath}")
+                    self.call(self.on_autoplay_error, exception)
+            case suffix if suffix in paths.EXT_FILES_AUDIO:
+                self._audio_device_manager.play_file(
+                    node.filepath,
+                    update=False,
+                    priority=priority,
+                )
 
     def is_node_favorite(self, node: TreeNode) -> bool:
         if not isinstance(node, FileSystemNode):

@@ -332,6 +332,7 @@ class GUIBrowserPanel(GUITreePanel):
             modal=False,
         ):
             self._add_context_menu_text(node)
+            self._add_context_menu_play_item(node)
             self._add_context_menu_load_reconstruction_item(node)
             self._add_context_menu_sequencer_items(node)
             self._add_context_menu_path_items(node.filepath)

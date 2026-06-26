@@ -2,6 +2,7 @@ from typing import Callable, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
+from sampletones_application.categories.elements.global_ import ContextElements
 from sampletones_application.categories.elements.sequencer import SequencerInstrumentsElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -18,13 +19,14 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.ui.elements.context_menu import add_play_menu_item
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.dpg import dpg_delete_children
 from sampletones_application.view_model.sequencer.samples import SampleEntryViewModel, SequencerSamplesViewModel
-from sampletones_core.utils.display import display_index
+from sampletones_core.utils.display import display_index, display_sample_label
 from sampletones_shared.types.application import Sender
 
 
@@ -39,10 +41,12 @@ class GUISequencerSamplesPanel(GUIPanel):
         self._row_handler_tag = f"{TAG_SEQUENCER_INSTRUMENTS_TABLE}{SUF_HANDLER_REGISTRY}"
         self._selected_sample_id: Optional[str] = None
         self._selected_row: Optional[int] = None
+        self._entries: Tuple[SampleEntryViewModel, ...] = ()
         self.on_sample_selected: Optional[Callable[[str], None]] = None
         self.on_sample_edit_requested: Optional[Callable[[str], None]] = None
         self.on_loop_changed: Optional[Callable[[str, bool], None]] = None
         self.on_remove_requested: Optional[Callable[[str], None]] = None
+        self.on_play_requested: Optional[Callable[[str], None]] = None
         self._lbl_instruments = language_manager[
             Page.SEQUENCER,
             Panel.INSTRUMENTS,
@@ -67,6 +71,24 @@ class GUISequencerSamplesPanel(GUIPanel):
             TextType.LABEL,
             SequencerInstrumentsElements.COLUMN_LOOP,
         ]
+        self._lbl_context_play = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PLAY,
+        ]
+        self._lbl_context_edit = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_EDIT,
+        ]
+        self._lbl_context_remove = language_manager[
+            Page.SEQUENCER,
+            Panel.INSTRUMENTS,
+            TextType.LABEL,
+            SequencerInstrumentsElements.CONTEXT_REMOVE,
+        ]
 
         super().__init__(
             tag=TAG_SEQUENCER_INSTRUMENTS_PANEL,
@@ -90,6 +112,7 @@ class GUISequencerSamplesPanel(GUIPanel):
 
     def _create_row_handlers(self) -> None:
         with dpg.item_handler_registry(tag=self._row_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_sample_clicked)
             dpg.add_item_double_clicked_handler(callback=self._on_sample_double_clicked)
 
     def _create_key_handler(self) -> None:
@@ -146,6 +169,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         is process-global, so ``with`` blocks here would race with it.
         """
         dpg_delete_children(TAG_SEQUENCER_INSTRUMENTS_TABLE, slot=1)
+        self._entries = view_model.samples
         self._selected_row = None
         for position, entry in enumerate(view_model.samples):
             self._build_sample_row(position, entry)
@@ -232,3 +256,45 @@ class GUISequencerSamplesPanel(GUIPanel):
         if user_data is not None:
             _, sample_id = user_data
             self.call(self.on_sample_edit_requested, sample_id)
+
+    def _on_sample_clicked(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        user_data = dpg.get_item_user_data(clicked_item)
+        if user_data is None:
+            return
+
+        position, sample_id = user_data
+        self._show_context_menu(position, sample_id)
+
+    def _entry_for(self, sample_id: str) -> Optional[SampleEntryViewModel]:
+        return next((entry for entry in self._entries if entry.sample_id == sample_id), None)
+
+    def _show_context_menu(self, position: int, sample_id: str) -> None:
+        entry = self._entry_for(sample_id)
+        if entry is None:
+            return
+
+        with dpg.window(
+            popup=True,
+            no_move=True,
+            no_resize=True,
+            no_title_bar=True,
+            min_size=(0, 0),
+            modal=False,
+        ):
+            header = dpg.add_text(display_sample_label(position, entry.name))
+            FontRegistry.bind_to_item(header, Font.BOLD)
+            dpg.add_separator()
+            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_requested, sample_id))
+            dpg.add_menu_item(
+                label=self._lbl_context_edit,
+                callback=lambda: self.call(self.on_sample_edit_requested, sample_id),
+            )
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=self._lbl_context_remove,
+                callback=lambda: self.call(self.on_remove_requested, sample_id),
+            )

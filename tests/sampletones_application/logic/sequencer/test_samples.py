@@ -1,8 +1,12 @@
 from typing import Callable, Tuple
+from unittest.mock import MagicMock
+
+import numpy as np
 
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.logic.shared.playback_priority import PlaybackPriority
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.reconstructions import Reconstruction
@@ -10,7 +14,26 @@ from sampletones_core.reconstructions import Reconstruction
 
 def _logic() -> Tuple[ProjectController, SequencerSamplesLogic]:
     controller = ProjectController(ProjectManager())
-    return controller, SequencerSamplesLogic(controller)
+    logic = SequencerSamplesLogic(
+        controller,
+        MagicMock(),
+        MagicMock(),
+        scheduling=MagicMock(),
+    )
+    return controller, logic
+
+
+def _logic_with_mocks() -> Tuple[ProjectController, SequencerSamplesLogic, MagicMock, MagicMock]:
+    controller = ProjectController(ProjectManager())
+    session_manager = MagicMock()
+    audio_device_manager = MagicMock()
+    logic = SequencerSamplesLogic(
+        controller,
+        session_manager,
+        audio_device_manager,
+        scheduling=MagicMock(),
+    )
+    return controller, logic, session_manager, audio_device_manager
 
 
 def _place_instrument(controller: ProjectController, generator: GeneratorName, sample_id: str) -> None:
@@ -66,9 +89,7 @@ class TestRemoveSample:
 
 
 class TestBuildSamples:
-    def test_lists_added_samples_in_insertion_order(
-        self, reconstruction_factory: Callable[[], Reconstruction]
-    ) -> None:
+    def test_lists_added_samples_in_insertion_order(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
         controller, logic = _logic()
         first = controller.add_sample(reconstruction_factory(), name="first")
         second = controller.add_sample(reconstruction_factory(), name="second")
@@ -77,3 +98,80 @@ class TestBuildSamples:
 
         assert [entry.sample_id for entry in view_model.samples] == [first.id, second.id]
         assert [entry.name for entry in view_model.samples] == ["first", "second"]
+
+
+class TestPlaySample:
+    def test_plays_reconstruction_regardless_of_autoplay(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
+        session_manager.autoplay = False
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+
+        logic.play_sample(sample.id)
+
+        audio_device_manager.play.assert_called_once()
+        call = audio_device_manager.play.call_args
+        assert np.array_equal(call.args[0], sample.reconstruction.approximation)
+        assert call.kwargs["priority"] == PlaybackPriority.NORMAL
+        assert call.kwargs["update"] is False
+
+    def test_unknown_sample_is_ignored(self) -> None:
+        _, logic, _, audio_device_manager = _logic_with_mocks()
+
+        logic.play_sample("missing")
+
+        audio_device_manager.play.assert_not_called()
+
+
+class TestAutoplay:
+    def test_executes_pending_preview_when_autoplay_enabled(
+        self, reconstruction_factory: Callable[[], Reconstruction]
+    ) -> None:
+        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
+        session_manager.autoplay = True
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        logic._pending_autoplay_sample = sample.id
+
+        logic._execute_autoplay()
+
+        audio_device_manager.play.assert_called_once()
+        assert audio_device_manager.play.call_args.kwargs["priority"] == PlaybackPriority.PREVIEW
+
+    def test_skips_pending_preview_when_autoplay_disabled(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
+        session_manager.autoplay = False
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        logic._pending_autoplay_sample = sample.id
+
+        logic._execute_autoplay()
+
+        audio_device_manager.play.assert_not_called()
+
+    def test_cancel_autoplay_drops_pending_preview(
+        self,
+        reconstruction_factory: Callable[[], Reconstruction],
+    ) -> None:
+        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
+        session_manager.autoplay = True
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        logic._pending_autoplay_sample = sample.id
+
+        logic.cancel_autoplay()
+        logic._execute_autoplay()
+
+        audio_device_manager.play.assert_not_called()
+
+    def test_request_edit_cancels_pending_preview(self, reconstruction_factory: Callable[[], Reconstruction]) -> None:
+        controller, logic, session_manager, audio_device_manager = _logic_with_mocks()
+        session_manager.autoplay = True
+        sample = controller.add_sample(reconstruction_factory(), name="lead")
+        logic._pending_autoplay_sample = sample.id
+
+        logic.request_edit(sample.id)
+        logic._execute_autoplay()
+
+        audio_device_manager.play.assert_not_called()

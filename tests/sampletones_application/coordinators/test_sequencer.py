@@ -24,6 +24,50 @@ def coordinator() -> SequencerTabCoordinator:
     return instance
 
 
+@pytest.fixture
+def samples_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators ``_remove_sample`` touches."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._sequencer_samples_logic = MagicMock()
+    instance._dialogs = MagicMock()
+    instance._ttl_remove_sample = "Remove sample"
+    instance._msg_remove_sample = "Remove {name}?"
+    instance._lbl_remove_sample = "Remove"
+    return instance
+
+
+class TestRemoveSample:
+    def test_unused_sample_is_removed_without_confirmation(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        samples_coordinator._sequencer_samples_logic.is_sample_used.return_value = False
+
+        samples_coordinator._remove_sample("abc")
+
+        samples_coordinator._sequencer_samples_logic.remove_sample.assert_called_once_with("abc")
+        samples_coordinator._dialogs.show_confirmation.assert_not_called()
+
+    def test_used_sample_prompts_confirmation_before_removing(
+        self,
+        samples_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        logic = samples_coordinator._sequencer_samples_logic
+        logic.is_sample_used.return_value = True
+        logic.sample_name.return_value = "lead"
+
+        samples_coordinator._remove_sample("abc")
+
+        samples_coordinator._dialogs.show_confirmation.assert_called_once()
+        logic.remove_sample.assert_not_called()
+
+        confirmation = samples_coordinator._dialogs.show_confirmation.call_args.kwargs
+        assert confirmation["message"] == "Remove lead?"
+
+        confirmation["on_confirm"]()
+        logic.remove_sample.assert_called_once_with("abc")
+
+
 class TestImportReconstruction:
     def test_closed_project_shows_dialog_and_does_not_import(
         self,

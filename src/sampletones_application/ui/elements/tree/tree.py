@@ -37,6 +37,7 @@ from sampletones_application.constants.instructions import (
 from sampletones_application.layout.behavior import SchedulingBehavior
 from sampletones_application.logic.shared.tree import TreeLogic
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.context_menu import add_play_menu_item
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -152,6 +153,12 @@ class GUITreePanel(GUIPanel):
             Panel.DIALOG,
             TextType.TEMPLATE,
             GlobalTemplateElements.COLLAPSE,
+        ]
+        self._lbl_ctx_play = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            ContextElements.PLAY,
         ]
         self._lbl_ctx_copy_filename = language_manager[
             Page.GLOBAL,
@@ -462,6 +469,13 @@ class GUITreePanel(GUIPanel):
 
             text = dpg.add_text(node.name, color=color)
             FontRegistry.bind_to_item(text, Font.BOLD)
+
+    def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
+        if not self.logic.is_playable_file(node):
+            return
+
+        dpg.add_separator()
+        add_play_menu_item(self._lbl_ctx_play, lambda: self.logic.play_node(node))
 
     def _add_context_menu_path_items(self, path: Path) -> None:
         dpg.add_separator()

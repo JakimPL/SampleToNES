@@ -52,3 +52,5 @@ class SequencerInstrumentsElements(AbstractElement):
     COLUMN_ID = "column_id"
     COLUMN_NAME = "column_name"
     COLUMN_LOOP = "column_loop"
+    CONTEXT_EDIT = "context_edit"
+    CONTEXT_REMOVE = "context_remove"

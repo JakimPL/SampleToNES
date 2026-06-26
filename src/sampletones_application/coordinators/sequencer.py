@@ -136,7 +136,12 @@ class SequencerTabCoordinator:
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)
-        self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(project_controller)
+        self._sequencer_samples_logic: SequencerSamplesLogic = SequencerSamplesLogic(
+            project_controller,
+            session_manager,
+            audio_device_manager,
+            scheduling=layout.behavior.scheduling,
+        )
         self._song_player_logic: SongPlayerLogic = SongPlayerLogic(
             audio_device_manager,
             project_controller,
@@ -187,13 +192,15 @@ class SequencerTabCoordinator:
 
         self._sequencer_samples_logic.on_samples_changed = self._on_samples_changed
         self._sequencer_samples_logic.on_edit_sample_requested = self._dispatch_edit_sample
+        self._sequencer_samples_logic.on_autoplay_error = self._on_preview_error
         self._sequencer_samples_panel.on_sample_selected = self._on_sample_selected
         self._sequencer_samples_panel.on_sample_edit_requested = self._sequencer_samples_logic.request_edit
         self._sequencer_samples_panel.on_loop_changed = self._sequencer_samples_logic.set_sample_loop
         self._sequencer_samples_panel.on_remove_requested = self._remove_sample
+        self._sequencer_samples_panel.on_play_requested = self._sequencer_samples_logic.play_sample
         self._sequencer_browser_panel.on_add_to_sequencer = self.import_reconstruction
         self._sequencer_browser_panel.can_add_to_sequencer = self._is_project_open
-        self._sequencer_browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
+        self._sequencer_browser_panel.logic.on_autoplay_error = self._on_preview_error
 
         self._song_player_logic.on_position_changed = self._on_player_position_changed
         self._song_player_logic.on_error = self._on_player_error
@@ -241,7 +248,7 @@ class SequencerTabCoordinator:
         self._sequencer_order_panel.set_playing_position(order_position)
         self._sequencer_grid_logic.select_frame(order_position)
 
-    def _on_browser_autoplay_error(self, exception: Exception) -> None:
+    def _on_preview_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
 
     def _is_project_open(self) -> bool:
@@ -346,6 +353,7 @@ class SequencerTabCoordinator:
     def _on_sample_selected(self, sample_id: str) -> None:
         self._sequencer_grid_panel.deselect_cell()
         self._sequencer_order_panel.deselect_cell()
+        self._sequencer_samples_logic.request_autoplay(sample_id)
         logger.debug(f"Sequencer sample selected: {sample_id}")
 
     def _remove_sample(self, sample_id: str) -> None:

@@ -143,6 +143,51 @@ class TestTreeLogicAutoplay:
         assert tree.autoplay_enabled is True
 
 
+class TestTreeLogicPlayNode:
+    def test_play_node_uses_normal_priority_and_ignores_autoplay(self, tmp_path: Path) -> None:
+        audio_device_manager = MagicMock()
+        session_manager = MagicMock()
+        session_manager.autoplay = False
+        session_manager.favorites = set()
+        tree = _tree(
+            session_manager=session_manager,
+            audio_device_manager=audio_device_manager,
+        )
+        node = _file_node(tmp_path / "audio.wav")
+
+        tree.play_node(node)
+
+        audio_device_manager.play_file.assert_called_once_with(
+            node.filepath,
+            update=False,
+            priority=PlaybackPriority.NORMAL,
+        )
+
+    def test_play_node_with_directory_is_no_op(self, tmp_path: Path) -> None:
+        audio_device_manager = MagicMock()
+        tree = _tree(audio_device_manager=audio_device_manager)
+        node = _dir_node(tmp_path / "mydir")
+
+        tree.play_node(node)
+
+        audio_device_manager.play_file.assert_not_called()
+        audio_device_manager.play.assert_not_called()
+
+
+class TestTreeLogicIsPlayableFile:
+    def test_reconstruction_file_is_playable(self, tmp_path: Path) -> None:
+        assert _tree().is_playable_file(_file_node(tmp_path / "song.stn")) is True
+
+    def test_audio_file_is_playable(self, tmp_path: Path) -> None:
+        assert _tree().is_playable_file(_file_node(tmp_path / "audio.wav")) is True
+
+    def test_non_playable_file_is_rejected(self, tmp_path: Path) -> None:
+        assert _tree().is_playable_file(_file_node(tmp_path / "notes.txt")) is False
+
+    def test_directory_is_not_playable(self, tmp_path: Path) -> None:
+        assert _tree().is_playable_file(_dir_node(tmp_path / "mydir")) is False
+
+
 class TestTreeLogicFavorites:
     def test_is_node_favorite_returns_false_for_non_filesystem_node(self) -> None:
         tree = _tree()

@@ -5,7 +5,7 @@ from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.utils.display import display_instrument, display_sample
+from sampletones_core.utils.display import display_instrument, display_sample, display_sample_label
 
 
 def _project_with_samples(count: int) -> Tuple[Project, List[Sample]]:
@@ -61,6 +61,14 @@ class TestDisplaySamples:
             )
             == "02"
         )
+
+
+class TestDisplaySampleLabel:
+    def test_combines_hex_index_and_name(self) -> None:
+        assert display_sample_label(0, "Bass") == "00: Bass"
+
+    def test_index_is_hexadecimal(self) -> None:
+        assert display_sample_label(26, "Lead") == "1A: Lead"
 
 
 class TestDisplaySubinstrument:
