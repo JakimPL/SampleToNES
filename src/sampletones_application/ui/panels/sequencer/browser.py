@@ -25,6 +25,7 @@ from sampletones_application.layout.behavior import (
 )
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -263,14 +264,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
-        with dpg.window(
-            popup=True,
-            no_move=True,
-            no_resize=True,
-            no_title_bar=True,
-            min_size=(0, 0),
-            modal=False,
-        ):
+        with context_menu():
             self._add_context_menu_text(node)
             self._add_context_menu_path_items(node.filepath)
             self._add_context_menu_favorite_item(node)
@@ -279,14 +273,7 @@ class GUISequencerBrowserPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
-        with dpg.window(
-            popup=True,
-            no_move=True,
-            no_resize=True,
-            no_title_bar=True,
-            min_size=(0, 0),
-            modal=False,
-        ):
+        with context_menu():
             self._add_context_menu_text(node)
             self._add_context_menu_play_item(node)
             self._add_context_menu_sequencer_items(node)

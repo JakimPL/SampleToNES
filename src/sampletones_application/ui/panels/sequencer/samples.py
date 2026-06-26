@@ -19,7 +19,7 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_INSTRUMENTS_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
-from sampletones_application.ui.elements.context_menu import add_play_menu_item
+from sampletones_application.ui.elements.context_menu import add_play_menu_item, context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -277,14 +277,7 @@ class GUISequencerSamplesPanel(GUIPanel):
         if entry is None:
             return
 
-        with dpg.window(
-            popup=True,
-            no_move=True,
-            no_resize=True,
-            no_title_bar=True,
-            min_size=(0, 0),
-            modal=False,
-        ):
+        with context_menu():
             header = dpg.add_text(display_sample_label(position, entry.name))
             FontRegistry.bind_to_item(header, Font.BOLD)
             dpg.add_separator()

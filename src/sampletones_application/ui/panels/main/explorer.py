@@ -27,6 +27,7 @@ from sampletones_application.layout.behavior import (
 )
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.ui.elements.button import GUIButton
+from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.tree.handler import NodeHandler
@@ -519,13 +520,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.FILE:
             return
 
-        with dpg.window(
-            popup=True,
-            no_move=True,
-            no_resize=True,
-            no_title_bar=True,
-            modal=False,
-        ):
+        with context_menu():
             self._add_context_menu_text(node)
             self._add_context_menu_play_item(node)
             self._add_context_menu_file_actions(node)
@@ -562,13 +557,7 @@ class GUIExplorerPanel(GUITreePanel):
         if not isinstance(node, FileSystemNode) or node.node_type != NodeType.DIRECTORY:
             return
 
-        with dpg.window(
-            popup=True,
-            no_move=True,
-            no_resize=True,
-            no_title_bar=True,
-            modal=False,
-        ):
+        with context_menu():
             self._add_context_menu_text(node)
             self._add_context_menu_reconstruction_directory(node)
             self._add_context_menu_path_items(node.filepath)
