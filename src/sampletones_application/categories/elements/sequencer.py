@@ -39,12 +39,22 @@ class SequencerOrderElements(AbstractElement):
     ROW_PULSE_2 = "row_pulse_2"
     ROW_TRIANGLE = "row_triangle"
     ROW_NOISE = "row_noise"
+    CONTEXT_PLAY = "context_play"
+    CONTEXT_DUPLICATE = "context_duplicate"
+    CONTEXT_INSERT = "context_insert"
+    CONTEXT_CLEAR = "context_clear"
+    CONTEXT_REMOVE = "context_remove"
+    CONTEXT_MOVE_LEFT = "context_move_left"
+    CONTEXT_MOVE_RIGHT = "context_move_right"
+    CONTEXT_MOVE_START = "context_move_start"
+    CONTEXT_MOVE_END = "context_move_end"
 
 
 class SequencerPlayerElements(AbstractElement):
     NO_SONG_LOADED = "no_song_loaded"
     POSITION = "position"
     PLAYBACK_ERROR = "playback_error"
+    FOLLOW_PLAYBACK = "follow_playback"
 
 
 class SequencerInstrumentsElements(AbstractElement):

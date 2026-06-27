@@ -21,7 +21,7 @@ def _song(rows_per_pattern: int = _ROWS) -> Song:
 def _place_instrument(song: Song, generator: GeneratorName, sample_id: str, row_index: int = 0) -> None:
     pattern = song.pattern(generator, 0)
     assert pattern is not None
-    pattern.rows[row_index] = Row(instrument=Instrument(sample_id=sample_id, generator_name=generator))
+    pattern.rows[row_index] = Row(command=Instrument(sample_id=sample_id, generator_name=generator))
 
 
 class TestSongEmpty:
@@ -157,6 +157,53 @@ class TestSongMoveFrame:
         assert song.order[0][GeneratorName.PULSE1] == 7
 
 
+class TestSongDuplicateFrame:
+    def test_duplicate_inserts_copy_after_position(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+        song.set_order_entry(1, GeneratorName.PULSE1, 2)
+
+        song.duplicate_frame(0)
+
+        assert song.order_length() == 3
+        assert song.order[0][GeneratorName.PULSE1] == 1
+        assert song.order[1][GeneratorName.PULSE1] == 1
+        assert song.order[2][GeneratorName.PULSE1] == 2
+
+    def test_duplicate_copy_is_independent(self) -> None:
+        song = _song()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+
+        song.duplicate_frame(0)
+        song.set_order_entry(1, GeneratorName.PULSE1, 5)
+
+        assert song.order[0][GeneratorName.PULSE1] == 1
+        assert song.order[1][GeneratorName.PULSE1] == 5
+
+
+class TestSongClearFrame:
+    def test_clear_frame_sets_all_channels_to_none(self) -> None:
+        song = _song()
+        for generator in GeneratorName.items():
+            song.set_order_entry(0, generator, 3)
+
+        song.clear_frame(0)
+
+        assert all(song.order[0][generator] is None for generator in GeneratorName.items())
+
+    def test_clear_frame_leaves_other_frames(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+        song.set_order_entry(1, GeneratorName.PULSE1, 2)
+
+        song.clear_frame(0)
+
+        assert song.order[0][GeneratorName.PULSE1] is None
+        assert song.order[1][GeneratorName.PULSE1] == 2
+
+
 class TestSongOrderedPatterns:
     def test_ordered_patterns_returns_pattern_objects(self) -> None:
         song = _song()
@@ -225,8 +272,8 @@ class TestSongClearSampleReferences:
 
         pattern = song.pattern(GeneratorName.PULSE1, 0)
         assert pattern is not None
-        assert pattern.rows[0].instrument is None
-        assert pattern.rows[1].instrument is not None
+        assert pattern.rows[0].command is None
+        assert pattern.rows[1].command is not None
 
     def test_clears_references_across_all_channels(self) -> None:
         song = _song()
@@ -245,7 +292,7 @@ class TestSongClearSampleReferences:
 
         pattern = song.pattern(GeneratorName.PULSE1, 0)
         assert pattern is not None
-        assert pattern.rows[0].instrument is not None
+        assert pattern.rows[0].command is not None
 
 
 class TestSongResizePatterns:

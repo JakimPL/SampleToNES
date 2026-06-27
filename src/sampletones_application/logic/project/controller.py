@@ -4,9 +4,8 @@ from typing import Optional
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME, MIN_TRANSPOSE
 from sampletones_core.project import Project
-from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.project.song import Song
 from sampletones_core.reconstructions import Reconstruction
 from sampletones_shared.types.callback import VoidCallback
@@ -230,7 +229,7 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
         row_index: int,
         *,
-        instrument: Optional[Instrument] = None,
+        command: Optional[NoteCommand] = None,
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
@@ -240,7 +239,7 @@ class ProjectController(CallbackMixin):
         only some subcolumns while preserving the rest, use :meth:`update_row`.
         """
         row = Row(
-            instrument=instrument,
+            command=command,
             transpose=self._clamp_transpose(transpose),
             volume=self._clamp_volume(volume),
         )
@@ -263,7 +262,7 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
         row_index: int,
         *,
-        instrument: Optional[Instrument] = None,
+        command: Optional[NoteCommand] = None,
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
@@ -278,7 +277,7 @@ class ProjectController(CallbackMixin):
             generator,
             pattern_index,
             row_index,
-            instrument=instrument if instrument is not None else existing.instrument,
+            command=command if command is not None else existing.command,
             transpose=transpose if transpose is not None else existing.transpose,
             volume=volume if volume is not None else existing.volume,
         )
@@ -304,7 +303,7 @@ class ProjectController(CallbackMixin):
             generator,
             pattern_index,
             row_index,
-            instrument=None if instrument else existing.instrument,
+            command=None if instrument else existing.command,
             transpose=None if transpose else existing.transpose,
             volume=None if volume else existing.volume,
         )
@@ -336,6 +335,16 @@ class ProjectController(CallbackMixin):
 
     def move_frame(self, from_position: int, to_position: int) -> None:
         self.song.move_frame(from_position, to_position)
+        self._touch()
+        self.call(self.on_song_changed)
+
+    def duplicate_frame(self, position: int) -> None:
+        self.song.duplicate_frame(position)
+        self._touch()
+        self.call(self.on_song_changed)
+
+    def clear_frame(self, position: int) -> None:
+        self.song.clear_frame(position)
         self._touch()
         self.call(self.on_song_changed)
 

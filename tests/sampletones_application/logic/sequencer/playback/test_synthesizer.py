@@ -13,6 +13,7 @@ from tests.sampletones_application.logic.sequencer.playback.conftest import (
     make_controller,
     make_pulse_reconstruction,
     place_modifier_row,
+    place_note_off,
     place_row,
 )
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
@@ -319,6 +320,36 @@ class TestPositionAdvance:
         ).run()
 
 
+class TestNoteOff:
+    def test_note_off_cuts_a_sounding_looped_voice(self) -> None:
+        def place_looped_sample_then_note_off(context: SynthesizerContext) -> None:
+            recon = make_pulse_reconstruction(count=2)
+            sample = add_sample(_controller(context), recon, loop=True)
+            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_note_off(_controller(context), generator=GeneratorName.PULSE1, row_index=1)
+
+        def render_row_0_and_assert_audible(context: SynthesizerContext) -> None:
+            assert not np.all(_render(context) == 0.0)
+
+        def render_row_1_and_assert_silenced(context: SynthesizerContext) -> None:
+            audio = _render(context)
+            assert np.all(audio == 0.0)
+            assert _state(context).sample_id is None
+
+        BaseTestScenario(
+            label="note-off silences a looped voice and clears channel state",
+            build=_make_context,
+            steps=[
+                ScenarioStep(
+                    label="place looped sample on row 0, note-off on row 1",
+                    action=place_looped_sample_then_note_off,
+                ),
+                ScenarioStep(label="render row 0 — audible", action=render_row_0_and_assert_audible),
+                ScenarioStep(label="render row 1 — note-off cuts the voice", action=render_row_1_and_assert_silenced),
+            ],
+        ).run()
+
+
 class TestLoopBehavior:
     def test_loop_true_keeps_playing_after_instruction_list_exhausted(self) -> None:
         def place_two_instruction_loop_sample(context: SynthesizerContext) -> None:
@@ -380,9 +411,42 @@ class TestLoopBehavior:
             ],
         ).run()
 
+    def test_looped_voice_sustains_across_an_empty_next_frame(self) -> None:
+        def place_loop_then_append_empty_frame(context: SynthesizerContext) -> None:
+            controller = _controller(context)
+            recon = make_pulse_reconstruction(count=2)
+            sample = add_sample(controller, recon, loop=True)
+            place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            controller.append_frame()
+
+        def render_into_empty_second_frame_and_assert_sustained(context: SynthesizerContext) -> None:
+            rows_in_first_frame = _controller(context).project.song.rows_per_pattern
+            for _ in range(rows_in_first_frame):
+                _render(context)
+
+            audio, (order_position, _) = context.synthesizer.render_row()
+            assert order_position == 1
+            assert not np.all(audio == 0.0)
+            assert _state(context).sample_id is not None
+
+        BaseTestScenario(
+            label="looped voice carries across an empty (None-slot) next frame",
+            build=_make_context,
+            steps=[
+                ScenarioStep(
+                    label="loop on frame 0, append all-None frame 1",
+                    action=place_loop_then_append_empty_frame,
+                ),
+                ScenarioStep(
+                    label="render into frame 1 — voice still sounding",
+                    action=render_into_empty_second_frame_and_assert_sustained,
+                ),
+            ],
+        ).run()
+
 
 class TestSilenceCases:
-    def test_none_order_slot_produces_silence(self) -> None:
+    def test_none_order_slot_with_no_sounding_voice_produces_silence(self) -> None:
         def clear_all_order_slots(context: SynthesizerContext) -> None:
             song = _controller(context).project.song
             for generator_name in GeneratorName.items():
@@ -393,7 +457,7 @@ class TestSilenceCases:
             assert np.all(audio == 0.0)
 
         BaseTestScenario(
-            label="None order slot produces silence",
+            label="None order slot with nothing sounding produces silence",
             build=_make_context,
             steps=[
                 ScenarioStep(label="set all order slots to None", action=clear_all_order_slots),

@@ -35,6 +35,11 @@ from sampletones_application.logic.reconstruction.browser_manager import Browser
 from sampletones_application.logic.sequencer.browser import SequencerBrowserLogic
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
+from sampletones_application.logic.sequencer.playback.playhead import (
+    remap_after_insert,
+    remap_after_move,
+    remap_after_remove,
+)
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
 from sampletones_application.ui.elements.tree.colors import TreeColors
@@ -162,6 +167,7 @@ class SequencerTabCoordinator:
             DialogElements.ADD_ANYWAY,
         ]
         self._nes_frequency_change_acknowledged: bool = False
+        self._playing_order: Optional[int] = None
         self._left_width = layout.general.panels.left.width
         self._left_height = layout.general.panels.left.height
         self._instruments_width = layout.sequencer.samples_panel_width
@@ -197,6 +203,7 @@ class SequencerTabCoordinator:
             audio_device_manager,
             project_controller,
             config_manager.config,
+            session_manager,
         )
         self._player_panel: GUISongPlayerPanel
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
@@ -228,15 +235,20 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
         self._sequencer_grid_panel.on_set_row = self._on_set_row
+        self._sequencer_grid_panel.on_set_note_off = self._on_set_note_off
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
-        self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
-        self._sequencer_order_panel.on_add_requested = self._on_add_to_order
-        self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order
+        self._sequencer_order_panel.on_frame_selected = self._on_order_frame_selected
+        self._sequencer_order_panel.on_remove_requested = self._on_order_remove
+        self._sequencer_order_panel.on_duplicate_requested = self._on_order_duplicate
+        self._sequencer_order_panel.on_insert_requested = self._on_order_insert
+        self._sequencer_order_panel.on_clear_requested = self._on_order_clear
+        self._sequencer_order_panel.on_play_from_requested = self._on_order_play_from
+        self._sequencer_order_panel.on_move_requested = self._on_order_move
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
         self._sequencer_order_panel.on_set_master_entry = self._sequencer_order_logic.set_master_entry
         self._sequencer_order_panel.on_cell_selected = self._on_order_cell_focused
@@ -293,15 +305,29 @@ class SequencerTabCoordinator:
 
     def _on_player_view_changed(self, view_model: SongPlayerViewModel) -> None:
         if not view_model.is_playing and not view_model.is_paused:
+            self._playing_order = None
             self._sequencer_grid_panel.set_playing_row(None)
             self._sequencer_order_panel.set_playing_position(None)
 
         self._player_panel.update_view(view_model)
 
     def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
+        self._playing_order = order_position
         self._sequencer_grid_panel.set_playing_row(row_index)
         self._sequencer_order_panel.set_playing_position(order_position)
-        self._sequencer_grid_logic.select_frame(order_position)
+        if self._song_player_logic.follow_playback:
+            self._sequencer_grid_logic.select_frame(order_position)
+
+    def _on_order_frame_selected(self, frame_index: int) -> None:
+        """Selects an order frame in the grid, and moves the playhead too when following.
+
+        With follow-playback on, choosing another order during playback relocates the playhead to
+        it (the seek no-ops when stopped); with it off, the selection only changes which pattern is
+        edited, leaving playback where it is.
+        """
+        self._sequencer_grid_logic.select_frame(frame_index)
+        if self._song_player_logic.follow_playback:
+            self._song_player_logic.seek(frame_index)
 
     def _on_preview_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))
@@ -420,7 +446,7 @@ class SequencerTabCoordinator:
                     volume=volume,
                 )
         else:
-            instrument = (
+            command = (
                 Instrument(
                     sample_id=sample_id,
                     generator_name=generator,
@@ -431,10 +457,17 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.set_row(
                 generator,
                 row_index,
-                instrument=instrument,
+                command=command,
                 transpose=transpose,
                 volume=volume,
             )
+
+    def _on_set_note_off(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        """Writes a note-off: to one channel, or across every channel from the sample column."""
+        if generator is None:
+            self._sequencer_grid_logic.set_note_off_all_generators(row_index)
+        else:
+            self._sequencer_grid_logic.set_note_off(generator, row_index)
 
     def _on_samples_changed(self, view_model: SequencerSamplesViewModel) -> None:
         self._sequencer_samples_panel.update_view(view_model)
@@ -499,15 +532,65 @@ class SequencerTabCoordinator:
     def _acknowledge_nes_frequency_changes(self) -> None:
         self._nes_frequency_change_acknowledged = True
 
-    def _on_add_to_order(self) -> None:
-        empty_position = self._sequencer_order_logic.find_empty_frame(after=self._sequencer_grid_logic.frame_index)
-        if empty_position is not None:
-            self._sequencer_grid_logic.select_frame(empty_position)
+    def _on_order_remove(self, position: int) -> None:
+        length_before = self._project_controller.order_length
+        self._sequencer_order_logic.remove_from_order(position)
+        self._relocate_playhead(lambda playhead: remap_after_remove(playhead, position, length_before - 1))
+
+    def _on_order_duplicate(self, position: int) -> None:
+        self._sequencer_order_logic.duplicate_frame(position)
+        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position + 1))
+        self._select_frame_when_idle(position + 1)
+
+    def _on_order_insert(self, position: int) -> None:
+        self._sequencer_order_logic.insert_frame(position + 1)
+        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position + 1))
+        self._select_frame_when_idle(position + 1)
+
+    def _on_order_clear(self, position: int) -> None:
+        """Clears every channel in the frame; no index shift, so the playhead is left in place.
+
+        A sounding voice keeps ringing across the now-empty frame (only an explicit note-off cuts it).
+        """
+        self._sequencer_order_logic.clear_frame(position)
+
+    def _on_order_move(self, from_position: int, to_position: int) -> None:
+        self._sequencer_order_logic.move_frame(from_position, to_position)
+        self._relocate_playhead(lambda playhead: remap_after_move(playhead, from_position, to_position))
+        # Follow the moved frame immediately (not only when idle): during playback the move
+        # target is the cursor, so it must advance now or a rapid second Alt+arrow would act on
+        # the stale, pre-move frame and visually snap back.
+        self._sequencer_grid_logic.select_frame(to_position)
+
+    def _on_order_play_from(self, position: int) -> None:
+        """Plays from a frame: relocates the playhead when already playing, else starts there."""
+        if self._song_player_logic.is_playing():
+            self._song_player_logic.seek(position)
+        else:
+            self._song_player_logic.play_from(position)
+
+    def _relocate_playhead(self, remap: Callable[[int], int]) -> None:
+        """Keeps the live playhead on the frame it was sounding after a structural order edit.
+
+        The new position is reflected in the playing highlight straight away rather than waiting
+        for the worker's next row update, so rapid edits (e.g. a held Alt+arrow) stay in step
+        instead of lagging a row behind and snapping back.
+        """
+        if self._playing_order is None:
             return
 
-        self._sequencer_order_logic.add_to_order()
-        new_position = self._project_controller.order_length - 1
-        self._sequencer_grid_logic.select_frame(new_position)
+        new_order = remap(self._playing_order)
+        if new_order == self._playing_order:
+            return
+
+        self._playing_order = new_order
+        self._song_player_logic.relocate(new_order)
+        self._sequencer_order_panel.set_playing_position(new_order)
+
+    def _select_frame_when_idle(self, frame_index: int) -> None:
+        """Moves the editor selection to a frame, unless playback is actively driving it."""
+        if not self._song_player_logic.is_playing():
+            self._sequencer_grid_logic.select_frame(frame_index)
 
     def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:
         """Drops the order cursor and sample selection when the tracker grid takes focus.

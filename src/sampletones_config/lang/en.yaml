@@ -359,6 +359,7 @@ sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as inst
 sequencer.player.message.no_song_loaded: "No song loaded."
 sequencer.player.message.playback_error: "Playback error: {error}"
 sequencer.player.template.position: "Frame {frame} | Row {row}"
+sequencer.player.label.follow_playback: "Follow playback"
 
 # =============================================================================
 # Sequencer tab — Module
@@ -390,11 +391,20 @@ sequencer.grid.label.column_transpose: "Transpose"
 # Sequencer tab — Order
 # =============================================================================
 sequencer.order.label.order_text: "Order"
-sequencer.order.label.row_master: "All"
+sequencer.order.label.row_master: "Master"
 sequencer.order.label.row_pulse_1: "Pulse 1"
 sequencer.order.label.row_pulse_2: "Pulse 2"
 sequencer.order.label.row_triangle: "Triangle"
 sequencer.order.label.row_noise: "Noise"
+sequencer.order.label.context_play: "Play from here"
+sequencer.order.label.context_duplicate: "Duplicate"
+sequencer.order.label.context_insert: "Insert frame"
+sequencer.order.label.context_clear: "Clear frame"
+sequencer.order.label.context_remove: "Remove"
+sequencer.order.label.context_move_left: "Move left"
+sequencer.order.label.context_move_right: "Move right"
+sequencer.order.label.context_move_start: "Move to start"
+sequencer.order.label.context_move_end: "Move to end"
 
 # =============================================================================
 # Sequencer tab — Instruments

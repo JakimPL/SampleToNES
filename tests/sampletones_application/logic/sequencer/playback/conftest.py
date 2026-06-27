@@ -14,6 +14,7 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.reconstructions import Reconstruction
 
@@ -100,10 +101,21 @@ def place_row(
         generator,
         pattern_index,
         row_index,
-        instrument=Instrument(sample_id=sample_id, generator_name=generator),
+        command=Instrument(sample_id=sample_id, generator_name=generator),
         transpose=transpose,
         volume=volume,
     )
+
+
+def place_note_off(
+    controller: ProjectController,
+    *,
+    generator: GeneratorName,
+    row_index: int,
+) -> None:
+    """Place an explicit note-off command on a channel row."""
+    pattern_index = controller.project.song.order[0][generator]
+    controller.set_row(generator, pattern_index, row_index, command=NoteOff())
 
 
 def place_modifier_row(

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from sampletones_application.view_model.sequencer.aggregate import aggregate_labels
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.display import NOTE_OFF, display_id, display_transpose, display_volume
 
 
 class SequencerCellViewModel(BaseModel, frozen=True):
@@ -46,7 +46,20 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
     @property
     def sample_instrument(self) -> str:
-        return self._aggregate(self.relevant_generators, lambda cell: cell.instrument, display_id(None))
+        """The sample column's note value.
+
+        A referenced sample wins: the column shows its position (or :data:`MIXED` when the sample
+        spans more channels than it occupies here). With no sample present, the column reads ``--``
+        only when every channel is a note-off, and is otherwise empty — a half-cut row (some
+        note-off, some blank) reads as empty rather than implying a column-wide cut.
+        """
+        if self.relevant_generators:
+            return self._aggregate(self.relevant_generators, lambda cell: cell.instrument, display_id(None))
+
+        if self.cells and all(cell.instrument == NOTE_OFF for cell in self.cells.values()):
+            return NOTE_OFF
+
+        return display_id(None)
 
     @property
     def sample_transpose(self) -> str:

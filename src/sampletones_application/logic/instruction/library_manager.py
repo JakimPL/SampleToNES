@@ -22,6 +22,7 @@ from sampletones_core.library import (
     get_display_name_from_key,
 )
 from sampletones_core.library.creator import InstructionsLibraryCreator
+from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.parallelization import TaskProgress, TaskStatus
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_core.structures.tree import (
@@ -31,7 +32,6 @@ from sampletones_core.structures.tree import (
     Tree,
     TreeNode,
 )
-from sampletones_shared.constants.symbols import HEXADECIMAL
 from sampletones_shared.logger import logger
 from sampletones_shared.types.callback import VoidCallback
 from sampletones_shared.utils.callbacks import CallbackMixin
@@ -247,21 +247,15 @@ class InstructionsLibraryManager(CallbackMixin):
         self._current_library_key = None
 
     def _is_library_file(self, filename: str) -> bool:
-        # TODO: delegate to Library
-        file_parts = filename.split("_")
-        if len(file_parts) != 12:
-            return False
-        if not file_parts[0] == "sr" or not file_parts[1].isdigit():
-            return False
-        if not file_parts[2] == "nf" or not file_parts[3].isdigit():
-            return False
-        if not file_parts[4] == "ws" or not file_parts[5].isdigit():
-            return False
-        if not file_parts[6] == "tg" or not file_parts[7].isdigit():
-            return False
-        if not file_parts[8] == "sm" or not file_parts[9].isalpha():
-            return False
-        if not file_parts[10] == "ch" or not all(c in HEXADECIMAL.lower() for c in file_parts[11]):
+        """Whether ``filename`` parses as a library filename, per the field schema that builds it.
+
+        Delegates to :class:`InstructionsFilenameFields`, the single source of truth for the
+        ``sr_…_nf_…_ws_…_tg_…_ch_…`` layout: a malformed or out-of-range name raises (``ValueError``,
+        which pydantic's ``ValidationError`` subclasses) and is reported as not-a-library-file.
+        """
+        try:
+            InstructionsFilenameFields.create(filename)
+        except ValueError:
             return False
 
         return True

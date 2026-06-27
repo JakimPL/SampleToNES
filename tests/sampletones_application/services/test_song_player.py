@@ -43,6 +43,58 @@ class TestSongPlayerServicePauseResume:
         assert service._resume_event.is_set()
 
 
+class TestSongPlayerServiceSeek:
+    def test_seek_does_nothing_when_not_alive(self) -> None:
+        service = _make_service()
+
+        service.seek(2)
+
+        service._synthesizer.set_position.assert_not_called()
+
+    def test_seek_sets_synthesizer_position_when_alive(self) -> None:
+        service = _make_service()
+        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+
+        service.seek(2)
+
+        service._synthesizer.set_position.assert_called_once_with(2, 0)
+
+    def test_seek_does_not_reset_voices(self) -> None:
+        service = _make_service()
+        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+
+        service.seek(2)
+
+        service._synthesizer.reset.assert_not_called()
+
+
+class TestSongPlayerServiceRelocate:
+    def test_relocate_does_nothing_when_not_alive(self) -> None:
+        service = _make_service()
+
+        service.relocate(2)
+
+        service._synthesizer.set_position.assert_not_called()
+
+    def test_relocate_keeps_current_row_when_alive(self) -> None:
+        service = _make_service()
+        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._synthesizer.row_index = 5
+
+        service.relocate(2)
+
+        service._synthesizer.set_position.assert_called_once_with(2, 5)
+
+    def test_relocate_does_not_reset_voices(self) -> None:
+        service = _make_service()
+        service._thread = MagicMock(is_alive=MagicMock(return_value=True))
+        service._synthesizer.row_index = 0
+
+        service.relocate(2)
+
+        service._synthesizer.reset.assert_not_called()
+
+
 class TestSongPlayerServiceStop:
     def test_stop_sets_stop_event(self) -> None:
         service = _make_service()

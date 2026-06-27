@@ -7,6 +7,7 @@ from sampletones_application.utils.color import RGBA
 class OrderLayout(BaseModel, frozen=True):
     height: int
     position_column_width: int
+    master_divider_height: int
 
 
 class SequencerTableCells(BaseModel, frozen=True):
@@ -57,6 +58,8 @@ class SequencerColors(BaseModel, frozen=True):
     sample_column: RGBA
     sample_divider: RGBA
     order_label: RGBA
+    order_master: RGBA
+    order_master_divider: RGBA
     order_column: RGBA
     order_column_alternate: RGBA
     order_column_current: RGBA

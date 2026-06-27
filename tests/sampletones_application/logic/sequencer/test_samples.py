@@ -42,7 +42,7 @@ def _place_instrument(controller: ProjectController, generator: GeneratorName, s
         generator,
         pattern_index,
         0,
-        instrument=Instrument(sample_id=sample_id, generator_name=generator),
+        command=Instrument(sample_id=sample_id, generator_name=generator),
     )
 
 

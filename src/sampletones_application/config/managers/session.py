@@ -48,6 +48,9 @@ class SessionManager:
     def toggle_autoplay(self) -> bool:
         return self._state_manager.toggle_autoplay()
 
+    def set_follow_playback(self, value: bool) -> None:
+        self._state_manager.set_follow_playback(value)
+
     def toggle_favorite(self, path: Path) -> None:
         self._config_manager.toggle_favorite(path)
 
@@ -150,6 +153,10 @@ class SessionManager:
     @property
     def autoplay(self) -> bool:
         return self._state_manager.autoplay
+
+    @property
+    def follow_playback(self) -> bool:
+        return self._state_manager.follow_playback
 
     @property
     def favorites(self) -> Set[Path]:

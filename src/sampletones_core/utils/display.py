@@ -1,12 +1,14 @@
-from typing import Final, Optional
+from typing import Final, Optional, Union
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.structures import IdentifiedCollection
 from sampletones_core.utils.frequencies import period_to_name, pitch_to_name
 
 DEFAULT_DISPLAY_LENGTH: Final[int] = 2
+NOTE_OFF: Final[str] = "~~"
 
 
 def display_pitch(value: Optional[int], generator: GeneratorName) -> str:
@@ -38,10 +40,6 @@ def display_id(value: Optional[int]) -> str:
     return display_value(value, hexadecimal=True)
 
 
-def display_index(index: Optional[int]) -> str:
-    return display_value(index, hexadecimal=False)
-
-
 def display_sample(
     *,
     samples: IdentifiedCollection[Sample],
@@ -61,12 +59,18 @@ def display_sample_label(position: int, name: str) -> str:
     return f"{display_id(position)}: {name}"
 
 
-def display_instrument(
+def display_command(
     samples: IdentifiedCollection[Sample],
-    instruments: Optional[Instrument],
+    command: Optional[Union[Instrument, NoteOff]],
 ) -> str:
-    sample_id = instruments.sample_id if instruments is not None else None
-    return display_sample(samples=samples, sample_id=sample_id)
+    """Render a row's note-column command: a sample's list position, ``--`` for note-off, or ``..``."""
+    match command:
+        case NoteOff():
+            return NOTE_OFF
+        case Instrument():
+            return display_sample(samples=samples, sample_id=command.sample_id)
+        case None:
+            return display_sample(samples=samples, sample_id=None)
 
 
 def display_pattern_label(label: Optional[str]) -> str:

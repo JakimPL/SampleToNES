@@ -65,14 +65,14 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
             volume=15,
         )
 
         controller.remove_sample(sample.id)
 
         assert controller.project.sample(sample.id) is None
-        assert song.pattern(GeneratorName.PULSE1, pattern_id).rows[0].instrument is None
+        assert song.pattern(GeneratorName.PULSE1, pattern_id).rows[0].command is None
 
     def test_is_sample_used_reflects_pattern_references(
         self,
@@ -88,7 +88,7 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
         )
 
         assert controller.is_sample_used(sample.id) is True
@@ -114,14 +114,14 @@ class TestSamples:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
         )
 
         controller.move_sample(sample.id, 1)
 
         row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
-        assert row.instrument is not None
-        assert row.instrument.sample_id == sample.id
+        assert row.command is not None
+        assert row.command.sample_id == sample.id
 
     def test_move_sample_emits_samples_and_song_changes(
         self, reconstruction_factory: Callable[[], Reconstruction]
@@ -174,14 +174,14 @@ class TestSong:
             GeneratorName.PULSE1,
             pattern_id,
             2,
-            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
             transpose=0,
             volume=10,
         )
 
         row = song.pattern(GeneratorName.PULSE1, pattern_id).rows[2]
-        assert row.instrument is not None
-        assert row.instrument.sample_id == sample.id
+        assert row.command is not None
+        assert row.command.sample_id == sample.id
         assert row.transpose == 0
         assert row.volume == 10
 
@@ -227,7 +227,7 @@ class TestPersistenceRoundTrip:
             GeneratorName.PULSE1,
             pattern_id,
             0,
-            instrument=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
+            command=Instrument(sample_id=sample.id, generator_name=GeneratorName.PULSE1),
             volume=12,
         )
 
@@ -239,8 +239,8 @@ class TestPersistenceRoundTrip:
         assert loaded.settings.tempo == 96
         assert [stored.name for stored in loaded.samples] == ["lead"]
         loaded_row = loaded.song.pattern(GeneratorName.PULSE1, pattern_id).rows[0]
-        assert loaded_row.instrument is not None
-        assert loaded_row.instrument.sample_id == sample.id
+        assert loaded_row.command is not None
+        assert loaded_row.command.sample_id == sample.id
         assert loaded_row.volume == 12
 
 

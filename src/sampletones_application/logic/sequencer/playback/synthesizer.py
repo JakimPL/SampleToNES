@@ -15,6 +15,8 @@ from sampletones_core.instructions import (
     TriangleInstruction,
 )
 from sampletones_core.project import Project
+from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from sampletones_core.project.settings import ProjectSettings
 from sampletones_core.project.song import Song
@@ -210,10 +212,8 @@ class RowSynthesizer:
         state = self._channel_states[generator_name]
 
         row = self._resolve_row(generator_name, song)
-        if row is None:
-            return _silence(chunk_length)
-
-        self._apply_row_to_state(state, row)
+        if row is not None:
+            self._apply_row_to_state(state, row)
 
         sample_id = state.sample_id
         if sample_id is None or generator_name not in self._active_channels:
@@ -244,17 +244,22 @@ class RowSynthesizer:
         return pattern.rows[self._position.row_index]
 
     def _apply_row_to_state(self, state: _ChannelState, row: Row) -> None:
-        if row.instrument is not None:
-            state.generator.reset()
-            state.sample_id = row.instrument.sample_id
-            state.tick_index = 0
-            state.transpose = row.transpose if row.transpose is not None else 0
-            state.volume = row.volume if row.volume is not None else MAX_VOLUME
-        elif row.transpose is not None or row.volume is not None:
-            if row.transpose is not None:
-                state.transpose = row.transpose
-            if row.volume is not None:
-                state.volume = row.volume
+        match row.command:
+            case Instrument() as instrument:
+                state.generator.reset()
+                state.sample_id = instrument.sample_id
+                state.tick_index = 0
+                state.transpose = row.transpose if row.transpose is not None else 0
+                state.volume = row.volume if row.volume is not None else MAX_VOLUME
+            case NoteOff():
+                state.generator.reset()
+                state.sample_id = None
+                state.tick_index = 0
+            case None:
+                if row.transpose is not None:
+                    state.transpose = row.transpose
+                if row.volume is not None:
+                    state.volume = row.volume
 
     def _synthesize_ticks(
         self,

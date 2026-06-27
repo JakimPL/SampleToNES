@@ -13,6 +13,7 @@ class EditAction:
     sample_index: Optional[int]
     transpose: Optional[int]
     volume: Optional[int]
+    note_off: bool = False
 
 
 @dataclass

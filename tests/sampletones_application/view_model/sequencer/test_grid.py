@@ -8,7 +8,7 @@ from sampletones_application.view_model.sequencer.grid import (
     SequencerRowViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_id, display_transpose, display_volume
+from sampletones_core.utils.display import NOTE_OFF, display_id, display_transpose, display_volume
 from sampletones_shared.constants.symbols import MIXED
 
 _EMPTY_INSTRUMENT = display_id(None)
@@ -101,6 +101,22 @@ _CASES = [
         expected_instrument=display_id(0),
         expected_transpose=MIXED,
         expected_volume=display_volume(8),
+    ),
+    AggregateCase(
+        name="all_channels_note_off_reads_as_note_off",
+        cells={generator: _cell(instrument=NOTE_OFF) for generator in GeneratorName.items()},
+        relevant_generators=frozenset(),
+        expected_instrument=NOTE_OFF,
+        expected_transpose=_EMPTY_TRANSPOSE,
+        expected_volume=_EMPTY_VOLUME,
+    ),
+    AggregateCase(
+        name="partial_note_off_reads_as_empty",
+        cells=_row_cells(pulse1=_cell(instrument=NOTE_OFF)),
+        relevant_generators=frozenset(),
+        expected_instrument=_EMPTY_INSTRUMENT,
+        expected_transpose=_EMPTY_TRANSPOSE,
+        expected_volume=_EMPTY_VOLUME,
     ),
 ]
 
