@@ -212,10 +212,8 @@ class RowSynthesizer:
         state = self._channel_states[generator_name]
 
         row = self._resolve_row(generator_name, song)
-        if row is None:
-            return _silence(chunk_length)
-
-        self._apply_row_to_state(state, row)
+        if row is not None:
+            self._apply_row_to_state(state, row)
 
         sample_id = state.sample_id
         if sample_id is None or generator_name not in self._active_channels:

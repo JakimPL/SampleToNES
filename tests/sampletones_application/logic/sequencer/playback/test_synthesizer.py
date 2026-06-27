@@ -411,9 +411,42 @@ class TestLoopBehavior:
             ],
         ).run()
 
+    def test_looped_voice_sustains_across_an_empty_next_frame(self) -> None:
+        def place_loop_then_append_empty_frame(context: SynthesizerContext) -> None:
+            controller = _controller(context)
+            recon = make_pulse_reconstruction(count=2)
+            sample = add_sample(controller, recon, loop=True)
+            place_row(controller, generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            controller.append_frame()
+
+        def render_into_empty_second_frame_and_assert_sustained(context: SynthesizerContext) -> None:
+            rows_in_first_frame = _controller(context).project.song.rows_per_pattern
+            for _ in range(rows_in_first_frame):
+                _render(context)
+
+            audio, (order_position, _) = context.synthesizer.render_row()
+            assert order_position == 1
+            assert not np.all(audio == 0.0)
+            assert _state(context).sample_id is not None
+
+        BaseTestScenario(
+            label="looped voice carries across an empty (None-slot) next frame",
+            build=_make_context,
+            steps=[
+                ScenarioStep(
+                    label="loop on frame 0, append all-None frame 1",
+                    action=place_loop_then_append_empty_frame,
+                ),
+                ScenarioStep(
+                    label="render into frame 1 — voice still sounding",
+                    action=render_into_empty_second_frame_and_assert_sustained,
+                ),
+            ],
+        ).run()
+
 
 class TestSilenceCases:
-    def test_none_order_slot_produces_silence(self) -> None:
+    def test_none_order_slot_with_no_sounding_voice_produces_silence(self) -> None:
         def clear_all_order_slots(context: SynthesizerContext) -> None:
             song = _controller(context).project.song
             for generator_name in GeneratorName.items():
@@ -424,7 +457,7 @@ class TestSilenceCases:
             assert np.all(audio == 0.0)
 
         BaseTestScenario(
-            label="None order slot produces silence",
+            label="None order slot with nothing sounding produces silence",
             build=_make_context,
             steps=[
                 ScenarioStep(label="set all order slots to None", action=clear_all_order_slots),
