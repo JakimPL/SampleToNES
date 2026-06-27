@@ -4,8 +4,14 @@ from unittest.mock import Mock
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project import Project
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
-from sampletones_core.utils.display import display_instrument, display_sample, display_sample_label
+from sampletones_core.utils.display import (
+    NOTE_OFF,
+    display_command,
+    display_sample,
+    display_sample_label,
+)
 
 
 def _project_with_samples(count: int) -> Tuple[Project, List[Sample]]:
@@ -71,7 +77,7 @@ class TestDisplaySampleLabel:
         assert display_sample_label(26, "Lead") == "1A: Lead"
 
 
-class TestDisplaySubinstrument:
+class TestDisplayCommand:
     def test_resolves_referenced_instrument(self) -> None:
         project, samples = _project_with_samples(2)
         instrument = Instrument(
@@ -79,9 +85,9 @@ class TestDisplaySubinstrument:
             generator_name=GeneratorName.PULSE1,
         )
         assert (
-            display_instrument(
+            display_command(
                 samples=project.samples,
-                instruments=instrument,
+                command=instrument,
             )
             == "01"
         )
@@ -89,9 +95,19 @@ class TestDisplaySubinstrument:
     def test_none_is_placeholder(self) -> None:
         project, _ = _project_with_samples(1)
         assert (
-            display_instrument(
+            display_command(
                 samples=project.samples,
-                instruments=None,
+                command=None,
             )
             == ".."
+        )
+
+    def test_note_off_renders_dashes(self) -> None:
+        project, _ = _project_with_samples(1)
+        assert (
+            display_command(
+                samples=project.samples,
+                command=NoteOff(),
+            )
+            == NOTE_OFF
         )

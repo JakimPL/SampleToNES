@@ -97,11 +97,11 @@ class Song(BaseModel):
         )
 
     def clear_sample_references(self, sample_id: str) -> None:
-        """Clears the instrument of every row that points at a removed sample."""
+        """Clears the note-column command of every row that points at a removed sample."""
         for channel in self.channels.values():
             for pattern in channel.patterns.values():
                 pattern.rows = [
-                    row.model_copy(update={"instrument": None}) if row.references_sample(sample_id) else row
+                    row.model_copy(update={"command": None}) if row.references_sample(sample_id) else row
                     for row in pattern.rows
                 ]
 

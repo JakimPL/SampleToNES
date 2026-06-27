@@ -5,6 +5,7 @@ import pytest
 
 from sampletones_application.categories.hierarchy import Tab
 from sampletones_application.coordinators.sequencer import SequencerTabCoordinator
+from sampletones_core.constants.enums import GeneratorName
 
 
 @pytest.fixture
@@ -237,6 +238,26 @@ class TestFollowPlayback:
 
         playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
         playback_coordinator._song_player_logic.seek.assert_not_called()
+
+
+class TestNoteOffDispatch:
+    def test_channel_cell_writes_note_off_to_that_channel(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._on_set_note_off(2, GeneratorName.PULSE1)
+
+        playback_coordinator._sequencer_grid_logic.set_note_off.assert_called_once_with(GeneratorName.PULSE1, 2)
+        playback_coordinator._sequencer_grid_logic.set_note_off_all_generators.assert_not_called()
+
+    def test_sample_column_cuts_every_channel(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._on_set_note_off(2, None)
+
+        playback_coordinator._sequencer_grid_logic.set_note_off_all_generators.assert_called_once_with(2)
+        playback_coordinator._sequencer_grid_logic.set_note_off.assert_not_called()
 
 
 class TestImportReconstruction:

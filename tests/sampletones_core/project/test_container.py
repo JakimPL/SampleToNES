@@ -44,7 +44,7 @@ def _populated_project(
     pattern.name = "intro"
     pattern.rows[0] = Row(
         transpose=0,
-        instrument=Instrument(
+        command=Instrument(
             sample_id=first.id,
             generator_name=GeneratorName.PULSE1,
         ),
@@ -84,8 +84,8 @@ class TestRoundTrip:
         assert first_pattern.name == "intro"
         row = first_pattern.rows[0]
         assert row.transpose == 0
-        assert row.instrument is not None
-        assert row.instrument.sample_id == loaded.samples[0].id
+        assert row.command is not None
+        assert row.command.sample_id == loaded.samples[0].id
 
     def test_references_resolve_after_load(
         self,
@@ -101,7 +101,7 @@ class TestRoundTrip:
         channel = loaded_song[GeneratorName.PULSE1]
         index_at_0 = loaded_song.order[0].get(GeneratorName.PULSE1)
         row = channel.pattern(index_at_0).rows[0]
-        assert loaded.sample(row.instrument.sample_id) is loaded.samples[0]
+        assert loaded.sample(row.command.sample_id) is loaded.samples[0]
         index_at_2 = loaded_song.order[2].get(GeneratorName.PULSE1)
         assert channel.pattern(index_at_0) is channel.pattern(index_at_2)
 

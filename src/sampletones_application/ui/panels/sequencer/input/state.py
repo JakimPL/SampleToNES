@@ -133,6 +133,9 @@ class TrackerInputState:
         if self.cursor is None:
             return self, None
 
+        if self.cursor.subcolumn is SubColumn.INSTRUMENT and char == MINUS:
+            return self.reset_pending(), self._note_off_action(self.cursor)
+
         if self.cursor.subcolumn is SubColumn.TRANSPOSE:
             return self._type_transpose_char(char)
 
@@ -146,6 +149,16 @@ class TrackerInputState:
 
         action = _parse(self.cursor, pending)
         return self.reset_pending(), action
+
+    def _note_off_action(self, cursor: TrackerCursor) -> EditAction:
+        return EditAction(
+            row=cursor.row,
+            generator=cursor.generator,
+            sample_index=None,
+            transpose=None,
+            volume=None,
+            note_off=True,
+        )
 
     def _type_transpose_char(
         self,

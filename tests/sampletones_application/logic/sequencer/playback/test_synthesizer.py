@@ -13,6 +13,7 @@ from tests.sampletones_application.logic.sequencer.playback.conftest import (
     make_controller,
     make_pulse_reconstruction,
     place_modifier_row,
+    place_note_off,
     place_row,
 )
 from tests.suite.scenario import BaseTestScenario, ScenarioStep
@@ -315,6 +316,36 @@ class TestPositionAdvance:
                 ScenarioStep(
                     label="render row 0 — returned position is 0,0", action=render_and_check_returned_position
                 ),
+            ],
+        ).run()
+
+
+class TestNoteOff:
+    def test_note_off_cuts_a_sounding_looped_voice(self) -> None:
+        def place_looped_sample_then_note_off(context: SynthesizerContext) -> None:
+            recon = make_pulse_reconstruction(count=2)
+            sample = add_sample(_controller(context), recon, loop=True)
+            place_row(_controller(context), generator=GeneratorName.PULSE1, row_index=0, sample_id=sample.id)
+            place_note_off(_controller(context), generator=GeneratorName.PULSE1, row_index=1)
+
+        def render_row_0_and_assert_audible(context: SynthesizerContext) -> None:
+            assert not np.all(_render(context) == 0.0)
+
+        def render_row_1_and_assert_silenced(context: SynthesizerContext) -> None:
+            audio = _render(context)
+            assert np.all(audio == 0.0)
+            assert _state(context).sample_id is None
+
+        BaseTestScenario(
+            label="note-off silences a looped voice and clears channel state",
+            build=_make_context,
+            steps=[
+                ScenarioStep(
+                    label="place looped sample on row 0, note-off on row 1",
+                    action=place_looped_sample_then_note_off,
+                ),
+                ScenarioStep(label="render row 0 — audible", action=render_row_0_and_assert_audible),
+                ScenarioStep(label="render row 1 — note-off cuts the voice", action=render_row_1_and_assert_silenced),
             ],
         ).run()
 

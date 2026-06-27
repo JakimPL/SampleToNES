@@ -21,7 +21,7 @@ def _song(rows_per_pattern: int = _ROWS) -> Song:
 def _place_instrument(song: Song, generator: GeneratorName, sample_id: str, row_index: int = 0) -> None:
     pattern = song.pattern(generator, 0)
     assert pattern is not None
-    pattern.rows[row_index] = Row(instrument=Instrument(sample_id=sample_id, generator_name=generator))
+    pattern.rows[row_index] = Row(command=Instrument(sample_id=sample_id, generator_name=generator))
 
 
 class TestSongEmpty:
@@ -225,8 +225,8 @@ class TestSongClearSampleReferences:
 
         pattern = song.pattern(GeneratorName.PULSE1, 0)
         assert pattern is not None
-        assert pattern.rows[0].instrument is None
-        assert pattern.rows[1].instrument is not None
+        assert pattern.rows[0].command is None
+        assert pattern.rows[1].command is not None
 
     def test_clears_references_across_all_channels(self) -> None:
         song = _song()
@@ -245,7 +245,7 @@ class TestSongClearSampleReferences:
 
         pattern = song.pattern(GeneratorName.PULSE1, 0)
         assert pattern is not None
-        assert pattern.rows[0].instrument is not None
+        assert pattern.rows[0].command is not None
 
 
 class TestSongResizePatterns:

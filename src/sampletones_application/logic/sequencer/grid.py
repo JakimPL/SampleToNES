@@ -9,12 +9,13 @@ from sampletones_application.view_model.sequencer.grid import (
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.project.patterns.pattern import Pattern
-from sampletones_core.project.patterns.row import Row
+from sampletones_core.project.patterns.row import NoteCommand, Row
 from sampletones_core.utils.display import (
+    display_command,
     display_id,
-    display_instrument,
     display_transpose,
     display_volume,
 )
@@ -122,7 +123,7 @@ class SequencerGridLogic(CallbackMixin):
         generator: GeneratorName,
         row_index: int,
         *,
-        instrument: Optional[Instrument] = None,
+        command: Optional[NoteCommand] = None,
         transpose: Optional[int] = None,
         volume: Optional[int] = None,
     ) -> None:
@@ -136,7 +137,7 @@ class SequencerGridLogic(CallbackMixin):
             generator,
             pattern_index,
             row_index,
-            instrument=instrument,
+            command=command,
             transpose=transpose,
             volume=volume,
         )
@@ -213,13 +214,22 @@ class SequencerGridLogic(CallbackMixin):
                 self.set_row(
                     generator,
                     row_index,
-                    instrument=Instrument(
+                    command=Instrument(
                         sample_id=sample_id,
                         generator_name=generator,
                     ),
                 )
             else:
                 self.clear_row(generator, row_index)
+
+    def set_note_off(self, generator: GeneratorName, row_index: int) -> None:
+        """Writes a note-off into one channel's cell, materialising the pattern if needed."""
+        self.set_row(generator, row_index, command=NoteOff())
+
+    def set_note_off_all_generators(self, row_index: int) -> None:
+        """Cuts every channel at this row, the sample-column counterpart of :meth:`set_note_off`."""
+        for generator in GeneratorName.items():
+            self.set_note_off(generator, row_index)
 
     def set_sample_subcolumn(
         self,
@@ -341,17 +351,18 @@ class SequencerGridLogic(CallbackMixin):
         relevant: Set[GeneratorName] = set()
         resolved: Set[str] = set()
         for row in rows.values():
-            if row is None or row.instrument is None:
+            command = row.command if row is not None else None
+            if not isinstance(command, Instrument):
                 continue
 
-            sample_id = row.instrument.sample_id
+            sample_id = command.sample_id
             if sample_id in resolved:
                 continue
 
             resolved.add(sample_id)
             sample = self._controller.project.samples.get(sample_id)
             if sample is None:
-                relevant.add(row.instrument.generator_name)
+                relevant.add(command.generator_name)
             else:
                 relevant.update(self._used_generators(sample))
 
@@ -382,9 +393,9 @@ class SequencerGridLogic(CallbackMixin):
 
     def _build_cell(self, row: Row) -> SequencerCellViewModel:
         return SequencerCellViewModel(
-            instrument=display_instrument(
+            instrument=display_command(
                 self._controller.project.samples,
-                row.instrument,
+                row.command,
             ),
             transpose=display_transpose(row.transpose),
             volume=display_volume(row.volume),

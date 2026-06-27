@@ -49,12 +49,13 @@ from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_index
+from sampletones_core.utils.display import NOTE_OFF, display_index
 from sampletones_shared.types.application import Sender
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
 OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], None]
 OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
+OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
 
 
@@ -90,6 +91,7 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_clear_row: Optional[OnClearRowCallback] = None
         self.on_clear_subcolumn: Optional[OnClearSubcolumnCallback] = None
         self.on_set_row: Optional[OnSetRowCallback] = None
+        self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
 
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
@@ -483,6 +485,12 @@ class GUISequencerGridPanel(GUIPanel):
         of the row instead of wiping it.
         """
         row, generator = action.row, action.generator
+
+        if action.note_off:
+            self._editable_cells.values[(row, generator, SubColumn.INSTRUMENT)] = NOTE_OFF
+            self.call(self.on_set_note_off, row, generator)
+            return
+
         sample_id: Optional[str] = None
 
         if action.sample_index is not None:

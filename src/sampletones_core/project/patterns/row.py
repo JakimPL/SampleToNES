@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -8,20 +8,24 @@ from sampletones_core.constants.general import (
     MIN_TRANSPOSE,
 )
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
+
+NoteCommand = Union[Instrument, NoteOff]
 
 
 class Row(BaseModel):
     """A single tracker line on one channel.
 
-    All fields are optional: a fully empty row represents a blank line. Effect
-    and transpose columns are intentionally deferred to a later step.
+    The note column holds a :data:`NoteCommand`: an :class:`Instrument` reference, a
+    :class:`NoteOff`, or ``None`` for an empty cell. Transpose and volume are independent optional
+    columns. A fully empty row (no command, no transpose, no volume) is a blank line.
     """
 
     model_config = ConfigDict(frozen=True)
 
-    instrument: Optional[Instrument] = Field(
+    command: Optional[NoteCommand] = Field(
         default=None,
-        description="Referenced channel-slice.",
+        description="Note-column command: a sample reference, a note-off, or None for an empty cell.",
     )
     transpose: Optional[int] = Field(
         default=None,
@@ -37,7 +41,8 @@ class Row(BaseModel):
     )
 
     def is_empty(self) -> bool:
-        return self.instrument is None and self.transpose is None and self.volume is None
+        return self.command is None and self.transpose is None and self.volume is None
 
     def references_sample(self, sample_id: str) -> bool:
-        return self.instrument is not None and self.instrument.sample_id == sample_id
+        command = self.command
+        return isinstance(command, Instrument) and command.sample_id == sample_id

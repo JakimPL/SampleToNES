@@ -229,6 +229,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_clear_row = self._on_clear_row
         self._sequencer_grid_panel.on_clear_subcolumn = self._on_clear_subcolumn
         self._sequencer_grid_panel.on_set_row = self._on_set_row
+        self._sequencer_grid_panel.on_set_note_off = self._on_set_note_off
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
@@ -433,7 +434,7 @@ class SequencerTabCoordinator:
                     volume=volume,
                 )
         else:
-            instrument = (
+            command = (
                 Instrument(
                     sample_id=sample_id,
                     generator_name=generator,
@@ -444,10 +445,17 @@ class SequencerTabCoordinator:
             self._sequencer_grid_logic.set_row(
                 generator,
                 row_index,
-                instrument=instrument,
+                command=command,
                 transpose=transpose,
                 volume=volume,
             )
+
+    def _on_set_note_off(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+        """Writes a note-off: to one channel, or across every channel from the sample column."""
+        if generator is None:
+            self._sequencer_grid_logic.set_note_off_all_generators(row_index)
+        else:
+            self._sequencer_grid_logic.set_note_off(generator, row_index)
 
     def _on_samples_changed(self, view_model: SequencerSamplesViewModel) -> None:
         self._sequencer_samples_panel.update_view(view_model)

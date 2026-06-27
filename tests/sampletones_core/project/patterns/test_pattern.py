@@ -13,7 +13,7 @@ def _empty_pattern() -> Pattern:
 
 
 def _row_with_instrument() -> Row:
-    return Row(instrument=Instrument(sample_id="x", generator_name=GeneratorName.PULSE1))
+    return Row(command=Instrument(sample_id="x", generator_name=GeneratorName.PULSE1))
 
 
 class TestRowIsEmpty:
@@ -21,7 +21,7 @@ class TestRowIsEmpty:
         assert Row().is_empty()
 
     def test_row_with_instrument_is_not_empty(self) -> None:
-        assert not Row(instrument=Instrument(sample_id="x", generator_name=GeneratorName.PULSE1)).is_empty()
+        assert not Row(command=Instrument(sample_id="x", generator_name=GeneratorName.PULSE1)).is_empty()
 
     def test_row_with_transpose_is_not_empty(self) -> None:
         assert not Row(transpose=0).is_empty()

@@ -5,6 +5,7 @@ from pydantic import ValidationError
 
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.project.instruments.instrument import Instrument
+from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.patterns.row import Row
 from tests.suite.base import BaseTestSuite
 from tests.suite.case import BaseAutolabelTestCase
@@ -44,7 +45,7 @@ class TestRowDefaults:
     def test_empty_row(self) -> None:
         row = Row()
         assert row.transpose is None
-        assert row.instrument is None
+        assert row.command is None
         assert row.volume is None
 
     def test_is_frozen(self) -> None:
@@ -60,12 +61,13 @@ class TestRowSerialization(BaseTestSuite):
 
         @property
         def label(self) -> str:
-            return f"transpose={self.expected.transpose}_instrument={self.expected.instrument is not None}"
+            return f"transpose={self.expected.transpose}_command={self.expected.command is not None}"
 
     test_cases = [
         TestCase(expected=Row()),
         TestCase(expected=Row(transpose=0, volume=15)),
-        TestCase(expected=Row(transpose=12, instrument=_instrument(), volume=8)),
+        TestCase(expected=Row(transpose=12, command=_instrument(), volume=8)),
+        TestCase(expected=Row(command=NoteOff())),
     ]
 
     @pytest.mark.parametrize(

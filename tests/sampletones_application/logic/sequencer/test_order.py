@@ -75,7 +75,7 @@ def _fill_all(logic: SequencerOrderLogic, position: int) -> None:
         if index is None:
             index = song[generator].add_pattern(64)
             song.set_order_entry(position, generator, index)
-        song[generator].patterns[index].rows[0] = Row(instrument=Instrument(sample_id="s", generator_name=generator))
+        song[generator].patterns[index].rows[0] = Row(command=Instrument(sample_id="s", generator_name=generator))
 
 
 def _assign_empty_pattern(logic: SequencerOrderLogic, position: int) -> None:
