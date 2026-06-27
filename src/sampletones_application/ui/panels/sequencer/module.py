@@ -49,6 +49,7 @@ class GUISequencerModulePanel(GUIPanel):
         self._layout = layout
         self._input_width = input_width
         self._nes_frequency_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY}{SUF_HANDLER_REGISTRY}"
+        self._rows_handler_tag = f"{TAG_SEQUENCER_MODULE_INPUT_ROWS}{SUF_HANDLER_REGISTRY}"
 
         self.on_nes_frequency: Optional[Callable[[int], None]] = None
         self.on_rows_per_pattern: Optional[Callable[[int], None]] = None
@@ -143,8 +144,6 @@ class GUISequencerModulePanel(GUIPanel):
                 min_clamped=True,
                 max_clamped=True,
                 width=self._input_width,
-                on_enter=True,
-                callback=self._on_rows_per_pattern_input,
             )
             dpg.add_input_int(
                 label=self._lbl_tempo,
@@ -169,7 +168,16 @@ class GUISequencerModulePanel(GUIPanel):
                 callback=self._on_speed_input,
             )
 
-        self._create_nes_frequency_handler()
+        self._commit_on_finish(
+            TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY,
+            self._nes_frequency_handler_tag,
+            self._on_nes_frequency_input,
+        )
+        self._commit_on_finish(
+            TAG_SEQUENCER_MODULE_INPUT_ROWS,
+            self._rows_handler_tag,
+            self._on_rows_per_pattern_input,
+        )
         show_tooltip(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._tpl_rows_tooltip)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._msg_status_input)
         GUIStatusBar.bind_to_item(TAG_SEQUENCER_MODULE_INPUT_ROWS, self._msg_status_input)
@@ -194,17 +202,18 @@ class GUISequencerModulePanel(GUIPanel):
     def set_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_SEQUENCER_MODULE_GROUP_OPTIONS, enabled=enabled)
 
-    def _create_nes_frequency_handler(self) -> None:
-        """Commits the NES frequency only when the field is left or Enter is pressed.
+    def _commit_on_finish(self, input_tag: str, handler_tag: str, callback: Callable[[Sender, int], None]) -> None:
+        """Commits a field only when editing finishes (focus lost or Enter pressed).
 
-        The change is potentially destructive — the coordinator may confirm it — so it must
-        not fire on every keystroke or [-]/[+] step; ``deactivated_after_edit`` collapses a
-        burst of edits into one commit when the field loses focus or Enter is pressed.
+        Used for the fields whose change rebuilds or re-times the song — NES frequency and rows
+        per pattern. Committing per keystroke or [-]/[+] step would resize the grid mid-edit (and,
+        for the frequency, prompt repeatedly); ``deactivated_after_edit`` collapses a burst of edits
+        into a single commit.
         """
-        with dpg.item_handler_registry(tag=self._nes_frequency_handler_tag):
-            dpg.add_item_deactivated_after_edit_handler(callback=self._on_nes_frequency_input)
+        with dpg.item_handler_registry(tag=handler_tag):
+            dpg.add_item_deactivated_after_edit_handler(callback=callback)
 
-        dpg.bind_item_handler_registry(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY, self._nes_frequency_handler_tag)
+        dpg.bind_item_handler_registry(input_tag, handler_tag)
 
     def _on_nes_frequency_input(self, sender: Sender, app_data: int) -> None:
         self.call(self.on_nes_frequency, int(clamp_widget_value(TAG_SEQUENCER_MODULE_INPUT_NES_FREQUENCY)))

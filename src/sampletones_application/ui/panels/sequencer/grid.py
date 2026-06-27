@@ -346,7 +346,8 @@ class GUISequencerGridPanel(GUIPanel):
 
     def _add_empty_cell(self, row_id: Sender) -> None:
         empty_cell = dpg.add_table_cell(parent=row_id)
-        dpg.add_spacer(parent=empty_cell, width=0)
+        if dpg.does_item_exist(empty_cell):
+            dpg.add_spacer(parent=empty_cell, width=0)
 
     def _add_row_number_cell(self, row_id: Sender, row_index: int) -> None:
         number_cell = dpg.add_table_cell(parent=row_id)
@@ -719,21 +720,35 @@ class GUISequencerGridPanel(GUIPanel):
         self._highlighted_row = None
 
     def set_playing_row(self, row_index: Optional[int]) -> None:
-        if self._playing_row is not None and self._playing_row < self._current_row_count:
+        if self._playing_row is not None and self._playing_row < self._live_row_count():
             dpg.unhighlight_table_row(TAG_SEQUENCER_GRID_TABLE_TRACKER, self._playing_row)
 
         self._playing_row = row_index
         self._apply_playing_row_highlight()
 
     def _apply_playing_row_highlight(self) -> None:
-        """Highlights the playing row, skipping a stale index that a shrunk pattern dropped.
+        """Highlights the playing row, skipping an index outside the live table.
 
-        A rebuild after fewer rows can leave ``_playing_row`` beyond the table; the next
-        position update from the player replaces it with a valid row.
+        Position updates arrive on the callback-queue worker thread, so the table may be shorter
+        than ``_playing_row`` if the main thread shrank it (a rows-per-pattern change) in between;
+        checking the live row count keeps a stale index from reaching DearPyGui.
         """
-        if self._playing_row is not None and self._playing_row < self._current_row_count:
+        if self._playing_row is not None and self._playing_row < self._live_row_count():
             dpg.highlight_table_row(
                 TAG_SEQUENCER_GRID_TABLE_TRACKER,
                 self._playing_row,
                 color=self._layout.colors.playback_row,
             )
+
+    def _live_row_count(self) -> int:
+        """The table's current row count, read from DearPyGui rather than cached.
+
+        The cached ``_current_row_count`` reflects the last build on this thread; a concurrent
+        rebuild on another thread can leave it stale, so row-index-bounded DearPyGui calls read the
+        actual children instead.
+        """
+        if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
+            return 0
+
+        rows = dpg.get_item_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
+        return len(rows) if rows else 0
