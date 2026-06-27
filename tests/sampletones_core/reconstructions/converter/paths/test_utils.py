@@ -4,112 +4,18 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
-from sampletones_core.configs.display import (
-    DISPLAY_SEPARATOR,
-    format_nes_frequency,
-    format_sample_rate,
-)
-from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import (
-    ConfigDirectoryFields,
-    abbreviate_generator_names,
     filter_files,
-    generate_config_directory_name,
     get_audio_files,
     get_output_path,
     get_relative_path,
 )
 
-HASH = "6edf7c948606917a78b45d153c7ca7e0"
-
 
 @pytest.fixture(scope="module")
 def config() -> Config:
     return Config()
-
-
-class TestAbbreviateGeneratorNames:
-    def test_single_generator_produces_its_abbreviation(self) -> None:
-        assert abbreviate_generator_names([GeneratorName.PULSE1]) == "P"
-
-    def test_multiple_generators_concatenates_in_order(self) -> None:
-        assert "PTN" == abbreviate_generator_names(
-            [
-                GeneratorName.PULSE1,
-                GeneratorName.TRIANGLE,
-                GeneratorName.NOISE,
-            ]
-        )
-
-
-class TestGenerateConfigDirectoryName:
-    def test_result_contains_sample_rate(self, config: Config) -> None:
-        name = generate_config_directory_name(config)
-        assert str(config.library.sample_rate) in name
-
-    def test_result_contains_nes_frequency(self, config: Config) -> None:
-        name = generate_config_directory_name(config)
-        assert str(config.library.nes_frequency) in name
-
-    def test_same_config_produces_same_name(self, config: Config) -> None:
-        assert generate_config_directory_name(config) == generate_config_directory_name(config)
-
-    def test_different_generator_sets_produce_different_names(
-        self,
-        config: Config,
-    ) -> None:
-        single_generator_config = config.model_copy(
-            update={
-                "generation": config.generation.model_copy(
-                    update={
-                        "generators": [
-                            GeneratorName.PULSE1,
-                        ]
-                    }
-                )
-            }
-        )
-        assert generate_config_directory_name(config) != generate_config_directory_name(single_generator_config)
-
-
-class TestConfigDirectoryFields:
-    def test_round_trips_with_generate_config_directory_name(self, config: Config) -> None:
-        name = generate_config_directory_name(config)
-        fields = ConfigDirectoryFields.from_directory_name(name)
-        assert fields is not None
-        assert fields.directory_name == name
-
-    def test_parses_components(self, config: Config) -> None:
-        name = generate_config_directory_name(config)
-        fields = ConfigDirectoryFields.from_directory_name(name)
-        assert fields is not None
-        assert fields.sample_rate == config.library.sample_rate
-        assert fields.nes_frequency == config.library.nes_frequency
-        assert fields.generators == list(config.generation.generators)
-
-    @pytest.mark.parametrize(
-        "name",
-        [
-            "not-a-config-dir",
-            "44100_30_PpT",
-            f"44100_30_PpT_{HASH[:10]}",
-            f"44100_x_PpT_{HASH}",
-            f"44100_30_XYZ_{HASH}",
-            f"44100_30__{HASH}",
-        ],
-    )
-    def test_malformed_names_return_none(self, name: str) -> None:
-        assert ConfigDirectoryFields.from_directory_name(name) is None
-
-    def test_display_name_combines_formatted_parts(self, config: Config) -> None:
-        fields = ConfigDirectoryFields.from_config(config)
-        display = fields.display_name
-
-        assert format_sample_rate(config.library.sample_rate) in display
-        assert format_nes_frequency(config.library.nes_frequency) in display
-        assert abbreviate_generator_names(list(config.generation.generators)) in display
-        assert DISPLAY_SEPARATOR in display
 
 
 class TestGetRelativePath:

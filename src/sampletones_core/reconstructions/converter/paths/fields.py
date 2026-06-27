@@ -1,4 +1,4 @@
-from typing import Final, List, Optional, Self
+from typing import Final, Optional, Self, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -9,85 +9,86 @@ from sampletones_core.configs.display import (
     format_sample_rate,
 )
 from sampletones_core.constants.enums import (
+    GENERATOR_ABBREVIATION_PATTERN,
     GENERATOR_ABBREVIATION_TO_NAME,
     GeneratorName,
     abbreviate_generator_names,
 )
+from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_shared.utils.serialization import HASH_PATTERN, hash_models
 
 CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
 
 
 class ConfigDirectoryFields(BaseModel):
-    """Structured view of a reconstruction config-directory name (``sr_nf_gens_hash``).
+    """Structured view of a reconstruction config-directory name.
 
-    Pairs construction (:meth:`from_config`) with parsing (:meth:`from_directory_name`) so the
-    on-disk name and its friendly rendering share one source of truth. The hash folds in both the
-    library and generation configs, so it disambiguates directories whose visible basics coincide.
+    The on-disk name is a key-value sequence (``sr_44100_nf_30_gn_PTN_ch_<hash>``); the embedded
+    keys let :meth:`from_directory_name` validate the name by field. Construction
+    (:meth:`from_config`) and parsing live together so the name and its friendly rendering share one
+    source of truth. The hash folds in both the library and generation configs, so it disambiguates
+    directories whose visible basics coincide.
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True, extra="forbid")
 
-    sample_rate: int = Field(gt=0)
-    nes_frequency: int = Field(gt=0)
-    generators: List[GeneratorName] = Field(min_length=1)
-    config_hash: str = Field(pattern=HASH_PATTERN)
+    sr: int = Field(gt=0, validation_alias=ALIASES["sr"])
+    nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
+    gn: str = Field(pattern=GENERATOR_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
+    ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
+
+    @property
+    def generators(self) -> Tuple[GeneratorName, ...]:
+        return tuple(GENERATOR_ABBREVIATION_TO_NAME[character] for character in self.gn)
 
     @classmethod
     def from_config(cls, config: Config) -> Self:
         return cls(
-            sample_rate=config.library.sample_rate,
-            nes_frequency=config.library.nes_frequency,
-            generators=list(config.generation.generators),
-            config_hash=hash_models(config.library, config.generation),
+            sr=config.library.sample_rate,
+            nf=config.library.nes_frequency,
+            gn=abbreviate_generator_names(config.generation.generators),
+            ch=hash_models(config.library, config.generation),
         )
 
     @classmethod
     def from_directory_name(cls, name: str) -> Optional[Self]:
         """Parses a directory name, returning ``None`` when it is not a config directory.
 
-        Returns ``None`` rather than raising so callers can probe arbitrary filesystem entries
-        (plain folders, audio directories) and simply leave non-matching names untouched.
+        Returning ``None`` for non-config names lets callers probe arbitrary filesystem entries
+        (plain folders, audio directories) and leave non-matching names untouched. Pydantic validates
+        the keys, value types, and hash shape, so a missing or unknown key or a malformed value yields
+        ``None``.
         """
         parts = name.split(CONFIG_DIRECTORY_SEPARATOR)
-        if len(parts) != len(cls.model_fields):
+        if len(parts) != 2 * len(cls.model_fields):
             return None
 
-        sample_rate, nes_frequency, generators, config_hash = parts
-        if not sample_rate.isdigit() or not nes_frequency.isdigit():
-            return None
-
-        if not generators or any(character not in GENERATOR_ABBREVIATION_TO_NAME for character in generators):
-            return None
-
+        pairs = dict(zip(parts[::2], parts[1::2]))
         try:
-            return cls(
-                sample_rate=int(sample_rate),
-                nes_frequency=int(nes_frequency),
-                generators=[GENERATOR_ABBREVIATION_TO_NAME[character] for character in generators],
-                config_hash=config_hash,
-            )
+            return cls.model_validate(pairs)
         except ValidationError:
             return None
 
     @property
     def directory_name(self) -> str:
-        return CONFIG_DIRECTORY_SEPARATOR.join(
-            [
-                str(self.sample_rate),
-                str(self.nes_frequency),
-                abbreviate_generator_names(self.generators),
-                self.config_hash,
-            ]
+        pairs = (
+            CONFIG_DIRECTORY_SEPARATOR.join(
+                [
+                    key,
+                    str(value),
+                ]
+            )
+            for key, value in self.model_dump().items()
         )
+        return CONFIG_DIRECTORY_SEPARATOR.join(pairs)
 
     @property
     def display_name(self) -> str:
         return DISPLAY_SEPARATOR.join(
             [
-                format_sample_rate(self.sample_rate),
-                format_nes_frequency(self.nes_frequency),
-                abbreviate_generator_names(self.generators),
+                format_sample_rate(self.sr),
+                format_nes_frequency(self.nf),
+                self.gn,
             ]
         )
 

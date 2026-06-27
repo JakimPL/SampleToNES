@@ -25,8 +25,8 @@ def show_tooltip(parent: str, message: str) -> Sender:
 def show_detail_tooltip(parent: str, items: List[Tuple[str, str]]) -> None:
     """Attaches a hover tooltip rendering ``label``/``value`` pairs in two aligned columns.
 
-    ``mvTable_SizingFixedFit`` sizes each column to its own content, so a long value (e.g. many
-    generators) does not stretch the label column. A compact theme tightens the row padding.
+    ``mvTable_SizingFixedFit`` sizes each column to its own content, so the label column tracks its
+    own text width independently of the value column. A compact theme tightens the row padding.
     """
     with dpg.tooltip(parent, hide_on_activity=True) as tooltip:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)

@@ -114,7 +114,7 @@ class BrowserManager:
                 continue
 
             for directory_node, fields in members:
-                directory_node.name = f"{display_name}{DISPLAY_SEPARATOR}#{short_hash(fields.config_hash)}"
+                directory_node.name = f"{display_name}{DISPLAY_SEPARATOR}#{short_hash(fields.ch)}"
 
     def get_all_reconstruction_files(self) -> List[Path]:
         file_nodes = [

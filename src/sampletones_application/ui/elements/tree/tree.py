@@ -564,10 +564,10 @@ class GUITreePanel(GUIPanel):
 
         generators = ", ".join(generator.capitalized for generator in fields.generators)
         return [
-            (self._lbl_detail_sample_rate, format_sample_rate(fields.sample_rate)),
-            (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nes_frequency)),
+            (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),
+            (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
             (self._lbl_detail_generators, generators),
-            (self._lbl_detail_configuration, short_hash(fields.config_hash)),
+            (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]
 
     def _add_context_menu_details(self, node: TreeNode) -> None:

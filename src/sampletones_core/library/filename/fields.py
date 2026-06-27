@@ -3,8 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Final
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
 from sampletones_shared.utils.serialization import HASH_PATTERN
@@ -13,11 +14,13 @@ FILENAME_SEPARATOR: Final[str] = "_"
 
 
 class InstructionsFilenameFields(BaseModel):
-    sr: int = Field(gt=0)
-    nf: int = Field(gt=0)
-    ws: int = Field(gt=0)
-    tg: int = Field(ge=0)
-    ch: str = Field(pattern=HASH_PATTERN)
+    model_config = ConfigDict(populate_by_name=True)
+
+    sr: int = Field(gt=0, validation_alias=ALIASES["sr"])
+    nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
+    ws: int = Field(gt=0, validation_alias=ALIASES["ws"])
+    tg: int = Field(ge=0, validation_alias=ALIASES["tg"])
+    ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
 
     @property
     def stem(self) -> str:
