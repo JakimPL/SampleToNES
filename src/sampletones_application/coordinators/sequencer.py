@@ -197,6 +197,7 @@ class SequencerTabCoordinator:
             audio_device_manager,
             project_controller,
             config_manager.config,
+            session_manager,
         )
         self._player_panel: GUISongPlayerPanel
         self._sequencer_grid_panel: GUISequencerGridPanel = GUISequencerGridPanel(
@@ -234,7 +235,7 @@ class SequencerTabCoordinator:
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
 
         self._sequencer_order_logic.on_order_changed = self._sequencer_order_panel.update_order
-        self._sequencer_order_panel.on_frame_selected = self._sequencer_grid_logic.select_frame
+        self._sequencer_order_panel.on_frame_selected = self._on_order_frame_selected
         self._sequencer_order_panel.on_add_requested = self._on_add_to_order
         self._sequencer_order_panel.on_remove_requested = self._sequencer_order_logic.remove_from_order
         self._sequencer_order_panel.on_set_order_entry = self._sequencer_order_logic.set_order_entry
@@ -301,7 +302,19 @@ class SequencerTabCoordinator:
     def _on_player_position_changed(self, order_position: int, row_index: int) -> None:
         self._sequencer_grid_panel.set_playing_row(row_index)
         self._sequencer_order_panel.set_playing_position(order_position)
-        self._sequencer_grid_logic.select_frame(order_position)
+        if self._song_player_logic.follow_playback:
+            self._sequencer_grid_logic.select_frame(order_position)
+
+    def _on_order_frame_selected(self, frame_index: int) -> None:
+        """Selects an order frame in the grid, and moves the playhead too when following.
+
+        With follow-playback on, choosing another order during playback relocates the playhead to
+        it (the seek no-ops when stopped); with it off, the selection only changes which pattern is
+        edited, leaving playback where it is.
+        """
+        self._sequencer_grid_logic.select_frame(frame_index)
+        if self._song_player_logic.follow_playback:
+            self._song_player_logic.seek(frame_index)
 
     def _on_preview_error(self, exception: Exception) -> None:
         FrameCallbackManager.set_frame_callback(lambda: self._dialogs.show_error(exception))

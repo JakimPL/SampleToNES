@@ -1,5 +1,6 @@
 from typing import Callable, FrozenSet, Optional
 
+from sampletones_application.config.managers.session import SessionManager
 from sampletones_application.logic.project.controller import ProjectController
 from sampletones_application.logic.sequencer.playback.synthesizer import RowSynthesizer
 from sampletones_application.logic.shared.playback_priority import PlaybackPriority
@@ -31,9 +32,11 @@ class SongPlayerLogic(CallbackMixin):
         audio_device_manager: AudioDeviceManager,
         project_controller: ProjectController,
         config: Config,
+        session_manager: SessionManager,
     ) -> None:
         self._audio_device_manager = audio_device_manager
         self._project_controller = project_controller
+        self._session_manager = session_manager
         self._synthesizer = RowSynthesizer(project_controller, config)
         self._service = SongPlayerService(audio_device_manager, self._synthesizer)
         self._service.subscribe(self._on_service_result)
@@ -42,6 +45,7 @@ class SongPlayerLogic(CallbackMixin):
         self._active_channels: FrozenSet[GeneratorName] = frozenset(GeneratorName.items())
         self._position = SongPosition()
         self._last_error: Optional[str] = None
+        self._awaiting_seek_order: Optional[int] = None
 
         self.on_position_changed: Optional[Callable[[int, int], None]] = None
         self.on_view_changed: Optional[Callable[[SongPlayerViewModel], None]] = None
@@ -59,6 +63,7 @@ class SongPlayerLogic(CallbackMixin):
             return
 
         self._position = position
+        self._awaiting_seek_order = None
         self._service.start(
             order_position=position.order_position,
             row_index=position.row_index,
@@ -76,9 +81,25 @@ class SongPlayerLogic(CallbackMixin):
 
         self._emit_view()
 
+    def seek(self, order_position: int) -> None:
+        """Moves the live playhead to another order, preserving sounding voices.
+
+        Drives the follow-playback behaviour: selecting a different order while the song plays
+        relocates the playhead instead of restarting it. The service no-ops when nothing is playing.
+
+        The worker emits each row's position only after its blocking write, so one in-flight update
+        for the pre-seek order can still arrive. Recording the seek target lets ``_on_service_result``
+        drop those stale updates until the playhead reports the new order, so the grid does not flick
+        back to the old one.
+        """
+        self._service.seek(order_position)
+        if self._service.alive:
+            self._awaiting_seek_order = order_position
+
     def stop(self) -> None:
         self._service.stop()
         self._position = SongPosition()
+        self._awaiting_seek_order = None
         self._emit_view()
 
     def is_playing(self) -> bool:
@@ -89,6 +110,14 @@ class SongPlayerLogic(CallbackMixin):
 
     def is_loaded(self) -> bool:
         return self._project_controller.is_open
+
+    @property
+    def follow_playback(self) -> bool:
+        return self._session_manager.follow_playback
+
+    def set_follow_playback(self, value: bool) -> None:
+        self._session_manager.set_follow_playback(value)
+        self._emit_view()
 
     def _external_output_priority(self) -> Optional[int]:
         """The song holds the shared output device while its stream is alive (playing or paused)."""
@@ -103,16 +132,22 @@ class SongPlayerLogic(CallbackMixin):
     def _on_service_result(self, result: SongPlayerResult) -> None:
         match result:
             case SongPositionUpdate(position=position):
+                if self._awaiting_seek_order is not None and position.order_position != self._awaiting_seek_order:
+                    return
+
+                self._awaiting_seek_order = None
                 self._position.order_position = position.order_position
                 self._position.row_index = position.row_index
                 self.call(self.on_position_changed, position.order_position, position.row_index)
                 self._emit_view()
             case SongPlaybackStopped():
                 self._position = SongPosition()
+                self._awaiting_seek_order = None
                 self._emit_idle_view()
             case SongPlaybackError(error=error):
                 self._last_error = str(error) if str(error) else type(error).__name__
                 self._position = SongPosition()
+                self._awaiting_seek_order = None
                 self.call(self.on_error, error)
                 self._emit_view()
 
@@ -134,6 +169,7 @@ class SongPlayerLogic(CallbackMixin):
             is_loaded=self.is_loaded(),
             is_playing=is_playing,
             is_paused=is_paused,
+            follow_playback=self.follow_playback,
             order_position=self._position.order_position,
             row_index=self._position.row_index,
             error=self._last_error,

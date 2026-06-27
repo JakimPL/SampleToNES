@@ -7,6 +7,7 @@ class SongPlayerViewModel(BaseModel, frozen=True):
     is_loaded: bool
     is_playing: bool
     is_paused: bool
+    follow_playback: bool
     order_position: int
     row_index: int
     error: Optional[str] = None

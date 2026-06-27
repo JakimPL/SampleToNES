@@ -180,6 +180,65 @@ class TestRequestNesFrequencyChange:
         nes_frequency_coordinator._sequencer_grid_logic.push_settings.assert_called_once()
 
 
+@pytest.fixture
+def playback_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the follow-playback handlers touch."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._song_player_logic = MagicMock()
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_grid_panel = MagicMock()
+    instance._sequencer_order_panel = MagicMock()
+    return instance
+
+
+class TestFollowPlayback:
+    def test_position_change_follows_playhead_when_enabled(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._song_player_logic.follow_playback = True
+
+        playback_coordinator._on_player_position_changed(2, 5)
+
+        playback_coordinator._sequencer_grid_panel.set_playing_row.assert_called_once_with(5)
+        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
+        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(2)
+
+    def test_position_change_does_not_move_edited_frame_when_disabled(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._song_player_logic.follow_playback = False
+
+        playback_coordinator._on_player_position_changed(2, 5)
+
+        playback_coordinator._sequencer_grid_panel.set_playing_row.assert_called_once_with(5)
+        playback_coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(2)
+        playback_coordinator._sequencer_grid_logic.select_frame.assert_not_called()
+
+    def test_order_selection_seeks_playhead_when_following(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._song_player_logic.follow_playback = True
+
+        playback_coordinator._on_order_frame_selected(3)
+
+        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
+        playback_coordinator._song_player_logic.seek.assert_called_once_with(3)
+
+    def test_order_selection_only_edits_when_not_following(
+        self,
+        playback_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        playback_coordinator._song_player_logic.follow_playback = False
+
+        playback_coordinator._on_order_frame_selected(3)
+
+        playback_coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
+        playback_coordinator._song_player_logic.seek.assert_not_called()
+
+
 class TestImportReconstruction:
     def test_closed_project_shows_dialog_and_does_not_import(
         self,

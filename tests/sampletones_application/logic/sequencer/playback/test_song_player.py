@@ -18,7 +18,7 @@ def _make_logic(*, is_open: bool = True) -> SongPlayerLogic:
     if is_open:
         controller._project_manager.new()
 
-    logic = SongPlayerLogic(MagicMock(), controller, Config())
+    logic = SongPlayerLogic(MagicMock(), controller, Config(), MagicMock(follow_playback=True))
     logic._service = MagicMock(is_playing=False, is_paused=False)
     return logic
 
@@ -305,3 +305,85 @@ class TestOnProjectReplaced:
         logic._service.stop.assert_called_once()
         assert logic._position.order_position == 0
         assert logic._position.row_index == 0
+
+
+class TestSeek:
+    def test_seek_forwards_order_position_to_service(self) -> None:
+        logic = _make_logic(is_open=True)
+
+        logic.seek(3)
+
+        logic._service.seek.assert_called_once_with(3)
+
+
+class TestSeekSuppression:
+    def test_stale_update_before_reaching_seek_target_is_ignored(self) -> None:
+        logic = _make_logic(is_open=True)
+        logic._service.alive = True
+        logic.on_view_changed = lambda _: None
+        received: list[tuple[int, int]] = []
+        logic.on_position_changed = lambda order, row: received.append((order, row))
+
+        logic.seek(5)
+        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
+
+        assert received == []
+
+    def test_reaching_seek_target_resumes_position_updates(self) -> None:
+        logic = _make_logic(is_open=True)
+        logic._service.alive = True
+        logic.on_view_changed = lambda _: None
+        received: list[tuple[int, int]] = []
+        logic.on_position_changed = lambda order, row: received.append((order, row))
+
+        logic.seek(5)
+        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
+        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=5, row_index=0)))
+        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=6, row_index=0)))
+
+        assert received == [(5, 0), (6, 0)]
+
+    def test_seek_while_stopped_does_not_suppress_updates(self) -> None:
+        logic = _make_logic(is_open=True)
+        logic._service.alive = False
+        logic.on_view_changed = lambda _: None
+        received: list[tuple[int, int]] = []
+        logic.on_position_changed = lambda order, row: received.append((order, row))
+
+        logic.seek(5)
+        logic._on_service_result(SongPositionUpdate(position=SongPosition(order_position=2, row_index=7)))
+
+        assert received == [(2, 7)]
+
+
+class TestFollowPlayback:
+    def test_follow_playback_reads_session(self) -> None:
+        logic = _make_logic(is_open=True)
+        logic._session_manager.follow_playback = False
+
+        assert logic.follow_playback is False
+
+    def test_set_follow_playback_writes_session(self) -> None:
+        logic = _make_logic(is_open=True)
+        _capture_views(logic)
+
+        logic.set_follow_playback(False)
+
+        logic._session_manager.set_follow_playback.assert_called_once_with(False)
+
+    def test_set_follow_playback_emits_view(self) -> None:
+        logic = _make_logic(is_open=True)
+        views = _capture_views(logic)
+
+        logic.set_follow_playback(True)
+
+        assert len(views) == 1
+
+    def test_emitted_view_carries_follow_playback(self) -> None:
+        logic = _make_logic(is_open=True)
+        logic._session_manager.follow_playback = True
+        views = _capture_views(logic)
+
+        logic.play()
+
+        assert views[-1].follow_playback is True

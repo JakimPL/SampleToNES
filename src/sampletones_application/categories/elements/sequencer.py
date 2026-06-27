@@ -45,6 +45,7 @@ class SequencerPlayerElements(AbstractElement):
     NO_SONG_LOADED = "no_song_loaded"
     POSITION = "position"
     PLAYBACK_ERROR = "playback_error"
+    FOLLOW_PLAYBACK = "follow_playback"
 
 
 class SequencerInstrumentsElements(AbstractElement):

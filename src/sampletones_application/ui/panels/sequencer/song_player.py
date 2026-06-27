@@ -6,6 +6,7 @@ from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.player import (
     SUF_PLAYER_CONTROLS_GROUP,
+    SUF_PLAYER_FOLLOW,
     SUF_PLAYER_PAUSE,
     SUF_PLAYER_PLAY,
     SUF_PLAYER_POSITION,
@@ -37,6 +38,7 @@ class GUISongPlayerPanel(GUIPanel):
         self.pause_button_tag = f"{tag}{SUF_PLAYER_PAUSE}"
         self.stop_button_tag = f"{tag}{SUF_PLAYER_STOP}"
         self.position_text_tag = f"{tag}{SUF_PLAYER_POSITION}"
+        self.follow_checkbox_tag = f"{tag}{SUF_PLAYER_FOLLOW}"
         self.controls_group_tag = f"{tag}{SUF_PLAYER_CONTROLS_GROUP}"
 
         self._song_player_logic = song_player_logic
@@ -84,6 +86,12 @@ class GUISongPlayerPanel(GUIPanel):
             TextType.TEMPLATE,
             SequencerPlayerElements.POSITION,
         ]
+        self._lbl_follow = language_manager[
+            Page.SEQUENCER,
+            Panel.PLAYER,
+            TextType.LABEL,
+            SequencerPlayerElements.FOLLOW_PLAYBACK,
+        ]
 
         super().__init__(
             tag=tag,
@@ -104,6 +112,12 @@ class GUISongPlayerPanel(GUIPanel):
             border=False,
         ):
             self._create_controls()
+            dpg.add_checkbox(
+                tag=self.follow_checkbox_tag,
+                label=self._lbl_follow,
+                default_value=self._song_player_logic.follow_playback,
+                callback=self._on_follow_toggled,
+            )
             dpg.add_text(self._msg_no_song, tag=self.position_text_tag)
 
     def _create_controls(self) -> None:
@@ -140,6 +154,8 @@ class GUISongPlayerPanel(GUIPanel):
                 )
 
     def update_view(self, view_model: SongPlayerViewModel) -> None:
+        dpg_set_value(self.follow_checkbox_tag, view_model.follow_playback)
+
         if not view_model.is_loaded:
             dpg_configure_item(self.play_button_tag, enabled=False)
             dpg_configure_item(self.pause_button_tag, enabled=False)
@@ -175,6 +191,9 @@ class GUISongPlayerPanel(GUIPanel):
                     row=view_model.row_index,
                 ),
             )
+
+    def _on_follow_toggled(self, sender: str, app_data: bool) -> None:
+        self._song_player_logic.set_follow_playback(app_data)
 
     def play(self) -> None:
         self._song_player_logic.play()

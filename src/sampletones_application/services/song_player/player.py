@@ -87,6 +87,17 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
     def resume(self) -> None:
         self._resume_event.set()
 
+    def seek(self, order_position: int) -> None:
+        """Moves the live playhead to another order without restarting playback.
+
+        Unlike ``start``, this does not ``reset`` the synthesiser, so voices sounding at the
+        moment of the move carry over to the new order — the playhead jumps, the audio does not cut.
+        """
+        if not self.alive:
+            return
+
+        self._synthesizer.set_position(order_position, 0)
+
     def _playback_loop(self) -> None:
         try:
             sample_rate = self._audio_device_manager.sample_rate

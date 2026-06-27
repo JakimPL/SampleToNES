@@ -359,6 +359,7 @@ sequencer.browser.title.load_reconstruction_dialog: "Load reconstruction as inst
 sequencer.player.message.no_song_loaded: "No song loaded."
 sequencer.player.message.playback_error: "Playback error: {error}"
 sequencer.player.template.position: "Frame {frame} | Row {row}"
+sequencer.player.label.follow_playback: "Follow playback"
 
 # =============================================================================
 # Sequencer tab — Module
