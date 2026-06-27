@@ -1,7 +1,3 @@
-from enum import Enum
+from sampletones_core.constants.enums import SpectrumMethod
 
-
-class SpectrumMethod(Enum):
-    FFT = "fft"
-    LOG_SPACED_FFT = "log_spaced_fft"
-    CQT = "cqt"
+__all__ = ["SpectrumMethod"]

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from sampletones_core.configs import Config, MetricConfig, WeightsConfig
-from sampletones_core.constants.enums import SpectralDistance
+from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
 
@@ -156,3 +156,20 @@ class TestCriterionSpectralLoss:
         distant = reference + np.float32(0.5)
         loss = criterion.spectral_loss(reference, np.stack([close, distant]))
         assert float(loss[0]) < float(loss[1])
+
+
+class TestCriterionCqtAxis:
+    def test_spectral_loss_runs_on_cqt_bins(self, config: Config) -> None:
+        cqt_config = config.model_copy(
+            update={"library": config.library.model_copy(update={"spectrum_method": SpectrumMethod.CQT})}
+        )
+        cqt_window = Window.from_config(cqt_config)
+        criterion = Criterion(cqt_config, cqt_window)
+
+        bins = int(criterion.weights.shape[-1])
+        reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+        candidates = np.stack([reference, np.zeros(bins, dtype=np.float32)])
+
+        loss = criterion.spectral_loss(reference, candidates)
+        assert np.asarray(loss).shape == (2,)
+        assert bool(np.all(np.asarray(loss) >= 0.0))

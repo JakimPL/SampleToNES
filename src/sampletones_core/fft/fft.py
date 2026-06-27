@@ -137,3 +137,39 @@ def calculate_weights(
     weights: np.ndarray = density_weights * perceptual_weights
     normalized_weights: np.ndarray = weights / np.sum(weights)
     return normalized_weights
+
+
+def calculate_weights_from_edges(edges: np.ndarray, perceptual_exponent: float = 1.0) -> np.ndarray:
+    """
+    Calculate perceptual frequency weights for arbitrary histogram bin edges.
+
+    Works for any frequency axis (linear FFT or logarithmic CQT). Each bin is weighted by its
+    span on a logarithmic-frequency scale, `width / upper_edge` (which approximates `d(log f)`),
+    times the A-weighting perceptual curve raised to `perceptual_exponent`. On a linear FFT axis
+    the density term reduces to `1 / f`; on a constant-Q axis the per-octave span is uniform.
+
+    The result is normalized to sum to 1.0.
+
+    Args:
+        edges: Strictly increasing bin edges, shape (n_bins + 1,).
+        perceptual_exponent: Power applied to the A-weighting curve.
+
+    Returns:
+        Normalized weights, shape (n_bins,). Sum of weights equals 1.0.
+
+    Examples:
+        >>> edges = calculate_fft_frequencies(1024, 44100)
+        >>> weights = calculate_weights_from_edges(edges)
+        >>> weights.shape
+        (512,)
+        >>> bool(np.isclose(weights.sum(), 1.0))
+        True
+    """
+    frequencies = edges[1:]
+    widths = np.diff(edges)
+    density_weights = widths / frequencies
+    perceptual_weights = a_weighting(frequencies) ** perceptual_exponent
+
+    weights: np.ndarray = density_weights * perceptual_weights
+    normalized_weights: np.ndarray = weights / np.sum(weights)
+    return normalized_weights

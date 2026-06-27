@@ -1,10 +1,17 @@
 from dataclasses import dataclass, field
 from typing import Tuple, Union
 
+import numpy as np
+
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import SpectralDistance
 from sampletones_core.constants.general import SPECTRUM_FLOOR
-from sampletones_core.fft import Fragment, Window, calculate_weights
+from sampletones_core.fft import (
+    FFTTransformer,
+    Fragment,
+    Window,
+    calculate_weights_from_edges,
+)
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 
@@ -31,11 +38,23 @@ class Criterion:
         object.__setattr__(self, "divergence_beta", float(metric.beta))
 
         no_weights = xp.ones(self.config.frame_length, dtype=xp.float32)
-        weights = calculate_weights(self.window.size, self.config.sample_rate, metric.perceptual_exponent)
+        weights = calculate_weights_from_edges(self._reference_edges(), metric.perceptual_exponent)
         weights = xp.asarray(weights)
         weights = len(weights) * weights / xp.sum(weights)
         object.__setattr__(self, "weights", weights)
         object.__setattr__(self, "no_weights", no_weights)
+
+    def _reference_edges(self) -> np.ndarray:
+        transformer = FFTTransformer.from_gamma(
+            self.config.library.transformation_gamma,
+            self.config.library.sample_rate,
+            self.config.library.spectrum_method,
+        )
+        reference = transformer.calculate_feature(
+            np.zeros(self.window.size, dtype=np.float32),
+            self.config.library.sample_rate,
+        )
+        return np.asarray(reference.edges)
 
     def __call__(
         self,

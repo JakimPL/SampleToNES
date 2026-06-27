@@ -56,5 +56,6 @@ class InstructionLibraryKey(BaseModel):
             nf=config.nes_frequency,
             ws=window.size,
             tg=config.transformation_gamma,
+            sm=config.spectrum_method,
             ch=config_hash,
         ).filename

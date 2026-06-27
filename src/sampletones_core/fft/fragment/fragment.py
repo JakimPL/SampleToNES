@@ -35,6 +35,7 @@ class Fragment:
         return FFTTransformer.from_gamma(
             config.library.transformation_gamma,
             config.library.sample_rate,
+            config.library.spectrum_method,
         )
 
     @classmethod
@@ -46,7 +47,7 @@ class Fragment:
     ) -> Self:
         assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
         transformer = cls._get_transformer(config)
-        feature = transformer.calculate_feature(windowed_audio, window.size)
+        feature = transformer.calculate_feature(windowed_audio, config.library.sample_rate)
 
         return cls(
             audio=window.get_frame_from_window(windowed_audio),

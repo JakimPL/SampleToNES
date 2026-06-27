@@ -249,7 +249,7 @@ class InstructionsLibraryManager(CallbackMixin):
     def _is_library_file(self, filename: str) -> bool:
         # TODO: delegate to Library
         file_parts = filename.split("_")
-        if len(file_parts) != 10:
+        if len(file_parts) != 12:
             return False
         if not file_parts[0] == "sr" or not file_parts[1].isdigit():
             return False
@@ -259,7 +259,9 @@ class InstructionsLibraryManager(CallbackMixin):
             return False
         if not file_parts[6] == "tg" or not file_parts[7].isdigit():
             return False
-        if not file_parts[8] == "ch" or not all(c in HEXADECIMAL.lower() for c in file_parts[9]):
+        if not file_parts[8] == "sm" or not file_parts[9].isalpha():
+            return False
+        if not file_parts[10] == "ch" or not all(c in HEXADECIMAL.lower() for c in file_parts[11]):
             return False
 
         return True

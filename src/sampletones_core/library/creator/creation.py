@@ -35,6 +35,7 @@ def generate_instructions(
     transformer = FFTTransformer.from_gamma(
         config.transformation_gamma,
         config.sample_rate,
+        config.spectrum_method,
     )
     return [
         generate_instruction(generators, generator_class_name, instruction, window, transformer)
@@ -56,7 +57,11 @@ def generate_single_instruction_task(
 ) -> Tuple[InstructionUnion, InstructionLibraryFragment[Any]]:
     (generator_class_name, instruction), config, window = task
     generator = GENERATOR_CLASS_MAP[generator_class_name](config, generator_class_name)
-    transformer = FFTTransformer.from_gamma(config.library.transformation_gamma, config.library.sample_rate)
+    transformer = FFTTransformer.from_gamma(
+        config.library.transformation_gamma,
+        config.library.sample_rate,
+        config.library.spectrum_method,
+    )
     fragment: InstructionLibraryFragment[Any] = InstructionLibraryFragment.create(
         generator,
         instruction,

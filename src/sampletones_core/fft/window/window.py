@@ -7,6 +7,7 @@ import numpy as np
 from pydantic import ConfigDict
 
 from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.data.model import DataModel
 from sampletones_shared.utils.arrays import pad
 
@@ -34,7 +35,10 @@ class Window(DataModel):
 
     @cached_property
     def envelope(self) -> np.ndarray:
-        return self.create_window() if self.on else np.ones(self.size, dtype=np.float32)
+        if not self.on or self.config.spectrum_method == SpectrumMethod.CQT:
+            return np.ones(self.size, dtype=np.float32)
+
+        return self.create_window()
 
     @cached_property
     def backward_frames(self) -> int:

@@ -73,6 +73,12 @@ class SelectorName(StrEnum):
     VITERBI = "viterbi"
 
 
+class SpectrumMethod(StrEnum):
+    FFT = "fft"
+    LOG_SPACED_FFT = "logfft"
+    CQT = "cqt"
+
+
 GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",

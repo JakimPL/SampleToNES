@@ -5,6 +5,7 @@ ALIASES: Final[Dict[str, str]] = {
     "nf": "nes_frequency",
     "ws": "window_size",
     "tg": "transformation_gamma",
+    "sm": "spectrum_method",
     "gn": "generators",
     "ch": "config_hash",
 }
