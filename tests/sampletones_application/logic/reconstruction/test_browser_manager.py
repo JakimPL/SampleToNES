@@ -1,11 +1,26 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
 
 from sampletones_application.logic.reconstruction.browser_manager import BrowserManager
+from sampletones_core.structures.tree import FileSystemNode, NodeType
+
+HASH_A = "6edf7c948606917a78b45d153c7ca7e0"
+HASH_B = "a1b2c3d4e5f60718293a4b5c6d7e8f90"
+
+
+def directory_nodes(browser_manager: BrowserManager) -> Dict[str, FileSystemNode]:
+    root = browser_manager.tree.get_root()
+    assert root is not None
+    return {
+        child.name: child
+        for child in root.children
+        if isinstance(child, FileSystemNode) and child.node_type == NodeType.DIRECTORY
+    }
 
 
 @pytest.fixture
@@ -99,6 +114,52 @@ class TestBrowserManagerRefreshTree:
         (tmp_path / "empty_dir").mkdir()
         browser_manager.refresh_tree()
         assert browser_manager.get_all_reconstruction_files() == []
+
+
+class TestBrowserManagerFriendlyNames:
+    def test_config_directory_gets_friendly_name(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        config_dir = tmp_path / f"44100_30_PpT_{HASH_A}"
+        config_dir.mkdir()
+        (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        assert "44.1 kHz · 30 Hz · PpT" in directory_nodes(browser_manager)
+
+    def test_colliding_config_directories_get_hash_suffix(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        for config_hash in (HASH_A, HASH_B):
+            config_dir = tmp_path / f"44100_30_PpT_{config_hash}"
+            config_dir.mkdir()
+            (config_dir / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        names = set(directory_nodes(browser_manager))
+        assert names == {
+            f"44.1 kHz · 30 Hz · PpT · #{HASH_A[:7]}",
+            f"44.1 kHz · 30 Hz · PpT · #{HASH_B[:7]}",
+        }
+
+    def test_non_config_directory_keeps_raw_name(
+        self,
+        browser_manager: BrowserManager,
+        tmp_path: Path,
+    ) -> None:
+        plain = tmp_path / "my_songs"
+        plain.mkdir()
+        (plain / "song.stn").touch()
+
+        browser_manager.refresh_tree()
+
+        assert "my_songs" in directory_nodes(browser_manager)
 
 
 class TestBrowserManagerSetDirectory:

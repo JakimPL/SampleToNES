@@ -1,0 +1,10 @@
+name: tooltip_table
+tag: global.theme.tooltip_table
+
+components:
+  - item_type: Table
+    entries:
+      - type: style
+        key: CellPadding
+        x: 8
+        y: 1

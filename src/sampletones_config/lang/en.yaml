@@ -109,6 +109,12 @@ global.context.label.triangle: "Triangle"
 global.context.label.pulse_1: "Pulse 1"
 global.context.label.pulse_2: "Pulse 2"
 global.context.label.noise: "Noise"
+global.context.label.detail_sample_rate: "Sample rate"
+global.context.label.detail_nes_frequency: "NES frequency"
+global.context.label.detail_generators: "Generators"
+global.context.label.detail_transformation_gamma: "Transformation gamma"
+global.context.label.detail_window_size: "Window size"
+global.context.label.detail_configuration: "Configuration"
 
 # =============================================================================
 # Global — Menu

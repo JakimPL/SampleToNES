@@ -36,6 +36,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
@@ -54,7 +55,7 @@ from sampletones_core.structures.tree import (
     TreeTraversal,
     traverse,
 )
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback
 
 
@@ -70,8 +71,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
-        favorite_color: ColorRGBA,
-        node_color: ColorRGBA,
+        colors: TreeColors,
     ) -> None:
         self.library_logic = library_logic
         self._dialogs = dialogs
@@ -174,8 +174,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                 TreeElements.SEARCH,
             ],
             language_manager=language_manager,
-            favorite_color=favorite_color,
-            node_color=node_color,
+            colors=colors,
         )
 
         self.library_logic.configure_lock(self.lock, self.unlock, lambda: self.locked)
@@ -442,6 +441,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
         with context_menu():
             self._add_context_menu_text(node)
+            self._add_context_menu_details(node)
             self._add_context_menu_path_items(self.library_logic.get_path(node.library_key))
             self._add_context_menu_library_node(node)
 

@@ -65,8 +65,17 @@ GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]]
 }
 
 
+GENERATOR_ABBREVIATION_TO_NAME: Final[Dict[str, GeneratorName]] = {
+    abbreviation: name for name, abbreviation in GENERATOR_ABBREVIATIONS.items()
+}
+
+
 DEFAULT_GENERATORS: Final[list[GeneratorName]] = [
     GeneratorName.PULSE1,
     GeneratorName.TRIANGLE,
     GeneratorName.NOISE,
 ]
+
+
+def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
+    return "".join(GENERATOR_ABBREVIATIONS[name] for name in generator_names)

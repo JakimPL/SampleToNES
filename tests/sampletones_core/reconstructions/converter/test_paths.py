@@ -4,9 +4,15 @@ from typing import List
 import pytest
 
 from sampletones_core.configs import Config
+from sampletones_core.configs.display import (
+    DISPLAY_SEPARATOR,
+    format_nes_frequency,
+    format_sample_rate,
+)
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.paths import EXT_FILE_RECONSTRUCTION
 from sampletones_core.reconstructions.converter.paths import (
+    ConfigDirectoryFields,
     abbreviate_generator_names,
     filter_files,
     generate_config_directory_name,
@@ -14,6 +20,8 @@ from sampletones_core.reconstructions.converter.paths import (
     get_output_path,
     get_relative_path,
 )
+
+HASH = "6edf7c948606917a78b45d153c7ca7e0"
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +71,45 @@ class TestGenerateConfigDirectoryName:
             }
         )
         assert generate_config_directory_name(config) != generate_config_directory_name(single_generator_config)
+
+
+class TestConfigDirectoryFields:
+    def test_round_trips_with_generate_config_directory_name(self, config: Config) -> None:
+        name = generate_config_directory_name(config)
+        fields = ConfigDirectoryFields.from_directory_name(name)
+        assert fields is not None
+        assert fields.directory_name == name
+
+    def test_parses_components(self, config: Config) -> None:
+        name = generate_config_directory_name(config)
+        fields = ConfigDirectoryFields.from_directory_name(name)
+        assert fields is not None
+        assert fields.sample_rate == config.library.sample_rate
+        assert fields.nes_frequency == config.library.nes_frequency
+        assert fields.generators == list(config.generation.generators)
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "not-a-config-dir",
+            "44100_30_PpT",
+            f"44100_30_PpT_{HASH[:10]}",
+            f"44100_x_PpT_{HASH}",
+            f"44100_30_XYZ_{HASH}",
+            f"44100_30__{HASH}",
+        ],
+    )
+    def test_malformed_names_return_none(self, name: str) -> None:
+        assert ConfigDirectoryFields.from_directory_name(name) is None
+
+    def test_display_name_combines_formatted_parts(self, config: Config) -> None:
+        fields = ConfigDirectoryFields.from_config(config)
+        display = fields.display_name
+
+        assert format_sample_rate(config.library.sample_rate) in display
+        assert format_nes_frequency(config.library.nes_frequency) in display
+        assert abbreviate_generator_names(list(config.generation.generators)) in display
+        assert DISPLAY_SEPARATOR in display
 
 
 class TestGetRelativePath:

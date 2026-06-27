@@ -37,6 +37,7 @@ from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_application.logic.sequencer.order import SequencerOrderLogic
 from sampletones_application.logic.sequencer.playback.song_player import SongPlayerLogic
 from sampletones_application.logic.sequencer.samples import SequencerSamplesLogic
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.sequencer.browser import GUISequencerBrowserPanel
 from sampletones_application.ui.panels.sequencer.grid import GUISequencerGridPanel
 from sampletones_application.ui.panels.sequencer.input.subcolumn import SubColumn
@@ -179,8 +180,10 @@ class SequencerTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.sequencer,
             language_manager=language_manager,
-            favorite_color=layout.general.colors.favorites.default,
-            node_color=layout.general.colors.paths.hover,
+            colors=TreeColors.create(
+                layout.general.colors,
+                accent=layout.general.colors.headers.reconstruction,
+            ),
         )
         self._sequencer_grid_logic: SequencerGridLogic = SequencerGridLogic(project_controller)
         self._sequencer_order_logic: SequencerOrderLogic = SequencerOrderLogic(project_controller)

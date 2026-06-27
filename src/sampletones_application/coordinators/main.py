@@ -22,6 +22,7 @@ from sampletones_application.logic.instruction.library_manager import (
 from sampletones_application.logic.main.converter import ConverterLogic
 from sampletones_application.logic.main.explorer import ExplorerLogic
 from sampletones_application.services.conversion import ConversionService
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.main.advanced import GUIAdvancedSettingsPanel
 from sampletones_application.ui.panels.main.config import GUIConfigPanel
 from sampletones_application.ui.panels.main.converter.converter import GUIConverterPanel
@@ -131,8 +132,10 @@ class MainTabCoordinator:
             tree_behavior=layout.behavior.main.explorer,
             language_manager=language_manager,
             dialogs=dialogs,
-            favorite_color=layout.general.colors.favorites.default,
-            node_color=layout.general.colors.paths.hover,
+            colors=TreeColors.create(
+                layout.general.colors,
+                accent=layout.general.colors.paths.hover,
+            ),
         )
 
         _config = config_manager.config

@@ -16,6 +16,7 @@ from sampletones_shared.types.path import Pathlike
 
 JSON_INDENT: Final[int] = 2
 HASH_LENGTH: Final[int] = 32
+HASH_PATTERN: Final[str] = rf"^[0-9a-f]{{{HASH_LENGTH}}}$"
 
 
 def dump(data: Any) -> str:

@@ -36,6 +36,7 @@ from sampletones_application.logic.reconstruction.manager import ReconstructionM
 from sampletones_application.logic.reconstruction.reconstruction import ReconstructionPanelLogic
 from sampletones_application.logic.shared.player import PlayerLogic
 from sampletones_application.services.export import ExportError, ExportKind, ExportResult, ExportService, ExportSuccess
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
 from sampletones_application.ui.panels.reconstruction.details.details import GUIReconstructionDetailsPanel
 from sampletones_application.ui.panels.reconstruction.reconstruction import GUIReconstructionPanel
@@ -210,8 +211,10 @@ class ReconstructionsTabCoordinator:
             scheduling=layout.behavior.scheduling,
             tree_behavior=layout.behavior.reconstructions,
             language_manager=language_manager,
-            favorite_color=layout.general.colors.favorites.default,
-            node_color=layout.general.colors.paths.hover,
+            colors=TreeColors.create(
+                layout.general.colors,
+                accent=layout.general.colors.headers.reconstruction,
+            ),
         )
         self._browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
         self._reconstruction_player_logic = PlayerLogic(

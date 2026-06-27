@@ -3,7 +3,9 @@ from pathlib import Path
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.global_ import MenuElements
-from sampletones_application.categories.elements.instructions import InstructionsLibraryElements
+from sampletones_application.categories.elements.instructions import (
+    InstructionsLibraryElements,
+)
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.config.managers.config import ConfigManager
@@ -17,13 +19,24 @@ from sampletones_application.constants.general import (
 )
 from sampletones_application.coordinators.playback import AudioPlayerPanelProtocol
 from sampletones_application.layout.config import LayoutConfig
-from sampletones_application.logic.instruction.details import InstructionDetailsPanelLogic
+from sampletones_application.logic.instruction.details import (
+    InstructionDetailsPanelLogic,
+)
 from sampletones_application.logic.instruction.library import LibraryLogic
-from sampletones_application.logic.instruction.library_manager import InstructionsLibraryManager
+from sampletones_application.logic.instruction.library_manager import (
+    InstructionsLibraryManager,
+)
 from sampletones_application.logic.shared.player import PlayerLogic
-from sampletones_application.ui.panels.instruction.details import GUIInstructionDetailsPanel
-from sampletones_application.ui.panels.instruction.instruction import GUIInstructionPanel
-from sampletones_application.ui.panels.instruction.library import GUIInstructionsLibraryPanel
+from sampletones_application.ui.elements.tree.colors import TreeColors
+from sampletones_application.ui.panels.instruction.details import (
+    GUIInstructionDetailsPanel,
+)
+from sampletones_application.ui.panels.instruction.instruction import (
+    GUIInstructionPanel,
+)
+from sampletones_application.ui.panels.instruction.library import (
+    GUIInstructionsLibraryPanel,
+)
 from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
@@ -85,8 +98,10 @@ class InstructionsTabCoordinator:
             tree_behavior=layout.behavior.instructions,
             language_manager=language_manager,
             dialogs=dialogs,
-            favorite_color=layout.general.colors.favorites.default,
-            node_color=layout.general.colors.paths.hover,
+            colors=TreeColors.create(
+                layout.general.colors,
+                accent=layout.general.colors.headers.library,
+            ),
         )
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
@@ -132,6 +147,7 @@ class InstructionsTabCoordinator:
             self._instruction_details_logic.display_instruction(instruction_data)
         except LibraryDisplayError as exception:
             self._dialogs.show_error(exception, self._msg_display_error)
+
         self._on_audio_state_changed()
 
     def create_tab(self) -> None:

@@ -30,6 +30,7 @@ from sampletones_application.ui.elements.button import GUIButton
 from sampletones_application.ui.elements.context_menu import context_menu
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.elements.tree.tree import GUITreePanel
@@ -51,7 +52,7 @@ from sampletones_core.structures.tree import (
     traverse,
 )
 from sampletones_shared.logger import logger
-from sampletones_shared.types.application import ColorRGBA, Sender
+from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import MessageCallback, PathCallback
 
 
@@ -67,8 +68,7 @@ class GUIExplorerPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
-        favorite_color: ColorRGBA,
-        node_color: ColorRGBA,
+        colors: TreeColors,
     ) -> None:
         self.explorer_logic = explorer_logic
         self.audio_device_manager = audio_device_manager
@@ -184,8 +184,7 @@ class GUIExplorerPanel(GUITreePanel):
                 TreeElements.FILTER,
             ],
             language_manager=language_manager,
-            favorite_color=favorite_color,
-            node_color=node_color,
+            colors=colors,
         )
 
         self.logic.on_autoplay_error = self._on_autoplay_error

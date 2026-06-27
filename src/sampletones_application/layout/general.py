@@ -145,6 +145,11 @@ class PathColors(BaseModel, frozen=True):
     hover: RGBA
 
 
+class HeaderColors(BaseModel, frozen=True):
+    library: RGBA
+    reconstruction: RGBA
+
+
 class GeneralColors(BaseModel, frozen=True):
     text: TextColors
     files: FileColors
@@ -153,6 +158,7 @@ class GeneralColors(BaseModel, frozen=True):
     backgrounds: BackgroundColors
     tables: TableColors
     paths: PathColors
+    headers: HeaderColors
 
 
 class GeneralLayout(BaseModel, frozen=True):

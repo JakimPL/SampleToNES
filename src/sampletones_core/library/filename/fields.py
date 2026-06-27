@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
-from sampletones_shared.utils.serialization import HASH_LENGTH
+from sampletones_shared.utils.serialization import HASH_PATTERN
 
 FILENAME_SEPARATOR: Final[str] = "_"
 
@@ -17,7 +17,7 @@ class InstructionsFilenameFields(BaseModel):
     nf: int = Field(gt=0)
     ws: int = Field(gt=0)
     tg: int = Field(ge=0)
-    ch: str = Field(pattern=rf"^[0-9a-f]{ {HASH_LENGTH} }$")
+    ch: str = Field(pattern=HASH_PATTERN)
 
     @property
     def stem(self) -> str:

@@ -109,3 +109,6 @@ colors:
   paths:
     default: "#6496ff"
     hover: "#96c8ff"
+  headers:
+    library: "#96d2a0"
+    reconstruction: "#c8a0ff"

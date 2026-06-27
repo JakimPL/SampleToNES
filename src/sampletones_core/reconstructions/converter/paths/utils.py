@@ -2,29 +2,14 @@ from pathlib import Path
 from typing import List, Tuple
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import (
-    GENERATOR_ABBREVIATIONS,
-    GeneratorName,
-)
 from sampletones_core.paths import (
     EXT_FILE_RECONSTRUCTION,
     EXT_FILES_AUDIO,
 )
-from sampletones_shared.utils.serialization import hash_models
+from sampletones_core.reconstructions.converter.paths.fields import (
+    ConfigDirectoryFields,
+)
 from sampletones_shared.utils.system.paths import to_path
-
-
-def abbreviate_generator_names(generator_names: List[GeneratorName]) -> str:
-    return "".join(GENERATOR_ABBREVIATIONS[name] for name in generator_names)
-
-
-def generate_config_directory_name(config: Config) -> str:
-    sample_rate = config.library.sample_rate
-    nes_frequency = config.library.nes_frequency
-    generators = abbreviate_generator_names(config.generation.generators)
-    config_hash = hash_models(config.library, config.generation)
-    config_directory = f"{sample_rate}_{nes_frequency}_{generators}_{config_hash}"
-    return config_directory
 
 
 def get_relative_path(
@@ -39,13 +24,19 @@ def get_relative_path(
     return Path(output_path.absolute())
 
 
-def get_output_path(config: Config, input_path: Path, suffix: str = EXT_FILE_RECONSTRUCTION) -> Path:
-    config_directory = generate_config_directory_name(config)
+def get_output_path(
+    config: Config,
+    input_path: Path,
+    suffix: str = EXT_FILE_RECONSTRUCTION,
+) -> Path:
+    config_directory = ConfigDirectoryFields.generate_config_directory_name(config)
     output_directory = to_path(config.general.reconstructions_directory) / config_directory
     if input_path.is_dir():
         return output_directory / input_path.name
+
     if input_path.is_file():
         return output_directory / input_path.with_suffix(suffix).name
+
     if not input_path.exists():
         raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
@@ -71,7 +62,11 @@ def filter_files(
 ) -> List[Path]:
     filtered_files = []
     for audio_file in audio_files:
-        output_path = get_relative_path(base_directory, audio_file, output_directory)
+        output_path = get_relative_path(
+            base_directory,
+            audio_file,
+            output_directory,
+        )
         if not output_path.exists():
             filtered_files.append(audio_file)
 

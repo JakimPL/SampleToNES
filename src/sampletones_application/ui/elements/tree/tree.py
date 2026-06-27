@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import dearpygui.dearpygui as dpg
 
@@ -8,6 +8,7 @@ from sampletones_application.categories.elements.global_ import (
     ContextElements,
     GlobalMessageElements,
     GlobalTemplateElements,
+    NodeDetailElements,
     StatusElements,
     TreeElements,
 )
@@ -42,6 +43,7 @@ from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.elements.status import GUIStatusBar
+from sampletones_application.ui.elements.tree.colors import TreeColors
 from sampletones_application.ui.elements.tree.handler import NodeHandler
 from sampletones_application.ui.elements.tree.state import TreeNodeState
 from sampletones_application.ui.themes.registry import ThemeRegistry
@@ -49,10 +51,19 @@ from sampletones_application.ui.themes.theme import Theme
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.dpg import dpg_delete_children, dpg_get_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
+from sampletones_application.utils.tooltip import show_detail_tooltip
 from sampletones_core import paths
 from sampletones_core.audio import AudioDeviceManager
+from sampletones_core.configs.display import (
+    format_nes_frequency,
+    format_sample_rate,
+    short_hash,
+)
+from sampletones_core.library import InstructionLibraryKey
+from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
 from sampletones_core.structures.tree import (
     FileSystemNode,
+    LibraryNode,
     NodeType,
     Tree,
     TreeNode,
@@ -82,8 +93,7 @@ class GUITreePanel(GUIPanel):
         scheduling: SchedulingBehavior,
         search_label: str,
         language_manager: LanguageManager,
-        favorite_color: ColorRGBA,
-        node_color: ColorRGBA,
+        colors: TreeColors,
     ) -> None:
         self.tree = tree
         self.tree_tag = tree_tag
@@ -97,8 +107,7 @@ class GUITreePanel(GUIPanel):
 
         self.search_label = search_label
 
-        self._favorite_color = favorite_color
-        self._node_color = node_color
+        self._colors = colors
 
         self._lbl_clear_search = language_manager[
             Page.GLOBAL,
@@ -196,6 +205,42 @@ class GUITreePanel(GUIPanel):
             TextType.LABEL,
             ContextElements.UNMARK_AS_FAVORITE,
         ]
+        self._lbl_detail_sample_rate = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.SAMPLE_RATE,
+        ]
+        self._lbl_detail_nes_frequency = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.NES_FREQUENCY,
+        ]
+        self._lbl_detail_generators = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.GENERATORS,
+        ]
+        self._lbl_detail_transformation_gamma = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.TRANSFORMATION_GAMMA,
+        ]
+        self._lbl_detail_window_size = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.WINDOW_SIZE,
+        ]
+        self._lbl_detail_configuration = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.CONFIGURATION,
+        ]
 
         self.logic = TreeLogic(
             session_manager,
@@ -285,6 +330,10 @@ class GUITreePanel(GUIPanel):
                 has_favorite_ancestor=has_favorite_ancestor,
                 is_node_expanded=is_node_expanded,
             )
+
+        detail_items = self._node_detail_items(node)
+        if detail_items:
+            show_detail_tooltip(node_tag, detail_items)
 
     def _queue_node(
         self,
@@ -457,9 +506,28 @@ class GUITreePanel(GUIPanel):
         tag = f"{self.tag}{TAG_SEPARATOR}node_{'_'.join(path_parts)}"
         return tag.replace(" ", "_").lower()
 
+    def _context_menu_header_name(self, node: TreeNode) -> str:
+        """Returns the raw on-disk identifier, complementing the friendly label shown in the tree."""
+        match node:
+            case LibraryNode():
+                return Path(node.library_key.filename).stem
+            case FileSystemNode():
+                return node.filepath.name
+
+        return str(node.name)
+
+    def _node_header_color(self, node: TreeNode) -> ColorRGBA:
+        if self.logic.is_node_favorite(node):
+            return self._colors.favorite
+
+        if self._node_detail_items(node):
+            return self._colors.accent
+
+        return self._colors.node
+
     def _add_context_menu_text(self, node: TreeNode) -> None:
         is_favorite = self.logic.is_node_favorite(node)
-        color = self._favorite_color if is_favorite else self._node_color
+        color = self._node_header_color(node)
 
         with dpg.group(horizontal=True):
             if is_favorite:
@@ -467,8 +535,50 @@ class GUITreePanel(GUIPanel):
                 star_text = dpg.add_text(star, color=color)
                 FontRegistry.bind_to_item(star_text, Font.ICON)
 
-            text = dpg.add_text(node.name, color=color)
+            text = dpg.add_text(self._context_menu_header_name(node), color=color)
             FontRegistry.bind_to_item(text, Font.BOLD)
+
+    def _node_detail_items(self, node: TreeNode) -> List[Tuple[str, str]]:
+        match node:
+            case LibraryNode():
+                return self._library_detail_items(node.library_key)
+            case FileSystemNode() if node.node_type == NodeType.DIRECTORY:
+                return self._reconstruction_detail_items(node.filepath.name)
+
+        return []
+
+    def _library_detail_items(self, key: InstructionLibraryKey) -> List[Tuple[str, str]]:
+        nes_frequency = round(key.sample_rate / key.frame_length)
+        return [
+            (self._lbl_detail_sample_rate, format_sample_rate(key.sample_rate)),
+            (self._lbl_detail_nes_frequency, format_nes_frequency(nes_frequency)),
+            (self._lbl_detail_transformation_gamma, str(key.transformation_gamma)),
+            (self._lbl_detail_window_size, str(key.window_size)),
+            (self._lbl_detail_configuration, short_hash(key.config_hash)),
+        ]
+
+    def _reconstruction_detail_items(self, directory_name: str) -> List[Tuple[str, str]]:
+        fields = ConfigDirectoryFields.from_directory_name(directory_name)
+        if fields is None:
+            return []
+
+        generators = ", ".join(generator.capitalized for generator in fields.generators)
+        return [
+            (self._lbl_detail_sample_rate, format_sample_rate(fields.sample_rate)),
+            (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nes_frequency)),
+            (self._lbl_detail_generators, generators),
+            (self._lbl_detail_configuration, short_hash(fields.config_hash)),
+        ]
+
+    def _add_context_menu_details(self, node: TreeNode) -> None:
+        detail_items = self._node_detail_items(node)
+        if not detail_items:
+            return
+
+        dpg.add_separator()
+        for label, value in detail_items:
+            detail_text = dpg.add_text(f"{label}: {value}", color=self._colors.muted)
+            FontRegistry.bind_to_item(detail_text, Font.REGULAR_SMALL)
 
     def _add_context_menu_play_item(self, node: FileSystemNode) -> None:
         if not self.logic.is_playable_file(node):

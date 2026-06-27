@@ -91,6 +91,18 @@ TAG_GLOBAL_THEME_TABLE = TagName(
     Widget.THEME,
     "table",
 )
+TAG_GLOBAL_THEME_TOOLTIP = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "tooltip",
+)
+TAG_GLOBAL_THEME_TOOLTIP_TABLE = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "tooltip_table",
+)
 TAG_GLOBAL_THEME_FAVORITE = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,

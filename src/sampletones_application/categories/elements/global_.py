@@ -45,6 +45,15 @@ class ContextElements(AbstractElement):
     NOISE = "noise"
 
 
+class NodeDetailElements(AbstractElement):
+    SAMPLE_RATE = "detail_sample_rate"
+    NES_FREQUENCY = "detail_nes_frequency"
+    GENERATORS = "detail_generators"
+    TRANSFORMATION_GAMMA = "detail_transformation_gamma"
+    WINDOW_SIZE = "detail_window_size"
+    CONFIGURATION = "detail_configuration"
+
+
 class MenuElements(AbstractElement):
     GROUP_GENERAL = "group_general"
     ITEM_AUDIO_SETTINGS = "item_audio_settings"
