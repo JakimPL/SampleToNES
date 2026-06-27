@@ -27,8 +27,8 @@ from sampletones_application.ui.elements.panel import GUIPanel
 from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.callbacks.frame import FrameCallbackManager
 from sampletones_application.utils.dpg import dpg_delete_children
+from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.samples import (
-    MoveDirection,
     SampleEntryViewModel,
     SequencerSamplesViewModel,
 )
@@ -323,10 +323,40 @@ class GUISequencerSamplesPanel(GUIPanel):
         if self._selected_sample_id is None:
             return
 
+        if self._alt_held():
+            self._handle_alt_move(app_data)
+            return
+
         if app_data == dpg.mvKey_Delete:
             self.call(self.on_remove_requested, self._selected_sample_id)
         elif app_data == dpg.mvKey_F2:
             self._start_rename(self._selected_sample_id)
+
+    def _alt_held(self) -> bool:
+        return bool(dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt))
+
+    def _handle_alt_move(self, key: int) -> None:
+        """Moves the selected sample up/down/to-top/to-bottom on Alt + arrow / Home / End."""
+        direction = self._alt_move_direction(key)
+        if direction is None or self._selected_sample_id is None or self._selected_row is None:
+            return
+
+        target = direction.target(self._selected_row, len(self._entries))
+        if target is not None:
+            self.call(self.on_move_requested, self._selected_sample_id, target)
+
+    def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
+        match key:
+            case dpg.mvKey_Up:
+                return MoveDirection.PREVIOUS
+            case dpg.mvKey_Down:
+                return MoveDirection.NEXT
+            case dpg.mvKey_Home:
+                return MoveDirection.FIRST
+            case dpg.mvKey_End:
+                return MoveDirection.LAST
+            case _:
+                return None
 
     def _start_rename(self, sample_id: str) -> None:
         """Turns the sample's name cell into a focused text input."""
@@ -419,10 +449,10 @@ class GUISequencerSamplesPanel(GUIPanel):
             )
             dpg.add_separator()
             count = len(self._entries)
-            self._add_move_item(self._lbl_context_move_up, sample_id, position, count, MoveDirection.UP)
-            self._add_move_item(self._lbl_context_move_down, sample_id, position, count, MoveDirection.DOWN)
-            self._add_move_item(self._lbl_context_move_top, sample_id, position, count, MoveDirection.TOP)
-            self._add_move_item(self._lbl_context_move_bottom, sample_id, position, count, MoveDirection.BOTTOM)
+            self._add_move_item(self._lbl_context_move_up, sample_id, position, count, MoveDirection.PREVIOUS)
+            self._add_move_item(self._lbl_context_move_down, sample_id, position, count, MoveDirection.NEXT)
+            self._add_move_item(self._lbl_context_move_top, sample_id, position, count, MoveDirection.FIRST)
+            self._add_move_item(self._lbl_context_move_bottom, sample_id, position, count, MoveDirection.LAST)
 
     def _add_move_item(
         self,

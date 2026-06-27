@@ -98,6 +98,18 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
 
         self._synthesizer.set_position(order_position, 0)
 
+    def relocate(self, order_position: int) -> None:
+        """Repoints the playhead at another order while keeping the current row.
+
+        Used to follow a structural order edit (insert/remove/move) so playback stays on the
+        frame it was sounding: the row within the frame continues rather than restarting, and
+        voices carry over (no ``reset``).
+        """
+        if not self.alive:
+            return
+
+        self._synthesizer.set_position(order_position, self._synthesizer.row_index)
+
     def _playback_loop(self) -> None:
         try:
             sample_rate = self._audio_device_manager.sample_rate

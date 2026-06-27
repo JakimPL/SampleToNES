@@ -47,26 +47,27 @@ class SequencerOrderLogic(CallbackMixin):
         for generator in GeneratorName.items():
             self._controller.set_order_entry(generator, position, pattern_index)
 
-    def find_empty_frame(self, after: int) -> Optional[int]:
-        """Returns the index of the first order position strictly after ``after``
-        where every channel's pattern is either unassigned or contains no notes.
-        Returns None if no such position exists ahead of the given frame."""
-        song = self._controller.project.song
-        for position in range(after + 1, song.order_length()):
-            frame = song.order[position]
-            if all(
-                index is None or ((pattern := song.pattern(generator, index)) is not None and pattern.is_empty())
-                for generator, index in frame.items()
-            ):
-                return position
-        return None
-
     def add_to_order(self) -> None:
         """Appends one empty frame (all channels silent) to the order."""
         self._controller.append_frame()
 
     def remove_from_order(self, position: int) -> None:
         self._controller.remove_frame(position)
+
+    def insert_frame(self, position: int) -> None:
+        """Inserts one empty frame (all channels silent) at ``position``."""
+        self._controller.insert_frame(position)
+
+    def duplicate_frame(self, position: int) -> None:
+        """Inserts a copy of the frame at ``position`` directly after it."""
+        self._controller.duplicate_frame(position)
+
+    def clear_frame(self, position: int) -> None:
+        """Empties every channel in the frame at ``position``."""
+        self._controller.clear_frame(position)
+
+    def move_frame(self, from_position: int, to_position: int) -> None:
+        self._controller.move_frame(from_position, to_position)
 
     def _build_channel_view(
         self,

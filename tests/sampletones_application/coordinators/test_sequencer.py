@@ -260,6 +260,134 @@ class TestNoteOffDispatch:
         playback_coordinator._sequencer_grid_logic.set_note_off.assert_not_called()
 
 
+@pytest.fixture
+def order_ops_coordinator() -> SequencerTabCoordinator:
+    """A coordinator with only the collaborators the order-frame handlers touch."""
+    instance = object.__new__(SequencerTabCoordinator)
+    instance._sequencer_order_logic = MagicMock()
+    instance._sequencer_grid_logic = MagicMock()
+    instance._sequencer_order_panel = MagicMock()
+    instance._song_player_logic = MagicMock()
+    instance._project_controller = MagicMock()
+    instance._playing_order = None
+    return instance
+
+
+class TestOrderFrameOperations:
+    def test_insert_adds_a_frame_after_the_target(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._song_player_logic.is_playing.return_value = False
+
+        coordinator._on_order_insert(2)
+
+        coordinator._sequencer_order_logic.insert_frame.assert_called_once_with(3)
+
+    def test_remove_pulls_playhead_earlier_when_playing(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = 3
+        coordinator._project_controller.order_length = 5
+
+        coordinator._on_order_remove(1)
+
+        coordinator._sequencer_order_logic.remove_from_order.assert_called_once_with(1)
+        coordinator._song_player_logic.relocate.assert_called_once_with(2)
+
+    def test_remove_does_not_relocate_when_not_playing(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = None
+        coordinator._project_controller.order_length = 5
+
+        coordinator._on_order_remove(1)
+
+        coordinator._song_player_logic.relocate.assert_not_called()
+
+    def test_duplicate_before_playhead_shifts_it_later(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = 2
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_duplicate(0)
+
+        coordinator._sequencer_order_logic.duplicate_frame.assert_called_once_with(0)
+        coordinator._song_player_logic.relocate.assert_called_once_with(3)
+
+    def test_move_makes_the_playing_frame_follow_itself(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = 2
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_move(2, 5)
+
+        coordinator._sequencer_order_logic.move_frame.assert_called_once_with(2, 5)
+        coordinator._song_player_logic.relocate.assert_called_once_with(5)
+
+    def test_move_advances_cursor_and_highlight_immediately(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        # The cursor and playing highlight must advance on the keypress, not on the next row
+        # update, so a rapid second Alt+arrow acts on the moved frame rather than snapping back.
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = 2
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_move(2, 3)
+
+        coordinator._sequencer_grid_logic.select_frame.assert_called_once_with(3)
+        coordinator._sequencer_order_panel.set_playing_position.assert_called_once_with(3)
+
+    def test_clear_leaves_the_playhead_in_place(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._playing_order = 2
+
+        coordinator._on_order_clear(2)
+
+        coordinator._sequencer_order_logic.clear_frame.assert_called_once_with(2)
+        coordinator._song_player_logic.relocate.assert_not_called()
+
+    def test_play_from_seeks_when_already_playing(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._song_player_logic.is_playing.return_value = True
+
+        coordinator._on_order_play_from(3)
+
+        coordinator._song_player_logic.seek.assert_called_once_with(3)
+        coordinator._song_player_logic.play_from.assert_not_called()
+
+    def test_play_from_starts_playback_when_stopped(
+        self,
+        order_ops_coordinator: SequencerTabCoordinator,
+    ) -> None:
+        coordinator = order_ops_coordinator
+        coordinator._song_player_logic.is_playing.return_value = False
+
+        coordinator._on_order_play_from(3)
+
+        coordinator._song_player_logic.play_from.assert_called_once_with(3)
+        coordinator._song_player_logic.seek.assert_not_called()
+
+
 class TestImportReconstruction:
     def test_closed_project_shows_dialog_and_does_not_import(
         self,

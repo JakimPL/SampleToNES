@@ -1,10 +1,11 @@
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
 from sampletones_application.categories.elements.sequencer import SequencerOrderElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_GRID_PANEL,
     TAG_SEQUENCER_ORDER_BUTTON_ADD,
@@ -15,6 +16,10 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_ORDER_WINDOW,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.ui.elements.context_menu import (
+    add_play_menu_item,
+    context_menu,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -27,19 +32,26 @@ from sampletones_application.ui.panels.sequencer.order_input import (
     OrderInputState,
 )
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_delete_item
-from sampletones_application.utils.shortcuts.keys import HEX_KEYS
+from sampletones_application.utils.shortcuts.keys import HEX_KEYS, Modifier
+from sampletones_application.utils.shortcuts.shortcut import Shortcut
+from sampletones_application.view_model.sequencer.move import MoveDirection
 from sampletones_application.view_model.sequencer.order import (
     SequencerOrderGridViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import display_id, display_index
+from sampletones_core.utils.display import display_id
+from sampletones_shared.constants.symbols import MINUS, PLUS
 from sampletones_shared.types.application import Sender
 
 OrderKey = Tuple[Optional[GeneratorName], int]
 
+MASTER_TABLE_ROW: Final[int] = 0
+DIVIDER_TABLE_ROW: Final[int] = 1
+
 OnFrameSelectedCallback = Callable[[int], None]
-OnAddCallback = Callable[[], None]
 OnRemoveCallback = Callable[[int], None]
+OnFrameActionCallback = Callable[[int], None]
+OnMoveCallback = Callable[[int, int], None]
 OnSetOrderEntryCallback = Callable[[GeneratorName, int, Optional[int]], None]
 OnSetMasterEntryCallback = Callable[[int, Optional[int]], None]
 
@@ -69,10 +81,15 @@ class GUISequencerOrderPanel(GUIPanel):
         self._highlighted_column: Optional[int] = None
         self._current_position: Optional[int] = None
         self._playing_position: Optional[int] = None
+        self._cell_handler_tag = f"{TAG_SEQUENCER_ORDER_TABLE}{SUF_HANDLER_REGISTRY}"
 
         self.on_frame_selected: Optional[OnFrameSelectedCallback] = None
-        self.on_add_requested: Optional[OnAddCallback] = None
         self.on_remove_requested: Optional[OnRemoveCallback] = None
+        self.on_duplicate_requested: Optional[OnFrameActionCallback] = None
+        self.on_insert_requested: Optional[OnFrameActionCallback] = None
+        self.on_clear_requested: Optional[OnFrameActionCallback] = None
+        self.on_play_from_requested: Optional[OnFrameActionCallback] = None
+        self.on_move_requested: Optional[OnMoveCallback] = None
         self.on_set_order_entry: Optional[OnSetOrderEntryCallback] = None
         self.on_set_master_entry: Optional[OnSetMasterEntryCallback] = None
         self.on_cell_selected: Optional[Callable[[], None]] = None
@@ -110,6 +127,28 @@ class GUISequencerOrderPanel(GUIPanel):
                 SequencerOrderElements.ROW_NOISE,
             ],
         }
+
+        def _context_label(element: SequencerOrderElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.ORDER, TextType.LABEL, element]
+
+        self._lbl_context_play = _context_label(SequencerOrderElements.CONTEXT_PLAY)
+        self._lbl_context_duplicate = _context_label(SequencerOrderElements.CONTEXT_DUPLICATE)
+        self._lbl_context_insert = _context_label(SequencerOrderElements.CONTEXT_INSERT)
+        self._lbl_context_clear = _context_label(SequencerOrderElements.CONTEXT_CLEAR)
+        self._lbl_context_remove = _context_label(SequencerOrderElements.CONTEXT_REMOVE)
+        self._lbl_context_move_left = _context_label(SequencerOrderElements.CONTEXT_MOVE_LEFT)
+        self._lbl_context_move_right = _context_label(SequencerOrderElements.CONTEXT_MOVE_RIGHT)
+        self._lbl_context_move_start = _context_label(SequencerOrderElements.CONTEXT_MOVE_START)
+        self._lbl_context_move_end = _context_label(SequencerOrderElements.CONTEXT_MOVE_END)
+
+        self._sc_move_left = Shortcut(dpg.mvKey_Left, (Modifier.ALT,)).get_display_string()
+        self._sc_move_right = Shortcut(dpg.mvKey_Right, (Modifier.ALT,)).get_display_string()
+        self._sc_move_start = Shortcut(dpg.mvKey_Home, (Modifier.ALT,)).get_display_string()
+        self._sc_move_end = Shortcut(dpg.mvKey_End, (Modifier.ALT,)).get_display_string()
+        self._sc_duplicate = Shortcut(dpg.mvKey_D, (Modifier.CTRL,)).get_display_string()
+        self._sc_insert = PLUS
+        self._sc_remove = MINUS
+        self._sc_clear = Shortcut(dpg.mvKey_Delete, (Modifier.SHIFT,)).get_display_string()
 
         super().__init__(
             tag=TAG_SEQUENCER_ORDER_PANEL,
@@ -151,6 +190,9 @@ class GUISequencerOrderPanel(GUIPanel):
     def _register_handlers(self) -> None:
         with dpg.handler_registry(tag=TAG_SEQUENCER_ORDER_KEY_HANDLER):
             dpg.add_key_press_handler(callback=self._on_key_pressed)
+
+        with dpg.item_handler_registry(tag=self._cell_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
 
     def update_order(self, view_model: SequencerOrderGridViewModel) -> None:
         """Reconciles the order table; rebuilds only when the position count changes."""
@@ -253,7 +295,7 @@ class GUISequencerOrderPanel(GUIPanel):
         )
         for position in range(position_count):
             dpg.add_table_column(
-                label=display_index(position),
+                label=display_id(position),
                 parent=TAG_SEQUENCER_ORDER_TABLE,
                 width_fixed=True,
                 init_width_or_weight=self._layout.order.position_column_width,
@@ -261,8 +303,11 @@ class GUISequencerOrderPanel(GUIPanel):
 
         for generator in ORDER_ROWS:
             self._build_row(generator, position_count)
+            if generator is None:
+                self._build_divider_row(position_count)
 
         self._apply_column_backgrounds(position_count)
+        self._highlight_master_row(position_count)
 
     def _apply_column_backgrounds(self, position_count: int) -> None:
         """Tints the label column like the header row, and the position columns in
@@ -275,6 +320,31 @@ class GUISequencerOrderPanel(GUIPanel):
     def _highlight_column_shade(self, position: int) -> None:
         shade = self._layout.colors.order_column_alternate if position % 2 == 1 else self._layout.colors.order_column
         dpg.highlight_table_column(TAG_SEQUENCER_ORDER_TABLE, position + 1, shade)
+
+    def _highlight_master_row(self, position_count: int) -> None:
+        """Tints the master row and the rule below it, matching the tracker grid's
+        sample column and sample divider so the two tables read consistently.
+
+        The tint is applied per cell rather than per row: a cell highlight overrides
+        the per-column shades, whereas a row highlight loses to them and would show
+        only in the gaps between cells.
+        """
+        for column in range(position_count + 1):
+            self._highlight_master_cell_at(column)
+            dpg.highlight_table_cell(
+                TAG_SEQUENCER_ORDER_TABLE,
+                DIVIDER_TABLE_ROW,
+                column,
+                color=self._layout.colors.order_master_divider,
+            )
+
+    def _highlight_master_cell_at(self, column: int) -> None:
+        dpg.highlight_table_cell(
+            TAG_SEQUENCER_ORDER_TABLE,
+            MASTER_TABLE_ROW,
+            column,
+            color=self._layout.colors.order_master,
+        )
 
     def _apply_column_highlight(self, position: int, *, focused: bool) -> None:
         if focused:
@@ -328,7 +398,18 @@ class GUISequencerOrderPanel(GUIPanel):
                 callback=self._on_cell_clicked,
             )
             FontRegistry.bind_to_item(selectable, font)
+            dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
             self._order.register(key, selectable)
+
+    def _build_divider_row(self, position_count: int) -> None:
+        """Inserts the thin rule that sets the master row apart from the channel
+        rows — the transposed analog of the tracker grid's sample-divider column.
+        """
+        row_id = dpg.add_table_row(parent=TAG_SEQUENCER_ORDER_TABLE)
+        spacer_cell = dpg.add_table_cell(parent=row_id)
+        dpg.add_spacer(parent=spacer_cell, height=self._layout.order.master_divider_height)
+        for _ in range(position_count):
+            dpg.add_table_cell(parent=row_id)
 
     def _render_cell(self, key: OrderKey) -> str:
         cursor = self._input_state.cursor
@@ -343,7 +424,9 @@ class GUISequencerOrderPanel(GUIPanel):
         return stored
 
     def _table_row(self, generator: Optional[GeneratorName]) -> int:
-        return ORDER_ROWS.index(generator)
+        if generator is None:
+            return MASTER_TABLE_ROW
+        return ORDER_ROWS.index(generator) + 1
 
     def _apply_cursor_highlight(self, cursor: OrderCursor) -> None:
         dpg.highlight_table_cell(
@@ -358,12 +441,16 @@ class GUISequencerOrderPanel(GUIPanel):
         if self._highlighted is None:
             return
 
-        dpg.unhighlight_table_cell(
-            TAG_SEQUENCER_ORDER_TABLE,
-            self._table_row(self._highlighted.generator),
-            self._highlighted.position + 1,
-        )
+        cursor = self._highlighted
         self._highlighted = None
+        if cursor.generator is None:
+            self._highlight_master_cell_at(cursor.position + 1)
+        else:
+            dpg.unhighlight_table_cell(
+                TAG_SEQUENCER_ORDER_TABLE,
+                self._table_row(cursor.generator),
+                cursor.position + 1,
+            )
 
     def _restore_cursor(self) -> None:
         cursor = self._input_state.cursor
@@ -447,11 +534,84 @@ class GUISequencerOrderPanel(GUIPanel):
         generator, position = user_data
         self._apply_state(OrderInputState(cursor=OrderCursor(generator, position)))
 
+    def _on_cell_right_clicked(self, sender: Sender, app_data: Tuple[int, int]) -> None:
+        """Opens the frame-operations menu for the right-clicked frame.
+
+        The menu acts on the clicked frame directly and leaves the edit cursor (and, while
+        following playback, the playhead) where it is — right-clicking should not seek.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        key = dpg.get_item_user_data(clicked_item)
+        if key is None:
+            return
+
+        _, position = key
+        self._show_context_menu(position)
+
+    def _show_context_menu(self, position: int) -> None:
+        with context_menu():
+            header = dpg.add_text(display_id(position))
+            FontRegistry.bind_to_item(header, Font.BOLD)
+            dpg.add_separator()
+            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_requested, position))
+            dpg.add_separator()
+            dpg.add_menu_item(
+                label=self._lbl_context_duplicate,
+                shortcut=self._sc_duplicate,
+                callback=lambda: self.call(self.on_duplicate_requested, position),
+            )
+            dpg.add_menu_item(
+                label=self._lbl_context_insert,
+                shortcut=self._sc_insert,
+                callback=lambda: self.call(self.on_insert_requested, position),
+            )
+            dpg.add_menu_item(
+                label=self._lbl_context_clear,
+                shortcut=self._sc_clear,
+                callback=lambda: self.call(self.on_clear_requested, position),
+            )
+            dpg.add_menu_item(
+                label=self._lbl_context_remove,
+                shortcut=self._sc_remove,
+                callback=lambda: self.call(self.on_remove_requested, position),
+            )
+            dpg.add_separator()
+            self._add_move_item(self._lbl_context_move_left, self._sc_move_left, position, MoveDirection.PREVIOUS)
+            self._add_move_item(self._lbl_context_move_right, self._sc_move_right, position, MoveDirection.NEXT)
+            self._add_move_item(self._lbl_context_move_start, self._sc_move_start, position, MoveDirection.FIRST)
+            self._add_move_item(self._lbl_context_move_end, self._sc_move_end, position, MoveDirection.LAST)
+
+    def _add_move_item(self, label: str, shortcut: str, position: int, direction: MoveDirection) -> None:
+        """Adds a move item, greyed out (disabled) when the move would have no effect."""
+        target = direction.target(position, self._position_count)
+        dpg.add_menu_item(
+            label=label,
+            shortcut=shortcut,
+            enabled=target is not None,
+            callback=lambda: self.call(self.on_move_requested, position, target),
+        )
+
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
-        if self._input_state.cursor is None:
+        cursor = self._input_state.cursor
+        if cursor is None:
+            return
+
+        if self._alt_held():
+            self._handle_alt_move(app_data, cursor.position)
+            return
+
+        if self._ctrl_held() and app_data == dpg.mvKey_D:
+            self.call(self.on_duplicate_requested, cursor.position)
             return
 
         match app_data:
+            case dpg.mvKey_Plus | dpg.mvKey_Add:
+                self.call(self.on_insert_requested, cursor.position)
+            case dpg.mvKey_Minus | dpg.mvKey_Subtract:
+                self._on_remove_clicked()
             case dpg.mvKey_Left:
                 self._move_position(-1)
             case dpg.mvKey_Right:
@@ -467,23 +627,52 @@ class GUISequencerOrderPanel(GUIPanel):
             case dpg.mvKey_Return:
                 self._move_position(1)
             case dpg.mvKey_Delete:
-                ctrl_held = dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl)
-                if ctrl_held:
-                    self._on_remove_clicked()
+                if self._shift_held():
+                    self.call(self.on_clear_requested, cursor.position)
                 else:
                     self._clear_cell()
                     self._move_position(1)
             case dpg.mvKey_Back:
                 self._clear_cell()
                 self._move_position(-1)
-            case dpg.mvKey_Spacebar:
-                self._clear_cell()
             case dpg.mvKey_Insert:
                 self._on_add_clicked()
             case dpg.mvKey_Escape:
                 self._apply_state(self._input_state.cancel())
             case _:
                 self._handle_printable_key(app_data)
+
+    def _alt_held(self) -> bool:
+        return bool(dpg.is_key_down(dpg.mvKey_LAlt) or dpg.is_key_down(dpg.mvKey_RAlt))
+
+    def _ctrl_held(self) -> bool:
+        return bool(dpg.is_key_down(dpg.mvKey_LControl) or dpg.is_key_down(dpg.mvKey_RControl))
+
+    def _shift_held(self) -> bool:
+        return bool(dpg.is_key_down(dpg.mvKey_LShift) or dpg.is_key_down(dpg.mvKey_RShift))
+
+    def _handle_alt_move(self, key: int, position: int) -> None:
+        """Moves the selected frame left/right/to-start/to-end on Alt + arrow / Home / End."""
+        direction = self._alt_move_direction(key)
+        if direction is None:
+            return
+
+        target = direction.target(position, self._position_count)
+        if target is not None:
+            self.call(self.on_move_requested, position, target)
+
+    def _alt_move_direction(self, key: int) -> Optional[MoveDirection]:
+        match key:
+            case dpg.mvKey_Left:
+                return MoveDirection.PREVIOUS
+            case dpg.mvKey_Right:
+                return MoveDirection.NEXT
+            case dpg.mvKey_Home:
+                return MoveDirection.FIRST
+            case dpg.mvKey_End:
+                return MoveDirection.LAST
+            case _:
+                return None
 
     def _move_position(self, delta: int) -> None:
         self._apply_state(
@@ -545,7 +734,12 @@ class GUISequencerOrderPanel(GUIPanel):
             )
 
     def _on_add_clicked(self) -> None:
-        self.call(self.on_add_requested)
+        """Inserts an empty frame after the current one (appends when at or past the end)."""
+        cursor = self._input_state.cursor
+        position = cursor.position if cursor is not None else self._current_position
+        if position is None or not 0 <= position < self._position_count:
+            position = self._position_count - 1
+        self.call(self.on_insert_requested, position)
 
     def _on_remove_clicked(self) -> None:
         cursor = self._input_state.cursor

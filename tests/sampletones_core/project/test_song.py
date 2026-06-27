@@ -157,6 +157,53 @@ class TestSongMoveFrame:
         assert song.order[0][GeneratorName.PULSE1] == 7
 
 
+class TestSongDuplicateFrame:
+    def test_duplicate_inserts_copy_after_position(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+        song.set_order_entry(1, GeneratorName.PULSE1, 2)
+
+        song.duplicate_frame(0)
+
+        assert song.order_length() == 3
+        assert song.order[0][GeneratorName.PULSE1] == 1
+        assert song.order[1][GeneratorName.PULSE1] == 1
+        assert song.order[2][GeneratorName.PULSE1] == 2
+
+    def test_duplicate_copy_is_independent(self) -> None:
+        song = _song()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+
+        song.duplicate_frame(0)
+        song.set_order_entry(1, GeneratorName.PULSE1, 5)
+
+        assert song.order[0][GeneratorName.PULSE1] == 1
+        assert song.order[1][GeneratorName.PULSE1] == 5
+
+
+class TestSongClearFrame:
+    def test_clear_frame_sets_all_channels_to_none(self) -> None:
+        song = _song()
+        for generator in GeneratorName.items():
+            song.set_order_entry(0, generator, 3)
+
+        song.clear_frame(0)
+
+        assert all(song.order[0][generator] is None for generator in GeneratorName.items())
+
+    def test_clear_frame_leaves_other_frames(self) -> None:
+        song = _song()
+        song.append_frame()
+        song.set_order_entry(0, GeneratorName.PULSE1, 1)
+        song.set_order_entry(1, GeneratorName.PULSE1, 2)
+
+        song.clear_frame(0)
+
+        assert song.order[0][GeneratorName.PULSE1] is None
+        assert song.order[1][GeneratorName.PULSE1] == 2
+
+
 class TestSongOrderedPatterns:
     def test_ordered_patterns_returns_pattern_objects(self) -> None:
         song = _song()

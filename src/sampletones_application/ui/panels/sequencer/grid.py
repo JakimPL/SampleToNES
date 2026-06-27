@@ -49,7 +49,7 @@ from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.utils.display import NOTE_OFF, display_index
+from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.types.application import Sender
 
 OnClearRowCallback = Callable[[int, Optional[GeneratorName]], None]
@@ -353,7 +353,7 @@ class GUISequencerGridPanel(GUIPanel):
         number_cell = dpg.add_table_cell(parent=row_id)
         selectable = dpg.add_selectable(
             parent=number_cell,
-            label=display_index(row_index),
+            label=display_id(row_index),
             user_data=row_index,
             callback=self._on_row_number_clicked,
         )

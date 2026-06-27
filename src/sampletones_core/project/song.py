@@ -80,6 +80,12 @@ class Song(BaseModel):
         frame = self.order.pop(from_position)
         self.order.insert(to_position, frame)
 
+    def duplicate_frame(self, position: int) -> None:
+        self.order.insert(position + 1, dict(self.order[position]))
+
+    def clear_frame(self, position: int) -> None:
+        self.order[position] = self._empty_frame()
+
     def remove_pattern(self, generator: GeneratorName, index: int) -> None:
         """Removes a pattern from the pool and clears all order references to it."""
         self.channels[generator].remove_pattern(index)

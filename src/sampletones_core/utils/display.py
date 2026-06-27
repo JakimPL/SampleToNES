@@ -40,10 +40,6 @@ def display_id(value: Optional[int]) -> str:
     return display_value(value, hexadecimal=True)
 
 
-def display_index(index: Optional[int]) -> str:
-    return display_value(index, hexadecimal=False)
-
-
 def display_sample(
     *,
     samples: IdentifiedCollection[Sample],

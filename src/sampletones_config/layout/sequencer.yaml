@@ -4,6 +4,7 @@ cell_padding: [3, 4]
 order:
   height: 185
   position_column_width: 40
+  master_divider_height: 4
 
 table_cells:
   row: 30
@@ -40,6 +41,8 @@ colors:
   sample_column: "#22ccff18"
   sample_divider: "#22ccff24"
   order_label: "#2d3241"
+  order_master: "#22ccff18"
+  order_master_divider: "#22ccff24"
   order_column: "#1e2028"
   order_column_alternate: "#262834"
   order_column_current: "#ffffff20"

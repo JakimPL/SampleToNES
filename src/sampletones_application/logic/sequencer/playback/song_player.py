@@ -96,6 +96,16 @@ class SongPlayerLogic(CallbackMixin):
         if self._service.alive:
             self._awaiting_seek_order = order_position
 
+    def relocate(self, order_position: int) -> None:
+        """Follows a structural order edit, keeping playback on the frame it was sounding.
+
+        Like :meth:`seek` but preserves the current row; stale in-flight updates for the
+        pre-edit order are dropped via ``_awaiting_seek_order`` so the grid does not flicker.
+        """
+        self._service.relocate(order_position)
+        if self._service.alive:
+            self._awaiting_seek_order = order_position
+
     def stop(self) -> None:
         self._service.stop()
         self._position = SongPosition()

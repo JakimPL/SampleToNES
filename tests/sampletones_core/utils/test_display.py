@@ -9,6 +9,7 @@ from sampletones_core.project.instruments.sample import Sample
 from sampletones_core.utils.display import (
     NOTE_OFF,
     display_command,
+    display_id,
     display_sample,
     display_sample_label,
 )
@@ -67,6 +68,15 @@ class TestDisplaySamples:
             )
             == "02"
         )
+
+
+class TestDisplayId:
+    def test_two_digit_hexadecimal(self) -> None:
+        assert display_id(10) == "0A"
+        assert display_id(255) == "FF"
+
+    def test_none_is_placeholder(self) -> None:
+        assert display_id(None) == ".."
 
 
 class TestDisplaySampleLabel:

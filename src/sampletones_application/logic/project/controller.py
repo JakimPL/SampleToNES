@@ -338,6 +338,16 @@ class ProjectController(CallbackMixin):
         self._touch()
         self.call(self.on_song_changed)
 
+    def duplicate_frame(self, position: int) -> None:
+        self.song.duplicate_frame(position)
+        self._touch()
+        self.call(self.on_song_changed)
+
+    def clear_frame(self, position: int) -> None:
+        self.song.clear_frame(position)
+        self._touch()
+        self.call(self.on_song_changed)
+
     def _touch(self) -> None:
         self.project.info.touch()
         self._project_manager.mark_updated()
