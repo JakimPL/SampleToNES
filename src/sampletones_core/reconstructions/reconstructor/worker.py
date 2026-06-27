@@ -1,40 +1,21 @@
 from dataclasses import dataclass, field
-from functools import lru_cache
-from typing import Any, Callable, Dict, List, Optional, Tuple
-
-import numpy as np
-from numpy.lib.stride_tricks import sliding_window_view
+from typing import Dict, List, Tuple
 
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import (
-    GeneratorClassName,
-    GeneratorName,
-    InstructionClassName,
-)
+from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
 from sampletones_core.generators import (
     GeneratorUnion,
-    get_generator_by_instruction,
+    get_remaining_generator_classes,
 )
-from sampletones_core.instructions import (
-    INSTRUCTION_CLASS_MAP,
-    InstructionUnion,
-)
+from sampletones_core.instructions import InstructionUnion
 from sampletones_core.library import InstructionLibraryData
-from sampletones_shared.array import CUPY_AVAILABLE, xp
 
-from ..criterion import Criterion
 from .approximation import ApproximationData
-
-GetCachedApproximationsInstructionsArgument = Tuple[Tuple[InstructionClassName, bytes], ...]
-GetCachedApproximationsGeneratorsArgument = Tuple[GeneratorUnion, ...]
-GetCachedApproximationsCallback = Callable[
-    [
-        GetCachedApproximationsInstructionsArgument,
-        GetCachedApproximationsGeneratorsArgument,
-    ],
-    Fragment,
-]
+from .candidates import CandidateProvider, SerializedInstructions, serialize_instructions
+from .phase import PHASE_ALIGNERS, PhaseAligner
+from .scorer import Scorer
+from .selector import SELECTORS, Selector
 
 
 @dataclass(frozen=True)
@@ -44,51 +25,40 @@ class ReconstructorWorker:
     generators: Dict[GeneratorName, GeneratorUnion]
     library_data: InstructionLibraryData
 
-    criterion: Criterion = field(init=False)
-    _get_cached_approximations: GetCachedApproximationsCallback = field(init=False)
+    scorer: Scorer = field(init=False)
+    candidate_provider: CandidateProvider = field(init=False)
+    phase_aligner: PhaseAligner = field(init=False)
+    selector: Selector = field(init=False)
+
+    def __post_init__(self) -> None:
+        scorer = Scorer(self.config, self.window)
+        candidate_provider = CandidateProvider(self.config, self.window, self.library_data)
+        phase_aligner_class = PHASE_ALIGNERS[self.config.generation.calculation.phase_aligner]
+        phase_aligner = phase_aligner_class(self.config, self.window, self.library_data)
+        selector_class = SELECTORS[self.config.generation.decoder.selector]
+        selector = selector_class(
+            config=self.config,
+            window=self.window,
+            generators=self.generators,
+            scorer=scorer,
+            candidate_provider=candidate_provider,
+            phase_aligner=phase_aligner,
+        )
+
+        object.__setattr__(self, "scorer", scorer)
+        object.__setattr__(self, "candidate_provider", candidate_provider)
+        object.__setattr__(self, "phase_aligner", phase_aligner)
+        object.__setattr__(self, "selector", selector)
 
     def __call__(
         self,
         fragmented_audio: FragmentedAudio,
         fragment_ids: List[int],
     ) -> Dict[int, Dict[GeneratorName, ApproximationData]]:
-        return {fragment_id: self.reconstruct(fragmented_audio[fragment_id]) for fragment_id in fragment_ids}
+        return self.selector.select(fragmented_audio, fragment_ids)
 
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "criterion", Criterion(self.config, self.window))
-
-        def _build_get_cached_approximations() -> GetCachedApproximationsCallback:
-            @lru_cache(maxsize=16)
-            def _cached(
-                serialized_instructions: Tuple[Tuple[InstructionClassName, bytes], ...],
-                remaining_generators: Tuple[GeneratorUnion],
-            ) -> Fragment:
-                remaining_generator_classes = dict(
-                    zip(
-                        (generator.class_name() for generator in remaining_generators),
-                        remaining_generators,
-                    )
-                )
-                approximations: List[Fragment] = []
-                for (
-                    instruction_class_name,
-                    serialized_instruction,
-                ) in serialized_instructions:
-                    instruction_class = INSTRUCTION_CLASS_MAP[instruction_class_name]
-                    instruction = instruction_class.deserialize(serialized_instruction)
-                    generator = get_generator_by_instruction(instruction, remaining_generator_classes)
-                    approximation = self.get_approximation(instruction, generator)
-                    approximations.append(approximation)
-
-                return Fragment.stack(approximations).to_cupy()
-
-            return _cached
-
-        object.__setattr__(
-            self,
-            "_get_cached_approximations",
-            _build_get_cached_approximations(),
-        )
+    def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
+        return self.selector.reconstruct_fragment(fragment)
 
     def get_remaining_generators(self) -> Dict[GeneratorName, GeneratorUnion]:
         return dict(self.generators.items())
@@ -97,101 +67,10 @@ class ReconstructorWorker:
         self,
         remaining_generators: Dict[GeneratorName, GeneratorUnion],
     ) -> Dict[GeneratorClassName, GeneratorUnion]:
-        return {generator.class_name(): generator for generator in reversed(remaining_generators.values())}
-
-    def reconstruct(self, fragment: Fragment) -> Dict[GeneratorName, ApproximationData]:
-        approximations: Dict[GeneratorName, ApproximationData] = {}
-        remaining_generators = self.get_remaining_generators()
-        while remaining_generators:
-            remaining_generator_classes = self.get_remaining_generator_classes(remaining_generators)
-            fragment_approximation = self.find_best_approximation(fragment, remaining_generator_classes)
-            fragment -= fragment_approximation.approximation
-            approximations[fragment_approximation.generator_name] = fragment_approximation
-            del remaining_generators[fragment_approximation.generator_name]
-
-        return approximations
-
-    def find_best_instruction(
-        self,
-        fragment: Fragment,
-        remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
-    ) -> InstructionUnion:
-        valid_instructions = tuple(self.library_data.filter(tuple(remaining_generator_classes)).keys())
-        approximations = self.get_approximations(
-            valid_instructions,
-            remaining_generator_classes,
-        )
-
-        errors: Optional[xp.ndarray] = None
-        fragment_gpu: Optional[Fragment] = None
-        try:
-            fragment_gpu = fragment.to_cupy()
-            errors = self.criterion(fragment_gpu, approximations)
-            index = int(xp.argmin(errors))
-            instruction = valid_instructions[index]
-        finally:
-            del errors, approximations, fragment_gpu
-            if CUPY_AVAILABLE:
-                xp.get_default_memory_pool().free_all_blocks()
-
-        return instruction
-
-    def find_best_phase(self, fragment: Fragment, instruction: InstructionUnion) -> Fragment:
-        library_fragment = self.library_data[instruction]
-        array = library_fragment.sample.get_fragment(length=2 * library_fragment.sample.length)
-
-        windows = sliding_window_view(array, self.config.library.frame_length)
-        remainder = fragment.audio - windows
-
-        rmse = np.sqrt((remainder**2).mean(axis=1))
-        best_shift = int(np.argmin(rmse))
-        return library_fragment.get_fragment(best_shift, self.config, self.window)
-
-    def find_best_approximation(
-        self,
-        fragment: Fragment,
-        remaining_generator_classes: Dict[GeneratorClassName, Any],
-    ) -> ApproximationData:
-        instruction = self.find_best_instruction(fragment, remaining_generator_classes)
-        generator = get_generator_by_instruction(instruction, remaining_generator_classes)
-
-        if self.config.generation.calculation.find_best_phase:
-            approximation = self.find_best_phase(fragment, instruction)
-        else:
-            approximation = self.get_approximation(instruction, generator)
-
-        return ApproximationData(
-            generator_name=GeneratorName(generator.name),
-            approximation=approximation,
-            instruction=instruction,
-        )
-
-    def get_approximation(self, instruction: InstructionUnion, generator: GeneratorUnion) -> Fragment:
-        library_fragment = self.library_data[instruction]
-        fragment = library_fragment.get(
-            generator,
-            self.config,
-            self.window,
-            generator.initials,
-        )
-        return fragment * self.config.generation.drive
-
-    def get_approximations(
-        self,
-        valid_instructions: Tuple[InstructionUnion, ...],
-        remaining_generator_classes: Dict[GeneratorClassName, GeneratorUnion],
-    ) -> Fragment:
-        serialized_instructions = self._serialize_instructions(valid_instructions)
-        remaining_generators = tuple(remaining_generator_classes.values())
-
-        return self._get_cached_approximations(
-            serialized_instructions,
-            remaining_generators,
-        )
+        return get_remaining_generator_classes(remaining_generators)
 
     @staticmethod
-    @lru_cache(maxsize=16)
     def _serialize_instructions(
         instructions: Tuple[InstructionUnion, ...],
-    ) -> GetCachedApproximationsInstructionsArgument:
-        return tuple((instruction.class_name(), instruction.serialize()) for instruction in instructions)
+    ) -> SerializedInstructions:
+        return serialize_instructions(instructions)

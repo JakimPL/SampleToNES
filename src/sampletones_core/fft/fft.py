@@ -94,7 +94,11 @@ def a_weighting(frequencies: np.ndarray) -> np.ndarray:
 
 
 @lru_cache(maxsize=128)
-def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
+def calculate_weights(
+    fragment_length: int,
+    sample_rate: int,
+    perceptual_exponent: float = 1.0,
+) -> np.ndarray:
     """
     Calculate combined frequency weights for spectrum analysis.
 
@@ -103,11 +107,17 @@ def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
     for the logarithmic spacing of frequencies, while A-weighting emphasizes
     perceptually important frequencies.
 
+    The perceptual exponent controls how strongly A-weighting is applied:
+    1.0 applies the full A-weighting curve, 0.0 relies on density weights
+    alone, and intermediate values preserve more low-frequency energy where
+    the A-weighting curve falls off as f**4.
+
     The result is normalized to sum to 1.0.
 
     Args:
         fragment_length: Length of the audio fragment (FFT size).
         sample_rate: Sampling rate in Hz.
+        perceptual_exponent: Power applied to the A-weighting curve.
 
     Returns:
         Normalized combined weights, shape (fragment_length//2,).
@@ -122,7 +132,7 @@ def calculate_weights(fragment_length: int, sample_rate: int) -> np.ndarray:
     """
     frequencies = calculate_fft_frequencies(fragment_length, sample_rate)[1:]
     density_weights = 1.0 / frequencies
-    perceptual_weights = a_weighting(frequencies)
+    perceptual_weights = a_weighting(frequencies) ** perceptual_exponent
 
     weights: np.ndarray = density_weights * perceptual_weights
     normalized_weights: np.ndarray = weights / np.sum(weights)

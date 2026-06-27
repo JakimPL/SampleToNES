@@ -34,7 +34,7 @@ def get_generators_map(
 
 
 def get_remaining_generator_classes(
-    remaining_generators: Dict[str, GeneratorUnion],
+    remaining_generators: Dict[GeneratorName, GeneratorUnion],
 ) -> Dict[GeneratorClassName, GeneratorUnion]:
     return {generator.class_name(): generator for generator in reversed(remaining_generators.values())}
 

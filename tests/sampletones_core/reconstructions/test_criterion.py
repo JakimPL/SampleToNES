@@ -5,9 +5,26 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from sampletones_core.configs import Config, WeightsConfig
+from sampletones_core.configs import Config, MetricConfig, WeightsConfig
+from sampletones_core.constants.enums import SpectralDistance
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
+
+
+def _criterion_with_distance(
+    config: Config,
+    window: Window,
+    spectral_distance: SpectralDistance,
+    beta: float = 1.0,
+) -> Criterion:
+    updated_config = config.model_copy(
+        update={
+            "generation": config.generation.model_copy(
+                update={"metric": MetricConfig(spectral_distance=spectral_distance, beta=beta)}
+            )
+        }
+    )
+    return Criterion(updated_config, window)
 
 
 @pytest.fixture(scope="module")
@@ -84,3 +101,58 @@ class TestCriterionGetLossWeights:
         )
         with pytest.raises(ValueError):
             Criterion(zero_config, window)
+
+
+class TestCriterionSpectralLoss:
+    @pytest.fixture
+    def bins(self, criterion: Criterion) -> int:
+        return int(criterion.weights.shape[-1])
+
+    def test_beta_divergence_is_zero_for_identical_spectrum(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+        loss = criterion.spectral_loss(reference, reference[None, :])
+        assert float(loss[0]) == pytest.approx(0.0, abs=1e-6)
+
+    def test_beta_divergence_is_non_negative_for_mismatched_spectrum(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+        candidates = np.stack([np.full(bins, 0.5, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
+        loss = criterion.spectral_loss(reference, candidates)
+        assert bool(np.all(np.asarray(loss) >= 0.0))
+
+    def test_spectral_loss_shape_matches_candidate_count(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        for distance in SpectralDistance:
+            criterion = _criterion_with_distance(config, window, distance)
+            reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+            candidates = np.stack([reference, np.full(bins, 0.3, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
+            loss = criterion.spectral_loss(reference, candidates)
+            assert np.asarray(loss).shape == (3,)
+
+    def test_closer_spectrum_scores_lower_than_distant_one(
+        self,
+        config: Config,
+        window: Window,
+        bins: int,
+    ) -> None:
+        criterion = _criterion_with_distance(config, window, SpectralDistance.BETA_DIVERGENCE, beta=1.0)
+        reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
+        close = reference + np.float32(0.01)
+        distant = reference + np.float32(0.5)
+        loss = criterion.spectral_loss(reference, np.stack([close, distant]))
+        assert float(loss[0]) < float(loss[1])
