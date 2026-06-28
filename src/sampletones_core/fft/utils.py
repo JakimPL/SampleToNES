@@ -105,4 +105,5 @@ def to_log_even_bands(
 
     module = get_array_module(bands)
     size: int = n_bins or len(bands) - 1
-    return module.exp(module.linspace(module.log(cutoff), module.log(bands[-1]), size + 1))
+    edges: Array = module.exp(module.linspace(module.log(cutoff), module.log(bands[-1]), size + 1))
+    return edges.astype(bands.dtype)
