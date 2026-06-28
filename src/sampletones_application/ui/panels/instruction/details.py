@@ -30,17 +30,19 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_DETAILS_TABLE_PARAMETERS,
     TAG_INSTRUCTIONS_DETAILS_TEXT_INFO,
 )
-from sampletones_application.layout.general import TableColors, TablesLayout
+from sampletones_application.layout.general import GeneralLayout, TableColors, TablesLayout
 from sampletones_application.layout.instructions import InstructionsLayout
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.elements.table.table import GUITable
 from sampletones_application.utils.dpg import (
     dpg_configure_item,
     dpg_delete_children,
 )
+from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.view_model.instruction.data import InstructionPanelData
 from sampletones_application.view_model.instruction.details import (
     InstructionDetailsPanelViewModel,
@@ -51,10 +53,7 @@ from sampletones_application.view_model.instruction.table_data import (
 from sampletones_core.constants.enums import GeneratorClassName
 from sampletones_core.constants.general import (
     MAX_DUTY_CYCLE,
-    MAX_PERIOD,
-    MAX_PITCH,
     MAX_VOLUME,
-    MIN_PITCH,
 )
 from sampletones_core.instructions import (
     InstructionUnion,
@@ -62,15 +61,18 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_shared.types.application import Sender
+from sampletones_core.utils.frequencies import NAME_TO_PERIOD, NAME_TO_PITCH
+from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.utils.arrays import clamp
 
 
 class GUIInstructionDetailsPanel(GUIPanel):
     def __init__(
         self,
+        shortcut_manager: ShortcutManager,
         *,
         layout: InstructionsLayout,
+        general_layout: GeneralLayout,
         table_colors: TableColors,
         table_layout: TablesLayout,
         language_manager: LanguageManager,
@@ -80,11 +82,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
         self.general_table: GUITable
         self.parameters_table: GUITable
 
+        self._shortcut_manager = shortcut_manager
         self._layout = layout
+        self._general_layout = general_layout
         self._table_colors = table_colors
         self._table_layout = table_layout
         self._item_handler_tag = f"{TAG_INSTRUCTIONS_DETAILS_PANEL}{SUF_HANDLER_REGISTRY}"
         self._current_viewmodel: Optional[InstructionDetailsPanelViewModel] = None
+        self._pitch_stepper: Optional[GUIPitchStepper] = None
 
         self._lbl_section = language_manager[
             Page.INSTRUCTIONS,
@@ -157,6 +162,24 @@ class GUIInstructionDetailsPanel(GUIPanel):
             Panel.STATUS,
             TextType.MESSAGE,
             StatusElements.INPUT,
+        ]
+        self._msg_status_input_pitch = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            InstructionsDetailsElements.STATUS_INPUT_PITCH,
+        ]
+        self._msg_status_input_period = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.MESSAGE,
+            InstructionsDetailsElements.STATUS_INPUT_PERIOD,
+        ]
+        self._tpl_pitch_tooltip = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.DETAILS,
+            TextType.TEMPLATE,
+            InstructionsDetailsElements.PITCH_TOOLTIP_TEMPLATE,
         ]
 
         super().__init__(
@@ -305,16 +328,50 @@ class GUIInstructionDetailsPanel(GUIPanel):
                 assert isinstance(instruction, NoiseInstruction)
                 self._create_noise_instruction_choice_panel(instruction)
 
-    def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
+    def _create_pitch_stepper(
+        self,
+        *,
+        kind: PitchValueKind,
+        initial_value: int,
+        label: str,
+        tag: str,
+    ) -> None:
+        is_period = kind is PERIOD_VALUE_KIND
+        self._pitch_stepper = GUIPitchStepper(
+            tag=tag,
             parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
+            kind=kind,
+            initial_value=initial_value,
+            label=label,
+            tooltip=self._pitch_tooltip(kind),
+            status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
+            layout=self._general_layout.pitch_stepper,
+            value_color=self._general_layout.colors.text.disabled,
+            shortcut_manager=self._shortcut_manager,
+        )
+        self._pitch_stepper.on_value_changed = self._on_pitch_value_changed
+
+    def _on_pitch_value_changed(self, value: int) -> None:
+        self._on_instruction_changed()
+
+    def _pitch_tooltip(self, kind: PitchValueKind) -> str:
+        if kind is PERIOD_VALUE_KIND:
+            pitch_type = "period"
+            example_name = "4-#"
+            example_value = NAME_TO_PERIOD[example_name]
+        else:
+            pitch_type = "pitch"
+            example_name = "C-4"
+            example_value = NAME_TO_PITCH[example_name]
+
+        return self._tpl_pitch_tooltip.format(pitch_type, example_name, example_value)
+
+    def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:
+        self._create_pitch_stepper(
+            kind=PITCH_VALUE_KIND,
+            initial_value=instruction.pitch,
             label=self._lbl_window_pulse_pitch,
-            default_value=instruction.pitch,
-            min_value=MIN_PITCH,
-            max_value=MAX_PITCH,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
         )
         dpg.add_slider_int(
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
@@ -338,7 +395,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
         )
 
         for tag in [
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
             TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
             TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
         ]:
@@ -346,36 +402,19 @@ class GUIInstructionDetailsPanel(GUIPanel):
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
     def _create_triangle_instruction_choice_panel(self, instruction: TriangleInstruction) -> None:
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
-            parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
+        self._create_pitch_stepper(
+            kind=PITCH_VALUE_KIND,
+            initial_value=instruction.pitch,
             label=self._lbl_window_triangle_pitch,
-            default_value=instruction.pitch,
-            min_value=MIN_PITCH,
-            max_value=MAX_PITCH,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
-        )
-
-        GUIStatusBar.bind_to_item(
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
-            self._msg_status_input,
-        )
-        dpg.bind_item_handler_registry(
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
-            self._item_handler_tag,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
         )
 
     def _create_noise_instruction_choice_panel(self, instruction: NoiseInstruction) -> None:
-        dpg.add_slider_int(
-            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
-            parent=TAG_INSTRUCTIONS_DETAILS_GROUP_INSTRUCTIONS_CHOICE,
+        self._create_pitch_stepper(
+            kind=PERIOD_VALUE_KIND,
+            initial_value=instruction.period,
             label=self._lbl_window_noise_period,
-            default_value=instruction.period,
-            min_value=0,
-            max_value=MAX_PERIOD,
-            clamped=True,
-            width=self._layout.dimensions.instruction_choice_input_width,
+            tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
         )
         dpg.add_slider_int(
             tag=TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
@@ -395,18 +434,15 @@ class GUIInstructionDetailsPanel(GUIPanel):
             callback=self._on_instruction_changed,
         )
 
-        for tag in [
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
-            TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
-            TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
-        ]:
-            GUIStatusBar.bind_to_item(tag, self._msg_status_input)
-            if tag != TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT:
-                dpg.bind_item_handler_registry(tag, self._item_handler_tag)
+        GUIStatusBar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._msg_status_input)
+        GUIStatusBar.bind_to_item(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT, self._msg_status_input)
+        dpg.bind_item_handler_registry(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME, self._item_handler_tag)
 
-    def _on_instruction_changed(self, sender: Sender, app_data: int, user_data: Any) -> None:
+    def _on_instruction_changed(self, *_arguments: Any) -> None:
         if self._current_viewmodel is None or self._current_viewmodel.instruction_data is None:
             return
+
+        assert self._pitch_stepper is not None, "Pitch stepper is built whenever an instruction is shown"
 
         instruction_data = self._current_viewmodel.instruction_data
         tags: List[str] = []
@@ -415,13 +451,11 @@ class GUIInstructionDetailsPanel(GUIPanel):
         instruction: InstructionUnion
         match generator_type:
             case GeneratorClassName.PULSE_GENERATOR:
-                pitch = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH)
-                volume = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME)
-                duty_cycle = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE)
-
-                pitch = int(clamp(pitch, MIN_PITCH, MAX_PITCH))
-                volume = int(clamp(volume, 1, MAX_VOLUME))
-                duty_cycle = int(clamp(duty_cycle, 0, MAX_DUTY_CYCLE))
+                pitch = self._pitch_stepper.value
+                volume = int(clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME), 1, MAX_VOLUME))
+                duty_cycle = int(
+                    clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE), 0, MAX_DUTY_CYCLE)
+                )
                 instruction = PulseInstruction(
                     on=True,
                     pitch=pitch,
@@ -429,45 +463,29 @@ class GUIInstructionDetailsPanel(GUIPanel):
                     duty_cycle=duty_cycle,
                 )
 
-                values = [pitch, volume, duty_cycle]
+                values = [volume, duty_cycle]
                 tags = [
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_PITCH,
                     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_VOLUME,
                     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_PULSE_DUTY_CYCLE,
                 ]
             case GeneratorClassName.TRIANGLE_GENERATOR:
-                pitch = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH)
-
-                pitch = int(clamp(pitch, MIN_PITCH, MAX_PITCH))
                 instruction = TriangleInstruction(
                     on=True,
-                    pitch=pitch,
+                    pitch=self._pitch_stepper.value,
                 )
-
-                values = [pitch]
-                tags = [
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_TRIANGLE_PITCH,
-                ]
             case GeneratorClassName.NOISE_GENERATOR:
-                period = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD)
-                volume = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME)
-                short = dpg.get_value(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT)
-
-                period = int(clamp(period, 0, MAX_PERIOD))
-                volume = int(clamp(volume, 1, MAX_VOLUME))
-                short = bool(short)
+                volume = int(clamp(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME), 1, MAX_VOLUME))
+                short = bool(dpg.get_value(TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT))
                 instruction = NoiseInstruction(
                     on=True,
-                    period=period,
+                    period=self._pitch_stepper.value,
                     volume=volume,
                     short=short,
                 )
 
-                values = [period, volume, short]
+                values = [volume]
                 tags = [
-                    TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_PERIOD,
                     TAG_INSTRUCTIONS_DETAILS_INPUT_CHOICE_NOISE_VOLUME,
-                    TAG_INSTRUCTIONS_DETAILS_CHECKBOX_CHOICE_NOISE_SHORT,
                 ]
 
         for tag, value in zip(tags, values):

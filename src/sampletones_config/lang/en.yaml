@@ -506,10 +506,13 @@ instructions.details.label.window_noise_volume: "Volume"
 instructions.details.label.window_noise_short: "Short"
 instructions.details.label.window_triangle_pitch: "Pitch"
 instructions.details.message.no_instruction_selected: "No instruction selected."
+instructions.details.message.status_input_pitch: "CTRL + click to type value. Enter note name (e.g. \"C-4\") or MIDI value (72)."
+instructions.details.message.status_input_period: "CTRL + click to type value. Enter period name (e.g. \"4-#\") or integer value (4)."
 instructions.details.template.frequency_template: "{:.2f} Hz"
 instructions.details.template.pitch_template: "{} ({})"
 instructions.details.template.period_template: "p{} ({})"
 instructions.details.template.duty_cycle_template: "{:.1f}% ({})"
+instructions.details.template.pitch_tooltip_template: "Enter the {} by name (e.g. {}) or value ({})."
 
 # =============================================================================
 # Settings — Audio

@@ -1,12 +1,3 @@
-initial_pitch_table:
-  label_width: 160
-  display_width: 28
-  button_width: 32
-  cell_padding: [2, 2]
-
-values:
-  pitch_change_delay: 0.075
-
 bar_plots:
   arpeggio:
     min_y: -128.0

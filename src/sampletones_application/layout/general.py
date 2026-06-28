@@ -85,6 +85,15 @@ class TablesLayout(BaseModel, frozen=True):
     frame_rounding: int
 
 
+class PitchStepperLayout(BaseModel, frozen=True):
+    label_width: int
+    value_width: int
+    button_column_width: int
+    button_width: int
+    hold_delay: float
+    commit_delay: int
+
+
 class MenuLayout(BaseModel, frozen=True):
     fps_text_offset: int
 
@@ -170,6 +179,7 @@ class GeneralLayout(BaseModel, frozen=True):
     inputs: InputsLayout
     buttons: ButtonsLayout
     tables: TablesLayout
+    pitch_stepper: PitchStepperLayout
     menu: MenuLayout
     caret: CaretLayout
     colors: GeneralColors

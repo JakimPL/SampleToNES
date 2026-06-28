@@ -91,6 +91,12 @@ TAG_GLOBAL_THEME_TABLE = TagName(
     Widget.THEME,
     "table",
 )
+TAG_GLOBAL_THEME_PITCH_STEPPER = TagName(
+    Page.GLOBAL,
+    Panel.IMPLICIT,
+    Widget.THEME,
+    "pitch_stepper",
+)
 TAG_GLOBAL_THEME_TOOLTIP = TagName(
     Page.GLOBAL,
     Panel.IMPLICIT,
@@ -439,6 +445,7 @@ SUF_INPUT = ".input"
 SUF_INPUT_SEARCH = ".input.search"
 SUF_CHECKBOX = ".checkbox"
 SUF_TABLE = ".table"
+SUF_TOOLTIP = ".tooltip"
 SUF_DIALOG_INFO = ".dialog.info"
 SUF_PANEL_LEFT = ".panel.left"
 SUF_PANEL_CENTER = ".panel.center"

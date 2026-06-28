@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Callable, Dict, Optional, Tuple, cast
 
 import dearpygui.dearpygui as dpg
@@ -15,14 +16,9 @@ from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
-    SUF_BUTTON_DECREMENT,
-    SUF_BUTTON_INCREMENT,
     SUF_GROUP,
     SUF_HANDLER_REGISTRY,
-    SUF_INPUT,
-    SUF_LABEL,
     SUF_PANEL_RIGHT,
-    SUF_TABLE,
     SUF_TEXT,
     TAG_GLOBAL_TAB_RECONSTRUCTIONS,
     TAG_GLOBAL_THEME_DEFAULT,
@@ -41,7 +37,6 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_DETAILS_PANEL,
     TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR,
     TAG_RECONSTRUCTIONS_DETAILS_TEXT_GENERATORS,
-    TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE,
 )
 from sampletones_application.layout.general import GeneralLayout
 from sampletones_application.layout.graphs import GraphsLayout
@@ -55,6 +50,7 @@ from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.graphs.bar import GUIBarGraph
 from sampletones_application.ui.elements.graphs.utils import extend_y_range
 from sampletones_application.ui.elements.panel import GUIPanel
+from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.ui.panels.reconstruction.details.config import (
     FEATURE_DISPLAY_ORDER,
@@ -65,11 +61,9 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_application.utils.clipboard import copy_to_clipboard
 from sampletones_application.utils.dpg import (
     dpg_configure_item,
-    dpg_delete_item,
     dpg_set_value,
 )
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
-from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.view_model.reconstruction.details import (
     ReconstructionDetailsViewModel,
 )
@@ -78,9 +72,8 @@ from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
 from sampletones_core.utils.frequencies import (
     NAME_TO_PERIOD,
     NAME_TO_PITCH,
-    period_to_name,
-    pitch_to_name,
 )
+from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
 from sampletones_shared.types.callback import VoidCallback
@@ -103,6 +96,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         self.shortcut_manager = shortcut_manager
 
         self.generator_plots: Dict[GeneratorName, Dict[FeatureKey, GUIBarGraph]] = {}
+        self._pitch_steppers: Dict[GeneratorName, GUIPitchStepper] = {}
 
         self.tab_bar_tag = TAG_RECONSTRUCTIONS_DETAILS_TABS_BAR
         self.no_data_message_tag = f"{self.tab_bar_tag}{SUF_RECONSTRUCTIONS_RECONSTRUCTION_NO_DATA_MESSAGE}"
@@ -117,16 +111,12 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
         self.theme = ThemeRegistry.get(TAG_GLOBAL_THEME_DEFAULT)
         self.invalid_input_theme = ThemeRegistry.get(TAG_GLOBAL_THEME_INPUT_INVALID)
-        self.initial_pitch_theme = ThemeRegistry.get(TAG_RECONSTRUCTIONS_DETAILS_THEME_INITIAL_PITCH_TABLE)
 
         self.on_instrument_export: Optional[OnInstrumentExportCallback] = None
         self.on_instruments_export: Optional[VoidCallback] = None
         self.on_reconstruction_instrument_hovered: Optional[OnReconstructionInstrumentHoveredCallback] = None
 
-        self.on_pitch_input: Optional[Callable[[GeneratorName, str, int], None]] = None
-        self.on_pitch_step: Optional[Callable[[GeneratorName, int], None]] = None
-        self.on_hold_tick: Optional[Callable[[bool, bool, float, GeneratorName], None]] = None
-        self.on_hold_ended: Optional[VoidCallback] = None
+        self.on_pitch_value_changed: Optional[Callable[[GeneratorName, int], None]] = None
         self.on_bar_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
         self.on_raw_data_changed: Optional[Callable[[GeneratorName, FeatureKey, np.ndarray], None]] = None
 
@@ -334,7 +324,7 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 no_scroll_with_mouse=True,
             ):
                 initial_pitch = MIN_PITCH if generator_name != GeneratorName.NOISE else MAX_PERIOD
-                self._add_initial_pitch_display(generator_name, initial_pitch, window_tag)
+                self._create_pitch_stepper(generator_name, initial_pitch, window_tag)
                 for feature_key in FEATURE_DISPLAY_ORDER:
                     self._add_generator_feature_display(
                         generator_name,
@@ -364,12 +354,9 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             self.generator_plots[generator_name][feature_key] = plot
 
     def _apply_pitch_display(self, generator_name: GeneratorName, value: int) -> None:
-        window_tag = self._get_window_tag(self._get_generator_tab_tag(generator_name))
-        input_tag = f"{window_tag}{SUF_INPUT}"
-        value_tag = f"{input_tag}{SUF_TEXT}"
-        _, display_value = self._format_initial_pitch(generator_name, value)
-        dpg_set_value(input_tag, display_value)
-        dpg_set_value(value_tag, str(value))
+        stepper = self._pitch_steppers.get(generator_name)
+        if stepper is not None:
+            stepper.set_value(value)
 
     def _update_generator_plot(
         self,
@@ -448,171 +435,40 @@ class GUIReconstructionDetailsPanel(GUIPanel):
                 self._update_generator_plot(generator_name, key, feature)
                 self._update_raw_data_text(generator_name, key, feature)
 
-    def update_pitch(self, generator_name: GeneratorName, new_pitch: int) -> None:
-        self._apply_pitch_display(generator_name, new_pitch)
+    def _pitch_kind(self, generator_name: GeneratorName) -> PitchValueKind:
+        return PERIOD_VALUE_KIND if generator_name == GeneratorName.NOISE else PITCH_VALUE_KIND
 
-    def _format_initial_pitch(self, generator_name: GeneratorName, initial_pitch: int) -> Tuple[str, str]:
-        if generator_name == GeneratorName.NOISE:
-            label = self._lbl_initial_period
-            display_value = period_to_name(initial_pitch)
-        else:
-            label = self._lbl_initial_pitch
-            display_value = pitch_to_name(initial_pitch)
-
-        return label, display_value
-
-    def _add_initial_pitch_display(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
-        input_label_tag = f"{parent}{SUF_LABEL}"
-        input_tag = f"{parent}{SUF_INPUT}"
-        value_tag = f"{input_tag}{SUF_TEXT}"
-        table_tag = f"{parent}{SUF_TABLE}"
-        decrement_button_tag = f"{input_tag}{SUF_BUTTON_DECREMENT}"
-        increment_button_tag = f"{input_tag}{SUF_BUTTON_INCREMENT}"
-
-        label, display_value = self._format_initial_pitch(generator_name, initial_pitch)
-        pitch_table = self._layout_reconstructions.initial_pitch_table
-        with dpg.table(
-            tag=table_tag,
+    def _create_pitch_stepper(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
+        is_noise = generator_name == GeneratorName.NOISE
+        stepper = GUIPitchStepper(
+            tag=parent,
             parent=parent,
-            header_row=False,
-            policy=dpg.mvTable_SizingStretchProp,
-            resizable=False,
-            width=-1,
-            height=0,
-        ):
-            dpg.add_table_column(
-                width=pitch_table.label_width,
-                width_fixed=True,
-                no_resize=True,
-                init_width_or_weight=pitch_table.label_width,
-            )
-            dpg.add_table_column(
-                width=pitch_table.display_width,
-                width_fixed=True,
-                no_resize=True,
-                init_width_or_weight=pitch_table.display_width,
-            )
-            dpg.add_table_column(width_stretch=True)
-            dpg.add_table_column(
-                width=pitch_table.button_width,
-                width_fixed=True,
-                no_resize=True,
-                init_width_or_weight=pitch_table.button_width,
-            )
-            dpg.add_table_column(
-                width=pitch_table.button_width,
-                width_fixed=True,
-                no_resize=True,
-                init_width_or_weight=pitch_table.button_width,
-            )
-            with dpg.table_row():
-                with dpg.table_cell():
-                    dpg.add_text(label, tag=input_label_tag)
-                with dpg.table_cell():
-                    dpg.add_text(
-                        str(initial_pitch),
-                        tag=value_tag,
-                        color=self._layout_general.colors.text.disabled,
-                    )
-                with dpg.table_cell():
-                    dpg.add_input_text(
-                        tag=input_tag,
-                        default_value=display_value,
-                        width=-1,
-                        callback=self._validate_and_update_initial_pitch_input,
-                        on_enter=False,
-                        user_data=(
-                            generator_name,
-                            input_tag,
-                            value_tag,
-                        ),
-                    )
-
-                with dpg.table_cell():
-                    GUIButton(
-                        label="-",
-                        tag=decrement_button_tag,
-                        width=self._layout_general.buttons.int_width,
-                        callback=self._change_initial_pitch,
-                        user_data=(
-                            generator_name,
-                            -1,
-                        ),
-                    )
-
-                with dpg.table_cell():
-                    GUIButton(
-                        label="+",
-                        tag=increment_button_tag,
-                        width=self._layout_general.buttons.int_width,
-                        callback=self._change_initial_pitch,
-                        user_data=(
-                            generator_name,
-                            1,
-                        ),
-                    )
-
-        self.initial_pitch_theme.bind_to_item(table_tag)
-        self._create_initial_pitch_tooltip(generator_name, input_tag)
-        status_message = self._msg_input_pitch if generator_name != GeneratorName.NOISE else self._msg_input_period
-        GUIStatusBar.bind_to_item(input_tag, status_message)
-
-        self.shortcut_manager.setup_input_focus_handlers(input_tag)
-        self._setup_button_hold_handlers(
-            decrement_button_tag,
-            increment_button_tag,
-            generator_name,
+            kind=self._pitch_kind(generator_name),
+            initial_value=initial_pitch,
+            label=self._lbl_initial_period if is_noise else self._lbl_initial_pitch,
+            tooltip=self._pitch_tooltip(generator_name),
+            status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
+            layout=self._layout_general.pitch_stepper,
+            value_color=self._layout_general.colors.text.disabled,
+            shortcut_manager=self.shortcut_manager,
         )
+        stepper.on_value_changed = partial(self._on_pitch_value_changed, generator_name)
+        self._pitch_steppers[generator_name] = stepper
 
-    def _setup_button_hold_handlers(
-        self,
-        decrement_button_tag: str,
-        increment_button_tag: str,
-        generator_name: GeneratorName,
-    ) -> None:
-        handler_registry_tag = f"{generator_name}{SUF_HANDLER_REGISTRY}".lower()
-        dpg_delete_item(handler_registry_tag)
-        with dpg.handler_registry(tag=handler_registry_tag):
-            dpg.add_mouse_down_handler(
-                button=dpg.mvMouseButton_Left,
-                callback=self._on_mouse_down,
-                user_data=(
-                    decrement_button_tag,
-                    increment_button_tag,
-                    generator_name,
-                ),
-            )
-            dpg.add_mouse_release_handler(
-                button=dpg.mvMouseButton_Left,
-                callback=self._on_mouse_release,
-            )
+    def _on_pitch_value_changed(self, generator_name: GeneratorName, value: int) -> None:
+        self.call(self.on_pitch_value_changed, generator_name, value)
 
-    def _on_mouse_down(
-        self,
-        sender: Sender,
-        app_data: Any,
-        user_data: Tuple[str, str, GeneratorName],
-    ) -> None:
-        decrement_button_tag, increment_button_tag, generator_name = user_data
-        if not dpg.does_item_exist(decrement_button_tag) or not dpg.does_item_exist(increment_button_tag):
-            dpg_delete_item(sender)
-            return
+    def _pitch_tooltip(self, generator_name: GeneratorName) -> str:
+        if generator_name == GeneratorName.NOISE:
+            pitch_type = "period"
+            example_name = "4-#"
+            example_value = NAME_TO_PERIOD[example_name]
+        else:
+            pitch_type = "pitch"
+            example_name = "C-4"
+            example_value = NAME_TO_PITCH[example_name]
 
-        is_decrement = dpg.is_item_hovered(decrement_button_tag)
-        is_increment = dpg.is_item_hovered(increment_button_tag)
-        if not is_decrement and not is_increment:
-            return
-
-        self.call(
-            self.on_hold_tick,
-            is_decrement,
-            is_increment,
-            dpg.get_delta_time(),
-            generator_name,
-        )
-
-    def _on_mouse_release(self, sender: Sender, app_data: Any, user_data: Any) -> None:
-        self.call(self.on_hold_ended)
+        return self._tpl_pitch_tooltip.format(pitch_type, example_name, example_value)
 
     def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)
@@ -624,50 +480,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
         window_tag = self._get_window_tag(tab_tag)
         if not tab_tag or (not dpg.is_item_hovered(tab_tag) and not dpg.is_item_hovered(window_tag)):
             self.call(self.on_reconstruction_instrument_hovered, None)
-
-    def _create_initial_pitch_tooltip(self, generator_name: GeneratorName, input_tag: str) -> None:
-        if generator_name == GeneratorName.NOISE:
-            pitch_type = "period"
-            example_name = "4-#"
-            example_value = NAME_TO_PERIOD[example_name]
-        else:
-            pitch_type = "pitch"
-            example_name = "C-4"
-            example_value = NAME_TO_PITCH[example_name]
-
-        show_tooltip(
-            input_tag,
-            self._tpl_pitch_tooltip.format(
-                pitch_type,
-                example_name,
-                example_value,
-            ),
-        )
-
-    def _change_initial_pitch(
-        self,
-        sender: Sender,
-        app_data: int,
-        user_data: Tuple[GeneratorName, int],
-    ) -> None:
-        if user_data is None:
-            return
-        generator_name, direction = user_data
-        self.call(self.on_pitch_step, generator_name, direction)
-
-    def _validate_and_update_initial_pitch_input(
-        self,
-        sender: Sender,
-        app_data: str,
-        user_data: Tuple[GeneratorName, str, str],
-    ) -> None:
-        generator_name, _, value_tag = user_data
-        self.call(
-            self.on_pitch_input,
-            generator_name,
-            app_data,
-            int(dpg.get_value(value_tag)),
-        )
 
     def _create_feature_display(
         self,

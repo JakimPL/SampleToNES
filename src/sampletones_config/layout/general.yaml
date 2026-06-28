@@ -64,6 +64,14 @@ tables:
   cell_padding: [8, 4]
   frame_rounding: 4
 
+pitch_stepper:
+  label_width: 160
+  value_width: 28
+  button_column_width: 32
+  button_width: 30
+  hold_delay: 0.075
+  commit_delay: 12
+
 menu:
   fps_text_offset: 10
 

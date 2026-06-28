@@ -68,4 +68,7 @@ class InstructionsDetailsElements(AbstractElement):
     PITCH_TEMPLATE = "pitch_template"
     PERIOD_TEMPLATE = "period_template"
     DUTY_CYCLE_TEMPLATE = "duty_cycle_template"
+    PITCH_TOOLTIP_TEMPLATE = "pitch_tooltip_template"
+    STATUS_INPUT_PITCH = "status_input_pitch"
+    STATUS_INPUT_PERIOD = "status_input_period"
     NO_INSTRUCTION_SELECTED = "no_instruction_selected"

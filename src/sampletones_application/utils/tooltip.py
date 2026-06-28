@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -13,8 +13,12 @@ from sampletones_application.ui.themes.registry import ThemeRegistry
 from sampletones_shared.types.application import Sender
 
 
-def show_tooltip(parent: str, message: str) -> Sender:
-    with dpg.tooltip(parent, hide_on_activity=True) as tooltip:
+def show_tooltip(parent: str, message: str, *, tag: Optional[str] = None) -> Sender:
+    tooltip_kwargs: Dict[str, Any] = {"hide_on_activity": True}
+    if tag is not None:
+        tooltip_kwargs["tag"] = tag
+
+    with dpg.tooltip(parent, **tooltip_kwargs) as tooltip:
         ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)
         tooltip_text: Sender = dpg.add_text(message)
         FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)

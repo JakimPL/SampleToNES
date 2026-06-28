@@ -1,12 +1,3 @@
-"""Playhead index remapping for structural edits to the order during playback.
-
-The synthesiser tracks the live playhead as an index into ``Song.order``. Inserting,
-removing, or moving a frame shifts those indices, so after such an edit the playhead
-must be remapped to keep pointing at the frame that was actually sounding. These are
-pure index functions, so the rules can be unit-tested in isolation.
-"""
-
-
 def remap_after_insert(playhead: int, inserted_index: int) -> int:
     """A frame inserted at or before the playhead pushes it one position later."""
     return playhead + 1 if inserted_index <= playhead else playhead

@@ -1,5 +1,5 @@
-name: table_initial_pitch
-tag: reconstructions.details.theme.initial_pitch_table
+name: pitch_stepper
+tag: global.theme.pitch_stepper
 
 components:
   - item_type: Table

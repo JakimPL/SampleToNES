@@ -125,7 +125,9 @@ class InstructionsTabCoordinator:
             language_manager=language_manager,
         )
         self._instruction_details_panel = GUIInstructionDetailsPanel(
+            shortcut_manager,
             layout=layout.instructions,
+            general_layout=layout.general,
             table_colors=layout.general.colors.tables,
             table_layout=layout.general.tables,
             language_manager=language_manager,

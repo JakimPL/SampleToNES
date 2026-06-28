@@ -247,7 +247,6 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_details_logic: ReconstructionDetailsLogic = ReconstructionDetailsLogic(
             reconstruction_manager,
             scheduling=layout.behavior.scheduling,
-            pitch_change_delay=layout.reconstructions.values.pitch_change_delay,
         )
 
         self._browser_logic.set_callbacks(
@@ -312,7 +311,6 @@ class ReconstructionsTabCoordinator:
         self._reconstruction_details_logic.on_feature_data_changed = (
             self._reconstruction_details_panel.update_feature_data
         )
-        self._reconstruction_details_logic.on_pitch_changed = self._reconstruction_details_panel.update_pitch
         self._reconstruction_details_logic.on_reconstruction_instrument_updated = on_reconstruction_instrument_updated
 
         self._reconstruction_details_panel.on_instrument_export = (
@@ -322,10 +320,9 @@ class ReconstructionsTabCoordinator:
             self._reconstruction_panel_logic.request_export_instruments_dialog
         )
         self._reconstruction_details_panel.on_reconstruction_instrument_hovered = self._reconstruction_panel.set_overlay
-        self._reconstruction_details_panel.on_pitch_input = self._reconstruction_details_logic.handle_pitch_input
-        self._reconstruction_details_panel.on_pitch_step = self._reconstruction_details_logic.handle_pitch_step
-        self._reconstruction_details_panel.on_hold_tick = self._reconstruction_details_logic.handle_hold_tick
-        self._reconstruction_details_panel.on_hold_ended = self._reconstruction_details_logic.handle_hold_ended
+        self._reconstruction_details_panel.on_pitch_value_changed = (
+            self._reconstruction_details_logic.handle_pitch_value_changed
+        )
         self._reconstruction_details_panel.on_bar_data_changed = (
             self._reconstruction_details_logic.handle_bar_point_clicked
         )
