@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -11,6 +11,7 @@ from sampletones_core.structures.histogram import Histogram
 
 from ..cqt import (
     calculate_cqt,
+    calculate_cqt_frames,
     calculate_cqt_frequencies,
     convert_midpoints_to_edges,
     normalize_cqt_energy,
@@ -66,3 +67,51 @@ def calculate_cqt_spectrum(
     energy_scaled = normalize_cqt_energy(energy, frequencies, sample_rate, bins_per_octave)
     bands: np.ndarray = convert_midpoints_to_edges(frequencies)
     return Histogram(edges=bands.astype(np.float32), values=energy_scaled.astype(np.float32))
+
+
+def calculate_cqt_spectrum_columns(
+    audio: np.ndarray,
+    sample_rate: int,
+    hop_length: int,
+    cutoff: float = CQT_CUTOFF_FREQUENCY,
+    bins_per_octave: int = BINS_PER_OCTAVE,
+    n_bins: Optional[int] = None,
+) -> List[Histogram]:
+    """
+    Compute one CQT power-spectrum histogram per frame of a whole signal.
+
+    Shares the bins, energy normalization and edges of calculate_cqt_spectrum, but
+    returns a per-frame column instead of a single aggregated frame. The matching
+    target and the candidate references are both built from this function so they
+    share an identical feature-extraction contract and stay directly comparable
+    bin-by-bin.
+
+    librosa centers column ``i`` on sample ``i * hop_length`` (a frame's left edge),
+    whereas the matching pipeline indexes a fragment by its center (the FFT path
+    analyses a window centered on the frame). The signal is therefore advanced by
+    half a hop before transforming, so column ``i`` represents the frame centered on
+    ``(i + 0.5) * hop_length`` and the per-frame timing matches the FFT path exactly.
+
+    Args:
+        audio: Input audio as a numpy array.
+        sample_rate: Sampling rate in Hz.
+        hop_length: Samples between consecutive frames (the frame length).
+        cutoff: Minimum frequency in Hz.
+        bins_per_octave: Number of bins per octave.
+        n_bins: Number of CQT bins. If None, automatically calculated to reach Nyquist.
+
+    Returns:
+        One Histogram per frame, all sharing the same log-spaced edges.
+    """
+    validate_audio_array(audio)
+    n_bins = n_bins or calculate_n_bins(sample_rate, cutoff, bins_per_octave)
+    centered_audio = audio[hop_length // 2 :]
+    cqt = calculate_cqt_frames(centered_audio, sample_rate, hop_length, cutoff, n_bins, bins_per_octave)
+    frequencies = calculate_cqt_frequencies(n_bins, cutoff, bins_per_octave)
+    energy: np.ndarray = np.square(np.abs(cqt))
+    energy_scaled = normalize_cqt_energy(energy, frequencies, sample_rate, bins_per_octave)
+    edges: np.ndarray = convert_midpoints_to_edges(frequencies).astype(np.float32)
+    return [
+        Histogram(edges=edges, values=energy_scaled[:, frame].astype(np.float32))
+        for frame in range(energy_scaled.shape[1])
+    ]
