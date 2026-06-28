@@ -12,7 +12,7 @@ SAMPLES_PER_KILOHERTZ: Final[int] = 1000
 
 SPECTRUM_METHOD_LABELS: Final[Dict[SpectrumMethod, str]] = {
     SpectrumMethod.FFT: "FFT",
-    SpectrumMethod.LOG_SPACED_FFT: "Log-spaced FFT",
+    SpectrumMethod.LOG_SPACED_FFT: "LogFFT",
     SpectrumMethod.CQT: "CQT",
 }
 SPECTRUM_METHOD_BY_LABEL: Final[Dict[str, SpectrumMethod]] = {
