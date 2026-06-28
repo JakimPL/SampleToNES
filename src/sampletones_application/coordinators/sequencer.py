@@ -237,6 +237,9 @@ class SequencerTabCoordinator:
         self._sequencer_grid_panel.on_set_row = self._on_set_row
         self._sequencer_grid_panel.on_set_note_off = self._on_set_note_off
         self._sequencer_grid_panel.on_cell_selected = self._on_tracker_cell_focused
+        self._sequencer_grid_panel.on_play_from_row = self._on_grid_play_from_row
+        self._sequencer_grid_panel.on_adjust_transpose = self._on_adjust_transpose
+        self._sequencer_grid_panel.on_adjust_volume = self._on_adjust_volume
         self._sequencer_grid_logic.on_settings_changed = self._sequencer_module_panel.update_settings
         self._sequencer_grid_logic.on_grid_changed = self._sequencer_grid_panel.update_grid
         self._sequencer_grid_logic.on_frame_changed = self._sequencer_order_panel.select_position
@@ -384,18 +387,29 @@ class SequencerTabCoordinator:
                 reconstruction=reconstruction_frequency,
                 project=project_frequency,
             ),
-            on_confirm=lambda: self._add_reconstruction_to_sequencer(reconstruction, name),
+            on_confirm=lambda: self._add_reconstruction_to_sequencer(
+                reconstruction,
+                name,
+            ),
             ok_label=self._lbl_add_anyway,
         )
 
-    def _add_reconstruction_to_sequencer(self, reconstruction: Reconstruction, name: str) -> None:
+    def _add_reconstruction_to_sequencer(
+        self,
+        reconstruction: Reconstruction,
+        name: str,
+    ) -> None:
         self._sequencer_browser_logic.add_reconstruction(reconstruction, name)
         self._on_tab_switch(Tab.SEQUENCER)
 
     def _dispatch_edit_sample(self, sample_id: str) -> None:
         self._on_edit_sample_requested(sample_id)
 
-    def _on_clear_row(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+    def _on_clear_row(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         if generator is None:
             self._sequencer_grid_logic.clear_all_generators(row_index)
         else:
@@ -412,7 +426,10 @@ class SequencerTabCoordinator:
         volume = subcolumn is SubColumn.VOLUME
         if generator is None:
             if instrument:
-                self._sequencer_grid_logic.clear_subcolumn_all_generators(row_index, instrument=True)
+                self._sequencer_grid_logic.clear_subcolumn_all_generators(
+                    row_index,
+                    instrument=True,
+                )
             else:
                 self._sequencer_grid_logic.clear_sample_subcolumn(
                     row_index,
@@ -438,7 +455,10 @@ class SequencerTabCoordinator:
     ) -> None:
         if generator is None:
             if sample_id is not None:
-                self._sequencer_grid_logic.set_sample_instrument(row_index, sample_id)
+                self._sequencer_grid_logic.set_sample_instrument(
+                    row_index,
+                    sample_id,
+                )
             elif transpose is not None or volume is not None:
                 self._sequencer_grid_logic.set_sample_subcolumn(
                     row_index,
@@ -462,14 +482,60 @@ class SequencerTabCoordinator:
                 volume=volume,
             )
 
-    def _on_set_note_off(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+    def _on_set_note_off(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         """Writes a note-off: to one channel, or across every channel from the sample column."""
         if generator is None:
             self._sequencer_grid_logic.set_note_off_all_generators(row_index)
         else:
             self._sequencer_grid_logic.set_note_off(generator, row_index)
 
-    def _on_samples_changed(self, view_model: SequencerSamplesViewModel) -> None:
+    def _on_grid_play_from_row(self, row_index: int) -> None:
+        """Starts playback from the right-clicked row of the frame the grid is showing."""
+        self._song_player_logic.play_from(
+            self._sequencer_grid_logic.frame_index,
+            row_index,
+        )
+
+    def _on_adjust_transpose(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> None:
+        """Shifts transpose: one channel, or across the sample column's channels."""
+        if generator is None:
+            self._sequencer_grid_logic.adjust_sample_transpose(row_index, delta)
+        else:
+            self._sequencer_grid_logic.adjust_transpose(
+                generator,
+                row_index,
+                delta,
+            )
+
+    def _on_adjust_volume(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        delta: int,
+    ) -> None:
+        """Shifts volume: one channel, or across the sample column's channels."""
+        if generator is None:
+            self._sequencer_grid_logic.adjust_sample_volume(row_index, delta)
+        else:
+            self._sequencer_grid_logic.adjust_volume(
+                generator,
+                row_index,
+                delta,
+            )
+
+    def _on_samples_changed(
+        self,
+        view_model: SequencerSamplesViewModel,
+    ) -> None:
         self._sequencer_samples_panel.update_view(view_model)
         self._sequencer_grid_panel.update_samples(view_model)
 
@@ -535,16 +601,32 @@ class SequencerTabCoordinator:
     def _on_order_remove(self, position: int) -> None:
         length_before = self._project_controller.order_length
         self._sequencer_order_logic.remove_from_order(position)
-        self._relocate_playhead(lambda playhead: remap_after_remove(playhead, position, length_before - 1))
+        self._relocate_playhead(
+            lambda playhead: remap_after_remove(
+                playhead,
+                position,
+                length_before - 1,
+            )
+        )
 
     def _on_order_duplicate(self, position: int) -> None:
         self._sequencer_order_logic.duplicate_frame(position)
-        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position + 1))
+        self._relocate_playhead(
+            lambda playhead: remap_after_insert(
+                playhead,
+                position + 1,
+            )
+        )
         self._select_frame_when_idle(position + 1)
 
     def _on_order_insert(self, position: int) -> None:
         self._sequencer_order_logic.insert_frame(position + 1)
-        self._relocate_playhead(lambda playhead: remap_after_insert(playhead, position + 1))
+        self._relocate_playhead(
+            lambda playhead: remap_after_insert(
+                playhead,
+                position + 1,
+            )
+        )
         self._select_frame_when_idle(position + 1)
 
     def _on_order_clear(self, position: int) -> None:
@@ -556,10 +638,13 @@ class SequencerTabCoordinator:
 
     def _on_order_move(self, from_position: int, to_position: int) -> None:
         self._sequencer_order_logic.move_frame(from_position, to_position)
-        self._relocate_playhead(lambda playhead: remap_after_move(playhead, from_position, to_position))
-        # Follow the moved frame immediately (not only when idle): during playback the move
-        # target is the cursor, so it must advance now or a rapid second Alt+arrow would act on
-        # the stale, pre-move frame and visually snap back.
+        self._relocate_playhead(
+            lambda playhead: remap_after_move(
+                playhead,
+                from_position,
+                to_position,
+            )
+        )
         self._sequencer_grid_logic.select_frame(to_position)
 
     def _on_order_play_from(self, position: int) -> None:
@@ -592,7 +677,11 @@ class SequencerTabCoordinator:
         if not self._song_player_logic.is_playing():
             self._sequencer_grid_logic.select_frame(frame_index)
 
-    def _on_tracker_cell_focused(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+    def _on_tracker_cell_focused(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         """Drops the order cursor and sample selection when the tracker grid takes focus.
 
         The tracker, order, and samples panels share global key handlers; mutually

@@ -17,6 +17,11 @@ _DEFAULT_LABELS: Final[Dict[SubColumn, str]] = {
 }
 
 
+def indexed_label(index: int, label: str) -> str:
+    """Joins a formatted index and a label into one display string, e.g. ``"03 Pulse 1"``."""
+    return f"{display_id(index)} {label}"
+
+
 def cell_display(cell_view_model: SequencerCellViewModel, subcolumn: SubColumn) -> str:
     """Extract the pre-formatted display string for one subcolumn from a cell view model."""
     match subcolumn:

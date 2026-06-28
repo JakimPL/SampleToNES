@@ -8,6 +8,7 @@ from sampletones_application.logic.project.manager import ProjectManager
 from sampletones_application.logic.sequencer.grid import SequencerGridLogic
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MAX_TRANSPOSE, MAX_VOLUME
 from sampletones_core.instructions import PulseInstruction
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
@@ -183,6 +184,108 @@ class TestSampleSubcolumn:
             assert row.transpose is None
             assert row.volume == 10
             assert row.command is not None
+
+
+class TestAdjustTranspose:
+    def test_first_nudge_writes_the_delta_from_zero(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+
+        logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
+
+        assert _row(controller, GeneratorName.PULSE1).transpose == 1
+
+    def test_repeated_nudges_accumulate(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+
+        logic.adjust_transpose(GeneratorName.PULSE1, 0, 1)
+        logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
+
+        assert _row(controller, GeneratorName.PULSE1).transpose == 13
+
+    def test_clamps_to_max_transpose(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        logic.set_row(GeneratorName.PULSE1, 0, transpose=MAX_TRANSPOSE)
+
+        logic.adjust_transpose(GeneratorName.PULSE1, 0, 12)
+
+        assert _row(controller, GeneratorName.PULSE1).transpose == MAX_TRANSPOSE
+
+    def test_preserves_instrument_and_volume(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        sample = controller.add_sample(_reconstruction([GeneratorName.PULSE1]), name="lead")
+        _place_instrument(controller, GeneratorName.PULSE1, sample.id)
+        logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
+
+        logic.adjust_transpose(GeneratorName.PULSE1, 0, 2)
+
+        row = _row(controller, GeneratorName.PULSE1)
+        assert row.command is not None
+        assert row.transpose == 2
+        assert row.volume == MAX_VOLUME - 1
+
+
+class TestAdjustVolume:
+    def test_unset_volume_steps_down_from_full(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+
+        logic.adjust_volume(GeneratorName.PULSE1, 0, -1)
+
+        assert _row(controller, GeneratorName.PULSE1).volume == MAX_VOLUME - 1
+
+    def test_unset_volume_up_stays_full(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+
+        logic.adjust_volume(GeneratorName.PULSE1, 0, 1)
+
+        assert _row(controller, GeneratorName.PULSE1).volume == MAX_VOLUME
+
+    def test_clamps_to_zero(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        logic.set_row(GeneratorName.PULSE1, 0, volume=1)
+
+        logic.adjust_volume(GeneratorName.PULSE1, 0, -4)
+
+        assert _row(controller, GeneratorName.PULSE1).volume == 0
+
+
+class TestAdjustSampleColumn:
+    def test_sample_transpose_shifts_only_relevant_channels(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        sample = controller.add_sample(
+            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            name="lead",
+        )
+        logic.set_sample_instrument(0, sample.id)
+
+        logic.adjust_sample_transpose(0, 3)
+
+        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
+            assert _row(controller, generator).transpose == 3
+
+        for generator in (GeneratorName.PULSE2, GeneratorName.NOISE):
+            assert _row(controller, generator).transpose is None
+
+    def test_sample_volume_steps_relevant_channels_down_from_full(self) -> None:
+        controller = _controller()
+        logic = SequencerGridLogic(controller)
+        sample = controller.add_sample(
+            _reconstruction([GeneratorName.PULSE1, GeneratorName.TRIANGLE]),
+            name="lead",
+        )
+        logic.set_sample_instrument(0, sample.id)
+
+        logic.adjust_sample_volume(0, -1)
+
+        for generator in (GeneratorName.PULSE1, GeneratorName.TRIANGLE):
+            assert _row(controller, generator).volume == MAX_VOLUME - 1
 
 
 class TestBuildGridAggregation:

@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple
+from typing import Callable, Dict, Final, Optional, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -19,6 +19,10 @@ from sampletones_application.constants.sequencer import (
     TAG_SEQUENCER_THEME_TABLE_PATTERN,
 )
 from sampletones_application.layout.sequencer import SequencerLayout
+from sampletones_application.ui.elements.context_menu import (
+    add_play_menu_item,
+    context_menu,
+)
 from sampletones_application.ui.elements.fonts.font import Font
 from sampletones_application.ui.elements.fonts.registry import FontRegistry
 from sampletones_application.ui.elements.panel import GUIPanel
@@ -49,6 +53,7 @@ from sampletones_application.view_model.sequencer.samples import (
     SequencerSamplesViewModel,
 )
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.utils.display import NOTE_OFF, display_id
 from sampletones_shared.types.application import Sender
 
@@ -57,6 +62,13 @@ OnClearSubcolumnCallback = Callable[[int, Optional[GeneratorName], SubColumn], N
 OnSetRowCallback = Callable[[int, Optional[GeneratorName], Optional[str], Optional[int], Optional[int]], None]
 OnSetNoteOffCallback = Callable[[int, Optional[GeneratorName]], None]
 OnCellSelectedCallback = Callable[[int, Optional[GeneratorName]], None]
+OnPlayFromRowCallback = Callable[[int], None]
+OnAdjustCallback = Callable[[int, Optional[GeneratorName], int], None]
+
+SEMITONE_STEP: Final[int] = 1
+OCTAVE_STEP: Final[int] = 12
+VOLUME_FINE_STEP: Final[int] = 1
+VOLUME_COARSE_STEP: Final[int] = (MAX_VOLUME + 1) // 4
 
 
 class GUISequencerGridPanel(GUIPanel):
@@ -78,6 +90,7 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._item_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_REGISTRY}"
         self._key_handler_tag = f"{TAG_SEQUENCER_GRID_PANEL}{SUF_HANDLER_KEY}"
+        self._cell_handler_tag = f"{TAG_SEQUENCER_GRID_TABLE_TRACKER}{SUF_HANDLER_REGISTRY}"
 
         self._rows: Dict[Optional[int], Sender] = {}
         self._editable_cells: EditableCells[CellKey] = EditableCells()
@@ -93,6 +106,9 @@ class GUISequencerGridPanel(GUIPanel):
         self.on_set_row: Optional[OnSetRowCallback] = None
         self.on_set_note_off: Optional[OnSetNoteOffCallback] = None
         self.on_cell_selected: Optional[OnCellSelectedCallback] = None
+        self.on_play_from_row: Optional[OnPlayFromRowCallback] = None
+        self.on_adjust_transpose: Optional[OnAdjustCallback] = None
+        self.on_adjust_volume: Optional[OnAdjustCallback] = None
 
         self.pattern_theme = ThemeRegistry.get(TAG_SEQUENCER_THEME_TABLE_PATTERN)
 
@@ -139,11 +155,41 @@ class GUISequencerGridPanel(GUIPanel):
             SequencerGridElements.COLUMN_NOISE,
         ]
 
+        self._column_labels: Dict[Optional[GeneratorName], str] = {
+            None: self._lbl_col_sample,
+            GeneratorName.PULSE1: self._lbl_col_pulse_1,
+            GeneratorName.PULSE2: self._lbl_col_pulse_2,
+            GeneratorName.TRIANGLE: self._lbl_col_triangle,
+            GeneratorName.NOISE: self._lbl_col_noise,
+        }
+
+        self._load_context_labels(language_manager)
+
         super().__init__(
             tag=TAG_SEQUENCER_GRID_PANEL,
             parent=f"{TAG_GLOBAL_TAB_SEQUENCER}{SUF_PANEL_CENTER}",
             height=-1,
         )
+
+    def _load_context_labels(self, language_manager: LanguageManager) -> None:
+        def label(element: SequencerGridElements) -> str:
+            return language_manager[Page.SEQUENCER, Panel.GRID, TextType.LABEL, element]
+
+        self._lbl_context_play = label(SequencerGridElements.CONTEXT_PLAY)
+        self._lbl_context_note_off = label(SequencerGridElements.CONTEXT_NOTE_OFF)
+        self._lbl_context_set_instrument = label(SequencerGridElements.CONTEXT_SET_INSTRUMENT)
+        self._lbl_context_no_samples = label(SequencerGridElements.CONTEXT_NO_SAMPLES)
+        self._lbl_context_clear_subcolumn = label(SequencerGridElements.CONTEXT_CLEAR_SUBCOLUMN)
+        self._lbl_context_clear_cell = label(SequencerGridElements.CONTEXT_CLEAR_CELL)
+        self._lbl_context_clear_row = label(SequencerGridElements.CONTEXT_CLEAR_ROW)
+        self._lbl_context_transpose_up = label(SequencerGridElements.CONTEXT_TRANSPOSE_UP)
+        self._lbl_context_transpose_down = label(SequencerGridElements.CONTEXT_TRANSPOSE_DOWN)
+        self._lbl_context_transpose_octave_up = label(SequencerGridElements.CONTEXT_TRANSPOSE_OCTAVE_UP)
+        self._lbl_context_transpose_octave_down = label(SequencerGridElements.CONTEXT_TRANSPOSE_OCTAVE_DOWN)
+        self._lbl_context_volume_up = label(SequencerGridElements.CONTEXT_VOLUME_UP)
+        self._lbl_context_volume_down = label(SequencerGridElements.CONTEXT_VOLUME_DOWN)
+        self._lbl_context_volume_up_coarse = label(SequencerGridElements.CONTEXT_VOLUME_UP_COARSE)
+        self._lbl_context_volume_down_coarse = label(SequencerGridElements.CONTEXT_VOLUME_DOWN_COARSE)
 
     def create_panel(self) -> None:
         self._setup_handlers()
@@ -166,6 +212,8 @@ class GUISequencerGridPanel(GUIPanel):
                 parent=self._item_handler_tag,
                 callback=self._on_row_hovered,
             )
+        with dpg.item_handler_registry(tag=self._cell_handler_tag):
+            dpg.add_item_clicked_handler(callback=self._on_cell_right_clicked)
         with dpg.handler_registry(tag=self._key_handler_tag):
             dpg.add_key_press_handler(
                 parent=self._key_handler_tag,
@@ -193,7 +241,10 @@ class GUISequencerGridPanel(GUIPanel):
     def _create_tracker_view(self) -> None:
         dpg.add_group(tag=TAG_SEQUENCER_GRID_GROUP_TRACKER, parent=self.tag)
         dpg.add_separator(parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
-        section_text = dpg.add_text(self._lbl_tracker, parent=TAG_SEQUENCER_GRID_GROUP_TRACKER)
+        section_text = dpg.add_text(
+            self._lbl_tracker,
+            parent=TAG_SEQUENCER_GRID_GROUP_TRACKER,
+        )
         FontRegistry.bind_to_item(section_text, Font.BOLD)
 
         with dpg.child_window(
@@ -271,7 +322,11 @@ class GUISequencerGridPanel(GUIPanel):
         else:
             self._editable_cells.reconcile(cell_values, self._render_cell)
 
-    def _rebuild_table(self, view_model: SequencerGridViewModel, cell_values: CellValues) -> None:
+    def _rebuild_table(
+        self,
+        view_model: SequencerGridViewModel,
+        cell_values: CellValues,
+    ) -> None:
         dpg_delete_children(TAG_SEQUENCER_GRID_TABLE_TRACKER, slot=1)
         self._editable_cells.reset(cell_values)
         self._build_table(view_model)
@@ -308,7 +363,10 @@ class GUISequencerGridPanel(GUIPanel):
             self._layout.colors.sample_divider,
         )
 
-    def _compute_cell_values(self, view_model: SequencerGridViewModel) -> CellValues:
+    def _compute_cell_values(
+        self,
+        view_model: SequencerGridViewModel,
+    ) -> CellValues:
         cell_values: CellValues = {}
         for row in view_model.rows:
             cell_values[(row.index, None, SubColumn.INSTRUMENT)] = row.sample_instrument
@@ -317,7 +375,16 @@ class GUISequencerGridPanel(GUIPanel):
             for generator in GeneratorName.items():
                 cell = row.cells[generator]
                 for subcolumn in SubColumn:
-                    cell_values[(row.index, generator, subcolumn)] = tracker_display.cell_display(cell, subcolumn)
+                    cell_values[
+                        (
+                            row.index,
+                            generator,
+                            subcolumn,
+                        )
+                    ] = tracker_display.cell_display(
+                        cell,
+                        subcolumn,
+                    )
 
         return cell_values
 
@@ -361,12 +428,27 @@ class GUISequencerGridPanel(GUIPanel):
         dpg.bind_item_handler_registry(selectable, self._item_handler_tag)
         self._rows[row_index] = selectable
 
-    def _add_column_cell(self, row_id: Sender, row_index: int, generator: Optional[GeneratorName]) -> None:
+    def _add_column_cell(
+        self,
+        row_id: Sender,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         font = Font.BOLD_SMALL if generator is None else Font.REGULAR_SMALL
         cell = dpg.add_table_cell(parent=row_id)
-        group = dpg.add_group(horizontal=True, horizontal_spacing=0, parent=cell)
+        group = dpg.add_group(
+            horizontal=True,
+            horizontal_spacing=0,
+            parent=cell,
+        )
         for subcolumn in SubColumn:
-            self._add_subcolumn_selectable(group, row_index, generator, subcolumn, font)
+            self._add_subcolumn_selectable(
+                group,
+                row_index,
+                generator,
+                subcolumn,
+                font,
+            )
 
     def _add_subcolumn_selectable(
         self,
@@ -386,6 +468,7 @@ class GUISequencerGridPanel(GUIPanel):
         )
         FontRegistry.bind_to_item(selectable, font)
         dpg.bind_item_theme(selectable, self._subcolumn_themes[subcolumn])
+        dpg.bind_item_handler_registry(selectable, self._cell_handler_tag)
         self._editable_cells.register(key, selectable)
 
     def _update_cursor(self) -> None:
@@ -398,7 +481,11 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._update_caret()
 
-    def select_cell(self, row_index: int, generator: Optional[GeneratorName]) -> None:
+    def select_cell(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         new_state = TrackerInputState(
             cursor=TrackerCursor(row_index, generator, SubColumn.INSTRUMENT),
             pending="",
@@ -445,7 +532,11 @@ class GUISequencerGridPanel(GUIPanel):
     def set_enabled(self, enabled: bool) -> None:
         dpg.configure_item(TAG_SEQUENCER_GRID_GROUP_TRACKER, enabled=enabled)
 
-    def _update_cell_display(self, row: int, generator: Optional[GeneratorName]) -> None:
+    def _update_cell_display(
+        self,
+        row: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
         for subcolumn in SubColumn:
             key = (row, generator, subcolumn)
             cell_id = self._editable_cells.widget(key)
@@ -469,7 +560,10 @@ class GUISequencerGridPanel(GUIPanel):
             clip_widget=TAG_SEQUENCER_GRID_WINDOW_TRACKER,
         )
 
-    def _resolve_sample_id(self, sample_index: int) -> Optional[Tuple[int, str]]:
+    def _resolve_sample_id(
+        self,
+        sample_index: int,
+    ) -> Optional[Tuple[int, str]]:
         if not self._current_samples or not self._current_samples.samples:
             return None
 
@@ -593,6 +687,167 @@ class GUISequencerGridPanel(GUIPanel):
         )
         self._apply_state(new_state)
 
+    def _on_cell_right_clicked(
+        self,
+        sender: Sender,
+        app_data: Tuple[int, int],
+    ) -> None:
+        """Opens the cell-operations menu for the right-clicked subcolumn.
+
+        The menu targets the clicked cell directly and leaves the edit cursor where it is,
+        so a right-click inspects a cell without moving the caret onto it.
+        """
+        mouse_button, clicked_item = app_data
+        if mouse_button != dpg.mvMouseButton_Right:
+            return
+
+        key = dpg.get_item_user_data(clicked_item)
+        if key is None:
+            return
+
+        row_index, generator, subcolumn = key
+        self._show_context_menu(row_index, generator, subcolumn)
+
+    def _show_context_menu(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> None:
+        with context_menu():
+            header = dpg.add_text(tracker_display.indexed_label(row_index, self._column_labels[generator]))
+            FontRegistry.bind_to_item(header, Font.BOLD)
+            dpg.add_separator()
+            add_play_menu_item(self._lbl_context_play, lambda: self.call(self.on_play_from_row, row_index))
+            dpg.add_separator()
+            self._add_instrument_submenu(row_index, generator)
+            dpg.add_menu_item(
+                label=self._lbl_context_note_off,
+                callback=lambda: self.call(self.on_set_note_off, row_index, generator),
+            )
+            dpg.add_separator()
+            self._add_transpose_items(row_index, generator)
+            dpg.add_separator()
+            self._add_volume_items(row_index, generator)
+            dpg.add_separator()
+            self._add_clear_items(row_index, generator, subcolumn)
+
+    def _add_instrument_submenu(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        with dpg.menu(label=self._lbl_context_set_instrument):
+            samples = self._current_samples.samples if self._current_samples is not None else ()
+            if not samples:
+                dpg.add_menu_item(
+                    label=self._lbl_context_no_samples,
+                    enabled=False,
+                )
+                return
+
+            for index, sample in enumerate(samples):
+                dpg.add_menu_item(
+                    label=tracker_display.indexed_label(index, sample.name),
+                    user_data=(row_index, generator, sample.sample_id),
+                    callback=self._on_set_instrument_menu,
+                )
+
+    def _add_transpose_items(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        for label, delta in (
+            (self._lbl_context_transpose_up, SEMITONE_STEP),
+            (self._lbl_context_transpose_down, -SEMITONE_STEP),
+            (self._lbl_context_transpose_octave_up, OCTAVE_STEP),
+            (self._lbl_context_transpose_octave_down, -OCTAVE_STEP),
+        ):
+            dpg.add_menu_item(
+                label=label,
+                user_data=(row_index, generator, delta),
+                callback=self._on_transpose_menu,
+            )
+
+    def _add_volume_items(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+    ) -> None:
+        for label, delta in (
+            (self._lbl_context_volume_up, VOLUME_FINE_STEP),
+            (self._lbl_context_volume_down, -VOLUME_FINE_STEP),
+            (self._lbl_context_volume_up_coarse, VOLUME_COARSE_STEP),
+            (self._lbl_context_volume_down_coarse, -VOLUME_COARSE_STEP),
+        ):
+            dpg.add_menu_item(
+                label=label,
+                user_data=(row_index, generator, delta),
+                callback=self._on_volume_menu,
+            )
+
+    def _on_set_instrument_menu(
+        self,
+        sender: Sender,
+        app_data: None,
+        user_data: Tuple[int, Optional[GeneratorName], str],
+    ) -> None:
+        row_index, generator, sample_id = user_data
+        self.call(self.on_set_row, row_index, generator, sample_id, None, None)
+
+    def _on_transpose_menu(
+        self,
+        sender: Sender,
+        app_data: None,
+        user_data: Tuple[int, Optional[GeneratorName], int],
+    ) -> None:
+        row_index, generator, delta = user_data
+        self.call(self.on_adjust_transpose, row_index, generator, delta)
+
+    def _on_volume_menu(
+        self,
+        sender: Sender,
+        app_data: None,
+        user_data: Tuple[int, Optional[GeneratorName], int],
+    ) -> None:
+        row_index, generator, delta = user_data
+        self.call(self.on_adjust_volume, row_index, generator, delta)
+
+    def _add_clear_items(
+        self,
+        row_index: int,
+        generator: Optional[GeneratorName],
+        subcolumn: SubColumn,
+    ) -> None:
+        """Builds the three clear levels: the clicked subcolumn, the whole channel cell, the whole row.
+
+        The cell and row levels coincide on the sample column, which already clears every channel,
+        so the per-channel ``Clear cell`` item is offered only for an actual channel.
+        """
+        dpg.add_menu_item(
+            label=self._lbl_context_clear_subcolumn,
+            callback=lambda: self.call(
+                self.on_clear_subcolumn,
+                row_index,
+                generator,
+                subcolumn,
+            ),
+        )
+        if generator is not None:
+            dpg.add_menu_item(
+                label=self._lbl_context_clear_cell,
+                callback=lambda: self.call(
+                    self.on_clear_row,
+                    row_index,
+                    generator,
+                ),
+            )
+        dpg.add_menu_item(
+            label=self._lbl_context_clear_row,
+            callback=lambda: self.call(self.on_clear_row, row_index, None),
+        )
+
     def _on_key_pressed(self, sender: Sender, app_data: int) -> None:
         if self._input_state.cursor is None:
             return
@@ -682,12 +937,26 @@ class GUISequencerGridPanel(GUIPanel):
 
         self._apply_state(new_state)
 
-    def _on_row_number_clicked(self, sender: Sender, app_data: bool, user_data: int) -> None:
+    def _on_row_number_clicked(
+        self,
+        sender: Sender,
+        app_data: bool,
+        user_data: int,
+    ) -> None:
         dpg.set_value(sender, False)
         existing = self._input_state.cursor
         generator = existing.generator if existing is not None else None
         subcolumn = existing.subcolumn if existing is not None else SubColumn.INSTRUMENT
-        self._apply_state(TrackerInputState(cursor=TrackerCursor(user_data, generator, subcolumn), pending=""))
+        self._apply_state(
+            TrackerInputState(
+                cursor=TrackerCursor(
+                    user_data,
+                    generator,
+                    subcolumn,
+                ),
+                pending="",
+            )
+        )
 
     def _on_row_hovered(self, sender: Sender, app_data: int) -> None:
         if not dpg.does_item_exist(app_data):

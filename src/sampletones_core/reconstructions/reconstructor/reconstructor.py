@@ -122,7 +122,7 @@ class Reconstructor:
             initials = generator.initials
             approximation = (
                 generator(
-                    instruction,  # type: ignore
+                    instruction,  # type: ignore[arg-type]
                     initials=initials,
                     save=True,
                 )

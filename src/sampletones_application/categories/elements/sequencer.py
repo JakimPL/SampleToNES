@@ -30,6 +30,21 @@ class SequencerGridElements(AbstractElement):
     COLUMN_NOTE = "column_note"
     COLUMN_VOLUME = "column_volume"
     COLUMN_TRANSPOSE = "column_transpose"
+    CONTEXT_PLAY = "context_play"
+    CONTEXT_NOTE_OFF = "context_note_off"
+    CONTEXT_SET_INSTRUMENT = "context_set_instrument"
+    CONTEXT_NO_SAMPLES = "context_no_samples"
+    CONTEXT_CLEAR_SUBCOLUMN = "context_clear_subcolumn"
+    CONTEXT_CLEAR_CELL = "context_clear_cell"
+    CONTEXT_CLEAR_ROW = "context_clear_row"
+    CONTEXT_TRANSPOSE_UP = "context_transpose_up"
+    CONTEXT_TRANSPOSE_DOWN = "context_transpose_down"
+    CONTEXT_TRANSPOSE_OCTAVE_UP = "context_transpose_octave_up"
+    CONTEXT_TRANSPOSE_OCTAVE_DOWN = "context_transpose_octave_down"
+    CONTEXT_VOLUME_UP = "context_volume_up"
+    CONTEXT_VOLUME_DOWN = "context_volume_down"
+    CONTEXT_VOLUME_UP_COARSE = "context_volume_up_coarse"
+    CONTEXT_VOLUME_DOWN_COARSE = "context_volume_down_coarse"
 
 
 class SequencerOrderElements(AbstractElement):

@@ -49,10 +49,16 @@ class TestReconstructionRestoreAbsorbsFailures(BaseTestSuite):
             failure=InvalidReconstructionValuesError("bad", ValueError("inner")),
             expected=None,
         ),
-        # A SampleToNESError that is not a LoadReconstructionError: proves the broad
-        # domain-base catch is intentional, not an oversight.
-        TestCase(label="foreign_metadata", failure=InvalidMetadataError("foreign"), expected=None),
-        TestCase(label="missing_file", failure=FileNotFoundError("gone"), expected=None),
+        TestCase(
+            label="foreign_metadata",
+            failure=InvalidMetadataError("foreign"),
+            expected=None,
+        ),
+        TestCase(
+            label="missing_file",
+            failure=FileNotFoundError("gone"),
+            expected=None,
+        ),
     ]
 
     @pytest.mark.parametrize("test_case", test_cases, ids=lambda test_case: test_case.label)
