@@ -58,9 +58,11 @@ class LibraryLogic(CallbackMixin):
         library_manager: InstructionsLibraryManager,
         *,
         language_manager: LanguageManager,
+        is_operation_active: Callable[[], bool],
     ) -> None:
         self._config_manager = config_manager
         self._library_manager = library_manager
+        self._is_operation_active = is_operation_active
         self._eta_estimator: Optional[ETAEstimator] = None
         self._status_lock = threading.Lock()
 
@@ -302,6 +304,18 @@ class LibraryLogic(CallbackMixin):
         finally:
             self._do_unlock()
             self.update_status()
+
+    def request_generation(self) -> None:
+        """Starts a user-requested library generation, the exclusive-operation gate permitting.
+
+        The Generate button routes here so a standalone generation yields to an in-flight conversion.
+        A conversion's own preparatory generation calls :meth:`generate_library` directly, past the
+        gate, since it is part of the active operation."""
+        if self._is_operation_active():
+            logger.warning("A conversion or library generation is already in progress")
+            return
+
+        self.generate_library()
 
     def generate_library(self) -> None:
         if self._library_manager.is_generating():

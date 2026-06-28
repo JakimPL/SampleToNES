@@ -42,7 +42,7 @@ def _panel(*, busy: bool = False) -> GUIInstructionsLibraryPanel:
     truth the panel pulls."""
     panel = GUIInstructionsLibraryPanel.__new__(GUIInstructionsLibraryPanel)
     panel.logic = _FakeTreeLogic()
-    panel._is_operation_in_progress = lambda: busy
+    panel._is_operation_active = lambda: busy
     return panel
 
 

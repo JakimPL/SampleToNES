@@ -74,13 +74,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         colors: TreeColors,
-        is_operation_in_progress: Callable[[], bool],
+        is_operation_active: Callable[[], bool],
     ) -> None:
         self.library_logic = library_logic
         self._dialogs = dialogs
         self._tree_behavior = tree_behavior
 
-        self._is_operation_in_progress = is_operation_in_progress
+        self._is_operation_active = is_operation_active
 
         self._lbl_generate = language_manager[
             Page.INSTRUCTIONS,
@@ -247,7 +247,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
                     label=self._lbl_generate,
                     width=-1,
-                    callback=self.generate_library,
+                    callback=self.request_generate_library,
                     font=Font.BOLD,
                 )
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING, show=False):
@@ -287,6 +287,9 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def generate_library(self) -> None:
         self.library_logic.generate_library()
+
+    def request_generate_library(self) -> None:
+        self.library_logic.request_generation()
 
     def cancel_generation(self) -> None:
         self.library_logic.cancel_generation()
@@ -338,7 +341,7 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:
-        enabled = not self.locked and not self._is_operation_in_progress()
+        enabled = not self.locked and not self._is_operation_active()
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             enabled=enabled,

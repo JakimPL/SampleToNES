@@ -63,12 +63,12 @@ class GUIBrowserPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         colors: TreeColors,
-        is_operation_in_progress: Callable[[], bool],
+        is_operation_active: Callable[[], bool],
     ) -> None:
         self.browser_logic = browser_logic
         self._tree_behavior = tree_behavior
 
-        self._is_operation_in_progress = is_operation_in_progress
+        self._is_operation_active = is_operation_active
 
         self._lbl_reconstruct_file = language_manager[
             Page.RECONSTRUCTIONS,
@@ -271,7 +271,7 @@ class GUIBrowserPanel(GUITreePanel):
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:
-        enabled = not self.locked and not self._is_operation_in_progress()
+        enabled = not self.locked and not self._is_operation_active()
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE, enabled=enabled)
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY, enabled=enabled)
 

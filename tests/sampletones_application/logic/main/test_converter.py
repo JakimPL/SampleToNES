@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sampletones_application.logic.main.converter import ConverterLogic
-from sampletones_application.view_model.main.converter import ConversionPhase
+from sampletones_application.view_model.main.converter import ACTIVE_PHASES, ConversionPhase
 
 
 @pytest.fixture
@@ -22,6 +22,7 @@ def converter_logic() -> ConverterLogic:
         service,
         scheduling=scheduling,
         language_manager=language_manager,
+        is_operation_active=lambda: False,
     )
     logic.on_view_changed = MagicMock()
     logic.generate_library = MagicMock()
@@ -100,3 +101,47 @@ class TestNoGeneratorsGuard:
         on_no_generators.assert_called_once()
         converter_logic.generate_library.assert_not_called()
         assert converter_logic._phase == ConversionPhase.IDLE
+
+
+class TestActivePhases:
+    """``is_active`` reports a conversion occupying resources for every non-idle, non-terminal phase —
+    covering the WAITING preparation that runs before the service starts."""
+
+    @pytest.mark.parametrize("phase", sorted(ACTIVE_PHASES, key=str))
+    def test_active_during_non_terminal_phases(self, converter_logic: ConverterLogic, phase: ConversionPhase) -> None:
+        converter_logic._phase = phase
+        assert converter_logic.is_active is True
+
+    @pytest.mark.parametrize(
+        "phase",
+        [
+            ConversionPhase.IDLE,
+            ConversionPhase.COMPLETED,
+            ConversionPhase.CANCELLED,
+            ConversionPhase.FAILED,
+        ],
+    )
+    def test_inactive_when_idle_or_terminal(self, converter_logic: ConverterLogic, phase: ConversionPhase) -> None:
+        converter_logic._phase = phase
+        assert converter_logic.is_active is False
+
+
+class TestStartConversionGate:
+    """A conversion refuses to start while another exclusive operation is active, so two heavy
+    processes cannot run at once."""
+
+    def test_refuses_when_an_operation_is_active(self, converter_logic: ConverterLogic) -> None:
+        converter_logic._is_operation_active = lambda: True
+
+        converter_logic.start_conversion()
+
+        converter_logic._service.start.assert_not_called()
+        converter_logic.generate_library.assert_not_called()
+        assert converter_logic._phase == ConversionPhase.IDLE
+
+    def test_proceeds_when_nothing_is_active(self, converter_logic: ConverterLogic) -> None:
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add"):
+            converter_logic.start_conversion()
+
+        converter_logic.generate_library.assert_called_once()
+        assert converter_logic._phase == ConversionPhase.WAITING

@@ -71,7 +71,7 @@ class MainTabCoordinator:
         on_reconstruct_directory: PathCallback,
         on_load_reconstruction: Callable[[Optional[Path]], None],
         on_load_library: PathCallback,
-        is_generation_in_progress: Callable[[], bool],
+        is_operation_active: Callable[[], bool],
         on_busy_state_changed: VoidCallback,
         *,
         layout: LayoutConfig,
@@ -89,7 +89,7 @@ class MainTabCoordinator:
         self._on_reconstruct_directory = on_reconstruct_directory
         self._on_load_reconstruction = on_load_reconstruction
         self._on_load_library = on_load_library
-        self._is_generation_in_progress = is_generation_in_progress
+        self._is_operation_active = is_operation_active
         self._on_busy_state_changed = on_busy_state_changed
 
         self._tab_label = language_manager[
@@ -183,6 +183,7 @@ class MainTabCoordinator:
             conversion_service,
             scheduling=layout.behavior.scheduling,
             language_manager=language_manager,
+            is_operation_active=is_operation_active,
         )
         self._converter_panel: GUIConverterPanel = GUIConverterPanel(
             layout=layout.main.converter,
@@ -220,7 +221,7 @@ class MainTabCoordinator:
             on_load_library=on_load_library,
             on_set_as_library_directory=self._advanced_settings_panel.change_library_directory,
             on_set_as_reconstructions_directory=self._advanced_settings_panel.change_reconstructions_directory,
-            is_converter_running=is_generation_in_progress,
+            is_converter_running=is_operation_active,
         )
 
         self._converter_logic.on_view_changed = self._on_converter_view_changed
@@ -254,11 +255,11 @@ class MainTabCoordinator:
         self._on_busy_state_changed()
 
     def _on_wave_file_clicked(self, filepath: Path) -> None:
-        if not self._is_generation_in_progress():
+        if not self._is_operation_active():
             self._converter_logic.set_input_path(filepath, convert=False)
 
     def _on_directory_clicked(self, directory_path: Path) -> None:
-        if not self._is_generation_in_progress():
+        if not self._is_operation_active():
             self._converter_logic.set_input_path(directory_path, convert=False)
 
     def _update_config_panel_view(self) -> None:
@@ -321,8 +322,8 @@ class MainTabCoordinator:
                     ):
                         self._main_panel.create_panel()
 
-    def is_converter_running(self) -> bool:
-        return self._converter_logic.is_running()
+    def is_converter_active(self) -> bool:
+        return self._converter_logic.is_active
 
     def set_input_path(self, path: Path, convert: bool) -> None:
         self._converter_logic.set_input_path(path, convert=convert)

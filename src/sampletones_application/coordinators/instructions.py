@@ -56,7 +56,7 @@ class InstructionsTabCoordinator:
         library_manager: InstructionsLibraryManager,
         on_audio_state_changed: VoidCallback,
         on_generation_state_changed: VoidCallback,
-        is_generation_in_progress: Callable[[], bool],
+        is_operation_active: Callable[[], bool],
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -91,6 +91,7 @@ class InstructionsTabCoordinator:
             config_manager,
             library_manager,
             language_manager=language_manager,
+            is_operation_active=is_operation_active,
         )
         self._library_panel = GUIInstructionsLibraryPanel(
             self._library_logic,
@@ -105,7 +106,7 @@ class InstructionsTabCoordinator:
                 layout.general.colors,
                 accent=layout.general.colors.headers.library,
             ),
-            is_operation_in_progress=is_generation_in_progress,
+            is_operation_active=is_operation_active,
         )
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,

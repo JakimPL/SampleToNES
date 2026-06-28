@@ -1,6 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
+from typing import Final, FrozenSet, Optional
 
 from pydantic import BaseModel
 
@@ -13,6 +13,15 @@ class ConversionPhase(StrEnum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     FAILED = "failed"
+
+
+ACTIVE_PHASES: Final[FrozenSet[ConversionPhase]] = frozenset(
+    {
+        ConversionPhase.WAITING,
+        ConversionPhase.RUNNING,
+        ConversionPhase.CANCELLING,
+    }
+)
 
 
 class ConverterViewModel(BaseModel, frozen=True):
@@ -31,6 +40,10 @@ class ConverterViewModel(BaseModel, frozen=True):
     input_path: Optional[Path]
     output_path: Optional[Path]
     is_file: bool
+
+    @property
+    def is_active(self) -> bool:
+        return self.phase in ACTIVE_PHASES
 
     @property
     def subpanel_visible(self) -> bool:

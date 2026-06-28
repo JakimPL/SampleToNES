@@ -189,7 +189,7 @@ class Application:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
-            is_generation_in_progress=self._is_generation_in_progress,
+            is_operation_active=self._is_operation_active,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -205,7 +205,7 @@ class Application:
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
             on_generation_state_changed=self._refresh_busy_state,
-            is_generation_in_progress=self._is_generation_in_progress,
+            is_operation_active=self._is_operation_active,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -222,7 +222,7 @@ class Application:
             on_reconstruct_directory=self._reconstruct_directory,
             on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
             on_load_library=self._load_library,
-            is_generation_in_progress=self._is_generation_in_progress,
+            is_operation_active=self._is_operation_active,
             on_busy_state_changed=self._refresh_busy_state,
             layout=self.layout,
             language_manager=self.language_manager,
@@ -401,7 +401,7 @@ class Application:
         self._update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
-        if self._is_generation_in_progress():
+        if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
@@ -434,7 +434,7 @@ class Application:
                 dpg.add_file_extension(extension)
 
     def _reconstruct_directory_dialog(self) -> None:
-        if self._is_generation_in_progress():
+        if self._is_operation_active():
             logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
@@ -454,13 +454,13 @@ class Application:
             show=True,
         )
 
-    def _is_generation_in_progress(self) -> bool:
-        return self._main_tab.is_converter_running() or self._instructions_tab.is_library_generating()
+    def _is_operation_active(self) -> bool:
+        return self._main_tab.is_converter_active() or self._instructions_tab.is_library_generating()
 
     def _refresh_busy_state(self) -> None:
         """Re-evaluate the reconstruct and generate-library buttons whenever a conversion or library
         generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
-        reads the live ``_is_generation_in_progress`` state for itself; this only nudges them to
+        reads the live ``_is_operation_active`` state for itself; this only nudges them to
         re-apply, so the busy truth lives in one place."""
         self._reconstructions_tab.refresh_reconstruct_buttons()
         self._instructions_tab.refresh_generate_button()
@@ -621,7 +621,7 @@ class Application:
             self._project_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
         elif self._reconstruction_coordinator.is_unsaved():
             self._reconstruction_coordinator.show_exit_save_confirmation(on_confirm=self._exit_application)
-        elif self._is_converter_running():
+        elif self._is_converter_active():
             self._show_confirmation_dialog(
                 self.language_manager[
                     Page.GLOBAL,
@@ -654,8 +654,8 @@ class Application:
         else:
             self._exit_application()
 
-    def _is_converter_running(self) -> bool:
-        return self._main_tab.is_converter_running()
+    def _is_converter_active(self) -> bool:
+        return self._main_tab.is_converter_active()
 
     def _is_library_generating(self) -> bool:
         return self._instructions_tab.is_library_generating()

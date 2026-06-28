@@ -22,6 +22,7 @@ from sampletones_application.services.result import (
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_application.utils.progress import SystemProgress
 from sampletones_application.view_model.main.converter import (
+    ACTIVE_PHASES,
     ConversionPhase,
     ConverterViewModel,
 )
@@ -43,10 +44,12 @@ class ConverterLogic(CallbackMixin):
         *,
         scheduling: SchedulingBehavior,
         language_manager: LanguageManager,
+        is_operation_active: Callable[[], bool],
     ) -> None:
         self._config_manager = config_manager
         self._service = conversion_service
         self._scheduling = scheduling
+        self._is_operation_active = is_operation_active
         self._msg_idle = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -122,8 +125,11 @@ class ConverterLogic(CallbackMixin):
         self.cancel_library_generation: Optional[VoidCallback] = None
         self.is_library_available: Optional[Callable[[], bool]] = None
 
-    def is_running(self) -> bool:
-        return self._service.is_running()
+    @property
+    def is_active(self) -> bool:
+        """A conversion is occupying resources from the moment of request (the WAITING phase, during
+        which the library is prepared and the run is scheduled) until it reaches a terminal phase."""
+        return self._phase in ACTIVE_PHASES
 
     def emit_initial_view(self) -> None:
         self._emit_view_model(self._msg_idle, 0.0, "0%")
@@ -133,7 +139,7 @@ class ConverterLogic(CallbackMixin):
         if not self._assign_paths(input_path, config):
             return
 
-        if not self.is_running():
+        if not self.is_active:
             self._phase = ConversionPhase.IDLE
             self._emit_view_model(self._msg_idle, 0.0, "0%")
 
@@ -141,8 +147,8 @@ class ConverterLogic(CallbackMixin):
             self.start_conversion()
 
     def start_conversion(self) -> None:
-        if self.is_running():
-            logger.warning("Conversion is already in progress")
+        if self._is_operation_active():
+            logger.warning("A conversion or library generation is already in progress")
             return
 
         if not self._config_manager.config.generation.generators:

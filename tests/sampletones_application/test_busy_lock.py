@@ -8,7 +8,7 @@ def _application(*, converter_running: bool = False, library_generating: bool = 
     root constructor."""
     application = Application.__new__(Application)
     application._main_tab = MagicMock()
-    application._main_tab.is_converter_running.return_value = converter_running
+    application._main_tab.is_converter_active.return_value = converter_running
     application._instructions_tab = MagicMock()
     application._instructions_tab.is_library_generating.return_value = library_generating
     application._reconstructions_tab = MagicMock()
@@ -16,17 +16,17 @@ def _application(*, converter_running: bool = False, library_generating: bool = 
 
 
 class TestBusySourceOfTruth:
-    """``_is_generation_in_progress`` is the single busy authority: a conversion or a library
+    """``_is_operation_active`` is the single busy authority: a conversion or a library
     generation each make it true, and only an idle pair makes it false."""
 
     def test_busy_while_converter_runs(self) -> None:
-        assert _application(converter_running=True)._is_generation_in_progress() is True
+        assert _application(converter_running=True)._is_operation_active() is True
 
     def test_busy_while_library_generates(self) -> None:
-        assert _application(library_generating=True)._is_generation_in_progress() is True
+        assert _application(library_generating=True)._is_operation_active() is True
 
     def test_idle_when_neither_runs(self) -> None:
-        assert _application()._is_generation_in_progress() is False
+        assert _application()._is_operation_active() is False
 
 
 class TestBusyRefreshPropagation:
