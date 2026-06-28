@@ -4,6 +4,7 @@ import pytest
 
 from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
+    TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
 )
 from sampletones_application.ui.panels.instruction import library as library_module
 from sampletones_application.ui.panels.instruction.library import (
@@ -12,14 +13,17 @@ from sampletones_application.ui.panels.instruction.library import (
 
 
 class _ConfigureRecorder:
-    """Captures the latest ``enabled`` value the panel configured for each widget tag."""
+    """Captures the latest ``enabled`` and ``show`` values the panel configured for each widget tag."""
 
     def __init__(self) -> None:
         self.enabled: Dict[Any, bool] = {}
+        self.shown: Dict[Any, bool] = {}
 
     def __call__(self, tag: Any, **kwargs: Any) -> None:
         if "enabled" in kwargs:
             self.enabled[tag] = kwargs["enabled"]
+        if "show" in kwargs:
+            self.shown[tag] = kwargs["show"]
 
 
 @pytest.fixture
@@ -75,3 +79,24 @@ class TestGenerateButtonLock:
         panel.logic.locked = True
         panel.refresh_action_buttons()
         assert recorder.enabled[TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY] is False
+
+
+class TestGenerateDisabledTooltip:
+    """The explanatory tooltip is revealed exactly while a long operation blocks the button, so a
+    tree-rebuild lock alone leaves it hidden."""
+
+    def test_tooltip_revealed_while_busy(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=True)
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE] is True
+
+    def test_tooltip_hidden_when_idle(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=False)
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE] is False
+
+    def test_tooltip_hidden_under_tree_lock_alone(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=False)
+        panel.logic.locked = True
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE] is False

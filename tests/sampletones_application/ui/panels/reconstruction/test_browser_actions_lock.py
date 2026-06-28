@@ -5,6 +5,7 @@ import pytest
 from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
+    TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,
 )
 from sampletones_application.ui.panels.reconstruction import browser as browser_module
 from sampletones_application.ui.panels.reconstruction.browser import GUIBrowserPanel
@@ -16,14 +17,17 @@ RECONSTRUCT_BUTTONS = (
 
 
 class _ConfigureRecorder:
-    """Captures the latest ``enabled`` value the panel configured for each widget tag."""
+    """Captures the latest ``enabled`` and ``show`` values the panel configured for each widget tag."""
 
     def __init__(self) -> None:
         self.enabled: Dict[Any, bool] = {}
+        self.shown: Dict[Any, bool] = {}
 
     def __call__(self, tag: Any, **kwargs: Any) -> None:
         if "enabled" in kwargs:
             self.enabled[tag] = kwargs["enabled"]
+        if "show" in kwargs:
+            self.shown[tag] = kwargs["show"]
 
 
 @pytest.fixture
@@ -79,3 +83,24 @@ class TestReconstructButtonLock:
         panel.logic.locked = True
         panel.refresh_action_buttons()
         assert all(recorder.enabled[tag] is False for tag in RECONSTRUCT_BUTTONS)
+
+
+class TestReconstructDisabledTooltip:
+    """The explanatory tooltip is revealed exactly while a long operation blocks the buttons, so a
+    tree-rebuild lock alone leaves it hidden."""
+
+    def test_tooltip_revealed_while_busy(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=True)
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT] is True
+
+    def test_tooltip_hidden_when_idle(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=False)
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT] is False
+
+    def test_tooltip_hidden_under_tree_lock_alone(self, recorder: _ConfigureRecorder) -> None:
+        panel = _panel(busy=False)
+        panel.logic.locked = True
+        panel.refresh_action_buttons()
+        assert recorder.shown[TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT] is False
