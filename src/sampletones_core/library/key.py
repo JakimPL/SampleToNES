@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sampletones_core.configs import InstructionsLibraryConfig
 from sampletones_core.configs.config import Config
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import MAX_TRANSFORMATION_GAMMA
 from sampletones_core.fft import Window
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
@@ -28,6 +29,10 @@ class InstructionLibraryKey(BaseModel):
         le=MAX_TRANSFORMATION_GAMMA,
         description="Gamma value for transformation",
     )
+    spectrum_method: SpectrumMethod = Field(
+        default=SpectrumMethod.FFT,
+        description="Spectrum generation method",
+    )
     config_hash: str = Field(..., description="Hash of the configuration")
     filename: str = Field(..., description="Filename representing the key")
 
@@ -45,6 +50,7 @@ class InstructionLibraryKey(BaseModel):
             frame_length=window.frame_length,
             window_size=window.size,
             transformation_gamma=config.transformation_gamma,
+            spectrum_method=config.spectrum_method,
             config_hash=config_hash,
             filename=filename,
         )

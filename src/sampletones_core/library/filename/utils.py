@@ -5,6 +5,7 @@ from sampletones_core.configs.display import (
     GAMMA_PREFIX,
     format_nes_frequency,
     format_sample_rate,
+    format_spectrum_method,
 )
 from sampletones_core.library.filename.fields import InstructionsFilenameFields
 from sampletones_core.library.key import InstructionLibraryKey
@@ -20,6 +21,7 @@ def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
     nes_frequency = fields.nf
     window_size = fields.ws
     transformation_gamma = fields.tg
+    spectrum_method = fields.sm
     config_hash = fields.ch
     frame_length = round(sample_rate / nes_frequency)
 
@@ -28,6 +30,7 @@ def create_key_from_filename(filename: Pathlike) -> InstructionLibraryKey:
         frame_length=frame_length,
         window_size=window_size,
         transformation_gamma=transformation_gamma,
+        spectrum_method=spectrum_method,
         config_hash=config_hash,
         filename=f"{filename}{EXT_FILE_LIBRARY}",
     )
@@ -40,6 +43,7 @@ def get_display_name_from_key(key: InstructionLibraryKey) -> str:
         [
             format_sample_rate(key.sample_rate),
             format_nes_frequency(nes_frequency),
+            format_spectrum_method(key.spectrum_method),
             gamma,
         ]
     )
