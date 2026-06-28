@@ -49,6 +49,7 @@ class NodeDetailElements(AbstractElement):
     SAMPLE_RATE = "detail_sample_rate"
     NES_FREQUENCY = "detail_nes_frequency"
     GENERATORS = "detail_generators"
+    SPECTRUM_METHOD = "detail_spectrum_method"
     TRANSFORMATION_GAMMA = "detail_transformation_gamma"
     WINDOW_SIZE = "detail_window_size"
     CONFIGURATION = "detail_configuration"

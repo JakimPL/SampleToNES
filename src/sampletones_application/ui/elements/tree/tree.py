@@ -57,6 +57,7 @@ from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.configs.display import (
     format_nes_frequency,
     format_sample_rate,
+    format_spectrum_method,
     short_hash,
 )
 from sampletones_core.library import InstructionLibraryKey
@@ -222,6 +223,12 @@ class GUITreePanel(GUIPanel):
             Panel.CONTEXT,
             TextType.LABEL,
             NodeDetailElements.GENERATORS,
+        ]
+        self._lbl_detail_spectrum_method = language_manager[
+            Page.GLOBAL,
+            Panel.CONTEXT,
+            TextType.LABEL,
+            NodeDetailElements.SPECTRUM_METHOD,
         ]
         self._lbl_detail_transformation_gamma = language_manager[
             Page.GLOBAL,
@@ -552,6 +559,7 @@ class GUITreePanel(GUIPanel):
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(key.sample_rate)),
             (self._lbl_detail_nes_frequency, format_nes_frequency(nes_frequency)),
+            (self._lbl_detail_spectrum_method, format_spectrum_method(key.spectrum_method)),
             (self._lbl_detail_transformation_gamma, str(key.transformation_gamma)),
             (self._lbl_detail_window_size, str(key.window_size)),
             (self._lbl_detail_configuration, short_hash(key.config_hash)),
