@@ -84,6 +84,17 @@ TAG_<MODULE>_<WIDGET_TYPE>[_<DETAIL>]
 ```
 `MODULE` is the feature area (`GLOBAL`, `MAIN`, `RECONSTRUCTIONS`, `SEQUENCER`, `INSTRUCTIONS`, `PLAYER`, `SETTINGS`); `WIDGET_TYPE` is the DPG element kind (`WINDOW`, `PANEL`, `TREE`, `TABLE`, `BUTTON`, `INPUT`, `TABS`, `TAB`, `THEME`, `FONT`, `MENU`); `DETAIL` disambiguates multiple instances of the same type in the same module.
 
+### 10. Exclusive operations expose a lifecycle-accurate active state
+
+Some operations are mutually exclusive — typically because they are resource-intensive (background worker pools) and running two at once would exhaust memory or contend for a device. Each such operation exposes an `is_active` signal derived from its **own state machine**, true from the moment the operation is *requested* through to its teardown — including any preparatory phase that runs before the background work begins. Deriving "active" from a downstream signal (such as whether a worker has actually started) understates the operation's true span and opens a window in which a competing operation can begin.
+
+The composition root composes the per-operation `is_active` signals into a single *busy authority*. That authority is the one source of truth, consulted in two places:
+
+- **UI enablement** — panels disable the controls that would start a competing operation.
+- **Start-time guards** — each operation's entry point consults the authority and declines to start while another operation is active, so exclusivity holds even when a control is reached outside the normal UI path.
+
+A new exclusive operation joins by contributing its `is_active` to the authority and adding a start-time guard; no per-call-site bookkeeping is needed. The authority stores nothing — it is recomputed from the live operations on demand. If exclusive operations proliferate, promote the authority into a dedicated cross-cutting coordinator that registers operation predicates.
+
 ---
 
 ## Layer Reference

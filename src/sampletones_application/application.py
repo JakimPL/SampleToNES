@@ -204,7 +204,7 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
-            on_generation_state_changed=self._refresh_busy_state,
+            on_generation_state_changed=self._on_library_operation_changed,
             is_operation_active=self._is_operation_active,
             layout=self.layout,
             language_manager=self.language_manager,
@@ -464,6 +464,14 @@ class Application:
         re-apply, so the busy truth lives in one place."""
         self._reconstructions_tab.refresh_reconstruct_buttons()
         self._instructions_tab.refresh_generate_button()
+
+    def _on_library_operation_changed(self) -> None:
+        """Responds to a library generation starting or finishing: refreshes the cross-tab action
+        buttons and, additionally, the converter view so the Convert button reflects the library
+        operation. The converter's own view changes refresh only the action buttons, so this extra
+        converter refresh fires solely on library edges and stays clear of a refresh loop."""
+        self._refresh_busy_state()
+        self._main_tab.refresh_converter_view()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._reconstruction_coordinator.check_loaded():

@@ -40,6 +40,7 @@ class ConverterViewModel(BaseModel, frozen=True):
     input_path: Optional[Path]
     output_path: Optional[Path]
     is_file: bool
+    other_operation_active: bool
 
     @property
     def is_active(self) -> bool:
@@ -51,7 +52,7 @@ class ConverterViewModel(BaseModel, frozen=True):
 
     @property
     def convert_button_enabled(self) -> bool:
-        return self.phase == ConversionPhase.IDLE and self.input_path is not None
+        return self.phase == ConversionPhase.IDLE and self.input_path is not None and not self.other_operation_active
 
     @property
     def load_button_enabled(self) -> bool:

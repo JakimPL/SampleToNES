@@ -134,6 +134,13 @@ class ConverterLogic(CallbackMixin):
     def emit_initial_view(self) -> None:
         self._emit_view_model(self._msg_idle, 0.0, "0%")
 
+    def refresh_view(self) -> None:
+        """Re-emits the idle view so the Convert button reflects whether another exclusive operation
+        is active. Only the idle phase carries the Convert button; the other phases disable it by
+        phase alone, so re-emitting them would add nothing."""
+        if self._phase == ConversionPhase.IDLE:
+            self._emit_view_model(self._msg_idle, 0.0, "0%")
+
     def set_input_path(self, input_path: Path, convert: bool = False) -> None:
         config = self._config_manager.config.model_copy()
         if not self._assign_paths(input_path, config):
@@ -326,5 +333,6 @@ class ConverterLogic(CallbackMixin):
             input_path=(input_path if input_path is not None else self._input_path),
             output_path=display_output,
             is_file=self._is_file,
+            other_operation_active=self._is_operation_active(),
         )
         self.call(self.on_view_changed, view_model)

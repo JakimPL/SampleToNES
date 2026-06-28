@@ -325,6 +325,9 @@ class MainTabCoordinator:
     def is_converter_active(self) -> bool:
         return self._converter_logic.is_active
 
+    def refresh_converter_view(self) -> None:
+        self._converter_logic.refresh_view()
+
     def set_input_path(self, path: Path, convert: bool) -> None:
         self._converter_logic.set_input_path(path, convert=convert)
 
