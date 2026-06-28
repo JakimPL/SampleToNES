@@ -14,6 +14,7 @@ from sampletones_application.constants.general import SUF_HANDLER_REGISTRY
 from sampletones_application.constants.main import (
     TAG_MAIN_CONFIG_CHECKBOX_NORMALIZE,
     TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE,
+    TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
     TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY,
     TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE,
     TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
@@ -27,7 +28,12 @@ from sampletones_application.ui.elements.status import GUIStatusBar
 from sampletones_application.utils.tooltip import show_tooltip
 from sampletones_application.utils.widgets import clamp_widget_value
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
+from sampletones_core.configs.display import (
+    SPECTRUM_METHOD_BY_LABEL,
+    format_spectrum_method,
+)
 from sampletones_core.constants.audio import MAX_SAMPLE_RATE, MIN_SAMPLE_RATE
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import (
     MAX_NES_FREQUENCY,
     MAX_TRANSFORMATION_GAMMA,
@@ -87,6 +93,12 @@ class GUIConfigPanel(GUIPanel):
             TextType.LABEL,
             ConfigPanelElements.INPUT_NES_FREQUENCY,
         ]
+        self._lbl_spectrum_method = language_manager[
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.LABEL,
+            ConfigPanelElements.COMBO_SPECTRUM_METHOD,
+        ]
         self._lbl_gamma = language_manager[
             Page.MAIN,
             Panel.CONFIG_PANEL,
@@ -117,6 +129,12 @@ class GUIConfigPanel(GUIPanel):
             TextType.TOOLTIP,
             ConfigPanelElements.TOOLTIP_NES_FREQUENCY,
         ]
+        self._tooltip_spectrum_method = language_manager[
+            Page.MAIN,
+            Panel.CONFIG_PANEL,
+            TextType.TOOLTIP,
+            ConfigPanelElements.TOOLTIP_SPECTRUM_METHOD,
+        ]
         self._tooltip_gamma = language_manager[
             Page.MAIN,
             Panel.CONFIG_PANEL,
@@ -128,6 +146,12 @@ class GUIConfigPanel(GUIPanel):
             Panel.STATUS,
             TextType.MESSAGE,
             StatusElements.INPUT,
+        ]
+        self._msg_status_combo = language_manager[
+            Page.GLOBAL,
+            Panel.STATUS,
+            TextType.MESSAGE,
+            StatusElements.COMBO,
         ]
 
         super().__init__(
@@ -164,10 +188,15 @@ class GUIConfigPanel(GUIPanel):
         library_update = LibrarySettingsUpdate(
             sample_rate=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE)),
             nes_frequency=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY)),
+            spectrum_method=self._selected_spectrum_method(),
             transformation_gamma=int(clamp_widget_value(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA)),
         )
         self.call(self.on_audio_settings_changed, audio_update)
         self.call(self.on_library_settings_changed, library_update)
+
+    def _selected_spectrum_method(self) -> SpectrumMethod:
+        label = dpg.get_value(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD)
+        return SPECTRUM_METHOD_BY_LABEL[label]
 
     def _create_section_text(self) -> None:
         section_text = dpg.add_text(self._lbl_section)
@@ -209,6 +238,14 @@ class GUIConfigPanel(GUIPanel):
             width=self._input_width,
             callback=self._on_parameter_change,
         )
+        dpg.add_combo(
+            label=self._lbl_spectrum_method,
+            tag=TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
+            items=[format_spectrum_method(method) for method in SpectrumMethod],
+            default_value=format_spectrum_method(self._view.spectrum_method),
+            width=self._input_width,
+            callback=self._on_parameter_change,
+        )
         dpg.add_slider_int(
             label=self._lbl_gamma,
             tag=TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
@@ -226,6 +263,7 @@ class GUIConfigPanel(GUIPanel):
         ]:
             dpg.bind_item_handler_registry(tag, self._item_handler_tag)
 
+        GUIStatusBar.bind_to_item(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._msg_status_combo)
         GUIStatusBar.bind_to_item(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._msg_status_input)
 
     def _create_tooltips(self) -> None:
@@ -233,6 +271,7 @@ class GUIConfigPanel(GUIPanel):
         show_tooltip(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, self._tooltip_quantize)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, self._tooltip_sample_rate)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, self._tooltip_nes_frequency)
+        show_tooltip(TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD, self._tooltip_spectrum_method)
         show_tooltip(TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA, self._tooltip_gamma)
 
     def update_view(self, view_model: ConfigPanelViewModel) -> None:
@@ -241,6 +280,10 @@ class GUIConfigPanel(GUIPanel):
         dpg.set_value(TAG_MAIN_CONFIG_CHECKBOX_QUANTIZE, view_model.quantize)
         dpg.set_value(TAG_MAIN_CONFIG_INPUT_SAMPLE_RATE, view_model.sample_rate)
         dpg.set_value(TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY, view_model.nes_frequency)
+        dpg.set_value(
+            TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD,
+            format_spectrum_method(view_model.spectrum_method),
+        )
         dpg.set_value(
             TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA,
             view_model.transformation_gamma,

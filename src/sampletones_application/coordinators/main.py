@@ -145,6 +145,7 @@ class MainTabCoordinator:
                 quantize=_config.general.quantize,
                 sample_rate=_config.library.sample_rate,
                 nes_frequency=_config.library.nes_frequency,
+                spectrum_method=_config.library.spectrum_method,
                 transformation_gamma=_config.library.transformation_gamma,
             ),
             input_width=layout.general.inputs.default_width,
@@ -262,6 +263,7 @@ class MainTabCoordinator:
                 quantize=config.general.quantize,
                 sample_rate=config.library.sample_rate,
                 nes_frequency=config.library.nes_frequency,
+                spectrum_method=config.library.spectrum_method,
                 transformation_gamma=config.library.transformation_gamma,
             )
         )

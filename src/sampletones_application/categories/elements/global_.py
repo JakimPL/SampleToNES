@@ -99,6 +99,7 @@ class StatusElements(AbstractElement):
     NODE_LIBRARY = "node_library"
     TREE_SEARCH = "tree_search"
     INPUT = "input"
+    COMBO = "combo"
     NODE_DIRECTORY = "node_directory"
 
 

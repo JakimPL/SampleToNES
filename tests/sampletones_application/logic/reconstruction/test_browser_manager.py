@@ -128,7 +128,7 @@ class TestBrowserManagerFriendlyNames:
 
         browser_manager.refresh_tree()
 
-        assert "44.1 kHz · 30 Hz · PpT" in directory_nodes(browser_manager)
+        assert "44.1 kHz·30 Hz·PpT" in directory_nodes(browser_manager)
 
     def test_colliding_config_directories_get_hash_suffix(
         self,
@@ -144,8 +144,8 @@ class TestBrowserManagerFriendlyNames:
 
         names = set(directory_nodes(browser_manager))
         assert names == {
-            f"44.1 kHz · 30 Hz · PpT · #{HASH_A[:7]}",
-            f"44.1 kHz · 30 Hz · PpT · #{HASH_B[:7]}",
+            f"44.1 kHz·30 Hz·PpT·#{HASH_A[:7]}",
+            f"44.1 kHz·30 Hz·PpT·#{HASH_B[:7]}",
         }
 
     def test_non_config_directory_keeps_raw_name(
