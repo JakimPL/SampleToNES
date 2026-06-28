@@ -574,6 +574,8 @@ class GUITreePanel(GUIPanel):
         return [
             (self._lbl_detail_sample_rate, format_sample_rate(fields.sr)),
             (self._lbl_detail_nes_frequency, format_nes_frequency(fields.nf)),
+            (self._lbl_detail_spectrum_method, format_spectrum_method(fields.sm)),
+            (self._lbl_detail_transformation_gamma, str(fields.tg)),
             (self._lbl_detail_generators, generators),
             (self._lbl_detail_configuration, short_hash(fields.ch)),
         ]

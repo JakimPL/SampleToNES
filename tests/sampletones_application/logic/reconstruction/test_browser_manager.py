@@ -122,13 +122,13 @@ class TestBrowserManagerFriendlyNames:
         browser_manager: BrowserManager,
         tmp_path: Path,
     ) -> None:
-        config_dir = tmp_path / f"sr_44100_nf_30_gn_PpT_ch_{HASH_A}"
+        config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_PpT_ch_{HASH_A}"
         config_dir.mkdir()
         (config_dir / "song.stn").touch()
 
         browser_manager.refresh_tree()
 
-        assert "44.1 kHz·30 Hz·PpT" in directory_nodes(browser_manager)
+        assert "44.1 kHz·30 Hz·FFT·γ0·PpT" in directory_nodes(browser_manager)
 
     def test_colliding_config_directories_get_hash_suffix(
         self,
@@ -136,7 +136,7 @@ class TestBrowserManagerFriendlyNames:
         tmp_path: Path,
     ) -> None:
         for config_hash in (HASH_A, HASH_B):
-            config_dir = tmp_path / f"sr_44100_nf_30_gn_PpT_ch_{config_hash}"
+            config_dir = tmp_path / f"sr_44100_nf_30_sm_fft_tg_0_gn_PpT_ch_{config_hash}"
             config_dir.mkdir()
             (config_dir / "song.stn").touch()
 
@@ -144,8 +144,8 @@ class TestBrowserManagerFriendlyNames:
 
         names = set(directory_nodes(browser_manager))
         assert names == {
-            f"44.1 kHz·30 Hz·PpT·#{HASH_A[:7]}",
-            f"44.1 kHz·30 Hz·PpT·#{HASH_B[:7]}",
+            f"44.1 kHz·30 Hz·FFT·γ0·PpT·#{HASH_A[:7]}",
+            f"44.1 kHz·30 Hz·FFT·γ0·PpT·#{HASH_B[:7]}",
         }
 
     def test_non_config_directory_keeps_raw_name(

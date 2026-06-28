@@ -5,13 +5,16 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
+    GAMMA_PREFIX,
     format_nes_frequency,
     format_sample_rate,
+    format_spectrum_method,
 )
 from sampletones_core.constants.enums import (
     GENERATOR_ABBREVIATION_PATTERN,
     GENERATOR_ABBREVIATION_TO_NAME,
     GeneratorName,
+    SpectrumMethod,
     abbreviate_generator_names,
 )
 from sampletones_core.constants.field_aliases import ALIASES
@@ -23,7 +26,7 @@ CONFIG_DIRECTORY_SEPARATOR: Final[str] = "_"
 class ConfigDirectoryFields(BaseModel):
     """Structured view of a reconstruction config-directory name.
 
-    The on-disk name is a key-value sequence (``sr_44100_nf_30_gn_PTN_ch_<hash>``); the embedded
+    The on-disk name is a key-value sequence (``sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_<hash>``); the embedded
     keys let :meth:`from_directory_name` validate the name by field. Construction
     (:meth:`from_config`) and parsing live together so the name and its friendly rendering share one
     source of truth. The hash folds in both the library and generation configs, so it disambiguates
@@ -34,6 +37,8 @@ class ConfigDirectoryFields(BaseModel):
 
     sr: int = Field(gt=0, validation_alias=ALIASES["sr"])
     nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
+    sm: SpectrumMethod = Field(validation_alias=ALIASES["sm"])
+    tg: int = Field(ge=0, validation_alias=ALIASES["tg"])
     gn: str = Field(pattern=GENERATOR_ABBREVIATION_PATTERN, validation_alias=ALIASES["gn"])
     ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
 
@@ -46,6 +51,8 @@ class ConfigDirectoryFields(BaseModel):
         return cls(
             sr=config.library.sample_rate,
             nf=config.library.nes_frequency,
+            sm=config.library.spectrum_method,
+            tg=config.library.transformation_gamma,
             gn=abbreviate_generator_names(config.generation.generators),
             ch=hash_models(config.library, config.generation),
         )
@@ -88,6 +95,8 @@ class ConfigDirectoryFields(BaseModel):
             [
                 format_sample_rate(self.sr),
                 format_nes_frequency(self.nf),
+                format_spectrum_method(self.sm),
+                f"{GAMMA_PREFIX}{self.tg}",
                 self.gn,
             ]
         )
