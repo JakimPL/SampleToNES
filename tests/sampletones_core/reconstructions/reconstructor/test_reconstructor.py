@@ -56,7 +56,7 @@ class TestReconstructorLoadLibraryError:
 
 
 class TestReconstructorGetCoefficient:
-    def test_coefficient_equals_formula(
+    def test_uniform_audio_anchors_to_its_level(
         self,
         config: Config,
         library_data: InstructionLibraryData,
@@ -65,8 +65,21 @@ class TestReconstructorGetCoefficient:
         audio = np.ones(config.library.frame_length, dtype=np.float32) * 0.5
         coefficient = reconstructor.get_coefficient(audio)
         total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
-        expected = float(np.max(np.abs(audio)) / total_mixer)
-        assert coefficient == pytest.approx(expected)
+        assert coefficient == pytest.approx(0.5 / total_mixer)
+
+    def test_coefficient_is_robust_to_a_lone_transient(
+        self,
+        config: Config,
+        library_data: InstructionLibraryData,
+    ) -> None:
+        reconstructor = _make_reconstructor(config, library_data)
+        frame_length = config.library.frame_length
+        total_mixer = sum(MIXER_LEVELS[gen.class_name()] for gen in reconstructor.generators.values())
+        audio = np.full(frame_length * 24, 0.05, dtype=np.float32)
+        audio[:frame_length] = 1.0
+        coefficient = reconstructor.get_coefficient(audio)
+        assert coefficient == pytest.approx(0.05 / total_mixer, rel=1e-3)
+        assert coefficient < 1.0 / total_mixer
 
     def test_louder_audio_produces_larger_coefficient(
         self,

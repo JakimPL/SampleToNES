@@ -71,7 +71,7 @@ class GenerationConfig(DataModel):
 
     drive: float = Field(
         default=DRIVE,
-        ge=0.0,
+        gt=0.0,
         le=MAX_DRIVE,
         validation_alias=AliasChoices(
             "drive",

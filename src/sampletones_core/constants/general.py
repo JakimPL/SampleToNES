@@ -51,8 +51,21 @@ SPECTRUM_FLOOR: Final[float] = (MIN_VOLUME / MAX_VOLUME) ** 2
 # Audio import
 
 NORMALIZE: Final[bool] = True
-QUANTIZE: Final[bool] = True
+# Quantizing the input to QUANTIZATION_LEVELS is applied after peak-normalization,
+# so it acts as a peak-relative gate that zeros everything below half a level
+# (~-29.5 dB of the loudest sample). It does not improve matching, so it is off by
+# default; the user can re-enable it for a deliberate lo-fi effect.
+QUANTIZE: Final[bool] = False
 QUANTIZATION_LEVELS: Final[int] = 32
+
+# Matching input level: the normalization coefficient anchors to a robust level
+# (a percentile of the per-frame peak amplitudes over frames audible relative to
+# the global peak) rather than the single loudest sample, so a lone transient does
+# not push the rest of the signal below the NES's matchable range.
+COEFFICIENT_PERCENTILE: Final[float] = 90.0
+COEFFICIENT_AUDIBILITY_FLOOR: Final[float] = 1e-3
+# Floor on the reference level so a fully silent input does not divide by zero.
+MINIMUM_AUDIO_LEVEL: Final[float] = 1e-12
 
 # Library creation
 

@@ -3,9 +3,10 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-from sampletones_core.audio import load_audio
+from sampletones_core.audio import active_frame_level, load_audio
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MINIMUM_AUDIO_LEVEL
 from sampletones_core.fft import FragmentedAudio, Window
 from sampletones_core.generators import (
     MIXER_LEVELS,
@@ -78,9 +79,9 @@ class Reconstructor:
         )
 
     def get_coefficient(self, audio: np.ndarray) -> float:
-        return float(
-            np.max(np.abs(audio)) / sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
-        )
+        total = sum(MIXER_LEVELS[generator.class_name()] for generator in self.generators.values())
+        level = max(active_frame_level(audio, self.config.library.frame_length), MINIMUM_AUDIO_LEVEL)
+        return float(level / total)
 
     def get_fragments(self, audio: np.ndarray) -> FragmentedAudio:
         return FragmentedAudio.create(audio, self.config, self.window)
