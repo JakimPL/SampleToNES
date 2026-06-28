@@ -66,6 +66,23 @@ class TestCancelDuringLibraryGeneration:
         converter_logic._service.start.assert_not_called()
         scheduled.assert_not_called()
 
+    def test_wait_poll_does_not_emit_a_zero_progress_view(
+        self,
+        converter_logic: ConverterLogic,
+    ) -> None:
+        """While waiting, the bar reflects the library-generation progress. A re-poll that finds the
+        library still missing must only re-queue itself, never emit its own view: emitting one would
+        carry ``progress=0.0`` and momentarily reset the bar."""
+        with patch("sampletones_application.logic.main.converter.CallbackQueue.add") as scheduled:
+            converter_logic.start_conversion()
+            converter_logic.on_view_changed.reset_mock()
+            scheduled.reset_mock()
+
+            converter_logic._wait_for_library_and_start()
+
+        converter_logic.on_view_changed.assert_not_called()
+        scheduled.assert_called_once()
+
 
 class TestNoGeneratorsGuard:
     """With no generators enabled there is nothing to reconstruct, so the conversion must not start."""

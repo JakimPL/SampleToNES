@@ -261,7 +261,6 @@ class ConverterLogic(CallbackMixin):
             return
 
         if not self.call(self.is_library_available):
-            self._emit_view_model(self._msg_generating_library, 0.0, "0%")
             CallbackQueue.add(
                 self._wait_for_library_and_start,
                 priority=self._scheduling.priority_schedule,
