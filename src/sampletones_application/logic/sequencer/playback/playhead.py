@@ -3,7 +3,7 @@
 The synthesiser tracks the live playhead as an index into ``Song.order``. Inserting,
 removing, or moving a frame shifts those indices, so after such an edit the playhead
 must be remapped to keep pointing at the frame that was actually sounding. These are
-pure index functions so the rules can be unit-tested without a running stream.
+pure index functions, so the rules can be unit-tested in isolation.
 """
 
 

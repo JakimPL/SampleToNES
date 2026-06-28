@@ -575,9 +575,8 @@ class GUISequencerGridPanel(GUIPanel):
         """Commits a single-subcolumn edit.
 
         An :class:`EditAction` only ever carries the subcolumn under the cursor;
-        the others are ``None`` meaning "leave unchanged", not "clear". Forwarding
-        those ``None`` values lets the downstream partial update preserve the rest
-        of the row instead of wiping it.
+        the others are ``None`` meaning "leave unchanged". Forwarding those ``None``
+        values lets the downstream partial update preserve the rest of the row.
         """
         row, generator = action.row, action.generator
 
@@ -695,7 +694,7 @@ class GUISequencerGridPanel(GUIPanel):
         """Opens the cell-operations menu for the right-clicked subcolumn.
 
         The menu targets the clicked cell directly and leaves the edit cursor where it is,
-        so a right-click inspects a cell without moving the caret onto it.
+        so a right-click inspects a cell while the caret stays put.
         """
         mouse_button, clicked_item = app_data
         if mouse_button != dpg.mvMouseButton_Right:
@@ -996,7 +995,7 @@ class GUISequencerGridPanel(GUIPanel):
         self._apply_playing_row_highlight()
 
     def _apply_playing_row_highlight(self) -> None:
-        """Highlights the playing row, skipping an index outside the live table.
+        """Highlights the playing row when its index lies within the live table.
 
         Position updates arrive on the callback-queue worker thread, so the table may be shorter
         than ``_playing_row`` if the main thread shrank it (a rows-per-pattern change) in between;
@@ -1010,11 +1009,11 @@ class GUISequencerGridPanel(GUIPanel):
             )
 
     def _live_row_count(self) -> int:
-        """The table's current row count, read from DearPyGui rather than cached.
+        """The table's current row count, read live from DearPyGui.
 
         The cached ``_current_row_count`` reflects the last build on this thread; a concurrent
         rebuild on another thread can leave it stale, so row-index-bounded DearPyGui calls read the
-        actual children instead.
+        actual children directly.
         """
         if not dpg.does_item_exist(TAG_SEQUENCER_GRID_TABLE_TRACKER):
             return 0

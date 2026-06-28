@@ -64,7 +64,7 @@ class RowSynthesizer:
 
     Reads the live ``Project`` from ``project_controller`` on every ``render_row``
     call so that pattern edits, tempo changes, and sample swaps take effect
-    immediately without restarting playback.
+    immediately while playback keeps running.
 
     Generators are constructed once from ``config`` and carry timer state across
     rows for phase continuity within a sustained note. Triggering a new note

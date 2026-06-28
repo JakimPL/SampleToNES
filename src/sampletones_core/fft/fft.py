@@ -68,7 +68,7 @@ def a_weighting(frequencies: np.ndarray) -> np.ndarray:
     Implements the standard A-weighting curve defined in IEC 61672-1.
 
     The weights are normalized such that the maximum weight is 1.0.
-    Frequencies below 1e-6 Hz are clamped to prevent division by zero.
+    Frequencies below 1e-6 Hz are clamped to that floor, keeping the division well-defined.
 
     Args:
         frequencies: Array of frequency values in Hz.

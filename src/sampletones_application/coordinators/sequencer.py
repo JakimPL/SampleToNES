@@ -657,9 +657,8 @@ class SequencerTabCoordinator:
     def _relocate_playhead(self, remap: Callable[[int], int]) -> None:
         """Keeps the live playhead on the frame it was sounding after a structural order edit.
 
-        The new position is reflected in the playing highlight straight away rather than waiting
-        for the worker's next row update, so rapid edits (e.g. a held Alt+arrow) stay in step
-        instead of lagging a row behind and snapping back.
+        The new position is reflected in the playing highlight straight away, ahead of the worker's
+        next row update, so rapid edits (e.g. a held Alt+arrow) stay in step.
         """
         if self._playing_order is None:
             return

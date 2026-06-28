@@ -221,9 +221,10 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _rebuild(self) -> None:
         """Rebuilds the samples table from the cached entries with explicit parents.
 
-        Items pass an explicit ``parent`` rather than nesting ``with`` blocks: the
-        browser tree builds on a worker thread and the DearPyGui container stack
-        is process-global, so ``with`` blocks here would race with it.
+        Items pass an explicit ``parent`` so each widget binds directly: the browser
+        tree builds on a worker thread and the DearPyGui container stack is
+        process-global, so explicit parents keep this build independent of that
+        shared stack.
         """
         dpg_delete_children(TAG_SEQUENCER_INSTRUMENTS_TABLE, slot=1)
         self._selected_row = None
@@ -370,8 +371,8 @@ class GUISequencerSamplesPanel(GUIPanel):
     def _commit_rename(self) -> None:
         """Applies the edited name and restores the read-only cell.
 
-        Clears the edit before notifying so the teardown rebuild does not re-enter
-        this through the input's deactivated handler.
+        Clears the edit before notifying so the input's deactivated handler, fired
+        during the teardown rebuild, sees the edit already finished.
         """
         if self._editing_sample_id is None:
             return

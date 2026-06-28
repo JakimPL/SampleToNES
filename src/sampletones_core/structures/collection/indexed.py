@@ -27,12 +27,11 @@ T = TypeVar("T", bound=ModelHashable)
 class IndexedCollection(Generic[T]):
     """
     A generic collection that maintains both positional order and hash-based access,
-    for immutable hashable objects. Each item is stored with a unique hash, preventing duplicates
-    while maintaining stable integer indices. The collection thus does not allow duplicate items
-    (items with the same hash).
+    for immutable hashable objects. Each item is stored with a unique hash and a stable integer
+    index, so the collection holds each distinct item (by hash) at most once.
 
-    Collection items should not be changed in a way that affects their hash while they are
-    stored in the collection. Doing so may lead to inconsistent behavior.
+    Collection items must keep a stable hash while they are stored in the collection; changing it
+    may lead to inconsistent behavior.
 
     Internally, this class uses a dictionary for item storage and a BidirectionalHashMap to track the
     mapping between item hashes and their positional indices. When items are inserted or removed,
@@ -190,7 +189,7 @@ class IndexedCollection(Generic[T]):
 
         If the new item already exists elsewhere in the collection, raises ValueError,
         unless it is at the same position being replaced. In such case, the replacement
-        does take place anyway, as hash equality does not imply object equality.
+        proceeds, since hash equality can hold for distinct objects.
 
         Args:
             key (Union[int, str]): The integer index (supports negative indices) or hash string.

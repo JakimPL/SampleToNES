@@ -29,7 +29,7 @@ class SequencerBrowserLogic(CallbackMixin):
         self._browser_manager.set_reconstructions_directory(reconstructions_directory)
 
     def load_reconstruction(self, path: Path) -> Reconstruction:
-        """Loads a reconstruction file without adding it.
+        """Loads a reconstruction file for inspection before adding.
 
         Kept separate from :meth:`add_reconstruction` so the caller can inspect the
         loaded reconstruction — e.g. compare its NES frequency to the project's —

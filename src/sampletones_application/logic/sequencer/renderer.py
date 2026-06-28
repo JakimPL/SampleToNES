@@ -24,8 +24,7 @@ class UnimplementedSongRenderer:
     """Placeholder renderer until the synthesis engine lands.
 
     Kept as a concrete type so the sequencer can hold a renderer reference and
-    fail loudly (rather than silently producing no audio) if play is wired
-    before the engine exists.
+    fail loudly if play is wired before the engine exists.
     """
 
     def render(self, project: Project) -> np.ndarray:

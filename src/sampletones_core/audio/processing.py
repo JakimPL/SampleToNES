@@ -13,8 +13,8 @@ def clip_audio(audio: np.ndarray) -> np.ndarray:
     """
     Clip audio samples to the valid range [-1.0, 1.0].
 
-    Ensures all audio samples are within the normalized range to prevent
-    clipping distortion during playback or file writing.
+    Ensures all audio samples sit within the normalized range, so playback and
+    file writing reproduce them cleanly.
 
     Args:
         audio: Audio array to clip.

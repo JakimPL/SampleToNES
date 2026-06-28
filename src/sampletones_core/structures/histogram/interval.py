@@ -93,7 +93,7 @@ class Interval(NamedTuple):
         The intersection of this interval with another.
 
         Computes [max(a, c), min(b, d)] for intervals [a, b] and [c, d].
-        Returns an empty interval if they don't overlap.
+        Returns an empty interval when they are disjoint.
 
         Args:
             other: The interval to intersect with.
@@ -122,7 +122,7 @@ class Interval(NamedTuple):
         Check if this interval contains another interval.
 
         Invalid intervals (empty sets) are contained in every interval.
-        Valid intervals cannot be contained in invalid intervals.
+        An invalid interval contains only other invalid intervals.
 
         Args:
             other: The interval to check.

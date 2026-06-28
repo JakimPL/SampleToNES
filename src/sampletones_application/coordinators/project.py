@@ -96,10 +96,10 @@ class ProjectCoordinator:
     def restore(self, path: Path) -> None:
         """Loads the persisted project when the application starts.
 
-        Startup restore is not user-initiated, so a failed load is recovered silently:
-        the stale session pointer is cleared so a missing, moved, or corrupt file is
-        forgotten rather than re-attempted (and dialog-prompted) on every launch. Only
-        known domain and I/O failures are absorbed; unexpected errors propagate.
+        Startup restore happens automatically, so a failed load is recovered silently:
+        the stale session pointer is cleared so a missing, moved, or corrupt file leaves
+        the next launch starting from a clean slate. Only known domain and I/O failures
+        are absorbed; unexpected errors propagate.
         """
         try:
             self._project_controller.load(path)

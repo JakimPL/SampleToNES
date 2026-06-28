@@ -50,8 +50,8 @@ class SequencerRowViewModel(BaseModel, frozen=True):
 
         A referenced sample wins: the column shows its position (or :data:`MIXED` when the sample
         spans more channels than it occupies here). With no sample present, the column reads ``--``
-        only when every channel is a note-off, and is otherwise empty — a half-cut row (some
-        note-off, some blank) reads as empty rather than implying a column-wide cut.
+        only when every channel is a note-off; any other mix — including a half-cut row of some
+        note-off and some blank — reads as empty.
         """
         if self.relevant_generators:
             return self._aggregate(self.relevant_generators, lambda cell: cell.instrument, display_id(None))

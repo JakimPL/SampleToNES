@@ -30,8 +30,8 @@ class ReconstructionData:
         """Wraps an in-memory reconstruction for live-linked editing.
 
         The reconstruction tab edits the very same object the project sample
-        holds, so changes propagate without a save/reload. Such a sample has no
-        standalone reconstruction file, hence ``filepath`` is ``None``.
+        holds, so changes propagate live. Such a sample lives only in memory,
+        hence ``filepath`` is ``None``.
         """
         return cls._assemble(
             reconstruction,

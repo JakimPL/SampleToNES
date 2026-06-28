@@ -189,6 +189,7 @@ class Application:
             on_reconstruct_directory=self._reconstruct_directory_dialog,
             on_change_audio_state=self._update_menu,
             on_reconstruction_instrument_updated=self._regenerate_instrument,
+            is_generation_in_progress=self._is_generation_in_progress,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -203,6 +204,8 @@ class Application:
             shortcut_manager=self.shortcut_manager,
             library_manager=self.library_manager,
             on_audio_state_changed=self._update_menu,
+            on_generation_state_changed=self._refresh_busy_state,
+            is_generation_in_progress=self._is_generation_in_progress,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -220,6 +223,7 @@ class Application:
             on_load_reconstruction=self._reconstruction_coordinator.load_with_confirmation,
             on_load_library=self._load_library,
             is_generation_in_progress=self._is_generation_in_progress,
+            on_busy_state_changed=self._refresh_busy_state,
             layout=self.layout,
             language_manager=self.language_manager,
             dialogs=self.dialogs,
@@ -397,8 +401,8 @@ class Application:
         self._update_menu()
 
     def _reconstruct_file_dialog(self) -> None:
-        if self._main_tab.is_converter_running():
-            logger.warning("A conversion is already in progress; cannot start a new one")
+        if self._is_generation_in_progress():
+            logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
         self._instructions_tab.ensure_library_loaded()
@@ -430,8 +434,8 @@ class Application:
                 dpg.add_file_extension(extension)
 
     def _reconstruct_directory_dialog(self) -> None:
-        if self._main_tab.is_converter_running():
-            logger.warning("A conversion is already in progress; cannot start a new one")
+        if self._is_generation_in_progress():
+            logger.warning("A conversion or library generation is already in progress; cannot start a new one")
             return
 
         self._instructions_tab.ensure_library_loaded()
@@ -452,6 +456,14 @@ class Application:
 
     def _is_generation_in_progress(self) -> bool:
         return self._main_tab.is_converter_running() or self._instructions_tab.is_library_generating()
+
+    def _refresh_busy_state(self) -> None:
+        """Re-evaluate the reconstruct and generate-library buttons whenever a conversion or library
+        generation starts or finishes, keeping the two long operations mutually exclusive. Each panel
+        reads the live ``_is_generation_in_progress`` state for itself; this only nudges them to
+        re-apply, so the busy truth lives in one place."""
+        self._reconstructions_tab.refresh_reconstruct_buttons()
+        self._instructions_tab.refresh_generate_button()
 
     def _export_reconstruction_wav_dialog(self) -> None:
         if self._reconstruction_coordinator.check_loaded():

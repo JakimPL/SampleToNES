@@ -214,9 +214,9 @@ class InstructionsLibraryManager(CallbackMixin):
     def is_generating(self) -> bool:
         """A generation is in progress from the moment a creator is started until it is cleaned up.
 
-        This deliberately does not consult the creator's ``is_running`` flag: the worker thread
-        clears it before the library is saved and finalised, which would otherwise report the
-        generation as finished while the saving step is still underway.
+        Creator presence is the source of truth: it spans the saving and finalising step that runs
+        after the worker thread clears its own ``is_running`` flag, so the generation reads as in
+        progress right up to cleanup.
         """
         return self._creator is not None
 

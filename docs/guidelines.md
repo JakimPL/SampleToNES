@@ -57,11 +57,13 @@
 ## Documentation
 
 1. Documentation should explain the intention of a class/function and context of usage.
-2. If a function does some decisions, logic should be explained with a justification for arbitrary choices, in docstrings, not code comments.
-3. Avoid comments and docstrings that restate code.
-4. Use clear names instead of explanatory comments.
-5. Avoid code comments. Comments are acceptable for tensor shapes, third-party API quirks, or non-obvious invariants.
-6. Code comments and docstrings are not for documenting changes nor progress.
+2. State functionality in positive terms. Describe what a class or function *does* — not what it avoids, omits, skips, differs from, or no longer does. Reframe every negation ("does not", "rather than", "instead of", "without", "never", "cannot", "no longer") into the behaviour that actually happens. Do not contrast with rejected alternatives as justification; the positive statement carries the meaning.
+3. Negative phrasing is allowed only where the condition itself is the contract: exception triggers in `Raises:` clauses, precondition/postcondition bounds (prefer "must be at least X" over "cannot be less than X" where natural), and documented edge-case returns. Outside these concrete cases, negative descriptions are information noise and must be removed.
+4. If a function does some decisions, logic should be explained with a justification for arbitrary choices, in docstrings, not code comments. Frame the justification positively (what the choice achieves), not as the failure it sidesteps.
+5. Avoid comments and docstrings that restate code.
+6. Use clear names instead of explanatory comments.
+7. Avoid code comments. Comments are acceptable for tensor shapes, third-party API quirks, or non-obvious invariants.
+8. Code comments and docstrings are not for documenting changes nor progress.
 
 ## Tests
 

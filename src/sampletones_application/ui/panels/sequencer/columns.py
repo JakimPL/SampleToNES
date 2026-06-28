@@ -28,8 +28,8 @@ def tracker_table_column(generator: Optional[GeneratorName]) -> int:
 
     The visual divider between the sample column and the channels occupies a table
     column of its own, so the channels sit one slot further right than their
-    logical position. The divider is never a cursor target, hence it is absent from
-    :data:`COLUMNS`.
+    logical position. The divider is purely visual, so :data:`COLUMNS` covers only
+    the cursor-addressable columns.
     """
     if generator is None:
         return SAMPLE_TABLE_COLUMN

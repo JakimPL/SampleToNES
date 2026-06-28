@@ -126,7 +126,7 @@ class AudioDeviceManager(CallbackMixin):
 
         Queries PyAudio for all available devices, filters for output-capable devices,
         determines supported sample rates for each device, and identifies default
-        input/output devices. Devices without supported sample rates are skipped.
+        input/output devices. Only devices with supported sample rates are kept.
         """
         self.reinitialize()
         assert self._pyaudio is not None, "PyAudio instance is not initialized"
@@ -744,7 +744,7 @@ class AudioDeviceManager(CallbackMixin):
         Clean up and terminate the audio device manager.
 
         Stops any active playback and terminates the PyAudio instance.
-        Should be called when the manager is no longer needed.
+        Should be called once you are finished with the manager.
         """
         if self._pyaudio is not None:
             self.stop()

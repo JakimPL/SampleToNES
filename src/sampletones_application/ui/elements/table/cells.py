@@ -27,8 +27,8 @@ class EditableCells(Generic[KeyT]):
     """Keyed cache of editable table cells with incremental diff redraw.
 
     Owns the mapping from a cell key to its DearPyGui widget and to the label
-    currently shown, so a panel can reconfigure only the cells whose value changed
-    instead of tearing down and rebuilding the table. The panel builds the widgets
+    currently shown, so a panel can reconfigure only the cells whose value changed,
+    leaving the rest of the table in place. The panel builds the widgets
     (registering each via :meth:`register`) and supplies a ``render`` callback that
     turns a key into its label, factoring in cursor/pending state.
     """

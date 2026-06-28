@@ -15,7 +15,8 @@ class ServiceBase(ABC, Generic[T]):
     Two properties follow from this design:
 
     - *Thread containment* — results are routed through ``CallbackQueue`` so
-      the thread boundary is fully contained and callers never reason about it.
+      the thread boundary is fully contained and callers treat results as
+      ordinary synchronous values.
     - *Exhaustive result types* — result types form a tagged union; subscribers
       handle each case with ``match``, making incomplete handling a type error.
     """

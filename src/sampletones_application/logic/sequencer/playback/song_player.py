@@ -85,12 +85,12 @@ class SongPlayerLogic(CallbackMixin):
         """Moves the live playhead to another order, preserving sounding voices.
 
         Drives the follow-playback behaviour: selecting a different order while the song plays
-        relocates the playhead instead of restarting it. The service no-ops when nothing is playing.
+        relocates the playhead in place. The service stays idle when nothing is playing.
 
         The worker emits each row's position only after its blocking write, so one in-flight update
         for the pre-seek order can still arrive. Recording the seek target lets ``_on_service_result``
-        drop those stale updates until the playhead reports the new order, so the grid does not flick
-        back to the old one.
+        drop those stale updates until the playhead reports the new order, so the grid stays on the
+        new order.
         """
         self._service.seek(order_position)
         if self._service.alive:
@@ -100,7 +100,7 @@ class SongPlayerLogic(CallbackMixin):
         """Follows a structural order edit, keeping playback on the frame it was sounding.
 
         Like :meth:`seek` but preserves the current row; stale in-flight updates for the
-        pre-edit order are dropped via ``_awaiting_seek_order`` so the grid does not flicker.
+        pre-edit order are dropped via ``_awaiting_seek_order`` so the grid stays steady.
         """
         self._service.relocate(order_position)
         if self._service.alive:
@@ -168,9 +168,9 @@ class SongPlayerLogic(CallbackMixin):
         """Pushes a definitively stopped view.
 
         ``SongPlaybackStopped`` is the authoritative end-of-playback signal, so the flags are
-        forced off rather than read from the worker thread, which may still be closing its audio
-        stream when this runs and would otherwise momentarily report itself as still playing —
-        leaving the final row highlighted as if it were current.
+        forced off here. The worker thread may still be closing its audio stream and briefly report
+        itself as playing; forcing the flags off keeps the stopped view authoritative and lets the
+        playing highlight settle correctly.
         """
         self.call(self.on_view_changed, self._build_view_model(is_playing=False, is_paused=False))
 

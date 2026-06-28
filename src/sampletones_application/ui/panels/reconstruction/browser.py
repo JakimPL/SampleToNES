@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -63,9 +63,12 @@ class GUIBrowserPanel(GUITreePanel):
         tree_behavior: TreeBehavior,
         language_manager: LanguageManager,
         colors: TreeColors,
+        is_operation_in_progress: Callable[[], bool],
     ) -> None:
         self.browser_logic = browser_logic
         self._tree_behavior = tree_behavior
+
+        self._is_operation_in_progress = is_operation_in_progress
 
         self._lbl_reconstruct_file = language_manager[
             Page.RECONSTRUCTIONS,
@@ -257,6 +260,20 @@ class GUIBrowserPanel(GUITreePanel):
     def _set_tree_enabled(self, enabled: bool) -> None:
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE, enabled=enabled)
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS, enabled=enabled)
+        self._apply_action_button_states()
+
+    def refresh_action_buttons(self) -> None:
+        """Re-evaluate the reconstruct buttons against the live tree-lock and operation state.
+
+        Called whenever a long operation starts or finishes. The buttons stay enabled only while the
+        panel is unlocked and no conversion or library generation is running, leaving the rest of the
+        browser usable during such an operation."""
+        self._apply_action_button_states()
+
+    def _apply_action_button_states(self) -> None:
+        enabled = not self.locked and not self._is_operation_in_progress()
+        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE, enabled=enabled)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY, enabled=enabled)
 
     def _reconstruct_file(self) -> None:
         self.call(self.browser_logic.on_reconstruct_file)

@@ -20,7 +20,7 @@ class Sample:
     def clone(self) -> Self:
         """Return an independent copy with a fresh id.
 
-        The reconstruction is deep-copied so the copy can be edited without affecting
+        The reconstruction is deep-copied so the copy can be edited independently of
         the original; the name and loop flag are carried over.
         """
         return type(self)(

@@ -22,8 +22,7 @@ class ProjectController(CallbackMixin):
     - Every mutation is atomic: the domain change, the dirty-state notification,
       and the observer signal always happen together.
     - Each mutation kind fires a distinct callback so that subscribers can
-      respond precisely to what changed rather than polling or handling
-      a coarse "something changed" event.
+      respond precisely to the specific change.
     """
 
     def __init__(self, project_manager: ProjectManager) -> None:
@@ -167,9 +166,9 @@ class ProjectController(CallbackMixin):
     def move_sample(self, sample_id: str, to_index: int) -> None:
         """Reorders the sample pool.
 
-        Pattern rows reference samples by stable id, so reordering never breaks a
-        reference; it only changes the positional index the tracker displays, hence
-        ``on_song_changed`` fires so the grid re-renders those indices.
+        Pattern rows reference samples by stable id, so reordering keeps every
+        reference valid; it only changes the positional index the tracker displays,
+        hence ``on_song_changed`` fires so the grid re-renders those indices.
         """
         self.project.samples.move(sample_id, to_index)
         self._touch()
@@ -211,7 +210,7 @@ class ProjectController(CallbackMixin):
         pattern_index: int,
         row_index: int,
     ) -> Row:
-        """Reads a row without requiring its pattern to exist yet.
+        """Reads a row even before its pattern has been created.
 
         An order position may reference an empty (uncreated) pattern; partial and
         clear edits treat that as a blank row, and :meth:`set_row` materialises the
@@ -268,9 +267,9 @@ class ProjectController(CallbackMixin):
     ) -> None:
         """Updates only the provided subcolumns, preserving the rest of the row.
 
-        ``None`` means "leave this subcolumn unchanged", as opposed to
-        :meth:`set_row`, which treats ``None`` as "clear". This lets the tracker
-        edit a single subcolumn without wiping the others.
+        ``None`` means "leave this subcolumn unchanged", so the tracker can edit a
+        single subcolumn while the rest of the row carries over. For clearing a
+        subcolumn, :meth:`set_row` interprets ``None`` as "clear".
         """
         existing = self._existing_row(generator, pattern_index, row_index)
         self.set_row(

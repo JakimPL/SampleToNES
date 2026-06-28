@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import dearpygui.dearpygui as dpg
 
@@ -54,6 +55,8 @@ class InstructionsTabCoordinator:
         shortcut_manager: ShortcutManager,
         library_manager: InstructionsLibraryManager,
         on_audio_state_changed: VoidCallback,
+        on_generation_state_changed: VoidCallback,
+        is_generation_in_progress: Callable[[], bool],
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -102,6 +105,7 @@ class InstructionsTabCoordinator:
                 layout.general.colors,
                 accent=layout.general.colors.headers.library,
             ),
+            is_operation_in_progress=is_generation_in_progress,
         )
         self._instruction_player_logic = PlayerLogic(
             audio_device_manager,
@@ -132,6 +136,7 @@ class InstructionsTabCoordinator:
             on_apply_library_config=config_manager.apply_library_config,
             on_instruction_loaded=self._on_instruction_loaded,
         )
+        self._library_logic.on_generation_state_changed = on_generation_state_changed
         self._instruction_panel.set_callbacks(
             on_clear_instruction_details=self._instruction_details_logic.clear_display,
         )
@@ -211,6 +216,9 @@ class InstructionsTabCoordinator:
 
     def is_library_generating(self) -> bool:
         return self._library_panel.is_library_generating()
+
+    def refresh_generate_button(self) -> None:
+        self._library_panel.refresh_action_buttons()
 
     @property
     def player_panel(self) -> AudioPlayerPanelProtocol:

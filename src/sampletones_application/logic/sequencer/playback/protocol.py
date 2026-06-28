@@ -12,12 +12,11 @@ class ChannelGeneratorProtocol(Protocol):
     instruction. The concrete type is generic (``Generator[InstructionT,
     TimerT]``); this protocol captures only the surface the synthesiser
     actually uses so that invariant generic instantiations (e.g.
-    ``PulseGenerator``) are accepted without widening to ``Any``.
+    ``PulseGenerator``) are accepted while keeping their precise generic types.
 
-    The instruction parameter is typed ``Any`` because the static type system
-    cannot express the runtime invariant that each generator always receives its
-    matching instruction subtype — that pairing is maintained by
-    ``GENERATOR_CLASSES`` dispatch.
+    The instruction parameter is typed ``Any`` because the generator-to-instruction
+    pairing is a runtime invariant maintained by ``GENERATOR_CLASSES`` dispatch, which
+    lies outside the static type system.
     """
 
     def __call__(self, instruction: Any, /, initials: Any = None, save: bool = False) -> np.ndarray: ...

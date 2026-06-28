@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
@@ -74,10 +74,13 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         language_manager: LanguageManager,
         dialogs: DialogsRenderer,
         colors: TreeColors,
+        is_operation_in_progress: Callable[[], bool],
     ) -> None:
         self.library_logic = library_logic
         self._dialogs = dialogs
         self._tree_behavior = tree_behavior
+
+        self._is_operation_in_progress = is_operation_in_progress
 
         self._lbl_generate = language_manager[
             Page.INSTRUCTIONS,
@@ -323,6 +326,19 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
             enabled=enabled,
         )
+        self._apply_action_button_states()
+
+    def refresh_action_buttons(self) -> None:
+        """Re-evaluate the generate button against the live tree-lock and operation state.
+
+        Called whenever a long operation starts or finishes. The button stays enabled only while the
+        panel is unlocked and no conversion or library generation is running, leaving the rest of the
+        panel usable during such an operation. The cancel button is left alone so a generation can
+        always be cancelled."""
+        self._apply_action_button_states()
+
+    def _apply_action_button_states(self) -> None:
+        enabled = not self.locked and not self._is_operation_in_progress()
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             enabled=enabled,

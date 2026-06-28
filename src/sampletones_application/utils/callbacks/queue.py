@@ -20,8 +20,7 @@ class CallbackQueue(metaclass=NonInstantiableMeta):
     - Results are posted with a priority, and the main-thread event loop drains
       the queue each frame — serialised, ordered, and isolated from the
       rendering cycle.
-    - Individual failures are caught so that one bad callback cannot block
-      subsequent ones.
+    - Individual failures are caught so the remaining callbacks still run.
     - Non-instantiable by design: it is a shared execution channel, not a
       dependency to be injected.
     """

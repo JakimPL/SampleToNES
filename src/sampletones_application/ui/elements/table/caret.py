@@ -14,10 +14,10 @@ Box = Tuple[float, float, float, float]
 class CaretOverlay(metaclass=NonInstantiableMeta):
     """A single-character translucent box marking the tracker edit cursor.
 
-    Tracker cells are atomic ``selectable`` widgets, so DearPyGui cannot tint a
-    sub-character region of one. Instead a single rectangle is drawn on a front
-    viewport drawlist at the active character's position and redrawn every frame
-    (from the application loop) so it follows the table as it scrolls. Because at
+    Tracker cells are atomic ``selectable`` widgets that DearPyGui tints only as a
+    whole, so a single rectangle is drawn on a front viewport drawlist at the active
+    character's position and redrawn every frame (from the application loop) so it
+    follows the table as it scrolls. Because at
     most one cell across both tracker tables holds the cursor at a time, one
     shared rectangle is enough; the ``owner`` token keeps the order and grid
     panels' arm/clear calls from clobbering each other during focus hand-off.
@@ -65,7 +65,7 @@ class CaretOverlay(metaclass=NonInstantiableMeta):
         """Arms the caret on ``widget`` at character ``caret_index``.
 
         ``clip_widget`` is the scrolling table the cell lives in; the box is
-        clamped to its on-screen rectangle so it never bleeds past the table.
+        clamped to its on-screen rectangle so it stays within the table.
         """
         if widget is None:
             cls.clear(owner)

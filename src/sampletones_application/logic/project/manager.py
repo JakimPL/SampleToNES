@@ -10,7 +10,7 @@ class ProjectManager:
     """
     The single authority on which project is currently open and whether it is clean.
 
-    - It is a passive data holder — it does not emit events directly.
+    - It is a passive data holder; lifecycle events are emitted by its ``session``.
     - Callers that need to react to lifecycle transitions should subscribe to
       ``session.on_state_changed``.
     """

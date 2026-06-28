@@ -31,8 +31,7 @@ class SongPosition:
         """Realigns a row that fell outside its pattern to the next frame's first row.
 
         Shrinking ``rows_per_pattern`` below the active row leaves the playhead beyond
-        the pattern's end; playback then resumes at the next frame rather than stalling
-        on the now-missing row.
+        the pattern's end; playback then resumes at the next frame's first row.
         """
         if self.row_index >= rows_in_pattern:
             self.row_index = 0

@@ -71,6 +71,7 @@ class ReconstructionsTabCoordinator:
         on_reconstruct_directory: VoidCallback,
         on_change_audio_state: VoidCallback,
         on_reconstruction_instrument_updated: OnReconstructionInstrumentUpdatedCallback,
+        is_generation_in_progress: Callable[[], bool],
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -215,6 +216,7 @@ class ReconstructionsTabCoordinator:
                 layout.general.colors,
                 accent=layout.general.colors.headers.reconstruction,
             ),
+            is_operation_in_progress=is_generation_in_progress,
         )
         self._browser_panel.logic.on_autoplay_error = self._on_browser_autoplay_error
         self._reconstruction_player_logic = PlayerLogic(
@@ -404,6 +406,9 @@ class ReconstructionsTabCoordinator:
 
     def unlock(self) -> None:
         self._browser_panel.unlock()
+
+    def refresh_reconstruct_buttons(self) -> None:
+        self._browser_panel.refresh_action_buttons()
 
     def refresh_browser(self) -> None:
         self._browser_panel.refresh()

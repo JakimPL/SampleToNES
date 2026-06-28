@@ -38,6 +38,7 @@ from sampletones_application.view_model.main.advanced import (
     AdvancedSettingsPanelViewModel,
 )
 from sampletones_application.view_model.main.config import ConfigPanelViewModel
+from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_application.view_model.main.reconstructor import (
     ReconstructorPanelViewModel,
 )
@@ -71,6 +72,7 @@ class MainTabCoordinator:
         on_load_reconstruction: Callable[[Optional[Path]], None],
         on_load_library: PathCallback,
         is_generation_in_progress: Callable[[], bool],
+        on_busy_state_changed: VoidCallback,
         *,
         layout: LayoutConfig,
         language_manager: LanguageManager,
@@ -88,6 +90,7 @@ class MainTabCoordinator:
         self._on_load_reconstruction = on_load_reconstruction
         self._on_load_library = on_load_library
         self._is_generation_in_progress = is_generation_in_progress
+        self._on_busy_state_changed = on_busy_state_changed
 
         self._tab_label = language_manager[
             Page.GLOBAL,
@@ -220,7 +223,7 @@ class MainTabCoordinator:
             is_converter_running=is_generation_in_progress,
         )
 
-        self._converter_logic.on_view_changed = self._converter_panel.update_view
+        self._converter_logic.on_view_changed = self._on_converter_view_changed
         self._converter_logic.on_success = self._converter_success_dialog.show
         self._converter_logic.on_error = lambda error: dialogs.show_error(error, _msg_converter_error)
         self._converter_logic.on_no_files_to_process = lambda: dialogs.show_info(
@@ -245,6 +248,10 @@ class MainTabCoordinator:
         self._converter_panel.on_cancel_requested = self._converter_logic.cancel
         self._converter_panel.on_close_requested = self._converter_logic.close
         self._converter_panel.on_load_requested = self._converter_logic.handle_load_request
+
+    def _on_converter_view_changed(self, view_model: ConverterViewModel) -> None:
+        self._converter_panel.update_view(view_model)
+        self._on_busy_state_changed()
 
     def _on_wave_file_clicked(self, filepath: Path) -> None:
         if not self._is_generation_in_progress():

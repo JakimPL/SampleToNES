@@ -8,8 +8,8 @@ class Instrument(BaseModel):
 
     A reconstruction may span up to four channels (two pulse, triangle, noise).
     A subinstrument pins one of those channels for use on a tracker row. The
-    sample is referenced by its stable ``id`` (never by collection position),
-    so the reference survives reordering of the samples collection.
+    sample is referenced by its stable ``id``, so the reference survives
+    reordering of the samples collection.
     """
 
     model_config = ConfigDict(frozen=True)

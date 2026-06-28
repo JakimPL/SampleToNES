@@ -325,9 +325,8 @@ class GUISequencerOrderPanel(GUIPanel):
         """Tints the master row and the rule below it, matching the tracker grid's
         sample column and sample divider so the two tables read consistently.
 
-        The tint is applied per cell rather than per row: a cell highlight overrides
-        the per-column shades, whereas a row highlight loses to them and would show
-        only in the gaps between cells.
+        The tint is applied per cell so it overrides the per-column shades and reads
+        consistently across the whole row.
         """
         for column in range(position_count + 1):
             self._highlight_master_cell_at(column)

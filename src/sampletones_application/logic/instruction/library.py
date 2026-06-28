@@ -73,6 +73,7 @@ class LibraryLogic(CallbackMixin):
         self._is_locked_function: Optional[Callable[[], bool]] = None
 
         self.on_rebuild_tree_needed: Optional[Callable[[], None]] = None
+        self.on_generation_state_changed: Optional[Callable[[], None]] = None
         self.on_view_changed: Optional[Callable[[LibraryPanelViewModel], None]] = None
         self.on_instruction_loaded: Optional[OnLoadInstructionCallback] = None
         self.on_apply_library_config: Optional[OnApplyLibraryConfigCallback] = None
@@ -417,6 +418,7 @@ class LibraryLogic(CallbackMixin):
         self._do_lock()
         assert self._library_manager.creator is not None, "Library manager creator is not initialized"
         self._eta_estimator = ETAEstimator(self._library_manager.creator.total_instructions)
+        self.call(self.on_generation_state_changed)
 
     def _on_generation_progress(self, task_status: TaskStatus, task_progress: TaskProgress) -> None:
         with self._status_lock:
@@ -475,6 +477,7 @@ class LibraryLogic(CallbackMixin):
             self.refresh_libraries()
         finally:
             self._do_unlock()
+            self.call(self.on_generation_state_changed)
 
     def _finalize_generation_error(self, exception: Exception) -> None:
         try:
@@ -483,6 +486,7 @@ class LibraryLogic(CallbackMixin):
             self.update_status()
         finally:
             self._do_unlock()
+            self.call(self.on_generation_state_changed)
 
     def _emit_view(self, status_text_override: Optional[str] = None) -> None:
         key = self._config_manager.key

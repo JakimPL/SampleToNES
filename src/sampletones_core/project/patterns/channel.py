@@ -42,8 +42,8 @@ class Channel(BaseModel):
     def ensure_pattern(self, index: int, length: int) -> Pattern:
         """Returns the pattern at ``index``, creating an empty one if absent.
 
-        Lets an order position reference an index that has no pattern yet; the
-        pattern is materialised on first write (when the slot is no longer empty).
+        Lets an order position reference an index before its pattern exists; the
+        pattern is materialised on first write (once the slot gains content).
         """
         if index not in self.patterns:
             self.patterns[index] = Pattern.empty(length)

@@ -88,10 +88,10 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         self._resume_event.set()
 
     def seek(self, order_position: int) -> None:
-        """Moves the live playhead to another order without restarting playback.
+        """Moves the live playhead to another order while playback continues.
 
-        Unlike ``start``, this does not ``reset`` the synthesiser, so voices sounding at the
-        moment of the move carry over to the new order — the playhead jumps, the audio does not cut.
+        This keeps the synthesiser's state (where ``start`` resets it), so voices sounding at the
+        moment of the move carry over to the new order — the playhead jumps while the audio plays on.
         """
         if not self.alive:
             return
@@ -102,8 +102,8 @@ class SongPlayerService(ServiceBase[SongPlayerResult]):
         """Repoints the playhead at another order while keeping the current row.
 
         Used to follow a structural order edit (insert/remove/move) so playback stays on the
-        frame it was sounding: the row within the frame continues rather than restarting, and
-        voices carry over (no ``reset``).
+        frame it was sounding: the row within the frame continues from where it was, and
+        voices carry over (the synthesiser keeps its state).
         """
         if not self.alive:
             return

@@ -51,9 +51,8 @@ class ReconstructionManager(CallbackMixin):
     def load_reconstruction_object(self, reconstruction: Reconstruction) -> None:
         """Loads an in-memory reconstruction (e.g. a project sample's) for editing.
 
-        Mirrors :meth:`load_reconstruction` but wraps an existing object instead of
-        reading a file, so edits made in the reconstruction tab mutate the same
-        instance the caller holds.
+        Mirrors :meth:`load_reconstruction` for an object already in memory, so edits
+        made in the reconstruction tab mutate the same instance the caller holds.
         """
         self._current_reconstruction = ReconstructionData.from_reconstruction(reconstruction)
         self._coefficient = reconstruction.coefficient

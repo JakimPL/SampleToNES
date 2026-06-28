@@ -295,7 +295,7 @@ class SequencerGridLogic(CallbackMixin):
         """Shifts a channel cell's volume by ``delta``.
 
         An unset volume plays at full, so it counts as :data:`MAX_VOLUME` here:
-        the first decrement steps down from the maximum rather than from zero.
+        the first decrement steps down from the maximum.
         """
         self.set_row(
             generator,
@@ -362,7 +362,7 @@ class SequencerGridLogic(CallbackMixin):
 
         Providing content to a channel whose current frame is an empty (None) slot
         creates a fresh pattern and assigns it to that order position, so the
-        arrangement grows as the user plays rather than dropping the input. Returns
+        arrangement grows as the user plays, capturing the input. Returns
         ``None`` when the frame is beyond the order length.
         """
         song = self._controller.project.song
@@ -420,8 +420,8 @@ class SequencerGridLogic(CallbackMixin):
         """The channels spanned by the samples referenced on a row.
 
         Each referenced sample contributes the channels its reconstruction covers,
-        so the sample column reasons about a sample's whole channel span rather than
-        only the cells that happen to be filled.
+        so the sample column reasons about a sample's whole channel span, including
+        channels whose cells are empty.
         """
         relevant: Set[GeneratorName] = set()
         resolved: Set[str] = set()

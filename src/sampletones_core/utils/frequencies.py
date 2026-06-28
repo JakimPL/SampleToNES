@@ -184,7 +184,7 @@ def pitch_to_name(pitch: int, transpose: int = 0) -> str:
     Converts a MIDI pitch value to a human-readable note name
     consistent with FamiTracker.
 
-    Pitch cannot be outside the range 24-127 after applying transposition.
+    Pitch stays within the range 24-127 after applying transposition.
 
     Args:
         pitch: The MIDI pitch number to convert.
@@ -266,9 +266,9 @@ def clamp_pitch(pitch: int, min_pitch: int = MIN_PITCH, max_pitch: int = MAX_PIT
     Args:
         pitch: The pitch value to clamp.
         min_pitch: The minimum allowed pitch. Defaults to MIN_PITCH.
-            Cannot be less than LIMIT_MIN_PITCH.
+            Must be at least LIMIT_MIN_PITCH.
         max_pitch: The maximum allowed pitch. Defaults to MAX_PITCH.
-            Cannot be greater than LIMIT_MAX_PITCH.
+            Must be at most LIMIT_MAX_PITCH.
 
     Returns:
         The pitch value clamped to the range [min_pitch, max_pitch].
