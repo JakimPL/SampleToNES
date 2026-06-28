@@ -35,3 +35,24 @@ class TestNoteOffEntry:
         new_state, action = _state(SubColumn.TRANSPOSE).type_char("-")
         assert action is None
         assert new_state.pending.startswith("-")
+
+
+class TestColumnNavigation:
+    def test_tab_preserves_subcolumn(self) -> None:
+        state = _state(SubColumn.VOLUME, generator=GeneratorName.PULSE1)
+        moved = state.navigate_column_by(1)
+        assert moved.cursor is not None
+        assert moved.cursor.generator != GeneratorName.PULSE1
+        assert moved.cursor.subcolumn is SubColumn.VOLUME
+
+    def test_shift_tab_preserves_subcolumn(self) -> None:
+        state = _state(SubColumn.TRANSPOSE, generator=GeneratorName.PULSE1)
+        moved = state.navigate_column_by(-1)
+        assert moved.cursor is not None
+        assert moved.cursor.subcolumn is SubColumn.TRANSPOSE
+
+    def test_tab_preserves_row(self) -> None:
+        state = _state(SubColumn.VOLUME, row=5, generator=GeneratorName.PULSE1)
+        moved = state.navigate_column_by(1)
+        assert moved.cursor is not None
+        assert moved.cursor.row == 5

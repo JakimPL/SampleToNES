@@ -8,6 +8,7 @@ from sampletones_application.view_model.sequencer.grid import (
 )
 from sampletones_application.view_model.sequencer.settings import SequencerSettingsViewModel
 from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.general import MAX_VOLUME
 from sampletones_core.project.instruments.instrument import Instrument
 from sampletones_core.project.instruments.note_off import NoteOff
 from sampletones_core.project.instruments.sample import Sample
@@ -130,6 +131,7 @@ class SequencerGridLogic(CallbackMixin):
         pattern_index = self._pattern_index_at_frame(generator)
         if pattern_index is None:
             pattern_index = self._create_frame_pattern(generator)
+
         if pattern_index is None:
             return
 
@@ -266,6 +268,79 @@ class SequencerGridLogic(CallbackMixin):
                 transpose=transpose,
                 volume=volume,
             )
+
+    def adjust_transpose(
+        self,
+        generator: GeneratorName,
+        row_index: int,
+        delta: int,
+    ) -> None:
+        """Shifts a channel cell's transpose by ``delta`` semitones.
+
+        An unset transpose counts as zero, so the first nudge writes exactly
+        ``delta``; the controller clamps the result to the transpose range.
+        """
+        self.set_row(
+            generator,
+            row_index,
+            transpose=self._current_transpose(generator, row_index) + delta,
+        )
+
+    def adjust_volume(
+        self,
+        generator: GeneratorName,
+        row_index: int,
+        delta: int,
+    ) -> None:
+        """Shifts a channel cell's volume by ``delta``.
+
+        An unset volume plays at full, so it counts as :data:`MAX_VOLUME` here:
+        the first decrement steps down from the maximum rather than from zero.
+        """
+        self.set_row(
+            generator,
+            row_index,
+            volume=self._current_volume(generator, row_index) + delta,
+        )
+
+    def adjust_sample_transpose(self, row_index: int, delta: int) -> None:
+        """Shifts transpose by ``delta`` across the sample column's channels."""
+        for generator in self._subcolumn_generators(row_index):
+            self.adjust_transpose(generator, row_index, delta)
+
+    def adjust_sample_volume(self, row_index: int, delta: int) -> None:
+        """Shifts volume by ``delta`` across the sample column's channels."""
+        for generator in self._subcolumn_generators(row_index):
+            self.adjust_volume(generator, row_index, delta)
+
+    def _current_row(self, generator: GeneratorName, row_index: int) -> Optional[Row]:
+        pattern_index = self._pattern_index_at_frame(generator)
+        if pattern_index is None:
+            return None
+
+        pattern = self._controller.project.song.pattern(generator, pattern_index)
+        if pattern is None or row_index >= pattern.length:
+            return None
+
+        return pattern.rows[row_index]
+
+    def _current_transpose(
+        self,
+        generator: GeneratorName,
+        row_index: int,
+    ) -> int:
+        row = self._current_row(generator, row_index)
+        if row is None or row.transpose is None:
+            return 0
+
+        return row.transpose
+
+    def _current_volume(self, generator: GeneratorName, row_index: int) -> int:
+        row = self._current_row(generator, row_index)
+        if row is None or row.volume is None:
+            return MAX_VOLUME
+
+        return row.volume
 
     @property
     def frame_index(self) -> int:

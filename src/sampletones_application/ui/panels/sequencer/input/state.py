@@ -122,7 +122,7 @@ class TrackerInputState:
         current_idx = COLUMNS.index(self.cursor.generator)
         next_idx = (current_idx + delta) % len(COLUMNS)
         return TrackerInputState(
-            cursor=TrackerCursor(self.cursor.row, COLUMNS[next_idx], SubColumn.INSTRUMENT),
+            cursor=TrackerCursor(self.cursor.row, COLUMNS[next_idx], self.cursor.subcolumn),
             pending="",
         )
 
