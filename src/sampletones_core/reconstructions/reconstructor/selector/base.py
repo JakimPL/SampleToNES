@@ -4,6 +4,7 @@ from typing import Dict, List
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
+from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import (
     GeneratorUnion,
     get_generator_by_instruction,
@@ -26,6 +27,7 @@ class Selector(ABC):
         scorer: Scorer,
         candidate_provider: CandidateProvider,
         phase_aligner: PhaseAligner,
+        feature_extractor: FeatureExtractor,
     ) -> None:
         self.config = config
         self.window = window
@@ -33,6 +35,7 @@ class Selector(ABC):
         self.scorer = scorer
         self.candidate_provider = candidate_provider
         self.phase_aligner = phase_aligner
+        self.feature_extractor = feature_extractor
 
     @abstractmethod
     def select(
@@ -47,7 +50,7 @@ class Selector(ABC):
         while remaining_generators:
             remaining_generator_classes = get_remaining_generator_classes(remaining_generators)
             approximation_data = self._find_best_approximation(fragment, remaining_generator_classes)
-            fragment = fragment - approximation_data.approximation
+            fragment = self.feature_extractor.subtract(fragment, approximation_data.approximation)
             approximations[approximation_data.generator_name] = approximation_data
             del remaining_generators[approximation_data.generator_name]
 

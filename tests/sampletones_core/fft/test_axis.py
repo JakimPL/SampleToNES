@@ -8,12 +8,12 @@ from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.fft import (
     FFTTransformer,
-    Fragment,
     Window,
     calculate_fft_frequencies,
     calculate_weights,
     calculate_weights_from_edges,
 )
+from sampletones_core.fft.features import get_feature_extractor
 
 
 def _config(method: SpectrumMethod) -> Config:
@@ -43,7 +43,7 @@ class TestFragmentAxis:
     def test_fft_feature_edges_reach_nyquist(self) -> None:
         config = _config(SpectrumMethod.FFT)
         window = Window.from_config(config)
-        fragment = Fragment.create(config, _signal(window), window)
+        fragment = get_feature_extractor(config, window).extract(_signal(window))[0]
         nyquist = config.library.sample_rate / 2.0
         assert float(fragment.feature.edges[-1]) == pytest.approx(nyquist, rel=1e-3)
 
@@ -52,7 +52,7 @@ class TestFragmentAxis:
         window = Window.from_config(config)
         signal = _signal(window)
 
-        fragment = Fragment.create(config, signal, window)
+        fragment = get_feature_extractor(config, window).extract(signal)[0]
         transformer = FFTTransformer.from_gamma(
             config.library.transformation_gamma,
             config.library.sample_rate,

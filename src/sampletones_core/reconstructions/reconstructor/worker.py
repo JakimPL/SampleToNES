@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName, GeneratorName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
+from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.generators import (
     GeneratorUnion,
     get_remaining_generator_classes,
@@ -28,6 +29,7 @@ class ReconstructorWorker:
     scorer: Scorer = field(init=False)
     candidate_provider: CandidateProvider = field(init=False)
     phase_aligner: PhaseAligner = field(init=False)
+    feature_extractor: FeatureExtractor = field(init=False)
     selector: Selector = field(init=False)
 
     def __post_init__(self) -> None:
@@ -35,6 +37,7 @@ class ReconstructorWorker:
         candidate_provider = CandidateProvider(self.config, self.window, self.library_data)
         phase_aligner_class = PHASE_ALIGNERS[self.config.generation.calculation.phase_aligner]
         phase_aligner = phase_aligner_class(self.config, self.window, self.library_data)
+        feature_extractor = get_feature_extractor(self.config, self.window)
         selector_class = SELECTORS[self.config.generation.decoder.selector]
         selector = selector_class(
             config=self.config,
@@ -43,11 +46,13 @@ class ReconstructorWorker:
             scorer=scorer,
             candidate_provider=candidate_provider,
             phase_aligner=phase_aligner,
+            feature_extractor=feature_extractor,
         )
 
         object.__setattr__(self, "scorer", scorer)
         object.__setattr__(self, "candidate_provider", candidate_provider)
         object.__setattr__(self, "phase_aligner", phase_aligner)
+        object.__setattr__(self, "feature_extractor", feature_extractor)
         object.__setattr__(self, "selector", selector)
 
     def __call__(

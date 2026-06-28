@@ -1,78 +1,26 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Self
 
-import numpy as np
-
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.structures.histogram import Histogram
 from sampletones_shared.array import xp
 from sampletones_shared.types.array import Array, get_array_module
 
-from ..transformer import FFTTransformer
-from ..window.window import Window
-
 
 @dataclass(frozen=True)
 class Fragment:
+    """
+    A single analysis frame: its central time-domain slice, the larger analysis
+    window it was taken from, and its spectral feature. A data holder — features and
+    residuals are produced by a `FeatureExtractor`, not here.
+    """
+
     audio: Array
     feature: Histogram
     windowed_audio: Array
     config: Config
-
-    transformer: FFTTransformer = field(init=False)
-
-    def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "transformer",
-            self._get_transformer(self.config),
-        )
-
-    @staticmethod
-    def _get_transformer(config: Config) -> FFTTransformer:
-        return FFTTransformer.from_gamma(
-            config.library.transformation_gamma,
-            config.library.sample_rate,
-            config.library.spectrum_method,
-        )
-
-    @classmethod
-    def create(
-        cls,
-        config: Config,
-        windowed_audio: np.ndarray,
-        window: Window,
-    ) -> Self:
-        transformer = cls._get_transformer(config)
-        feature = transformer.calculate_feature(windowed_audio, config.library.sample_rate)
-        return cls.with_feature(config, windowed_audio, window, feature)
-
-    @classmethod
-    def with_feature(
-        cls,
-        config: Config,
-        windowed_audio: np.ndarray,
-        window: Window,
-        feature: Histogram,
-    ) -> Self:
-        """
-        Build a fragment from a window and an already-computed spectral feature.
-
-        Used when the feature is produced outside the per-window path: the CQT method
-        computes every frame's column from one whole-signal transform, so the feature
-        cannot be recomputed from this fragment's window alone. Keeps the audio
-        slicing in a single place shared with create.
-        """
-        assert windowed_audio.shape[0] == window.size, "Audio length must match window size"
-        return cls(
-            audio=window.get_frame_from_window(windowed_audio),
-            feature=feature,
-            windowed_audio=windowed_audio,
-            config=config,
-        )
 
     @classmethod
     def stack(cls, fragments: List[Self]) -> Self:
@@ -115,39 +63,6 @@ class Fragment:
             feature=feature,
             windowed_audio=concatenated_windowed_audio,
             config=first_fragment.config,
-        )
-
-    def __sub__(self, other: Self) -> Self:
-        if self.audio.shape != other.audio.shape:
-            raise ValueError("Fragments must have the same shape to be subtracted")
-
-        if (
-            self.config.library != other.config.library
-            or self.config.generation.calculation != other.config.generation.calculation
-        ):
-            raise ValueError("Both fragments must have the same config to be subtracted")
-
-        sample_rate = self.config.library.sample_rate
-        windowed_audio = self.windowed_audio - other.windowed_audio
-        audio = self.audio - other.audio
-
-        # The CQT feature is produced by a whole-signal transform, so it cannot be
-        # recomputed from this residual's local window; subtract in feature space
-        # instead (also the behaviour requested by fast_difference).
-        use_feature_space = (
-            SpectrumMethod(self.config.library.spectrum_method) == SpectrumMethod.CQT
-            or self.config.generation.calculation.fast_difference
-        )
-        if use_feature_space:
-            feature = self.transformer.subtract(self.feature, other.feature)
-        else:
-            feature = self.transformer.calculate_feature(windowed_audio, sample_rate)
-
-        return self.__class__(
-            audio=audio,
-            feature=feature,
-            windowed_audio=windowed_audio,
-            config=self.config,
         )
 
     def __mul__(self, scalar: float) -> Self:

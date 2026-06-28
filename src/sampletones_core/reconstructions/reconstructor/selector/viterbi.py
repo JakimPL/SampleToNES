@@ -6,6 +6,7 @@ import numpy as np
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
 from sampletones_core.fft import Fragment, FragmentedAudio, Window
+from sampletones_core.fft.features import FeatureExtractor
 from sampletones_core.generators import GeneratorUnion
 from sampletones_core.instructions import InstructionUnion
 
@@ -36,8 +37,17 @@ class ViterbiSelector(Selector):
         scorer: Scorer,
         candidate_provider: CandidateProvider,
         phase_aligner: PhaseAligner,
+        feature_extractor: FeatureExtractor,
     ) -> None:
-        super().__init__(config, window, generators, scorer, candidate_provider, phase_aligner)
+        super().__init__(
+            config,
+            window,
+            generators,
+            scorer,
+            candidate_provider,
+            phase_aligner,
+            feature_extractor,
+        )
         decoder = config.generation.decoder
         self.top_k = decoder.top_k
         self.pitch_weight = decoder.pitch_weight
@@ -89,7 +99,7 @@ class ViterbiSelector(Selector):
         for generator_name, generator in self.generators.items():
             channel_states = self._channel_candidates(residual, generator)
             candidates[generator_name] = channel_states
-            residual = residual - channel_states[0].approximation
+            residual = self.feature_extractor.subtract(residual, channel_states[0].approximation)
 
         return candidates
 

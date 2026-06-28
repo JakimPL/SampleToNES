@@ -5,7 +5,8 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorName
-from sampletones_core.fft import FFTTransformer, Fragment, Window
+from sampletones_core.fft import Fragment, Window
+from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.fft.fragment.audio import FragmentedAudio
 from sampletones_core.generators import GeneratorUnion, get_generators_by_names
 from sampletones_core.instructions import InstructionUnion
@@ -26,11 +27,8 @@ def window(config: Config) -> Window:
 
 
 @pytest.fixture(scope="module")
-def transformer(config: Config) -> FFTTransformer:
-    return FFTTransformer.from_gamma(
-        config.library.transformation_gamma,
-        config.library.sample_rate,
-    )
+def extractor(config: Config, window: Window) -> FeatureExtractor:
+    return get_feature_extractor(config, window)
 
 
 @pytest.fixture(scope="module")
@@ -41,19 +39,13 @@ def generators(config: Config) -> Dict[GeneratorName, GeneratorUnion]:
 @pytest.fixture(scope="module")
 def library_data(
     config: Config,
-    window: Window,
-    transformer: FFTTransformer,
+    extractor: FeatureExtractor,
     generators: Dict[GeneratorName, GeneratorUnion],
 ) -> InstructionLibraryData:
     data: Dict[InstructionUnion, InstructionLibraryFragment[Any]] = {}
     for generator in generators.values():
         for instruction in list(generator.get_possible_instructions())[:INSTRUCTIONS_PER_GENERATOR_IN_TEST_LIBRARY]:
-            data[instruction] = InstructionLibraryFragment.create(
-                generator,
-                instruction,
-                window,
-                transformer,
-            )
+            data[instruction] = InstructionLibraryFragment.create(generator, instruction, extractor)
 
     return InstructionLibraryData.create(config, data)
 
