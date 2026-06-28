@@ -30,6 +30,7 @@ def _selector(
         worker.scorer,
         worker.candidate_provider,
         worker.phase_aligner,
+        worker.feature_extractor,
     )
 
 

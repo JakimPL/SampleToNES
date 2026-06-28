@@ -9,6 +9,12 @@ from sampletones_core.configs import Config, MetricConfig, WeightsConfig
 from sampletones_core.constants.enums import SpectralDistance, SpectrumMethod
 from sampletones_core.fft import Window
 from sampletones_core.reconstructions.criterion import Criterion
+from sampletones_shared.array import CUPY_AVAILABLE, xp
+
+
+def _host(array: xp.ndarray) -> np.ndarray:
+    """Bring a criterion result to NumPy regardless of the array backend."""
+    return xp.asnumpy(array) if CUPY_AVAILABLE else np.asarray(array)
 
 
 def _criterion_with_distance(
@@ -129,7 +135,7 @@ class TestCriterionSpectralLoss:
         reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
         candidates = np.stack([np.full(bins, 0.5, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
         loss = criterion.spectral_loss(reference, candidates)
-        assert bool(np.all(np.asarray(loss) >= 0.0))
+        assert bool(np.all(_host(loss) >= 0.0))
 
     def test_spectral_loss_shape_matches_candidate_count(
         self,
@@ -142,7 +148,7 @@ class TestCriterionSpectralLoss:
             reference = np.linspace(0.1, 1.0, bins, dtype=np.float32)
             candidates = np.stack([reference, np.full(bins, 0.3, dtype=np.float32), np.zeros(bins, dtype=np.float32)])
             loss = criterion.spectral_loss(reference, candidates)
-            assert np.asarray(loss).shape == (3,)
+            assert _host(loss).shape == (3,)
 
     def test_closer_spectrum_scores_lower_than_distant_one(
         self,
@@ -171,5 +177,5 @@ class TestCriterionCqtAxis:
         candidates = np.stack([reference, np.zeros(bins, dtype=np.float32)])
 
         loss = criterion.spectral_loss(reference, candidates)
-        assert np.asarray(loss).shape == (2,)
-        assert bool(np.all(np.asarray(loss) >= 0.0))
+        assert _host(loss).shape == (2,)
+        assert bool(np.all(_host(loss) >= 0.0))
