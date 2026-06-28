@@ -6,7 +6,6 @@ class InstructionsLibraryElements(AbstractElement):
     REGENERATE_LIBRARY_BUTTON = "regenerate_library_button"
     REFRESH_LIBRARIES_BUTTON = "refresh_libraries_button"
     CANCEL_GENERATION_BUTTON = "cancel_generation_button"
-    GENERATE_DISABLED_TOOLTIP = "generate_disabled_tooltip"
     REGENERATE_CONFIRMATION_DIALOG = "regenerate_confirmation_dialog"
     REGENERATE_CONFIRMATION_MESSAGE = "regenerate_confirmation_message"
     REGENERATE_CONFIRMATION_OK = "regenerate_confirmation_ok"

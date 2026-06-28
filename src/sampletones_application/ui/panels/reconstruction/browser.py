@@ -3,7 +3,10 @@ from typing import Any, Callable, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.global_ import (
+    GlobalMessageElements,
+    TreeElements,
+)
 from sampletones_application.categories.elements.reconstructions import (
     ReconstructionsBrowserElements,
 )
@@ -92,10 +95,10 @@ class GUIBrowserPanel(GUITreePanel):
             ReconstructionsBrowserElements.REFRESH_BUTTON,
         ]
         self._tooltip_reconstruct_disabled = language_manager[
-            Page.RECONSTRUCTIONS,
-            Panel.BROWSER,
-            TextType.TOOLTIP,
-            ReconstructionsBrowserElements.RECONSTRUCT_DISABLED_TOOLTIP,
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.OPERATION_IN_PROGRESS,
         ]
         self._lbl_context_load = language_manager[
             Page.RECONSTRUCTIONS,

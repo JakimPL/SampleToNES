@@ -48,7 +48,6 @@ class ConverterElements(AbstractElement):
     LOAD_BUTTON = "load_button"
     CONVERT_SAMPLE_BUTTON = "convert_sample_button"
     CONVERT_DIRECTORY_BUTTON = "convert_directory_button"
-    CONVERT_DISABLED_TOOLTIP = "convert_disabled_tooltip"
     STATUS_ERROR = "status_error"
     STATUS_SUCCESS = "status_success"
     STATUS_CONFIG_NOT_AVAILABLE = "status_config_not_available"

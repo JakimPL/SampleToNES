@@ -2,7 +2,10 @@ from typing import Optional
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import StatusElements
+from sampletones_application.categories.elements.global_ import (
+    GlobalMessageElements,
+    StatusElements,
+)
 from sampletones_application.categories.elements.main import ConverterElements
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
@@ -99,10 +102,10 @@ class GUIConverterPanel(GUIPanel):
             ConverterElements.CONVERT_DIRECTORY_BUTTON,
         ]
         self._tooltip_convert_disabled = language_manager[
-            Page.MAIN,
-            Panel.CONVERTER,
-            TextType.TOOLTIP,
-            ConverterElements.CONVERT_DISABLED_TOOLTIP,
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.OPERATION_IN_PROGRESS,
         ]
         self._msg_input = language_manager[
             Page.MAIN,

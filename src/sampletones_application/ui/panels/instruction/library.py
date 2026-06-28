@@ -3,7 +3,10 @@ from typing import Any, Callable, Dict, Tuple
 
 import dearpygui.dearpygui as dpg
 
-from sampletones_application.categories.elements.global_ import TreeElements
+from sampletones_application.categories.elements.global_ import (
+    GlobalMessageElements,
+    TreeElements,
+)
 from sampletones_application.categories.elements.instructions import (
     InstructionsLibraryElements,
 )
@@ -111,10 +114,10 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             InstructionsLibraryElements.REGENERATE_CONFIRMATION_DIALOG,
         ]
         self._tooltip_generate_disabled = language_manager[
-            Page.INSTRUCTIONS,
-            Panel.LIBRARY,
-            TextType.TOOLTIP,
-            InstructionsLibraryElements.GENERATE_DISABLED_TOOLTIP,
+            Page.GLOBAL,
+            Panel.DIALOG,
+            TextType.MESSAGE,
+            GlobalMessageElements.OPERATION_IN_PROGRESS,
         ]
         self._lbl_refresh = language_manager[
             Page.INSTRUCTIONS,
