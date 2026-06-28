@@ -19,8 +19,10 @@ from sampletones_application.constants.reconstructions import (
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
     TAG_RECONSTRUCTIONS_BROWSER_BUTTON_REFRESH_RECONSTRUCTIONS,
     TAG_RECONSTRUCTIONS_BROWSER_GROUP_CONTROLS,
+    TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,
     TAG_RECONSTRUCTIONS_BROWSER_GROUP_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_PANEL,
+    TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,
     TAG_RECONSTRUCTIONS_BROWSER_TREE,
     TAG_RECONSTRUCTIONS_BROWSER_WINDOW_TREE,
 )
@@ -40,6 +42,7 @@ from sampletones_application.ui.elements.tree.tree import GUITreePanel
 from sampletones_application.utils.dpg import dpg_configure_item
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.tooltip import attach_disabled_tooltip
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
     FileSystemNode,
@@ -87,6 +90,12 @@ class GUIBrowserPanel(GUITreePanel):
             Panel.BROWSER,
             TextType.LABEL,
             ReconstructionsBrowserElements.REFRESH_BUTTON,
+        ]
+        self._tooltip_reconstruct_disabled = language_manager[
+            Page.RECONSTRUCTIONS,
+            Panel.BROWSER,
+            TextType.TOOLTIP,
+            ReconstructionsBrowserElements.RECONSTRUCT_DISABLED_TOOLTIP,
         ]
         self._lbl_context_load = language_manager[
             Page.RECONSTRUCTIONS,
@@ -169,19 +178,25 @@ class GUIBrowserPanel(GUITreePanel):
                 width=-1,
                 callback=self._rebuild_tree,
             )
-            GUIButton(
-                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
-                label=self._lbl_reconstruct_file,
-                width=-1,
-                callback=self._reconstruct_file,
-                font=Font.BOLD,
-            )
-            GUIButton(
-                tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
-                label=self._lbl_reconstruct_directory,
-                width=-1,
-                callback=self._reconstruct_directory,
-                font=Font.BOLD,
+            with dpg.group(tag=TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT):
+                GUIButton(
+                    tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE,
+                    label=self._lbl_reconstruct_file,
+                    width=-1,
+                    callback=self._reconstruct_file,
+                    font=Font.BOLD,
+                )
+                GUIButton(
+                    tag=TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY,
+                    label=self._lbl_reconstruct_directory,
+                    width=-1,
+                    callback=self._reconstruct_directory,
+                    font=Font.BOLD,
+                )
+            attach_disabled_tooltip(
+                TAG_RECONSTRUCTIONS_BROWSER_GROUP_RECONSTRUCT,
+                self._tooltip_reconstruct_disabled,
+                tag=TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT,
             )
 
     def _create_tree_window(self) -> None:
@@ -271,9 +286,11 @@ class GUIBrowserPanel(GUITreePanel):
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:
-        enabled = not self.locked and not self._is_operation_active()
+        operation_active = self._is_operation_active()
+        enabled = not self.locked and not operation_active
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_FILE, enabled=enabled)
         dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_BUTTON_RECONSTRUCT_DIRECTORY, enabled=enabled)
+        dpg_configure_item(TAG_RECONSTRUCTIONS_BROWSER_TOOLTIP_RECONSTRUCT, show=operation_active)
 
     def _reconstruct_file(self) -> None:
         self.call(self.browser_logic.on_reconstruct_file)

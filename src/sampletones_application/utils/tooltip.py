@@ -22,6 +22,17 @@ def show_tooltip(parent: str, message: str) -> Sender:
     return tooltip_text
 
 
+def attach_disabled_tooltip(parent: str, message: str, *, tag: str) -> None:
+    """Attaches an explanatory tooltip to ``parent`` — an enabled group wrapping a control that can be
+    disabled — and hides it by default. Toggle ``tag``'s ``show`` to reveal the explanation while the
+    control is unavailable. The wrapper group is the hover target because DearPyGui surfaces a tooltip
+    for an enabled item, so the explanation reaches the user even when the inner control is disabled."""
+    with dpg.tooltip(parent, tag=tag, show=False, hide_on_activity=True) as tooltip:
+        ThemeRegistry.get(TAG_GLOBAL_THEME_TOOLTIP).bind_to_item(tooltip)
+        tooltip_text = dpg.add_text(message)
+        FontRegistry.bind_to_item(tooltip_text, Font.REGULAR_SMALL)
+
+
 def show_detail_tooltip(parent: str, items: List[Tuple[str, str]]) -> None:
     """Attaches a hover tooltip rendering ``label``/``value`` pairs in two aligned columns.
 

@@ -229,6 +229,18 @@ TAG_MAIN_CONVERTER_BUTTON_CONVERT = TagName(
     Widget.BUTTON,
     "convert",
 )
+TAG_MAIN_CONVERTER_GROUP_CONVERT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.GROUP,
+    "convert",
+)
+TAG_MAIN_CONVERTER_TOOLTIP_CONVERT = TagName(
+    Page.MAIN,
+    Panel.CONVERTER,
+    Widget.TOOLTIP,
+    "convert",
+)
 
 PRE_MAIN_RECONSTRUCTOR_GENERATOR = "gen."
 SUF_MAIN_EXPLORER_NODE_DUMMY = ".node_dummy"

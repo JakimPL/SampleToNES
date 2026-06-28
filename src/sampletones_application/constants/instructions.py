@@ -79,6 +79,24 @@ TAG_INSTRUCTIONS_LIBRARY_DIALOG_LIBRARY_NOT_LOADED = TagName(
     Widget.DIALOG,
     "library_not_loaded",
 )
+TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.DIALOG,
+    "regenerate_confirmation",
+)
+TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.GROUP,
+    "generate",
+)
+TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.TOOLTIP,
+    "generate",
+)
 TAG_INSTRUCTIONS_INSTRUCTION_PANEL = TagName(
     Page.INSTRUCTIONS,
     Panel.INSTRUCTION,

@@ -18,13 +18,16 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+    TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
     TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
     TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS,
+    TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
     TAG_INSTRUCTIONS_LIBRARY_TREE,
     TAG_INSTRUCTIONS_LIBRARY_WINDOW_TREE,
 )
@@ -47,6 +50,7 @@ from sampletones_application.utils.dialogs import DialogsRenderer
 from sampletones_application.utils.dpg import dpg_configure_item, dpg_set_value
 from sampletones_application.utils.shortcuts.manager import ShortcutManager
 from sampletones_application.utils.thread import concurrent
+from sampletones_application.utils.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.instruction.library import LibraryPanelViewModel
 from sampletones_core.audio import AudioDeviceManager
 from sampletones_core.structures.tree import (
@@ -87,6 +91,30 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
             Panel.LIBRARY,
             TextType.LABEL,
             InstructionsLibraryElements.GENERATE_LIBRARY_BUTTON,
+        ]
+        self._lbl_regenerate_confirmation_ok = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.LABEL,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_OK,
+        ]
+        self._msg_regenerate_confirmation = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.MESSAGE,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_MESSAGE,
+        ]
+        self._ttl_regenerate_confirmation = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TITLE,
+            InstructionsLibraryElements.REGENERATE_CONFIRMATION_DIALOG,
+        ]
+        self._tooltip_generate_disabled = language_manager[
+            Page.INSTRUCTIONS,
+            Panel.LIBRARY,
+            TextType.TOOLTIP,
+            InstructionsLibraryElements.GENERATE_DISABLED_TOOLTIP,
         ]
         self._lbl_refresh = language_manager[
             Page.INSTRUCTIONS,
@@ -243,12 +271,18 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
                     width=-1,
                     callback=self.refresh,
                 )
-                GUIButton(
-                    tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-                    label=self._lbl_generate,
-                    width=-1,
-                    callback=self.request_generate_library,
-                    font=Font.BOLD,
+                with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE):
+                    GUIButton(
+                        tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
+                        label=self._lbl_generate,
+                        width=-1,
+                        callback=self.request_generate_library,
+                        font=Font.BOLD,
+                    )
+                attach_disabled_tooltip(
+                    TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATE,
+                    self._tooltip_generate_disabled,
+                    tag=TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
                 )
             with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING, show=False):
                 dpg.add_progress_bar(
@@ -289,6 +323,16 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self.library_logic.generate_library()
 
     def request_generate_library(self) -> None:
+        if self.library_logic.library_available_for_config():
+            self._dialogs.show_confirmation(
+                TAG_INSTRUCTIONS_LIBRARY_DIALOG_REGENERATE_CONFIRMATION,
+                self._msg_regenerate_confirmation,
+                self._ttl_regenerate_confirmation,
+                self.library_logic.request_generation,
+                ok_label=self._lbl_regenerate_confirmation_ok,
+            )
+            return
+
         self.library_logic.request_generation()
 
     def cancel_generation(self) -> None:
@@ -341,10 +385,14 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
         self._apply_action_button_states()
 
     def _apply_action_button_states(self) -> None:
-        enabled = not self.locked and not self._is_operation_active()
+        operation_active = self._is_operation_active()
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-            enabled=enabled,
+            enabled=not self.locked and not operation_active,
+        )
+        dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_TOOLTIP_GENERATE,
+            show=operation_active,
         )
 
     @concurrent(wait=False, method_bound=True)

@@ -248,6 +248,9 @@ class LibraryLogic(CallbackMixin):
     def is_library_generating(self) -> bool:
         return self._library_manager.is_generating()
 
+    def library_available_for_config(self) -> bool:
+        return self._library_manager.is_library_available_for_config()
+
     def is_library_loaded(self, key: InstructionLibraryKey) -> bool:
         return self._library_manager.is_library_loaded(key)
 

@@ -11,11 +11,13 @@ from sampletones_application.constants.main import (
     TAG_MAIN_CONVERTER_BUTTON_CONVERT,
     TAG_MAIN_CONVERTER_BUTTON_LOAD,
     TAG_MAIN_CONVERTER_GROUP,
+    TAG_MAIN_CONVERTER_GROUP_CONVERT,
     TAG_MAIN_CONVERTER_PANEL,
     TAG_MAIN_CONVERTER_PATH_INPUT_PATH,
     TAG_MAIN_CONVERTER_PROGRESS,
     TAG_MAIN_CONVERTER_TEXT_OUTPUT_PATH,
     TAG_MAIN_CONVERTER_TEXT_STATUS,
+    TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
     TAG_MAIN_PANEL,
 )
 from sampletones_application.layout.general import PathColors
@@ -31,6 +33,7 @@ from sampletones_application.utils.dpg import (
     dpg_set_item_callback,
     dpg_set_value,
 )
+from sampletones_application.utils.tooltip import attach_disabled_tooltip
 from sampletones_application.view_model.main.converter import ConverterViewModel
 from sampletones_shared.types.callback import VoidCallback
 
@@ -95,6 +98,12 @@ class GUIConverterPanel(GUIPanel):
             TextType.LABEL,
             ConverterElements.CONVERT_DIRECTORY_BUTTON,
         ]
+        self._tooltip_convert_disabled = language_manager[
+            Page.MAIN,
+            Panel.CONVERTER,
+            TextType.TOOLTIP,
+            ConverterElements.CONVERT_DISABLED_TOOLTIP,
+        ]
         self._msg_input = language_manager[
             Page.MAIN,
             Panel.CONVERTER,
@@ -155,6 +164,10 @@ class GUIConverterPanel(GUIPanel):
             enabled=view_model.convert_button_enabled,
         )
         dpg_configure_item(
+            TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
+            show=view_model.other_operation_active,
+        )
+        dpg_configure_item(
             TAG_MAIN_CONVERTER_BUTTON_LOAD,
             enabled=view_model.load_button_enabled,
         )
@@ -180,14 +193,20 @@ class GUIConverterPanel(GUIPanel):
 
     def _create_export_button(self) -> None:
         dpg.add_separator()
-        GUIButton(
-            label=self._lbl_convert_button,
-            tag=TAG_MAIN_CONVERTER_BUTTON_CONVERT,
-            width=self._layout.width,
-            height=self._layout.button_height,
-            font=Font.BOLD_LARGE,
-            enabled=False,
-            callback=self._on_convert_clicked,
+        with dpg.group(tag=TAG_MAIN_CONVERTER_GROUP_CONVERT):
+            GUIButton(
+                label=self._lbl_convert_button,
+                tag=TAG_MAIN_CONVERTER_BUTTON_CONVERT,
+                width=self._layout.width,
+                height=self._layout.button_height,
+                font=Font.BOLD_LARGE,
+                enabled=False,
+                callback=self._on_convert_clicked,
+            )
+        attach_disabled_tooltip(
+            TAG_MAIN_CONVERTER_GROUP_CONVERT,
+            self._tooltip_convert_disabled,
+            tag=TAG_MAIN_CONVERTER_TOOLTIP_CONVERT,
         )
 
     def _create_paths(self) -> None:
