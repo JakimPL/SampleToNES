@@ -19,6 +19,8 @@ from sampletones_application.constants.instructions import (
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
     TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
+    TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
     TAG_INSTRUCTIONS_LIBRARY_GROUP_TREE,
     TAG_INSTRUCTIONS_LIBRARY_PANEL,
     TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
@@ -231,32 +233,32 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
 
     def _create_library_controls(self) -> None:
         with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS):
-            dpg.add_progress_bar(
-                tag=TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
-                show=False,
-                width=-1,
-                default_value=0.0,
-            )
-            GUIButton(
-                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-                label=self._lbl_refresh,
-                width=-1,
-                callback=self.refresh,
-            )
-            GUIButton(
-                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
-                label=self._lbl_cancel,
-                width=-1,
-                callback=self.cancel_generation,
-                show=False,
-            )
-            GUIButton(
-                tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
-                label=self._lbl_generate,
-                width=-1,
-                callback=self.generate_library,
-                font=Font.BOLD,
-            )
+            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE):
+                GUIButton(
+                    tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
+                    label=self._lbl_refresh,
+                    width=-1,
+                    callback=self.refresh,
+                )
+                GUIButton(
+                    tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
+                    label=self._lbl_generate,
+                    width=-1,
+                    callback=self.generate_library,
+                    font=Font.BOLD,
+                )
+            with dpg.group(tag=TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING, show=False):
+                dpg.add_progress_bar(
+                    tag=TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
+                    width=-1,
+                    default_value=0.0,
+                )
+                GUIButton(
+                    tag=TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
+                    label=self._lbl_cancel,
+                    width=-1,
+                    callback=self.cancel_generation,
+                )
 
     def _create_library_tree(self) -> None:
         dpg.add_separator()
@@ -292,21 +294,19 @@ class GUIInstructionsLibraryPanel(GUITreePanel):
     def update_view(self, view_model: LibraryPanelViewModel) -> None:
         dpg_set_value(TAG_INSTRUCTIONS_LIBRARY_TEXT_STATUS, view_model.status_text)
         dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE,
+            show=view_model.idle_controls_visible,
+        )
+        dpg_configure_item(
+            TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING,
+            show=view_model.generating_controls_visible,
+        )
+        dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY,
             label=view_model.generate_button_label,
-            show=view_model.generate_button_visible,
-        )
-        dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_BUTTON_REFRESH_LIBRARIES,
-            show=view_model.refresh_button_visible,
-        )
-        dpg_configure_item(
-            TAG_INSTRUCTIONS_LIBRARY_BUTTON_CANCEL_GENERATION,
-            show=view_model.cancel_button_visible,
         )
         dpg_configure_item(
             TAG_INSTRUCTIONS_LIBRARY_PROGRESS,
-            show=view_model.progress_visible,
             overlay=view_model.progress_overlay,
         )
         dpg_set_value(

@@ -11,19 +11,16 @@ def _view_model(*, generating: bool) -> LibraryPanelViewModel:
     )
 
 
-class TestLibraryPanelButtonVisibility:
-    """While a generation runs the Cancel button replaces Refresh; when idle the reverse holds."""
+class TestLibraryPanelControlsVisibility:
+    """The idle controls (refresh + generate) and the generating controls (progress + cancel) are
+    mutually exclusive, toggled as whole groups by the generation state."""
 
-    def test_idle_shows_refresh_and_generate_hides_cancel(self) -> None:
+    def test_idle_shows_idle_controls_hides_generating(self) -> None:
         view_model = _view_model(generating=False)
-        assert view_model.refresh_button_visible is True
-        assert view_model.generate_button_visible is True
-        assert view_model.cancel_button_visible is False
-        assert view_model.progress_visible is False
+        assert view_model.idle_controls_visible is True
+        assert view_model.generating_controls_visible is False
 
-    def test_generating_shows_cancel_and_progress_hides_idle_controls(self) -> None:
+    def test_generating_shows_generating_controls_hides_idle(self) -> None:
         view_model = _view_model(generating=True)
-        assert view_model.refresh_button_visible is False
-        assert view_model.generate_button_visible is False
-        assert view_model.cancel_button_visible is True
-        assert view_model.progress_visible is True
+        assert view_model.idle_controls_visible is False
+        assert view_model.generating_controls_visible is True

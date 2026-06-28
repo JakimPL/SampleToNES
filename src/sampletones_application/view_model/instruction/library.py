@@ -9,17 +9,9 @@ class LibraryPanelViewModel(BaseModel, frozen=True):
     progress_overlay: str
 
     @property
-    def generate_button_visible(self) -> bool:
+    def idle_controls_visible(self) -> bool:
         return not self.is_generating
 
     @property
-    def refresh_button_visible(self) -> bool:
-        return not self.is_generating
-
-    @property
-    def cancel_button_visible(self) -> bool:
-        return self.is_generating
-
-    @property
-    def progress_visible(self) -> bool:
+    def generating_controls_visible(self) -> bool:
         return self.is_generating

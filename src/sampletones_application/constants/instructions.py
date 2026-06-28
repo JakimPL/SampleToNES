@@ -19,6 +19,18 @@ TAG_INSTRUCTIONS_LIBRARY_GROUP_CONTROLS = TagName(
     Widget.GROUP,
     "controls",
 )
+TAG_INSTRUCTIONS_LIBRARY_GROUP_IDLE = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.GROUP,
+    "controls_idle",
+)
+TAG_INSTRUCTIONS_LIBRARY_GROUP_GENERATING = TagName(
+    Page.INSTRUCTIONS,
+    Panel.LIBRARY,
+    Widget.GROUP,
+    "controls_generating",
+)
 TAG_INSTRUCTIONS_LIBRARY_BUTTON_GENERATE_LIBRARY = TagName(
     Page.INSTRUCTIONS,
     Panel.LIBRARY,
