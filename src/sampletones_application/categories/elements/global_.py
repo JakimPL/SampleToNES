@@ -195,3 +195,10 @@ class GlobalTemplateElements(AbstractElement):
     COLLAPSE = "collapse"
     ON = "on"
     OFF = "off"
+
+
+class GlobalPitchElements(AbstractElement):
+    PITCH_NAME = "pitch_name"
+    PERIOD_NAME = "period_name"
+    PITCH_EXAMPLE = "pitch_example"
+    PERIOD_EXAMPLE = "period_example"

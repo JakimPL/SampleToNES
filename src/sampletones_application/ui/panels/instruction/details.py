@@ -8,6 +8,7 @@ from sampletones_application.categories.elements.instructions import (
 )
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.constants.general import (
     SUF_HANDLER_REGISTRY,
     SUF_PANEL_RIGHT,
@@ -61,7 +62,6 @@ from sampletones_core.instructions import (
     PulseInstruction,
     TriangleInstruction,
 )
-from sampletones_core.utils.frequencies import NAME_TO_PERIOD, NAME_TO_PITCH
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.utils.arrays import clamp
 
@@ -175,12 +175,14 @@ class GUIInstructionDetailsPanel(GUIPanel):
             TextType.MESSAGE,
             InstructionsDetailsElements.STATUS_INPUT_PERIOD,
         ]
-        self._tpl_pitch_tooltip = language_manager[
+        tooltip_template = language_manager[
             Page.INSTRUCTIONS,
             Panel.DETAILS,
             TextType.TEMPLATE,
             InstructionsDetailsElements.PITCH_TOOLTIP_TEMPLATE,
         ]
+        self._pitch_tooltip = build_pitch_tooltip(language_manager, PITCH_VALUE_KIND, tooltip_template)
+        self._period_tooltip = build_pitch_tooltip(language_manager, PERIOD_VALUE_KIND, tooltip_template)
 
         super().__init__(
             tag=TAG_INSTRUCTIONS_DETAILS_PANEL,
@@ -343,7 +345,7 @@ class GUIInstructionDetailsPanel(GUIPanel):
             kind=kind,
             initial_value=initial_value,
             label=label,
-            tooltip=self._pitch_tooltip(kind),
+            tooltip=self._period_tooltip if is_period else self._pitch_tooltip,
             status_message=self._msg_status_input_period if is_period else self._msg_status_input_pitch,
             layout=self._general_layout.pitch_stepper,
             value_color=self._general_layout.colors.text.disabled,
@@ -353,18 +355,6 @@ class GUIInstructionDetailsPanel(GUIPanel):
 
     def _on_pitch_value_changed(self, value: int) -> None:
         self._on_instruction_changed()
-
-    def _pitch_tooltip(self, kind: PitchValueKind) -> str:
-        if kind is PERIOD_VALUE_KIND:
-            pitch_type = "period"
-            example_name = "4-#"
-            example_value = NAME_TO_PERIOD[example_name]
-        else:
-            pitch_type = "pitch"
-            example_name = "C-4"
-            example_value = NAME_TO_PITCH[example_name]
-
-        return self._tpl_pitch_tooltip.format(pitch_type, example_name, example_value)
 
     def _create_pulse_instruction_choice_panel(self, instruction: PulseInstruction) -> None:
         self._create_pitch_stepper(

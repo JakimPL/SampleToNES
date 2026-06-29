@@ -65,6 +65,7 @@ class Panel(StrEnum):
     CONTEXT = "context"
     STATUS = "status"
     GRAPH = "graph"
+    PITCH = "pitch"
 
     # Shared per-page panels (used under multiple Pages)
     PLAYER = "player"

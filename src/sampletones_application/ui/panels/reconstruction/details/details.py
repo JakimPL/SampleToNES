@@ -14,6 +14,7 @@ from sampletones_application.categories.elements.reconstructions import (
 from sampletones_application.categories.hierarchy import Page, Panel, TextType
 from sampletones_application.categories.key import TAG_SEPARATOR
 from sampletones_application.categories.manager import LanguageManager
+from sampletones_application.categories.pitch import build_pitch_tooltip
 from sampletones_application.constants.general import (
     SUF_BUTTON_COPY,
     SUF_GROUP,
@@ -69,10 +70,6 @@ from sampletones_application.view_model.reconstruction.details import (
 )
 from sampletones_core.constants.enums import FeatureKey, GeneratorName
 from sampletones_core.constants.general import MAX_PERIOD, MIN_PITCH
-from sampletones_core.utils.frequencies import (
-    NAME_TO_PERIOD,
-    NAME_TO_PITCH,
-)
 from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 from sampletones_shared.logger import logger
 from sampletones_shared.types.application import Sender
@@ -192,12 +189,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
             TextType.MESSAGE,
             ReconstructionsDetailsElements.STATUS_COPY_SEQUENCE,
         ]
-        self._tpl_pitch_tooltip = language_manager[
+        tooltip_template = language_manager[
             Page.RECONSTRUCTIONS,
             Panel.DETAILS,
             TextType.TEMPLATE,
             ReconstructionsDetailsElements.INITIAL_PITCH_TOOLTIP_TEMPLATE,
         ]
+        self._pitch_tooltip = build_pitch_tooltip(language_manager, PITCH_VALUE_KIND, tooltip_template)
+        self._period_tooltip = build_pitch_tooltip(language_manager, PERIOD_VALUE_KIND, tooltip_template)
         self._msg_reconstruction_no_data = language_manager[
             Page.GLOBAL,
             Panel.DIALOG,
@@ -440,13 +439,14 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _create_pitch_stepper(self, generator_name: GeneratorName, initial_pitch: int, parent: str) -> None:
         is_noise = generator_name == GeneratorName.NOISE
+        kind = self._pitch_kind(generator_name)
         stepper = GUIPitchStepper(
             tag=parent,
             parent=parent,
-            kind=self._pitch_kind(generator_name),
+            kind=kind,
             initial_value=initial_pitch,
             label=self._lbl_initial_period if is_noise else self._lbl_initial_pitch,
-            tooltip=self._pitch_tooltip(generator_name),
+            tooltip=self._period_tooltip if is_noise else self._pitch_tooltip,
             status_message=self._msg_input_period if is_noise else self._msg_input_pitch,
             layout=self._layout_general.pitch_stepper,
             value_color=self._layout_general.colors.text.disabled,
@@ -457,18 +457,6 @@ class GUIReconstructionDetailsPanel(GUIPanel):
 
     def _on_pitch_value_changed(self, generator_name: GeneratorName, value: int) -> None:
         self.call(self.on_pitch_value_changed, generator_name, value)
-
-    def _pitch_tooltip(self, generator_name: GeneratorName) -> str:
-        if generator_name == GeneratorName.NOISE:
-            pitch_type = "period"
-            example_name = "4-#"
-            example_value = NAME_TO_PERIOD[example_name]
-        else:
-            pitch_type = "pitch"
-            example_name = "C-4"
-            example_value = NAME_TO_PITCH[example_name]
-
-        return self._tpl_pitch_tooltip.format(pitch_type, example_name, example_value)
 
     def _on_mouse_move(self, sender: Sender, app_data: Tuple[int, int]) -> None:
         tab = dpg.get_value(self.tab_bar_tag)

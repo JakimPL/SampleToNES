@@ -82,6 +82,14 @@ global.dialog.template.on: "on"
 global.dialog.template.off: "off"
 
 # =============================================================================
+# Global — Pitch / period (shared by every pitch stepper)
+# =============================================================================
+global.pitch.label.pitch_name: "pitch"
+global.pitch.label.period_name: "period"
+global.pitch.label.pitch_example: "C-4"
+global.pitch.label.period_example: "4-#"
+
+# =============================================================================
 # Global — Traceback
 # =============================================================================
 global.traceback.label.copy: "Copy to clipboard"

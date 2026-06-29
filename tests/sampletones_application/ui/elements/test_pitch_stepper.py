@@ -7,7 +7,7 @@ from sampletones_application.ui.elements import pitch_stepper as pitch_stepper_m
 from sampletones_application.ui.elements.pitch_stepper import GUIPitchStepper
 from sampletones_application.utils.callbacks.queue import CallbackQueue
 from sampletones_core.constants.general import MAX_PERIOD, MAX_PITCH, MIN_PITCH
-from sampletones_core.utils.pitch_kind import PERIOD, PITCH, PitchValueKind
+from sampletones_core.utils.pitch_kind import PERIOD_VALUE_KIND, PITCH_VALUE_KIND, PitchValueKind
 
 LAYOUT = PitchStepperLayout(
     label_width=160,
@@ -83,18 +83,18 @@ def _listen(stepper: GUIPitchStepper) -> List[int]:
 
 class TestSetValue:
     def test_clamps_into_range(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         stepper.set_value(MAX_PITCH + 50)
         assert stepper.value == MAX_PITCH
 
     def test_renders_note_name_and_readout(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         stepper.set_value(72)
-        assert recorder.values[stepper._input_tag] == PITCH.to_name(72)
+        assert recorder.values[stepper._input_tag] == PITCH_VALUE_KIND.to_name(72)
         assert recorder.values[stepper._value_tag] == "72"
 
     def test_does_not_report_change(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper.set_value(72)
         assert reported == []
@@ -102,7 +102,7 @@ class TestSetValue:
 
 class TestStep:
     def test_increment_reports_new_value(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._step(1)
         assert stepper.value == 61
@@ -110,14 +110,14 @@ class TestStep:
         assert reported == [61]
 
     def test_decrement_reports_new_value(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._step(-1)
         scheduled.flush()
         assert reported == [59]
 
     def test_increment_clamps_at_maximum(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PERIOD, value=MAX_PERIOD)
+        stepper = _stepper(kind=PERIOD_VALUE_KIND, value=MAX_PERIOD)
         reported = _listen(stepper)
         stepper._step(1)
         assert stepper.value == MAX_PERIOD
@@ -125,14 +125,14 @@ class TestStep:
         assert reported == [MAX_PERIOD]
 
     def test_decrement_clamps_at_minimum(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=MIN_PITCH)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=MIN_PITCH)
         stepper._step(-1)
         assert stepper.value == MIN_PITCH
 
 
 class TestApplyText:
     def test_integer_text_is_clamped(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._apply_text("9999")
         assert stepper.value == MAX_PITCH
@@ -140,17 +140,17 @@ class TestApplyText:
         assert reported == [MAX_PITCH]
 
     def test_note_name_resolves(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         stepper._apply_text("C-3")
-        assert stepper.value == PITCH.sanitized_name_to_value["C-3"]
+        assert stepper.value == PITCH_VALUE_KIND.sanitized_name_to_value["C-3"]
 
     def test_garbage_falls_back_to_current(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=55)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=55)
         stepper._apply_text("not a note")
         assert stepper.value == 55
 
     def test_period_hex_name_resolves(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PERIOD, value=0)
+        stepper = _stepper(kind=PERIOD_VALUE_KIND, value=0)
         stepper._apply_text("A-#")
         assert stepper.value == 10
 
@@ -159,7 +159,7 @@ class TestDebounce:
     """A burst of steps renders each move immediately but reports the value once, after editing settles."""
 
     def test_steps_do_not_report_until_settled(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._step(1)
         stepper._step(1)
@@ -167,7 +167,7 @@ class TestDebounce:
         assert reported == []
 
     def test_burst_reports_final_value_once(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._step(1)
         stepper._step(1)
@@ -176,7 +176,7 @@ class TestDebounce:
         assert reported == [63]
 
     def test_superseded_emit_is_dropped(self, recorder: _ValueRecorder, scheduled: _ScheduledEmits) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         reported = _listen(stepper)
         stepper._step(1)
         stale_callback, stale_args = scheduled.pending[0]
@@ -187,22 +187,22 @@ class TestDebounce:
 
 class TestHoldTimer:
     def test_first_press_arms_timer_without_stepping(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         assert stepper._update_hold_timer(False, True, 0.0) is None
         assert stepper._hold_timer is not None
 
     def test_repeats_once_the_delay_elapses(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         stepper._update_hold_timer(False, True, 0.0)
         stepper._hold_timer = 0.0
         assert stepper._update_hold_timer(False, True, 0.01) == 1
 
     def test_no_button_pressed_returns_none(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         assert stepper._update_hold_timer(False, False, 0.05) is None
 
     def test_release_clears_hold_state(self, recorder: _ValueRecorder) -> None:
-        stepper = _stepper(kind=PITCH, value=60)
+        stepper = _stepper(kind=PITCH_VALUE_KIND, value=60)
         stepper._update_hold_timer(True, False, 0.0)
         stepper._on_mouse_release(0, None, None)
         assert stepper._hold_timer is None
