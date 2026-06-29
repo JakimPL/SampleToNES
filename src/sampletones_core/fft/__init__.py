@@ -9,6 +9,7 @@ from .fft import (
     calculate_fft,
     calculate_fft_frequencies,
     calculate_weights,
+    calculate_weights_from_edges,
 )
 from .fragment.audio import FragmentedAudio
 from .fragment.fragment import Fragment
@@ -24,6 +25,7 @@ __all__ = [
     "calculate_fft_frequencies",
     "a_weighting",
     "calculate_weights",
+    "calculate_weights_from_edges",
     "calculate_cqt",
     "calculate_cqt_frequencies",
     "convert_midpoints_to_edges",

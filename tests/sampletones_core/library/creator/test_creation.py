@@ -2,7 +2,8 @@ import pytest
 
 from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.fft import FFTTransformer, Window
+from sampletones_core.fft import Window
+from sampletones_core.fft.features import get_feature_extractor
 from sampletones_core.generators import get_generators_map
 from sampletones_core.instructions.implementation.pulse import PulseInstruction
 from sampletones_core.library import InstructionLibraryFragment
@@ -34,19 +35,13 @@ class TestGenerateInstruction:
         window: Window,
         pulse_instruction: PulseInstruction,
     ) -> None:
-        from sampletones_core.fft import FFTTransformer
-
         generators = get_generators_map(config)
-        transformer = FFTTransformer.from_gamma(
-            config.library.transformation_gamma,
-            config.library.sample_rate,
-        )
+        extractor = get_feature_extractor(config, window)
         _, fragment = generate_instruction(
             generators,
             GeneratorClassName.PULSE_GENERATOR,
             pulse_instruction,
-            window,
-            transformer,
+            extractor,
         )
         assert isinstance(fragment, InstructionLibraryFragment)
 
@@ -57,16 +52,12 @@ class TestGenerateInstruction:
         pulse_instruction: PulseInstruction,
     ) -> None:
         generators = get_generators_map(config)
-        transformer = FFTTransformer.from_gamma(
-            config.library.transformation_gamma,
-            config.library.sample_rate,
-        )
+        extractor = get_feature_extractor(config, window)
         returned_instruction, _ = generate_instruction(
             generators,
             GeneratorClassName.PULSE_GENERATOR,
             pulse_instruction,
-            window,
-            transformer,
+            extractor,
         )
         assert returned_instruction is pulse_instruction
 

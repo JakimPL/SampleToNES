@@ -2,6 +2,7 @@ from .device import AudioDevice, CurrentDevice
 from .io import load_audio, read_wave, write_wave
 from .manager import CHANNELS, FORMAT, AudioDeviceManager
 from .processing import (
+    active_frame_level,
     clip_audio,
     interpolate,
     minmax_decimate,
@@ -20,6 +21,7 @@ __all__ = [
     "CurrentDevice",
     "AudioDevice",
     "AudioDeviceManager",
+    "active_frame_level",
     "clip_audio",
     "read_wave",
     "load_audio",

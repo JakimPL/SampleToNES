@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from sampletones_core.configs import Config
 
+from ..features import get_feature_extractor
 from ..window.window import Window
 from .fragment import Fragment
 
@@ -22,16 +23,7 @@ class FragmentedAudio(BaseModel):
     def create(cls, audio: np.ndarray, config: Config, window: Window) -> FragmentedAudio:
         length = (audio.shape[0] // window.frame_length) * window.frame_length
         audio = audio[:length].copy()
-        count = length // window.frame_length
-        fragments = [
-            Fragment.create(
-                config,
-                window.get_windowed_frame(audio, fragment_id * window.frame_length),
-                window,
-            )
-            for fragment_id in range(count)
-        ]
-
+        fragments = get_feature_extractor(config, window).extract(audio)
         return cls(audio=audio, fragments=fragments, config=config)
 
     def __getitem__(self, index: int) -> Fragment:

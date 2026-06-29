@@ -121,6 +121,7 @@ global.context.label.noise: "Noise"
 global.context.label.detail_sample_rate: "Sample rate"
 global.context.label.detail_nes_frequency: "NES frequency"
 global.context.label.detail_generators: "Generators"
+global.context.label.detail_spectrum_method: "Generation method"
 global.context.label.detail_transformation_gamma: "Transformation gamma"
 global.context.label.detail_window_size: "Window size"
 global.context.label.detail_configuration: "Configuration"
@@ -172,6 +173,7 @@ global.status.message.node_reconstruction: "Click to play reconstruction. Double
 global.status.message.node_library: "Double-click to open instructions library. Right-click to open context menu."
 global.status.message.tree_search: "Type query to filter nodes."
 global.status.message.input: "CTRL + click to type value."
+global.status.message.combo: "Click to select a value from the list."
 global.status.message.node_directory: "Click to {expand_or_collapse}. Right-click to open context menu."
 
 # =============================================================================
@@ -232,12 +234,14 @@ main.config_panel.label.checkbox_normalize: "Normalize audio"
 main.config_panel.label.checkbox_quantize: "Quantize audio"
 main.config_panel.label.input_sample_rate: "Sample rate"
 main.config_panel.label.input_nes_frequency: "NES frequency"
-main.config_panel.label.slider_transformation_gamma: "FFT transformation"
+main.config_panel.label.combo_spectrum_method: "Generation method"
+main.config_panel.label.slider_transformation_gamma: "Feature scaling"
 main.config_panel.tooltip.tooltip_normalize: "Normalize audio to ensure consistent volume levels."
 main.config_panel.tooltip.tooltip_quantize: "Quantize audio samples to 5-bit resolution."
 main.config_panel.tooltip.tooltip_sample_rate: "Set the sample rate (in Hz) for audio processing."
-main.config_panel.tooltip.tooltip_nes_frequency: "Set the NES refresh rate (in Hz) for audio processing. NTSC = 60 Hz, PAL = 50 Hz."
-main.config_panel.tooltip.tooltip_transformation_gamma: "Interpolate between linear spectral features (0) features and logarithmic ones (100)."
+main.config_panel.tooltip.tooltip_nes_frequency: "Set the NES refresh rate (in Hz) for audio processing.\n  • NTSC = 60 Hz,\n  • PAL = 50 Hz."
+main.config_panel.tooltip.tooltip_spectrum_method: "Chooses how the sample is analysed into a spectrum:\n  • FFT uses evenly spaced frequency bins\n  • Log-spaced FFT regroups those bins onto a logarithmic frequency axis\n  • CQT spaces bins per musical octave"
+main.config_panel.tooltip.tooltip_transformation_gamma: "Scales spectral magnitudes before matching:\n  • at 0 the raw linear spectrum is used\n  • at 100 a logarithmic scaling is applied\n  • and values in between blend the two"
 
 # =============================================================================
 # Main tab — Reconstructor panel
@@ -245,7 +249,7 @@ main.config_panel.tooltip.tooltip_transformation_gamma: "Interpolate between lin
 main.reconstructor.label.section_generators: "Generators"
 main.reconstructor.label.section_settings: "Reconstructor settings"
 main.reconstructor.label.slider_drive: "Drive"
-main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output. At 1.0 amplitudes are calibrated; higher values push the selection harder, introducing a distortion-like effect."
+main.reconstructor.tooltip.tooltip_drive: "Amplify NES audio during instruction selection and output.\nAt 1.0 amplitudes are calibrated, higher values push the selection harder, introducing a distortion-like effect."
 
 # =============================================================================
 # Main tab — Converter

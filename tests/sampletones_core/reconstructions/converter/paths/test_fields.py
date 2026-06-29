@@ -3,8 +3,10 @@ import pytest
 from sampletones_core.configs import Config
 from sampletones_core.configs.display import (
     DISPLAY_SEPARATOR,
+    GAMMA_PREFIX,
     format_nes_frequency,
     format_sample_rate,
+    format_spectrum_method,
 )
 from sampletones_core.constants.enums import GeneratorName, abbreviate_generator_names
 from sampletones_core.reconstructions.converter.paths import ConfigDirectoryFields
@@ -54,23 +56,27 @@ class TestConfigDirectoryFields:
         assert fields is not None
         assert fields.sr == config.library.sample_rate
         assert fields.nf == config.library.nes_frequency
+        assert fields.sm == config.library.spectrum_method
+        assert fields.tg == config.library.transformation_gamma
         assert fields.generators == tuple(config.generation.generators)
 
     def test_directory_name_embeds_field_keys(self, config: Config) -> None:
         name = ConfigDirectoryFields.generate_config_directory_name(config)
         segments = name.split("_")
-        assert {"sr", "nf", "gn", "ch"}.issubset(segments)
+        assert {"sr", "nf", "sm", "tg", "gn", "ch"}.issubset(segments)
 
     @pytest.mark.parametrize(
         "name",
         [
             "not-a-config-dir",
             "sr_44100_nf_30_gn_PTN",
-            f"xx_44100_nf_30_gn_PTN_ch_{HASH}",
-            f"sr_notanumber_nf_30_gn_PTN_ch_{HASH}",
-            f"sr_44100_nf_30_gn_XYZ_ch_{HASH}",
-            f"sr_44100_nf_30_gn__ch_{HASH}",
-            "sr_44100_nf_30_gn_PTN_ch_short",
+            f"xx_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_notanumber_nf_30_sm_fft_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_44100_nf_30_sm_xyz_tg_0_gn_PTN_ch_{HASH}",
+            f"sr_44100_nf_30_sm_fft_tg_-1_gn_PTN_ch_{HASH}",
+            f"sr_44100_nf_30_sm_fft_tg_0_gn_XYZ_ch_{HASH}",
+            f"sr_44100_nf_30_sm_fft_tg_0_gn__ch_{HASH}",
+            "sr_44100_nf_30_sm_fft_tg_0_gn_PTN_ch_short",
         ],
     )
     def test_malformed_names_return_none(self, name: str) -> None:
@@ -82,5 +88,7 @@ class TestConfigDirectoryFields:
 
         assert format_sample_rate(config.library.sample_rate) in display
         assert format_nes_frequency(config.library.nes_frequency) in display
+        assert format_spectrum_method(config.library.spectrum_method) in display
+        assert f"{GAMMA_PREFIX}{config.library.transformation_gamma}" in display
         assert abbreviate_generator_names(list(config.generation.generators)) in display
         assert DISPLAY_SEPARATOR in display

@@ -32,6 +32,7 @@ def _set_transformation_gamma(config_manager: ConfigManager, gamma: int) -> None
         LibrarySettingsUpdate(
             sample_rate=library.sample_rate,
             nes_frequency=library.nes_frequency,
+            spectrum_method=library.spectrum_method,
             transformation_gamma=gamma,
         )
     )

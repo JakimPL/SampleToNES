@@ -57,6 +57,28 @@ class AudioSourceType(StrEnum):
     ORIGINAL = "original"
 
 
+class SpectralDistance(StrEnum):
+    SQUARED = "squared"
+    ABSOLUTE = "absolute"
+    BETA_DIVERGENCE = "beta_divergence"
+
+
+class PhaseAlignerName(StrEnum):
+    SLIDING_RMSE = "sliding_rmse"
+    CROSS_CORRELATION = "cross_correlation"
+
+
+class SelectorName(StrEnum):
+    GREEDY = "greedy"
+    VITERBI = "viterbi"
+
+
+class SpectrumMethod(StrEnum):
+    FFT = "fft"
+    LOG_SPACED_FFT = "logfft"
+    CQT = "cqt"
+
+
 GENERATOR_ABBREVIATIONS: Final[Dict[GeneratorName, Literal["P", "p", "T", "N"]]] = {
     GeneratorName.PULSE1: "P",
     GeneratorName.PULSE2: "p",

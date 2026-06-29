@@ -103,6 +103,12 @@ TAG_MAIN_CONFIG_INPUT_NES_FREQUENCY = TagName(
     Widget.INPUT,
     "nes_frequency",
 )
+TAG_MAIN_CONFIG_COMBO_SPECTRUM_METHOD = TagName(
+    Page.MAIN,
+    Panel.CONFIG_PANEL,
+    Widget.COMBO,
+    "spectrum_method",
+)
 TAG_MAIN_CONFIG_INPUT_TRANSFORMATION_GAMMA = TagName(
     Page.MAIN,
     Panel.CONFIG_PANEL,

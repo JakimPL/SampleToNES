@@ -4,7 +4,11 @@ import librosa
 import numpy as np
 
 from sampletones_core.constants.audio import DEFAULT_SAMPLE_RATE
-from sampletones_core.constants.general import QUANTIZATION_LEVELS
+from sampletones_core.constants.general import (
+    COEFFICIENT_AUDIBILITY_FLOOR,
+    COEFFICIENT_PERCENTILE,
+    QUANTIZATION_LEVELS,
+)
 
 from .validation import validate_audio_array
 
@@ -195,6 +199,52 @@ def normalize(audio: np.ndarray, nan_value: float = 0.0) -> np.ndarray:
         audio /= peak
 
     return audio
+
+
+def active_frame_level(
+    audio: np.ndarray,
+    frame_length: int,
+    percentile: float = COEFFICIENT_PERCENTILE,
+    audibility_floor: float = COEFFICIENT_AUDIBILITY_FLOOR,
+) -> float:
+    """
+    Robust reference level for normalization.
+
+    Returns the ``percentile``-th percentile of the per-frame peak amplitudes over
+    frames whose peak exceeds ``audibility_floor`` times the global peak. Anchoring to
+    the typical audible frame rather than the single loudest sample keeps a lone
+    transient from dragging the rest of the signal below the matchable range, while
+    long silences are excluded by the floor. Falls back to the global peak when no
+    frame is audible or the audio is shorter than one frame.
+
+    Args:
+        audio: Input audio array.
+        frame_length: Number of samples per frame.
+        percentile: Percentile of the audible per-frame peaks to return.
+        audibility_floor: Fraction of the global peak below which a frame is silence.
+
+    Returns:
+        The robust level, or 0.0 for empty or silent audio.
+    """
+    validate_audio_array(audio)
+    if audio.size == 0:
+        return 0.0
+
+    peak = float(np.max(np.abs(audio)))
+    if peak == 0.0:
+        return 0.0
+
+    frame_count = audio.shape[0] // frame_length
+    if frame_count == 0:
+        return peak
+
+    frames = audio[: frame_count * frame_length].reshape(frame_count, frame_length)
+    frame_peaks = np.max(np.abs(frames), axis=1)
+    audible = frame_peaks[frame_peaks > audibility_floor * peak]
+    if audible.size == 0:
+        return peak
+
+    return float(np.percentile(audible, percentile))
 
 
 def quantize(audio: np.ndarray, levels: int = QUANTIZATION_LEVELS) -> np.ndarray:

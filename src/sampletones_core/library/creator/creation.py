@@ -1,8 +1,9 @@
 from typing import Any, Dict, List, Tuple
 
-from sampletones_core.configs import Config, InstructionsLibraryConfig
+from sampletones_core.configs import Config
 from sampletones_core.constants.enums import GeneratorClassName
-from sampletones_core.fft import FFTTransformer, Window
+from sampletones_core.fft import Window
+from sampletones_core.fft.features import FeatureExtractor, get_feature_extractor
 from sampletones_core.generators import GeneratorUnion, get_generators_map
 from sampletones_core.generators.maps import GENERATOR_CLASS_MAP
 from sampletones_core.instructions import InstructionUnion
@@ -13,31 +14,26 @@ def generate_instruction(
     generators: Dict[GeneratorClassName, GeneratorUnion],
     generator_class_name: GeneratorClassName,
     instruction: InstructionUnion,
-    window: Window,
-    transformer: FFTTransformer,
+    extractor: FeatureExtractor,
 ) -> Tuple[InstructionUnion, InstructionLibraryFragment[Any]]:
     generator = generators[generator_class_name]
     fragment: InstructionLibraryFragment[Any] = InstructionLibraryFragment.create(
         generator,
         instruction,
-        window,
-        transformer=transformer,
+        extractor,
     )
     return instruction, fragment
 
 
 def generate_instructions(
     instructions_batch: List[Tuple[GeneratorClassName, InstructionUnion]],
-    config: InstructionsLibraryConfig,
+    config: Config,
     window: Window,
     generators: Dict[GeneratorClassName, GeneratorUnion],
 ) -> List[Tuple[InstructionUnion, InstructionLibraryFragment[Any]]]:
-    transformer = FFTTransformer.from_gamma(
-        config.transformation_gamma,
-        config.sample_rate,
-    )
+    extractor = get_feature_extractor(config, window)
     return [
-        generate_instruction(generators, generator_class_name, instruction, window, transformer)
+        generate_instruction(generators, generator_class_name, instruction, extractor)
         for generator_class_name, instruction in instructions_batch
     ]
 
@@ -48,7 +44,7 @@ def generate_instruction_batch(
     instructions_batch, config, window = task
 
     generators: Dict[GeneratorClassName, GeneratorUnion] = get_generators_map(config)
-    return generate_instructions(instructions_batch, config.library, window, generators)
+    return generate_instructions(instructions_batch, config, window, generators)
 
 
 def generate_single_instruction_task(
@@ -56,11 +52,10 @@ def generate_single_instruction_task(
 ) -> Tuple[InstructionUnion, InstructionLibraryFragment[Any]]:
     (generator_class_name, instruction), config, window = task
     generator = GENERATOR_CLASS_MAP[generator_class_name](config, generator_class_name)
-    transformer = FFTTransformer.from_gamma(config.library.transformation_gamma, config.library.sample_rate)
+    extractor = get_feature_extractor(config, window)
     fragment: InstructionLibraryFragment[Any] = InstructionLibraryFragment.create(
         generator,
         instruction,
-        window,
-        transformer=transformer,
+        extractor,
     )
     return instruction, fragment

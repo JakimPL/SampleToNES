@@ -6,6 +6,7 @@ from sampletones_core.constants.audio import (
     MAX_SAMPLE_RATE,
     MIN_SAMPLE_RATE,
 )
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.general import (
     A4_FREQUENCY,
     A4_PITCH,
@@ -17,6 +18,7 @@ from sampletones_core.constants.general import (
     MIN_NES_FREQUENCY,
     TRANSFORMATION_GAMMA,
 )
+from sampletones_core.constants.spectrum import BINS_PER_OCTAVE, CQT_CUTOFF_FREQUENCY
 from sampletones_core.data import DataModel
 
 
@@ -39,7 +41,7 @@ class InstructionsLibraryConfig(DataModel):
     )
     transformation_gamma: int = Field(
         default=TRANSFORMATION_GAMMA,
-        ge=0,
+        ge=MAX_TRANSFORMATION_GAMMA,
         le=MAX_TRANSFORMATION_GAMMA,
     )
     a4_frequency: float = Field(
@@ -52,6 +54,7 @@ class InstructionsLibraryConfig(DataModel):
         ge=1,
         le=LIMIT_MAX_PITCH,
     )
+    spectrum_method: SpectrumMethod = Field(default=SpectrumMethod.FFT)
 
     @property
     def frame_length(self) -> int:
@@ -59,5 +62,10 @@ class InstructionsLibraryConfig(DataModel):
 
     @property
     def window_size(self) -> int:
-        lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
+        if self.spectrum_method == SpectrumMethod.CQT:
+            quality = 1.0 / (2.0 ** (1.0 / BINS_PER_OCTAVE) - 1.0)
+            lower_bound = int(np.ceil(quality * self.sample_rate / CQT_CUTOFF_FREQUENCY))
+        else:
+            lower_bound = int(np.ceil(2.0 * self.sample_rate / MIN_FREQUENCY))
+
         return max(self.frame_length, lower_bound)

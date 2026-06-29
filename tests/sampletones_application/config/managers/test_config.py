@@ -13,7 +13,7 @@ from sampletones_application.config.updates import (
     LibrarySettingsUpdate,
 )
 from sampletones_core.configs import Config
-from sampletones_core.constants.enums import GeneratorName
+from sampletones_core.constants.enums import GeneratorName, SpectrumMethod
 from sampletones_core.library import InstructionLibraryKey
 
 
@@ -114,10 +114,12 @@ class TestConfigManagerApplySettings:
         update = LibrarySettingsUpdate(
             sample_rate=22050,
             nes_frequency=60,
+            spectrum_method=SpectrumMethod.CQT,
             transformation_gamma=2,
         )
         manager.apply_library_settings(update)
         assert manager.config.library.sample_rate == 22050
+        assert manager.config.library.spectrum_method == SpectrumMethod.CQT
 
     def test_apply_generation_settings_updates_drive(self, tmp_path: Path) -> None:
         manager = _manager(tmp_path / "missing.json")

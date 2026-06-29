@@ -5,6 +5,7 @@ from typing import Any, Dict, Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from sampletones_core.constants.enums import SpectrumMethod
 from sampletones_core.constants.field_aliases import ALIASES
 from sampletones_core.paths import EXT_FILE_LIBRARY
 from sampletones_shared.types.path import Pathlike
@@ -20,6 +21,7 @@ class InstructionsFilenameFields(BaseModel):
     nf: int = Field(gt=0, validation_alias=ALIASES["nf"])
     ws: int = Field(gt=0, validation_alias=ALIASES["ws"])
     tg: int = Field(ge=0, validation_alias=ALIASES["tg"])
+    sm: SpectrumMethod = Field(validation_alias=ALIASES["sm"])
     ch: str = Field(pattern=HASH_PATTERN, validation_alias=ALIASES["ch"])
 
     @property
