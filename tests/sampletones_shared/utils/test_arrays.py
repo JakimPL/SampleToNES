@@ -12,6 +12,7 @@ from sampletones_shared.utils.arrays import (
     cast_to_float,
     clamp,
     infer_dtype,
+    interpolate_segment,
     is_increasing,
     isfinite,
     isnan,
@@ -1687,6 +1688,145 @@ class TestTrim(BaseTestSuite):
 
         result = trim(test_case.input_array)
         assert_array_equal(result, test_case.expected)
+
+
+class TestInterpolateSegment(BaseTestSuite):
+    @dataclass(frozen=True, kw_only=True)
+    class TestCase(BaseRegularTestCase):
+        expected: Union[np.ndarray, Type[Exception]]
+        array: Any
+        start_index: Any
+        end_index: Any
+        start_value: Any
+        end_value: Any
+
+    test_cases = [
+        TestCase(
+            array=np.zeros(5, dtype=np.float32),
+            start_index=0,
+            end_index=4,
+            start_value=0,
+            end_value=8,
+            expected=np.array([0.0, 2.0, 4.0, 6.0, 8.0], dtype=np.float32),
+            label="ascending_indices_full_span",
+        ),
+        TestCase(
+            array=np.zeros(5, dtype=np.float32),
+            start_index=4,
+            end_index=0,
+            start_value=8,
+            end_value=0,
+            expected=np.array([0.0, 2.0, 4.0, 6.0, 8.0], dtype=np.float32),
+            label="descending_indices_match_ascending",
+        ),
+        TestCase(
+            array=np.array([1.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32),
+            start_index=1,
+            end_index=3,
+            start_value=2,
+            end_value=6,
+            expected=np.array([1.0, 2.0, 4.0, 6.0, 1.0], dtype=np.float32),
+            label="middle_span_leaves_endpoints_untouched",
+        ),
+        TestCase(
+            array=np.array([5.0, 5.0, 5.0], dtype=np.float32),
+            start_index=2,
+            end_index=2,
+            start_value=9,
+            end_value=9,
+            expected=np.array([5.0, 5.0, 9.0], dtype=np.float32),
+            label="single_index_sets_one_value",
+        ),
+        TestCase(
+            array=np.zeros(4, dtype=np.float32),
+            start_index=0,
+            end_index=3,
+            start_value=0,
+            end_value=10,
+            expected=np.array([0.0, 3.0, 7.0, 10.0], dtype=np.float32),
+            label="interpolated_values_round_to_nearest_integer",
+        ),
+        TestCase(
+            array=np.zeros(3, dtype=np.float32),
+            start_index=0,
+            end_index=2,
+            start_value=4,
+            end_value=-4,
+            expected=np.array([4.0, 0.0, -4.0], dtype=np.float32),
+            label="descending_values_across_zero",
+        ),
+        TestCase(
+            array=np.array([[1.0, 2.0]], dtype=np.float32),
+            start_index=0,
+            end_index=1,
+            start_value=0,
+            end_value=1,
+            expected=ValueError,
+            label="array_not_1d",
+        ),
+        TestCase(
+            array=[0.0, 0.0, 0.0],
+            start_index=0,
+            end_index=2,
+            start_value=0,
+            end_value=1,
+            expected=TypeError,
+            label="list_not_array",
+        ),
+        TestCase(
+            array=np.zeros(3, dtype=np.float32),
+            start_index=0,
+            end_index=5,
+            start_value=0,
+            end_value=1,
+            expected=ValueError,
+            label="end_index_out_of_bounds",
+        ),
+        TestCase(
+            array=np.zeros(3, dtype=np.float32),
+            start_index=-1,
+            end_index=2,
+            start_value=0,
+            end_value=1,
+            expected=ValueError,
+            label="start_index_out_of_bounds",
+        ),
+        TestCase(
+            array=np.zeros(3, dtype=np.float32),
+            start_index=0.0,
+            end_index=2,
+            start_value=0,
+            end_value=1,
+            expected=TypeError,
+            label="float_index_rejected",
+        ),
+    ]
+
+    @pytest.mark.parametrize(
+        "test_case",
+        test_cases,
+        ids=lambda test_case: test_case.label,
+    )
+    def test_interpolate_segment(self, test_case: TestCase) -> None:
+        if expect_error(
+            interpolate_segment,
+            test_case.expected,
+            test_case.array,
+            test_case.start_index,
+            test_case.end_index,
+            test_case.start_value,
+            test_case.end_value,
+        ):
+            return
+
+        interpolate_segment(
+            test_case.array,
+            test_case.start_index,
+            test_case.end_index,
+            test_case.start_value,
+            test_case.end_value,
+        )
+        assert_array_equal(test_case.array, test_case.expected)
 
 
 class TestIsIncreasing(BaseTestSuite):

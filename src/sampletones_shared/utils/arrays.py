@@ -345,6 +345,67 @@ def trim(array: Array) -> Array:
     return module.concatenate([array[: last_end + 1], [last_value]])
 
 
+def interpolate_segment(
+    array: Array,
+    start_index: int,
+    end_index: int,
+    start_value: Numeric,
+    end_value: Numeric,
+) -> None:
+    """
+    Writes a linear ramp into a 1-dimensional array between two indices inclusive.
+
+    The element at start_index becomes start_value, the element at end_index becomes
+    end_value, and every index between them receives the nearest integer to its
+    linearly interpolated value. Rounding lands the ramp on whole levels, matching
+    arrays whose elements are discrete steps such as editable bar heights. The two
+    endpoints may be supplied in either index order.
+
+    Args:
+        array: The 1-dimensional array to write into, modified in place.
+        start_index: Index that receives start_value.
+        end_index: Index that receives end_value.
+        start_value: Value placed at start_index.
+        end_value: Value placed at end_index.
+
+    Raises:
+        TypeError: If array is not an Array or an index is not an integer.
+        ValueError: If array is not 1-dimensional or an index is out of bounds.
+
+    Examples:
+        >>> array = np.zeros(5)
+        >>> interpolate_segment(array, 0, 4, 0, 8)
+        >>> array
+        array([0., 2., 4., 6., 8.])
+        >>> array = np.zeros(5)
+        >>> interpolate_segment(array, 4, 0, 8, 0)
+        >>> array
+        array([0., 2., 4., 6., 8.])
+    """
+    if not isinstance(array, ArrayClasses):
+        raise TypeError(f"Expected array to be Array, got {type(array)}")
+
+    if array.ndim != 1:
+        raise ValueError("Array must be 1-dimensional")
+
+    if not isinstance(start_index, int) or not isinstance(end_index, int):
+        raise TypeError("Indices must be integers")
+
+    length = len(array)
+    for index in (start_index, end_index):
+        if index < 0 or index >= length:
+            raise ValueError(f"Index {index} is out of bounds for array of length {length}")
+
+    module = get_array_module(array)
+    count = abs(end_index - start_index) + 1
+    ramp = module.round(module.linspace(start_value, end_value, count))
+
+    if end_index >= start_index:
+        array[start_index : end_index + 1] = ramp
+    else:
+        array[end_index : start_index + 1] = ramp[::-1]
+
+
 def is_increasing(array: Array) -> bool:
     """
     Check if array values are strictly increasing.
